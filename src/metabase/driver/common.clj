@@ -1,23 +1,13 @@
 (ns metabase.driver.common
   "Shared definitions and helper functions for use across different drivers."
   (:require
-   [clj-time.coerce :as time.coerce]
-   [clj-time.core :as time]
-   [clj-time.format :as time.format]
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
-   [metabase.query-processor.context.default :as context.default]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [schema.core :as s])
-  (:import
-   (java.text SimpleDateFormat)
-   (org.joda.time DateTime)
-   (org.joda.time.format DateTimeFormatter)))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,7 +17,7 @@
   "Map of the db host details field, useful for `connection-properties` implementations"
   {:name         "host"
    :display-name (deferred-tru "Host")
-   :helper-text (deferred-tru "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).")
+   :helper-text  (deferred-tru "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).")
    :placeholder  "name.database.com"})
 
 (def default-port-details
@@ -238,114 +228,6 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           Fetching Current Timezone                                            |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defprotocol ^:private ^:deprecated ParseDateTimeString
-  (^:private parse
-   ^DateTime [this date-time-str]
-   "Parse the `date-time-str` and return a `DateTime` instance."))
-
-(extend-protocol ParseDateTimeString
-  DateTimeFormatter
-  (parse [formatter date-time-str]
-    (time.format/parse formatter date-time-str)))
-
-;; Java's SimpleDateFormat is more flexible on what it accepts for a time zone identifier. As an example, CEST is not
-;; recognized by Joda's DateTimeFormatter but is recognized by Java's SimpleDateFormat. This defrecord is used to
-;; dispatch parsing for SimpleDateFormat instances. Dispatching off of the SimpleDateFormat directly wouldn't be good
-;; as it's not threadsafe. This will always create a new SimpleDateFormat instance and discard it after parsing the
-;; date
-(defrecord ^:private ^:deprecated ThreadSafeSimpleDateFormat [format-str]
-  ParseDateTimeString
-  (parse [_ date-time-str]
-    (let [sdf         (SimpleDateFormat. format-str)
-          parsed-date (.parse sdf date-time-str)
-          joda-tz     (-> sdf .getTimeZone .getID time/time-zone-for-id)]
-      (time/to-time-zone (time.coerce/from-date parsed-date) joda-tz))))
-
-(defn ^:deprecated create-db-time-formatters
-  "Creates date formatters from `date-format-str` that will preserve the offset/timezone information. Will return a
-  JodaTime date formatter and a core Java SimpleDateFormat. Results of this are threadsafe and can safely be def'd."
-  [date-format-str]
-  [(.withOffsetParsed ^DateTimeFormatter (time.format/formatter date-format-str))
-   (ThreadSafeSimpleDateFormat. date-format-str)])
-
-(defn- ^:deprecated first-successful-parse
-  "Attempt to parse `time-str` with each of `date-formatters`, returning the first successful parse. If there are no
-  successful parses throws the exception that the last formatter threw."
-  ^DateTime [date-formatters time-str]
-  (or (some #(u/ignore-exceptions (parse % time-str)) date-formatters)
-      (doseq [formatter (reverse date-formatters)]
-        (parse formatter time-str))))
-
-(defmulti ^:deprecated current-db-time-native-query
-  "Return a native query that will fetch the current time (presumably as a string) used by the [[current-db-time]]
-  implementation below.
-
-  DEPRECATED — [[metabase.driver/current-db-time]], the method this function provides an implementation for, is itself
-  deprecated. Implement [[metabase.driver/db-default-timezone]] instead directly."
-  {:arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmulti ^:deprecated current-db-time-date-formatters
-  "Return JODA time date formatters to parse the current time returned by [[current-db-time-native-query`]] Used by
-  `current-db-time` implementation below. You can use [[create-db-time-formatters]] provided by this namespace to create
-  formatters for a date format string.
-
-  DEPRECATED — [[metabase.driver/current-db-time]], the method this function provides an implementation for, is itself
-  deprecated. Implement [[metabase.driver/db-default-timezone]] instead directly."
-  {:arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defn ^:deprecated current-db-time
-  "Implementation of [[metabase.driver/current-db-time]] using the [[current-db-time-native-query]] and
-  [[current-db-time-date-formatters]] multimethods defined above. Execute a native query for the current time, and
-  parse the results using the date formatters, preserving the timezone. To use this implementation, you must implement
-  the aforementioned multimethods; no default implementation is provided.
-
-  DEPRECATED — [[metabase.driver/current-db-time]], the method this function provides an implementation for, is itself
-  deprecated. Implement [[metabase.driver/db-default-timezone]] instead directly."
-  ^org.joda.time.DateTime [driver database]
-  {:pre [(map? database)]}
-  (driver/with-driver driver
-    (let [native-query    (current-db-time-native-query driver)
-          date-formatters (current-db-time-date-formatters driver)
-          time-str        (try
-                            ;; need to initialize the store since we're calling [[driver/execute-reducible-query]]
-                            ;; directly instead of going thru normal QP pipeline
-                            (qp.store/with-store
-                              (qp.store/fetch-and-store-database! (u/the-id database))
-                              (let [query {:database (u/the-id database), :native {:query native-query}}
-                                    reduce (fn [_metadata reducible-rows]
-                                             (transduce
-                                              identity
-                                              (fn
-                                                ([] nil)
-                                                ([row] (first row))
-                                                ([_ row] (reduced row)))
-                                              reducible-rows))]
-                                (driver/execute-reducible-query driver query (context.default/default-context) reduce)))
-                            (catch Exception e
-                              (throw
-                               (ex-info (tru "Error querying database {0} for current time: {1}"
-                                             (pr-str (:name database)) (ex-message e))
-                                        {:driver driver, :query native-query}
-                                        e))))]
-      (try
-        (when time-str
-          (first-successful-parse date-formatters time-str))
-        (catch Exception e
-          (throw
-           (Exception.
-            (str
-             (tru "Unable to parse date string ''{0}'' for database engine ''{1}''"
-                  time-str (-> database :engine name))) e)))))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Class -> Base Type                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -363,11 +245,10 @@
     java.math.BigInteger           :type/BigInteger
     Number                         :type/Number
     String                         :type/Text
-    ;; java.sql types and Joda-Time types should be considered DEPRECATED
+    ;; java.sql types should be considered DEPRECATED
     java.sql.Date                  :type/Date
     java.sql.Timestamp             :type/DateTime
     java.util.Date                 :type/Date
-    DateTime                       :type/DateTime
     java.util.UUID                 :type/UUID
     clojure.lang.IPersistentMap    :type/Dictionary
     clojure.lang.IPersistentVector :type/Array
@@ -387,7 +268,7 @@
     ;; all-NULL columns in DBs like Mongo w/o explicit types
     nil                            :type/*
     (do
-      (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
+      (log/warnf "Don't know how to map class '%s' to a Field base_type, falling back to :type/*." klass)
       :type/*)))
 
 (def ^:private column-info-sample-size
@@ -420,8 +301,7 @@
   More in (defmethod date [:sql :week-of-year-us])."
   nil)
 
-(s/defn start-of-week->int :- (s/pred (fn [n] (and (integer? n) (<= 0 n 6)))
-                                      "Start of week integer")
+(mu/defn start-of-week->int :- [:int {:min 0, :max 6, :error/message "Start of week integer"}]
   "Returns the int value for the current [[metabase.public-settings/start-of-week]] Setting value, which ranges from
   `0` (`:monday`) to `6` (`:sunday`). This is guaranteed to return a value."
   {:added "0.42.0"}
@@ -439,7 +319,7 @@
     (* (Integer/signum delta)
        (- 7 (Math/abs delta)))))
 
-(s/defn start-of-week-offset :- s/Int
+(mu/defn start-of-week-offset :- :int
   "Return the offset needed to adjust a day of the week (in the range 1..7) returned by the `driver`, with `1`
   corresponding to [[driver/db-start-of-week]], so that `1` corresponds to [[metabase.public-settings/start-of-week]] in
   results.

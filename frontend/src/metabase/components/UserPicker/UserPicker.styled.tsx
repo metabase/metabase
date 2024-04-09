@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
+
+import UserAvatar from "metabase/components/UserAvatar";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import UserAvatar from "metabase/components/UserAvatar";
 
 export const UserPickerRoot = styled.div`
   padding: 0.125rem;

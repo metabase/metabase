@@ -1,6 +1,11 @@
 import { render, screen } from "@testing-library/react";
+
 import { createMockDashboard } from "metabase-types/api/mocks";
-import { DashboardEmptyState, TabEmptyState } from "./DashboardEmptyState";
+
+import {
+  DashboardEmptyState,
+  DashboardEmptyStateWithoutAddPrompt,
+} from "./DashboardEmptyState";
 
 describe("DashboardEmptyState", () => {
   it("renders", () => {
@@ -22,9 +27,9 @@ describe("DashboardEmptyState", () => {
   });
 });
 
-describe("TabEmptyState", () => {
+describe("DashboardEmptyStateWithoutAddPrompt", () => {
   it("renders", () => {
-    render(<TabEmptyState isNightMode={false} />);
+    render(<DashboardEmptyStateWithoutAddPrompt isNightMode={false} />);
 
     expect(screen.getByText("There's nothing here, yet.")).toBeInTheDocument();
   });

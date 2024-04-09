@@ -2,24 +2,31 @@
   "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
   (:require
    [clojure.string :as str]
-   [java-time :as t]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models.params :as params]
+   [java-time.api :as t]
+   [medley.core :as m]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.schema :as su]
-   [schema.core :as s])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.time.temporal Temporal)))
 
 (set! *warn-on-reflection* true)
 
-(s/defn date-type?
+(def ^:private temporal-units-regex #"(millisecond|second|minute|hour|day|week|month|quarter|year)")
+
+(def date-exclude-regex
+  "Regex to match date exclusion values, e.g. exclude-days-Mon, exclude-months-Jan, etc."
+  (re-pattern (str "exclude-" temporal-units-regex #"s-([-\p{Alnum}]+)")))
+
+(mu/defn date-type?
   "Is param type `:date` or some subtype like `:date/month-year`?"
-  [param-type :- s/Keyword]
-  (= (get-in mbql.s/parameter-types [param-type :type]) :date))
+  [param-type :- :keyword]
+  (= (get-in lib.schema.parameter/types [param-type :type]) :date))
 
 (defn not-single-date-type?
   "Does date `param-type` represent a range of dates, rather than a single absolute date? (The value may be relative,
@@ -27,6 +34,15 @@
   [param-type]
   (and (date-type? param-type)
        (not (#{:date/single :date} param-type))))
+
+(defn exclusion-date-type
+  "When date `param-type` represent an exclusion of dates returns the temporal unit that's excluded."
+  [param-type value]
+  (when (and (date-type? param-type)
+             (string? value))
+    (some->> (re-matches date-exclude-regex value)
+             second
+             keyword)))
 
 ;; Both in MBQL and SQL parameter substitution a field value is compared to a date range, either relative or absolute.
 ;; Currently the field value is casted to a day (ignoring the time of day), so the ranges should have the same
@@ -37,7 +53,7 @@
 
 (defn- day-range
   [start end]
-  {:start start, :end end})
+  {:start start :end end :unit :day})
 
 (defn- comparison-range
   ([t unit]
@@ -49,7 +65,8 @@
   ([start end unit resolution]
    (merge
     (u.date/comparison-range start unit :>= {:resolution resolution})
-    (u.date/comparison-range end   unit :<= {:resolution resolution, :end :inclusive}))))
+    (u.date/comparison-range end   unit :<= {:resolution resolution, :end :inclusive})
+    {:unit unit})))
 
 (defn- second-range
   [start end]
@@ -84,7 +101,8 @@
                                             "Q3" 3
                                             "Q4" 4))]
     {:start (.atDay year-quarter 1)
-     :end   (.atEndOfQuarter year-quarter)}))
+     :end   (.atEndOfQuarter year-quarter)
+     :unit  :quarter}))
 
 (def ^:private operations-by-date-unit
   {"second"  {:unit-range second-range
@@ -105,8 +123,7 @@
               :to-period  t/years}})
 
 (defn- maybe-reduce-resolution [unit dt]
-  (if
-    (contains? #{"second" "minute" "hour"} unit)
+  (if (contains? #{"second" "minute" "hour"} unit)
     dt
     ; for units that are a day or longer, convert back to LocalDate
     (t/local-date dt)))
@@ -127,7 +144,7 @@
       (:date :date-1 :date-2) [[group-label (u.date/parse group-value)]]
       [[group-label group-value]])))
 
-(s/defn ^:private regex->parser :- (s/pred fn?)
+(mu/defn ^:private regex->parser :- fn?
   "Takes a regex and labels matching the regex capturing groups. Returns a parser which takes a parameter value,
   validates the value against regex and gives a map of labels and group values. Respects the following special label
   names:
@@ -135,7 +152,7 @@
       :unit – finds a matching date unit and merges date unit operations to the result
       :int-value, :int-value-1 – converts the group value to integer
       :date, :date1, date2 – converts the group value to absolute date"
-  [regex :- java.util.regex.Pattern group-labels]
+  [regex :- [:fn {:error/message "regular expression"} m/regexp?] group-labels]
   (fn [param-value]
     (when-let [regex-result (re-matches regex param-value)]
       (into {} (mapcat expand-parser-groups group-labels (rest regex-result))))))
@@ -145,7 +162,6 @@
 ;; 2) Range decoder which takes the parser output and produces a date range relative to the given datetime
 ;; 3) Filter decoder which takes the parser output and produces a mbql clause for a given mbql field reference
 
-(def ^:private temporal-units-regex #"(millisecond|second|minute|hour|day|week|month|quarter|year)")
 (def ^:private relative-suffix-regex (re-pattern (format "(|~|-from-([0-9]+)%ss)" temporal-units-regex)))
 
 (defn- include-current?
@@ -154,22 +170,29 @@
   [relative-suffix]
   (= "~" relative-suffix))
 
+(defn- with-temporal-unit-if-field
+  [clause unit]
+  (cond-> clause
+    (mbql.u/is-clause? :field clause) (mbql.u/with-temporal-unit unit)))
+
 (def ^:private relative-date-string-decoders
   [{:parser #(= % "today")
     :range  (fn [_ dt]
               (let [dt-res (t/local-date dt)]
                 {:start dt-res,
-                 :end   dt-res}))
+                 :end   dt-res
+                 :unit  :day}))
     :filter (fn [_ field-clause]
-              [:= (mbql.u/with-temporal-unit field-clause :day) [:relative-datetime :current]])}
+              [:= (with-temporal-unit-if-field field-clause :day) [:relative-datetime :current]])}
 
    {:parser #(= % "yesterday")
     :range  (fn [_ dt]
               (let [dt-res (t/local-date dt)]
                 {:start (t/minus dt-res (t/days 1))
-                 :end   (t/minus dt-res (t/days 1))}))
+                 :end   (t/minus dt-res (t/days 1))
+                 :unit  :day}))
     :filter (fn [_ field-clause]
-              [:= (mbql.u/with-temporal-unit field-clause :day) [:relative-datetime -1 :day]])}
+              [:= (with-temporal-unit-if-field field-clause :day) [:relative-datetime -1 :day]])}
 
    ;; Adding a tilde (~) at the end of a past<n><unit>s filter means we should include the current day/etc.
    ;; e.g. past30days  = past 30 days, not including partial data for today ({:include-current false})
@@ -230,10 +253,14 @@
 (defn- ->iso-8601-date [t]
   (t/format :iso-local-date t))
 
+(defn- ->iso-8601-date-time [t]
+  (t/format :iso-local-date-time t))
+
+
 ;; TODO - using `range->filter` so much below seems silly. Why can't we just bucket the field and use `:=` clauses?
 (defn- range->filter
   [{:keys [start end]} field-clause]
-  [:between (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date start) (->iso-8601-date end)])
+  [:between (with-temporal-unit-if-field field-clause :day) (->iso-8601-date start) (->iso-8601-date end)])
 
 (def ^:private short-day->day
   {"Mon" :monday
@@ -275,9 +302,12 @@
    :month   :month-of-year
    :quarter :quarter-of-year})
 
-(def date-exclude-regex
-  "Regex to match date exclusion values, e.g. exclude-days-Mon, exclude-months-Jan, etc."
-  (re-pattern (str "exclude-" temporal-units-regex #"s-([-\p{Alnum}]+)")))
+(defn- absolute-date->unit
+  [date-string]
+  (if (str/includes? date-string "T")
+    ;; on the UI you can specify the time up to the minute, so we use minute here
+    :minute
+    :day))
 
 (def ^:private absolute-date-string-decoders
   ;; year and month
@@ -296,28 +326,36 @@
    ;; single day
    {:parser (regex->parser #"([0-9-T:]+)" [:date])
     :range  (fn [{:keys [date]} _]
-              {:start date, :end date})
+              {:start date :end date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
               (let [iso8601date (->iso-8601-date date)]
-                [:= (mbql.u/with-temporal-unit field-clause :day) iso8601date]))}
+                [:= (with-temporal-unit-if-field field-clause :day) iso8601date]))}
    ;; day range
+   {:parser (regex->parser #"([0-9-T]+)~([0-9-T]+)" [:date-1 :date-2])
+    :range  (fn [{:keys [date-1 date-2]} _]
+              {:start date-1 :end date-2 :unit (absolute-date->unit date-1)})
+    :filter (fn [{:keys [date-1 date-2]} field-clause]
+              [:between (with-temporal-unit-if-field field-clause :day) (->iso-8601-date date-1) (->iso-8601-date date-2)])}
+   ;; datetime range
    {:parser (regex->parser #"([0-9-T:]+)~([0-9-T:]+)" [:date-1 :date-2])
     :range  (fn [{:keys [date-1 date-2]} _]
-              {:start date-1, :end date-2})
+              {:start date-1, :end date-2 :unit (absolute-date->unit date-1)})
     :filter (fn [{:keys [date-1 date-2]} field-clause]
-              [:between (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date-1) (->iso-8601-date date-2)])}
+              [:between (with-temporal-unit-if-field field-clause :default)
+               (->iso-8601-date-time date-1)
+               (->iso-8601-date-time date-2)])}
    ;; before day
    {:parser (regex->parser #"~([0-9-T:]+)" [:date])
     :range  (fn [{:keys [date]} _]
-              {:end date})
+              {:end date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
-              [:< (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date)])}
+              [:< (with-temporal-unit-if-field field-clause :day) (->iso-8601-date date)])}
    ;; after day
    {:parser (regex->parser #"([0-9-T:]+)~" [:date])
     :range  (fn [{:keys [date]} _]
-              {:start date})
+              {:start date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
-              [:> (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date)])}
+              [:> (with-temporal-unit-if-field field-clause :day) (->iso-8601-date date)])}
    ;; exclusions
    {:parser (regex->parser date-exclude-regex [:unit :exclusions])
     :filter (fn [{:keys [unit exclusions]} field-clause]
@@ -325,54 +363,76 @@
                     exclusions (map (partial excluded-datetime unit (t/local-date))
                                     (str/split exclusions #"-"))]
                 (when (and (seq exclusions) (every? some? exclusions))
-                  (into [:!= (mbql.u/with-temporal-unit field-clause (excluded-temporal-unit unit))] exclusions))))}])
+                  (into [:!= (with-temporal-unit-if-field field-clause (excluded-temporal-unit unit))] exclusions))))}])
 
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
 
-(s/defn ^:private execute-decoders
+(mu/defn ^:private execute-decoders
   "Returns the first successfully decoded value, run through both parser and a range/filter decoder depending on
   `decoder-type`. This generates an *inclusive* range by default. The range is adjusted to be exclusive as needed: see
   dox for [[date-string->range]] for more details."
-  [decoders, decoder-type :- (s/enum :range :filter), decoder-param, date-string :- s/Str]
+  [decoders
+   decoder-type :- [:enum :range :filter]
+   decoder-param
+   date-string :- :string]
   (some (fn [{parser :parser, parser-result-decoder decoder-type}]
           (when-let [parser-result (and parser-result-decoder (parser date-string))]
             (parser-result-decoder parser-result decoder-param)))
         decoders))
 
-(def ^:private TemporalRange
-  {(s/optional-key :start) Temporal, (s/optional-key :end) Temporal})
+(def ^:private TemporalUnit
+  (into [:enum] u.date/add-units))
 
-(s/defn ^:private adjust-inclusive-range-if-needed :- (s/maybe TemporalRange)
+(def ^:private TemporalRange
+  [:map
+   [:start {:optional true} [:fn #(instance? Temporal %)]]
+   [:end   {:optional true} [:fn #(instance? Temporal %)]]
+   [:unit                   TemporalUnit]])
+
+(mu/defn ^:private adjust-inclusive-range-if-needed :- [:maybe TemporalRange]
   "Make an inclusive date range exclusive as needed."
-  [{:keys [start end]} :- (s/maybe TemporalRange)
-   {:keys [inclusive-start? inclusive-end?], :as _options}]
-  (merge
-   (when start
-     {:start (if inclusive-start?
-               start
-               (u.date/add start :day -1))})
-   (when end
-     {:end (if inclusive-end?
-             end
-             (u.date/add end :day 1))})))
+  [{:keys [inclusive-start? inclusive-end?]} temporal-range :- [:maybe TemporalRange]]
+  (-> temporal-range
+      (m/update-existing :start #(if inclusive-start?
+                                   %
+                                   (u.date/add % (case (:unit temporal-range)
+                                                   (:year :quarter :month :week :day)
+                                                   :day
+                                                   (:unit temporal-range)) -1)))
+      (m/update-existing :end #(if inclusive-end?
+                                 %
+                                 (u.date/add % (case (:unit temporal-range)
+                                                   (:year :quarter :month :week :day)
+                                                   :day
+                                                   (:unit temporal-range)) 1)))))
 
 (def ^:private DateStringRange
   "Schema for a valid date range returned by `date-string->range`."
-  (-> {(s/optional-key :start) s/Str, (s/optional-key :end) s/Str}
-      (s/constrained seq
-                     "must have either :start or :end")
-      (s/constrained (fn [{:keys [start end]}]
-                       (or (not start)
-                           (not end)
-                           (not (pos? (compare start end)))))
-                     ":start must not come after :end")
-      (s/named "valid date range")))
+  [:and [:map {:closed true}
+         [:start {:optional true} ms/NonBlankString]
+         [:end   {:optional true} ms/NonBlankString]]
+   [:fn {:error/message "must have either :start or :end"}
+    (fn [{:keys [start end]}]
+      (or start end))]
+   [:fn {:error/message ":start must come before :end"}
+    (fn [{:keys [start end]}]
+      (or (not start)
+          (not end)
+          (not (pos? (compare start end)))))]])
 
-(s/defn date-string->range :- DateStringRange
+(defn- format-date-range
+  [date-range]
+  (-> date-range
+      (m/update-existing :start u.date/format)
+      (m/update-existing :end u.date/format)
+      (dissoc :unit)))
+
+(mu/defn date-string->range :- DateStringRange
   "Takes a string description of a date range such as `lastmonth` or `2016-07-15~2016-08-6` and returns a map with
-  `:start` and/or `:end` keys, as ISO-8601 *date* strings. By default, `:start` and `:end` are inclusive, e.g.
+  `:start` and/or `:end` keys, as ISO-8601 *date* strings. By default, `:start` and `:end` are inclusive,
 
+  e.g:
     (date-string->range \"past2days\") ; -> {:start \"2020-01-20\", :end \"2020-01-21\"}
 
   intended for use with SQL like
@@ -387,30 +447,32 @@
   ([date-string]
    (date-string->range date-string nil))
 
-  ([date-string  :- s/Str {:keys [inclusive-start? inclusive-end?]
-                           :or   {inclusive-start? true, inclusive-end? true}}]
+  ([date-string  :- ms/NonBlankString
+    {:keys [inclusive-start? inclusive-end?]
+     :or   {inclusive-start? true inclusive-end? true}}]
    (let [options {:inclusive-start? inclusive-start?, :inclusive-end? inclusive-end?}
          now (t/local-date-time)]
      ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
      ;; days depending on the user timezone
-     (or (-> (execute-decoders relative-date-string-decoders :range now date-string)
-             (adjust-inclusive-range-if-needed options)
-             (update-vals u.date/format))
+     (or (->> (execute-decoders relative-date-string-decoders :range now date-string)
+              (adjust-inclusive-range-if-needed options)
+              format-date-range)
          ;; Absolute date ranges don't need the time zone conversion because in SQL the date ranges are compared
          ;; against the db field value that is casted granularity level of a day in the db time zone
-         (-> (execute-decoders absolute-date-string-decoders :range nil date-string)
-             (adjust-inclusive-range-if-needed options)
-             (update-vals u.date/format))
+         (->> (execute-decoders absolute-date-string-decoders :range nil date-string)
+              (adjust-inclusive-range-if-needed options)
+              format-date-range)
          ;; if both of the decoders above fail, then the date string is invalid
          (throw (ex-info (tru "Don''t know how to parse date param ''{0}'' — invalid format" date-string)
                          {:param date-string
                           :type  qp.error-type/invalid-parameter}))))))
 
-(s/defn date-string->filter :- mbql.s/Filter
+(mu/defn date-string->filter :- mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6' and
    returns a corresponding MBQL filter clause for a given field reference."
-  [date-string :- s/Str field :- (s/cond-pre su/IntGreaterThanZero mbql.s/Field)]
-  (or (execute-decoders all-date-string-decoders :filter (params/wrap-field-id-if-needed field) date-string)
+  [date-string :- :string
+   field       :- [:or ms/PositiveInt mbql.s/Field]]
+  (or (execute-decoders all-date-string-decoders :filter (mbql.u/wrap-field-id-if-needed field) date-string)
       (throw (ex-info (tru "Don''t know how to parse date string {0}" (pr-str date-string))
                       {:type        qp.error-type/invalid-parameter
                        :date-string date-string}))))

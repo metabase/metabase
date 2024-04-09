@@ -1,3 +1,4 @@
+import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
 import {
   getNativePermission,
   getSchemasPermission,
@@ -8,18 +9,18 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
-import { Group, GroupsPermissions } from "metabase-types/api";
-import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { Group, GroupsPermissions } from "metabase-types/api";
+
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
+import { limitDatabasePermission } from "../../permissions";
+import type { DatabaseEntityId } from "../../types";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
   getRawQueryWarningModal,
 } from "../confirmations";
-import { limitDatabasePermission } from "../../permissions";
-import { DatabaseEntityId } from "../../types";
 
 const buildAccessPermission = (
   entityId: DatabaseEntityId,

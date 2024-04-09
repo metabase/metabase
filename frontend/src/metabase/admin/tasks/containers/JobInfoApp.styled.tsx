@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 export const JobInfoRoot = styled.div`
-  padding: 2rem;
+  padding-left: 1rem;
 `;
 
 export const JobInfoHeader = styled.div`

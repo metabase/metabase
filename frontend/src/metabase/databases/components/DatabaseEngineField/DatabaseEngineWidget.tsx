@@ -1,17 +1,15 @@
-import {
-  ChangeEvent,
-  KeyboardEvent,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import type { ChangeEvent, KeyboardEvent } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
-import Input from "metabase/core/components/Input";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
+import Input from "metabase/core/components/Input";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
+import MetabaseSettings from "metabase/lib/settings";
+
+import type { EngineOption } from "../../types";
 import { getEngineLogo } from "../../utils/engine";
-import { EngineOption } from "../../types";
+
 import {
   EngineButtonRoot,
   EngineCardIcon,
@@ -249,6 +247,7 @@ const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
         <EngineEmptyText>{jt`Don’t see your database? Check out our ${(
           <ExternalLink
             key="link"
+            // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup
             href={MetabaseSettings.docsUrl(
               "developers-guide/partner-and-community-drivers",
             )}

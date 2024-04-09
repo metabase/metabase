@@ -1,16 +1,15 @@
 (ns lint-migrations-file
   (:require
    [change-set.strict]
-   [change-set.unstrict]
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]
-   [clojure.walk :as walk]))
+   [clojure.string :as str]))
 
-(comment change-set.strict/keep-me
-         change-set.unstrict/keep-me)
+(set! *warn-on-reflection* true)
+
+(comment change-set.strict/keep-me)
 
 ;; just print ordered maps like normal maps.
 (defmethod print-method flatland.ordered.map.OrderedMap
@@ -20,127 +19,98 @@
 (s/def ::migrations
   (s/keys :req-un [::databaseChangeLog]))
 
-;; some change set IDs are integers, and some are strings!!!!!
-
-(defn- maybe-parse-to-int [x]
-  (if (and (string? x)
-           (re-matches #"^\d+$" x))
-    (Integer/parseInt x)
-    x))
-
 (defn- change-set-ids
-  "Get the sequence of all change set IDs. String IDs that can be parsed as integers will be returned as integers;
-  everything else will be returned as a String."
+  "Returns all the change set ids given a change-log."
   [change-log]
   (for [{{id :id} :changeSet} change-log
         :when id]
-    (maybe-parse-to-int id)))
+    id))
 
-(defn distinct-change-set-ids? [change-log]
-  ;; there are actually two migration 32s, so that's the only exception we're allowing.
-  (let [ids (remove (partial = 32) (change-set-ids change-log))]
+(defn- distinct-change-set-ids? [change-log]
+  (let [ids (change-set-ids change-log)]
     ;; can't apply distinct? with so many IDs
     (= (count ids) (count (set ids)))))
 
-(defn- compare-ids
-  "If `x` and `y` are integers, compare numerical values. Otherwise do String comparison."
-  [x y]
-  ;; Clojure gets confused if you try to compare a String and a Number.
-  (if (= (class x) (class y))
-    (compare x y)
-    (compare (str x) (str y))))
-
-(defn change-set-ids-in-order? [change-log]
+(defn- change-set-ids-in-order? [change-log]
   (let [ids (change-set-ids change-log)]
-    (= ids (sort-by identity compare-ids ids))))
+    (= ids (sort-by identity compare ids))))
 
-(defn- assert-no-types-in-change-set
-  "Walks over x (a changeset map) to ensure it doesn't add any columns of `target-types` (a set of strings).
-  `found-cols` is an atom of vector, in which any problematic changes to the `target-types` will be stored.
-
-  A partial application of this function will be passed to postwalk below.
-
-  TODO: add and conform to a spec instead?"
-  [target-types found-cols x]
-  {:pre [(set? target-types) (instance? clojure.lang.Atom found-cols)]}
-  (if
-    (map? x)
+(defn- check-change-use-types?
+  "Return `true` if change use any type in `types`."
+  [types change]
+  {:pre [(set? types)]}
+  (let [match-target-types? (fn [ttype]
+                              (contains? types (str/lower-case ttype)))]
     (cond
-      ;; a createTable or addColumn change; see if it adds a target-type col
-      (or (:createTable x) (:addColumn x))
-      (let [op     (cond (:createTable x) :createTable (:addColumn x) :addColumn)
-            cols   (filter (fn [col-def]
-                             (contains? target-types
-                                        (str/lower-case (or (get-in col-def [:column :type]) ""))))
-                     (get-in x [op :columns]))]
-        (doseq [col cols]
-          (swap! found-cols conj col))
-        x)
+     ;; a createTable or addColumn change; see if it adds a target-type col
+     (or (:createTable change) (:addColumn change))
+     (let [op (cond (:createTable change) :createTable (:addColumn change) :addColumn)]
+       (some (fn [col-def]
+               (match-target-types? (get-in col-def [:column :type] "")))
+             (get-in change [op :columns])))
 
-      ;; a modifyDataType change; see if it changes a column to target-type
-      (:modifyDataType x)
-      (if (= target-types (str/lower-case (or (get-in x [:modifyDataType :newDataType]) "")))
-        (do (swap! found-cols conj x)
-            x)
-        x)
+     ;; a modifyDataType change; see if it change a column to target-type
+     (and (:modifyDataType change)
+          (match-target-types? (get-in change [:modifyDataType :newDataType] "")))
+     true)))
 
-      true ; some other kind of change; continue walking
-      x)
-    x))
+(defn- check-change-set-use-types?
+  "Return true if `change-set` doesn't contain usage of any type in `types`."
+  [target-types change-set]
+  (some #(check-change-use-types? target-types %) (get-in change-set [:changeSet :changes])))
+
+(defn- assert-no-types-in-change-log
+  "Returns true if none of the changes in the change-log contain usage of any type specified in `target-types`.
+
+  `id-filter-fn` is a function that takes an ID and return true if the changeset should be checked."
+  ([target-types change-log]
+   (assert-no-types-in-change-log target-types change-log (constantly true)))
+  ([target-types change-log id-filter-fn]
+   {:pre [(set? target-types)]}
+   (->> change-log
+        (filter (fn [change-set]
+                  (let [id (get-in change-set [:changeSet :id])]
+                    (and (string? id)
+                         (id-filter-fn id)))))
+        (some #(check-change-set-use-types? target-types %))
+        not)))
 
 (defn no-bare-blob-or-text-types?
   "Ensures that no \"text\" or \"blob\" type columns are added in changesets with id later than 320 (i.e. version
   0.42.0).  From that point on, \"${text.type}\" should be used instead, so that MySQL can handle it correctly (by using
-  `LONGTEXT`).  And similarly, from an earlier point, \"${blob.type\" should be used instead of \"blob\"."
+  `LONGTEXT`).  And similarly, from an earlier point, \"${blob.type}\" should be used instead of \"blob\"."
   [change-log]
-  (let [problem-cols (atom [])
-        walk-fn      (partial assert-no-types-in-change-set #{"blob" "text"} problem-cols)]
-    (doseq [{{id :id} :changeSet, :as change-set} change-log
-            :when                                 (and id
-                                                       (string? id))]
-      [id change-set])
-    (doseq [{{id :id} :changeSet :as change-set} change-log
-            :when                                (and id
-                                                      ;; only enforced in 42+ with new-style migration IDs.
-                                                      (string? id)
-                                                      (str/starts-with? id "v"))]
-      (walk/postwalk walk-fn change-set))
-    (empty? @problem-cols)))
+  (assert-no-types-in-change-log #{"blob" "text"} change-log))
+
+(defn no-bare-boolean-types?
+  "Ensures that no \"boolean\" type columns are added in changesets with id later than v49.00-032. From that point on,
+  \"${boolean.type}\" should be used instead, so that we can consistently use `BIT(1)` for Boolean columns on MySQL."
+  [change-log]
+  (assert-no-types-in-change-log #{"boolean"} change-log #(pos? (compare % "v49.00-032"))))
+
+(defn no-datetime-type?
+  "Ensures that no \"datetime\" or \"timestamp without time zone\".
+  From that point on, \"${timestamp_type}\" should be used instead, so that all of our time related columsn are tz-aware."
+  [change-log]
+  (assert-no-types-in-change-log
+   #{"datetime" "timestamp" "timestamp without time zone"}
+   change-log
+   #(pos? (compare % "v49.00-000"))))
+
+(s/def ::changeSet
+  (s/spec :change-set.strict/change-set))
 
 (s/def ::databaseChangeLog
   (s/and distinct-change-set-ids?
          change-set-ids-in-order?
          no-bare-blob-or-text-types?
+         no-bare-boolean-types?
+         no-datetime-type?
          (s/+ (s/alt :property              (s/keys :req-un [::property])
                      :objectQuotingStrategy (s/keys :req-un [::objectQuotingStrategy])
                      :changeSet             (s/keys :req-un [::changeSet])))))
 
-(def strict-change-set-cutoff
-  "All change sets with an ID >= this number will be validated with the strict spec."
-  172)
-
-(defn change-set-validation-level [{id :id}]
-  (or (when-let [id (maybe-parse-to-int id)]
-        (when (and (int? id)
-                   (< id strict-change-set-cutoff))
-          :unstrict))
-      :strict))
-
-(defmulti change-set
-  change-set-validation-level)
-
-(defmethod change-set :strict
-  [_]
-  :change-set.strict/change-set)
-
-(defmethod change-set :unstrict
-  [_]
-  :change-set.unstrict/change-set)
-
-(s/def ::changeSet
-  (s/multi-spec change-set change-set-validation-level))
-
-(defn validate-migrations [migrations]
+(defn- validate-migrations [migrations]
   (when (= (s/conform ::migrations migrations) ::s/invalid)
     (let [data (s/explain-data ::migrations migrations)]
       (throw (ex-info (str "Validation failed:\n" (with-out-str (pprint/pprint (mapv #(dissoc % :val)
@@ -148,10 +118,10 @@
                       (or (dissoc data ::s/value) {})))))
   :ok)
 
-(def filename
-  "../../resources/migrations/000_migrations.yaml")
+(def ^:private filename
+  "../../resources/migrations/001_update_migrations.yaml")
 
-(defn migrations []
+(defn- migrations []
   (let [file (io/file filename)]
     (assert (.exists file) (format "%s does not exist" filename))
     (letfn [(fix-vals [x]
@@ -164,7 +134,11 @@
 (defn- validate-all []
   (validate-migrations (migrations)))
 
-(defn -main []
+(defn -main
+  "Entry point for Clojure CLI task `lint-migrations-file`. Run it with
+
+    ./bin/lint-migrations-file.sh"
+  []
   (println "Check Liquibase migrations file...")
   (try
     (validate-all)

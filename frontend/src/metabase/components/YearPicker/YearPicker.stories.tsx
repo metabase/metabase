@@ -1,5 +1,6 @@
+import { useArgs } from "@storybook/addons";
 import type { ComponentStory } from "@storybook/react";
-import { useArgs } from "@storybook/client-api";
+
 import YearPicker from "./YearPicker";
 
 export default {

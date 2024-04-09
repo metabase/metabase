@@ -1,7 +1,9 @@
 import { useFormikContext } from "formik";
 import { jt, t } from "ttag";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { DatabaseData } from "metabase-types/api";
+import CS from "metabase/css/core/index.css";
+import type { DatabaseData } from "metabase-types/api";
 
 const CREDENTIAL_URLS: Record<string, string> = {
   bigquery:
@@ -23,7 +25,7 @@ const DatabaseClientIdDescription = (): JSX.Element | null => {
   return (
     <span>
       {jt`${(
-        <ExternalLink className="link" href={projectUrl.href}>
+        <ExternalLink className={CS.link} href={projectUrl.href}>
           {t`Click here`}
         </ExternalLink>
       )} to generate a Client ID and Client Secret for your project.`}{" "}

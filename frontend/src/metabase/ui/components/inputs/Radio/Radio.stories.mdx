@@ -1,11 +1,34 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
-import { Radio } from "./";
+import { Radio, Stack } from "metabase/ui";
 
-<Meta title="Inputs/Radio & Radio Group" component={Radio} />
+export const args = {
+  label: "Label",
+  description: "",
+  disabled: false,
+  labelPosition: "right",
+};
 
-# Radio & Radio.Group
+export const argTypes = {
+  label: {
+    control: { type: "text" },
+  },
+  description: {
+    control: { type: "text" },
+  },
+  disabled: {
+    control: { type: "boolean" },
+  },
+  labelPosition: {
+    options: ["left", "right"],
+    control: { type: "inline-radio" },
+  },
+};
 
-Our themed wrapper around [Mantine Radio](https://mantine.dev/core/radio/).
+<Meta title="Inputs/Radio" component={Radio} args={args} argTypes={argTypes} />
+
+# Radio
+
+Our themed wrapper around [Mantine Radio](https://v6.mantine.dev/core/radio/).
 
 ## When to use Radio
 
@@ -13,86 +36,100 @@ Radio buttons allow users to select a single option from a list of mutually excl
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/7LCGPhkbJdrhdIaeiU1O9c/Input-%2F-Radio?type=design&node-id=1%3A96&t=S6gieWhmvLP15ARp-1)
-- [Mantine Radio Docs](https://mantine.dev/core/radio/)
-
-## Caveats
-
-- As of right now, don't use the size prop.
-- Please don't use the `error` prop on Radio components (We'll standardize on this as other inputs get converted).
+- [Figma File](https://www.figma.com/file/7LCGPhkbJdrhdIaeiU1O9c/Input-%2F-Radio?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
+- [Mantine Radio Docs](https://v6.mantine.dev/core/radio/)
 
 ## Usage guidelines
 
-- **Limit usage to 5 options max**. Radio buttons should be used when there are 2-3 options to choose from. If there are more than 5 options, consider using a [Select](../Select) or [Checkbox](../Checkbox) instead.
+- **Use this component if there are more than 5 options**. If there are fewer options, feel free to check out Radio or Select.
 - For option ordering, try to use your best judgement on a sensible order. For example, Yes should come before No. Alphabetical ordering is usually a good fallback if there's no inherent order in your set of choices.
-- In almost all circumstances you'll want to use `<Raio.Group>` to provide a set of options and help with defaultValues and state management between them.
+- In almost all circumstances you'll want to use `<Radio.Group>` to provide a set of options and help with defaultValues and state management between them.
 
-## General
+## Examples
+
+export const DefaultTemplate = args => <Radio {...args} />;
+
+export const RadioGroupTemplate = args => (
+  <Radio.Group
+    defaultValue={"react"}
+    label="An array of good frameworks"
+    description="But which one to use?"
+  >
+    <Stack mt="md">
+      <Radio value="react" label="React" />
+      <Radio value="svelte" label="Svelte" />
+      <Radio value="ng" label="Angular" />
+      <Radio value="vue" label="Vue" />
+    </Stack>
+  </Radio.Group>
+);
+
+export const StateTemplate = args => (
+  <Stack>
+    <Radio {...args} label="Default radio" />
+    <Radio {...args} label="Checked radio" defaultChecked />
+    <Radio {...args} label="Disabled radio" disabled />
+    <Radio {...args} label="Disabled checked radio" disabled defaultChecked />
+  </Stack>
+);
+
+export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">
-    <Radio.Group defaultValue="yes">
-      <Radio label="Yes" value="yes" />
-      <Radio label="No" value="no" />
-    </Radio.Group>
-  </Story>
+  <Story name="Default">{Default}</Story>
 </Canvas>
 
-## Disabled
+### Radio.Group
+
+export const RadioGroup = RadioGroupTemplate.bind({});
 
 <Canvas>
-  <Story name="Disabled">
-    <Radio.Group value="yes">
-      <Radio label="Yes" value="yes" disabled />
-      <Radio label="No" value="no" disabled />
-    </Radio.Group>
-  </Story>
+  <Story name="Radio group">{RadioGroup}</Story>
 </Canvas>
 
-## Description
+### Label
 
-If needed you can add a description value to a radio button to give more context about the choice.
+export const Label = StateTemplate.bind({});
 
 <Canvas>
-  <Story name="Descriptions">
-    <Radio.Group defaultValue="chocolate">
-      <Radio
-        label="Chocolate"
-        value="chocolate"
-        description="One of our most popular flavors"
-      />
-      <Radio
-        label="Vanilla"
-        value="vanilla"
-        description="A classic for all seasons"
-      />
-      <Radio
-        label="Swirl"
-        value="swirl"
-        description="Why not have it both ways?"
-      />
-    </Radio.Group>
-  </Story>
+  <Story name="Label">{Label}</Story>
 </Canvas>
 
-## Using the Radio group props
+#### Left label position
 
-You can use `label` and `description` on the Radio.Group component to provide a label and description for the set of choices.
+export const LabelLeft = StateTemplate.bind({});
+LabelLeft.args = {
+  labelPosition: "left",
+};
 
 <Canvas>
-  <Story name="Radio Group props">
-    <Radio.Group
-      label="A set of options"
-      description="You could so something like this if there was a deprecated setting that a user needs to update."
-      defaultValue="one"
-    >
-      <Radio label="Old bad setting" value="one" disabled />
-      <Radio label="A better newer setting" value="two" />
-    </Radio.Group>
-  </Story>
+  <Story name="Label, left position">{LabelLeft}</Story>
+</Canvas>
+
+### Description
+
+export const Description = StateTemplate.bind({});
+Description.args = {
+  description: "Description",
+};
+
+<Canvas>
+  <Story name="Description">{Description}</Story>
+</Canvas>
+
+export const DescriptionLeft = StateTemplate.bind({});
+DescriptionLeft.args = {
+  description: "Description",
+  labelPosition: "left",
+};
+
+#### Left label position
+
+<Canvas>
+  <Story name="Description, left position">{DescriptionLeft}</Story>
 </Canvas>
 
 ## Related components
 
-- Select
 - Checkbox
+- Select

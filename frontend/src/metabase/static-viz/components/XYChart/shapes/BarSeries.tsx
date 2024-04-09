@@ -1,14 +1,14 @@
-import { Fragment } from "react";
-import { Bar } from "@visx/shape";
 import { Group } from "@visx/group";
 import { scaleBand } from "@visx/scale";
-import { PositionScale } from "@visx/shape/lib/types";
-import { getY } from "metabase/static-viz/components/XYChart/utils";
+import { Bar } from "@visx/shape";
+import type { PositionScale } from "@visx/shape/lib/types";
+import { Fragment } from "react";
 
 import type {
   DatumAccessor,
   Series,
 } from "metabase/static-viz/components/XYChart/types";
+import { getY } from "metabase/static-viz/components/XYChart/utils";
 
 interface BarSeriesProps {
   series: Series[];

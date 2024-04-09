@@ -1,3 +1,5 @@
+import { renderWithProviders, screen } from "__support__/ui";
+import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -6,8 +8,6 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 
 interface SetupOpts {
   activeUsersCount: number;
@@ -23,7 +23,7 @@ const setup = ({ activeUsersCount, ssoEnabled, isSuperUser }: SetupOpts) => {
     settings: createMockSettingsState({
       "active-users-count": activeUsersCount,
       "token-features": createMockTokenFeatures({
-        sso: ssoEnabled,
+        sso_saml: ssoEnabled,
       }),
     }),
   });

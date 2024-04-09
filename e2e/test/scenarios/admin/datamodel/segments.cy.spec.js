@@ -1,7 +1,13 @@
 // Ported from `segments.e2e.spec.js`
-import { restore, popover, modal } from "e2e/support/helpers";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  restore,
+  popover,
+  modal,
+  filter,
+  filterField,
+} from "e2e/support/helpers";
+import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -13,41 +19,33 @@ describe("scenarios > admin > datamodel > segments", () => {
   });
 
   describe("with no segments", () => {
-    it("should show no segments in UI", () => {
-      cy.visit("/admin/datamodel/segments");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Segments").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "Create segments to add them to the Filter dropdown in the query builder",
-      );
-    });
-
     it("should have 'Custom expression' in a filter list (metabase#13069)", () => {
       cy.visit("/admin/datamodel/segments");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New segment").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Select a table").click();
 
-      // Ugly hack to prevent failures that started after https://github.com/metabase/metabase/pull/24682 has been merged.
-      // For unknon reasons, popover doesn't open with expanded list of all Sample Database tables. Rather. it shows
-      // Sample Database (collapsed) only. We need to click on it to expand it.
-      // This conditional mechanism prevents failures even if that popover opens expanded in the future.
-      cy.get(".List-section").then($list => {
-        if ($list.length !== 5) {
-          cy.findByText("Sample Database").click();
-        }
-        cy.findByText("Orders").click();
-      });
+      cy.log("should initially show no segments in UI");
+      cy.get("main").findByText(
+        "Create segments to add them to the Filter dropdown in the query builder",
+      );
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add filters to narrow your answer").click();
+      cy.button("New segment").click();
+
+      cy.findByTestId("gui-builder").findByText("Select a table").click();
+      popover().findByText("Orders").click();
+
+      cy.findByTestId("gui-builder")
+        .findByText("Add filters to narrow your answer")
+        .click();
 
       cy.log("Fails in v0.36.0 and v0.36.3. It exists in v0.35.4");
-      popover().within(() => {
-        cy.findByText("Custom Expression");
-      });
+      popover().findByText("Custom Expression");
+    });
+
+    it("should show no segments", () => {
+      cy.visit("/reference/segments");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Segments are interesting subsets of tables");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Learn how to create segments");
     });
   });
 
@@ -56,7 +54,7 @@ describe("scenarios > admin > datamodel > segments", () => {
 
     beforeEach(() => {
       // Create a segment through API
-      cy.request("POST", "/api/segment", {
+      createSegment({
         name: SEGMENT_NAME,
         description: "All orders with a total under $100.",
         table_id: ORDERS_ID,
@@ -66,6 +64,29 @@ describe("scenarios > admin > datamodel > segments", () => {
           filter: ["<", ["field", ORDERS.TOTAL, null], 100],
         },
       });
+    });
+
+    it("should show the segment fields list and detail view", () => {
+      // In the list
+      cy.visit("/reference/segments");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(SEGMENT_NAME);
+
+      // Detail view
+      cy.visit("/reference/segments/1");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Description");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("See this segment");
+
+      // Segment fields
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Fields in this segment").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("See this segment").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(`Fields in ${SEGMENT_NAME}`);
+      cy.findAllByText("Discount");
     });
 
     it("should show up in UI list", () => {
@@ -82,6 +103,45 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.findByText("Edit Your Segment");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Preview");
+    });
+
+    it("should show no questions based on a new segment", () => {
+      cy.visit("/reference/segments/1/questions");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(`Questions about ${SEGMENT_NAME}`);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(
+        "Questions about this segment will appear here as they're added",
+      );
+    });
+
+    it("should see a newly asked question in its questions list", () => {
+      // Ask question
+      cy.visit("/reference/segments/1/questions");
+
+      cy.button("Ask a question").click();
+      cy.findAllByText("37.65");
+
+      filter();
+      filterField("Product ID", {
+        value: "14",
+      });
+      cy.findByTestId("apply-filters").click();
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Product ID is 14");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Save").click();
+      cy.findAllByText("Save").last().click();
+
+      // Check list
+      cy.visit("/reference/segments/1/questions");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(
+        "Questions about this segment will appear here as they're added",
+      ).should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(`Orders, Filtered by ${SEGMENT_NAME} and Product ID is 14`);
     });
 
     it("should update that segment", () => {

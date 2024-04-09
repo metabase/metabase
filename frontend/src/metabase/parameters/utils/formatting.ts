@@ -1,12 +1,16 @@
 import { ngettext, msgid } from "ttag";
 
 import { formatValue } from "metabase/lib/formatting";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import {
+  getFields,
+  hasFields,
+} from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
   isFieldFilterParameter,
   getParameterType,
-} from "metabase-lib/parameters/utils/parameter-type";
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 
-import { UiParameter } from "metabase-lib/parameters/types";
 import { formatDateValue } from "./date-formatting";
 
 function inferValueType(parameter: UiParameter) {
@@ -51,12 +55,13 @@ export function formatParameterValue(
     }
 
     // format using the parameter's first targeted field
-    if (parameter.fields.length > 0) {
-      const [firstField] = parameter.fields;
+    if (hasFields(parameter)) {
+      const fields = getFields(parameter);
+      const [firstField] = fields;
       // when a parameter targets multiple fields we won't know
       // which parameter the value is associated with, meaning we
       // are unable to remap the value to the correct field
-      const remap = parameter.fields.length === 1;
+      const remap = fields.length === 1;
       return formatValue(value as string, {
         column: firstField,
         maximumFractionDigits: 20,

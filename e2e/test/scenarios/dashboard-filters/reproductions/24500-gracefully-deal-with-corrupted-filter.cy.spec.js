@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   filterWidget,
@@ -6,7 +7,6 @@ import {
   editDashboard,
   saveDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -44,7 +44,7 @@ const questionDetails = {
 
 const dashboardDetails = { parameters };
 
-describe.skip("issues 15279 and 24500", () => {
+describe("issues 15279 and 24500", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -54,8 +54,8 @@ describe.skip("issues 15279 and 24500", () => {
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         // Connect filters to the question
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               id,
               card_id,
@@ -95,7 +95,7 @@ describe.skip("issues 15279 and 24500", () => {
     popover().contains("Organic").click();
     cy.button("Add filter").click();
 
-    cy.get(".DashCard")
+    cy.findByTestId("dashcard-container")
       .should("contain", "Lora Cronin")
       .and("contain", "Dagmar Fay");
 
@@ -104,24 +104,30 @@ describe.skip("issues 15279 and 24500", () => {
     cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
     cy.button("Add filter").click();
 
-    cy.get(".DashCard")
+    cy.findByTestId("dashcard-container")
       .should("contain", "Lora Cronin")
       .and("not.contain", "Dagmar Fay");
 
     // The corrupted filter is now present in the UI, but it doesn't work (as expected)
     // People can now easily remove it
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…");
-
     editDashboard();
-    filterWidget().last().find(".Icon-gear").click();
-    // Uncomment the next line if we end up disabling fields for the corrupted filter
-    // cy.findByText("No valid fields")
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Remove").click();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText("unnamed")
+      .icon("gear")
+      .click();
+    cy.findByRole("button", { name: "Remove" }).click();
     saveDashboard();
 
-    cy.get(".DashCard")
+    // Check the list filter again
+    filterWidget().contains("List").click();
+    cy.wait("@values");
+
+    // Check that the search filter works
+    filterWidget().contains("Search").click();
+    cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
+    cy.button("Add filter").click();
+
+    cy.findByTestId("dashcard-container")
       .should("contain", "Lora Cronin")
       .and("not.contain", "Dagmar Fay");
   });

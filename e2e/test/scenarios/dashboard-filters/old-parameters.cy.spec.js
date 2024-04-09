@@ -1,6 +1,5 @@
-import { restore, popover, visitDashboard } from "e2e/support/helpers";
-// NOTE: some overlap with parameters-embedded.cy.spec.js
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, popover, visitDashboard } from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -35,8 +34,8 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: { id, card_id, dashboard_id } }) => {
-          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-            cards: [
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
               {
                 id,
                 card_id,
@@ -96,8 +95,8 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: { id, card_id, dashboard_id } }) => {
-          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-            cards: [
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
               {
                 id,
                 card_id,
@@ -129,7 +128,9 @@ describe("scenarios > dashboard > OLD parameters", () => {
         cy.findByText("Add filter").click();
       });
 
-      cy.get(".DashCard tbody tr").should("have.length", 1);
+      cy.findByTestId("dashcard-container")
+        .get("tbody tr")
+        .should("have.length", 1);
     });
   });
 
@@ -167,8 +168,8 @@ describe("scenarios > dashboard > OLD parameters", () => {
         questionDetails,
         dashboardDetails,
       }).then(({ body: { id, card_id, dashboard_id } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               id,
               card_id,

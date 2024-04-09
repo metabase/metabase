@@ -1,24 +1,27 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
-
 import _ from "underscore";
 
-import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
-
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
+import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { TYPE } from "metabase-lib/types/constants";
-import { TITLE_ICON_SIZE } from "./constants";
+import { TYPE } from "metabase-lib/v1/types/constants";
+
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
+import { TITLE_ICON_SIZE } from "./constants";
 import { getTitleLinesCount, getValueHeight, getValueWidth } from "./utils";
 
 // convert legacy `scalar.*` visualization settings to format options
@@ -198,7 +201,7 @@ export class Scalar extends Component {
       data: rows[0].map((value, index) => ({ value, col: cols[index] })),
       settings,
     };
-    const isClickable = visualizationIsClickable(clicked);
+    const isClickable = onVisualizationClick != null;
 
     const showSmallTitle =
       !!settings["card.title"] &&
@@ -207,28 +210,44 @@ export class Scalar extends Component {
 
     const titleLinesCount = getTitleLinesCount(height);
 
+    const handleClick = () => {
+      if (
+        this._scalar &&
+        onVisualizationClick &&
+        visualizationIsClickable(clicked)
+      ) {
+        onVisualizationClick({ ...clicked, element: this._scalar });
+      }
+    };
+
     return (
       <ScalarWrapper>
-        <div className="Card-title absolute top right p1 px2">
+        <div
+          className={cx(
+            DashboardS.CardTitle,
+            CS.textDefault,
+            CS.textSmaller,
+            CS.absolute,
+            CS.top,
+            CS.right,
+            CS.p1,
+            CS.px2,
+          )}
+        >
           {actionButtons}
         </div>
         <ScalarContainer
-          className="fullscreen-normal-text fullscreen-night-text"
+          className={cx(
+            DashboardS.fullscreenNormalText,
+            DashboardS.fullscreenNightText,
+            EmbedFrameS.fullscreenNightText,
+          )}
           data-testid="scalar-container"
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}
           isClickable={isClickable}
         >
-          <span
-            onClick={
-              isClickable
-                ? () =>
-                    this._scalar &&
-                    onVisualizationClick({ ...clicked, element: this._scalar })
-                : undefined
-            }
-            ref={scalar => (this._scalar = scalar)}
-          >
+          <span onClick={handleClick} ref={scalar => (this._scalar = scalar)}>
             <ScalarValue
               fontFamily={fontFamily}
               gridSize={gridSize}

@@ -1,9 +1,9 @@
 import {
-  DATASETS_INFO_ITEM,
+  MODELS_INFO_ITEM,
   RAW_DATA_INFO_ITEM,
   SAVED_QUESTIONS_INFO_ITEM,
 } from "./constants";
-import { DataTypeInfoItem } from "./types";
+import type { DataTypeInfoItem } from "./types";
 
 export function getDataTypes({
   hasModels,
@@ -17,7 +17,7 @@ export function getDataTypes({
   const dataTypes: DataTypeInfoItem[] = [];
 
   if (hasNestedQueriesEnabled && hasModels) {
-    dataTypes.push(DATASETS_INFO_ITEM);
+    dataTypes.push(MODELS_INFO_ITEM);
   }
 
   dataTypes.push(RAW_DATA_INFO_ITEM);

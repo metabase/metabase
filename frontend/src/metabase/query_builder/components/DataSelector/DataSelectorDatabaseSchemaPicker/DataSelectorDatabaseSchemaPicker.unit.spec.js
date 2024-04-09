@@ -1,11 +1,12 @@
 import { render } from "@testing-library/react";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import DataSelectorDatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
 
 const setup = opts => {
@@ -33,7 +34,7 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
   it("displays loading message when it has no databases", () => {
     render(<DataSelectorDatabaseSchemaPicker databases={[]} />);
 
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
   describe("displays picker when it has databases", () => {

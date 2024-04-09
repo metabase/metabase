@@ -1,7 +1,5 @@
-import type { DatasetQuery } from "metabase-types/api";
-import type { Query } from "metabase-lib/types";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import type Question from "metabase-lib/Question";
+import type { Query } from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 export type NotebookStepType =
   | "data"
@@ -14,51 +12,41 @@ export type NotebookStepType =
   | "sort"
   | "limit";
 
-export type NotebookStepFn<ReturnType> = (
-  query: StructuredQuery,
-  index: number | undefined | null,
-  topLevelQuery: Query,
-  stageIndex: number,
-) => ReturnType;
+type RevertFn = (query: Query, stageIndex: number, index?: number) => Query;
 
 export interface NotebookStep {
   id: string;
   type: NotebookStepType;
   stageIndex: number;
   itemIndex: number | null;
-  topLevelQuery: Query;
-  query: StructuredQuery;
+  question: Question;
+  query: Query;
   valid: boolean;
   active: boolean;
   visible: boolean;
   testID: string;
-  revert: NotebookStepFn<StructuredQuery | null> | null;
-  clean: NotebookStepFn<StructuredQuery>;
-  update: (datasetQuery: DatasetQuery) => StructuredQuery;
+  revert: RevertFn | null;
   actions: NotebookStepAction[];
-  previewQuery: StructuredQuery | null;
   next: NotebookStep | null;
   previous: NotebookStep | null;
+  getPreviewQuery?: (() => Query) | undefined;
 }
 
 export interface NotebookStepAction {
   type: NotebookStepType;
-  action: (args: {
-    query?: StructuredQuery;
-    openStep: (id: string) => void;
-  }) => void;
+  action: (args: { openStep: (id: string) => void }) => void;
 }
 
 export interface NotebookStepUiComponentProps {
   step: NotebookStep;
-  topLevelQuery: Query;
-  query: StructuredQuery;
+  query: Query;
+  stageIndex: number;
   sourceQuestion?: Question;
   color: string;
   isLastOpened: boolean;
   reportTimezone: string;
   readOnly?: boolean;
-  updateQuery: (query: StructuredQuery | Query) => Promise<void>;
+  updateQuery: (query: Query) => Promise<void>;
 }
 
 export type OpenSteps = Record<NotebookStep["id"], boolean>;

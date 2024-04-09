@@ -1,36 +1,37 @@
-import { Route } from "react-router";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
+
+import { callMockEvent } from "__support__/events";
+import {
+  setupDatabasesEndpoints,
+  setupPermissionsGraphEndpoints,
+  setupGroupsEndpoint,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
-  waitForElementToBeRemoved,
   screen,
   fireEvent,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockPermissionsGraph } from "metabase-types/api/mocks/permissions";
-import { createMockGroup } from "metabase-types/api/mocks/group";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
-import { setupPermissionsGraphEndpoint } from "__support__/server-mocks/permissions";
-import { setupGroupsEndpoint } from "__support__/server-mocks/group";
 import DatabasesPermissionsPage from "metabase/admin/permissions/pages/DatabasePermissionsPage/DatabasesPermissionsPage";
-import { PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES } from "metabase/plugins";
-import { delay } from "metabase/lib/promise";
-import { callMockEvent } from "__support__/events";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
+import { delay } from "metabase/lib/promise";
+import { PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES } from "metabase/plugins";
+import { createMockGroup } from "metabase-types/api/mocks/group";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 const TEST_DATABASE = createSampleDatabase();
 
-const TEST_GROUPS = [createMockGroup()];
-
-const TEST_PERMISSIONS_GRAPH = createMockPermissionsGraph({
-  groups: TEST_GROUPS,
-  databases: [TEST_DATABASE],
-});
+// Order is important here for test to pass, since admin options aren't editable
+const TEST_GROUPS = [
+  createMockGroup({ name: "All Users" }),
+  createMockGroup({ id: 2, name: "Administrators" }),
+];
 
 const setup = async () => {
   setupDatabasesEndpoints([TEST_DATABASE]);
-  setupPermissionsGraphEndpoint(TEST_PERMISSIONS_GRAPH);
+  setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
   setupGroupsEndpoint(TEST_GROUPS);
 
   fetchMock.get(
@@ -55,9 +56,7 @@ const setup = async () => {
     },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryByTestId("loading-spinner"),
-  );
+  await waitForLoaderToBeRemoved();
 
   return { mockEventListener };
 };
@@ -72,7 +71,7 @@ const editDatabasePermission = async () => {
   await delay(0);
 };
 
-describe("DatabasesPermissionsPage", function () {
+describe("DatabasesPermissionsPage", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });

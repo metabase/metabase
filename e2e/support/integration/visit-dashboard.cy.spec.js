@@ -1,9 +1,9 @@
-import { restore, visitDashboard } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
+import { restore, visitDashboard } from "e2e/support/helpers";
 
 import { setup } from "./visit-dashboard";
 
-describe(`visitDashboard e2e helper`, () => {
+describe("visitDashboard e2e helper", () => {
   Object.keys(Cypress._.omit(USERS, "sandboxed")).forEach(user => {
     context(`${user.toUpperCase()}`, () => {
       beforeEach(() => {
@@ -18,39 +18,27 @@ describe(`visitDashboard e2e helper`, () => {
       });
 
       it("should work on an empty dashboard", () => {
-        cy.get("@emptyDashboard").then(id => {
-          visitDashboard(id);
-        });
+        visitDashboard("@emptyDashboard");
       });
 
       it("should work on a dashboard with markdown card", () => {
-        cy.get("@markdownOnly").then(id => {
-          visitDashboard(id);
-        });
+        visitDashboard("@markdownOnly");
       });
 
       it("should work on a dashboard with a model", () => {
-        cy.get("@modelDashboard").then(id => {
-          visitDashboard(id);
-        });
+        visitDashboard("@modelDashboard");
       });
 
       it("should work on a dashboard with a GUI question", () => {
-        cy.get("@guiDashboard").then(id => {
-          visitDashboard(id);
-        });
+        visitDashboard("@guiDashboard");
       });
 
       it("should work on a dashboard with a native question", () => {
-        cy.get("@nativeDashboard").then(id => {
-          visitDashboard(id);
-        });
+        visitDashboard("@nativeDashboard");
       });
 
       it("should work on a dashboard with multiple cards (including markdown, models, pivot tables, GUI and native)", () => {
-        cy.get("@multiDashboard").then(id => {
-          visitDashboard(id);
-        });
+        visitDashboard("@multiDashboard");
       });
     });
   });

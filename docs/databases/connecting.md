@@ -3,6 +3,8 @@ title: Adding and managing databases
 redirect_from:
   - /docs/latest/administration-guide/01-managing-databases
   - /docs/latest/databases/connections/sql-server
+  - /docs/latest/administration-guide/databases/h2
+  - /docs/latest/databases/connections/h2
 ---
 
 # Adding and managing databases
@@ -24,9 +26,8 @@ The databases listed below have official drivers maintained by the Metabase team
 - [Amazon Athena](./connections/athena.md)
 - [BigQuery](./connections/bigquery.md) (Google Cloud Platform)
 - [Druid](./connections/druid.md)
-- [H2](./connections/h2.md)
-- [MongoDB (version 4.2 or higher)](./connections/mongodb.md)
-- [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](./connections/mysql.md)
+- [MongoDB (recommend version 4.2 or higher)](./connections/mongodb.md)
+- [MySQL (recommend version 8.0.33 or higher, as well as MariaDB version 10.4 or higher)](./connections/mysql.md)
 - [Oracle](./connections/oracle.md)
 - [PostgreSQL](./connections/postgresql.md)
 - [Presto](./connections/presto.md)
@@ -38,6 +39,8 @@ The databases listed below have official drivers maintained by the Metabase team
 - [Vertica](./connections/vertica.md)
 
 If you don't see your database listed here, see [partner and community drivers](../developers-guide/partner-and-community-drivers.md#partner-drivers).
+
+As of version 46.6.4, Metabase [no longer supports H2 connections](https://www.metabase.com/blog/security-incident-summary). But Metabase still ships with an H2 database to include an embedded application database, as well as to provide some sample data out of the box.
 
 ## Connecting to databases hosted by a cloud provider
 

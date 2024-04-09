@@ -2,22 +2,21 @@
   (:require
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.conversion :as qc]
-   [java-time :as t]
+   [java-time.api :as t]
+   [medley.core :as m]
    [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.util :as u]
    [potemkin.types :as p]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (org.quartz CronScheduleBuilder CronTrigger)))
+   [toucan2.core :as t2])
+  (:import [org.quartz CronScheduleBuilder CronTrigger]))
 
 (set! *warn-on-reflection* true)
 
-(p/defprotocol+ ^:private GetSchedule
-  (^:private schedule-string [_]))
+(p/defprotocol+ GetSchedule
+  (schedule-string [_]))
 
 (extend-protocol GetSchedule
   CronScheduleBuilder
@@ -77,15 +76,15 @@
 
 (defn- job-info
   [& dbs]
-  (let [ids (into #{} (map u/the-id dbs))]
-    (update-vals
-     (select-keys (task.persist-refresh/job-info-by-db-id) ids)
-     #(select-keys % [:data :schedule :key]))))
+  (let [ids  (into #{} (map u/the-id dbs))]
+    (m/map-vals
+     #(select-keys % [:data :schedule :key])
+     (select-keys (task.persist-refresh/job-info-by-db-id) ids))))
 
 (deftest reschedule-refresh-test
   (mt/with-temp-scheduler
-    (t2.with-temp/with-temp [Database db-1 {:options {:persist-models-enabled true}}
-                             Database db-2 {:options {:persist-models-enabled true}}]
+    (mt/with-temp [Database db-1 {:settings {:persist-models-enabled true}}
+                   Database db-2 {:settings {:persist-models-enabled true}}]
       (#'task.persist-refresh/job-init!)
       (mt/with-temporary-setting-values [persisted-model-refresh-cron-schedule "0 0 0/4 * * ? *"]
         (task.persist-refresh/reschedule-refresh!)
@@ -115,18 +114,40 @@
                                  :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-2))}}
                (job-info db-1 db-2)))))))
 
+(deftest fault-tolerance-test
+  (mt/with-model-cleanup [TaskHistory]
+    (mt/with-temp [Database db {:settings {:persist-models-enabled true}}
+                   Card model {:type :model :database_id (u/the-id db)}
+                   PersistedInfo persisted-info {:card_id (u/the-id model) :database_id (u/the-id db)}]
+      (let [test-refresher (reify task.persist-refresh/Refresher
+                             (refresh! [_ _database _definition _card]
+                               {:state :success})
+                             (unpersist! [_ _database _persisted-info]))
+            original-update! t2/update!]
+        (testing "If saving the `persisted` (or `error`) state fails..."
+          (with-redefs [t2/update! (fn [model id update]
+                                     (when (= "persisted" (:state update))
+                                       (throw (ex-info "simulated error" {})))
+                                     (original-update! model id update))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"simulated error"
+                                  (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher))))
+          (testing "the PersistedInfo is left in the `refreshing` state"
+            (is (= "refreshing" (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id persisted-info)))))
+          (testing "but a subsequent refresh run will refresh the table"
+            (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+            (is (= "persisted" (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id persisted-info))))))))))
 
 (deftest refresh-tables!'-test
   (mt/with-model-cleanup [TaskHistory]
-    (t2.with-temp/with-temp [Database      db          {:options {:persist-models-enabled true}}
-                             Card          model1      {:dataset true :database_id (u/the-id db)}
-                             Card          model2      {:dataset true :database_id (u/the-id db)}
-                             Card          archived    {:archived true :dataset true :database_id (u/the-id db)}
-                             Card          unmodeled   {:dataset false :database_id (u/the-id db)}
-                             PersistedInfo _p1         {:card_id (u/the-id model1) :database_id (u/the-id db)}
-                             PersistedInfo _p2         {:card_id (u/the-id model2) :database_id (u/the-id db)}
-                             PersistedInfo _parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}
-                             PersistedInfo _punmodeled {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}]
+    (mt/with-temp [Database db {:settings {:persist-models-enabled true}}
+                   Card     model1 {:type :model :database_id (u/the-id db)}
+                   Card     model2 {:type :model :database_id (u/the-id db)}
+                   Card     archived {:archived true :type :model :database_id (u/the-id db)}
+                   Card     unmodeled {:type :question :database_id (u/the-id db)}
+                   PersistedInfo _p1 {:card_id (u/the-id model1) :database_id (u/the-id db)}
+                   PersistedInfo _p2 {:card_id (u/the-id model2) :database_id (u/the-id db)}
+                   PersistedInfo _parchived {:card_id (u/the-id archived) :database_id (u/the-id db)}
+                   PersistedInfo _punmodeled {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}]
       (testing "Calls refresh on each persisted-info row"
         (let [card-ids (atom #{})
               test-refresher (reify task.persist-refresh/Refresher
@@ -162,16 +183,16 @@
                                        :task "persist-refresh"
                                        {:order-by [[:id :desc]]}))))))
     (testing "Deletes any in a deletable state"
-      (t2.with-temp/with-temp [Database      db         {:options {:persist-models-enabled true}}
-                               Card          model3     {:dataset true :database_id (u/the-id db)}
-                               Card          archived   {:archived true :dataset true :database_id (u/the-id db)}
-                               Card          unmodeled  {:dataset false :database_id (u/the-id db)}
-                               PersistedInfo parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}
-                               PersistedInfo punmodeled {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}
-                               PersistedInfo deletable  {:card_id (u/the-id model3) :database_id (u/the-id db)
-                                                         :state "deletable"
-                                                         ;; need an "old enough" state change
-                                                         :state_change_at (t/minus (t/local-date-time) (t/hours 2))}]
+      (mt/with-temp [Database db {:settings {:persist-models-enabled true}}
+                     Card     model3 {:type :model :database_id (u/the-id db)}
+                     Card     archived {:archived true :type :model :database_id (u/the-id db)}
+                     Card     unmodeled {:type :question :database_id (u/the-id db)}
+                     PersistedInfo parchived {:card_id (u/the-id archived) :database_id (u/the-id db)}
+                     PersistedInfo punmodeled {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}
+                     PersistedInfo deletable {:card_id (u/the-id model3) :database_id (u/the-id db)
+                                              :state "deletable"
+                                              ;; need an "old enough" state change
+                                              :state_change_at (t/minus (t/local-date-time) (t/hours 2))}]
         (let [called-on (atom #{})
               test-refresher (reify task.persist-refresh/Refresher
                                (refresh! [_ _ _ _]
@@ -184,6 +205,16 @@
                 (is (contains? queued-for-deletion (u/the-id deletable-persisted))))))
           ;; we manually pass in the deleteable ones to not catch others in a running instance
           (#'task.persist-refresh/prune-deletables! test-refresher [deletable parchived punmodeled])
+          (testing "We delete persisted_info records for all of the pruned"
+            (let [persisted-records (t2/select :model/PersistedInfo :id [:in (map :id [parchived punmodeled deletable])])
+                  existing (map (comp
+                                 (update-keys {parchived 'parchived
+                                               punmodeled 'punmodeled
+                                               deletable 'deletable}
+                                              :id)
+                                 :id)
+                                persisted-records)]
+              (is (= [] existing))))
           ;; don't assert equality if there are any deletable in the app db
           (doseq [deletable-persisted [deletable punmodeled parchived]]
             (is (contains? @called-on (u/the-id deletable-persisted))))

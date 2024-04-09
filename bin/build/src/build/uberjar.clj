@@ -15,32 +15,38 @@
    (java.util Collections)
    (java.util.jar Manifest)))
 
-(def class-dir "target/classes")
-(def uberjar-filename "target/uberjar/metabase.jar")
+(set! *warn-on-reflection* true)
 
-(defn do-with-duration-ms [thunk f]
+(def ^:private class-dir
+  (u/filename u/project-root-directory "target" "classes"))
+
+(def uberjar-filename
+  "Target filename for the Metabase uberjar."
+  (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
+
+(defn- do-with-duration-ms [thunk f]
   (let [start-time-ms (System/currentTimeMillis)
         result        (thunk)
         duration      (- (System/currentTimeMillis) start-time-ms)]
     (f duration)
     result))
 
-(defmacro with-duration-ms [[duration-ms-binding] & body]
+(defmacro ^:private with-duration-ms [[duration-ms-binding] & body]
   (let [[butlast-forms last-form] ((juxt butlast last) body)]
     `(do-with-duration-ms
       (fn [] ~@butlast-forms)
       (fn [~duration-ms-binding]
         ~last-form))))
 
-(defn create-basis [edition]
+(defn- create-basis [edition]
   {:pre [(#{:ee :oss} edition)]}
   (b/create-basis {:project "deps.edn", :aliases #{edition}}))
 
-(defn all-paths [basis]
+(defn- all-paths [basis]
   (concat (:paths basis)
           (get-in basis [:argmap :extra-paths])))
 
-(defn clean! []
+(defn- clean! []
   (u/step "Clean"
     (u/step (format "Delete %s" class-dir)
       (b/delete {:path class-dir}))
@@ -63,17 +69,23 @@
    (ns.deps/graph)
    ns-decls))
 
-(defn metabase-namespaces-in-topo-order [basis]
-  (let [ns-decls   (mapcat
-                    (comp ns.find/find-ns-decls-in-dir io/file)
-                    (all-paths basis))
-        ns-symbols (set (map ns.parse/name-from-ns-decl ns-decls))]
-    (->> (dependencies-graph ns-decls)
-         ns.deps/topo-sort
-         (filter ns-symbols)
-         (cons 'metabase.bootstrap))))
+(defn- metabase-namespaces-in-topo-order [basis]
+  (let [ns-decls   (into []
+                         (comp (map io/file)
+                               (mapcat ns.find/find-ns-decls-in-dir))
+                         (all-paths basis))
+        ns-symbols (into #{} (map ns.parse/name-from-ns-decl) ns-decls)
+        sorted     (->> (dependencies-graph ns-decls)
+                        ns.deps/topo-sort
+                        (filter ns-symbols))
+        orphans    (remove (set sorted) ns-symbols)
+        all        (concat orphans sorted)]
+    (assert (contains? (set all) 'metabase.bootstrap))
+    (when (contains? ns-symbols 'metabase-enterprise.core)
+      (assert (contains? (set all) 'metabase-enterprise.core)))
+    all))
 
-(defn compile-sources! [basis]
+(defn- compile-sources! [basis]
   (u/step "Compile Clojure source files"
     (let [paths    (all-paths basis)
           _        (u/announce "Compiling Clojure files in %s" (pr-str paths))
@@ -86,40 +98,43 @@
                         :ns-compile ns-decls})
         (u/announce "Finished compilation in %.1f seconds." (/ duration-ms 1000.0))))))
 
-(defn copy-resources! [edition basis]
+(defn- copy-resources! [basis]
   (u/step "Copy resources"
-    ;; technically we don't NEED to copy the Clojure source files but it doesn't really hurt anything IMO.
     (doseq [path (all-paths basis)]
-      (u/step (format "Copy %s" path)
-        (b/copy-dir {:target-dir class-dir, :src-dirs [path]})))))
+      (when (not (#{"src" "enterprise/backend/src"} path))
+        (u/step (format "Copy %s" path)
+                (b/copy-dir {:target-dir class-dir, :src-dirs [path]}))))))
 
-(defn create-uberjar! [basis]
+(defn- create-uberjar! [basis]
   (u/step "Create uberjar"
     (with-duration-ms [duration-ms]
       (depstar/uber {:class-dir class-dir
                      :uber-file uberjar-filename
-                     :basis     basis})
+                     :basis     basis
+                     :exclude   [".*metabase.*.clj[c|s]?$"]})
       (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
 
-(def manifest-entries
+(def ^:private manifest-entries
   {"Manifest-Version" "1.0"
    "Multi-Release"    "true"
    "Created-By"       "Metabase build.clj"
    "Build-Jdk-Spec"   (System/getProperty "java.specification.version")
    "Main-Class"       "metabase.bootstrap"})
 
-(defn manifest ^Manifest []
+(defn- manifest ^Manifest []
   (doto (Manifest.)
     (build.zip/fill-manifest! manifest-entries)))
 
-(defn write-manifest! [^OutputStream os]
+(defn- write-manifest! [^OutputStream os]
   (.write (manifest) os)
   (.flush os))
 
-;; the customizations we need to make are not currently supported by tools.build -- see
-;; https://ask.clojure.org/index.php/10827/ability-customize-manifest-created-clojure-tools-build-uber -- so we need
-;; to do it by hand for the time being.
-(defn update-manifest! []
+(defn update-manifest!
+  "Start a build step that updates the manifest.
+  The customizations we need to make are not currently supported by tools.build -- see
+  https://ask.clojure.org/index.php/10827/ability-customize-manifest-created-clojure-tools-build-uber -- so we need
+  to do it by hand for the time being."
+  []
   (u/step "Update META-INF/MANIFEST.MF"
     (with-open [fs (FileSystems/newFileSystem (URI. (str "jar:file:" (.getAbsolutePath (io/file "target/uberjar/metabase.jar"))))
                                               Collections/EMPTY_MAP)]
@@ -140,7 +155,7 @@
       (clean!)
       (let [basis (create-basis edition)]
         (compile-sources! basis)
-        (copy-resources! edition basis)
+        (copy-resources! basis)
         (create-uberjar! basis)
         (update-manifest!))
       (u/announce "Built target/uberjar/metabase.jar in %.1f seconds."

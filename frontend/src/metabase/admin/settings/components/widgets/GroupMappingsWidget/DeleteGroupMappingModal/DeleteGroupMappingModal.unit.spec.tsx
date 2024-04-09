@@ -1,9 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import DeleteGroupMappingModal, {
-  DeleteGroupMappingModalProps,
-} from "./DeleteGroupMappingModal";
+import type { DeleteGroupMappingModalProps } from "./DeleteGroupMappingModal";
+import DeleteGroupMappingModal from "./DeleteGroupMappingModal";
 
 type SetupOpts = Partial<DeleteGroupMappingModalProps>;
 
@@ -61,16 +60,16 @@ describe("DeleteGroupMappingModal", () => {
     ).toBeChecked();
   });
 
-  it("confirms when clearing members", () => {
+  it("confirms when clearing members", async () => {
     setup();
 
-    userEvent.click(
+    await userEvent.click(
       screen.getByLabelText(
         "Also remove all group members (except from Admin)",
       ),
     );
 
-    userEvent.click(
+    await userEvent.click(
       screen.getByRole("button", { name: "Remove mapping and members" }),
     );
 
@@ -81,12 +80,12 @@ describe("DeleteGroupMappingModal", () => {
     );
   });
 
-  it("confirms when deleting groups", () => {
+  it("confirms when deleting groups", async () => {
     setup();
 
-    userEvent.click(screen.getByLabelText("Also delete the group"));
+    await userEvent.click(screen.getByLabelText("Also delete the group"));
 
-    userEvent.click(
+    await userEvent.click(
       screen.getByRole("button", { name: "Remove mapping and delete group" }),
     );
 

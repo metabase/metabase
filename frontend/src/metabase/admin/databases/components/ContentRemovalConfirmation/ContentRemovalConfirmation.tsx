@@ -1,8 +1,10 @@
+import type * as React from "react";
 import { useState } from "react";
-import * as React from "react";
 import { msgid, ngettext } from "ttag";
-import { DatabaseUsageInfo } from "metabase-types/api";
+
 import { color } from "metabase/lib/colors";
+import type { DatabaseUsageInfo } from "metabase-types/api";
+
 import { ConfirmationCheckbox } from "./ContentRemovalConfirmation.styled";
 
 interface ContentRemovalConfirmationProps {

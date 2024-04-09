@@ -1,25 +1,27 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import Subhead from "metabase/components/type/Subhead";
+import CS from "metabase/css/core/index.css";
 import type { updateQuestion } from "metabase/query_builder/actions";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type Question from "metabase-lib/v1/Question";
 
 import QuestionDataSelector from "../../QuestionDataSelector";
 
 type Props = {
-  query: StructuredQuery;
+  question: Question;
   updateQuestion: typeof updateQuestion;
 };
 
-function NewQuestionView({ query, updateQuestion }: Props) {
+function NewQuestionView({ question, updateQuestion }: Props) {
   return (
-    <div className="full-height">
-      <div className="p4 mx2">
+    <div className={CS.fullHeight}>
+      <div className={cx(CS.p4, CS.mx2)}>
         <QuestionDataSelector
-          query={query}
+          question={question}
           updateQuestion={updateQuestion}
           triggerElement={
-            <Subhead className="mb2">{t`Pick your data`}</Subhead>
+            <Subhead className={CS.mb2}>{t`Pick your data`}</Subhead>
           }
         />
       </div>

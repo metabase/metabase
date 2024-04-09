@@ -1,0 +1,1 @@
+export { SearchFilterPopoverWrapper } from "./SearchFilterPopoverWrapper";

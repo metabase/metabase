@@ -84,11 +84,11 @@
        :model/DashboardTab dashtab-2 {:dashboard_id (:id dashboard) :position 1}
        DashboardCard   _         {:dashboard_id (:id dashboard) :card_id (:id card) :dashboard_tab_id (:id dashtab-1)}
        DashboardCard   _         {:dashboard_id (:id dashboard) :card_id (:id card) :dashboard_tab_id (:id dashtab-2)}]
-      (is (=? {:ordered_tabs [{:id (:id dashtab-1) :position 0 :dashboard_id (:id dashboard)}
-                              {:id (:id dashtab-2) :position 1 :dashboard_id (:id dashboard)}]}
-              (t2/hydrate dashboard :ordered_tabs))))))
+      (is (=? {:tabs [{:id (:id dashtab-1), :position 0, :dashboard_id (:id dashboard)}
+                      {:id (:id dashtab-2), :position 1, :dashboard_id (:id dashboard)}]}
+              (t2/hydrate dashboard :tabs))))))
 
-(deftest hydrate-ordered-tabs-card-test
+(deftest hydrate-tabs-card-test
   (t2.with-temp/with-temp
     [:model/Dashboard    {dashboard-id :id}    {}
      :model/DashboardTab {tab-2-id :id}        {:name         "Tab 2"
@@ -117,4 +117,4 @@
              {:id    tab-2-id
               :cards [{:id dash-1-tab2-id}
                       {:id dash-2-tab2-id}]}]
-            (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :ordered-tab-cards)))))
+            (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)))))

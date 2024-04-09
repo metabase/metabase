@@ -1,4 +1,12 @@
-import { STACKABLE_SETTINGS } from "./graph";
+import {
+  createMockSingleSeries,
+  createMockCard,
+  createMockDataset,
+  createMockDatasetData,
+  createMockColumn,
+} from "metabase-types/api/mocks";
+
+import { STACKABLE_SETTINGS, getDefaultDimensionLabel } from "./graph";
 
 describe("STACKABLE_SETTINGS", () => {
   describe("stackable.stack_type", () => {
@@ -42,5 +50,43 @@ describe("STACKABLE_SETTINGS", () => {
         expect(value).toBe("normalized");
       });
     });
+  });
+});
+
+describe("getDefaultDimensionLabel", () => {
+  it("should return null when no series", () => {
+    const label = getDefaultDimensionLabel([]);
+    expect(label).toBeNull();
+  });
+
+  it("should return the dimension label when 1 series", () => {
+    const label = getDefaultDimensionLabel([
+      createMockSingleSeries(
+        createMockCard(),
+        createMockDataset({
+          data: createMockDatasetData({
+            cols: [createMockColumn({ display_name: "foo" })],
+          }),
+        }),
+      ),
+    ]);
+    expect(label).toBe("foo");
+  });
+
+  it("should return the first dimension label when >1 series", () => {
+    const label = getDefaultDimensionLabel([
+      createMockSingleSeries(
+        createMockCard(),
+        createMockDataset({
+          data: createMockDatasetData({
+            cols: [
+              createMockColumn({ display_name: "foo" }),
+              createMockColumn({ display_name: "bar" }),
+            ],
+          }),
+        }),
+      ),
+    ]);
+    expect(label).toBe("foo");
   });
 });

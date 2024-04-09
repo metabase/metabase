@@ -1,13 +1,14 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import * as Errors from "metabase/core/utils/errors";
-
+import * as Errors from "metabase/lib/errors";
+import type Field from "metabase-lib/v1/metadata/Field";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   ActionDashboardCard,
   ActionFormOption,
   ActionFormSettings,
-  BaseDashboardOrderedCard,
+  BaseDashboardCard,
   Card,
   FieldType,
   FieldSettings,
@@ -19,10 +20,8 @@ import type {
   WritebackActionBase,
   WritebackImplicitQueryAction,
   WritebackParameter,
+  VirtualCard,
 } from "metabase-types/api";
-
-import { TYPE } from "metabase-lib/types/constants";
-import Field from "metabase-lib/metadata/Field";
 
 import type {
   ActionFormProps,
@@ -72,7 +71,10 @@ const AUTOMATIC_DATE_TIME_FIELDS = [
 ];
 
 const isAutomaticDateTimeField = (field: Field) => {
-  return AUTOMATIC_DATE_TIME_FIELDS.includes(field.semantic_type);
+  return (
+    field.semantic_type !== null &&
+    AUTOMATIC_DATE_TIME_FIELDS.includes(field.semantic_type)
+  );
 };
 
 const isEditableField = (field: Field, parameter: Parameter) => {
@@ -152,13 +154,14 @@ export function isSavedAction(
 }
 
 export function isActionDashCard(
-  dashCard: BaseDashboardOrderedCard,
+  dashCard: BaseDashboardCard,
 ): dashCard is ActionDashboardCard {
   const virtualCard = dashCard?.visualization_settings?.virtual_card;
-  return isActionCard(virtualCard as Card);
+  return isActionCard(virtualCard);
 }
 
-export const isActionCard = (card: Card) => card?.display === "action";
+export const isActionCard = (card?: Card | VirtualCard) =>
+  card?.display === "action";
 
 export const getFormTitle = (action: WritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;
@@ -303,7 +306,7 @@ export const getFormValidationSchema = (
 };
 
 export const getSubmitButtonColor = (action: WritebackAction): string => {
-  if (action.type === "implicit" && action.kind === "row/delete") {
+  if (isImplicitDeleteAction(action)) {
     return "danger";
   }
   return action.visualization_settings?.submitButtonColor ?? "primary";
@@ -334,3 +337,9 @@ export const getSubmitButtonLabel = (action: WritebackAction): string => {
 export const isActionPublic = (action: Partial<WritebackAction>) => {
   return action.public_uuid != null;
 };
+
+export const isImplicitDeleteAction = (action: WritebackAction): boolean =>
+  action.type === "implicit" && action.kind === "row/delete";
+
+export const isImplicitUpdateAction = (action: WritebackAction): boolean =>
+  action.type === "implicit" && action.kind === "row/update";

@@ -1,6 +1,6 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+import { Route } from "react-router";
+
 import {
   setupCurrentUserEndpoint,
   setupPasswordCheckEndpoint,
@@ -9,6 +9,8 @@ import {
   setupResetPasswordEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+
 import { ResetPassword } from "./ResetPassword";
 
 interface SetupOpts {
@@ -53,13 +55,16 @@ describe("ResetPassword", () => {
     setup({ isTokenValid: true });
     expect(await screen.findByText("New password")).toBeInTheDocument();
 
-    userEvent.type(screen.getByLabelText("Create a password"), "test");
-    userEvent.type(screen.getByLabelText("Confirm your password"), "test");
+    await userEvent.type(screen.getByLabelText("Create a password"), "test");
+    await userEvent.type(
+      screen.getByLabelText("Confirm your password"),
+      "test",
+    );
     await waitFor(() => {
       expect(screen.getByText("Save new password")).toBeEnabled();
     });
 
-    userEvent.click(screen.getByText("Save new password"));
+    await userEvent.click(screen.getByText("Save new password"));
     expect(await screen.findByText("Home")).toBeInTheDocument();
   });
 });

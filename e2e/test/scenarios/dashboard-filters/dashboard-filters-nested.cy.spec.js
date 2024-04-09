@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
@@ -9,17 +10,19 @@ import {
   getDashboardCard,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > filters > nested questions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
   });
 
-  it("dashboard filters should work on nested question (metabase#12614, metabase#13186, metabase#18113)", () => {
+  it("dashboard filters should work on nested question (metabase#12614, metabase#13186, metabase#18113, metabase#32126)", () => {
     const filter = {
       name: "Text Filter",
       slug: "text",
@@ -74,11 +77,13 @@ describe("scenarios > dashboard > filters > nested questions", () => {
 
     // Add multiple values (metabase#18113)
     filterWidget().click();
-    cy.findByPlaceholderText("Enter some text").type(
-      "Gizmo{enter}Gadget{enter}",
-    );
+    popover().within(() => {
+      cy.findByText("Gizmo").click();
+      cy.findByText("Gadget").click();
+    });
+
     cy.button("Add filter").click();
-    cy.wait("@dashcardQuery2");
+    cy.wait("@dashcardQuery");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2 selections");
@@ -88,7 +93,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     cy.findByText("Doohickey").should("not.exist");
 
     cy.reload();
-    cy.wait("@dashcardQuery2");
+    cy.wait("@dashcardQuery");
 
     cy.location("search").should("eq", "?text=Gizmo&text=Gadget");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

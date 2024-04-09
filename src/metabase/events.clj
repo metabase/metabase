@@ -1,33 +1,36 @@
 (ns metabase.events
-  "Provides a very simply event bus using `core.async` to allow publishing and subscribing to interesting topics
-  happening throughout the Metabase system in a decoupled way.
+  "Provides a very simple Emacs Lisp hook-style events system using Methodical. See
+  https://github.com/metabase/metabase/issues/19812 for more information.
 
-  ## Regarding Events Initialization:
+  Publish an event, which consists of a [[Topic]] keyword and an event map using [[publish-event!]], 'subscribe' to
+  events by writing method implementations of [[publish-event!]].
 
-  The most appropriate way to initialize event listeners in any `metabase.events.*` namespace is to implement the
-  `events-init` function which accepts zero arguments. This function is dynamically resolved and called exactly once
-  when the application goes through normal startup procedures. Inside this function you can do any work needed and add
-  your events subscribers to the bus as usual via `start-event-listener!`."
+  On launch, all namespaces starting with `metabase.events.*` will get loaded automatically
+  by [[initialize-events!]]."
   (:require
-   [clojure.core.async :as a]
-   [clojure.string :as str]
+   [clojure.spec.alpha :as s]
+   [metabase.events.schema :as events.schema]
+   [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log]))
+   [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.methodical.null-cache :as u.methodical.null-cache]
+   [metabase.util.methodical.unsorted-dispatcher
+    :as u.methodical.unsorted-dispatcher]
+   [methodical.core :as methodical]
+   [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 (set! *warn-on-reflection* true)
 
-;;; --------------------------------------------------- LIFECYCLE ----------------------------------------------------
-
-(defmulti init!
-  "Initialize event handlers. All implementations of this method are called once when the event system is started. Add a
-  new implementation of this method to define new event initialization logic. All `metabase.events.*` namespaces are
-  loaded automatically during event initialization before invoking implementations of `init!`.
-
-  `unique-key` is not used internally but must be unique."
-  {:arglists '([unique-key])}
-  keyword)
+(def Topic
+  "Malli schema for an event topic keyword."
+  [:and
+   qualified-keyword?
+   [:fn
+    {:error/message "Events should derive from :metabase/event"}
+    #(isa? % :metabase/event)]])
 
 (defonce ^:private events-initialized?
   (atom nil))
@@ -37,96 +40,112 @@
   []
   (doseq [ns-symb u/metabase-namespace-symbols
           :when   (.startsWith (name ns-symb) "metabase.events.")]
-    (classloader/require ns-symb))
-  (doseq [[k f] (methods init!)]
-    (log/info (trs "Starting events listener:") (u/format-color 'blue k) (u/emoji "👂"))
-    (try
-      (f k)
-      (catch Throwable e
-        (log/error e (trs "Error starting events listener"))))))
+    (log/info "Loading events namespace:" (u/format-color :blue ns-symb) (u/emoji "👂"))
+    (classloader/require ns-symb)))
 
-(defn initialize-events!
+(defn- initialize-events!
   "Initialize the asynchronous internal events system."
   []
   (when-not @events-initialized?
-    (find-and-load-event-handlers!)
-    (reset! events-initialized? true)))
+    (locking events-initialized?
+      (when-not @events-initialized?
+        (find-and-load-event-handlers!)
+        (reset! events-initialized? true)))))
 
+(s/def ::publish-event-dispatch-value
+  (s/and
+   (some-fn qualified-keyword? #(= % :default))
+   #(not= (namespace %) "event")))
 
-;;; -------------------------------------------------- PUBLICATION ---------------------------------------------------
+(methodical/defmulti publish-event!
+  "'Publish' an event by calling [[publish-event!]] with a [[Topic]] and an `event` map, whose contents vary
+  based on their `topic`. These calls return the original `event` object passed in, to support chaining.
 
+    (events/publish-event! :event/database-create {:object database :user-id api/*current-user-id*})
 
-(defonce ^:private ^{:doc "Channel to host events publications."} events-channel
-  (a/chan))
+  'Subscribe' to an event by add a Methodical method implementation. Since this uses
+  the [[methodical/do-method-combination]], all multiple method implementations can be called for a single invocation.
+  The order is indeterminate, but return value is ignored.
 
-(defonce ^:private ^{:doc "Publication for general events channel. Expects a map as input and the map must have a
-  `:topic` key."} events-publication
-  (a/pub events-channel :topic))
+  Don't write method implementations for the event names themselves, e.g. `:event/database-create`, because these will
+  stomp on other methods with the same key:
 
-(defn publish-event!
-  "Publish an item into the events stream. Returns the published item to allow for chaining."
-  {:style/indent 1}
-  [topic event-item]
-  {:pre [(keyword topic)]}
-  (let [event {:topic (keyword topic), :item event-item}]
-    (log/tracef "Publish event %s" (pr-str event))
-    (a/put! events-channel event))
-  event-item)
+    ;; bad! If someone else writes a method for `:event/database-create`, it will stomp on this
+    (methodical/defmethod events/publish-event! :event/database-create
+      [topic event]
+       ...)
 
+  Instead, derive the event from another key, and write a method for that
 
-;;; -------------------------------------------------- SUBSCRIPTION --------------------------------------------------
+    ;; Good
+    (derive :event/database-create ::events)
+    (methodical/defmethod events/publish-event! ::events
+      [topic event]
+       ...)
 
-(defn- subscribe-to-topic!
-  "Subscribe to a given topic of the general events stream. Expects a topic to subscribe to and a `core.async` channel.
-  Returns the channel to allow for chaining."
-  [topic channel]
-  {:pre [(keyword topic)]}
-  (a/sub events-publication (keyword topic) channel)
-  channel)
+  The schema for each event topic are defined in `metabase.events.schema`, makes sure to keep it up-to-date
+  if you're working on a new event topic or updating an existing one."
+  {:arglists            '([topic event])
+   :defmethod-arities   #{2}
+   :dispatch-value-spec ::publish-event-dispatch-value}
 
-(defn subscribe-to-topics!
-  "Convenience method for subscribing to a series of topics against a single channel."
-  [topics channel]
-  {:pre [(coll? topics)]}
-  (doseq [topic topics]
-    (subscribe-to-topic! topic channel)))
+  :combo
+  (methodical/do-method-combination)
 
-(defn start-event-listener!
-  "Initialize an event listener which runs on a background thread via `go-loop`."
-  [topics channel handler-fn]
-  {:pre [(seq topics) (fn? handler-fn)]}
-  ;; create the core.async subscription for each of our topics
-  (subscribe-to-topics! topics channel)
-  ;; start listening for events we care about and do something with them
-  (a/go-loop []
-    ;; try/catch here to get possible exceptions thrown by core.async trying to read from the channel
-    (when-let [val (a/<! channel)]
-      (try
-        (handler-fn val)
-        (catch Throwable e
-          (log/error e (trs "Unexpected error listening on events"))))
-      (recur))))
+  ;; work around https://github.com/camsaul/methodical/issues/97
+  :dispatcher
+  (u.methodical.unsorted-dispatcher/unsorted-dispatcher
+   (fn dispatch-fn [topic _event]
+     (keyword topic)))
 
+  ;; work around https://github.com/camsaul/methodical/issues/98
+  :cache
+  (u.methodical.null-cache/null-cache))
 
-;;; ------------------------------------------------ HELPER FUNCTIONS ------------------------------------------------
+(methodical/defmethod publish-event! :default
+  [_topic _event]
+  nil)
 
-(defn topic->model
-  "Determine a valid `model` identifier for the given `topic`."
-  [topic]
-  ;; just take the first part of the topic name after splitting on dashes.
-  (first (str/split (name topic) #"-")))
-
-(defn object->model-id
-  "Determine the appropriate `model_id` (if possible) for a given `object`."
-  [topic object]
-  (if (contains? (set (keys object)) :id)
-    (:id object)
-    (let [model (topic->model topic)]
-      (get object (keyword (format "%s_id" model))))))
-
-(def ^{:arglists '([object])} object->user-id
-  "Determine the appropriate `user_id` (if possible) for a given `object`."
-  (some-fn :actor_id :user_id :creator_id))
+(methodical/defmethod publish-event! :around :default
+  [topic event]
+  (span/with-span!
+    {:name       "publish-event!"
+     :attributes {:event/topic topic
+                  :events/initialized (some? @events-initialized?)}}
+    (assert (not *compile-files*) "Calls to publish-event! are not allowed in the top level.")
+    (if-not @events-initialized?
+      ;; if the event namespaces aren't initialized yet, make sure they're all loaded up before trying to do dispatch.
+      (do
+        (initialize-events!)
+        (publish-event! topic event))
+      (do
+        (span/with-span!
+          {:name       "publish-event!.logging"
+           :attributes {}}
+          (let [{:keys [object]} event]
+            (log/debugf "Publishing %s event (name and id):\n\n%s"
+                       (u/colorize :yellow (pr-str topic))
+                       (u/pprint-to-str (let [model (mi/model object)]
+                                          (cond-> (select-keys object [:name :id])
+                                            model
+                                            (assoc :model model))))))
+          (assert (and (qualified-keyword? topic)
+                       (isa? topic :metabase/event))
+                  (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
+          (assert (map? event)
+                  (format "Invalid event %s: event must be a map." (pr-str event))))
+        (try
+          (when-let [schema (events.schema/topic->schema topic)]
+            (mu/validate-throw schema event))
+          (span/with-span!
+            {:name       "publish-event!.next-method"
+             :attributes {}}
+            (next-method topic event))
+          (catch Throwable e
+            (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
+                            {:topic topic, :event event}
+                            e))))
+        event))))
 
 (defn object->metadata
   "Determine metadata, if there is any, for given `object`.
@@ -135,7 +154,7 @@
   {:cached       (:cached object)
    :ignore_cache (:ignore_cache object)
    ;; the :context key comes from qp middleware:
-   ;; `metabase.query-processor.middleware.process-userland-query/add-and-save-execution-info-xform!`
+   ;; [[metabase.query-processor.middleware.process-userland-query/add-and-save-execution-info-xform!]]
    ;; and is important for distinguishing view events triggered when pinned cards are 'viewed'
    ;; when a user opens a collection.
    :context      (:context object)})

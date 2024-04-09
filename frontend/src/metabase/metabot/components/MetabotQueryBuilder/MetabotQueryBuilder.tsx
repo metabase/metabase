@@ -1,19 +1,21 @@
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
-import { getResponseErrorMessage } from "metabase/core/utils/errors";
-import { Dataset } from "metabase-types/api";
-import { MetabotQueryStatus, State } from "metabase-types/store";
+
+import { getResponseErrorMessage } from "metabase/lib/errors";
+import type { Dataset } from "metabase-types/api";
+import type { MetabotQueryStatus, State } from "metabase-types/store";
+
 import {
   getIsVisualized,
   getQueryError,
   getQueryResults,
   getQueryStatus,
 } from "../../selectors";
+import MetabotDisplayToggle from "../MetabotDisplayToggle";
+import MetabotFeedback from "../MetabotFeedback";
 import MetabotQueryEditor from "../MetabotQueryEditor";
 import MetabotVisualization from "../MetabotVisualization";
-import MetabotFeedback from "../MetabotFeedback";
-import MetabotDisplayToggle from "../MetabotDisplayToggle";
+
 import {
   ErrorStateMessage,
   ErrorStateRoot,
@@ -25,7 +27,6 @@ import {
 } from "./MetabotQueryBuilder.styled";
 
 interface StateProps {
-  loadingMessage: string;
   queryStatus: MetabotQueryStatus;
   queryResults: [Dataset] | null;
   queryError: unknown;
@@ -35,7 +36,6 @@ interface StateProps {
 type MetabotQueryBuilderProps = StateProps;
 
 const mapStateToProps = (state: State): StateProps => ({
-  loadingMessage: PLUGIN_SELECTORS.getLoadingMessage(state),
   queryStatus: getQueryStatus(state),
   queryResults: getQueryResults(state),
   queryError: getQueryError(state),
@@ -43,7 +43,6 @@ const mapStateToProps = (state: State): StateProps => ({
 });
 
 const MetabotQueryBuilder = ({
-  loadingMessage,
   queryStatus,
   queryResults,
   queryError,
@@ -57,7 +56,7 @@ const MetabotQueryBuilder = ({
     <QueryBuilderRoot>
       {hasResults && <MetabotQueryEditor />}
       {isRunning ? (
-        <QueryRunningState loadingMessage={loadingMessage} />
+        <RunningStateRoot />
       ) : hasErrors ? (
         <QueryErrorState queryError={queryError} />
       ) : hasResults ? (
@@ -76,14 +75,6 @@ const QueryIdleState = () => {
       <IdleStateIcon name="insight" />
     </IdleStateRoot>
   );
-};
-
-interface QueryRunningStateProps {
-  loadingMessage: string;
-}
-
-const QueryRunningState = ({ loadingMessage }: QueryRunningStateProps) => {
-  return <RunningStateRoot loadingMessage={loadingMessage} />;
 };
 
 interface QueryErrorStateProps {

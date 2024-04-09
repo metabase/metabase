@@ -2,10 +2,59 @@
   (:require
    [metabase.api.common :as api]
    [metabase.models :refer [PermissionsGroupMembership]]
+   [metabase.models.data-permissions :as data-perms]
+   [metabase.models.database :as database]
    [metabase.models.permissions :as perms]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(defenterprise current-user-can-write-field?
+  "Enterprise version. Returns a boolean whether the current user can write the given field."
+  :feature :advanced-permissions
+  [instance]
+  (let [db-id (or (get-in instance [:table :db_id])
+                  (database/table-id->database-id (:table_id instance)))]
+    (data-perms/user-has-permission-for-table?
+     api/*current-user-id*
+     :perms/manage-table-metadata
+     :yes
+     db-id
+     (:table_id instance))))
+
+(defenterprise current-user-can-read-schema?
+  "Enterprise version. Returns a boolean whether the current user can read the given schema"
+  :feature :advanced-permissions
+  [db-id schema-name]
+  (data-perms/user-has-permission-for-schema?
+   api/*current-user-id*
+   :perms/manage-table-metadata
+   :yes
+   db-id
+   schema-name))
+
+(defenterprise current-user-can-write-db?
+  "Enterprise version. Returns a boolean whether the current user can write the given db"
+  :feature :advanced-permissions
+  [db-id]
+  (data-perms/user-has-permission-for-database?
+   api/*current-user-id*
+   :perms/manage-database
+   :yes
+   db-id))
+
+(defenterprise current-user-can-write-table?
+  "Enterprise version."
+  :feature :advanced-permissions
+  [table]
+  (data-perms/user-has-permission-for-table?
+   api/*current-user-id*
+   :perms/manage-table-metadata
+   :yes
+   (:db_id table)
+   (:id table)))
 
 (defn with-advanced-permissions
   "Adds to `user` a set of boolean flag indiciate whether or not current user has access to an advanced permissions.
@@ -16,8 +65,8 @@
            {:can_access_setting      (perms/set-has-application-permission-of-type? permissions-set :setting)
             :can_access_subscription (perms/set-has-application-permission-of-type? permissions-set :subscription)
             :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
-            :can_access_data_model   (perms/set-has-partial-permissions? permissions-set "/data-model/")
-            :can_access_db_details   (perms/set-has-partial-permissions? permissions-set "/details/")
+            :can_access_data_model   (data-perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-table-metadata)
+            :can_access_db_details   (data-perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-database)
             :is_group_manager        api/*is-group-manager?*})))
 
 (defn current-user-has-application-permissions?
@@ -45,9 +94,13 @@
 
     :else
     (filter
-     (fn [{table-id :id db-id :db_id schema :schema}]
-       (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                        (perms/feature-perms-path :data-model :all db-id schema table-id)))
+     (fn [{table-id :id db-id :db_id}]
+       (data-perms/user-has-permission-for-table?
+        api/*current-user-id*
+        :perms/manage-table-metadata
+        :yes
+        db-id
+        table-id))
      tables)))
 
 (defn filter-schema-by-data-model-perms
@@ -64,8 +117,12 @@
     :else
     (filter
      (fn [{db-id :db_id schema :schema}]
-       (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
-                                           (perms/feature-perms-path :data-model :all db-id schema)))
+       (data-perms/user-has-permission-for-schema?
+        api/*current-user-id*
+        :perms/manage-table-metadata
+        :yes
+        db-id
+        schema))
      schema)))
 
 (defn filter-databases-by-data-model-perms
@@ -84,11 +141,11 @@
     :else
     (reduce
      (fn [result {db-id :id tables :tables :as db}]
-       (if (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
-                                               (perms/feature-perms-path :data-model :all db-id))
+       (if (= (data-perms/most-permissive-database-permission-for-user api/*current-user-id* :perms/manage-table-metadata db-id)
+              :yes)
          (if tables
            (conj result (update db :tables filter-tables-by-data-model-perms))
            (conj result db))
-         result))
+        result))
      []
      dbs)))

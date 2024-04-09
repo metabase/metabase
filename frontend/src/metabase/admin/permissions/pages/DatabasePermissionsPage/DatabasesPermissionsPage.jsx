@@ -1,25 +1,31 @@
-import { Fragment, useCallback } from "react";
-import PropTypes from "prop-types";
 import { bindActionCreators } from "@reduxjs/toolkit";
+import PropTypes from "prop-types";
+import { Fragment, useCallback } from "react";
+import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
-import { connect } from "react-redux";
 
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { PermissionsApi } from "metabase/services";
+import { Loader, Center } from "metabase/ui";
+
+import {
+  PermissionsEditor,
+  PermissionsEditorEmptyState,
+} from "../../components/PermissionsEditor";
+import { PermissionsSidebar } from "../../components/PermissionsSidebar";
+import {
+  updateDataPermission,
+  LOAD_DATA_PERMISSIONS_FOR_DB,
+} from "../../permissions";
 import {
   getGroupsDataPermissionEditor,
   getDataFocusSidebar,
   getIsLoadingDatabaseTables,
   getLoadingDatabaseTablesError,
 } from "../../selectors/data-permissions";
-import { updateDataPermission } from "../../permissions";
-
-import { PermissionsSidebar } from "../../components/PermissionsSidebar";
-import {
-  PermissionsEditor,
-  PermissionsEditorEmptyState,
-  permissionEditorPropTypes,
-} from "../../components/PermissionsEditor";
 import {
   DATABASES_BASE_PATH,
   getDatabaseFocusPermissionsUrl,
@@ -42,7 +48,6 @@ const mapDispatchToProps = dispatch => ({
 const mapStateToProps = (state, props) => {
   return {
     sidebar: getDataFocusSidebar(state, props),
-    permissionEditor: getGroupsDataPermissionEditor(state, props),
     isSidebarLoading: getIsLoadingDatabaseTables(state, props),
     sidebarError: getLoadingDatabaseTablesError(state, props),
   };
@@ -56,29 +61,42 @@ const propTypes = {
   }),
   children: PropTypes.node,
   sidebar: PropTypes.object,
-  permissionEditor: PropTypes.shape(permissionEditorPropTypes),
   navigateToItem: PropTypes.func.isRequired,
   switchView: PropTypes.func.isRequired,
   updateDataPermission: PropTypes.func.isRequired,
   navigateToDatabaseList: PropTypes.func.isRequired,
   isSidebarLoading: PropTypes.bool,
   sidebarError: PropTypes.string,
-  dispatch: PropTypes.func.isRequired,
 };
 
 function DatabasesPermissionsPage({
   sidebar,
-  permissionEditor,
   params,
   children,
   navigateToItem,
   navigateToDatabaseList,
   switchView,
   updateDataPermission,
-  dispatch,
   isSidebarLoading,
   sidebarError,
 }) {
+  const dispatch = useDispatch();
+  const permissionEditor = useSelector(state =>
+    getGroupsDataPermissionEditor(state, { params }),
+  );
+
+  const { loading: isLoading } = useAsync(async () => {
+    if (params.databaseId) {
+      const response = await PermissionsApi.graphForDB({
+        databaseId: params.databaseId,
+      });
+      await dispatch({
+        type: LOAD_DATA_PERMISSIONS_FOR_DB,
+        payload: response,
+      });
+    }
+  }, [params.databaseId]);
+
   const handleEntityChange = useCallback(
     entityType => {
       switchView(entityType);
@@ -115,15 +133,19 @@ function DatabasesPermissionsPage({
         onBack={params.databaseId == null ? null : navigateToDatabaseList}
         onEntityChange={handleEntityChange}
       />
-
-      {!permissionEditor && (
+      {isLoading && (
+        <Center style={{ flexGrow: 1 }}>
+          <Loader size="lg" />
+        </Center>
+      )}
+      {!permissionEditor && !isLoading && (
         <PermissionsEditorEmptyState
           icon="database"
           message={t`Select a database to see group permissions`}
         />
       )}
 
-      {permissionEditor && (
+      {permissionEditor && !isLoading && (
         <PermissionsEditor
           {...permissionEditor}
           onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}

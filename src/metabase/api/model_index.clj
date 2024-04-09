@@ -3,8 +3,8 @@
    [compojure.core :refer [POST]]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
-   [metabase.models.interface :as mi]
    [metabase.models.model-index :as model-index :refer [ModelIndex]]
    [metabase.task.index-values :as task.index-values]
    [metabase.util.i18n :refer [tru]]
@@ -14,7 +14,7 @@
 (defn- ensure-type
   "Ensure that the ref exists and is of type required for indexing."
   [t ref metadata]
-  (if-let [field (some (fn [f] (when ((comp #{(mi/normalize-field-ref ref)} :field_ref) f)
+  (if-let [field (some (fn [f] (when ((comp #{(mbql.normalize/normalize-field-ref ref)} :field_ref) f)
                                  f))
                        metadata)]
     (let [type-slot (case t
@@ -32,6 +32,7 @@
                      :fields      metadata}))))
 
 (api/defendpoint POST "/"
+  "Create ModelIndex."
   [:as {{:keys [model_id pk_ref value_ref] :as _model-index} :body}]
   {model_id  ms/PositiveInt
    pk_ref    any?
@@ -55,27 +56,30 @@
       (t2/select-one ModelIndex :id (:id model-index)))))
 
 (api/defendpoint GET "/"
+  "Retrieve list of ModelIndex."
   [model_id]
   {model_id ms/PositiveInt}
   (let [model (api/read-check Card model_id)]
-    (when-not (:dataset model)
+    (when-not (= (:type model) :model)
       (throw (ex-info (tru "Question {0} is not a model" model_id)
                       {:model_id model_id
                        :status-code 400})))
     (t2/select ModelIndex :model_id model_id)))
 
 (api/defendpoint GET "/:id"
+  "Retrieve ModelIndex."
   [id]
   {id ms/PositiveInt}
   (let [model-index (api/check-404 (t2/select-one ModelIndex :id id))
         model       (api/read-check Card (:model_id model-index))]
-    (when-not (:dataset model)
+    (when-not (= (:type model) :model)
       (throw (ex-info (tru "Question {0} is not a model" id)
                       {:model_id id
                        :status-code 400})))
     model-index))
 
 (api/defendpoint DELETE "/:id"
+  "Delete ModelIndex."
   [id]
   {id ms/PositiveInt}
   (api/let-404 [model-index (t2/select-one ModelIndex :id id)]

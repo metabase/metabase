@@ -1,21 +1,17 @@
-import { useCallback, useState } from "react";
-import { t } from "ttag";
+import type { LocationDescriptor } from "history";
+import { useCallback } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import type { LocationDescriptor } from "history";
+import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
-
+import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import * as Urls from "metabase/lib/urls";
-
-import type { Dashboard, Collection, CollectionId } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
-import CreateDashboardForm, {
-  CreateDashboardFormOwnProps,
-  StagedDashboard,
-} from "./CreateDashboardForm";
+import type { CreateDashboardFormOwnProps } from "./CreateDashboardForm";
+import { CreateDashboardFormConnected } from "./CreateDashboardForm";
 
 interface CreateDashboardModalOwnProps
   extends Omit<CreateDashboardFormOwnProps, "onCancel"> {
@@ -50,44 +46,27 @@ function CreateDashboardModal({
     [onCreate, onChangeLocation, onClose],
   );
 
-  const [creatingNewCollection, setCreatingNewCollection] = useState(false);
-  const [openCollectionId, setOpenCollectionId] = useState<CollectionId>();
-  const [stagedDashboard, setStagedDashboard] =
-    useState<StagedDashboard | null>(null);
-  const saveToNewCollection = (s: StagedDashboard) => {
-    setCreatingNewCollection(true);
-    setOpenCollectionId(s.openCollectionId);
-    setStagedDashboard(s);
-  };
-
-  if (creatingNewCollection && stagedDashboard) {
-    return (
-      <CreateCollectionModal
-        collectionId={openCollectionId}
-        onClose={() => setCreatingNewCollection(false)}
-        onCreate={(collection: Collection) => {
-          const { values, handleCreate } = stagedDashboard;
-          handleCreate({ ...values, collection_id: collection.id });
-        }}
-      />
-    );
-  }
-
   return (
-    <ModalContent title={t`New dashboard`} onClose={onClose}>
-      <CreateDashboardForm
-        {...props}
-        onCreate={handleCreate}
-        onCancel={onClose}
-        saveToNewCollection={saveToNewCollection}
-        initialValues={stagedDashboard?.values}
-      />
-    </ModalContent>
+    <CreateCollectionOnTheGo>
+      {({ resumedValues }) => (
+        <ModalContent
+          title={t`New dashboard`}
+          onClose={onClose}
+          data-testid="new-dashboard-modal"
+        >
+          <CreateDashboardFormConnected
+            {...props}
+            onCreate={handleCreate}
+            onCancel={onClose}
+            initialValues={resumedValues}
+          />
+        </ModalContent>
+      )}
+    </CreateCollectionOnTheGo>
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect<
+export const CreateDashboardModalConnected = connect<
   unknown,
   CreateDashboardModalDispatchProps,
   CreateDashboardModalOwnProps,

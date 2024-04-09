@@ -7,19 +7,17 @@
     :as impersonation]
    [metabase.models :refer [Field FieldValues]]
    [metabase.models.params.field-values :as params.field-values]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest get-or-create-advanced-field-values!
-  (premium-features-test/with-premium-features #{:advanced-permissions}
-    (let [field      (t2/select-one Field :id (mt/id :categories :id))]
+  (mt/with-premium-features #{:advanced-permissions}
+    (let [field (t2/select-one Field :id (mt/id :categories :id))]
       (try
         (testing "creates new field values for user using impersonation"
-          (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                      :attributes     {"impersonation_attr" "impersonation_role"}}
+          (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                       :attributes     {"impersonation_attr" "impersonation_role"}}
             (let [hash-key-1 (impersonation/hash-key-for-impersonation (u/the-id field))]
               (params.field-values/get-or-create-advanced-field-values! :impersonation field)
               (is (= #{hash-key-1}
@@ -31,8 +29,8 @@
                 (is (= 1 (t2/count FieldValues :field_id (u/the-id field) :type :impersonation))))
 
               (testing "changing the impersonation role creates new FieldValues"
-                (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                            :attributes     {"impersonation_attr" "impersonation_role_2"}}
+                (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                             :attributes     {"impersonation_attr" "impersonation_role_2"}}
                   (let [hash-key-2 (impersonation/hash-key-for-impersonation (u/the-id field))]
                     (params.field-values/get-or-create-advanced-field-values! :impersonation field)
                     (is (= #{hash-key-1 hash-key-2}

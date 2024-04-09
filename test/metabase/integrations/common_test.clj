@@ -83,11 +83,12 @@
              (group-memberships user)))))
 
   (testing "if we attempt to add a user to a group that doesn't exist, does the group sync complete for the other groups?"
-    (with-user-in-groups [group {:name (str ::group)}
-                          user    []]
-      (integrations.common/sync-group-memberships! user #{Integer/MAX_VALUE group} #{Integer/MAX_VALUE group})
-      (is (= #{"All Users" ":metabase.integrations.common-test/group"}
-             (group-memberships user)))))
+    (mt/test-helpers-set-global-values!
+      (with-user-in-groups [group {:name (str ::group)}
+                            user    []]
+        (integrations.common/sync-group-memberships! user #{Integer/MAX_VALUE group} #{Integer/MAX_VALUE group})
+        (is (= #{"All Users" ":metabase.integrations.common-test/group"}
+               (group-memberships user))))))
 
   (mt/with-test-user :crowberto
     (testing "Admin should be synced just like a other groups group."

@@ -1,7 +1,15 @@
-import * as React from "react";
-import { Motion, spring } from "react-motion";
+import type * as React from "react";
+
+import { Transition } from "metabase/ui";
 
 import { FixedBottomBar } from "./BulkActionBar.styled";
+
+const slideIn = {
+  in: { opacity: 1, transform: "translateY(0)" },
+  out: { opacity: 0, transform: "translateY(100px)" },
+  common: { transformOrigin: "top" },
+  transitionProperty: "transform, opacity",
+};
 
 interface BulkActionBarProps {
   children: React.ReactNode;
@@ -9,34 +17,25 @@ interface BulkActionBarProps {
   isNavbarOpen: boolean;
 }
 
-const BulkActionBar = ({
+export const BulkActionBar = ({
   children,
   showing,
   isNavbarOpen,
 }: BulkActionBarProps) => (
-  <Motion
-    defaultStyle={{
-      opacity: 0,
-      translateY: 100,
-    }}
-    style={{
-      opacity: showing ? spring(1) : spring(0),
-      translateY: showing ? spring(0) : spring(100),
-    }}
+  <Transition
+    mounted={showing}
+    transition={slideIn}
+    duration={400}
+    timingFunction="ease"
   >
-    {({ translateY }) => (
+    {styles => (
       <FixedBottomBar
-        style={{
-          transform: `translateY(${translateY}px)`,
-        }}
         data-testid="bulk-action-bar"
         isNavbarOpen={isNavbarOpen}
+        style={styles}
       >
         {children}
       </FixedBottomBar>
     )}
-  </Motion>
+  </Transition>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default BulkActionBar;

@@ -1,13 +1,6 @@
-import {
-  ChangeEvent,
-  FocusEvent,
-  forwardRef,
-  InputHTMLAttributes,
-  Ref,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import type { ChangeEvent, FocusEvent, InputHTMLAttributes, Ref } from "react";
+import { forwardRef, useCallback, useMemo, useState } from "react";
+
 import Input from "metabase/core/components/Input";
 
 export type NumericInputAttributes = Omit<
@@ -22,6 +15,9 @@ export interface NumericInputProps extends NumericInputAttributes {
   onChange?: (value: number | undefined) => void;
 }
 
+/**
+ * @deprecated: use NumberInput from "metabase/ui"
+ */
 const NumericInput = forwardRef(function NumericInput(
   { value, onFocus, onBlur, onChange, ...props }: NumericInputProps,
   ref: Ref<HTMLDivElement>,

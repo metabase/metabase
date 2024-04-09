@@ -1,28 +1,26 @@
-import { t } from "ttag";
 import { createAction } from "redux-actions";
+import { t } from "ttag";
 
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
+import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
-
-import { getMetadata } from "metabase/selectors/metadata";
 import { getSensibleDisplays } from "metabase/visualizations";
-import { isSameField } from "metabase-lib/queries/utils/field-ref";
+import * as Lib from "metabase-lib";
+import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
-import Question from "metabase-lib/Question";
-
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import {
+  getIsResultDirty,
   getIsRunning,
   getOriginalQuestion,
+  getOriginalQuestionWithParameterValues,
   getQueryBuilderMode,
   getQueryResults,
   getQuestion,
   getTimeoutId,
-  getIsResultDirty,
 } from "../selectors";
 
 import { updateUrl } from "./navigation";
@@ -88,22 +86,22 @@ export const runDirtyQuestionQuery = () => async (dispatch, getState) => {
 };
 
 /**
- * Queries the result for the currently active question or alternatively for the card provided in `overrideWithCard`.
+ * Queries the result for the currently active question or alternatively for the card question provided in `overrideWithQuestion`.
  * The API queries triggered by this action creator can be cancelled using the deferred provided in RUN_QUERY action.
  */
 export const RUN_QUERY = "metabase/qb/RUN_QUERY";
 export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
-  overrideWithCard = null,
+  overrideWithQuestion = null,
+  prevQueryResults = undefined,
+  settingsSyncOptions = undefined,
 } = {}) => {
   return async (dispatch, getState) => {
     dispatch(loadStartUIControls());
-    const questionFromCard = card =>
-      card && new Question(card, getMetadata(getState()));
 
-    const question = overrideWithCard
-      ? questionFromCard(overrideWithCard)
+    const question = overrideWithQuestion
+      ? overrideWithQuestion
       : getQuestion(getState());
     const originalQuestion = getOriginalQuestion(getState());
 
@@ -114,7 +112,7 @@ export const runQuestionQuery = ({
 
     if (shouldUpdateUrl) {
       const isAdHocModel =
-        question.isDataset() &&
+        question.type() === "model" &&
         isAdHocModelQuestion(question, originalQuestion);
 
       dispatch(updateUrl(question, { dirty: !isAdHocModel && cardIsDirty }));
@@ -135,11 +133,16 @@ export const runQuestionQuery = ({
           MetabaseAnalytics.trackStructEvent(
             "QueryBuilder",
             "Run Query",
-            question.type(),
+            question.datasetQuery().type,
             duration,
           ),
         );
-        return dispatch(queryCompleted(question, queryResults));
+        return dispatch(
+          queryCompleted(question, queryResults, {
+            prevQueryResults: prevQueryResults ?? getQueryResults(getState()),
+            settingsSyncOptions,
+          }),
+        );
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
 
@@ -150,7 +153,9 @@ export const runQuestionQuery = ({
 const loadStartUIControls = createThunkAction(
   LOAD_START_UI_CONTROLS,
   () => (dispatch, getState) => {
-    const loadingMessage = PLUGIN_SELECTORS.getLoadingMessage(getState());
+    const getLoadingMessage = getWhiteLabeledLoadingMessageFactory(getState());
+    const loadingMessage = getLoadingMessage();
+
     const title = {
       onceQueryIsRun: loadingMessage,
       ifQueryTakesLong: t`Still Here...`,
@@ -172,29 +177,30 @@ export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
-export const queryCompleted = (question, queryResults) => {
+export const queryCompleted = (
+  question,
+  queryResults,
+  { prevQueryResults, settingsSyncOptions } = {},
+) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
-    const [{ data: prevData }] = getQueryResults(getState()) || [{}];
-    const originalQuestion = getOriginalQuestion(getState());
-    const isDirty =
-      question.query().isEditable() &&
-      question.isDirtyComparedTo(originalQuestion);
+    const [{ data: prevData }] = prevQueryResults ?? [{}];
+    const originalQuestion = getOriginalQuestionWithParameterValues(getState());
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    const isDirty = isEditable && question.isDirtyComparedTo(originalQuestion);
 
     if (isDirty) {
-      if (question.isNative()) {
-        question = question.syncColumnsAndSettings(
-          originalQuestion,
-          queryResults[0],
-        );
-      }
+      question = question.syncColumnsAndSettings(
+        queryResults[0],
+        prevQueryResults?.[0],
+        settingsSyncOptions,
+      );
 
-      question = question
-        .maybeResetDisplay(
-          getSensibleDisplays(data),
-          prevData && getSensibleDisplays(prevData),
-        )
-        .switchTableScalar(data);
+      question = question.maybeResetDisplay(
+        data,
+        getSensibleDisplays(data),
+        prevData && getSensibleDisplays(prevData),
+      );
     }
 
     const card = question.card();

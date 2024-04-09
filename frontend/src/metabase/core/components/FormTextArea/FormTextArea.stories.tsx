@@ -1,6 +1,7 @@
 import type { ComponentStory } from "@storybook/react";
-import Form from "../Form";
-import FormProvider from "../FormProvider";
+
+import { Form, FormProvider } from "metabase/forms";
+
 import FormTextArea from "./FormTextArea";
 
 export default {

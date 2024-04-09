@@ -1,19 +1,23 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import { getIsPaidPlan } from "metabase/selectors/settings";
 import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
-import { Icon } from "metabase/core/components/Icon";
 import Text from "metabase/components/type/Text";
-
 import ExternalLink from "metabase/core/components/ExternalLink";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
+import { getIsPaidPlan } from "metabase/selectors/settings";
+import { Icon } from "metabase/ui";
+
 import {
   HostingCTAContent,
   HostingCTAIconContainer,
   HostingCTARoot,
   NewVersionContainer,
+  OnLatestVersionMessage,
 } from "./VersionUpdateNotice.styled";
 
 export default function VersionUpdateNotice() {
@@ -51,9 +55,9 @@ function OnLatestVersion({ currentVersion }) {
 
   return (
     <div>
-      <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
+      <OnLatestVersionMessage>
         {t`You're running Metabase ${currentVersion} which is the latest and greatest!`}
-      </div>
+      </OnLatestVersionMessage>
       {!isPaidPlan && <HostingCTA />}
     </div>
   );
@@ -70,16 +74,29 @@ function NewVersionAvailable({ currentVersion }) {
 
   return (
     <div>
-      <NewVersionContainer className="p2 bordered rounded border-success flex flex-row align-center justify-between">
-        <span className="text-white text-bold">
+      <NewVersionContainer
+        className={cx(
+          CS.p2,
+          CS.bordered,
+          CS.rounded,
+          "border-success",
+          CS.flex,
+          CS.flexRow,
+          CS.alignCenter,
+          CS.justifyBetween,
+        )}
+      >
+        <span className={cx("text-white", CS.textBold)}>
           {t`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
           {t`You're running ${currentVersion}`}
         </span>
         <ExternalLink
-          data-metabase-event={
-            "Updates Settings; Update link clicked; " + latestVersion
-          }
-          className="Button Button--white Button--medium borderless"
+          className={cx(
+            ButtonsS.Button,
+            ButtonsS.ButtonWhite,
+            ButtonsS.ButtonMedium,
+            CS.borderless,
+          )}
           href={
             "https://www.metabase.com/docs/" +
             latestVersion +
@@ -91,10 +108,17 @@ function NewVersionAvailable({ currentVersion }) {
       </NewVersionContainer>
 
       <div
-        className="text-medium bordered rounded p2 mt2 overflow-y-scroll"
+        className={cx(
+          CS.textMedium,
+          CS.bordered,
+          CS.rounded,
+          CS.p2,
+          CS.mt2,
+          CS.overflowYScroll,
+        )}
         style={{ height: 330 }}
       >
-        <h3 className="pb3 text-uppercase">{t`What's Changed:`}</h3>
+        <h3 className={cx(CS.pb3, CS.textUppercase)}>{t`What's Changed:`}</h3>
 
         <Version version={versionInfo.latest} />
 
@@ -115,17 +139,39 @@ NewVersionAvailable.propTypes = {
 
 function HostingCTA() {
   return (
-    <HostingCTARoot className="rounded bg-light mt4 text-brand py2 px1">
+    <HostingCTARoot
+      className={cx(
+        CS.rounded,
+        "bg-light",
+        CS.mt4,
+        CS.textBrand,
+        CS.py2,
+        CS.px1,
+      )}
+    >
       <HostingCTAContent>
-        <HostingCTAIconContainer className="circular bg-medium align-center justify-center ml1 mr2">
+        <HostingCTAIconContainer
+          className={cx(
+            "circular",
+            "bg-medium",
+            CS.alignCenter,
+            CS.justifyCenter,
+            CS.ml1,
+            CS.mr2,
+          )}
+        >
           <Icon name="cloud" size={24} />
         </HostingCTAIconContainer>
         <div>
-          <Text className="text-brand mb0">{t`Want to have upgrades taken care of for you?`}</Text>
-          <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
+          <Text
+            className={cx(CS.textBrand, CS.mb0)}
+          >{t`Want to have upgrades taken care of for you?`}</Text>
+          <Text
+            className={cx(CS.textBrand, CS.textBold)}
+          >{t`Migrate to Metabase Cloud.`}</Text>
         </div>
       </HostingCTAContent>
-      <div className="pr1">
+      <div className={CS.pr1}>
         <HostingInfoLink text={t`Learn more`} />
       </div>
     </HostingCTARoot>
@@ -138,7 +184,7 @@ function Version({ version }) {
   }
 
   return (
-    <div className="pb3">
+    <div className={CS.pb3}>
       <h3 className="text-medium">
         {formatVersion(version.version)}{" "}
         {version.patch ? "(" + t`patch release` + ")" : null}
@@ -146,7 +192,7 @@ function Version({ version }) {
       <ul style={{ listStyleType: "disc", listStylePosition: "inside" }}>
         {version.highlights &&
           version.highlights.map((highlight, index) => (
-            <li key={index} style={{ lineHeight: "1.5" }} className="pl1">
+            <li key={index} style={{ lineHeight: "1.5" }} className={CS.pl1}>
               {highlight}
             </li>
           ))}

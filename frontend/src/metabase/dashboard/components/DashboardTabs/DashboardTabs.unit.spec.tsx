@@ -1,15 +1,15 @@
-import { Link, Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import type { Location } from "history";
+import { Link, Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { DashboardState, State } from "metabase-types/store";
-import { DashboardOrderedTab } from "metabase-types/api";
-import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/core/components/TabButton";
-
-import { useSelector } from "metabase/lib/redux";
+import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/lib/redux";
+import type { DashboardTab } from "metabase-types/api";
+import type { DashboardState, State } from "metabase-types/store";
+
 import { DashboardTabs } from "./DashboardTabs";
 import { TEST_DASHBOARD_STATE } from "./test-utils";
 import { useDashboardTabs } from "./use-dashboard-tabs";
@@ -20,7 +20,7 @@ function setup({
   slug = undefined,
   isEditing = true,
 }: {
-  tabs?: DashboardOrderedTab[];
+  tabs?: DashboardTab[];
   slug?: string | undefined;
   isEditing?: boolean;
 } = {}) {
@@ -29,17 +29,21 @@ function setup({
     dashboards: {
       1: {
         ...TEST_DASHBOARD_STATE.dashboards[1],
-        ordered_tabs: tabs ?? TEST_DASHBOARD_STATE.dashboards[1].ordered_tabs,
+        tabs: tabs ?? TEST_DASHBOARD_STATE.dashboards[1].tabs,
       },
     },
   };
 
   const DashboardComponent = ({ location }: { location: Location }) => {
-    const { selectedTabId } = useDashboardTabs({ location });
+    const { selectedTabId } = useDashboardTabs({ location, dashboardId: 1 });
 
     return (
       <>
-        <DashboardTabs location={location} isEditing={isEditing} />
+        <DashboardTabs
+          dashboardId={1}
+          location={location}
+          isEditing={isEditing}
+        />
         <span>Selected tab id is {selectedTabId}</span>
         <br />
         <span>Path is {location.pathname + location.search}</span>
@@ -82,23 +86,37 @@ function queryTab(numOrName: number | string) {
   return screen.queryByRole("tab", { name, hidden: true });
 }
 
-function selectTab(num: number) {
+async function selectTab(num: number) {
   const selectedTab = queryTab(num) as HTMLElement;
-  userEvent.click(selectedTab);
+  await userEvent.click(selectedTab);
   return selectedTab;
 }
 
-function createNewTab() {
-  userEvent.click(screen.getByLabelText("Create new tab"));
+async function createNewTab() {
+  await userEvent.click(screen.getByLabelText("Create new tab"));
 }
 
-async function selectTabMenuItem(num: number, name: "Delete" | "Rename") {
+async function openTabMenu(num: number) {
   const dropdownIcons = screen.getAllByRole("img", {
     name: "chevrondown icon",
     hidden: true,
   });
-  userEvent.click(dropdownIcons[num - 1]);
-  (await screen.findByRole("option", { name, hidden: true })).click();
+  await userEvent.click(dropdownIcons[num - 1]);
+  await screen.findByRole("option");
+}
+
+async function selectTabMenuItem(
+  num: number,
+  name: "Delete" | "Rename" | "Duplicate",
+) {
+  const dropdownIcons = screen.getAllByRole("img", {
+    name: "chevrondown icon",
+    hidden: true,
+  });
+  await userEvent.click(dropdownIcons[num - 1]);
+  await userEvent.click(
+    await screen.findByRole("option", { name, hidden: true }),
+  );
 }
 
 async function deleteTab(num: number) {
@@ -112,7 +130,12 @@ async function renameTab(num: number, name: string) {
     name: `Tab ${num}`,
     hidden: true,
   });
-  userEvent.type(inputEl, `${name}{enter}`);
+  await userEvent.clear(inputEl);
+  await userEvent.type(inputEl, `${name}{enter}`);
+}
+
+async function duplicateTab(num: number) {
+  return selectTabMenuItem(num, "Duplicate");
 }
 
 async function findSlug({ tabId, name }: { tabId: number; name: string }) {
@@ -169,7 +192,7 @@ describe("DashboardTabs", () => {
           slug: getSlug({ tabId: 2, name: "Tab 2" }),
         });
 
-        expect(selectTab(2)).toHaveAttribute("aria-selected", "true");
+        expect(await selectTab(2)).toHaveAttribute("aria-selected", "true");
         expect(queryTab(1)).toHaveAttribute("aria-selected", "false");
         expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
 
@@ -192,7 +215,7 @@ describe("DashboardTabs", () => {
       it("should allow you to click to select tabs", async () => {
         setup({ isEditing: false });
 
-        expect(selectTab(2)).toHaveAttribute("aria-selected", "true");
+        expect(await selectTab(2)).toHaveAttribute("aria-selected", "true");
         expect(queryTab(1)).toHaveAttribute("aria-selected", "false");
         expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
 
@@ -202,28 +225,34 @@ describe("DashboardTabs", () => {
   });
 
   describe("when editing", () => {
-    it("should display a placeholder tab when there are none", () => {
+    it("should display a placeholder tab when there are none", async () => {
       setup({ tabs: [] });
 
-      const placeholderTab = queryTab("Tab 1");
-      expect(placeholderTab).toHaveAttribute("aria-disabled", "true");
+      expect(queryTab("Tab 1")).toBeInTheDocument();
+
+      await openTabMenu(1);
+      expect(screen.getByText("Duplicate")).toBeInTheDocument();
+
       expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
     });
 
-    it("should display a placeholder tab when there is only one", () => {
+    it("should display a placeholder tab when there is only one", async () => {
       setup({
         tabs: [getDefaultTab({ tabId: 1, dashId: 1, name: "Lonely tab" })],
       });
 
-      const placeholderTab = queryTab("Lonely tab");
-      expect(placeholderTab).toHaveAttribute("aria-disabled", "true");
+      expect(queryTab("Lonely tab")).toBeInTheDocument();
+
+      await openTabMenu(1);
+      expect(screen.getByText("Duplicate")).toBeInTheDocument();
+
       expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
     });
 
     it("should allow you to click to select tabs", async () => {
       setup();
 
-      expect(selectTab(2)).toHaveAttribute("aria-selected", "true");
+      expect(await selectTab(2)).toHaveAttribute("aria-selected", "true");
       expect(queryTab(1)).toHaveAttribute("aria-selected", "false");
       expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
 
@@ -231,9 +260,9 @@ describe("DashboardTabs", () => {
     });
 
     describe("when adding tabs", () => {
-      it("should add two tabs, assign cards to the first, and select the second when adding a tab for the first time", () => {
+      it("should add two tabs, assign cards to the first, and select the second when adding a tab for the first time", async () => {
         const { getDashcards } = setup({ tabs: [] });
-        createNewTab();
+        await createNewTab();
         const firstNewTab = queryTab(1);
         const secondNewTab = queryTab(2);
 
@@ -248,9 +277,9 @@ describe("DashboardTabs", () => {
         expect(dashcards[1].dashboard_tab_id).toEqual(-1);
       });
 
-      it("should add add one tab, not reassign cards, and select the tab when adding an additional tab", () => {
+      it("should add add one tab, not reassign cards, and select the tab when adding an additional tab", async () => {
         const { getDashcards } = setup();
-        createNewTab();
+        await createNewTab();
         const newTab = queryTab(4);
 
         expect(newTab).toBeVisible();
@@ -280,7 +309,7 @@ describe("DashboardTabs", () => {
 
       it("should select the tab to the left if the selected tab was deleted", async () => {
         setup();
-        selectTab(2);
+        await selectTab(2);
         await deleteTab(2);
 
         expect(queryTab(1)).toHaveAttribute("aria-selected", "true");
@@ -289,14 +318,14 @@ describe("DashboardTabs", () => {
 
       it("should select the tab to the right if the selected tab was deleted and was the first tab", async () => {
         setup();
-        selectTab(1);
+        await selectTab(1);
         await deleteTab(1);
 
         expect(queryTab(2)).toHaveAttribute("aria-selected", "true");
         expect(await findSlug({ tabId: 2, name: "Tab 2" })).toBeInTheDocument();
       });
 
-      it("should disable the last tab and remove slug if the penultimate tab was deleted", async () => {
+      it("should keep the last tab and remove slug if the penultimate tab was deleted", async () => {
         setup();
         await deleteTab(3);
 
@@ -304,14 +333,17 @@ describe("DashboardTabs", () => {
 
         await deleteTab(2);
 
-        expect(queryTab(1)).toHaveAttribute("aria-disabled", "true");
+        expect(queryTab(1)).toBeInTheDocument();
+        await openTabMenu(1);
+        expect(screen.getByText("Duplicate")).toBeInTheDocument();
+
         expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
       });
 
       it("should correctly update selected tab id when deleting tabs (#30923)", async () => {
         setup({ tabs: [] });
-        createNewTab();
-        createNewTab();
+        await createNewTab();
+        await createNewTab();
 
         await deleteTab(2);
         await deleteTab(2);
@@ -334,13 +366,14 @@ describe("DashboardTabs", () => {
         setup();
         const name = "Another cool new name";
         const inputWrapperEl = screen.getAllByTestId(INPUT_WRAPPER_TEST_ID)[0];
-        userEvent.dblClick(inputWrapperEl);
+        await userEvent.dblClick(inputWrapperEl);
 
         const inputEl = screen.getByRole("textbox", {
           name: "Tab 1",
           hidden: true,
         });
-        userEvent.type(inputEl, `${name}{enter}`);
+        await userEvent.clear(inputEl);
+        await userEvent.type(inputEl, `${name}{enter}`);
 
         expect(queryTab(name)).toBeInTheDocument();
         expect(await findSlug({ tabId: 1, name })).toBeInTheDocument();
@@ -348,11 +381,36 @@ describe("DashboardTabs", () => {
     });
   });
 
-  describe("when navigating away from dashboard", () => {
-    it("should preserve selected tab id", () => {
+  describe("when duplicating tabs", () => {
+    it("should allow the user to duplicate the placeholder tab if there are none", async () => {
+      setup({ tabs: [] });
+
+      await duplicateTab(1);
+
+      expect(queryTab("Tab 1")).toBeInTheDocument();
+      expect(queryTab("Copy of Tab 1")).toBeInTheDocument();
+
+      expect(screen.getByText("Selected tab id is -2")).toBeInTheDocument();
+      expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
+    });
+
+    it("should allow the user to duplicate a tab", async () => {
       setup();
 
-      selectTab(2);
+      await duplicateTab(1);
+
+      expect(queryTab("Copy of Tab 1")).toBeInTheDocument();
+
+      expect(screen.getByText("Selected tab id is -2")).toBeInTheDocument();
+      expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
+    });
+  });
+
+  describe("when navigating away from dashboard", () => {
+    it("should preserve selected tab id", async () => {
+      setup();
+
+      await selectTab(2);
       expect(screen.getByText("Selected tab id is 2")).toBeInTheDocument();
 
       screen.getByText("Navigate away").click();

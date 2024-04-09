@@ -1,7 +1,9 @@
 import FakeTimers from "@sinonjs/fake-timers";
 import Cookie from "js-cookie";
 import { replace } from "react-router-redux";
+
 import { logout, refreshSession } from "metabase/auth/actions";
+
 import {
   createSessionMiddleware,
   SESSION_KEY,
@@ -113,6 +115,29 @@ describe("createSessionMiddleware", () => {
 
       expect(dispatchMock).toHaveBeenCalled();
       expect(logout).toHaveBeenCalledWith("/question/1?query=5#hash");
+    });
+  });
+
+  describe("logged in redirect", () => {
+    beforeEach(() => {
+      changeJSDOMURL(
+        "https://metabase.com/auth/login?redirect=%2Fquestion%2F1%3Fquery%3D5%23hash",
+      );
+    });
+
+    it("should redirect to the redirectUrl", async () => {
+      Cookie.get = jest
+        .fn()
+        .mockImplementationOnce(() => "alive")
+        .mockImplementationOnce(() => "alive");
+
+      const { handleAction, dispatchMock } = setup();
+
+      handleAction(actionStub);
+      clock.tick(COOKIE_POOLING_TIMEOUT);
+
+      expect(dispatchMock).toHaveBeenCalled();
+      expect(replace).toHaveBeenCalledWith("/question/1?query=5#hash");
     });
   });
 

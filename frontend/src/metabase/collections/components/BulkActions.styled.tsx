@@ -1,22 +1,19 @@
 import styled from "@emotion/styled";
+
 import Card from "metabase/components/Card";
 import Button from "metabase/core/components/Button";
 import { alpha, color } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { space } from "metabase/styled-components/theme";
 
-export const BulkActionsToast = styled.div<{
-  isNavbarOpen: boolean;
-  translateY: number;
-}>`
+export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
   position: fixed;
   bottom: 0;
   left: 50%;
-  transform: ${props => `translate(-50%, ${props.translateY}px)`};
   margin-left: ${props =>
     props.isNavbarOpen ? `${parseInt(NAV_SIDEBAR_WIDTH) / 2}px` : "0"};
   margin-bottom: ${space(2)};
-  z-index: 999;
+  z-index: 400; // needed to put this over popovers (z-index: 300)
 `;
 
 export const ToastCard = styled(Card)`

@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.integrations.slack :as slack]
    [metabase.test :as mt]))
@@ -18,7 +18,7 @@
         (mt/with-temporary-setting-values [slack-app-token nil
                                            slack-token     "fake-token"]
           (mt/user-http-request :crowberto :put 200 "slack/settings" {:slack-app-token "fake-token"})
-          (is (= "fake-token" (slack/slack-app-token)))
+          (is (= "fake-token" (#'slack/unobfuscated-slack-app-token)))
           (is (= nil (slack/slack-token))))))
 
     (testing "A 400 error is returned if the Slack app token is invalid"
@@ -70,7 +70,6 @@
         (is (= {:channels []}
                (slack/slack-cached-channels-and-usernames)))
         (is (= @#'slack/zoned-time-epoch (slack/slack-channels-and-usernames-last-updated)))))
-
 
     (testing "A non-admin cannot modify the Slack app token or files channel settings"
       (mt/user-http-request :rasta :put 403 "slack/settings"

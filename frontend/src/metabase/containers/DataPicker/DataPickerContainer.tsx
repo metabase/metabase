@@ -1,32 +1,28 @@
 import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
-import _ from "underscore";
 import { useMount } from "react-use";
-
-import { getHasDataAccess } from "metabase/selectors/data";
-import { getSetting } from "metabase/selectors/settings";
+import _ from "underscore";
 
 import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
-
-import type { DatabaseId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-import Database from "metabase-lib/metadata/Database";
-
+import { getHasDataAccess } from "metabase/selectors/data";
+import { getSetting } from "metabase/selectors/settings";
+import type Database from "metabase-lib/v1/metadata/Database";
 import {
   getRootCollectionVirtualSchemaId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/metadata/utils/saved-questions";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { DatabaseId } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
-import { DEFAULT_DATA_PICKER_FILTERS } from "./constants";
 import { DataPickerContextProvider, useDataPicker } from "./DataPickerContext";
+import DataPickerView from "./DataPickerView";
+import { DEFAULT_DATA_PICKER_FILTERS } from "./constants";
 import type {
   DataPickerProps as DataPickerOwnProps,
   DataPickerDataType,
 } from "./types";
 import { getDataTypes } from "./utils";
-
-import DataPickerView from "./DataPickerView";
 
 interface DataPickerStateProps {
   hasNestedQueriesEnabled: boolean;

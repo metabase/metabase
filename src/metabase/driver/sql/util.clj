@@ -5,17 +5,19 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [schema.core :as s])
+   [metabase.util.malli :as mu])
   (:import
-   (metabase.util.honey_sql_1 Identifier)))
+   (com.github.vertical_blank.sqlformatter SqlFormatter SqlFormatter$Formatter)
+   (com.github.vertical_blank.sqlformatter.core DialectConfig)
+   (com.github.vertical_blank.sqlformatter.languages Dialect)))
 
 (set! *warn-on-reflection* true)
 
-(s/defn quote-name
-  "Quote unqualified string or keyword identifier(s) by passing them to `hx/identifier`, then calling HoneySQL `format`
+(mu/defn quote-name
+  "Quote unqualified string or keyword identifier(s) by passing them to `h2x/identifier`, then calling HoneySQL `format`
   on the resulting `Identifier`. Uses the `sql.qp/quote-style` of the current driver. You can implement `->honeysql`
   for `Identifier` if you need custom behavior here.
 
@@ -24,17 +26,18 @@
 
   You should only use this function for places where you are not using HoneySQL, such as queries written directly in
   SQL. For HoneySQL forms, `Identifier` is converted to SQL automatically when it is compiled."
-  [driver :- s/Keyword identifier-type :- hx/IdentifierType & components]
+  [driver          :- :keyword
+   identifier-type :- h2x/IdentifierType
+   & components]
   (first
-   (sql.qp/with-driver-honey-sql-version driver
-     (sql.qp/format-honeysql driver (apply hx/identifier identifier-type components)))))
+   (sql.qp/format-honeysql driver (apply h2x/identifier identifier-type components))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Deduplicate Field Aliases                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private increment-identifier-string :- s/Str
-  [last-component :- s/Str]
+(mu/defn ^:private increment-identifier-string :- :string
+  [last-component :- :string]
   (if-let [[_ existing-suffix] (re-find #"^.*_(\d+$)" last-component)]
     ;; if last-component already has an alias like col_2 then increment it to col_3
     (let [new-suffix (str (inc (Integer/parseInt existing-suffix)))]
@@ -42,41 +45,40 @@
     ;; otherwise just stick a _2 on the end so it's col_2
     (str last-component "_2")))
 
-(s/defn ^:private increment-identifier
+(mu/defn ^:private increment-identifier
   "Add an appropriate suffix to a keyword `identifier` to make it distinct from previous usages of the same identifier,
   e.g.
 
      (increment-identifier :my_col)   ; -> :my_col_2
      (increment-identifier :my_col_2) ; -> :my_col_3"
-  [identifier :- Identifier]
-  (update
-   identifier
-   :components
-   (fn [components]
-     (conj
-      (vec (butlast components))
-      (increment-identifier-string (u/qualified-name (last components)))))))
+  [[_tag identifier-type components] :- h2x/Identifier]
+  (let [components' (concat
+                     (butlast components)
+                     [(increment-identifier-string (u/qualified-name (last components)))])]
+    (apply h2x/identifier identifier-type components')))
 
 (defn select-clause-alias-everything
   "Make sure all the columns in `select-clause` are alias forms, e.g. `[:table.col :col]` instead of `:table.col`.
-  (This faciliates our deduplication logic.)"
+  (This facilitates our deduplication logic.)"
   [select-clause]
   (for [col select-clause]
     (cond
       ;; if something's already an alias form like [:table.col :col] it's g2g
-      (sequential? col)
+      (and (sequential? col)
+           (not (h2x/identifier? col)))
       col
 
       ;; otherwise we *should* be dealing with an Identifier. If so, take the last component of the Identifier and use
       ;; that as the alias.
       ;;
       ;; TODO - could this be done using `->honeysql` or `field->alias` instead?
-      (instance? Identifier col)
-      [col (hx/identifier :field-alias (last (:components col)))]
+      (h2x/identifier? col)
+      (let [[_tag _identifier-type components] col]
+        [col (h2x/identifier :field-alias (last components))])
 
       :else
       (do
-        (log/error (trs "Don''t know how to alias {0}, expected an Identifier." col))
+        (log/errorf "Don't know how to alias %s, expected an h2x/identifier" (pr-str col))
         [col col]))))
 
 (defn select-clause-deduplicate-aliases
@@ -141,3 +143,48 @@
                     {:type            qp.error-type/invalid-query
                      :target-timezone target-timezone
                      :source-timezone source-timezone}))))
+
+(defn fix-sql-params
+  "[[format-sql]] will expand parameterized values (e.g. {{#123}} -> { { # 123 } }).
+  This function fixes that by removing whitespace from matching double-curly brace substrings."
+  [sql]
+  (when (string? sql)
+    (let [rgx #"\{\s*\{\s*[^\}]+\s*\}\s*\}"]
+      (str/replace sql rgx (fn [match] (str/replace match #"\s*" ""))))))
+
+(def dialects
+  "Mapping of dialect kw to dialect, used by sql formatter in [[format-sql]], to dialect."
+  {:db2         Dialect/Db2
+   :mariadb     Dialect/MariaDb
+   :mysql       Dialect/MySql
+   :n1ql        Dialect/N1ql
+   :plsql       Dialect/PlSql
+   :postgres    Dialect/PostgreSql
+   :redshift    Dialect/Redshift
+   :sparksql    Dialect/SparkSql
+   :standardsql Dialect/StandardSql
+   :tsql        Dialect/TSql})
+
+(def ^:private ^java.util.List additional-operators
+  ["#>>" "!="])
+
+(defn- add-operators
+  ^SqlFormatter$Formatter [^SqlFormatter$Formatter formatter]
+  (.extend formatter (reify java.util.function.UnaryOperator
+                       (apply [_this config]
+                         (.plusOperators ^DialectConfig config additional-operators)))))
+
+(defn format-sql
+  "Pretty format `sql` string using appropriate `dialect`.
+  `dialect` is derived from `driver-or-dialect-kw`. If there is no corresponding value in [[dialects]]. fallback to
+  `Dialect/StandardSql`. For more details see the [[metabase.driver/prettify-native-form]]."
+  [driver-or-dialect-kw sql]
+  (when (string? sql)
+    (let [dialect (get dialects driver-or-dialect-kw Dialect/StandardSql)
+          formatter (add-operators (SqlFormatter/of ^Dialect dialect))]
+      (.format formatter ^String sql))))
+
+(defn format-sql-and-fix-params
+  "[[format-sql]] and [[fix-sql-params]] afterwards. For details see those functions."
+  [driver-or-dialect-kw sql]
+  (-> (format-sql driver-or-dialect-kw sql) fix-sql-params))

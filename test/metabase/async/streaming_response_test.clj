@@ -8,7 +8,7 @@
    [metabase.driver :as driver]
    [metabase.http-client :as client]
    [metabase.models :refer [Database]]
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.server.protocols :as server.protocols]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -43,7 +43,7 @@
 (defmacro ^:private with-streaming-response-thread-pool {:style/indent 0} [& body]
   `(do-with-streaming-response-thread-pool (fn [] ~@body)))
 
-(defmacro ^:private with-test-driver-db {:style/indent 0} [& body]
+(defmacro ^:private with-test-driver-db! {:style/indent 0} [& body]
   `(t2.with-temp/with-temp [Database db# {:engine ::test-driver}]
      (mt/with-db db#
        (with-streaming-response-thread-pool
@@ -66,7 +66,7 @@
          (reset! start-execution-chan nil)))))
 
 (defmethod driver/execute-reducible-query ::test-driver
-  [_ {{{:keys [sleep]} :query} :native, database-id :database} context respond]
+  [_driver {{{:keys [sleep]} :query} :native, database-id :database} _context respond]
   {:pre [(integer? sleep) (integer? database-id)]}
   (let [futur (future
                 (try
@@ -75,12 +75,14 @@
                   (Thread/sleep (long sleep))
                   (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]])
                   (catch InterruptedException e
-                    (reset! canceled? true)
+                    (reset! canceled? ::interrupted-exception)
                     (throw e))))]
-    (a/go
-      (when (a/<! (qp.context/canceled-chan context))
-        (reset! canceled? true)
-        (future-cancel futur)))))
+    (when-let [canceled-chan qp.pipeline/*canceled-chan*]
+      (a/go
+        (when (a/<! canceled-chan)
+          (reset! canceled? ::canceled-chan-message)
+          (future-cancel futur))))
+    (u/deref-with-timeout futur 5000)))
 
 (defmethod driver/connection-properties ::test-driver
   [& _]
@@ -88,26 +90,27 @@
 
 (deftest basic-test
   (testing "Make sure our ::test-driver is working as expected"
-    (with-test-driver-db
+    (with-test-driver-db!
       (is (= [[10]]
              (mt/rows
-               (mt/user-http-request :lucky
-                :post 202 "dataset"
-                {:database (mt/id)
-                 :type     "native"
-                 :native   {:query {:sleep 10}}})))))))
+              (mt/user-http-request :lucky
+                                    :post 202 "dataset"
+                                    {:database (mt/id)
+                                     :type     "native"
+                                     :native   {:query {:sleep 10}}})))))))
 
 (deftest truly-async-test
   (testing "StreamingResponses should truly be asynchronous, and not block Jetty threads while waiting for results"
-    (with-test-driver-db
+    (with-test-driver-db!
       (let [num-requests       (+ thread-pool-size 20)
             remaining          (atom num-requests)
             session-token      (client/authenticate (mt/user->credentials :lucky))
             url                (client/build-url "dataset" nil)
             request            (client/build-request-map session-token
-                                                              {:database (mt/id)
-                                                               :type     "native"
-                                                               :native   {:query {:sleep 2000}}})]
+                                                         {:database (mt/id)
+                                                          :type     "native"
+                                                          :native   {:query {:sleep 2000}}}
+                                                         nil)]
         (testing (format "%d simultaneous queries" num-requests)
           (dotimes [_ num-requests]
             (future (http/post url request)))
@@ -123,32 +126,35 @@
 
 (deftest cancelation-test
   (testing "Make sure canceling a HTTP request ultimately causes the query to be canceled"
-    (with-redefs [streaming-response/async-cancellation-poll-interval-ms 50]
-      (with-test-driver-db
-        (reset! canceled? false)
-        (with-start-execution-chan [start-chan]
-          (let [url           (client/build-url "dataset" nil)
-                session-token (client/authenticate (mt/user->credentials :lucky))
-                request       (client/build-request-map session-token
-                                                             {:database (mt/id)
-                                                              :type     "native"
-                                                              :native   {:query {:sleep 5000}}})
-                futur         (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
-            (is (future? futur))
-            ;; wait a little while for the query to start running -- this should usually happen fairly quickly
-            (mt/wait-for-result start-chan (u/seconds->ms 15))
-            (future-cancel futur)
-            ;; check every 50ms, up to 500ms, whether `canceled?` is now `true`
-            (is (= true
-                   (loop [[wait & more] (repeat 10 50)]
-                     (or @canceled?
-                         (when wait
-                           (Thread/sleep (long wait))
-                           (recur more))))))))))))
+    (mt/test-helpers-set-global-values!
+      (with-redefs [streaming-response/async-cancellation-poll-interval-ms 50]
+        (with-test-driver-db!
+          (reset! canceled? false)
+          (with-start-execution-chan [start-chan]
+            (let [url           (client/build-url "dataset" nil)
+                  session-token (client/authenticate (mt/user->credentials :lucky))
+                  request       (client/build-request-map session-token
+                                                          {:database (mt/id)
+                                                           :type     "native"
+                                                           :native   {:query {:sleep 5000}}}
+                                                          nil)
+                  futur         (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
+              (is (future? futur))
+              ;; wait a little while for the query to start running -- this should usually happen fairly quickly
+              (mt/wait-for-result start-chan (u/seconds->ms 15))
+              (future-cancel futur)
+              ;; check every 50ms, up to 1000ms, whether `canceled?` is now `true`
+              (is (loop [[wait & more] (repeat 10 100)]
+                    (or @canceled?
+                        (if wait
+                          (do
+                            (Thread/sleep (long wait))
+                            (recur more))
+                          ::timed-out)))))))))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 
-(deftest preserve-bindings-test
+(deftest ^:parallel preserve-bindings-test
   (testing "Bindings established outside the `streaming-response` should be preserved inside the body"
     (with-open [os (java.io.ByteArrayOutputStream.)]
       (let [streaming-response (binding [*number-of-cans* 2]

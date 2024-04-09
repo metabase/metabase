@@ -1,12 +1,12 @@
 import { createMockMetadata } from "__support__/metadata";
+import Metric from "metabase-lib/v1/metadata/Metric";
+import Table from "metabase-lib/v1/metadata/Table";
 import { createMockMetric } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import Metric from "metabase-lib/metadata/Metric";
-import Table from "metabase-lib/metadata/Table";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

@@ -1,6 +1,9 @@
-import { SVGAttributes, useEffect, useRef, useState } from "react";
-import d3 from "d3";
+import type d3 from "d3";
+import type { SVGAttributes } from "react";
+import { useEffect, useRef, useState } from "react";
+
 import { getTextColorForBackground } from "metabase/lib/colors";
+
 import { Label } from "./PieArc.styled";
 import { getMaxLabelDimension } from "./utils";
 

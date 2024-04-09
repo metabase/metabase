@@ -1,11 +1,12 @@
-import { modal, popover, restore } from "e2e/support/helpers";
+import { modal, popover, restore, describeOSS } from "e2e/support/helpers";
 
-describe("issue 25144", () => {
+// this is only testable in OSS because EE always has models from auditv2
+describeOSS("issue 25144", { tags: "@OSS" }, () => {
   beforeEach(() => {
     restore("setup");
     cy.signInAsAdmin();
-    cy.intercept("POST", `/api/card`).as("createCard");
-    cy.intercept("PUT", `/api/card/*`).as("updateCard");
+    cy.intercept("POST", "/api/card").as("createCard");
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
 
   it("should show Saved Questions section after creating the first question (metabase#25144)", () => {
@@ -20,6 +21,7 @@ describe("issue 25144", () => {
     modal().findByLabelText("Name").clear().type("Orders question");
     modal().button("Save").click();
     cy.wait("@createCard");
+    cy.wait(100);
     modal().button("Not now").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -41,6 +43,7 @@ describe("issue 25144", () => {
     modal().findByLabelText("Name").clear().type("Orders model");
     modal().button("Save").click();
     cy.wait("@createCard");
+    cy.wait(100);
     modal().button("Not now").click();
 
     cy.findByLabelText("Move, archive, and more...").click();

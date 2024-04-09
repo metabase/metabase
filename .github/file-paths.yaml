@@ -1,16 +1,19 @@
 default: &default
   - "locales/**"
-  - "bin/**"
-
-ci: &ci
-  - ".github/**/!(*.md)"
+  - "bin/**/!(*.md)"
 
 shared_sources: &shared_sources
-  - "shared/src/**"
-  - "src/metabase/lib/**"
+  - "src/**/*.cljc"
+  - "src/**/*.cljs"
 
 shared_specs: &shared_specs
-  - "shared/test/**"
+  - "test/**/*.cljc"
+  - "test/**/*.cljs"
+
+frontend_ci: &frontend_ci
+  - ".github/actions/prepare-frontend/**"
+  - ".github/actions/prepare-backend/**"
+  - ".github/workflows/frontend.yml"
 
 frontend_sources: &frontend_sources
   - *shared_sources
@@ -20,22 +23,32 @@ frontend_sources: &frontend_sources
   - "**/tsconfig*.json"
   - "package.json"
   - "babel.config.json"
+  - ".eslintrc"
   - "postcss.config.js"
   - "webpack.config.js"
+  - "webpack.embedding-sdk.config.js"
   - "webpack.static-viz.config.js"
+  - ".nvmrc"
 
 frontend_specs: &frontend_specs
   - *shared_specs
   - "frontend/test/**"
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
-  - "jest.unit.conf.json"
+  - "jest.config.json"
   - "jest.tz.unit.conf.json"
 
 frontend_all: &frontend_all
-  - *ci
+  - *frontend_ci
   - *frontend_sources
   - *frontend_specs
+
+backend_ci: &backend_ci
+  - ".github/actions/prepare-frontend/**"
+  - ".github/actions/prepare-backend/**"
+  - ".github/actions/test-driver/**"
+  - ".github/workflows/backend.yml"
+  - ".github/workflows/drivers.yml"
 
 backend_presto_kerberos:
   - "**/presto_jdbc/**"
@@ -61,30 +74,40 @@ backend_specs: &backend_specs
 
 backend_all: &backend_all
   - *default
-  - *ci
+  - *backend_ci
   - *backend_sources
   - *backend_specs
-  - *frontend_sources # keep it here until we detect static viz changes
 
 sources: &sources
   - *shared_sources
   - *frontend_sources
   - *backend_sources
 
+e2e_ci: &e2e_ci
+  - ".github/actions/build-e2e-matrix/**"
+  - ".github/actions/prepare-frontend/**"
+  - ".github/actions/prepare-backend/**"
+  - ".github/actions/prepare-uberjar-artifact/**"
+  - ".github/actions/e2e-prepare-containers/**"
+  - ".github/actions/prepare-cypress/**"
+  - ".github/actions/run-snowplow-micro/**"
+  - ".github/workflows/e2e-tests.yml"
+
 e2e_specs: &e2e_specs
   - "**/*.cy.*.js"
+  - "**/*.cy.*.ts"
   - "e2e/runner/**"
   - "e2e/support/**"
   - "e2e/snapshot*/**"
 
 e2e_all:
   - *default
-  - *ci
-  - *e2e_specs
+  - *e2e_ci
   - *sources
+  - *e2e_specs
 
 snowplow:
-  - *ci
+  - ".github/workflows/snowplow.yml"
   - "snowplow/**"
 
 documentation:
@@ -101,10 +124,18 @@ codeql:
 
 i18n:
   - *default
-  - *ci
+  - ".github/actions/prepare-frontend/**"
+  - ".github/actions/prepare-backend/**"
+  - ".github/workflows/i18n.yml"
   - *sources
 
 visualizations:
   - "frontend/src/metabase/visualizations/**"
   - "frontend/src/metabase/static-viz/**"
   - "src/metabase/pulse/**"
+
+cljs:
+  - *shared_sources
+  - *shared_specs
+  - ".github/workflows/cljs.yml"
+  - "shadow-cljs.edn"

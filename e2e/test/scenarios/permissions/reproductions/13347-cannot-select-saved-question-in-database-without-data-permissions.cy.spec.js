@@ -1,5 +1,5 @@
-import { restore, withDatabase, startNewQuestion } from "e2e/support/helpers";
 import { USER_GROUPS } from "e2e/support/cypress_data";
+import { restore, withDatabase, startNewQuestion } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 const PG_DB_ID = 2;

@@ -1,14 +1,16 @@
 import { connect } from "react-redux";
 import _ from "underscore";
-import * as Urls from "metabase/lib/urls";
-import { isSyncInProgress } from "metabase/lib/syncing";
+
 import Tables from "metabase/entities/tables";
+import { isSyncInProgress } from "metabase/lib/syncing";
+import * as Urls from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
-import * as ML_Urls from "metabase-lib/urls";
-import { RELOAD_INTERVAL } from "../../constants";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
+import * as ML_Urls from "metabase-lib/v1/urls";
+
 import TableBrowser from "../../components/TableBrowser";
+import { RELOAD_INTERVAL } from "../../constants";
 
 const getDatabaseId = (props, { includeVirtual } = {}) => {
   const { params } = props;

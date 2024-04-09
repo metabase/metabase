@@ -1,18 +1,20 @@
-import { Fragment, useEffect } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { Fragment, useEffect } from "react";
 import { connect } from "react-redux";
+import { usePrevious } from "react-use";
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
-import { usePrevious } from "react-use";
-import { Icon } from "metabase/core/components/Icon";
 import PaginationControls from "metabase/components/PaginationControls";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-
-import User from "metabase/entities/users";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import Group from "metabase/entities/groups";
+import User from "metabase/entities/users";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { Icon } from "metabase/ui";
 
 import { USER_STATUS } from "../constants";
 import {
@@ -22,6 +24,7 @@ import {
   updateMembership,
 } from "../people";
 import { getMembershipsByUser } from "../selectors";
+
 import PeopleListRow from "./PeopleListRow";
 
 const mapStateToProps = state => ({
@@ -176,8 +179,11 @@ const PeopleList = ({
   };
 
   return (
-    <section className="pb4">
-      <table className="ContentTable border-bottom">
+    <section className={CS.pb4}>
+      <table
+        data-testid="admin-people-list-table"
+        className={cx(AdminS.ContentTable, CS.borderBottom)}
+      >
         <thead>
           <tr>
             <th>{t`Name`}</th>
@@ -219,8 +225,11 @@ const PeopleList = ({
       </table>
 
       {hasUsers && (
-        <div className="flex align-center justify-between p2">
-          <div className="text-medium text-bold">
+        <div
+          className={cx(CS.flex, CS.alignCenter, CS.justifyBetween, CS.p2)}
+          data-testid="people-list-footer"
+        >
+          <div className={cx("text-medium", CS.textBold)}>
             {ngettext(
               msgid`${total} person found`,
               `${total} people found`,
@@ -239,10 +248,20 @@ const PeopleList = ({
       )}
 
       {!hasUsers && (
-        <div className="flex flex-column align-center justify-center p4 text-medium text-centered">
-          <div className="my3">
-            <Icon name="search" className="mb1" size={32} />
-            <h3 className="text-light">{t`No results found`}</h3>
+        <div
+          className={cx(
+            CS.flex,
+            CS.flexColumn,
+            CS.alignCenter,
+            CS.justifyCenter,
+            CS.p4,
+            CS.textMedium,
+            CS.textCentered,
+          )}
+        >
+          <div className={CS.my3}>
+            <Icon name="search" className={CS.mb1} size={32} />
+            <h3 className={CS.textLight}>{t`No results found`}</h3>
           </div>
         </div>
       )}

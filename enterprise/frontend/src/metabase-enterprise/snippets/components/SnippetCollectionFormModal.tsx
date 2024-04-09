@@ -2,12 +2,10 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
-
 import type { Collection } from "metabase-types/api";
 
-import SnippetCollectionForm, {
-  SnippetCollectionFormOwnProps,
-} from "./SnippetCollectionForm";
+import type { SnippetCollectionFormOwnProps } from "./SnippetCollectionForm";
+import SnippetCollectionForm from "./SnippetCollectionForm";
 
 interface SnippetCollectionFormModalOwnProps
   extends Omit<SnippetCollectionFormOwnProps, "onCancel"> {

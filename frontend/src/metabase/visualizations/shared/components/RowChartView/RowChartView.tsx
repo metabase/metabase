@@ -1,24 +1,30 @@
-import * as React from "react";
-import { Group } from "@visx/group";
-import { AxisBottom, AxisLeft, AxisScale } from "@visx/axis";
-import { Bar } from "@visx/shape";
-import type { ScaleBand, ScaleContinuousNumeric } from "d3-scale";
-import { Text } from "@visx/text";
+import type { AxisScale } from "@visx/axis";
+import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridColumns } from "@visx/grid";
-import { scaleBand, StringLike, NumberLike } from "@visx/scale";
-import { HoveredData } from "metabase/visualizations/shared/types/events";
-import { Margin } from "metabase/visualizations/shared/types/layout";
+import { Group } from "@visx/group";
+import type { StringLike, NumberLike } from "@visx/scale";
+import { scaleBand } from "@visx/scale";
+import { Bar } from "@visx/shape";
+import { Text } from "@visx/text";
+import type { ScaleBand, ScaleContinuousNumeric } from "d3-scale";
+import * as React from "react";
+
+import type { HoveredData } from "metabase/visualizations/shared/types/events";
+import type { Margin } from "metabase/visualizations/shared/types/layout";
+
+import type { SeriesInfo } from "../../types/data";
+import type { BarData, RowChartTheme, SeriesData } from "../RowChart/types";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
-import { BarData, RowChartTheme, SeriesData } from "../RowChart/types";
+
 import { DATA_LABEL_OFFSET } from "./constants";
 import { getDataLabel } from "./utils/data-labels";
 
 export interface RowChartViewProps<TDatum> {
-  width: number;
-  height: number;
+  width?: number | null;
+  height?: number | null;
   yScale: ScaleBand<StringLike>;
   xScale: ScaleContinuousNumeric<number, number, never>;
-  seriesData: SeriesData<TDatum>[];
+  seriesData: SeriesData<TDatum, SeriesInfo>[];
   labelsFormatter: (value: NumberLike) => string;
   yTickFormatter: (value: StringLike) => string;
   xTickFormatter: (value: NumberLike) => string;
@@ -40,8 +46,14 @@ export interface RowChartViewProps<TDatum> {
   isStacked?: boolean;
   style?: React.CSSProperties;
   hoveredData?: HoveredData | null;
-  onHover?: (event: React.MouseEvent, bar: BarData<TDatum> | null) => void;
-  onClick?: (event: React.MouseEvent, bar: BarData<TDatum>) => void;
+  onHover?: (
+    event: React.MouseEvent<Element>,
+    bar: BarData<TDatum, SeriesInfo> | null,
+  ) => void;
+  onClick?: (
+    event: React.MouseEvent<Element>,
+    bar: BarData<TDatum, SeriesInfo>,
+  ) => void;
 }
 
 const RowChartView = <TDatum,>({
@@ -79,7 +91,7 @@ const RowChartView = <TDatum,>({
   const goalLineX = xScale(goal?.value ?? 0);
 
   return (
-    <svg width={width} height={height} style={style}>
+    <svg width={width ?? undefined} height={height ?? undefined} style={style}>
       <Group top={margin.top} left={margin.left}>
         <GridColumns
           scale={xScale as AxisScale<number>}

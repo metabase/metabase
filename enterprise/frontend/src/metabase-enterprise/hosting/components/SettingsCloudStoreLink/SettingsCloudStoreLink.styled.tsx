@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const Description = styled.p`
   color: ${color("text-dark")};

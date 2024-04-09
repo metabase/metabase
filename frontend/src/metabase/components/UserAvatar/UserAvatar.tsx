@@ -1,5 +1,7 @@
-import MetabaseUtils from "metabase/lib/utils";
-import { Avatar as StyledAvatar, AvatarProps } from "./UserAvatar.styled";
+import { isEmail } from "metabase/lib/utils";
+
+import type { AvatarProps } from "./UserAvatar.styled";
+import { Avatar as StyledAvatar } from "./UserAvatar.styled";
 
 interface UserAvatarProps extends AvatarProps {
   user: User;
@@ -55,7 +57,7 @@ function nameInitials(user: User | Group) {
 
 function emailInitials(user: User) {
   const email = [user.email, user.common_name].find(maybeEmail =>
-    MetabaseUtils.isEmail(maybeEmail),
+    isEmail(maybeEmail),
   );
   if (email) {
     const emailUsername = email.split("@")[0];

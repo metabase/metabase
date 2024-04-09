@@ -1,3 +1,9 @@
+import { USERS } from "e2e/support/cypress_data";
+import {
+  NO_DATA_PERSONAL_COLLECTION_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
+  NORMAL_USER_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
@@ -7,11 +13,6 @@ import {
   getCollectionActions,
   openCollectionMenu,
 } from "e2e/support/helpers";
-
-import { USERS } from "e2e/support/cypress_data";
-
-const ADMIN_PERSONAL_COLLECTION_ID = 1;
-const NODATA_PERSONAL_COLLECTION_ID = 5;
 
 describe("personal collections", () => {
   beforeEach(() => {
@@ -55,20 +56,18 @@ describe("personal collections", () => {
 
     it("should be able to view their own as well as other users' personal collections (including other admins)", () => {
       // Turn normal user into another admin
-      cy.request("PUT", "/api/user/2", {
+      cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
         is_superuser: true,
       });
 
       cy.visit("/collection/root");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Your personal collection");
+      cy.findByRole("tree").findByText("Your personal collection");
       navigationSidebar().within(() => {
         cy.icon("ellipsis").click();
       });
       popover().findByText("Other users' personal collections").click();
       cy.location("pathname").should("eq", "/collection/users");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/All personal collections/i);
+      cy.findByTestId("browsercrumbs").findByText(/All personal collections/i);
       Object.values(USERS).forEach(user => {
         const FULL_NAME = `${user.first_name} ${user.last_name}`;
         cy.findByText(FULL_NAME);
@@ -79,7 +78,6 @@ describe("personal collections", () => {
       // Let's use the API to create a sub-collection "Foo" in admin's personal collection
       cy.request("POST", "/api/collection", {
         name: "Foo",
-        color: "#ff9a9a",
         parent_id: ADMIN_PERSONAL_COLLECTION_ID,
       });
 
@@ -120,7 +118,7 @@ describe("personal collections", () => {
       // });
 
       // Go to random user's personal collection
-      cy.visit("/collection/5");
+      cy.visit(`/collection/${NO_DATA_PERSONAL_COLLECTION_ID}`);
 
       getCollectionActions().within(() => {
         cy.icon("ellipsis").should("not.exist");
@@ -130,10 +128,10 @@ describe("personal collections", () => {
     it("should be able view other users' personal sub-collections (metabase#15339)", () => {
       cy.createCollection({
         name: "Foo",
-        parent_id: NODATA_PERSONAL_COLLECTION_ID,
+        parent_id: NO_DATA_PERSONAL_COLLECTION_ID,
       });
 
-      cy.visit(`/collection/${NODATA_PERSONAL_COLLECTION_ID}`);
+      cy.visit(`/collection/${NO_DATA_PERSONAL_COLLECTION_ID}`);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Foo");
     });
@@ -183,6 +181,11 @@ describe("personal collections", () => {
 
 function addNewCollection(name) {
   openNewCollectionItemFlowFor("collection");
-  cy.findByLabelText("Name").type(name, { delay: 0 });
-  cy.button("Create").click();
+  cy.findByPlaceholderText("My new fantastic collection").type(name, {
+    delay: 0,
+  });
+
+  cy.findByTestId("new-collection-modal").then(modal => {
+    cy.findByText("Create").click();
+  });
 }

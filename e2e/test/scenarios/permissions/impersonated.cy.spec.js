@@ -1,3 +1,4 @@
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import {
   assertPermissionTable,
   createTestRoles,
@@ -12,7 +13,6 @@ import {
   runNativeQuery,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
@@ -277,7 +277,7 @@ describeEE("impersonated permission", () => {
       // Page leave confirmation should be on top
       modal()
         .as("leaveConfirmation")
-        .findByText("Discard your unsaved changes?")
+        .findByText("Discard your changes?")
         .should("be.visible");
 
       // Cancel
@@ -329,7 +329,7 @@ describeEE("impersonated permission", () => {
     });
 
     it("have limited access", () => {
-      cy.visit(`/browse/${PG_DB_ID}`);
+      cy.visit(`/browse/databases/${PG_DB_ID}`);
 
       // No access through the visual query builder
       cy.get("main").within(() => {
@@ -340,7 +340,7 @@ describeEE("impersonated permission", () => {
       });
 
       // Has access to allowed tables
-      cy.visit(`/browse/${PG_DB_ID}`);
+      cy.visit(`/browse/databases/${PG_DB_ID}`);
 
       cy.get("main").findByText("Orders").click();
       cy.findAllByTestId("header-cell").contains("Subtotal");

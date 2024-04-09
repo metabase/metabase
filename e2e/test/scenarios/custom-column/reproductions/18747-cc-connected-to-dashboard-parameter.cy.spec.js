@@ -1,6 +1,5 @@
-import { restore, popover, visitDashboard } from "e2e/support/helpers";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, popover, visitDashboard } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -69,7 +68,7 @@ function addNumberParameterToDashboard() {
 }
 
 function mapParameterToCustomColumn() {
-  cy.get(".DashCard").contains("Select…").click();
+  cy.findByTestId("dashcard-container").contains("Select…").click();
   popover().contains("Quantity_2").click({ force: true });
 }
 

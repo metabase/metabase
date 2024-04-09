@@ -5,9 +5,12 @@
  */
 
 import { createEntity } from "metabase/lib/entities";
-import { IndexedEntitySchema } from "metabase/schema";
 import { indexedEntity as indexedEntityUrl } from "metabase/lib/urls";
+import { IndexedEntitySchema } from "metabase/schema";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const IndexedEntities = createEntity({
   name: "indexedEntities",
   nameOne: "indexedEntity",

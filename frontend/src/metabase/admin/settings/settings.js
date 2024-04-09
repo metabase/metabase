@@ -4,6 +4,7 @@ import {
   handleActions,
   combineReducers,
 } from "metabase/lib/redux";
+import { refreshSiteSettings } from "metabase/redux/settings";
 import {
   SettingsApi,
   EmailApi,
@@ -12,7 +13,6 @@ import {
   GoogleApi,
   SamlApi,
 } from "metabase/services";
-import { refreshSiteSettings } from "metabase/redux/settings";
 
 // ACTION TYPES AND ACTION CREATORS
 
@@ -53,7 +53,7 @@ export const UPDATE_SETTING = "metabase/admin/settings/UPDATE_SETTING";
 export const updateSetting = createThunkAction(
   UPDATE_SETTING,
   function (setting) {
-    return async function (dispatch, getState) {
+    return async function (dispatch) {
       try {
         await SettingsApi.put(setting);
       } catch (error) {

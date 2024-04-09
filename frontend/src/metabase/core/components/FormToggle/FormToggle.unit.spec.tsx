@@ -1,7 +1,8 @@
-import { Form, Formik } from "formik";
-import * as Yup from "yup";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Form, Formik } from "formik";
+import * as Yup from "yup";
+
 import FormToggle from "./FormToggle";
 
 const TEST_SCHEMA = Yup.object({
@@ -44,8 +45,8 @@ describe("FormToggle", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormToggle onSubmit={onSubmit} />);
-    userEvent.click(screen.getByRole("switch"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByRole("switch"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       const values = { value: true };
@@ -65,8 +66,8 @@ describe("FormToggle", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormToggle initialValue={true} onSubmit={onSubmit} />);
-    userEvent.click(screen.getByRole("switch"));
-    userEvent.tab();
+    await userEvent.click(screen.getByRole("switch"));
+    await userEvent.tab();
 
     expect(await screen.findByText(": error")).toBeInTheDocument();
   });

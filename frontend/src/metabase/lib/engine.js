@@ -1,5 +1,5 @@
-import Settings from "metabase/lib/settings";
 import { formatSQL } from "metabase/lib/formatting";
+import Settings from "metabase/lib/settings";
 
 export function getDefaultEngine() {
   const engines = Object.keys(Settings.get("engines"));
@@ -27,12 +27,6 @@ export function getEngineNativeAceMode(engine) {
     case "druid":
     case "googleanalytics":
       return "ace/mode/json";
-    case "mysql":
-      return "ace/mode/mysql";
-    case "postgres":
-      return "ace/mode/pgsql";
-    case "sqlserver":
-      return "ace/mode/sqlserver";
     default:
       return "ace/mode/sql";
   }
@@ -63,6 +57,8 @@ export function getEngineLogo(engine) {
       return `${path}/presto.svg`;
     case "starburst":
       return `${path}/starburst.svg`;
+    case "materialize":
+      return `${path}/materialize.svg`;
   }
 }
 

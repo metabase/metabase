@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openTable,
@@ -5,7 +6,6 @@ import {
   changeBinningForDimension,
   summarize,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -43,7 +43,7 @@ describe("scenarios > binning > binning options", () => {
 
       cy.get("circle");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q1 - 2023");
+      cy.findByText("Q1 2023");
     });
 
     it("should work for longitude/latitude", () => {
@@ -92,7 +92,7 @@ describe("scenarios > binning > binning options", () => {
 
       cy.get("circle");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q1 - 2023");
+      cy.findByText("Q1 2023");
     });
 
     it("should work for longitude/latitude", () => {
@@ -138,7 +138,7 @@ describe("scenarios > binning > binning options", () => {
 
       cy.get("circle");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("January, 2023");
+      cy.findByText("January 2023");
     });
 
     it("should work for longitude/latitude", () => {

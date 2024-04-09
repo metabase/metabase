@@ -1,6 +1,8 @@
-import type { ComponentStory } from "@storybook/react";
 import { action } from "@storybook/addon-actions";
-import Modal from "metabase/components/Modal";
+import type { ComponentStory } from "@storybook/react";
+
+import { color } from "metabase/lib/colors";
+
 import ModalContent, { ModalContentActionIcon } from "./index";
 
 export default {
@@ -17,14 +19,22 @@ export default {
         disable: true,
       },
     },
+    onClose: { action: "onClose" },
+    onBack: { action: "onBack" },
   },
 };
 
 const Template: ComponentStory<typeof ModalContent> = args => {
   return (
-    <Modal>
+    <div
+      style={{
+        width: 1200,
+        background: color("white"),
+        border: "1px solid black",
+      }}
+    >
       <ModalContent {...args} />
-    </Modal>
+    </div>
   );
 };
 
@@ -35,6 +45,7 @@ const args = {
   children: <>Content</>,
   fullPageModal: false,
   onClose: action("onClose"),
+  onBack: undefined,
 };
 
 export const Default = Template.bind({});
@@ -50,4 +61,10 @@ WithHeaderActions.args = {
       <ModalContentActionIcon name="pencil" onClick={action("Action1")} />
     </>
   ),
+};
+
+export const WithBackButton = Template.bind({});
+WithBackButton.args = {
+  ...args,
+  onBack: action("onBack"),
 };

@@ -1,13 +1,7 @@
-import { Route } from "react-router";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { Database } from "metabase-types/api";
-import {
-  createOrdersTable,
-  createPeopleTable,
-  createReviewsTable,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import fetchMock from "fetch-mock";
+import { Route } from "react-router";
+
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
@@ -16,8 +10,16 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import type { Database } from "metabase-types/api";
+import {
+  createOrdersTable,
+  createPeopleTable,
+  createReviewsTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+
 import { getMetadataRoutes } from "../../routes";
 
 const ORDERS_TABLE = createOrdersTable();
@@ -66,7 +68,7 @@ const setup = async ({ databases = [SAMPLE_DB] }: SetupOpts = {}) => {
     { withRouter: true, initialRoute: "admin/datamodel" },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/));
+  await waitForLoaderToBeRemoved();
 };
 
 describe("MetadataTableSettings", () => {
@@ -74,18 +76,24 @@ describe("MetadataTableSettings", () => {
     it("should allow to navigate to and from table settings in a no-schema database", async () => {
       await setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
 
-      userEvent.click(screen.getByText(ORDERS_TABLE_NO_SCHEMA.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(
+        screen.getByText(ORDERS_TABLE_NO_SCHEMA.display_name),
+      );
+      await userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(SAMPLE_DB_NO_SCHEMA.name));
+      await userEvent.click(screen.getByText(SAMPLE_DB_NO_SCHEMA.name));
       expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(ORDERS_TABLE_NO_SCHEMA.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(
+        screen.getByText(ORDERS_TABLE_NO_SCHEMA.display_name),
+      );
+      await userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(ORDERS_TABLE_NO_SCHEMA.display_name));
+      await userEvent.click(
+        screen.getByText(ORDERS_TABLE_NO_SCHEMA.display_name),
+      );
       expect(
         await screen.findByDisplayValue(ORDERS_TABLE_NO_SCHEMA.display_name),
       ).toBeInTheDocument();
@@ -94,18 +102,18 @@ describe("MetadataTableSettings", () => {
     it("should allow to navigate to and from table settings in a single-schema database", async () => {
       await setup();
 
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(SAMPLE_DB.name));
+      await userEvent.click(screen.getByText(SAMPLE_DB.name));
       expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       expect(
         await screen.findByDisplayValue(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
@@ -114,31 +122,35 @@ describe("MetadataTableSettings", () => {
     it("should allow to navigate to and from table settings in a multi-schema database", async () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
-      userEvent.click(
+      await userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
+      await userEvent.click(
         await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       );
-      userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
+      await userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
       expect(await screen.findByText("2 schemas")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
+      await userEvent.click(
+        screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
+      );
+      await userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
+      await userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
       expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
 
-      userEvent.click(
+      await userEvent.click(
         await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       );
-      userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
+      await userEvent.click(
+        screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
+      );
       expect(
         await screen.findByDisplayValue(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       ).toBeInTheDocument();
@@ -149,9 +161,9 @@ describe("MetadataTableSettings", () => {
     it("should allow to rescan field values", async () => {
       await setup();
 
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
-      userEvent.click(
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(
         await screen.findByRole("button", { name: "Re-scan this table" }),
       );
 
@@ -164,9 +176,9 @@ describe("MetadataTableSettings", () => {
     it("should allow to discard field values", async () => {
       await setup();
 
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
-      userEvent.click(
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(screen.getByLabelText("Settings"));
+      await userEvent.click(
         await screen.findByRole("button", {
           name: "Discard cached field values",
         }),

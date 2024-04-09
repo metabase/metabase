@@ -1,10 +1,11 @@
 import { createMockEntitiesState } from "__support__/store";
-
-import { checkNotNull } from "metabase/core/utils/types";
-import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/lib/types";
 import * as questionActions from "metabase/questions/actions";
-
-import {
+import { getMetadata } from "metabase/selectors/metadata";
+import registerVisualizations from "metabase/visualizations/register";
+import Question from "metabase-lib/v1/Question";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type {
   Card,
   ConcreteFieldReference,
   Join,
@@ -13,7 +14,6 @@ import {
   TemplateTag,
   UnsavedCard,
 } from "metabase-types/api";
-import { QueryBuilderMode } from "metabase-types/store";
 import {
   createMockDataset,
   createMockNativeDatasetQuery,
@@ -35,25 +35,26 @@ import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
-  PRODUCTS_ID,
   PEOPLE,
   SAMPLE_DB_ID,
+  REVIEWS,
+  REVIEWS_ID,
 } from "metabase-types/api/mocks/presets";
+import type { QueryBuilderMode } from "metabase-types/store";
 import {
   createMockState,
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
 } from "metabase-types/store/mocks";
 
-import Question from "metabase-lib/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-
-import * as navigation from "../navigation";
 import * as native from "../native";
+import * as navigation from "../navigation";
 import * as querying from "../querying";
-
 import * as ui from "../ui";
+
 import { updateQuestion, UPDATE_QUESTION } from "./updateQuestion";
+
+registerVisualizations();
 
 type TestCard = Card | UnsavedCard;
 
@@ -115,7 +116,7 @@ async function setup({
   shouldStartAdHocQuestion,
 }: SetupOpts) {
   const isSavedCard = "id" in card;
-  const isModel = (card as Card).dataset;
+  const isModel = (card as Card).type === "model";
 
   const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
 
@@ -172,14 +173,14 @@ async function setup({
   return { question, dispatch, result };
 }
 
-const PRODUCTS_JOIN_CLAUSE: Join = {
+const REVIEW_JOIN_CLAUSE: Join = {
   alias: "Products",
   condition: [
     "=",
-    ["field", ORDERS.PRODUCT_ID, null],
-    ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+    ["field", ORDERS.ID, null],
+    ["field", REVIEWS.ID, { "join-alias": "Reviews" }],
   ],
-  "source-table": PRODUCTS_ID,
+  "source-table": REVIEWS_ID,
 };
 
 const PIVOT_TABLE_ORDER_CREATED_AT_FIELD: ConcreteFieldReference = [
@@ -449,8 +450,10 @@ describe("QB Actions > updateQuestion", () => {
 
         describe(questionType, () => {
           it("un-marks new ad-hoc question as model", async () => {
-            const { result } = await setup({ card: getCard() });
-            expect(result.card.dataset).toBe(false);
+            const card = getCard();
+            const { result } = await setup({ card });
+            expect(card.type).toBe("model");
+            expect(result.card.type).toBe("question");
           });
 
           it("triggers question details sidebar closing when turning model into ad-hoc question", async () => {
@@ -504,16 +507,6 @@ describe("QB Actions > updateQuestion", () => {
       const { getCard, questionType } = testCase;
 
       describe(questionType, () => {
-        it("loads metadata for the model", async () => {
-          const loadMetadataSpy = jest.spyOn(
-            questionActions,
-            "loadMetadataForCard",
-          );
-
-          await setup({ card: getCard() });
-          expect(loadMetadataSpy).toHaveBeenCalledTimes(1);
-        });
-
         it("refreshes question metadata if there's difference in dependent metadata", async () => {
           const loadMetadataSpy = jest.spyOn(
             questionActions,
@@ -530,7 +523,7 @@ describe("QB Actions > updateQuestion", () => {
               ...originalQuery,
               query: createMockStructuredQuery({
                 ...originalQuery.query,
-                joins: [PRODUCTS_JOIN_CLAUSE],
+                joins: [REVIEW_JOIN_CLAUSE],
               }),
             }),
           };
@@ -578,7 +571,7 @@ describe("QB Actions > updateQuestion", () => {
               ...originalQuery,
               query: createMockStructuredQuery({
                 ...originalQuery.query,
-                joins: [PRODUCTS_JOIN_CLAUSE],
+                joins: [REVIEW_JOIN_CLAUSE],
               }),
             }),
           };
@@ -593,15 +586,6 @@ describe("QB Actions > updateQuestion", () => {
               dataset_query: cardWithJoin.dataset_query,
             }),
           );
-        });
-
-        it("converts the question into a model if the query builder is in 'dataset' mode", async () => {
-          const { result } = await setup({
-            card: getCard(),
-            queryBuilderMode: "dataset",
-          });
-
-          expect(result.card.dataset).toBe(true);
         });
       });
     });
@@ -679,7 +663,7 @@ describe("QB Actions > updateQuestion", () => {
         ...opts,
         card: cardWithTags,
         originalCard,
-        queryBuilderMode: (card as Card).dataset ? "dataset" : "view",
+        queryBuilderMode: (card as Card).type === "model" ? "dataset" : "view",
       });
 
       return {

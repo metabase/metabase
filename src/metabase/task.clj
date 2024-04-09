@@ -16,12 +16,11 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [environ.core :as env]
    [metabase.db :as mdb]
-   [metabase.db.connection :as mdb.connection]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger TriggerKey)))
 
@@ -65,10 +64,10 @@
   (doseq [ns-symb u/metabase-namespace-symbols
           :when   (.startsWith (name ns-symb) "metabase.task.")]
     (try
-      (log/debug (trs "Loading tasks namespace:") (u/format-color 'blue ns-symb))
+      (log/debug "Loading tasks namespace:" (u/format-color 'blue ns-symb))
       (classloader/require ns-symb)
       (catch Throwable e
-        (log/error e (trs "Error loading tasks namespace {0}" ns-symb))))))
+        (log/errorf e "Error loading tasks namespace %s" ns-symb)))))
 
 (defn- init-tasks!
   "Call all implementations of `init!`"
@@ -77,11 +76,10 @@
     (try
       ;; don't bother logging namespace for now, maybe in the future if there's tasks of the same name in multiple
       ;; namespaces we can log it
-      (log/info (trs "Initializing task {0}" (u/format-color 'green (name k))) (u/emoji "📆"))
+      (log/info "Initializing task" (u/format-color 'green (name k)) (u/emoji "📆"))
       (f k)
       (catch Throwable e
-        (log/error e (trs "Error initializing task {0}" k))))))
-
+        (log/errorf e "Error initializing task %s" k)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Quartz Scheduler Connection Provider                                      |
@@ -103,7 +101,7 @@
     ;; in a perfect world we could just check whether we're creating a new Connection or not, and if using an existing
     ;; Connection, wrap it in a delegating proxy wrapper that makes `.close()` a no-op but forwards all other methods.
     ;; Now that would be a useful macro!
-    (.getConnection mdb.connection/*application-db*))
+    (.getConnection (mdb/app-db)))
   (shutdown [_]))
 
 (when-not *compile-files*
@@ -154,7 +152,7 @@
       (when (compare-and-set! *quartz-scheduler* nil new-scheduler)
         (find-and-load-task-namespaces!)
         (qs/standby new-scheduler)
-        (log/info (trs "Task scheduler initialized into standby mode."))
+        (log/info "Task scheduler initialized into standby mode.")
         (init-tasks!)))))
 
 ;;; this is a function mostly to facilitate testing.
@@ -165,10 +163,10 @@
   "Start the task scheduler. Tasks do not run before calling this function."
   []
   (if (disable-scheduler?)
-    (log/warn (trs "Metabase task scheduler disabled. Scheduled tasks will not be ran."))
+    (log/warn  "Metabase task scheduler disabled. Scheduled tasks will not be ran.")
     (do (init-scheduler!)
         (qs/start (scheduler))
-        (log/info (trs "Task scheduler started")))))
+        (log/info "Task scheduler started"))))
 
 (defn stop-scheduler!
   "Stop our Quartzite scheduler and shutdown any running executions."
@@ -182,48 +180,48 @@
 ;;; |                                           SCHEDULING/DELETING TASKS                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private reschedule-task!
-  [job :- JobDetail, new-trigger :- Trigger]
+(mu/defn ^:private reschedule-task!
+  [job :- (ms/InstanceOfClass JobDetail) new-trigger :- (ms/InstanceOfClass Trigger)]
   (try
     (when-let [scheduler (scheduler)]
-      (when-let [[^Trigger old-trigger] (seq (qs/get-triggers-of-job scheduler (.getKey job)))]
-        (log/debug (trs "Rescheduling job {0}" (-> job .getKey .getName)))
+      (when-let [[^Trigger old-trigger] (seq (qs/get-triggers-of-job scheduler (.getKey ^JobDetail job)))]
+        (log/debugf "Rescheduling job %s" (-> ^JobDetail job .getKey .getName))
         (.rescheduleJob scheduler (.getKey old-trigger) new-trigger)))
     (catch Throwable e
-      (log/error e (trs "Error rescheduling job")))))
+      (log/error e "Error rescheduling job"))))
 
-(s/defn schedule-task!
+(mu/defn schedule-task!
   "Add a given job and trigger to our scheduler."
-  [job :- JobDetail, trigger :- Trigger]
+  [job :- (ms/InstanceOfClass JobDetail) trigger :- (ms/InstanceOfClass Trigger)]
   (when-let [scheduler (scheduler)]
     (try
       (qs/schedule scheduler job trigger)
       (catch org.quartz.ObjectAlreadyExistsException _
-        (log/debug (trs "Job already exists:") (-> job .getKey .getName))
+        (log/debug "Job already exists:" (-> ^JobDetail job .getKey .getName))
         (reschedule-task! job trigger)))))
 
-(s/defn delete-task!
+(mu/defn delete-task!
   "delete a task from the scheduler"
-  [job-key :- JobKey, trigger-key :- TriggerKey]
+  [job-key :- (ms/InstanceOfClass JobKey) trigger-key :- (ms/InstanceOfClass TriggerKey)]
   (when-let [scheduler (scheduler)]
     (qs/delete-trigger scheduler trigger-key)
     (qs/delete-job scheduler job-key)))
 
-(s/defn add-job!
+(mu/defn add-job!
   "Add a job separately from a trigger, replace if the job is already there"
-  [job :- JobDetail]
+  [job :- (ms/InstanceOfClass JobDetail)]
   (when-let [scheduler (scheduler)]
     (qs/add-job scheduler job true)))
 
-(s/defn add-trigger!
+(mu/defn add-trigger!
   "Add a trigger. Assumes the trigger is already associated to a job (i.e. `trigger/for-job`)"
-  [trigger :- Trigger]
+  [trigger :- (ms/InstanceOfClass Trigger)]
   (when-let [scheduler (scheduler)]
     (qs/add-trigger scheduler trigger)))
 
-(s/defn delete-trigger!
+(mu/defn delete-trigger!
   "Remove `trigger-key` from the scheduler"
-  [trigger-key :- TriggerKey]
+  [trigger-key :- (ms/InstanceOfClass TriggerKey)]
   (when-let [scheduler (scheduler)]
     (qs/delete-trigger scheduler trigger-key)))
 
@@ -291,8 +289,10 @@
                :triggers (for [trigger (sort-by #(-> ^Trigger % .getKey .getName)
                                                 (qs/get-triggers-of-job scheduler job-key))]
                            (trigger->info trigger)))
+        (catch ClassNotFoundException _
+          (log/infof "Class not found for Quartz Job %s. This probably means that this job was removed or renamed." (.getName job-key)))
         (catch Throwable e
-          (log/warn e (trs "Error fetching details for Job: {0}" (.getName job-key))))))))
+          (log/warnf e "Error fetching details for Quartz Job: %s" (.getName job-key)))))))
 
 (defn- jobs-info []
   (->> (some-> (scheduler) (.getJobKeys nil))

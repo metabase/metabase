@@ -6,13 +6,11 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { init } from "metabase/app";
-import { getRoutes } from "metabase/routes";
-import reducers from "metabase/reducers-main";
-
 import api from "metabase/lib/api";
-
+import reducers from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { clearCurrentUser } from "metabase/redux/user";
+import { getRoutes } from "metabase/routes";
 
 // If any of these receives a 403, we should display the "not authorized" page.
 const NOT_AUTHORIZED_TRIGGERS = [

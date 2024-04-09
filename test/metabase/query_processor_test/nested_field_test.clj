@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]))
 
-(deftest filter-test
+(deftest ^:parallel filter-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested Field in FILTER"
       (mt/dataset geographical-tips
@@ -26,7 +26,7 @@
                      :order-by [[:asc $id]]
                      :limit    10})))))))))
 
-(deftest order-by-test
+(deftest ^:parallel order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested Field in ORDER-BY"
       (mt/dataset geographical-tips
@@ -66,7 +66,7 @@
                                [:= $tips.source.username "kyle"]]
                     :order-by [[:asc $tips.venue.name]]}))))))))
 
-(deftest aggregation-test
+(deftest ^:parallel aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested Field in AGGREGATION"
       (mt/dataset geographical-tips
@@ -84,7 +84,7 @@
                    (mt/run-mbql-query tips
                      {:aggregation [[:count $tips.venue.name]]})))))))))
 
-(deftest breakout-test
+(deftest ^:parallel breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested Field in BREAKOUT"
       ;; Let's see how many tips we have by source.service
@@ -109,7 +109,7 @@
                     :breakout    [$tips.source.username]
                     :limit       4}))))))))
 
-(deftest fields-test
+(deftest ^:parallel fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested Field in FIELDS"
       (mt/dataset geographical-tips
@@ -130,7 +130,7 @@
                     :order-by [[:asc $id]]
                     :limit    10}))))))))
 
-(deftest order-by-aggregation-test
+(deftest ^:parallel order-by-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested Field w/ ordering by aggregation"
       (mt/dataset geographical-tips

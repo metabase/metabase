@@ -13,7 +13,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util.match :as mbql.u.match]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
@@ -133,30 +133,36 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [indexed-order-bys (map-indexed (fn [pos [_tag _opts expr]]
-                                          [pos expr])
-                                        (order-bys query stage-number))
-         order-by-pos
-         (fn [x]
-           (some (fn [[pos existing-order-by]]
-                   (let [a-ref (lib.ref/ref x)]
-                     (when (or (lib.equality/= a-ref existing-order-by)
-                               (lib.equality/= a-ref (lib.util/with-default-effective-type existing-order-by)))
-                       pos)))
-                 indexed-order-bys))
-
-         breakouts          (not-empty (lib.breakout/breakouts-metadata query stage-number))
+   (let [breakouts          (not-empty (lib.breakout/breakouts-metadata query stage-number))
          aggregations       (not-empty (lib.aggregation/aggregations-metadata query stage-number))
          columns            (if (or breakouts aggregations)
                               (concat breakouts aggregations)
-                              (let [stage (lib.util/query-stage query stage-number)]
-                                (lib.metadata.calculation/visible-columns query stage-number stage)))]
-     (some->> (not-empty columns)
-              (into [] (comp (filter orderable-column?)
-                             (map (fn [col]
-                                    (let [pos (order-by-pos col)]
-                                      (cond-> col
-                                        pos (assoc :order-by-position pos)))))))))))
+                              (let [stage   (lib.util/query-stage query stage-number)
+                                    options {:include-implicitly-joinable-for-source-card? false}]
+                                (lib.metadata.calculation/visible-columns query stage-number stage options)))
+         columns            (filter orderable-column? columns)
+         existing-order-bys (->> (order-bys query stage-number)
+                                 (map (fn [[_tag _opts expr]]
+                                        expr)))]
+     (cond
+       (empty? columns)
+       nil
+
+       (empty? existing-order-bys)
+       (vec columns)
+
+       :else
+       (let [matching (into {}
+                            (comp (map lib.ref/ref)
+                                  (keep-indexed (fn [index an-order-by]
+                                                  (when-let [col (lib.equality/find-matching-column
+                                                                   query stage-number an-order-by columns)]
+                                                    [col index]))))
+                            existing-order-bys)]
+         (mapv #(let [pos (matching %)]
+                  (cond-> %
+                    pos (assoc :order-by-position pos)))
+               columns))))))
 
 (def ^:private opposite-direction
   {:asc :desc
@@ -167,6 +173,15 @@
   ([query :- ::lib.schema/query
     current-order-by :- ::lib.schema.order-by/order-by]
    (let [lib-uuid (lib.options/uuid current-order-by)]
-     (mbql.u.match/replace query
+     (lib.util.match/replace query
        [direction (_ :guard #(= (:lib/uuid %) lib-uuid)) _]
        (assoc &match 0 (opposite-direction direction))))))
+
+(mu/defn remove-all-order-bys :- ::lib.schema/query
+  "Remove all order bys from this stage of the query."
+  ([query]
+   (remove-all-order-bys query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.util/update-query-stage query stage-number dissoc :order-by)))

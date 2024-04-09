@@ -1,4 +1,5 @@
 *.class
+*.*.rej
 *.iml
 *.jar
 *.log
@@ -12,6 +13,7 @@
 .eastwood
 .idea/
 .nrepl-port
+.portal
 .vscode
 /*.h2.db
 /*.lock.db
@@ -25,6 +27,7 @@
 /.lein-repl-history
 /.sqlite.db
 /backend-checksums.txt
+/backend-docs
 /build.xml
 /checkouts
 /classes
@@ -32,7 +35,6 @@
 /crate-*
 /cypress
 /deploy/artifacts/*
-/docs/uberdoc.html
 /frontend/test/snapshots/*
 /e2e/snapshots/*
 /lein-plugins/*/target
@@ -49,7 +51,9 @@
 /resources/frontend_client/embed.html
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
+/resources/embedding-sdk
 /resources/i18n/*.edn
+/resources/instance_analytics.zip
 /resources/license-backend-third-party.txt
 /resources/license-frontend-third-party.txt
 /resources/namespaces.edn
@@ -65,6 +69,7 @@
 bin/node_modules/
 bin/release/aws-eb/metabase-aws-eb.zip
 coverage-summary.json
+junit.xml
 pom.xml
 pom.xml.asc
 profiles.clj
@@ -78,14 +83,31 @@ dev/src/dev/nocommit/
 /frontend/src/cljs
 /frontend/src/cljs_release
 .shadow-cljs
+.clerk
 
 # lsp: ignore all but the config file
 .lsp/*
 !.lsp/config.edn
-.clj-kondo/.cache
-*.code-workspace
+modules/drivers/*/.lsp/*
+!modules/drivers/*/.lsp/config.edn
+**/.clj-kondo/.cache
 
+# clj-kondo: ignore all except our defined config
+.clj-kondo/*
+!.clj-kondo/README.md
+!.clj-kondo/config.edn
+!.clj-kondo/hooks/
+!.clj-kondo/macros/
+
+# Editor- or environment-specific local files
+*.code-workspace
+.java-version
 .calva/
 
 # malli + clj-kondo: ignore malli-types
 .clj-kondo/metosin/malli-types-clj
+
+.github/static-viz-sources.yaml
+
+# airgap
+/resources/airgap/

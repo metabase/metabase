@@ -1,24 +1,23 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+import d3 from "d3";
 import { Component } from "react";
-
 import * as React from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
-import d3 from "d3";
-import cx from "classnames";
-
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { isNumeric } from "metabase-lib/types/utils/isa";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+
 import { GaugeArcPath } from "./Gauge.styled";
 import { getValue } from "./utils";
 
@@ -115,7 +114,7 @@ export default class Gauge extends Component {
       readDependencies: ["gauge.segments"],
     },
     "gauge.segments": {
-      section: "Display",
+      section: t`Display`,
       title: t`Gauge ranges`,
       getDefault(series) {
         let value = 100;
@@ -243,9 +242,9 @@ export default class Gauge extends Component {
     const expandWidthFactor = width / svgWidth;
 
     return (
-      <div className={cx(className, "relative")}>
+      <div className={cx(className, CS.relative)}>
         <div
-          className="absolute overflow-hidden"
+          className={cx(CS.absolute, CS.overflowHidden)}
           style={{
             width: svgWidth * expandWidthFactor,
             height: svgHeight,
@@ -363,14 +362,14 @@ const GaugeArc = ({
     .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
 
   const clicked = segment && { value: segment.min, column, settings };
-  const isClickable = clicked && visualizationIsClickable(clicked);
+  const isClickable = clicked && onVisualizationClick != null;
   const options = column && settings?.column ? settings.column(column) : {};
   const range = segment ? [segment.min, segment.max] : [];
   const value = range.map(v => formatValue(v, options)).join(" - ");
   const hovered = segment ? { data: [{ key: segment.label, value }] } : {};
 
   const handleClick = e => {
-    if (onVisualizationClick) {
+    if (onVisualizationClick && visualizationIsClickable(clicked)) {
       onVisualizationClick({ ...clicked, event: e.nativeEvent });
     }
   };
@@ -456,9 +455,9 @@ class HideIfOverlowingSVG extends React.Component {
         elementRect.top >= svgRect.top &&
         elementRect.bottom <= svgRect.bottom
       ) {
-        element.classList.remove("hidden");
+        element.classList.remove(CS.hidden);
       } else {
-        element.classList.add("hidden");
+        element.classList.add(CS.hidden);
       }
     }
   }

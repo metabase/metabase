@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   editDashboard,
@@ -6,9 +8,6 @@ import {
   visitDashboard,
   addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -54,7 +53,7 @@ describe.skip("issue 19744", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("All Options").click();
 
-    cy.get(".DashCard").contains("Select…").click();
+    cy.findByTestId("dashcard-container").contains("Select…").click();
     popover().contains("Created At");
   });
 });

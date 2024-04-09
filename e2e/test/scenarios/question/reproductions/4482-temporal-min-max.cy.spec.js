@@ -1,15 +1,19 @@
-import { restore, visualize, startNewQuestion } from "e2e/support/helpers";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, visualize, openTable } from "e2e/support/helpers";
+
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("issue 4482", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
-    startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Sample Database").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Products").click();
+    openTable({
+      table: PRODUCTS_ID,
+      mode: "notebook",
+    });
+
+    cy.findByRole("button", { name: "Summarize" }).click();
   });
 
   it("should be possible to summarize min of a temporal column (metabase#4482-1)", () => {

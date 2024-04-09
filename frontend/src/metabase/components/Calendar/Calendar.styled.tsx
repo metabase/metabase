@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { alpha, color } from "metabase/lib/colors";
 
 type CalendarDayProps = {
@@ -38,4 +39,12 @@ export const CalendarDay = styled.div<CalendarDayProps>`
       background-color: ${primaryColor};
       z-index: 1;
     `}
+`;
+
+export const CalendarIconContainer = styled.div`
+  cursor: pointer;
+
+  &:hover {
+    color: ${color("brand")};
+  }
 `;

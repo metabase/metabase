@@ -3,11 +3,42 @@
     "no-unscoped-text-selectors": 2,
     "import/no-commonjs": 0,
     "no-color-literals": 0,
-    "no-console": 0
+    "no-console": 0,
+    "@typescript-eslint/no-namespace": "off",
+    "cypress/no-async-tests": "error",
+    "quotes": ["error", "double", { "avoidEscape": true }],
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "moment",
+            "message": "Moment is deprecated, please use dayjs"
+          },
+          {
+            "name": "moment-timezone",
+            "message": "Moment is deprecated, please use dayjs"
+          },
+          {
+            // mocks/presets is for unit tests
+            "name": "metabase-types/api/mocks/presets",
+            "message": "Please use e2e/support/cypress_sample_database instead"
+          }
+        ]
+      }
+    ]
   },
   "env": {
     "cypress/globals": true,
     "node": true
   },
-  "plugins": ["cypress"]
+  "plugins": ["cypress"],
+  "overrides": [
+    {
+      "files": ["*.cy.spec.*"],
+      "rules": {
+        "no-console": "error"
+      }
+    }
+  ]
 }

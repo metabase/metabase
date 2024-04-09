@@ -1,14 +1,21 @@
 import { t, jt } from "ttag";
 
-import { Accordion, Box, Flex, Stack, Text, Title } from "metabase/ui";
-import MetabaseSettings from "metabase/lib/settings";
-
-import { Icon } from "metabase/core/components/Icon";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
-import { getSetting } from "metabase/selectors/settings";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
+import MetabaseSettings from "metabase/lib/settings";
+import { getSetting } from "metabase/selectors/settings";
+import {
+  rem,
+  Accordion,
+  Box,
+  Flex,
+  Stack,
+  Text,
+  Title,
+  Icon,
+} from "metabase/ui";
 
 export const DataPermissionsHelp = () => {
   const isAdvancedPermissionsFeatureEnabled = useSelector(
@@ -16,8 +23,8 @@ export const DataPermissionsHelp = () => {
   );
 
   return (
-    <Flex direction="column" py="1.375rem" px="1rem">
-      <Box px="0.75rem">
+    <Flex direction="column" py={rem(22)} px="1rem">
+      <Box px={rem(12)}>
         <Title order={4}>{t`Data permissions`}</Title>
         <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
       </Box>
@@ -27,7 +34,7 @@ export const DataPermissionsHelp = () => {
         defaultValue="database-level"
       >
         <Accordion.Item value="database-level">
-          <Accordion.Control>Database levels</Accordion.Control>
+          <Accordion.Control>{t`Database levels`}</Accordion.Control>
           <Accordion.Panel>
             <Stack spacing="1rem" py="1rem">
               <PermissionHelpDescription
@@ -71,7 +78,7 @@ export const DataPermissionsHelp = () => {
         </Accordion.Item>
 
         <Accordion.Item value="schema-table-level">
-          <Accordion.Control>Schema and table levels</Accordion.Control>
+          <Accordion.Control>{t`Schema and table levels`}</Accordion.Control>
           <Accordion.Panel>
             <Stack spacing="1rem" py="1rem">
               <PermissionHelpDescription
@@ -99,7 +106,7 @@ export const DataPermissionsHelp = () => {
         </Accordion.Item>
 
         <Accordion.Item value="others">
-          <Accordion.Control>Other data permissions</Accordion.Control>
+          <Accordion.Control>{t`Other data permissions`}</Accordion.Control>
           <Accordion.Panel>
             <Stack spacing="1rem" py="1rem">
               <Text>

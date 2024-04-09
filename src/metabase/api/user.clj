@@ -3,13 +3,15 @@
   (:require
    [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.ldap :as api.ldap]
    [metabase.api.session :as api.session]
+   [metabase.config :as config]
    [metabase.email.messages :as messages]
+   [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -23,26 +25,27 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.server.middleware.session :as mw.session]
-   [metabase.server.request.util :as request.u]
+   [metabase.server.request.util :as req.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
-
-(defsetting user-visibility
-  (deferred-tru "Determines what other users non-admin users are able to see. Possible values are :all , :group, or :none.")
-  :visibility   :authenticated
-  :type         :keyword
-  :default      :all)
 
 (set! *warn-on-reflection* true)
 
-(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
-                                          'metabase-enterprise.advanced-permissions.common
-                                          'metabase-enterprise.advanced-permissions.models.permissions.group-manager))
+(when config/ee-available?
+  (classloader/require 'metabase-enterprise.sandbox.api.util
+                       'metabase-enterprise.advanced-permissions.common
+                       'metabase-enterprise.advanced-permissions.models.permissions.group-manager))
+
+(defsetting user-visibility
+  (deferred-tru "Note: Sandboxed users will never see suggestions.")
+  :visibility   :authenticated
+  :feature      :email-restrict-recipients
+  :type         :keyword
+  :default      :all
+  :audit        :raw-value)
 
 (defn check-self-or-superuser
   "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -53,8 +56,15 @@
     (= user-id api/*current-user-id*)
     api/*is-superuser?*)))
 
+(defn check-not-internal-user
+  "Check that `user-id` is not the id of the Internal User."
+  [user-id]
+  {:pre [(integer? user-id)]}
+  (api/check (not= user-id config/internal-mb-user-id)
+           [400 (tru "Not able to modify the internal user")]))
+
 (defn- fetch-user [& query-criteria]
-  (apply t2/select-one (vec (cons User user/admin-or-self-visible-columns)) query-criteria))
+  (apply t2/select-one (vec (cons User user/admin-or-self-visible-columns)) :type :personal query-criteria))
 
 (defn- maybe-set-user-permissions-groups! [user-or-id new-groups-or-ids]
   (when (and new-groups-or-ids
@@ -140,18 +150,27 @@
   - with include_deactivated"
   [status query group_ids include_deactivated]
   (cond-> {}
+    true                                               (sql.helpers/where [:= :core_user.type "personal"])
     true                                               (sql.helpers/where (status-clause status include_deactivated))
+    ;; don't send the internal user
     (premium-features/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
     (some? query)                                      (sql.helpers/where (query-clause query))
     (some? group_ids)                                  (sql.helpers/right-join
                                                         :permissions_group_membership
                                                         [:= :core_user.id :permissions_group_membership.user_id])
     (some? group_ids)                                  (sql.helpers/where
-                                                        [:in :permissions_group_membership.group_id group_ids])))
+                                                        [:in :permissions_group_membership.group_id group_ids])
+    (some? mw.offset-paging/*limit*)                   (sql.helpers/limit mw.offset-paging/*limit*)
+    (some? mw.offset-paging/*offset*)                  (sql.helpers/offset mw.offset-paging/*offset*)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
-  "Fetch a list of `Users`. By default returns every active user but only active users.
+(defn- filter-clauses-without-paging
+  "Given a where clause, return a clause that can be used to count."
+  [clauses]
+  (dissoc clauses :order-by :limit :offset))
+
+(api/defendpoint GET "/"
+  "Fetch a list of `Users` for admins or group managers.
+  By default returns only active users for admins and only active users within groups that the group manager is managing for group managers.
 
    - If `status` is `deactivated`, include deactivated users only.
    - If `status` is `all`, include all users (active and inactive).
@@ -166,30 +185,57 @@
   Takes `query` for filtering on first name, last name, email.
   Also takes `group_id`, which filters on group id."
   [status query group_id include_deactivated]
-  {status                 (s/maybe s/Str)
-   query                  (s/maybe s/Str)
-   group_id               (s/maybe su/IntGreaterThanZero)
-   include_deactivated    (s/maybe su/BooleanString)}
-  (when (or status include_deactivated)
-    (validation/check-group-manager))
-  (let [include_deactivated (Boolean/parseBoolean include_deactivated)]
-    {:data   (cond-> (t2/select
-                      (vec (cons User (user-visible-columns)))
-                      (cond-> (user-clauses status query (if (some? group_id) [group_id] nil) include_deactivated)
-                        (some? group_id) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
-                        true (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-                        (some? mw.offset-paging/*limit*)  (sql.helpers/limit mw.offset-paging/*limit*)
-                        (some? mw.offset-paging/*offset*) (sql.helpers/offset mw.offset-paging/*offset*)))
-               ;; For admins also include the IDs of Users' Personal Collections
-               api/*is-superuser?*
-               (t2/hydrate :personal_collection_id)
+  {status              [:maybe :string]
+   query               [:maybe :string]
+   group_id            [:maybe ms/PositiveInt]
+   include_deactivated [:maybe ms/BooleanString]}
+  (or
+   api/*is-superuser?*
+   (if group_id
+     (validation/check-manager-of-group group_id)
+     (validation/check-group-manager)))
+  (let [include_deactivated (Boolean/parseBoolean include_deactivated)
+        group-id-clause     (when group_id [group_id])
+        clauses             (user-clauses status query group-id-clause include_deactivated)]
+    {:data (cond-> (t2/select
+                    (vec (cons User (user-visible-columns)))
+                    (cond-> clauses
+                      (and (some? group_id) group-id-clause) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
+                      true             (sql.helpers/order-by [:%lower.first_name :asc]
+                                                             [:%lower.last_name :asc]
+                                                             [:id :asc])))
+             ;; For admins also include the IDs of Users' Personal Collections
+             api/*is-superuser?*
+             (t2/hydrate :personal_collection_id)
 
-               (or api/*is-superuser?*
-                   api/*is-group-manager?*)
-               (t2/hydrate :group_ids))
-     :total  (t2/count User (user-clauses status query (if (some? group_id) [group_id] nil) include_deactivated))
+             (or api/*is-superuser?*
+                 api/*is-group-manager?*)
+             (t2/hydrate :group_ids)
+             ;; if there is a group_id clause, make sure the list is deduped in case the same user is in multiple gropus
+             group-id-clause
+             distinct)
+     :total  (-> (t2/query
+                  (merge {:select [[[:count [:distinct :core_user.id]] :count]]
+                          :from   :core_user}
+                         (filter-clauses-without-paging clauses)))
+                 first
+                 :count)
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
+
+(defn- same-groups-user-ids
+  "Return a list of all user-ids in the same group with the user with id `user-id`.
+  Ignore the All-user groups."
+  [user-id]
+  (map :user_id
+       (t2/query {:select-distinct [:permissions_group_membership.user_id]
+                  :from [:permissions_group_membership]
+                  :where [:in :permissions_group_membership.group_id
+                          ;; get all the groups ids that the current user is in
+                          {:select-distinct [:permissions_group_membership.group_id]
+                           :from  [:permissions_group_membership]
+                           :where [:and [:= :permissions_group_membership.user_id user-id]
+                                   [:not= :permissions_group_membership.group_id (:id (perms-group/all-users))]]}]})))
 
 (api/defendpoint GET "/recipients"
   "Fetch a list of `Users`. Returns only active users. Meant for non-admins unlike GET /api/user.
@@ -198,37 +244,40 @@
    - If user-visibility is :group, include only users in the same group (excluding the all users group).
    - If user-visibility is :none or the user is sandboxed, include only themselves."
   []
-  (cond
-    (or (= :all (user-visibility)) api/*is-superuser?*)
-    {:data   (t2/select
-              (vec (cons User (user-visible-columns)))
-              (cond-> (user-clauses nil nil nil nil)
-                true (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-                (some? mw.offset-paging/*limit*)  (sql.helpers/limit mw.offset-paging/*limit*)
-                (some? mw.offset-paging/*offset*) (sql.helpers/offset mw.offset-paging/*offset*)))
-     :total  (t2/count User (user-clauses nil nil nil nil))
-     :limit  mw.offset-paging/*limit*
-     :offset mw.offset-paging/*offset*}
-    (and (= :group (user-visibility)) (not (premium-features/sandboxed-or-impersonated-user?)))
-    (let [user_group_ids (map :id (:user_group_memberships
-                                   (-> (fetch-user :id api/*current-user-id*)
-                                       (t2/hydrate :user_group_memberships))))
-          data           (into #{}
-                          (t2/select
-                           (vec (cons User (user-visible-columns)))
-                           (cond-> (user-clauses nil nil (remove #{1} user_group_ids) nil)
-                             true (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-                             (some? mw.offset-paging/*limit*)  (sql.helpers/limit mw.offset-paging/*limit*)
-                             (some? mw.offset-paging/*offset*) (sql.helpers/offset mw.offset-paging/*offset*))))]
-      {:data   data
-       :total  (count data)
-       :limit  mw.offset-paging/*limit*
-       :offset mw.offset-paging/*offset*})
-    :else
-    {:data   [(fetch-user :id api/*current-user-id*)]
-     :total  1
-     :limit  mw.offset-paging/*limit*
-     :offset mw.offset-paging/*offset*}))
+  ;; defining these functions so the branching logic below can be as clear as possible
+  (letfn [(all [] (let [clauses (-> (user-clauses nil nil nil nil)
+                                    (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
+                    {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
+                     :total  (t2/count :model/User (filter-clauses-without-paging clauses))
+                     :limit  mw.offset-paging/*limit*
+                     :offset mw.offset-paging/*offset*}))
+          (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
+                                 clauses  (cond-> (user-clauses nil nil nil nil)
+                                            (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
+                                            true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
+                             {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
+                              :total  (t2/count :model/User (filter-clauses-without-paging clauses))
+                              :limit  mw.offset-paging/*limit*
+                              :offset mw.offset-paging/*offset*}))
+          (just-me [] {:data   [(fetch-user :id api/*current-user-id*)]
+                       :total  1
+                       :limit  mw.offset-paging/*limit*
+                       :offset mw.offset-paging/*offset*})]
+    (cond
+      ;; if they're sandboxed OR if they're a superuser, ignore the setting and just give them nothing or everything,
+      ;; respectively.
+      (premium-features/sandboxed-user?)
+      (just-me)
+
+      api/*is-superuser?*
+      (all)
+
+      ;; otherwise give them what the setting says on the tin
+      :else
+      (case (user-visibility)
+        :none (just-me)
+        :group (within-group)
+        :all (all)))))
 
 (defn- maybe-add-advanced-permissions
   "If `advanced-permissions` is enabled, add to `user` a permissions map."
@@ -242,7 +291,7 @@
 (defn- maybe-add-sso-source
   "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
   [{:keys [id] :as user}]
-  (if (premium-features/enable-sso?)
+  (if (premium-features/enable-any-sso?)
     (assoc user :sso_source (t2/select-one-fn :sso_source User :id id))
     user))
 
@@ -255,8 +304,8 @@
         perms-query {:where [:and
                              [:= :archived false]
                              coll-ids-filter]}]
-    (assoc user :has_question_and_dashboard (and (t2/exists? 'Card perms-query)
-                                                 (t2/exists? 'Dashboard perms-query)))))
+    (assoc user :has_question_and_dashboard (and (t2/exists? :model/Card perms-query)
+                                                 (t2/exists? :model/Dashboard perms-query)))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
@@ -277,8 +326,6 @@
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
 
-
-
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
   []
@@ -290,31 +337,30 @@
       maybe-add-sso-source
       add-custom-homepage-info))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
   [id]
+  {id ms/PositiveInt}
   (try
    (check-self-or-superuser id)
    (catch clojure.lang.ExceptionInfo _e
      (validation/check-group-manager)))
+  (check-not-internal-user id)
   (-> (api/check-404 (fetch-user :id id, :is_active true))
       (t2/hydrate :user_group_memberships)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
   [:as {{:keys [first_name last_name email user_group_memberships login_attributes] :as body} :body}]
-  {first_name             (s/maybe su/NonBlankString)
-   last_name              (s/maybe su/NonBlankString)
-   email                  su/Email
-   user_group_memberships (s/maybe [user/UserGroupMembership])
-   login_attributes       (s/maybe user/LoginAttributes)}
+  {first_name             [:maybe ms/NonBlankString]
+   last_name              [:maybe ms/NonBlankString]
+   email                  ms/Email
+   user_group_memberships [:maybe [:sequential user/UserGroupMembership]]
+   login_attributes       [:maybe user/LoginAttributes]}
   (api/check-superuser)
   (api/checkp (not (t2/exists? User :%lower.email (u/lower-case-en email)))
     "email" (tru "Email address already in use."))
@@ -356,26 +402,26 @@
    (= (get user name-key) new-name)
    (not sso_source)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
   Group Managers can only add/remove users from groups they are manager of."
   [id :as {{:keys [email first_name last_name user_group_memberships
                    is_superuser is_group_manager login_attributes locale] :as body} :body}]
-  {email                  (s/maybe su/Email)
-   first_name             (s/maybe su/NonBlankString)
-   last_name              (s/maybe su/NonBlankString)
-   user_group_memberships (s/maybe [user/UserGroupMembership])
-   is_superuser           (s/maybe s/Bool)
-   is_group_manager       (s/maybe s/Bool)
-   login_attributes       (s/maybe user/LoginAttributes)
-   locale                 (s/maybe su/ValidLocale)}
+  {id                     ms/PositiveInt
+   email                  [:maybe ms/Email]
+   first_name             [:maybe ms/NonBlankString]
+   last_name              [:maybe ms/NonBlankString]
+   user_group_memberships [:maybe [:sequential user/UserGroupMembership]]
+   is_superuser           [:maybe :boolean]
+   is_group_manager       [:maybe :boolean]
+   login_attributes       [:maybe user/LoginAttributes]
+   locale                 [:maybe ms/ValidLocale]}
   (try
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
       (validation/check-group-manager)))
-
+  (check-not-internal-user id)
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
@@ -401,7 +447,10 @@
                                          api/*is-superuser?* (conj :login_attributes))
                               :non-nil (cond-> #{:email}
                                          api/*is-superuser?* (conj :is_superuser))))]
-          (t2/update! User id changes))
+          (t2/update! User id changes)
+          (events/publish-event! :event/user-update {:object (t2/select-one User :id id)
+                                                     :previous-object user-before-update
+                                                     :user-id api/*current-user-id*}))
         (maybe-update-user-personal-collection-name! user-before-update body))
       (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
@@ -424,30 +473,36 @@
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id/reactivate"
+(api/defendpoint PUT "/:id/reactivate"
   "Reactivate user at `:id`"
   [id]
+  {id ms/PositiveInt}
   (api/check-superuser)
-  (let [user (t2/select-one [User :id :is_active :sso_source] :id id)]
+  (check-not-internal-user id)
+  (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source]
+                            :type :personal
+                            :id id)]
     (api/check-404 user)
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))
       [400 {:message (tru "Not able to reactivate an active user")}])
-    (reactivate-user! user)))
-
+    (events/publish-event! :event/user-reactivated {:object user :user-id api/*current-user-id*})
+    (reactivate-user! (dissoc user [:email :first_name :last_name]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id/password"
+(api/defendpoint PUT "/:id/password"
   "Update a user's password."
   [id :as {{:keys [password old_password]} :body, :as request}]
-  {password su/ValidPassword}
+  {id       ms/PositiveInt
+   password ms/ValidPassword}
   (check-self-or-superuser id)
-  (api/let-404 [user (t2/select-one [User :id :last_login :password_salt :password], :id id, :is_active true)]
+  (api/let-404 [user (t2/select-one [User :id :last_login :password_salt :password],
+                                    :id id,
+                                    :type :personal,
+                                    :is_active true)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
@@ -457,7 +512,7 @@
     (user/set-password! id password)
     ;; after a successful password update go ahead and offer the client a new session that they can use
     (when (= id api/*current-user-id*)
-      (let [{session-uuid :id, :as session} (api.session/create-session! :password user (request.u/device-info request))
+      (let [{session-uuid :id, :as session} (api.session/create-session! :password user (req.util/device-info request))
             response                        {:success    true
                                              :session_id (str session-uuid)}]
         (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
@@ -466,12 +521,16 @@
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:id"
+(api/defendpoint DELETE "/:id"
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [id]
+  {id ms/PositiveInt}
   (api/check-superuser)
-  (api/check-500 (pos? (t2/update! User id {:is_active false})))
+  ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
+  (check-not-internal-user id)
+  (api/check-500
+   (when (pos? (t2/update! User id {:type :personal} {:is_active false}))
+     (events/publish-event! :event/user-deactivated {:object (t2/select-one User :id id) :user-id api/*current-user-id*})))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -479,18 +538,19 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id/modal/:modal"
+(api/defendpoint PUT "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [id modal]
+  {id ms/PositiveInt}
   (check-self-or-superuser id)
+  (check-not-internal-user id)
   (let [k (or (get {"qbnewb"      :is_qbnewb
                     "datasetnewb" :is_datasetnewb}
                    modal)
               (throw (ex-info (tru "Unrecognized modal: {0}" modal)
                               {:modal modal
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
-    (api/check-500 (pos? (t2/update! User id {k false}))))
+    (api/check-500 (pos? (t2/update! User id {:type :personal} {k false}))))
   {:success true})
 
 (api/defendpoint POST "/:id/send_invite"
@@ -498,7 +558,8 @@
   [id]
   {id ms/PositiveInt}
   (api/check-superuser)
-  (when-let [user (t2/select-one User :id id, :is_active true)]
+  (check-not-internal-user id)
+  (when-let [user (t2/select-one User :id id, :is_active true, :type :personal)]
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (user/form-password-reset-url reset-token) "#new")]

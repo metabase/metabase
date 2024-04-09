@@ -1,37 +1,41 @@
 /* eslint-disable react/prop-types */
-import { createRef, Component } from "react";
-import PropTypes from "prop-types";
-import { Link } from "react-router";
 import { bindActionCreators } from "@reduxjs/toolkit";
+import cx from "classnames";
+import PropTypes from "prop-types";
+import { Component, createRef } from "react";
 import { connect } from "react-redux";
+import { Link } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
+import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
+import { AdminLayout } from "metabase/components/AdminLayout";
+import { NotFound } from "metabase/components/ErrorPages";
+import SaveStatus from "metabase/components/SaveStatus";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
-import AdminLayout from "metabase/components/AdminLayout";
-import { NotFound } from "metabase/containers/ErrorPages";
-
-import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
-import ErrorBoundary from "metabase/ErrorBoundary";
-import SettingsSetting from "../../../components/SettingsSetting";
 
 import {
-  getSettings,
-  getSettingValues,
-  getDerivedSettingValues,
-  getSections,
   getActiveSection,
   getActiveSectionName,
+  getDerivedSettingValues,
   getNewVersionAvailable,
+  getSections,
+  getSettings,
+  getSettingValues,
 } from "../../../selectors";
 import {
   initializeSettings,
-  updateSetting,
   reloadSettings,
+  updateSetting,
 } from "../../../settings";
+
+import { NewVersionIndicator } from "./SettingsEditor.styled";
+import { SettingsSection } from "./SettingsSection";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -119,7 +123,13 @@ class SettingsEditor extends Component {
         }
       }
 
-      this.saveStatusRef.current.setSaved();
+      if (setting.key === "application-colors") {
+        this.saveStatusRef.current.setSaved(
+          t`Changes saved. Please refresh the page to see them`,
+        );
+      } else {
+        this.saveStatusRef.current.setSaved();
+      }
 
       const value = prepareAnalyticsValue(setting);
 
@@ -171,32 +181,24 @@ class SettingsEditor extends Component {
           saveStatusRef={this.saveStatusRef}
           elements={activeSection.settings}
           settingValues={settingValues}
-          updateSetting={this.updateSetting}
+          derivedSettingValues={derivedSettingValues}
+          updateSetting={this.updateSetting.bind(this)}
+          onChangeSetting={this.handleChangeSetting.bind(this)}
+          reloadSettings={this.props.reloadSettings}
         />
       );
-    } else {
-      return (
-        <ul>
-          {activeSection.settings
-            .filter(setting =>
-              setting.getHidden
-                ? !setting.getHidden(settingValues, derivedSettingValues)
-                : true,
-            )
-            .map((setting, index) => (
-              <SettingsSetting
-                key={setting.key}
-                setting={setting}
-                onChange={this.updateSetting.bind(this, setting)}
-                onChangeSetting={this.handleChangeSetting}
-                reloadSettings={this.props.reloadSettings}
-                autoFocus={index === 0}
-                settingValues={settingValues}
-              />
-            ))}
-        </ul>
-      );
     }
+    return (
+      <SettingsSection
+        tabs={activeSection.tabs}
+        settingElements={activeSection.settings}
+        settingValues={settingValues}
+        derivedSettingValues={derivedSettingValues}
+        updateSetting={this.updateSetting.bind(this)}
+        onChangeSetting={this.handleChangeSetting.bind(this)}
+        reloadSettings={this.props.reloadSettings}
+      />
+    );
   }
 
   renderSettingsSections() {
@@ -217,12 +219,12 @@ class SettingsEditor extends Component {
         const [sectionNamePrefix] = activeSectionName.split("/");
 
         const classes = cx(
-          "AdminList-item",
-          "flex",
-          "align-center",
-          "justify-between",
-          "no-decoration",
-          { selected: slug === sectionNamePrefix },
+          AdminS.AdminListItem,
+          CS.flex,
+          CS.alignCenter,
+          CS.noDecoration,
+          CS.justifyBetween,
+          { [AdminS.selected]: slug === sectionNamePrefix },
         );
 
         // if this is the Updates section && there is a new version then lets add a little indicator
@@ -232,17 +234,16 @@ class SettingsEditor extends Component {
           !MetabaseSettings.isHosted();
 
         const newVersionIndicator = shouldDisplayNewVersionIndicator ? (
-          <span
-            style={{ padding: "4px 8px 4px 8px" }}
-            className="bg-brand rounded text-white text-bold h6"
-          >
-            1
-          </span>
+          <NewVersionIndicator>1</NewVersionIndicator>
         ) : null;
 
         return (
           <li key={slug}>
-            <Link to={"/admin/settings/" + slug} className={classes}>
+            <Link
+              data-testid="settings-sidebar-link"
+              to={"/admin/settings/" + slug}
+              className={classes}
+            >
               <span>{section.name}</span>
               {newVersionIndicator}
             </Link>
@@ -252,8 +253,8 @@ class SettingsEditor extends Component {
     );
 
     return (
-      <aside className="MetadataEditor-table-list AdminList flex-no-shrink">
-        <ul className="AdminList-items pt1">
+      <aside className={cx(AdminS.AdminList, CS.flexNoShrink)}>
+        <ul className={CS.pt1} data-testid="admin-list-settings-items">
           <ErrorBoundary>{renderedSections}</ErrorBoundary>
         </ul>
       </aside>
@@ -262,11 +263,8 @@ class SettingsEditor extends Component {
 
   render() {
     return (
-      <AdminLayout
-        saveStatusRef={this.saveStatusRef}
-        title={t`Settings`}
-        sidebar={this.renderSettingsSections()}
-      >
+      <AdminLayout sidebar={this.renderSettingsSections()}>
+        <SaveStatus ref={this.saveStatusRef} />
         <ErrorBoundary>{this.renderSettingsPane()}</ErrorBoundary>
       </AdminLayout>
     );

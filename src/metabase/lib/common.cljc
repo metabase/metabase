@@ -5,6 +5,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema.common :as schema.common]
+   [metabase.util :as u]
    [metabase.util.malli :as mu])
   #?(:cljs (:require-macros [metabase.lib.common])))
 
@@ -40,13 +41,21 @@
   [xs]
   (mapv ->op-arg xs))
 
+(defmethod ->op-arg :dispatch-type/regex
+  [regex]
+  (u/regex->str regex))
+
 (defmethod ->op-arg :metadata/column
   [field-metadata]
   (lib.ref/ref field-metadata))
 
-(defmethod ->op-arg :metadata/metric
+(defmethod ->op-arg :metadata/legacy-metric
   [metric-def]
   (lib.ref/ref metric-def))
+
+(defmethod ->op-arg :metadata/segment
+  [segment-def]
+  (lib.ref/ref segment-def))
 
 (defmethod ->op-arg :lib/external-op
   [{:keys [operator options args] :or {options {}}}]

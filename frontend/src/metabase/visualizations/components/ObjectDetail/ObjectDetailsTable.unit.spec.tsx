@@ -1,11 +1,12 @@
 import { render, screen } from "@testing-library/react";
-import { DetailsTable } from "metabase/visualizations/components/ObjectDetail/ObjectDetailsTable";
+
 import { testDataset } from "__support__/testDataset";
+import { DetailsTable } from "metabase/visualizations/components/ObjectDetail/ObjectDetailsTable";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
-import { TYPE } from "metabase-lib/types/constants";
 
 const objectDetailCard = {
   card: {

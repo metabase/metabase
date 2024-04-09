@@ -42,7 +42,7 @@
   because it relies on [[public-settings/site-uuid]]."
   #'sql.tu.unique-prefix/unique-prefix)
 
-(defn- qualified-db-name
+(defn qualified-db-name
   "Prepend `database-name` with the [[*database-prefix-fn*]] so we don't stomp on any other jobs running at the same
   time."
   [database-name]
@@ -67,7 +67,7 @@
    ;; Snowflake JDBC driver ignores this, but we do use it in the `query-db-name` function in
    ;; `metabase.driver.snowflake`
    (when (= context :db)
-     {:db (qualified-db-name (u/lower-case-en database-name))})))
+     {:db (qualified-db-name database-name)})))
 
 ;; Snowflake requires you identify an object with db-name.schema-name.table-name
 (defmethod sql.tx/qualified-name-components :snowflake
@@ -144,12 +144,26 @@
         (delete-old-datasets!)
         (reset! deleted-old-datasets? true)))))
 
+(defn- set-current-user-timezone!
+  [timezone]
+  (sql-jdbc.execute/do-with-connection-with-options
+   :snowflake
+   (no-db-connection-spec)
+   {:write? true}
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.createStatement conn)]
+       (.execute stmt (format "ALTER USER SET TIMEZONE = '%s';" timezone))))))
+
 (defmethod tx/create-db! :snowflake
   [driver db-def & options]
   ;; qualify the DB name with the unique prefix
   (let [db-def (update db-def :database-name qualified-db-name)]
     ;; clean up any old datasets that should be deleted
     (delete-old-datsets-if-needed!)
+    ;; Snowflake by default uses America/Los_Angeles timezone. See https://docs.snowflake.com/en/sql-reference/parameters#timezone.
+    ;; We expect UTC in tests. Hence fixing [[metabase.query-processor.timezone/database-timezone-id]] (PR #36413)
+    ;; produced lot of failures. Following expression addresses that, setting timezone for the test user.
+    (set-current-user-timezone! "UTC")
     ;; now call the default impl for SQL JDBC drivers
     (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))
 
@@ -178,7 +192,7 @@
 
 (defmethod load-data/load-data! :snowflake
   [& args]
-  (apply load-data/load-data-add-ids-chunked! args))
+  (apply load-data/load-data-maybe-add-ids-chunked! args))
 
 (defmethod tx/aggregate-column-info :snowflake
   ([driver ag-type]

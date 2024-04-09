@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.public-test :as public-test]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models :refer [Card Field]]
    [metabase.models.params :as params]
    [metabase.test :as mt]
@@ -15,12 +16,12 @@
                         [:field "name" {:base-type :type/Text}] [:field "name" {:base-type :type/Text}]}]
     (testing x
       (is (= expected
-             (params/wrap-field-id-if-needed x))))))
+             (mbql.u/wrap-field-id-if-needed x))))))
 
 
 ;;; ---------------------------------------------- name_field hydration ----------------------------------------------
 
-(deftest hydrate-name-field-test
+(deftest ^:parallel hydrate-name-field-test
   (testing "make sure that we can hydrate the `name_field` property for PK Fields"
     (is (= {:name          "ID"
             :table_id      (mt/id :venues)
@@ -63,7 +64,7 @@
 
 ;;; -------------------------------------------------- param_fields --------------------------------------------------
 
-(deftest hydrate-param-fields-for-card-test
+(deftest ^:parallel hydrate-param-fields-for-card-test
   (testing "check that we can hydrate param_fields for a Card"
     (t2.with-temp/with-temp [Card card {:dataset_query
                                         {:database (mt/id)
@@ -122,8 +123,40 @@
     (testing "card->template-tag-field-clauses"
       (is (= #{[:field (mt/id :venues :id) nil]
                [:field "name" {:base-type :type/Text}]}
-             (params/card->template-tag-field-clauses card))))
+             (#'params/card->template-tag-field-clauses card))))
 
     (testing "card->template-tag-field-ids"
       (is (= #{(mt/id :venues :id)}
              (params/card->template-tag-field-ids card))))))
+
+(deftest ^:parallel get-linked-field-ids-test
+  (testing "get-linked-field-ids basic test"
+    (is (= {"foo" #{256}
+            "bar" #{267}}
+           (params/get-linked-field-ids
+            [{:parameter_mappings
+              [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
+               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}]))))
+  (testing "get-linked-field-ids multiple fields to one param test"
+    (is (= {"foo" #{256 10}
+            "bar" #{267}}
+           (params/get-linked-field-ids
+            [{:parameter_mappings
+              [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
+               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}
+             {:parameter_mappings
+              [{:parameter_id "foo" :target [:dimension [:field 10 nil]]}]}]))))
+  (testing "get-linked-field-ids-test misc fields"
+    (is (= {"1" #{1} "2" #{2} "3" #{3} "4" #{4} "5" #{5}}
+           (params/get-linked-field-ids
+            [{:parameter_mappings
+              [{:parameter_id "1" :target [:dimension [:field 1 {}]]}
+               {:parameter_id "2" :target [:dimension [:field 2 {:x true}]]}
+               {:parameter_id "wow" :target [:dimension [:field "wow" {:base-type :type/Integer}]]}
+               {:parameter_id "3" :target [:dimension [:field 3 {:source-field 1}]]}
+               {:parameter_id "4" :target [:dimension [:field 4 {:binning {:strategy :num-bins, :num-bins 1}}]]}
+               {:parameter_id "5" :target [:dimension [:field 5]]}]}]))))
+  (testing "get-linked-field-ids-test no fields"
+    (is (= {}
+           (params/get-linked-field-ids
+            [{:parameter_mappings []}])))))

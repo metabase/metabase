@@ -4,8 +4,6 @@
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.db.util :as mdb.u]
-   [metabase.models.card :refer [Card]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse-card :refer [PulseCard]]
@@ -15,10 +13,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.schema :as su]
    [methodical.core :as methodical]
-   [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (def DashboardCard
@@ -51,7 +46,7 @@
 (defmethod mi/perms-objects-set :model/DashboardCard
   [dashcard read-or-write]
   (let [card   (or (:card dashcard)
-                   (t2/select-one [Card :dataset_query] :id (u/the-id (:card_id dashcard))))
+                   (t2/select-one [:model/Card :dataset_query] :id (u/the-id (:card_id dashcard))))
         series (or (:series dashcard)
                    (series dashcard))]
     (apply set/union (mi/perms-objects-set card read-or-write) (for [series-card series]
@@ -91,37 +86,43 @@
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
 
-(mi/define-simple-hydration-method series
+(mi/define-batched-hydration-method series
   :series
   "Return the `Cards` associated as additional series on this DashboardCard."
-  [{:keys [id]}]
-  (t2/select [Card :id :name :description :display :dataset_query :visualization_settings :collection_id]
-             (merge
-               (mdb.u/join [Card :id] [DashboardCardSeries :card_id])
-               {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]
-                :where    [:= (db/qualify DashboardCardSeries :dashboardcard_id) id]})))
-
+  [dashcards]
+  (when (seq dashcards)
+    (let [dashcard-ids        (map :id dashcards)
+          dashcard-id->series (when (seq dashcard-ids)
+                                (as-> (t2/select
+                                       [:model/Card :id :name :description :display :dataset_query
+                                        :visualization_settings :collection_id :series.dashboardcard_id]
+                                       {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
+                                        :where     [:in :series.dashboardcard_id dashcard-ids]
+                                        :order-by  [[:series.position :asc]]}) series
+                                  (group-by :dashboardcard_id series)
+                                  (update-vals series #(map (fn [card] (dissoc card :dashboardcard_id)) %))))]
+      (map (fn [dashcard]
+             (assoc dashcard :series (get dashcard-id->series (:id dashcard) [])))
+           dashcards))))
 
 ;;; ---------------------------------------------------- CRUD FNS ----------------------------------------------------
 
-(s/defn retrieve-dashboard-card
+(mu/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
-  [id :- su/IntGreaterThanZero]
+  [id :- ms/PositiveInt]
   (-> (t2/select-one :model/DashboardCard :id id)
       (t2/hydrate :series)))
 
 (defn dashcard->multi-cards
-  "Return the cards which are other cards with respect to this dashboard card
-  in multiple series display for dashboard
+  "Return the cards which have been added to this dashcard using the 'add series' dashboard feature.
 
-  Dashboard (and dashboard only) has this thing where you're displaying multiple cards entirely.
+  Dashboards allow Line, Area, and Bar dashcards to have other questions (series) added to them
+  so that several Questions are displayed in a single dashcard.
 
-  This is actually completely different from the combo display,
-  which is a visualization type in visualization option.
+  It's important to know that this is different from the combo display,
+  which is its own visualization type for Questions.
 
-  This is also actually completely different from having multiple series display
-  from the visualization with same type (line bar or whatever),
-  which is a separate option in line area or bar visualization"
+  This is also different from having multiple series displayed on Line, Area, or Bar Questions."
   [dashcard]
   (mdb.query/query {:select    [:newcard.*]
                     :from      [[:report_dashboardcard :dashcard]]
@@ -152,13 +153,13 @@
       (t2/insert! DashboardCardSeries card-series))))
 
 (def ^:private DashboardCardUpdates
-  {:id                                      su/IntGreaterThanZero
-   (s/optional-key :action_id)              (s/maybe su/IntGreaterThanZero)
-   (s/optional-key :parameter_mappings)     (s/maybe [su/Map])
-   (s/optional-key :visualization_settings) (s/maybe su/Map)
+  [:map
+   [:id                                      ms/PositiveInt]
+   [:action_id              {:optional true} [:maybe ms/PositiveInt]]
+   [:parameter_mappings     {:optional true} [:maybe [:sequential :map]]]
+   [:visualization_settings {:optional true} [:maybe :map]]
    ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
-   (s/optional-key :series)                 (s/maybe [su/IntGreaterThanZero])
-   s/Keyword                                s/Any})
+   [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
 (defn- shallow-updates
   "Returns the keys in `new` that have different values than the corresponding keys in `old`"
@@ -168,41 +169,39 @@
                   (not= v (get old k)))
                 new)))
 
-(s/defn update-dashboard-card!
+(mu/defn update-dashboard-card!
   "Updates an existing DashboardCard including all DashboardCardSeries.
    `old-dashboard-card` is provided to avoid an extra DB call if there are no changes.
    Returns nil."
-  [{:keys [id action_id] :as dashboard-card} :- DashboardCardUpdates
-   old-dashboard-card                        :- DashboardCardUpdates]
+  [{dashcard-id :id :keys [series] :as dashboard-card} :- DashboardCardUpdates
+   old-dashboard-card :- DashboardCardUpdates]
   (t2/with-transaction [_conn]
-   (let [update-ks (cond-> [:action_id :row :col :size_x :size_y
-                            :parameter_mappings :visualization_settings :dashboard_tab_id]
-                    ;; Allow changing card_id for action dashcards, but not for card dashcards.
-                    ;; This is to preserve the existing behavior of questions and card_id
-                    ;; I don't know why card_id couldn't be changed for cards though.
-                     action_id (conj :card_id))
-         updates (shallow-updates (select-keys dashboard-card update-ks)
-                                  (select-keys old-dashboard-card update-ks))]
-     (when (seq updates)
-       (t2/update! :model/DashboardCard id updates))
-     (when (not= (:series dashboard-card [])
-                 (:series old-dashboard-card []))
-       (update-dashboard-cards-series! {(:id dashboard-card) (:series dashboard-card)}))
-     nil)))
+    (let [update-ks [:action_id :card_id :row :col :size_x :size_y
+                     :parameter_mappings :visualization_settings :dashboard_tab_id]
+          updates   (shallow-updates (select-keys dashboard-card update-ks)
+                                     (select-keys old-dashboard-card update-ks))]
+      (when (seq updates)
+        (t2/update! :model/DashboardCard dashcard-id updates))
+      (when (not= (:series dashboard-card [])
+                  (:series old-dashboard-card []))
+        (update-dashboard-cards-series! {dashcard-id series}))
+      nil)))
 
 (def ParamMapping
   "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
-  {:parameter_id su/NonBlankString
-   ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed
-   #_:target       #_s/Any
-   s/Keyword     s/Any})
+  [:and
+   [:map-of :keyword :any]
+   [:map
+    ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed (#40021)
+    [:parameter_id ms/NonBlankString]
+    #_[:target       :any]]])
 
 (def ^:private NewDashboardCard
-  ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys
+  ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys (#40021)
   [:map
    [:dashboard_id                            ms/PositiveInt]
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
-   ;; TODO - use ParamMapping. Breaks too many tests right now tho
+   ;; TODO - use ParamMapping. Breaks too many tests right now tho (#40021)
    [:parameter_mappings     {:optional true} [:maybe [:sequential map?]]]
    [:visualization_settings {:optional true} [:maybe map?]]
    [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
@@ -214,11 +213,11 @@
   (when (seq dashboard-cards)
     (t2/with-transaction [_conn]
       (let [dashboard-card-ids (t2/insert-returning-pks!
-                                 DashboardCard
-                                 (for [dashcard dashboard-cards]
-                                   (merge {:parameter_mappings []
-                                           :visualization_settings {}}
-                                          (dissoc dashcard :id :created_at :updated_at :entity_id :series :card :collection_authority_level))))]
+                                DashboardCard
+                                (for [dashcard dashboard-cards]
+                                  (merge {:parameter_mappings []
+                                          :visualization_settings {}}
+                                         (dissoc dashcard :id :created_at :updated_at :entity_id :series :card :collection_authority_level))))]
         ;; add series to the DashboardCard
         (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
         ;; return the full DashboardCard
@@ -367,11 +366,32 @@
 (defmethod serdes/load-xform "DashboardCard"
   [dashcard]
   (-> dashcard
+      ;; Deliberately not doing anything to :series, they get handled by load-one! below
       (dissoc :serdes/meta)
-      (update :card_id                serdes/*import-fk* 'Card)
-      (update :action_id              serdes/*import-fk* 'Action)
-      (update :dashboard_id           serdes/*import-fk* 'Dashboard)
+      (update :card_id                serdes/*import-fk* :model/Card)
+      (update :action_id              serdes/*import-fk* :model/Action)
+      (update :dashboard_id           serdes/*import-fk* :model/Dashboard)
       (update :dashboard_tab_id       serdes/*import-fk* :model/DashboardTab)
       (update :created_at             #(if (string? %) (u.date/parse %) %))
       (update :parameter_mappings     serdes/import-parameter-mappings)
       (update :visualization_settings serdes/import-visualization-settings)))
+
+(defn- dashboard-card-series-xform
+  [ingested]
+  (-> ingested
+      (update :card_id          serdes/*import-fk* :model/Card)
+      (update :dashboardcard_id serdes/*import-fk* :model/DashboardCard)))
+
+(defmethod serdes/load-one! "DashboardCard"
+  [ingested maybe-local]
+  (let [dashcard ((get-method serdes/load-one! :default) (dissoc ingested :series) maybe-local)]
+    ;; drop all existing series for this card and recreate them
+    ;; TODO: this is unnecessary, but it is simple to implement
+    (t2/delete! :model/DashboardCardSeries :dashboardcard_id (:id dashcard))
+    (doseq [[idx single-series] (map-indexed vector (:series ingested))] ;; a single series has a :card_id only
+      ;; instead of load-one! we use load-insert! here because :serdes/meta isn't necessary because no other
+      ;; entities depend on DashboardCardSeries
+      (serdes/load-insert! "DashboardCardSeries" (-> single-series
+                                                     (assoc :dashboardcard_id (:entity_id dashcard)
+                                                            :position idx)
+                                                     dashboard-card-series-xform)))))

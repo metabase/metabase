@@ -1,14 +1,15 @@
-import { checkNotNull } from "metabase/core/utils/types";
-import { Table } from "metabase-types/api";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import type { Table } from "metabase-types/api";
 import {
   createMockField,
   createMockForeignKey,
   createMockTable,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/selectors/metadata";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import ConnectedTables from "./ConnectedTables";
 
 const EMPTY_TABLE = createMockTable();
@@ -70,5 +71,30 @@ describe("ConnectedTables", () => {
 
     expect(screen.getByText("Foo")).toBeInTheDocument();
     expect(screen.getByText("Bar")).toBeInTheDocument();
+  });
+
+  it("should limit the number of connected tables to 8", () => {
+    const fks = Array.from({ length: 20 }).map((_, idx) =>
+      createMockForeignKey({
+        origin_id: idx,
+        origin: createMockField({
+          id: idx,
+          table_id: 21 + idx,
+          table: createMockTable({
+            id: 21 + idx,
+            display_name: `Bar-${idx + 1}`,
+          }),
+        }),
+      }),
+    );
+
+    setup({
+      table: {
+        ...TABLE_WITH_FKS,
+        fks,
+      },
+    });
+
+    expect(screen.getAllByText(/Bar-\d/)).toHaveLength(8);
   });
 });

@@ -1,6 +1,7 @@
-import DimensionInfo from "metabase/components/MetadataInfo/DimensionInfo";
+import { TableColumnInfo } from "metabase/components/MetadataInfo/ColumnInfo";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/v1/metadata/Field";
+
 import { PaneContent } from "./Pane.styled";
 
 interface FieldPaneProps {
@@ -18,7 +19,12 @@ const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
       onClose={onClose}
     >
       <PaneContent>
-        <DimensionInfo dimension={field.dimension()} showAllFieldValues />
+        <TableColumnInfo
+          field={field}
+          timezone={field.table?.database?.timezone}
+          showAllFieldValues
+          showFingerprintInfo
+        />
       </PaneContent>
     </SidebarContent>
   );

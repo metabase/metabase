@@ -2,13 +2,13 @@
   (:require
    [cheshire.core :as json]
    [clojure.math.combinatorics :as math.combo]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase-enterprise.search.scoring :as ee-scoring]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
-   [metabase.search.scoring :as scoring]))
+   [metabase.search.scoring :as scoring]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel verified-score-test
   (let [score #'ee-scoring/verified-score
@@ -24,12 +24,12 @@
 
 (defn- ee-score
   [search-string item]
-  (premium-features-test/with-premium-features #{:content-management}
+  (mt/with-premium-features #{:official-collections :content-verification}
     (-> (scoring/score-and-result search-string item) :score)))
 
 (defn- oss-score
   [search-string item]
-  (premium-features-test/with-premium-features #{}
+  (mt/with-premium-features #{}
     (-> (scoring/score-and-result search-string item) :score)))
 
 (deftest official-collection-tests
@@ -121,7 +121,7 @@
              (-> (scoring/top-results
                   results
                   1
-                  (map #(metabase.search.scoring/score-and-result search-string %)))
+                  (map #(scoring/score-and-result search-string %)))
                  first
                  :name))))))
 
@@ -129,3 +129,23 @@
   (test-corups ["foo" "bar"])
   (test-corups ["foo" "bar" "baz"])
   (test-corups ["foo" "bar" "baz" "quux"]))
+
+(deftest score-result-test
+  (let [score-result-names (fn [] (set (map :name (scoring/score-result {}))))]
+    (testing "does not include scores for official collection or verified if features are disabled"
+      (mt/with-premium-features #{}
+        (is (= #{}
+               (set/intersection #{"official collection score" "verified"}
+                                 (score-result-names))))))
+
+    (testing "includes official collection score if :official-collections is enabled"
+      (mt/with-premium-features #{:official-collections}
+        (is (set/subset? #{"official collection score"} (score-result-names)))))
+
+    (testing "includes verified if :content-verification is enabled"
+      (mt/with-premium-features #{:content-verification}
+        (is (set/subset? #{"verified"} (score-result-names)))))
+
+    (testing "includes both if has both features"
+      (mt/with-premium-features #{:official-collections :content-verification}
+        (is (set/subset? #{"official collection score" "verified"} (score-result-names)))))))

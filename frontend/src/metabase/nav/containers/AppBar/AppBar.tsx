@@ -1,10 +1,13 @@
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import _ from "underscore";
-import Collections from "metabase/entities/collections";
+
 import { logout } from "metabase/auth/actions";
-import { closeNavbar, getIsNavbarOpen, toggleNavbar } from "metabase/redux/app";
+import Collections from "metabase/entities/collections";
+import { closeNavbar, toggleNavbar } from "metabase/redux/app";
+import type { RouterProps } from "metabase/selectors/app";
 import {
+  getIsNavbarOpen,
   getIsCollectionPathVisible,
   getIsLogoVisible,
   getIsNavBarEnabled,
@@ -12,10 +15,10 @@ import {
   getIsProfileLinkVisible,
   getIsQuestionLineageVisible,
   getIsSearchVisible,
-  RouterProps,
 } from "metabase/selectors/app";
 import { getUser } from "metabase/selectors/user";
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
+
 import AppBar from "../../components/AppBar";
 
 const mapStateToProps = (state: State, props: RouterProps) => ({

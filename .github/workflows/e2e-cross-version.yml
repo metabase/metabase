@@ -11,6 +11,8 @@ jobs:
     strategy:
       matrix:
         version: [
+          # Major OSS upgrade
+          { source: v0.42.2, target: v0.48.7 },
           # OSS upgrade
           { source: v0.41.3.1, target: v0.42.2 },
           # EE upgrade
@@ -27,7 +29,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Set source Docker image to OSS
       run: |
         echo "DOCKER_SOURCE_IMAGE=metabase/metabase:${{ matrix.version.source }}" >> $GITHUB_ENV
@@ -86,10 +88,70 @@ jobs:
           --config-file e2e/test/scenarios/cross-version/target/shared/cross-version-target.config.js \
           --spec e2e/test/scenarios/cross-version/target/**/*.cy.spec.js
     - name: Upload Cypress Artifacts upon failure
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: failure()
       with:
         name: cypress-artifacts-${{ matrix.version.source}}-to-${{ matrix.version.target }}
         path: |
           ./cypress
         if-no-files-found: ignore
+  notify-on-failure:
+    needs: cross-version-testing
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    name: Cross-version test failure
+    runs-on: ubuntu-22.04
+    env:
+      BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
+      AUTHOR_NAME: ${{ github.event.workflow_run.head_commit.author.name }}
+    steps:
+      - name: Generate job summary
+        run: |
+          echo "# ${{ github.event.workflow_run.name }} workflow failed! :x:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "View the failed run attempt (#${{ github.event.workflow_run.run_attempt }}) using the following link:" >> $GITHUB_STEP_SUMMARY
+          echo "${{ github.event.workflow_run.html_url }}" >> $GITHUB_STEP_SUMMARY
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/Hydrogen # 18.x.x
+      - run: npm install @slack/web-api
+      - name: notify slack of failure
+        uses: actions/github-script@v7
+        with:
+          script: | # js
+            const FAILED_RUN_URL = "${{ github.event.workflow_run.html_url }}";
+            const FAILED_RUN_NAME = "${{ github.event.workflow_run.name }}";
+            const BREAKING_COMMIT = "${{ github.event.workflow_run.head_sha }}";
+            const AUTHOR = process.env.AUTHOR_NAME;
+            const BRANCH = process.env.BRANCH_NAME;
+
+            // notify slack of failure
+            const { WebClient } = require('@slack/web-api');
+            const slack = new WebClient('${{ secrets.SLACK_BOT_TOKEN }}');
+
+            await slack.chat.postMessage({
+              channel: 'engineering-ci',
+              text: 'Cross-version Tests Have Failed',
+              blocks: [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": `:broken_heart:   Cross-version tests are failing on ${BRANCH}`,
+                    "emoji": true,
+                  }
+                },
+              ],
+              attachments: [{
+                color: "#BF40BF",
+                blocks: [
+                  {
+                    "type": "section",
+                    "text": {
+                      "type": "mrkdwn",
+                      "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on the <https://github.com/metabase/metabase/commits/${BRANCH}|\`${BRANCH}\`> branch.`
+                    }
+                  },
+                ]
+              }]
+            });

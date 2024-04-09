@@ -2,37 +2,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { useMount, useUnmount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useMount, useUnmount, usePrevious } from "react-use";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Bookmark from "metabase/entities/bookmarks";
-import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
-import { getSetting } from "metabase/selectors/settings";
-
-import { closeNavbar, getIsNavbarOpen } from "metabase/redux/app";
+import favicon from "metabase/hoc/Favicon";
+import title from "metabase/hoc/Title";
+import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
+import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
+import { useForceUpdate } from "metabase/hooks/use-force-update";
+import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
+import { useWebNotification } from "metabase/hooks/use-web-notification";
+import { useSelector } from "metabase/lib/redux";
+import { closeNavbar } from "metabase/redux/app";
+import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
 import {
   getUser,
   getUserIsAdmin,
   canManageSubscriptions,
 } from "metabase/selectors/user";
 
-import { useForceUpdate } from "metabase/hooks/use-force-update";
-
-import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
-import { useWebNotification } from "metabase/hooks/use-web-notification";
-
-import title from "metabase/hoc/Title";
-import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
-import favicon from "metabase/hoc/Favicon";
-
-import useBeforeUnload from "metabase/hooks/use-before-unload";
-import { useSelector } from "metabase/lib/redux";
+import * as actions from "../actions";
 import View from "../components/view/View";
-
+import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   getCard,
   getDatabasesList,
@@ -51,13 +48,11 @@ import {
   getParameters,
   getDatabaseFields,
   getSampleDatabaseId,
-  getNativeDatabases,
   getIsRunnable,
   getIsResultDirty,
   getMode,
   getModalSnippet,
   getSnippetCollectionId,
-  getQuery,
   getQuestion,
   getOriginalQuestion,
   getQueryStartTime,
@@ -87,9 +82,9 @@ import {
   getCardAutocompleteResultsFn,
   isResultsMetadataDirty,
   getShouldShowUnsavedChangesWarning,
+  getEmbeddedParameterVisibility,
 } from "../selectors";
-import * as actions from "../actions";
-import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
+import { isNavigationAllowed } from "../utils";
 
 const timelineProps = {
   query: { include: "events" },
@@ -101,7 +96,6 @@ const mapStateToProps = (state, props) => {
     user: getUser(state, props),
     canManageSubscriptions: canManageSubscriptions(state, props),
     isAdmin: getUserIsAdmin(state, props),
-    fromUrl: props.location.query?.from,
 
     mode: getMode(state),
 
@@ -117,10 +111,8 @@ const mapStateToProps = (state, props) => {
     card: getCard(state),
     originalCard: getOriginalCard(state),
     databases: getDatabasesList(state),
-    nativeDatabases: getNativeDatabases(state),
     tables: getTables(state),
 
-    query: getQuery(state),
     metadata: getMetadata(state),
 
     timelines: getFilteredTimelines(state),
@@ -164,10 +156,6 @@ const mapStateToProps = (state, props) => {
     autocompleteResultsFn: getAutocompleteResultsFn(state),
     cardAutocompleteResultsFn: getCardAutocompleteResultsFn(state),
 
-    initialCollectionId: Collections.selectors.getInitialCollectionId(
-      state,
-      props,
-    ),
     queryStartTime: getQueryStartTime(state),
     nativeEditorCursorOffset: getNativeEditorCursorOffset(state),
     nativeEditorSelectedText: getNativeEditorSelectedText(state),
@@ -176,9 +164,11 @@ const mapStateToProps = (state, props) => {
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
-    loadingMessage: PLUGIN_SELECTORS.getLoadingMessage(state),
 
     reportTimezone: getSetting(state, "report-timezone-long"),
+
+    getEmbeddedParameterVisibility: slug =>
+      getEmbeddedParameterVisibility(state, slug),
   };
 };
 
@@ -193,9 +183,9 @@ const mapDispatchToProps = {
 function QueryBuilder(props) {
   const {
     question,
+    originalQuestion,
     location,
     params,
-    fromUrl,
     uiControls,
     isNativeEditorOpen,
     isAnySidebarOpen,
@@ -205,7 +195,6 @@ function QueryBuilder(props) {
     apiUpdateQuestion,
     updateUrl,
     locationChanged,
-    onChangeLocation,
     setUIControls,
     cancelQuery,
     isBookmarked,
@@ -216,6 +205,7 @@ function QueryBuilder(props) {
     card,
     isLoadingComplete,
     closeQB,
+    route,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -263,29 +253,55 @@ function QueryBuilder(props) {
     toggleBookmark(id);
   };
 
+  /**
+   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * prop has a chance to re-compute on re-render
+   */
+  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
+
   const handleCreate = useCallback(
     async newQuestion => {
-      const shouldBePinned = newQuestion.isDataset();
-      await apiCreateQuestion(newQuestion.setPinned(shouldBePinned));
+      const shouldBePinned = newQuestion.type() === "model";
+      const createdQuestion = await apiCreateQuestion(
+        newQuestion.setPinned(shouldBePinned),
+      );
+      await setUIControls({ isModifiedFromNotebook: false });
 
-      setRecentlySaved("created");
+      scheduleCallback(async () => {
+        await updateUrl(createdQuestion, { dirty: false });
+
+        setRecentlySaved("created");
+      });
     },
-    [apiCreateQuestion, setRecentlySaved],
+    [
+      apiCreateQuestion,
+      setRecentlySaved,
+      setUIControls,
+      updateUrl,
+      scheduleCallback,
+    ],
   );
 
   const handleSave = useCallback(
     async (updatedQuestion, { rerunQuery } = {}) => {
       await apiUpdateQuestion(updatedQuestion, { rerunQuery });
-      if (!rerunQuery) {
-        await updateUrl(updatedQuestion, { dirty: false });
-      }
-      if (fromUrl) {
-        onChangeLocation(fromUrl);
-      } else {
+      await setUIControls({ isModifiedFromNotebook: false });
+
+      scheduleCallback(async () => {
+        if (!rerunQuery) {
+          await updateUrl(updatedQuestion, { dirty: false });
+        }
+
         setRecentlySaved("updated");
-      }
+      });
     },
-    [fromUrl, apiUpdateQuestion, updateUrl, onChangeLocation, setRecentlySaved],
+    [
+      apiUpdateQuestion,
+      updateUrl,
+      setRecentlySaved,
+      setUIControls,
+      scheduleCallback,
+    ],
   );
 
   useMount(() => {
@@ -300,7 +316,6 @@ function QueryBuilder(props) {
   const shouldShowUnsavedChangesWarning = useSelector(
     getShouldShowUnsavedChangesWarning,
   );
-  useBeforeUnload(shouldShowUnsavedChangesWarning);
 
   useUnmount(() => {
     cancelQuery();
@@ -396,22 +411,41 @@ function QueryBuilder(props) {
     setIsShowingToaster(false);
   }, []);
 
+  const isNewQuestion = !originalQuestion;
+  const isLocationAllowed = useCallback(
+    location =>
+      isNavigationAllowed({
+        destination: location,
+        question,
+        isNewQuestion,
+      }),
+    [question, isNewQuestion],
+  );
+
   return (
-    <View
-      {...props}
-      modal={uiControls.modal}
-      recentlySaved={uiControls.recentlySaved}
-      onOpenModal={openModal}
-      onCloseModal={closeModal}
-      onSetRecentlySaved={setRecentlySaved}
-      onSave={handleSave}
-      onCreate={handleCreate}
-      handleResize={forceUpdateDebounced}
-      toggleBookmark={onClickBookmark}
-      onDismissToast={onDismissToast}
-      onConfirmToast={onConfirmToast}
-      isShowingToaster={isShowingToaster}
-    />
+    <>
+      <View
+        {...props}
+        modal={uiControls.modal}
+        recentlySaved={uiControls.recentlySaved}
+        onOpenModal={openModal}
+        onCloseModal={closeModal}
+        onSetRecentlySaved={setRecentlySaved}
+        onSave={handleSave}
+        onCreate={handleCreate}
+        handleResize={forceUpdateDebounced}
+        toggleBookmark={onClickBookmark}
+        onDismissToast={onDismissToast}
+        onConfirmToast={onConfirmToast}
+        isShowingToaster={isShowingToaster}
+      />
+
+      <LeaveConfirmationModal
+        isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
+        isLocationAllowed={isLocationAllowed}
+        route={route}
+      />
+    </>
   );
 }
 

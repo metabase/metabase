@@ -1,11 +1,6 @@
-import {
-  forwardRef,
-  HTMLAttributes,
-  ReactNode,
-  Ref,
-  useCallback,
-  useState,
-} from "react";
+import type { HTMLAttributes, ReactNode, Ref } from "react";
+import { forwardRef, useCallback, useState } from "react";
+
 import {
   SwapperDefaultElement,
   SwapperLayeredElement,

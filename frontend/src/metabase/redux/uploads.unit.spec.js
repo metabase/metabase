@@ -2,10 +2,10 @@ import fetchMock from "fetch-mock";
 
 import {
   uploadFile,
-  UPLOAD_FILE_TO_COLLECTION_CLEAR,
-  UPLOAD_FILE_TO_COLLECTION_END,
-  UPLOAD_FILE_TO_COLLECTION_ERROR,
-  UPLOAD_FILE_TO_COLLECTION_START,
+  UPLOAD_FILE_CLEAR,
+  UPLOAD_FILE_END,
+  UPLOAD_FILE_ERROR,
+  UPLOAD_FILE_START,
   MAX_UPLOAD_STRING,
 } from "./uploads";
 
@@ -16,6 +16,28 @@ const NOTIFICATION_DELAY = 9000;
 const mockUploadCSV = (valid = true) => {
   fetchMock.post(
     "path:/api/card/from-csv",
+    valid
+      ? "3"
+      : {
+          throws: { data: { message: "It's dead Jim" } },
+        },
+  );
+};
+
+const mockAppendCSV = (valid = true) => {
+  fetchMock.post(
+    "glob:*/api/table/*/append-csv",
+    valid
+      ? "3"
+      : {
+          throws: { data: { message: "It's dead Jim" } },
+        },
+  );
+};
+
+const mockReplaceCSV = (valid = true) => {
+  fetchMock.post(
+    "glob:*/api/table/*/replace-csv",
     valid
       ? "3"
       : {
@@ -47,11 +69,13 @@ describe("csv uploads", () => {
     it("should handle file upload success", async () => {
       mockUploadCSV();
 
-      await uploadFile(file, "root")(dispatch);
+      await uploadFile({ file, collectionId: "root", uploadMode: "create" })(
+        dispatch,
+      );
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({
-        type: UPLOAD_FILE_TO_COLLECTION_START,
+        type: UPLOAD_FILE_START,
         payload: {
           id: now,
           name: "test.csv",
@@ -60,15 +84,80 @@ describe("csv uploads", () => {
       });
 
       expect(dispatch).toHaveBeenCalledWith({
-        type: UPLOAD_FILE_TO_COLLECTION_END,
+        type: UPLOAD_FILE_END,
         payload: {
           id: now,
+          uploadMode: "create",
           modelId: 3,
         },
       });
 
       expect(dispatch).toHaveBeenCalledWith({
-        type: UPLOAD_FILE_TO_COLLECTION_CLEAR,
+        type: UPLOAD_FILE_CLEAR,
+        payload: {
+          id: now,
+        },
+      });
+    });
+
+    it("should handle file append success", async () => {
+      mockAppendCSV();
+
+      await uploadFile({ file, tableId: 123, uploadMode: "append" })(dispatch);
+      jest.advanceTimersByTime(NOTIFICATION_DELAY);
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: UPLOAD_FILE_START,
+        payload: {
+          id: now,
+          name: "test.csv",
+          tableId: 123,
+        },
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: UPLOAD_FILE_END,
+        payload: {
+          id: now,
+          modelId: 3,
+          uploadMode: "append",
+        },
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: UPLOAD_FILE_CLEAR,
+        payload: {
+          id: now,
+        },
+      });
+    });
+
+    it("should handle file replace success", async () => {
+      mockReplaceCSV();
+
+      await uploadFile({ file, tableId: 123, uploadMode: "replace" })(dispatch);
+      jest.advanceTimersByTime(NOTIFICATION_DELAY);
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: UPLOAD_FILE_START,
+        payload: {
+          id: now,
+          name: "test.csv",
+          tableId: 123,
+        },
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: UPLOAD_FILE_END,
+        payload: {
+          id: now,
+          modelId: 3,
+          uploadMode: "replace",
+        },
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: UPLOAD_FILE_CLEAR,
         payload: {
           id: now,
         },
@@ -78,11 +167,13 @@ describe("csv uploads", () => {
     it("should handle file upload error", async () => {
       mockUploadCSV(false);
 
-      await uploadFile(file, "root")(dispatch);
+      await uploadFile({ file, collectionId: "root", uploadMode: "create" })(
+        dispatch,
+      );
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({
-        type: UPLOAD_FILE_TO_COLLECTION_START,
+        type: UPLOAD_FILE_START,
         payload: {
           id: now,
           name: "test.csv",
@@ -91,10 +182,9 @@ describe("csv uploads", () => {
       });
 
       expect(dispatch).toHaveBeenCalledWith({
-        type: UPLOAD_FILE_TO_COLLECTION_ERROR,
+        type: UPLOAD_FILE_ERROR,
         payload: {
           id: now,
-          message: "There was an error uploading the file",
           error: "It's dead Jim",
         },
       });
@@ -103,11 +193,15 @@ describe("csv uploads", () => {
     it("Error on oversized files", async () => {
       const bigFile = new File([""], "test.csv");
       Object.defineProperty(bigFile, "size", { value: 200 * 1024 * 1024 + 1 });
-      await uploadFile(bigFile, "root")(dispatch);
+      await uploadFile({
+        file: bigFile,
+        collectionId: "root",
+        uploadMode: "create",
+      })(dispatch);
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({
-        type: UPLOAD_FILE_TO_COLLECTION_START,
+        type: UPLOAD_FILE_START,
         payload: {
           id: now,
           name: "test.csv",
@@ -116,7 +210,7 @@ describe("csv uploads", () => {
       });
 
       expect(dispatch).toHaveBeenCalledWith({
-        type: UPLOAD_FILE_TO_COLLECTION_ERROR,
+        type: UPLOAD_FILE_ERROR,
         payload: {
           id: now,
           message: `You cannot upload files larger than ${MAX_UPLOAD_STRING} MB`,

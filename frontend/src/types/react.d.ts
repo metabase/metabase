@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 
 declare module "react" {
   // to make forwardRef work with generic function components

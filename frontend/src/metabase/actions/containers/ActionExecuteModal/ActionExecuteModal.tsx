@@ -1,62 +1,107 @@
+import type { FormikHelpers } from "formik";
 import { useCallback } from "react";
-import { connect } from "react-redux";
-import _ from "underscore";
-import Actions from "metabase/entities/actions";
+
+import { useActionQuery } from "metabase/common/hooks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
-import {
-  ActionFormSubmitResult,
+import { useDispatch } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
+import type {
   ParametersForActionExecution,
-  WritebackAction,
   WritebackActionId,
 } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import { executeAction, ExecuteActionOpts } from "../../actions";
+
+import { executeAction } from "../../actions";
+import { useActionInitialValues } from "../../hooks/use-action-initial-values";
 import ActionParametersInputForm from "../ActionParametersInputForm";
 
-interface OwnProps {
-  actionId: WritebackActionId;
-  onSubmit: (opts: ExecuteActionOpts) => Promise<ActionFormSubmitResult>;
+export interface ActionExecuteModalProps {
+  actionId: WritebackActionId | undefined;
+  initialValues?: ParametersForActionExecution;
+  fetchInitialValues?: () => Promise<ParametersForActionExecution>;
+  shouldPrefetch?: boolean;
   onClose?: () => void;
+  onSuccess?: () => void;
 }
 
-interface ActionLoaderProps {
-  action: WritebackAction;
-}
-
-type ActionExecuteModalProps = OwnProps & ActionLoaderProps;
-
-const mapDispatchToProps = {
-  onSubmit: executeAction,
-};
-
-const ActionExecuteModal = ({
-  action,
-  onSubmit,
+export const ActionExecuteModal = ({
+  actionId,
+  initialValues: initialValuesProp,
+  fetchInitialValues,
+  shouldPrefetch,
   onClose,
+  onSuccess,
 }: ActionExecuteModalProps) => {
+  const dispatch = useDispatch();
+
+  const {
+    error: errorAction,
+    isLoading: isLoadingAction,
+    data: action,
+  } = useActionQuery({ id: actionId });
+
+  const {
+    error: errorInitialValues,
+    hasPrefetchedValues,
+    initialValues,
+    isLoading: isLoadingInitialValues,
+    prefetchValues,
+  } = useActionInitialValues({
+    fetchInitialValues,
+    initialValues: initialValuesProp,
+    shouldPrefetch,
+  });
+
   const handleSubmit = useCallback(
     (parameters: ParametersForActionExecution) => {
-      return onSubmit({ action, parameters });
+      return dispatch(
+        executeAction({
+          action: checkNotNull(action),
+          parameters,
+        }),
+      );
     },
-    [action, onSubmit],
+    [dispatch, action],
   );
 
+  const handleSubmitSuccess = useCallback(
+    (actions: FormikHelpers<ParametersForActionExecution>) => {
+      onClose?.();
+      onSuccess?.();
+
+      if (shouldPrefetch) {
+        prefetchValues();
+      } else {
+        actions.resetForm();
+      }
+    },
+    [onClose, onSuccess, shouldPrefetch, prefetchValues],
+  );
+
+  const error = errorAction || errorInitialValues;
+  const isLoading =
+    isLoadingAction || (isLoadingInitialValues && !hasPrefetchedValues);
+
+  if (error || isLoading) {
+    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  }
+
+  const loadedAction = checkNotNull(action);
+
   return (
-    <ModalContent title={action.name} onClose={onClose}>
+    <ModalContent
+      data-testid="action-execute-modal"
+      title={loadedAction.name}
+      onClose={onClose}
+    >
       <ActionParametersInputForm
-        action={action}
+        action={loadedAction}
+        initialValues={initialValues}
+        prefetchesInitialValues
         onCancel={onClose}
         onSubmit={handleSubmit}
-        onSubmitSuccess={onClose}
+        onSubmitSuccess={handleSubmitSuccess}
       />
     </ModalContent>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Actions.load({
-    id: (state: State, props: OwnProps) => props.actionId,
-  }),
-  connect(null, mapDispatchToProps),
-)(ActionExecuteModal);

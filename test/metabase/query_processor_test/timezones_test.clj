@@ -3,16 +3,14 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models :refer [Field Table]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honeysql-extensions :as hx]
-   [toucan2.core :as t2]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 ;; TIMEZONE FIXME
 (def broken-drivers
@@ -43,7 +41,7 @@
 
 ;; TODO - we should also do similar tests for timezone-unaware columns
 (deftest result-rows-test
-  (mt/dataset test-data-with-timezones
+  (mt/dataset tz-test-data
     (mt/test-drivers (timezone-aware-column-drivers)
       (is (= [[12 "2014-07-03T01:30:00Z"]
               [10 "2014-07-03T19:30:00Z"]]
@@ -67,7 +65,7 @@
               (format "There should be %d checkins on July 3rd in the %s timezone" (count expected-rows) timezone)))))))
 
 (deftest filter-test
-  (mt/dataset test-data-with-timezones
+  (mt/dataset tz-test-data
     (mt/test-drivers (set-timezone-drivers)
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00-07:00"]]
@@ -99,13 +97,10 @@
                    "same as specifying UTC for a report timezone")))))))
 
 (defn- table-identifier [table-key]
-  (let [table-name (t2/select-one-fn :name Table, :id (mt/id table-key))]
-    (apply hx/identifier :table (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) table-name))))
+  (apply h2x/identifier :table (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) (name table-key))))
 
 (defn- field-identifier [table-key field-key]
-  (let [table-name (t2/select-one-fn :name Table, :id (mt/id table-key))
-        field-name (t2/select-one-fn :name Field, :id (mt/id table-key field-key))]
-    (apply hx/identifier :field (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) table-name field-name))))
+  (apply h2x/identifier :field (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) (name table-key) (name field-key))))
 
 (defn- honeysql->sql [honeysql]
   (first (sql.qp/format-honeysql driver/*driver* honeysql)))
@@ -114,57 +109,59 @@
   "Map with different types of native params queries, used in test below. Key is a description of the type of native
   params in the query."
   []
-  (sql.qp/with-driver-honey-sql-version driver/*driver*
-    {"variable w/ single date"
-     {:native     {:query         (honeysql->sql
-                                   {:select   (mapv #(sql.qp/maybe-wrap-unaliased-expr (field-identifier :users %))
-                                                    [:id :name :last_login])
-                                    :from     [(sql.qp/maybe-wrap-unaliased-expr (table-identifier :users))]
-                                    :where    [:between
-                                               (field-identifier :users :last_login)
-                                               (hx/raw "{{date1}}")
-                                               (hx/raw "{{date2}}")]
-                                    :order-by [[(field-identifier :users :id) :asc]]})
-                   :template-tags {:date1 {:name "date1" :display_name "Date1" :type "date"}
-                                   :date2 {:name "date2" :display_name "Date2" :type "date"}}}
-      :parameters [{:type   "date/single"
-                    :target ["variable" ["template-tag" "date1"]]
-                    :value  "2014-08-02T02:00:00.000000"}
-                   {:type   "date/single"
-                    :target ["variable" ["template-tag" "date2"]]
-                    :value  "2014-08-02T06:00:00.000000"}]}
+  {"variable w/ single date"
+   {:native     {:query         (honeysql->sql
+                                 {:select   (mapv (fn [field-name]
+                                                    [(field-identifier :users field-name)])
+                                                  [:id :name :last_login])
+                                  :from     [[(table-identifier :users)]]
+                                  :where    [:between
+                                             (field-identifier :users :last_login)
+                                             [:raw "{{date1}}"]
+                                             [:raw "{{date2}}"]]
+                                  :order-by [[(field-identifier :users :id) :asc]]})
+                 :template-tags {:date1 {:name "date1" :display_name "Date1" :type "date"}
+                                 :date2 {:name "date2" :display_name "Date2" :type "date"}}}
+    :parameters [{:type   "date/single"
+                  :target ["variable" ["template-tag" "date1"]]
+                  :value  "2014-08-02T02:00:00.000000"}
+                 {:type   "date/single"
+                  :target ["variable" ["template-tag" "date2"]]
+                  :value  "2014-08-02T06:00:00.000000"}]}
 
-     "field filter w/ date range"
-     {:native     {:query         (honeysql->sql
-                                   {:select   (mapv #(sql.qp/maybe-wrap-unaliased-expr (field-identifier :users %))
-                                                    [:id :name :last_login])
-                                    :from     [(sql.qp/maybe-wrap-unaliased-expr (table-identifier :users))]
-                                    :where    (hx/raw "{{ts_range}}")
-                                    :order-by [[(field-identifier :users :id) :asc]]})
-                   :template-tags {:ts_range {:name         "ts_range"
-                                              :display_name "Timestamp Range"
-                                              :type         "dimension"
-                                              :widget-type  :date/all-options
-                                              :dimension    [:field (mt/id :users :last_login) nil]}}}
-      :parameters [{:type   "date/range"
-                    :target ["dimension" ["template-tag" "ts_range"]]
-                    :value  "2014-08-02~2014-08-03"}]}
+   "field filter w/ date range"
+   {:native     {:query         (honeysql->sql
+                                 {:select   (mapv (fn [field-name]
+                                                    [(field-identifier :users field-name)])
+                                                  [:id :name :last_login])
+                                  :from     [[(table-identifier :users)]]
+                                  :where    [:raw "{{ts_range}}"]
+                                  :order-by [[(field-identifier :users :id) :asc]]})
+                 :template-tags {:ts_range {:name         "ts_range"
+                                            :display_name "Timestamp Range"
+                                            :type         "dimension"
+                                            :widget-type  :date/all-options
+                                            :dimension    [:field (mt/id :users :last_login) nil]}}}
+    :parameters [{:type   "date/range"
+                  :target ["dimension" ["template-tag" "ts_range"]]
+                  :value  "2014-08-02~2014-08-03"}]}
 
-     "field filter w/ single date"
-     {:native     {:query         (honeysql->sql
-                                   {:select   (mapv #(sql.qp/maybe-wrap-unaliased-expr (field-identifier :users %))
-                                                    [:id :name :last_login])
-                                    :from     [(sql.qp/maybe-wrap-unaliased-expr (table-identifier :users))]
-                                    :where    (hx/raw "{{just_a_date}}")
-                                    :order-by [[(field-identifier :users :id) :asc]]})
-                   :template-tags {:just_a_date {:name         "just_a_date"
-                                                 :display_name "Just A Date"
-                                                 :type         "dimension"
-                                                 :widget-type  :date/all-options
-                                                 :dimension    [:field (mt/id :users :last_login) nil]}}}
-      :parameters [{:type   "date/single"
-                    :target ["dimension" ["template-tag" "just_a_date"]]
-                    :value  "2014-08-02"}]}}))
+   "field filter w/ single date"
+   {:native     {:query         (honeysql->sql
+                                 {:select   (mapv (fn [field-name]
+                                                    [(field-identifier :users field-name)])
+                                                  [:id :name :last_login])
+                                  :from     [[(table-identifier :users)]]
+                                  :where    [:raw "{{just_a_date}}"]
+                                  :order-by [[(field-identifier :users :id) :asc]]})
+                 :template-tags {:just_a_date {:name         "just_a_date"
+                                               :display_name "Just A Date"
+                                               :type         "dimension"
+                                               :widget-type  :date/all-options
+                                               :dimension    [:field (mt/id :users :last_login) nil]}}}
+    :parameters [{:type   "date/single"
+                  :target ["dimension" ["template-tag" "just_a_date"]]
+                  :value  "2014-08-02"}]}})
 
 (deftest native-sql-params-filter-test
   ;; parameters always get `date` bucketing so doing something the between stuff we do below is basically just going
@@ -173,7 +170,7 @@
                      #(isa? driver/hierarchy % :sql)
                      (set/intersection (set-timezone-drivers)
                                        (mt/normal-drivers-with-feature :native-parameters)))
-    (mt/dataset test-data-with-timezones
+    (mt/dataset tz-test-data
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (testing "Native dates should be parsed with the report timezone"
           (doseq [[params-description query] (native-params-queries)]
@@ -301,9 +298,9 @@
   (mt/test-drivers (set-timezone-drivers)
     (testing "Relative to current date"
       (let [expected-datetime (u.date/truncate (t/zoned-date-time) :second)]
-        (mt/with-temp-test-data ["relative_filter"
-                                 [{:field-name "created", :base-type :type/DateTimeWithTZ}]
-                                 [[expected-datetime]]]
+        (mt/with-temp-test-data [["relative_filter"
+                                  [{:field-name "created", :base-type :type/DateTimeWithTZ}]
+                                  [[expected-datetime]]]]
           (doseq [timezone ["UTC" "America/Los_Angeles"]]
             (mt/with-temporary-setting-values [report-timezone timezone]
               (let [query (mt/mbql-query relative_filter {:fields [$created]
@@ -325,10 +322,10 @@
   (mt/test-drivers (set-timezone-drivers)
     (testing "Relative to days since"
       (let [expected-datetime (u.date/truncate (u.date/add (t/zoned-date-time) :day -1) :second)]
-        (mt/with-temp-test-data ["relative_filter"
-                                 [{:field-name "created", :base-type :type/DateTimeWithTZ}]
-                                 [[expected-datetime]]]
-          (doseq [timezone ["UTC" "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
+        (mt/with-temp-test-data [["relative_filter"
+                                  [{:field-name "created", :base-type :type/DateTimeWithTZ}]
+                                  [[expected-datetime]]]]
+          (doseq [timezone ["UTC" "Asia/Hong_Kong" "US/Hawaii" "America/Puerto_Rico"]]
             (mt/with-temporary-setting-values [report-timezone timezone]
               (let [query (mt/mbql-query relative_filter {:fields [$created]
                                                           :filter [:time-interval $created -1 :day]})]
@@ -348,7 +345,7 @@
 (deftest filter-datetime-by-date-in-timezone-fixed-date-test
   (mt/test-drivers (set-timezone-drivers)
     (testing "Fixed date"
-      (mt/dataset test-data-with-timezones
+      (mt/dataset tz-test-data
         (let [expected-datetime #t "2014-07-03T01:30:00Z"]
           (doseq [[timezone date-filter] [["US/Pacific" "2014-07-02"]
                                           ["US/Eastern" "2014-07-02"]

@@ -101,6 +101,10 @@ Admins can view a list of all alerts and dashboard subscriptions that people hav
 
 See [Notification permissions](../../permissions/notifications.md).
 
+### Sending alerts to private Slack channels
+
+See [Sending alerts and subscriptions to private Slack channels](../../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
+
 ## Further reading
 
 - [Dashboard subscriptions](../../dashboards/subscriptions.md)

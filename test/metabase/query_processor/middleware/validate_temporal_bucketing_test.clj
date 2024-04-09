@@ -12,7 +12,7 @@
 
 (deftest validate-temporal-bucketing-test
   (mt/dataset attempted-murders
-    (mt/with-everything-store
+    (mt/with-metadata-provider (mt/id)
       (doseq [field-clause-type [:id :name]]
         (testing (format "With %s clauses" field-clause-type)
           (letfn [(query [field unit]
@@ -51,7 +51,7 @@
 (deftest unix-timestamp-test
   (testing "UNIX Timestamps should be bucketable by anything"
     (mt/dataset sad-toucan-incidents
-      (mt/with-everything-store
+      (mt/with-metadata-provider (mt/id)
         (doseq [unit [:default :hour :day]]
           (testing (format "Unit = %s" unit)
             (is (some? (validate (mt/mbql-query incidents
@@ -62,7 +62,7 @@
     (mt/dataset attempted-murders
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Unsupported temporal bucketing: You can't bucket a :type/Date Field by :minute"
+           #"Unsupported temporal bucketing: You can't bucket a :type/Date Field by :minute|Invalid output:.*should be a.*got"
            (mt/run-mbql-query attempts
              {:aggregation [[:count]]
               :filter      [:time-interval $date :last :minute]}))))))

@@ -1,5 +1,5 @@
-import { restore, popover, visualize } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, popover, visualize } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -40,6 +40,6 @@ describe("issue 18814", () => {
 
     visualize();
 
-    cy.get(".Visualization").should("contain", "2022");
+    cy.findByTestId("query-visualization-root").should("contain", "2022");
   });
 });

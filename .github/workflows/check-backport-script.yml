@@ -1,0 +1,20 @@
+name: Prevent backport.sh from being merged
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-backport-script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Check for backport.sh file
+        run: |
+          if [ -f "./backport.sh" ]; then
+            echo "backport.sh file exists. Please remove it before merging."
+            exit 1
+          else
+            echo "All good."
+          fi

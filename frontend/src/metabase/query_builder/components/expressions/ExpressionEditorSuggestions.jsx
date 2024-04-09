@@ -1,30 +1,34 @@
-import { Component, Fragment } from "react";
-import PropTypes from "prop-types";
+/* eslint-disable react/prop-types */
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { Component, Fragment } from "react";
+import _ from "underscore";
 
+import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
-
 import { isObscured } from "metabase/lib/dom";
+import { DelayGroup, Icon } from "metabase/ui";
+
 import {
   ExpressionListItem,
   ExpressionList,
   ExpressionPopover,
+  SuggestionSpanContent,
+  SuggestionSpanRoot,
+  SuggestionTitle,
+  QueryColumnInfoIcon,
 } from "./ExpressionEditorSuggestions.styled";
 
 const SuggestionSpan = ({ suggestion, isHighlighted }) => {
-  const className = cx("text-dark text-bold hover-child", {
-    "text-white bg-brand": isHighlighted,
-  });
-
   return !isHighlighted && suggestion.range ? (
-    <span className="text-medium">
+    <SuggestionSpanRoot>
       {suggestion.name.slice(0, suggestion.range[0])}
-      <span className={className}>
+      <SuggestionSpanContent isHighlighted={isHighlighted}>
         {suggestion.name.slice(suggestion.range[0], suggestion.range[1])}
-      </span>
+      </SuggestionSpanContent>
       {suggestion.name.slice(suggestion.range[1])}
-    </span>
+    </SuggestionSpanRoot>
   ) : (
     suggestion.name
   );
@@ -52,6 +56,8 @@ function colorForIcon(icon) {
 }
 export default class ExpressionEditorSuggestions extends Component {
   static propTypes = {
+    query: PropTypes.object.isRequired,
+    stageIndex: PropTypes.number.isRequired,
     suggestions: PropTypes.array,
     onSuggestionMouseDown: PropTypes.func, // signature is f(index)
     highlightedIndex: PropTypes.number.isRequired,
@@ -76,53 +82,89 @@ export default class ExpressionEditorSuggestions extends Component {
     this.props.onSuggestionMouseDown && this.props.onSuggestionMouseDown(index);
   }
 
+  createOnMouseDownHandler = _.memoize(i => {
+    return event => this.onSuggestionMouseDown(event, i);
+  });
+
   render() {
-    const { suggestions, highlightedIndex, target } = this.props;
+    const { query, stageIndex, suggestions, highlightedIndex, target } =
+      this.props;
 
     if (!suggestions.length || !target) {
       return null;
     }
 
     return (
-      <ExpressionPopover
-        placement="bottom-start"
-        sizeToFit
-        visible
-        reference={target}
-        content={
-          <ExpressionList
-            data-testid="expression-suggestions-list"
-            className="pb1"
-          >
-            {suggestions.map((suggestion, i) => {
-              const isHighlighted = i === highlightedIndex;
-              const { icon } = suggestion;
-              const { normal, highlighted } = colorForIcon(icon);
-
-              const key = `$suggstion-${i}`;
-              const listItem = (
-                <ExpressionListItem
-                  onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
-                  isHighlighted={isHighlighted}
-                  className="hover-parent hover--inherit"
-                >
-                  <Icon
-                    name={icon}
-                    color={isHighlighted ? highlighted : normal}
-                    className="mr1"
-                  />
-                  <SuggestionSpan
+      <DelayGroup>
+        <ExpressionPopover
+          placement="bottom-start"
+          sizeToFit
+          visible
+          reference={target}
+          zIndex={300}
+          content={
+            <ExpressionList
+              data-testid="expression-suggestions-list"
+              className={CS.pb1}
+            >
+              {suggestions.map((suggestion, i) => (
+                <Fragment key={`$suggestion-${i}`}>
+                  <ExpressionEditorSuggestionsListItem
+                    query={query}
+                    stageIndex={stageIndex}
                     suggestion={suggestion}
-                    isHighlighted={isHighlighted}
+                    isHighlighted={i === highlightedIndex}
+                    onMouseDownCapture={this.createOnMouseDownHandler(i)}
                   />
-                </ExpressionListItem>
-              );
-
-              return <Fragment key={key}>{listItem}</Fragment>;
-            })}
-          </ExpressionList>
-        }
-      />
+                </Fragment>
+              ))}
+            </ExpressionList>
+          }
+        />
+      </DelayGroup>
     );
   }
+}
+
+function ExpressionEditorSuggestionsListItem({
+  query,
+  stageIndex,
+  suggestion,
+  isHighlighted,
+  onMouseDownCapture,
+}) {
+  const { icon } = suggestion;
+  const { normal, highlighted } = colorForIcon(icon);
+
+  return (
+    <HoverParent>
+      <ExpressionListItem
+        onMouseDownCapture={onMouseDownCapture}
+        isHighlighted={isHighlighted}
+        className={cx(CS.hoverParent, CS.hoverInherit)}
+        data-ignore-outside-clicks
+        data-testid="expression-suggestions-list-item"
+      >
+        <Icon
+          name={icon}
+          color={isHighlighted ? highlighted : normal}
+          className={CS.mr1}
+          data-ignore-outside-clicks
+        />
+        <SuggestionTitle data-ignore-outside-clicks>
+          <SuggestionSpan
+            suggestion={suggestion}
+            isHighlighted={isHighlighted}
+            data-ignore-outside-clicks
+          />
+        </SuggestionTitle>
+        <QueryColumnInfoIcon
+          query={query}
+          stageIndex={stageIndex}
+          column={suggestion.column}
+          position="right"
+        />
+      </ExpressionListItem>
+    </HoverParent>
+  );
 }

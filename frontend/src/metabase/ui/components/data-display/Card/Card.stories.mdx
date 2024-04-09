@@ -1,0 +1,108 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Box, Card, Stack, Text } from "metabase/ui";
+
+export const args = {
+  p: "md",
+  radius: "md",
+  withBorder: false,
+};
+
+export const sampleArgs = {
+  title: "Peace",
+  description:
+    "The elm tree planted by Eleanor Bold, the judge’s daughter, fell last night.",
+};
+
+export const argTypes = {
+  p: {
+    options: ["xs", "sm", "md", "lg", "xl"],
+    control: { type: "inline-radio" },
+  },
+  radius: {
+    options: ["xs", "sm", "md"],
+    control: { type: "inline-radio" },
+  },
+  withBorder: {
+    control: { type: "boolean" },
+  },
+};
+
+<Meta
+  title="Data display/Card"
+  component={Card}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Card
+
+Our themed wrapper around [Mantine Card](https://v6.mantine.dev/core/card/).
+
+## Docs
+
+- [Mantine Card Docs](https://v6.mantine.dev/core/card/)
+
+## Examples
+
+export const DefaultTemplate = args => (
+  <Box maw="20rem">
+    <Card {...args}>
+      <Stack spacing="sm">
+        <Text fw="bold">{sampleArgs.title}</Text>
+        <Text>{sampleArgs.description}</Text>
+      </Stack>
+    </Card>
+  </Box>
+);
+
+export const CardSectionTemplate = ({ withSectionBorder, ...args }) => (
+  <Box maw="20rem">
+    <Card {...args}>
+      <Card.Section withBorder={withSectionBorder}>
+        <Box bg="bg" h="10rem" />
+      </Card.Section>
+      <Stack mt="md" spacing="sm">
+        <Text fw="bold">{sampleArgs.title}</Text>
+        <Text>{sampleArgs.description}</Text>
+      </Stack>
+    </Card>
+  </Box>
+);
+
+export const CardSectionBorderTemplate = args => (
+  <CardSectionTemplate {...args} withSectionBorder />
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Card border
+
+export const Border = DefaultTemplate.bind({});
+Border.args = {
+  withBorder: true,
+};
+
+<Canvas>
+  <Story name="Border">{Border}</Story>
+</Canvas>
+
+### Card.Section
+
+export const CardSection = CardSectionTemplate.bind({});
+
+<Canvas>
+  <Story name="Card section">{CardSection}</Story>
+</Canvas>
+
+### Card.Section border
+
+export const CardSectionBorder = CardSectionBorderTemplate.bind({});
+
+<Canvas>
+  <Story name="Card section, border">{CardSectionBorder}</Story>
+</Canvas>

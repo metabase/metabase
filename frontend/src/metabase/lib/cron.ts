@@ -1,9 +1,9 @@
-import { t } from "ttag";
 import { isValidCronExpression } from "cron-expression-validator";
 import cronstrue from "cronstrue";
+import { t } from "ttag";
 
-import { has24HourModeSetting } from "metabase/lib/time";
 import MetabaseSettings from "metabase/lib/settings";
+import { has24HourModeSetting } from "metabase/lib/time";
 
 function translateErrorMessage(message: string) {
   const errorMessageMap: Record<string, string> = {
@@ -27,18 +27,14 @@ function translateErrorMessage(message: string) {
 export function validateCronExpression(
   cronExpression: string,
 ): string | undefined {
-  const result = isValidCronExpression(cronExpression, { error: true });
+  const result = isValidCronExpression<boolean>(cronExpression, {
+    error: true,
+  });
 
-  // cron-expression-validator's typing is not exactly correct
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   if (result === true) {
     return;
   }
 
-  // cron-expression-validator's typing is not exactly correct
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   if (result === false) {
     return t`Invalid cron expression`;
   }
@@ -64,9 +60,7 @@ export function validateCronExpression(
 export function explainCronExpression(cronExpression: string) {
   return cronstrue.toString(cronExpression, {
     verbose: false,
-    locale:
-      MetabaseSettings.get("user-locale") ||
-      MetabaseSettings.get("site-locale"),
+    locale: MetabaseSettings.get("site-locale"),
     use24HourTimeFormat: has24HourModeSetting(),
   });
 }

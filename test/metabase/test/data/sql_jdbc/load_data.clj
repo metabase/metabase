@@ -16,7 +16,7 @@
    [metabase.test.data.sql-jdbc.spec :as spec]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -36,7 +36,7 @@
   You usually do not need to override this, and can instead use a different implementation of `load-data!`. You can
   also override `ddl/insert-rows-honeysql-form` or `ddl/insert-rows-ddl-statements` instead if you only need to change
   DDL statement(s) themselves, rather than how they are executed."
-  {:arglists '([driver spec ^metabase.util.honey_sql_1 table-identifier row-or-rows])}
+  {:arglists '([driver spec table-identifier row-or-rows])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -110,7 +110,7 @@
   [driver spec {:keys [database-name], :as _dbdef} {:keys [table-name], :as _tabledef}]
   (let [components       (for [component (sql.tx/qualified-name-components driver database-name table-name)]
                            (ddl.i/format-name driver (u/qualified-name component)))
-        table-identifier (sql.qp/->honeysql driver (apply hx/identifier :table components))]
+        table-identifier (sql.qp/->honeysql driver (apply h2x/identifier :table components))]
     (partial do-insert! driver spec table-identifier)))
 
 (defn make-load-data-fn
@@ -144,13 +144,23 @@
   "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time."
   (make-load-data-fn load-data-chunked))
 
-(def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids!
-  "Implementation of `load-data!`. Insert all rows at once; add IDs."
-  (make-load-data-fn load-data-add-ids))
+(defn load-data-maybe-add-ids!
+  "Implementation of `load-data!`. Insert all rows at once;
+  Add IDs if tabledef does not contains PK."
+  [driver dbdef tabledef]
+  (let [load-data! (if-not (some :pk? (:field-definitions tabledef))
+                    (make-load-data-fn load-data-add-ids)
+                    (make-load-data-fn load-data-chunked))]
+    (load-data! driver dbdef tabledef)))
 
-(def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids-chunked!
-  "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time; add IDs."
-  (make-load-data-fn load-data-add-ids load-data-chunked))
+(defn load-data-maybe-add-ids-chunked!
+  "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time;
+  Add IDs if tabledef does not contains PK."
+  [driver dbdef tabledef]
+  (let [load-data! (if-not (some :pk? (:field-definitions tabledef))
+                    (make-load-data-fn load-data-add-ids load-data-chunked)
+                    (make-load-data-fn load-data-chunked))]
+    (load-data! driver dbdef tabledef)))
 
 ;; Default impl
 
@@ -173,10 +183,16 @@
         (log/debugf "Setting timezone to UTC before inserting data with SQL \"%s\"" set-timezone-sql)
         (jdbc/execute! spec [set-timezone-sql])))
     (mt/with-database-timezone-id nil
-      (doseq [sql-args statements]
+      (doseq [sql-args statements
+              :let     [sql-args (if (string? sql-args)
+                                   [sql-args]
+                                   sql-args)]]
+        (assert (string? (first sql-args))
+                (format "Bad sql-args: %s" (pr-str sql-args)))
         (log/tracef "[insert] %s" (pr-str sql-args))
         (try
           ;; TODO - why don't we use [[execute/execute-sql!]] here like we do below?
+          ;; Tech Debt Issue: #39375
           (jdbc/execute! spec sql-args {:set-parameters (fn [stmt params]
                                                           (sql-jdbc.execute/set-parameters! driver stmt params))})
           (catch Throwable e
@@ -192,33 +208,32 @@
 (defn create-db!
   "Default implementation of `create-db!` for SQL drivers."
   {:arglists '([driver dbdef & {:keys [skip-drop-db?]}])}
-  [driver {:keys [table-definitions], :as dbdef} & options]
-  (sql.qp/with-driver-honey-sql-version driver
-    ;; first execute statements to drop the DB if needed (this will do nothing if `skip-drop-db?` is true)
-    (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef options)]
-      (execute/execute-sql! driver :server dbdef statement))
-    ;; now execute statements to create the DB
-    (doseq [statement (ddl/create-db-ddl-statements driver dbdef)]
-      (execute/execute-sql! driver :server dbdef statement))
-    ;; next, get a set of statements for creating the DB & Tables
-    (let [statements (apply ddl/create-db-tables-ddl-statements driver dbdef options)]
-      ;; exec the combined statement. Notice we're now executing in the `:db` context e.g. executing them for a specific
-      ;; DB rather than on `:server` (no DB in particular)
-      (execute/execute-sql! driver :db dbdef (str/join ";\n" statements)))
-    ;; Now load the data for each Table
-    (doseq [tabledef table-definitions
-            :let     [reference-duration (or (some-> (get @reference-load-durations [(:database-name dbdef) (:table-name tabledef)])
-                                                     u/format-nanoseconds)
-                                             "NONE")]]
-      (u/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
-                         (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
-        (try
-          (load-data! driver dbdef tabledef)
-          (catch Throwable e
-            (throw (ex-info (format "Error loading data: %s" (ex-message e))
-                            {:driver driver, :tabledef (update tabledef :rows (fn [rows]
-                                                                                (concat (take 10 rows) ['...])))}
-                            e))))))))
+  [driver {:keys [table-definitions] :as dbdef} & options]
+  ;; first execute statements to drop the DB if needed (this will do nothing if `skip-drop-db?` is true)
+  (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef options)]
+    (execute/execute-sql! driver :server dbdef statement))
+  ;; now execute statements to create the DB
+  (doseq [statement (ddl/create-db-ddl-statements driver dbdef)]
+    (execute/execute-sql! driver :server dbdef statement))
+  ;; next, get a set of statements for creating the tables
+  (let [statements (apply ddl/create-db-tables-ddl-statements driver dbdef options)]
+    ;; exec the combined statement. Notice we're now executing in the `:db` context e.g. executing them for a specific
+    ;; DB rather than on `:server` (no DB in particular)
+    (execute/execute-sql! driver :db dbdef (str/join ";\n" statements)))
+  ;; Now load the data for each Table
+  (doseq [tabledef table-definitions
+          :let     [reference-duration (or (some-> (get @reference-load-durations [(:database-name dbdef) (:table-name tabledef)])
+                                                   u/format-nanoseconds)
+                                           "NONE")]]
+    (u/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
+                       (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
+               (try
+                (load-data! driver dbdef tabledef)
+                (catch Throwable e
+                  (throw (ex-info (format "Error loading data: %s" (ex-message e))
+                                  {:driver driver, :tabledef (update tabledef :rows (fn [rows]
+                                                                                      (concat (take 10 rows) ['...])))}
+                                  e)))))))
 
 (defn destroy-db!
   "Default impl of [[metabase.test.data.interface/destroy-db!]] for SQL drivers."

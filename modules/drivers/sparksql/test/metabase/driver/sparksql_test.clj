@@ -2,18 +2,15 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
    [metabase.driver.sparksql :as sparksql]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
-   [metabase.test :as mt]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.test :as mt]))
 
-(use-fixtures :each (fn [thunk]
-                      (binding [hx/*honey-sql-version* 2]
-                        (thunk))))
+(set! *warn-on-reflection* true)
 
 (deftest ^:parallel apply-page-test
   (testing "Make sure our custom implementation of `apply-page` works the way we'd expect"
@@ -58,7 +55,7 @@
                "  5"]]
              (-> (sql.qp/format-honeysql :sparksql hsql)
                  vec
-                 (update 0 mdb.query/format-sql :sparksql)
+                 (update 0 (partial driver/prettify-native-form :sparksql))
                  (update 0 str/split-lines)))))))
 
 (deftest splice-strings-test
@@ -68,7 +65,7 @@
                    :filter      [:= $name "wow"]})]
       (testing "The native query returned in query results should use user-friendly splicing"
         (is (= "SELECT COUNT(*) AS `count` FROM `test_data`.`venues` AS `t1` WHERE `t1`.`name` = 'wow'"
-               (:query (qp/compile-and-splice-parameters query))
+               (:query (qp.compile/compile-and-splice-parameters query))
                (-> (qp/process-query query) :data :native_form :query))))
 
       (testing "When actually running the query we should use paranoid splicing and hex-encode strings"
@@ -87,4 +84,25 @@
                     "  `test_data`.`venues` AS `t1`"
                     "WHERE"
                     "  `t1`.`name` = decode(unhex('776f77'), 'utf-8')"]
-                   (str/split-lines (mdb.query/format-sql @the-sql :sparksql))))))))))
+                   (str/split-lines (driver/prettify-native-form :sparksql @the-sql))))))))))
+
+(deftest ^:parallel read-dates-test
+  (testing "DATE columns should come back as LocalDate"
+    (mt/test-driver :sparksql
+      (sql-jdbc.execute/do-with-connection-with-options
+       :sparksql
+       (mt/id)
+       nil
+       (fn [^java.sql.Connection conn]
+         (with-open [rset (.executeQuery (.createStatement conn) "SELECT date '2024-03-22T13:52:00' AS d;")]
+           (let [rsmeta (.getMetaData rset)]
+             (testing "Should be returned as correct database types"
+               (testing "database type"
+                 (is (= "date"
+                        (.getColumnTypeName rsmeta 1))))
+               (testing "JDBC type"
+                 (is (= "DATE"
+                        (.getName (java.sql.JDBCType/valueOf (.getColumnType rsmeta 1)))))))
+             (testing "Rows should come back as expected Java types"
+               (is (= [[#t "2024-03-22"]]
+                      (into [] (sql-jdbc.execute/reducible-rows :sparksql rset rsmeta))))))))))))

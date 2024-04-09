@@ -1,9 +1,10 @@
-import { useCallback, useRef, useState } from "react";
 import PropTypes from "prop-types";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Popover from "metabase/components/Popover";
+
 import {
   LegendLink,
   LegendLinkContainer,
@@ -28,7 +29,10 @@ const propTypes = {
   onSelectSeries: PropTypes.func,
   onRemoveSeries: PropTypes.func,
   isReversed: PropTypes.bool,
+  canRemoveSeries: PropTypes.func,
 };
+
+const alwaysTrue = () => true;
 
 const Legend = ({
   className,
@@ -42,6 +46,7 @@ const Legend = ({
   onSelectSeries,
   onRemoveSeries,
   isReversed,
+  canRemoveSeries = alwaysTrue,
 }) => {
   const targetRef = useRef();
   const [isOpened, setIsOpened] = useState(null);
@@ -69,7 +74,11 @@ const Legend = ({
   const overflowLength = labels.length - overflowIndex;
 
   return (
-    <LegendRoot className={className} isVertical={isVertical}>
+    <LegendRoot
+      className={className}
+      aria-label={t`Legend`}
+      isVertical={isVertical}
+    >
       {visibleLabels.map((label, index) => {
         const localIndex = index + visibleIndex;
         const itemIndex = isReversed
@@ -87,7 +96,9 @@ const Legend = ({
             isReversed={isReversed}
             onHoverChange={onHoverChange}
             onSelectSeries={onSelectSeries}
-            onRemoveSeries={onRemoveSeries}
+            onRemoveSeries={
+              canRemoveSeries(itemIndex) ? onRemoveSeries : undefined
+            }
           />
         );
       })}

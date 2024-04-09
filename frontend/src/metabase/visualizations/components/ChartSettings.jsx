@@ -1,36 +1,30 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-
-import * as React from "react";
 import { assocIn } from "icepick";
-import _ from "underscore";
+import { Component } from "react";
+import * as React from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
-
-import Visualization from "metabase/visualizations/components/Visualization";
-
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { updateSeriesColor } from "metabase/visualizations/lib/series";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
+import Visualization from "metabase/visualizations/components/Visualization";
+import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import {
   updateSettings,
   getClickBehaviorSettings,
   getComputedSettings,
   getSettingsWidgets,
 } from "metabase/visualizations/lib/settings";
-
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-
-import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
-import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 
 import {
   SectionContainer,
@@ -42,6 +36,8 @@ import {
   ChartSettingsVisualizationContainer,
   ChartSettingsFooterRoot,
 } from "./ChartSettings.styled";
+import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
+import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
 
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Data`];
@@ -102,7 +98,10 @@ class ChartSettings extends Component {
   }
 
   handleShowSection = section => {
-    this.setState({ currentSection: section, currentWidget: null });
+    this.setState({
+      currentSection: section,
+      currentWidget: null,
+    });
   };
 
   // allows a widget to temporarily replace itself with a different widget
@@ -118,12 +117,18 @@ class ChartSettings extends Component {
   handleResetSettings = () => {
     MetabaseAnalytics.trackStructEvent("Chart Settings", "Reset Settings");
 
-    const settings = getClickBehaviorSettings(this._getSettings());
-    this.props.onChange(settings);
+    const originalCardSettings =
+      this.props.dashcard.card.visualization_settings;
+    const clickBehaviorSettings = getClickBehaviorSettings(this._getSettings());
+
+    this.props.onChange({ ...originalCardSettings, ...clickBehaviorSettings });
   };
 
-  handleChangeSettings = changedSettings => {
-    this.props.onChange(updateSettings(this._getSettings(), changedSettings));
+  handleChangeSettings = (changedSettings, question) => {
+    this.props.onChange(
+      updateSettings(this._getSettings(), changedSettings),
+      question,
+    );
   };
 
   handleChangeSeriesColor = (seriesKey, color) => {
@@ -379,7 +384,7 @@ class ChartSettings extends Component {
       <ChartSettingsRoot className={className}>
         <ChartSettingsMenu data-testid="chartsettings-sidebar">
           {showSectionPicker && sectionPicker}
-          <ChartSettingsListContainer className="scroll-show">
+          <ChartSettingsListContainer className={CS.scrollShow}>
             <ChartSettingsWidgetList
               widgets={visibleWidgets}
               extraWidgetProps={extraWidgetProps}
@@ -391,7 +396,7 @@ class ChartSettings extends Component {
             <SectionWarnings warnings={this.state.warnings} size={20} />
             <ChartSettingsVisualizationContainer>
               <Visualization
-                className="spread"
+                className={CS.spread}
                 rawSeries={rawSeries}
                 showTitle
                 isEditing
@@ -429,19 +434,11 @@ const ChartSettingsFooter = ({ onDone, onCancel, onReset }) => (
       <Button
         borderless
         icon="refresh"
-        data-metabase-event="Chart Settings;Reset"
         onClick={onReset}
       >{t`Reset to defaults`}</Button>
     )}
-    <Button
-      onClick={onCancel}
-      data-metabase-event="Chart Settings;Cancel"
-    >{t`Cancel`}</Button>
-    <Button
-      primary
-      onClick={onDone}
-      data-metabase-event="Chart Settings;Done"
-    >{t`Done`}</Button>
+    <Button onClick={onCancel}>{t`Cancel`}</Button>
+    <Button primary onClick={onDone}>{t`Done`}</Button>
   </ChartSettingsFooterRoot>
 );
 

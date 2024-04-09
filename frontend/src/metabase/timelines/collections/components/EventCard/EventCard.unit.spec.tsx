@@ -1,12 +1,15 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import {
   createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
   createMockUser,
 } from "metabase-types/api/mocks";
-import EventCard, { EventCardProps } from "./EventCard";
+
+import type { EventCardProps } from "./EventCard";
+import EventCard from "./EventCard";
 
 describe("EventCard", () => {
   it("should format a day-only event", () => {
@@ -76,13 +79,14 @@ describe("EventCard", () => {
     });
 
     render(<EventCard {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await screen.findByRole("dialog");
 
     expect(screen.getByText("Edit event")).toBeInTheDocument();
     expect(screen.getByText("Archive event")).toBeInTheDocument();
   });
 
-  it("should render the menu for an archived event", () => {
+  it("should render the menu for an archived event", async () => {
     const props = getProps({
       timeline: createMockTimeline({
         collection: createMockCollection({
@@ -95,7 +99,8 @@ describe("EventCard", () => {
     });
 
     render(<EventCard {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await screen.findByRole("dialog");
 
     expect(screen.getByText("Unarchive event")).toBeInTheDocument();
     expect(screen.getByText("Delete event")).toBeInTheDocument();

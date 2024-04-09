@@ -4,15 +4,17 @@
  * This allows us to use search results to show a particular record in the model.
  */
 
-import type { IndexedEntity } from "metabase-types/api/modelIndexes";
-
 import { createEntity } from "metabase/lib/entities";
-import { ModelIndexApi } from "metabase/services";
 import { ModelIndexSchema } from "metabase/schema";
+import { ModelIndexApi } from "metabase/services";
+import type { IndexedEntity } from "metabase-types/api/modelIndexes";
 
 import * as actions from "./actions";
 import * as utils from "./utils";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const ModelIndexes = createEntity({
   name: "modelIndexes",
   nameOne: "modelIndex",
@@ -20,6 +22,8 @@ export const ModelIndexes = createEntity({
   schema: ModelIndexSchema,
   api: {
     ...ModelIndexApi,
+    list: ({ model_id }: { model_id?: string | null }) =>
+      model_id ? ModelIndexApi.list({ model_id }) : { data: [] },
   },
   actions,
   utils,
@@ -28,7 +32,7 @@ export const ModelIndexes = createEntity({
     getUrl: (entity: IndexedEntity) => `/model/${entity.model_id}/${entity.id}`,
     getIcon: () => ({ name: "beaker" }),
   },
-  reducer: (state = {}, { type, payload }: { type: string; payload: any }) => {
+  reducer: (state = {}) => {
     return state;
   },
 });

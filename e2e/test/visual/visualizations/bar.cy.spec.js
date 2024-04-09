@@ -1,9 +1,12 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitQuestionAdhoc,
   ensureDcChartVisibility,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("visual tests > visualizations > bar", () => {
   beforeEach(() => {
@@ -29,6 +32,32 @@ describe("visual tests > visualizations > bar", () => {
         "graph.dimensions": ["X"],
         "graph.metrics": ["A", "B", "C"],
         "stackable.stack_type": "stacked",
+      },
+    });
+
+    ensureDcChartVisibility();
+    cy.createPercySnapshot();
+  });
+
+  it("with stack-100% series and showing trend line", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"], ["avg", ["field", PRODUCTS.PRICE, null]]],
+          breakout: [
+            ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "year" }],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "bar",
+      visualization_settings: {
+        "graph.show_trendline": true,
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["avg", "count"],
+        "stackable.stack_type": "normalized",
       },
     });
 

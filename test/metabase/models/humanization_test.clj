@@ -15,10 +15,8 @@
 (deftest humanized-display-name-test
   (testing "check that we get the expected :display_name with humanization *enabled*"
     (doseq [[input strategy->expected] {"toucansare_cool"     {"simple"   "Toucansare Cool"
-                                                               "advanced" "Toucansare Cool"
                                                                "none"     "toucansare_cool"}
                                         "fussybird_sightings" {"simple"   "Fussybird Sightings"
-                                                               "advanced" "Fussybird Sightings"
                                                                "none"     "fussybird_sightings"}}
             [strategy expected]        strategy->expected]
       (testing (pr-str (list 'get-humanized-display-name input strategy))
@@ -58,3 +56,8 @@
               (humanization/humanization-strategy! new-strategy)
               (is (= "My Favorite Table"
                      (t2/select-one-fn :display_name Table, :id table-id))))))))))
+
+(deftest invalid-strategies-default-to-simple
+  (tu/with-temporary-raw-setting-values [humanization-strategy "invalid-choice"]
+    (is (= :simple (humanization/humanization-strategy)))
+    (is (= "Foo Bar" (humanization/name->human-readable-name "foo_bar")))))

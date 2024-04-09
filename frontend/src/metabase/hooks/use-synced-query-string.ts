@@ -1,11 +1,22 @@
-import { useEffect } from "react";
 import querystring from "querystring";
+import { useEffect } from "react";
+
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 export function useSyncedQueryString(
   fn: () => Record<string, any>,
   deps?: any[],
 ) {
   useEffect(() => {
+    /**
+     * We don't want to sync the query string to the URL because when previewing,
+     * this changes the URL of the iframe by appending the query string to the src.
+     * This causes the iframe to reload when changing the preview hash from appearance
+     * settings because now the base URL (including the query string) is different.
+     */
+    if (IS_EMBED_PREVIEW) {
+      return;
+    }
     const object = fn();
     const searchString = buildSearchString(object);
 

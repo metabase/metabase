@@ -1,4 +1,6 @@
+import * as ML from "cljs/metabase.lib.js";
 import * as TYPES from "cljs/metabase.lib.types.isa";
+
 import type { ColumnMetadata } from "./types";
 
 type TypeFn = (column: ColumnMetadata) => boolean;
@@ -11,8 +13,11 @@ export const isCity: TypeFn = TYPES.city_QMARK_;
 export const isComment: TypeFn = TYPES.comment_QMARK_;
 export const isCoordinate: TypeFn = TYPES.coordinate_QMARK_;
 export const isCountry: TypeFn = TYPES.country_QMARK_;
+export const isCreationDate: TypeFn = TYPES.creation_date_QMARK_;
+export const isCreationTime: TypeFn = TYPES.creation_time_QMARK_;
+export const isCreationTimestamp: TypeFn = TYPES.creation_timestamp_QMARK_;
 export const isCurrency: TypeFn = TYPES.currency_QMARK_;
-export const isDate: TypeFn = TYPES.date_QMARK_;
+export const isDate: TypeFn = TYPES.temporal_QMARK_;
 export const isDateWithoutTime: TypeFn = TYPES.date_without_time_QMARK_;
 export const isDescription: TypeFn = TYPES.description_QMARK_;
 export const isEmail: TypeFn = TYPES.email_QMARK_;
@@ -32,5 +37,13 @@ export const isState: TypeFn = TYPES.state_QMARK_;
 export const isString: TypeFn = TYPES.string_QMARK_;
 export const isSummable: TypeFn = TYPES.summable_QMARK_;
 export const isTime: TypeFn = TYPES.time_QMARK_;
+export const isTitle: TypeFn = TYPES.title_QMARK_;
 export const isURL: TypeFn = TYPES.URL_QMARK_;
 export const isZipCode: TypeFn = TYPES.zip_code_QMARK_;
+
+export function isAssignableType(
+  column1: ColumnMetadata,
+  column2: ColumnMetadata,
+): boolean {
+  return ML.valid_filter_for_QMARK_(column1, column2);
+}

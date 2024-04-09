@@ -1,18 +1,19 @@
 (ns metabase.api.model-index-test
-  (:require [clojure.test :refer :all]
-            [metabase.analytics.snowplow-test :as snowplow-test]
-            [metabase.models.card :refer [Card]]
-            [metabase.test :as mt]
-            [toucan2.tools.with-temp :as t2.with-temp]
-            [toucan2.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.models.card :refer [Card]]
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]
+   [toucan2.util :as u]))
 
 (deftest full-lifecycle-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (let [query     (mt/mbql-query products)
           pk_ref    (mt/$ids $products.id)
           value_ref (mt/$ids $products.title)]
       (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                 :dataset true
+                                                 :type :model
                                                  :name "model index test")]
         (let [model-index (mt/user-http-request :rasta :post 200 "/model-index"
                                                 {:model_id  (:id model)
@@ -59,11 +60,11 @@
 
 (deftest create-tests
   (testing "Ensures that the pk ref is a primary key"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mt/mbql-query products)]
         (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                   :dataset         true
-                                                   :name            "model index test")]
+                                                   :type :model
+                                                   :name "model index test")]
           (let [by-name (fn [n] (or (some (fn [f] (when (= n (-> f :name u/lower-case-en))
                                                     (:field_ref f)))
                                           (:result_metadata model))
@@ -97,12 +98,12 @@
 (deftest snowplow-create-model-index-event-test
   (testing "Send a snowplow event when “Surface individual records matching against column” is toggled on (and saved)"
     (snowplow-test/with-fake-snowplow-collector
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query     (mt/mbql-query products)
               pk_ref    (mt/$ids $products.id)
               value_ref (mt/$ids $products.title)]
           (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                     :dataset true
+                                                     :type :model
                                                      :name "model index test")]
             (mt/user-http-request :crowberto :post 200 "/model-index" {:model_id  (:id model)
                                                                        :pk_ref    pk_ref

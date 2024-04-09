@@ -1,5 +1,4 @@
-import { GroupsPermissions, NativePermissions } from "metabase-types/api";
-import {
+import type {
   DataPermission,
   DatabaseEntityId,
 } from "metabase/admin/permissions/types";
@@ -8,7 +7,8 @@ import {
   updatePermission,
   updateSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { GroupsPermissions, NativePermissions } from "metabase-types/api";
 
 export function updateNativePermission(
   permissions: GroupsPermissions,

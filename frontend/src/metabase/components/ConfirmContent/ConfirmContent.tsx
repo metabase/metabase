@@ -1,11 +1,12 @@
+import { t } from "ttag";
 import _ from "underscore";
 
-import { t } from "ttag";
 import ModalContent from "metabase/components/ModalContent";
-
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 
 interface ConfirmContentProps {
+  "data-testid"?: string;
   title: string;
   content?: string | null;
   message?: string;
@@ -17,6 +18,7 @@ interface ConfirmContentProps {
 }
 
 const ConfirmContent = ({
+  "data-testid": dataTestId,
   title,
   content = null,
   message = t`Are you sure you want to do this?`,
@@ -27,6 +29,7 @@ const ConfirmContent = ({
   cancelButtonText = t`Cancel`,
 }: ConfirmContentProps) => (
   <ModalContent
+    data-testid={dataTestId}
     title={title}
     formModal
     onClose={() => {
@@ -36,9 +39,9 @@ const ConfirmContent = ({
   >
     <div>{content}</div>
 
-    <p className="mb4">{message}</p>
+    <p className={CS.mb4}>{message}</p>
 
-    <div className="ml-auto">
+    <div className={CS.mlAuto}>
       <Button
         onClick={() => {
           onCancel();
@@ -49,7 +52,7 @@ const ConfirmContent = ({
       </Button>
       <Button
         danger
-        className="ml2"
+        className={CS.ml2}
         onClick={() => {
           onAction();
           onClose();

@@ -3,8 +3,11 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures])
   (:import
@@ -12,11 +15,13 @@
    (java.util Base64)
    (javax.net.ssl SSLSocketFactory)))
 
+(comment h2/keep-me)
+
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :plugins :test-drivers))
 
-(deftest generate-identity-store-test
+(deftest ^:parallel generate-identity-store-test
   (testing "proper key and cert files are read"
     (let [key-string (-> "ssl/mongo/metabase.key" io/resource slurp)
           key-passw "passw"
@@ -39,7 +44,7 @@
 (def ^:private test-server-dn
   "cn=server.local,ou=www,o=someone,l=seattle,st=washington,c=us")
 
-(deftest generate-trust-store-test
+(deftest ^:parallel generate-trust-store-test
   (testing "a proper CA file is read"
     (let [cert-string (slurp "./test_resources/ssl/ca.pem")
           keystore (driver.u/generate-trust-store cert-string)]
@@ -53,8 +58,8 @@
     (let [cert-string (str (slurp "./test_resources/ssl/ca.pem")
                            (slurp "./test_resources/ssl/server.pem"))
           keystore (driver.u/generate-trust-store cert-string)]
-      (is (true? (.containsAlias keystore test-server-dn)))
-      (is (true? (.containsAlias keystore test-ca-dn)))))
+      (is (.containsAlias keystore test-server-dn))
+      (is (.containsAlias keystore test-ca-dn))))
 
   (testing "can create SocketFactory for CA cert"
     ;; this is a tough method to test - the resulting `SSLSocketFactory`
@@ -64,7 +69,7 @@
     (is (instance? javax.net.ssl.SSLSocketFactory
                    (driver.u/ssl-socket-factory :trust-cert (slurp "./test_resources/ssl/ca.pem"))))))
 
-(deftest ssl-socket-factory-test
+(deftest ^:parallel ssl-socket-factory-test
   (testing "can create socket factory from identity and trust info"
     (is (instance? SSLSocketFactory
                    (driver.u/ssl-socket-factory
@@ -139,8 +144,7 @@
                                       :visible-if           {:use-keystore true}}]
                                     true]]]
       (testing (str " with is-hosted? " is-hosted?)
-        ;; TODO: create capability to temporarily override token-features for testing
-        (with-redefs [premium-features/is-hosted? (constantly is-hosted?)]
+        (mt/with-premium-features (if is-hosted? #{:hosting} #{})
           (let [client-conn-props (-> (driver.u/available-drivers-info) ; this calls connection-props-server->client
                                       :secret-test-driver
                                       :details-fields)]
@@ -175,7 +179,9 @@
         (is (= []
                (driver.u/connection-props-server->client
                 nil
-                [{:name "test", :type :info}]))))))
+                [{:name "test", :type :info}])))))))
+
+(deftest ^:parallel connection-props-server->client-schema-filters-test
   (testing "connection-props-server->client works as expected for the schema-filters type"
     (is (= [{:name "first-prop"}
             {:default      "all"
@@ -206,7 +212,9 @@
               {:name         "my-schema-filters"
                :type         :schema-filters
                :display-name "Schemas"}
-              {:name "last-prop"}]))))
+              {:name "last-prop"}])))))
+
+(deftest ^:parallel connection-props-server->client-detect-cycles-test
   (testing "connection-props-server->client detects cycles in visible-if dependencies"
     (let [fake-props [{:name "prop-a", :visible-if {:prop-c "something"}}
                       {:name "prop-b", :visible-if {:prop-a "something else"}}
@@ -216,7 +224,7 @@
             #"Cycle detected"
             (driver.u/connection-props-server->client :fake-cyclic-driver fake-props))))))
 
-(deftest connection-details-client->server-test
+(deftest ^:parallel connection-details-client->server-test
   (testing "db-details-client->server works as expected"
     (let [ks-val      "super duper secret keystore" ; not a real KeyStore "value" (which is a binary thing), but good
                                                     ; enough for our test purposes here
@@ -239,24 +247,37 @@
       ;; the keystore-value should have been base64 decoded because of treat-before-posting being base64 (see above)
       (is (mt/secret-value-equals? ks-val (:keystore-value transformed))))))
 
-(deftest decode-uploaded-test
+(deftest ^:parallel decode-uploaded-test
   (are [expected base64] (= expected (String. (driver.u/decode-uploaded base64) "UTF-8"))
     "hi" "aGk="
     "hi" "data:application/octet-stream;base64,aGk="))
 
-(deftest semantic-version-gte-test
+(deftest ^:parallel semantic-version-gte-test
   (testing "semantic-version-gte works as expected"
-    (is (true? (driver.u/semantic-version-gte [5 0] [4 0])))
-    (is (true? (driver.u/semantic-version-gte [5 0 1] [4 0])))
-    (is (true? (driver.u/semantic-version-gte [5 0] [4 0 1])))
-    (is (true? (driver.u/semantic-version-gte [5 0] [4 1])))
-    (is (true? (driver.u/semantic-version-gte [4 1] [4 1])))
-    (is (true? (driver.u/semantic-version-gte [4 1] [4])))
-    (is (true? (driver.u/semantic-version-gte [4] [4])))
-    (is (true? (driver.u/semantic-version-gte [4] [4 0 0])))
-    (is (false? (driver.u/semantic-version-gte [3] [4])))
-    (is (false? (driver.u/semantic-version-gte [4] [4 1])))
-    (is (false? (driver.u/semantic-version-gte [4 0] [4 0 1])))
-    (is (false? (driver.u/semantic-version-gte [4 0 1] [4 1])))
-    (is (false? (driver.u/semantic-version-gte [3 9] [4 0])))
-    (is (false? (driver.u/semantic-version-gte [3 1] [4])))))
+    (are [x y] (driver.u/semantic-version-gte x y)
+      [5 0]   [4 0]
+      [5 0 1] [4 0]
+      [5 0]   [4 0 1]
+      [5 0]   [4 1]
+      [4 1]   [4 1]
+      [4 1]   [4]
+      [4]     [4]
+      [4]     [4 0 0])
+    (are [x y] (not (driver.u/semantic-version-gte x y))
+      [3]     [4]
+      [4]     [4 1]
+      [4 0]   [4 0 1]
+      [4 0 1] [4 1]
+      [3 9]   [4 0]
+      [3 1]   [4])))
+
+(deftest ^:parallel mark-h2-superseded-test
+  (testing "H2 should have :superseded-by set so it doesn't show up in the list of available drivers in the UI DB edit forms"
+   (is (=? {:driver-name "H2", :superseded-by :deprecated}
+           (:h2 (driver.u/available-drivers-info))))))
+
+(deftest ^:paralell database-id->driver-use-qp-store-test
+  (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                    {:database (assoc meta/database :id Integer/MAX_VALUE, :engine :wow)})
+    (is (= :wow
+           (driver.u/database->driver Integer/MAX_VALUE)))))

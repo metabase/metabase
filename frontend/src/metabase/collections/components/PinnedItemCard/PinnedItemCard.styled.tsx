@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
 
 import Card from "metabase/components/Card";
-import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const ItemCard = styled(Card)``;
 

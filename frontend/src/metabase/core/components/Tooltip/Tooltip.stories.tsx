@@ -1,4 +1,5 @@
 import type { ComponentStory } from "@storybook/react";
+
 import Tooltip from "./Tooltip";
 
 export default {

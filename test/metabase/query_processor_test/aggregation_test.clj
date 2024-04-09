@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.field :refer [Field]]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.util :as tu]))
@@ -62,9 +62,9 @@
     (testing "standard deviation aggregations"
       (let [query (mt/mbql-query venues {:aggregation [[:stddev $latitude]]})]
         (mt/with-native-query-testing-context query
-          (is (= {:cols [(qp.test/aggregate-col :stddev :venues :latitude)]
+          (is (= {:cols [(qp.test-util/aggregate-col :stddev :venues :latitude)]
                   :rows [[3.4]]}
-                 (qp.test/rows-and-cols
+                 (qp.test-util/rows-and-cols
                   (mt/format-rows-by [1.0]
                     (mt/process-query query))))))))))
 
@@ -73,7 +73,7 @@
     (testing "Make sure standard deviations fail for drivers that don't support it"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"standard-deviation-aggregations is not supported by this driver"
+           #"standard-deviation-aggregations is not supported by sqlite driver"
            (mt/run-mbql-query venues
              {:aggregation [[:stddev $latitude]]}))))))
 
@@ -116,11 +116,6 @@
                {:aggregation [[:max $latitude]]
                 :breakout    [$price]}))))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                             MULTIPLE AGGREGATIONS                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (deftest ^:parallel multiple-aggregations-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "two aggregations"
@@ -140,144 +135,48 @@
 (deftest ^:parallel multiple-aggregations-metadata-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "make sure that multiple aggregations of the same type have the correct metadata (#4003)"
-      (is (= [(qp.test/aggregate-col :count)
-              (assoc (qp.test/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
-             (mt/cols
-              (mt/run-mbql-query venues
-                {:aggregation [[:count] [:count]]})))))))
-
-
-;;; ------------------------------------------------- CUMULATIVE SUM -------------------------------------------------
-
-(deftest ^:parallel cumulative-sum-test
-  (mt/test-drivers (mt/normal-drivers)
-    (testing "cum_sum w/o breakout should be treated the same as sum"
-      (is (= [[120]]
-             (mt/formatted-rows [int]
-               (mt/run-mbql-query users
-                 {:aggregation [[:cum-sum $id]]})))))))
-
-(deftest ^:parallel cumulative-sum-test-2
-  (mt/test-drivers (mt/normal-drivers)
-    (testing " Simple cumulative sum where breakout field is same as cum_sum field"
-      (is (= [[ 1   1]
-              [ 2   3]
-              [ 3   6]
-              [ 4  10]
-              [ 5  15]
-              [ 6  21]
-              [ 7  28]
-              [ 8  36]
-              [ 9  45]
-              [10  55]
-              [11  66]
-              [12  78]
-              [13  91]
-              [14 105]
-              [15 120]]
-             (mt/formatted-rows [int int]
-               (mt/run-mbql-query users
-                 {:aggregation [[:cum-sum $id]]
-                  :breakout    [$id]})))))))
-
-(deftest ^:parallel cumulative-sum-test-3
-  (mt/test-drivers (mt/normal-drivers)
-    (testing " Cumulative sum w/ a different breakout field"
-      (is (= [["Broen Olujimi"        14]
-              ["Conchúr Tihomir"      21]
-              ["Dwight Gresham"       34]
-              ["Felipinho Asklepios"  36]
-              ["Frans Hevel"          46]
-              ["Kaneonuskatew Eiran"  49]
-              ["Kfir Caj"             61]
-              ["Nils Gotam"           70]
-              ["Plato Yeshua"         71]
-              ["Quentin Sören"        76]
-              ["Rüstem Hebel"         91]
-              ["Shad Ferdynand"       97]
-              ["Simcha Yan"          101]
-              ["Spiros Teofil"       112]
-              ["Szymon Theutrich"    120]]
-             (mt/formatted-rows [str int]
-               (mt/run-mbql-query users
-                 {:aggregation [[:cum-sum $id]]
-                  :breakout    [$name]})))))))
-
-(deftest ^:parallel cumulative-sum-test-4
-  (mt/test-drivers (mt/normal-drivers)
-    (testing " Cumulative sum w/ a different breakout field that requires grouping"
-      (is (= [[1 1211]
-              [2 4066]
-              [3 4681]
-              [4 5050]]
-             (mt/formatted-rows [int int]
+      (is (=? [(qp.test-util/aggregate-col :count)
+               (assoc (qp.test-util/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
+              (mt/cols
                (mt/run-mbql-query venues
-                 {:aggregation [[:cum-sum $id]]
-                  :breakout    [$price]})))))))
-
-
-;;; ------------------------------------------------ CUMULATIVE COUNT ------------------------------------------------
-(deftest ^:parallel cumulative-count-test
-  (mt/test-drivers (mt/normal-drivers)
-    (testing "cumulative count aggregations"
-      (testing "w/o breakout should be treated the same as count"
-        (is (= {:rows [[15]]
-                :cols [(qp.test/aggregate-col :cum-count :users :id)]}
-               (qp.test/rows-and-cols
-                 (mt/format-rows-by [int]
-                   (mt/run-mbql-query users
-                     {:aggregation [[:cum-count $id]]})))))))))
-
-(deftest ^:parallel cumulative-count-with-breakout-test
-  (mt/test-drivers (mt/normal-drivers)
-    (testing "w/ breakout on field with distinct values"
-      (is (= {:rows [["Broen Olujimi"        1]
-                     ["Conchúr Tihomir"      2]
-                     ["Dwight Gresham"       3]
-                     ["Felipinho Asklepios"  4]
-                     ["Frans Hevel"          5]
-                     ["Kaneonuskatew Eiran"  6]
-                     ["Kfir Caj"             7]
-                     ["Nils Gotam"           8]
-                     ["Plato Yeshua"         9]
-                     ["Quentin Sören"       10]
-                     ["Rüstem Hebel"        11]
-                     ["Shad Ferdynand"      12]
-                     ["Simcha Yan"          13]
-                     ["Spiros Teofil"       14]
-                     ["Szymon Theutrich"    15]]
-              :cols [(qp.test/breakout-col :users :name)
-                     (qp.test/aggregate-col :cum-count :users :id)]}
-             (qp.test/rows-and-cols
-              (mt/format-rows-by [str int]
-                (mt/run-mbql-query users
-                  {:aggregation [[:cum-count $id]]
-                   :breakout    [$name]}))))))))
-
-(deftest ^:parallel cumulative-count-with-breakout-test-2
-  (mt/test-drivers (mt/normal-drivers)
-    (testing "w/ breakout on field that requires grouping"
-      (is (= {:cols [(qp.test/breakout-col :venues :price)
-                     (qp.test/aggregate-col :cum-count :venues :id)]
-              :rows [[1 22]
-                     [2 81]
-                     [3 94]
-                     [4 100]]}
-             (qp.test/rows-and-cols
-              (mt/format-rows-by [int int]
-                (mt/run-mbql-query venues
-                  {:aggregation [[:cum-count $id]]
-                   :breakout    [$price]}))))))))
+                 {:aggregation [[:count] [:count]]})))))))
 
 (deftest field-settings-for-aggregate-fields-test
   (testing "Does `:settings` show up for aggregate Fields?"
     (tu/with-temp-vals-in-db Field (data/id :venues :price) {:settings {:is_priceless false}}
       (let [results (mt/run-mbql-query venues
                       {:aggregation [[:sum $price]]})]
-        (is (= (assoc (qp.test/aggregate-col :sum :venues :price)
+        (is (= (assoc (qp.test-util/aggregate-col :sum :venues :price)
                       :settings {:is_priceless false})
                (or (-> results mt/cols first)
                    results)))))))
+
+(deftest semantic-type-for-aggregate-fields-test
+  (testing "Does `:semantic-type` show up for aggregate Fields? (#38022)"
+    (tu/with-temp-vals-in-db Field (data/id :venues :price) {:semantic_type :type/Currency}
+      (let [price [:field (mt/id :venues :price) nil]]
+        (doseq [[aggregation expected-semantic-type]
+                [[[:sum price] :type/Currency]
+                 [[:count price] :type/Quantity]
+                 [[:cum-count price] :type/Quantity]
+                 [[:avg price] :type/Currency]
+                 [[:distinct price] :type/Quantity]
+                 [[:max price] :type/Currency]
+                 [[:median price] :type/Currency]
+                 [[:min price] :type/Currency]
+                 [[:share [:< price 10]] :type/Percentage]
+                 [[:stddev price] :type/Currency]
+                 [[:cum-sum price] :type/Currency]
+                 [[:var price] nil]
+                 [[:count-where [:> price 10]] :type/Quantity]
+                 [[:sum-where price [:> price 10]] :type/Currency]
+                 [[:percentile price 0.9] nil]]]
+          (let [results (mt/run-mbql-query venues {:aggregation aggregation})]
+            (testing (format "The %s Aggregation's semantic-type should be: %s" (first aggregation) expected-semantic-type)
+              (is (= expected-semantic-type
+                     (:semantic_type
+                      (or (-> results mt/cols first)
+                          results)))))))))))
 
 (deftest ^:parallel duplicate-aggregations-test
   (mt/test-drivers (mt/normal-drivers)
@@ -295,6 +194,24 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:distinct $name]
                                 [:distinct $price]]})))))))
+
+(deftest ^:parallel aggregate-boolean-without-type-test
+  (testing "Legacy breakout on boolean field should work correctly (#34286)"
+    (mt/dataset places-cam-likes
+      (is (= {false 1, true 2}
+             (into {}
+                   (mt/formatted-rows [boolean int]
+                     (mt/run-mbql-query places
+                       {:breakout     [[:field %liked nil]]
+                        :aggregation  [["count"]]})))))))
+  (testing "Legacy breakout on boolean field with explicit type should work correctly (#34286)"
+    (mt/dataset places-cam-likes
+      (is (= {false 1, true 2}
+             (into {}
+                   (mt/formatted-rows [boolean int]
+                     (mt/run-mbql-query places
+                       {:breakout     [[:field %liked {:base-type :type/Boolean}]]
+                        :aggregation  [["count"]]}))))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !                                                                                                                   !

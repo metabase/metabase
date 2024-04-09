@@ -1,6 +1,7 @@
 import { Line } from "@visx/shape";
 import { Text } from "@visx/text";
-import { GoalStyle } from "../../types/style";
+
+import type { GoalStyle } from "../../types/style";
 
 interface VerticalGoalLineProps {
   x: number;

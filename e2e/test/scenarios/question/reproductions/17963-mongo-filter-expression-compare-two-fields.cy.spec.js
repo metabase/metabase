@@ -1,47 +1,48 @@
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   restore,
   popover,
   visualize,
-  startNewQuestion,
+  openTable,
+  getNotebookStep,
 } from "e2e/support/helpers";
 
-describe("issue 17963", { tags: "@external" }, () => {
+describe("issue 17963", { tags: "@mongo" }, () => {
   beforeEach(() => {
-    restore("mongo-4");
+    restore("mongo-5");
     cy.signInAsAdmin();
 
-    startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("QA Mongo4").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders").click();
+    cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).then(({ body }) => {
+      const tableId = body.find(table => table.name === "orders").id;
+      openTable({
+        database: WRITABLE_DB_ID,
+        table: tableId,
+        mode: "notebook",
+      });
+    });
   });
 
   it("should be able to compare two fields using filter expression (metabase#17963)", () => {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add filters to narrow your answer").click();
+    cy.findByRole("button", { name: "Filter" }).click();
 
     popover().contains("Custom Expression").click();
 
     typeAndSelect([
       { string: "dis", field: "Discount" },
-      { string: "> qu", field: "Quantity" },
+      { string: "> quan", field: "Quantity" },
     ]);
-    cy.get(".ace_text-input").blur();
 
+    cy.get(".ace_text-input").blur();
     cy.button("Done").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Discount > Quantity");
+    getNotebookStep("filter").findByText("Discount is greater than Quantity");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick the metric you want to see").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count of rows").click();
+    cy.findByRole("button", { name: "Summarize" }).click();
+    popover().findByText("Count of rows").click();
 
     visualize();
 
-    cy.get(".ScalarValue").contains("1,337");
+    cy.findByTestId("scalar-value").contains("1,337");
   });
 });
 

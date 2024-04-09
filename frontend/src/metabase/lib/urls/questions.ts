@@ -2,19 +2,17 @@ import slugg from "slugg";
 
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
+import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
+import * as ML_Urls from "metabase-lib/v1/urls";
+import type { CardId, Card as SavedCard } from "metabase-types/api";
 
-import { CardId, Card as SavedCard } from "metabase-types/api";
-import Question, { QuestionCreatorOpts } from "metabase-lib/Question";
-import * as ML_Urls from "metabase-lib/urls";
-
-import { appendSlug, extractQueryParams } from "./utils";
+import { appendSlug, getEncodedUrlSearchParams } from "./utils";
 
 type Card = Partial<SavedCard> & {
   card_id?: CardId | string;
   model?: "card" | "dataset";
 };
-
-export const newQuestionFlow = () => "/question/new";
 
 export type QuestionUrlBuilderParams = {
   mode?: "view" | "notebook";
@@ -37,10 +35,7 @@ export function question(
   }
 
   if (query && typeof query === "object") {
-    query = extractQueryParams(query)
-      .filter(([key, value]) => value !== undefined)
-      .map(kv => kv.map(encodeURIComponent).join("="))
-      .join("&");
+    query = String(getEncodedUrlSearchParams(query));
   }
 
   if (hash && hash.charAt(0) !== "#") {
@@ -51,8 +46,10 @@ export function question(
     query = "?" + query;
   }
 
-  const isModel = card?.dataset || card?.model === "dataset";
-  let path = isModel ? "model" : "question";
+  const isModel = card?.type === "model" || card?.model === "dataset";
+  const fallbackPath = isModel ? "model" : "question";
+  let path: string = card?.type ?? fallbackPath;
+
   if (!card || !card.id) {
     return `/${path}${query}${hash}`;
   }
@@ -108,21 +105,27 @@ export function newQuestion({
     query: objectId ? { objectId } : undefined,
   });
 
-  const entity = question.isDataset() ? "model" : "question";
+  const type = question.type();
 
   if (mode) {
-    return url.replace(/^\/(question|model)/, `/${entity}\/${mode}`);
-  } else {
-    return url;
+    return url.replace(/^\/(question|model)/, `/${type}\/${mode}`);
   }
+
+  return url;
 }
 
-export function publicQuestion(
-  uuid: string,
-  type: string | null = null,
-  query?: string,
-) {
-  const siteUrl = MetabaseSettings.get("site-url");
+export function publicQuestion({
+  uuid,
+  type = null,
+  query,
+  includeSiteUrl = true,
+}: {
+  uuid: string;
+  type?: string | null;
+  query?: string;
+  includeSiteUrl?: boolean;
+}) {
+  const siteUrl = includeSiteUrl ? MetabaseSettings.get("site-url") : "";
   const searchQuery = query ? `?${query}` : "";
   return (
     `${siteUrl}/public/question/${uuid}` +
@@ -132,8 +135,7 @@ export function publicQuestion(
 }
 
 export function embedCard(token: string, type: string | null = null) {
-  const siteUrl = MetabaseSettings.get("site-url");
-  return `${siteUrl}/embed/question/${token}` + (type ? `.${type}` : ``);
+  return `/embed/question/${token}` + (type ? `.${type}` : ``);
 }
 
 export function tableRowsQuery(

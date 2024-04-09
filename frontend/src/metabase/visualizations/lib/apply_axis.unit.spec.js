@@ -1,4 +1,5 @@
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+
 import {
   maybeRoundValueToZero,
   stretchTimeseriesDomain,
@@ -60,6 +61,12 @@ describe("visualization.lib.apply_axis", () => {
       const value = maybeRoundValueToZero(0.0000000000018, [-1e-20, 1e-20]);
 
       expect(value).toBe(0.0000000000018);
+    });
+
+    it("should work on single-value charts (where minExtent === maxExtent)", () => {
+      const value = maybeRoundValueToZero(0.0000000000018, [0.00001, 0.00001]);
+
+      expect(value).toBe(0);
     });
   });
 });

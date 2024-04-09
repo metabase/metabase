@@ -1,11 +1,14 @@
 import { useCallback } from "react";
 import { t } from "ttag";
-import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+
 import {
-  isPersonalCollection,
+  isRootPersonalCollection,
   isRootCollection,
 } from "metabase/collections/utils";
-import { Collection } from "metabase-types/api";
+import { color } from "metabase/lib/colors";
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+import type { Collection } from "metabase-types/api";
+
 import {
   CaptionDescription,
   CaptionRoot,
@@ -18,12 +21,12 @@ export interface CollectionCaptionProps {
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }
 
-const CollectionCaption = ({
+export const CollectionCaption = ({
   collection,
   onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
   const isRoot = isRootCollection(collection);
-  const isPersonal = isPersonalCollection(collection);
+  const isPersonal = isRootPersonalCollection(collection);
   const isEditable = !isRoot && !isPersonal && collection.can_write;
   const hasDescription = Boolean(collection.description);
 
@@ -44,10 +47,7 @@ const CollectionCaption = ({
   return (
     <CaptionRoot>
       <CaptionTitleContainer>
-        <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
-          collection={collection}
-          size={24}
-        />
+        <CollectionCaptionIcon collection={collection} />
         <CaptionTitle
           key={collection.id}
           initialValue={collection.name}
@@ -74,5 +74,22 @@ const CollectionCaption = ({
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CollectionCaption;
+const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
+  if (!collection.type) {
+    return (
+      <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
+        collection={collection}
+        size={24}
+      />
+    );
+  } else {
+    return (
+      <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+        size={24}
+        color={color("brand")}
+        collection={collection}
+        entity="collection"
+      />
+    );
+  }
+};

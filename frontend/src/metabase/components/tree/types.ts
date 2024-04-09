@@ -1,5 +1,6 @@
-import * as React from "react";
-import { IconName, IconProps } from "metabase/core/components/Icon";
+import type * as React from "react";
+
+import type { IconName, IconProps } from "metabase/ui";
 
 export interface ITreeNodeItem {
   id: string | number;

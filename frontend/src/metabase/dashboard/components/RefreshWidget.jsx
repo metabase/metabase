@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
 import { createRef, Component } from "react";
-
 import { t } from "ttag";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Tooltip from "metabase/core/components/Tooltip";
-import CountdownIcon from "metabase/components/icons/CountdownIcon";
 
-import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import CountdownIcon from "metabase/components/icons/CountdownIcon";
+import Tooltip from "metabase/core/components/Tooltip";
+import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
+
 import {
   RefreshOptionIcon,
   RefreshOptionItem,
@@ -24,7 +24,7 @@ const OPTIONS = [
   { name: t`60 minutes`, period: 60 * 60 },
 ];
 
-export default class RefreshWidget extends Component {
+export class RefreshWidget extends Component {
   constructor(props) {
     super(props);
 
@@ -59,7 +59,10 @@ export default class RefreshWidget extends Component {
         triggerElement={
           elapsed == null ? (
             <Tooltip tooltip={t`Auto-refresh`}>
-              <DashboardHeaderButton icon="clock" />
+              <DashboardHeaderButton
+                icon="clock"
+                aria-label={t`Auto Refresh`}
+              />
             </Tooltip>
           ) : (
             <Tooltip
@@ -80,6 +83,7 @@ export default class RefreshWidget extends Component {
                     percent={Math.min(0.95, (period - elapsed) / period)}
                   />
                 }
+                aria-label={t`Auto Refresh`}
               />
             </Tooltip>
           )
@@ -117,7 +121,6 @@ const RefreshOption = ({ name, period, selected, onClick }) => (
     onClick={onClick}
   >
     <RefreshOptionIcon name="check" />
-    <span>{name.split(" ")[0]}</span>
-    <span>{name.split(" ")[1]}</span>
+    <span>{name}</span>
   </RefreshOptionItem>
 );

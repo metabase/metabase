@@ -1,15 +1,15 @@
-import * as React from "react";
+import type * as React from "react";
 import { t } from "ttag";
 
-import { isSyncCompleted } from "metabase/lib/syncing";
-
-import { Icon, IconName } from "metabase/core/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
-import Database from "metabase-lib/metadata/Database";
-import Schema from "metabase-lib/metadata/Schema";
+import { isSyncCompleted } from "metabase/lib/syncing";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Schema from "metabase-lib/v1/metadata/Schema";
 
-import DataSelectorLoading from "../DataSelectorLoading";
 import { RawDataBackButton } from "../DataSelector.styled";
+import DataSelectorLoading from "../DataSelectorLoading";
 
 type DataSelectorDatabaseSchemaPicker = {
   databases: Database[];

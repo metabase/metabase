@@ -1,6 +1,11 @@
 import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   popover,
+  clearFilterWidget,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -9,6 +14,7 @@ import {
 } from "e2e/support/helpers";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+
 import { DASHBOARD_LOCATION_FILTERS } from "./shared/dashboard-filters-location";
 
 describe("scenarios > dashboard > filters > location", () => {
@@ -16,12 +22,12 @@ describe("scenarios > dashboard > filters > location", () => {
     restore();
     cy.signInAsAdmin();
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
   });
 
-  it(`should work when set through the filter widget`, () => {
+  it("should work when set through the filter widget", () => {
     Object.entries(DASHBOARD_LOCATION_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
       setFilter("Location", filter);
@@ -37,16 +43,17 @@ describe("scenarios > dashboard > filters > location", () => {
         addWidgetStringFilter(value);
 
         cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.get(".Card").within(() => {
+        cy.findByTestId("dashcard").within(() => {
           cy.contains(representativeResult);
         });
 
-        clearFilter(index);
+        clearFilterWidget(index);
+        cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
       },
     );
   });
 
-  it(`should work when set as the default filter`, () => {
+  it("should work when set as the default filter", () => {
     setFilter("Location", "Is");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
@@ -59,13 +66,8 @@ describe("scenarios > dashboard > filters > location", () => {
 
     saveDashboard();
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.contains("1510");
     });
   });
 });
-
-function clearFilter(index = 0) {
-  filterWidget().eq(index).find(".Icon-close").click();
-  cy.wait("@dashcardQuery1");
-}

@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import _ from "underscore";
+
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
-import { PopoverRoot, PopoverTabs } from "./ChartSettingsWidgetPopover.styled";
 import ChartSettingsWidget from "./ChartSettingsWidget";
+import { PopoverRoot, PopoverTabs } from "./ChartSettingsWidgetPopover.styled";
 
 interface Widget {
   id: string;

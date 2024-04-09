@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 
-import DateSingleWidget from "./DateSingleWidget";
+import { DateSingleWidget } from "./DateSingleWidget";
 
 describe("DateSingleWidget", () => {
   it("should render correctly", () => {

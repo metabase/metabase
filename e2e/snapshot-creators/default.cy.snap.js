@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { snapshot, restore, withSampleDatabase } from "e2e/support/helpers";
+
 import {
   USERS,
   USER_GROUPS,
@@ -7,6 +7,7 @@ import {
   SAMPLE_DB_TABLES,
   METABASE_SECRET_KEY,
 } from "e2e/support/cypress_data";
+import { snapshot, restore, withSampleDatabase } from "e2e/support/helpers";
 
 const {
   STATIC_ORDERS_ID,
@@ -41,20 +42,23 @@ describe("snapshots", () => {
         ensureTableIdsAreCorrect(SAMPLE_DATABASE);
         hideNewSampleTables(SAMPLE_DATABASE);
         createQuestionsAndDashboards(SAMPLE_DATABASE);
+        snapshot("without-models");
+        createModels(SAMPLE_DATABASE);
         cy.writeFile(
           "e2e/support/cypress_sample_database.json",
           SAMPLE_DATABASE,
         );
       });
 
-      const instanceData = getDefaultInstanceData();
+      snapshot("default");
 
+      // we need to do this after the snapshot because hitting the API populates the audit log
+      const instanceData = getDefaultInstanceData();
       cy.writeFile(
         "e2e/support/cypress_sample_instance_data.json",
         instanceData,
       );
 
-      snapshot("default");
       restore("blank");
     });
   });
@@ -82,10 +86,13 @@ describe("snapshots", () => {
 
   function updateSettings() {
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
-    cy.request("PUT", "/api/setting/enable-embedding", { value: true });
-    cy.request("PUT", "/api/setting/embedding-secret-key", {
-      value: METABASE_SECRET_KEY,
-    });
+    cy.request("PUT", "/api/setting/enable-embedding", { value: true }).then(
+      () => {
+        cy.request("PUT", "/api/setting/embedding-secret-key", {
+          value: METABASE_SECRET_KEY,
+        });
+      },
+    );
 
     // update the Sample db connection string so it is valid in both CI and locally
     cy.request("GET", `/api/database/${SAMPLE_DB_ID}`).then(response => {
@@ -157,7 +164,6 @@ describe("snapshots", () => {
     function postCollection(name, parent_id, callback) {
       cy.request("POST", "/api/collection", {
         name,
-        color: "#509ee3",
         description: `Collection ${name}`,
         parent_id,
       }).then(({ body }) => callback && callback(body));
@@ -204,6 +210,15 @@ describe("snapshots", () => {
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
       },
       display: "line",
+    });
+  }
+
+  function createModels({ ORDERS_ID }) {
+    // Model 1
+    cy.createQuestion({
+      name: "Orders Model",
+      query: { "source-table": ORDERS_ID },
+      type: "model",
     });
   }
 
@@ -288,10 +303,6 @@ function getDefaultInstanceData() {
     instanceData.questions = cards;
   });
 
-  cy.request("/api/dashboard").then(({ body: dashboards }) => {
-    instanceData.dashboards = dashboards;
-  });
-
   cy.request("/api/user").then(({ body: { data: users } }) => {
     instanceData.users = users;
   });
@@ -300,8 +311,27 @@ function getDefaultInstanceData() {
     instanceData.databases = databases;
   });
 
+  cy.request("/api/permissions/group").then(({ body: groups }) => {
+    instanceData.groups = groups;
+  });
+
   cy.request("/api/collection").then(({ body: collections }) => {
     instanceData.collections = collections;
+
+    instanceData.dashboards = [];
+    for (const collection of collections) {
+      cy.request(
+        `/api/collection/${collection.id}/items?models=dashboard`,
+      ).then(({ body: { data: dashboards } }) => {
+        for (const dashboard of dashboards) {
+          if (!instanceData.dashboards.find(d => d.id === dashboard.id)) {
+            cy.request(`/api/dashboard/${dashboard.id}`).then(response => {
+              instanceData.dashboards.push(response.body);
+            });
+          }
+        }
+      });
+    }
   });
 
   return instanceData;

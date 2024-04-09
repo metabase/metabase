@@ -1,5 +1,6 @@
 (ns metabase.lib.schema.mbql-clause
   (:require
+   [malli.core :as mc]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.types]
@@ -11,56 +12,39 @@
 (defonce ^:private ^{:doc "Set of all registered MBQL clause tags e.g. #{:starts-with}"} tag-registry
   (atom #{}))
 
-(defn- tag-schema
-  "Build the schema for `::tag`, for a valid MBQL clause tag."
-  []
-  (into [:enum] (sort @tag-registry)))
-
-(defn- update-tag-schema! []
-  (mr/def ::tag
-    (tag-schema)))
-
-(defn- tag->registered-schema-name
+(defn tag->registered-schema-name
   "Given an MBQL clause tag like `:starts-with`, return the name of the schema we'll register for it, e.g.
   `:mbql.clause/starts-with`."
   [tag]
   (keyword "mbql.clause" (name tag)))
 
-(defn- clause*-schema
-  "Build the schema for `::clause*`, a `:multi` schema that maps MBQL clause tag -> the schema
+(defn- clause-schema
+  "Build the schema for `::clause`, a `:multi` schema that maps MBQL clause tag -> the schema
   in [[clause-schema-registry]]."
   []
-  (into [:multi {:dispatch first
-                 :error/fn (fn [{:keys [value]} _]
-                             (if (vector? value)
-                               (str "Invalid " (pr-str (first value)) " clause: " (pr-str value))
-                               "not an MBQL clause"))}]
+  (into [:multi
+         {:dispatch common/mbql-clause-tag
+          :error/fn (fn [{:keys [value]} _]
+                      (if-let [tag (common/mbql-clause-tag value)]
+                        (str "Invalid " tag " clause: " (pr-str value))
+                        "not an MBQL clause"))}
+         [::mc/default [:fn {:error/message "not a known MBQL clause"} (constantly false)]]]
         (map (fn [tag]
                [tag [:ref (tag->registered-schema-name tag)]]))
         @tag-registry))
 
 (defn- update-clause-schema! []
-  (mr/def ::clause*
-    (clause*-schema)))
+  (mr/def ::clause
+    (clause-schema)))
 
-;;; whenever [[tag-registry]] is updated, update the `::tag` and `::clause*` schemas.
+;;; create an initial empty definition of `::clause`
+(update-clause-schema!)
+
+;;; whenever [[tag-registry]] is updated, update the `::tag` and `::clause` schemas.
 (add-watch tag-registry
            ::update-schemas
            (fn [_key _ref _old-state _new-state]
-             (update-tag-schema!)
              (update-clause-schema!)))
-
-;;; create initial, empty definitions of `::tag` and `::clause*`
-(update-tag-schema!)
-(update-clause-schema!)
-
-(mr/def ::clause
-  [:and
-   [:schema
-    [:cat
-     [:schema [:ref ::tag]]
-     [:* any?]]]
-   [:ref ::clause*]])
 
 (mu/defn define-mbql-clause
   "Register the `schema` for an MBQL clause with `tag` keyword, and update the `:metabase.lib.schema.mbql-clause/clause`
@@ -107,7 +91,7 @@
   [:schema
    (into [:catn
           {:error/message (str "Valid " tag " clause")}
-          [:tag [:= tag]]
+          [:tag [:= {:decode/normalize common/normalize-keyword} tag]]
           [:options [:schema [:ref ::common/options]]]]
          args)])
 
@@ -118,13 +102,15 @@
   {:pre [(simple-keyword? tag)]}
   (into [:tuple
          {:error/message (str "Valid " tag " clause")}
-         [:= tag]
+         [:= {:decode/normalize common/normalize-keyword} tag]
          [:ref ::common/options]]
         args))
 
 ;;;; Even more convenient functions!
 
-(defn- define-mbql-clause-with-schema-fn [schema-fn tag & args]
+(defn define-mbql-clause-with-schema-fn
+  "Helper. Combines [[define-mbql-clause]] and the result of applying `schema-fn` to `tag` and `args`."
+  [schema-fn tag & args]
   (let [[return-type & args] (if (= (first args) :-)
                                (cons (second args) (drop 2 args))
                                (cons nil args))

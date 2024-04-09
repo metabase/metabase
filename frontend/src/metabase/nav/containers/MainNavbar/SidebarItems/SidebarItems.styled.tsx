@@ -1,19 +1,13 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
-import { Icon } from "metabase/core/components/Icon";
 import { TreeNode } from "metabase/components/tree/TreeNode";
-import Tooltip from "metabase/core/components/Tooltip";
 import Link from "metabase/core/components/Link";
-
+import { alpha, color, darken } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
+import { Icon, Tooltip } from "metabase/ui";
 
-import { darken, color, alpha } from "metabase/lib/colors";
-import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
-
-export const SidebarIcon = styled(Icon, {
-  shouldForwardProp: shouldForwardNonTransientProp,
-})<{
+export const SidebarIcon = styled(Icon)<{
   color?: string | null;
   isSelected: boolean;
 }>`
@@ -91,8 +85,8 @@ const itemContentStyle = css`
 
 export const FullWidthButton = styled.button<{ isSelected: boolean }>`
   cursor: pointer;
-  ${itemContentStyle}
 
+  ${itemContentStyle}
   ${TreeNode.NameContainer} {
     font-weight: 700;
     color: ${props => getTextColor(props.isSelected)};
@@ -122,7 +116,7 @@ export const ItemName = styled(TreeNode.NameContainer)`
 export function NameContainer({ children: itemName }: { children: string }) {
   if (itemName.length >= ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD) {
     return (
-      <Tooltip tooltip={itemName} maxWidth="none">
+      <Tooltip label={itemName} withArrow maw="none">
         <ItemName>{itemName}</ItemName>
       </Tooltip>
     );

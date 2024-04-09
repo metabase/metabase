@@ -13,9 +13,9 @@ jobs:
     outputs:
       snowplow: ${{ steps.changes.outputs.snowplow }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Test which files changed
-        uses: dorny/paths-filter@v2.11.1
+        uses: dorny/paths-filter@v3.0.0
         id: changes
         with:
           token: ${{ github.token }}
@@ -27,6 +27,6 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Lint
         run: docker run -v $(pwd):/snowplow snowplow/igluctl:0.6.0 lint snowplow

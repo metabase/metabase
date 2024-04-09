@@ -1,10 +1,14 @@
 import { render, fireEvent, screen, within } from "@testing-library/react";
+
 import { createMockMetadata } from "__support__/metadata";
 import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
+import registerVisualizations from "metabase/visualizations/register";
 import {
   createSampleDatabase,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+
+registerVisualizations();
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -24,7 +28,7 @@ const setup = props => {
   render(
     <ChartTypeSidebar
       question={question}
-      query={question.query()}
+      query={question.legacyQuery({ useStructuredQuery: true })}
       result={{ data: DATA }}
       {...props}
     />,

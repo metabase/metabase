@@ -1,18 +1,17 @@
 import userEvent from "@testing-library/user-event";
+
+import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
 import {
   getBrokenUpTextMatcher,
   renderWithProviders,
   screen,
-  waitFor,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
-
-import { checkNotNull } from "metabase/core/utils/types";
-import {
-  FieldValuesWidget,
-  IFieldValuesWidgetProps,
-} from "metabase/components/FieldValuesWidget";
-
+import type { IFieldValuesWidgetProps } from "metabase/components/FieldValuesWidget";
+import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
+import Fields from "metabase/entities/fields";
+import { checkNotNull, isNotNull } from "metabase/lib/types";
+import type Field from "metabase-lib/v1/metadata/Field";
 import {
   ORDERS,
   PRODUCTS,
@@ -20,7 +19,6 @@ import {
   PRODUCT_CATEGORY_VALUES,
   PEOPLE_SOURCE_VALUES,
 } from "metabase-types/api/mocks/presets";
-import Field from "metabase-lib/metadata/Field";
 
 import {
   state,
@@ -44,7 +42,12 @@ async function setup({
 } & Omit<Partial<IFieldValuesWidgetProps>, "fields">) {
   const fetchFieldValues = jest.fn(({ id }) => ({
     payload: fields.filter(checkNotNull).find(f => f?.id === id),
+    type: "__MOCK__",
   }));
+
+  jest
+    .spyOn(Fields.objectActions, "fetchFieldValues")
+    .mockImplementation(fetchFieldValues);
 
   if (searchValue) {
     fields.forEach(field => {
@@ -55,13 +58,8 @@ async function setup({
   renderWithProviders(
     <FieldValuesWidget
       value={[]}
-      fields={fields.filter(checkNotNull)}
+      fields={fields.filter(isNotNull)}
       onChange={jest.fn()}
-      fetchFieldValues={fetchFieldValues as any}
-      fetchParameterValues={jest.fn()}
-      fetchDashboardParameterValues={jest.fn()}
-      fetchCardParameterValues={jest.fn()}
-      addRemappings={jest.fn()}
       prefix={prefix}
       {...props}
     />,
@@ -70,9 +68,7 @@ async function setup({
     },
   );
 
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  await waitForLoaderToBeRemoved();
 
   return { fetchFieldValues };
 }
@@ -98,15 +94,13 @@ describe("FieldValuesWidget", () => {
     });
 
     describe("has_field_values = list", () => {
-      const field = metadata.field(PRODUCTS.CATEGORY);
+      const field = checkNotNull(metadata.field(PRODUCTS.CATEGORY));
 
       it("should call fetchFieldValues", async () => {
         const { fetchFieldValues } = await setup({
           fields: [field],
         });
-        expect(fetchFieldValues).toHaveBeenCalledWith({
-          id: PRODUCTS.CATEGORY,
-        });
+        expect(fetchFieldValues).toHaveBeenCalledWith(field);
       });
 
       it("should not have 'Search the list' as the placeholder text for fields with less or equal than 10 values", async () => {
@@ -126,7 +120,7 @@ describe("FieldValuesWidget", () => {
     });
 
     describe("has_field_values = search", () => {
-      const field = metadata.field(PRODUCTS.VENDOR);
+      const field = metadata.field(PEOPLE.EMAIL);
 
       it("should not call fetchFieldValues", async () => {
         const { fetchFieldValues } = await setup({
@@ -138,7 +132,7 @@ describe("FieldValuesWidget", () => {
       it("should have 'Search by Vendor' as the placeholder text", async () => {
         await setup({ fields: [field] });
         expect(
-          screen.getByPlaceholderText("Search by Vendor"),
+          screen.getByPlaceholderText("Search by Email"),
         ).toBeInTheDocument();
       });
     });
@@ -215,7 +209,7 @@ describe("FieldValuesWidget", () => {
       await setup({
         fields: [
           metadata.field(PRODUCTS.CATEGORY),
-          metadata.field(PRODUCTS.VENDOR),
+          metadata.field(PEOPLE.EMAIL),
         ],
       });
 
@@ -264,12 +258,18 @@ describe("FieldValuesWidget", () => {
       });
 
       expect(screen.getByText(LISTABLE_PK_FIELD_VALUE)).toBeInTheDocument();
-      expect(fetchFieldValues).toHaveBeenCalledWith({
-        id: LISTABLE_PK_FIELD_ID,
-      });
-      expect(fetchFieldValues).not.toHaveBeenCalledWith({
-        id: EXPRESSION_FIELD_ID,
-      });
+      expect(fetchFieldValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: LISTABLE_PK_FIELD_ID,
+          table_id: valuesField.table_id,
+        }),
+      );
+      expect(fetchFieldValues).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: EXPRESSION_FIELD_ID,
+          table_id: expressionField.table_id,
+        }),
+      );
     });
   });
 
@@ -286,7 +286,7 @@ describe("FieldValuesWidget", () => {
         searchValue,
       });
 
-      userEvent.type(
+      await userEvent.type(
         screen.getByPlaceholderText(`Search by ${displayName}`),
         searchValue,
       );
@@ -308,7 +308,7 @@ describe("FieldValuesWidget", () => {
         searchValue,
       });
 
-      userEvent.type(screen.getByPlaceholderText("Search"), searchValue);
+      await userEvent.type(screen.getByPlaceholderText("Search"), searchValue);
 
       expect(await screen.findByText(`No matching result`)).toBeInTheDocument();
     });

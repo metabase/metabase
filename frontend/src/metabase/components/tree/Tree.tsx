@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect } from "react";
 import * as React from "react";
-import _ from "underscore";
 import { usePrevious } from "react-use";
-import { TreeNodeList } from "./TreeNodeList";
+import _ from "underscore";
+
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
+import { TreeNodeList } from "./TreeNodeList";
+import type { ITreeNodeItem, TreeNodeComponent } from "./types";
 import { getInitialExpandedIds } from "./utils";
-import { ITreeNodeItem, TreeNodeComponent } from "./types";
 
 interface TreeProps {
   data: ITreeNodeItem[];

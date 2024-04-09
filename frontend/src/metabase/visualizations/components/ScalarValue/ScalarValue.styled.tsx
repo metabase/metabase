@@ -1,8 +1,8 @@
 import styled from "@emotion/styled";
 
-import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
+import { Icon } from "metabase/ui";
 
 const TITLE_LINE_HEIGHT_REM = 1.4;
 
@@ -50,6 +50,7 @@ export const ScalarTitleContent = styled.h3`
   text-align: center;
   overflow: hidden;
   cursor: ${props => props.onClick && "pointer"};
+  font-size: 14px;
 
   &:hover {
     color: ${color("brand")};
@@ -70,6 +71,7 @@ export const ScalarDescriptionPlaceholder = styled.div`
 
 export const ScalarDescriptionIcon = styled(Icon)`
   cursor: pointer;
+  color: ${color("text-light")};
 
   &:hover {
     color: ${color("brand")};

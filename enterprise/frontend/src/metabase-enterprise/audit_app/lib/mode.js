@@ -90,5 +90,5 @@ const AuditDrill = ({ question, clicked }) => {
 
 export const AuditMode = {
   name: "audit",
-  drills: [AuditDrill],
+  clickActions: [AuditDrill],
 };

@@ -1,5 +1,6 @@
 import Tooltip from "metabase/core/components/Tooltip";
-import { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
+
 import { ColorButton } from "./NotebookStep.styled";
 
 interface ActionButtonProps {

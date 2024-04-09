@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 
-import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import PinDropZone from "metabase/collections/components/PinDropZone";
+import CS from "metabase/css/core/index.css";
 
 import BaseItemsTable from "./BaseItemsTable";
 import { ItemsTableRoot } from "./ItemsTable.styled";
@@ -11,15 +11,11 @@ Item.propTypes = {
 };
 
 function Item({ item, ...props }) {
-  const metabaseEvent = `${ANALYTICS_CONTEXT};Item Click;${item.model}`;
   return (
     <BaseItemsTable.Item
       key={`${item.model}-${item.id}`}
       {...props}
       item={item}
-      linkProps={{
-        "data-metabase-event": metabaseEvent,
-      }}
     />
   );
 }
@@ -40,7 +36,7 @@ function ItemsTable(props) {
   }
 
   return (
-    <div className="relative">
+    <div className={CS.relative}>
       <PinDropZone variant="unpin" />
       <BaseItemsTable {...props} renderItem={Item} />
     </div>

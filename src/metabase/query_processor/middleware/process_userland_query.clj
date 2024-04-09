@@ -1,17 +1,22 @@
 (ns metabase.query-processor.middleware.process-userland-query
   "Middleware related to doing extra steps for queries that are ran via API endpoints (i.e., most of them -- as opposed
-  to queries ran internally e.g. as part of the sync process).
-  These include things like saving QueryExecutions and adding query ViewLogs, storing exceptions and formatting the results."
+  to queries ran internally e.g. as part of the sync process). These include things like saving QueryExecutions and
+  adding query ViewLogs, storing exceptions and formatting the results.
+
+  ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
+  event -- see [[metabase.events.view-log]]."
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.events :as events]
    [metabase.models.query :as query]
    [metabase.models.query-execution
     :as query-execution
     :refer [QueryExecution]]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -37,7 +42,7 @@
   (when-not (:cache_hit query-execution)
     (query/save-query-and-update-average-execution-time! query query-hash running-time))
   (if-not context
-    (log/warn (trs "Cannot save QueryExecution, missing :context"))
+    (log/warn "Cannot save QueryExecution, missing :context")
     (t2/insert! QueryExecution (dissoc query-execution :json_query))))
 
 (defn- save-query-execution!
@@ -56,28 +61,36 @@
                                                            (try
                                                              (save-query-execution!* execution-info)
                                                              (catch Throwable e
-                                                               (log/error e (trs "Error saving query execution info"))))))))
+                                                               (log/error e "Error saving query execution info")))))))
 
-(defn- save-successful-query-execution! [cached? query-execution result-rows]
-  (let [qe-map (assoc query-execution :cache_hit (boolean cached?) :result_rows result-rows)]
+(defn- save-successful-query-execution! [cache-details is-sandboxed? query-execution result-rows]
+  (let [qe-map (assoc query-execution
+                      :cache_hit    (boolean (:cached cache-details))
+                      :cache_hash   (:hash cache-details)
+                      :result_rows  result-rows
+                      :is_sandboxed (boolean is-sandboxed?))]
     (save-query-execution! qe-map)))
 
 (defn- save-failed-query-execution! [query-execution message]
-  (save-query-execution! (assoc query-execution :error (str message))))
+  (try
+    (save-query-execution! (assoc query-execution :error (str message)))
+    (catch Throwable e
+      (log/errorf e "Unexpected error saving failed query execution: %s" (ex-message e)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- success-response [{query-hash :hash, :as query-execution} {cached? :cached, :as result}]
+(defn- success-response [{query-hash :hash, :as query-execution} {cache :cache/details :as result}]
   (merge
    (-> query-execution
        add-running-time
-       (dissoc :error :hash :executor_id :card_id :dashboard_id :pulse_id :result_rows :native))
-   result
-   {:status                 :completed
-    :average_execution_time (when cached?
+       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :pulse_id :result_rows :native))
+   (dissoc result :cache/details)
+   {:cached                 (boolean (:cached cache))
+    :status                 :completed
+    :average_execution_time (when (:cached cache)
                               (query/average-execution-time-ms query-hash))}))
 
 (defn- add-and-save-execution-info-xform! [execution-info rf]
@@ -91,12 +104,10 @@
       ([acc]
        ;; We don't actually have a guarantee that it's from a card just because it's userland
        (when (integer? (:card_id execution-info))
-         (events/publish-event! :card-query {:card_id      (:card_id execution-info)
-                                             :actor_id     (:executor_id execution-info)
-                                             :cached       (:cached acc)
-                                             :context      (:context execution-info)
-                                             :ignore_cache (get-in execution-info [:json_query :middleware :ignore-cached-results?])}))
-       (save-successful-query-execution! (:cached acc) execution-info @row-count)
+         (events/publish-event! :event/card-query {:user-id      (:executor_id execution-info)
+                                                   :card-id      (:card_id execution-info)
+                                                   :context      (:context execution-info)}))
+       (save-successful-query-execution! (:cache/details acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))
@@ -108,13 +119,14 @@
 (defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
   {:arglists '([query])}
-  [{{:keys [executed-by query-hash context card-id dashboard-id pulse-id]} :info
-    database-id                                                            :database
-    query-type                                                             :type
-    :as                                                                    query}]
-  {:pre [(instance? (Class/forName "[B") query-hash)]}
+  [{{:keys [executed-by query-hash context action-id card-id dashboard-id pulse-id]} :info
+    database-id                                                                      :database
+    query-type                                                                       :type
+    :as                                                                              query}]
+  {:pre [(bytes? query-hash)]}
   {:database_id       database-id
    :executor_id       executed-by
+   :action_id         action-id
    :card_id           card-id
    :dashboard_id      dashboard-id
    :pulse_id          pulse-id
@@ -128,26 +140,34 @@
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})
 
-(defn process-userland-query
-  "Do extra handling 'userland' queries (i.e. ones ran as a result of a user action, e.g. an API call, scheduled Pulse,
-  etc.). This includes recording QueryExecution entries and returning the results in an FE-client-friendly format."
-  [qp]
-  (fn [query rff {:keys [raisef], :as context}]
-    (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
-          execution-info (query-execution-info query)]
-      (letfn [(rff* [metadata]
-                (add-and-save-execution-info-xform! execution-info (rff metadata)))
-              (raisef* [^Throwable e context]
-                (save-failed-query-execution!
-                  execution-info
-                  (or
-                    (some-> e (.getCause) (.getMessage))
-                    (.getMessage e)))
-                (raisef (ex-info (.getMessage e)
-                          {:query-execution execution-info}
-                          e)
-                        context))]
-        (try
-          (qp query rff* (assoc context :raisef raisef*))
-          (catch Throwable e
-            (raisef* e context)))))))
+(mu/defn process-userland-query-middleware :- ::qp.schema/qp
+  "Around middleware.
+
+  Userland queries only:
+
+  1. Record a `QueryExecution` entry in the application database when this query is finished running
+
+  2. Record a ViewLog entry when running a query for a Card
+
+  3. Add extra info like `running_time` and `started_at` to the results"
+  [qp :- ::qp.schema/qp]
+  (mu/fn [query :- ::qp.schema/query
+          rff   :- ::qp.schema/rff]
+    (if-not (get-in query [:middleware :userland-query?])
+      (qp query rff)
+      (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
+            execution-info (query-execution-info query)]
+        (letfn [(rff* [metadata]
+                  (let [result (rff metadata)]
+                    (add-and-save-execution-info-xform! execution-info result)))]
+          (try
+            (qp query rff*)
+            (catch Throwable e
+              (save-failed-query-execution!
+               execution-info
+               (or
+                (some-> e ex-cause ex-message)
+                (ex-message e)))
+              (throw (ex-info (ex-message e)
+                              {:query-execution execution-info}
+                              e)))))))))

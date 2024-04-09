@@ -1,8 +1,8 @@
-import { appBar, main, popover, restore } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { appBar, main, popover, restore } from "e2e/support/helpers";
 
-const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 // Should be removed once proper model FK support is implemented
 describe("issue 31663", () => {
@@ -15,16 +15,10 @@ describe("issue 31663", () => {
       "idFields",
     );
 
-    cy.createQuestion({
-      name: "Orders Model",
-      dataset: true,
-      query: { "source-table": ORDERS_ID },
-    });
-
     cy.createQuestion(
       {
         name: "Products Model",
-        dataset: true,
+        type: "model",
         query: { "source-table": PRODUCTS_ID },
       },
       { visitQuestion: true },

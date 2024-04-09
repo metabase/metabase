@@ -1,27 +1,37 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
+import { createMockMetadata } from "__support__/metadata";
+import {
+  setupCardsEndpoints,
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+  setupDatabaseEndpoints,
+  setupErrorParameterValuesEndpoints,
+  setupParameterValuesEndpoints,
+  setupSearchEndpoints,
+  setupUnauthorizedCardsEndpoints,
+  setupUnauthorizedCollectionsEndpoints,
+} from "__support__/server-mocks";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { checkNotNull } from "metabase/core/utils/types";
-import { Card, ParameterValues } from "metabase-types/api";
+import { checkNotNull } from "metabase/lib/types";
+import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type { Card, ParameterValues } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockDatabase,
   createMockField,
   createMockParameterValues,
+  createMockTable,
 } from "metabase-types/api/mocks";
-import { createMockMetadata } from "__support__/metadata";
-import {
-  setupCardsEndpoints,
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-  setupErrorParameterValuesEndpoints,
-  setupParameterValuesEndpoints,
-  setupUnauthorizedCardsEndpoints,
-  setupUnauthorizedCollectionsEndpoints,
-} from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { UiParameter } from "metabase-lib/parameters/types";
-import { createMockUiParameter } from "metabase-lib/parameters/mock";
+
 import ValuesSourceModal from "./ValuesSourceModal";
 
 describe("ValuesSourceModal", () => {
@@ -44,14 +54,6 @@ describe("ValuesSourceModal", () => {
   const field2 = checkNotNull(metadata.field(2));
 
   describe("fields source", () => {
-    it("should show a message about not connected fields", async () => {
-      await setup();
-
-      expect(
-        screen.getByText(/You haven’t connected a field to this filter/),
-      ).toBeInTheDocument();
-    });
-
     it("should show a message about missing field values", async () => {
       await setup({
         parameter: createMockUiParameter({
@@ -80,19 +82,28 @@ describe("ValuesSourceModal", () => {
       expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
     });
 
-    it("should not show the fields option for variable template tags", async () => {
-      await setup({
-        parameter: createMockUiParameter({
-          hasVariableTemplateTagTarget: true,
-        }),
-      });
-
+    it("should not show the connected fields option if parameter is not wired to any fields", async () => {
+      await setup();
       expect(
         screen.queryByRole("radio", { name: "From connected fields" }),
       ).not.toBeInTheDocument();
       expect(
         screen.getByRole("radio", { name: "From another model or question" }),
       ).toBeChecked();
+    });
+
+    it("should show the fields option if parameter is wired to a field", async () => {
+      await setup({
+        parameter: createMockUiParameter({
+          fields: [field1],
+        }),
+      });
+      expect(
+        screen.queryByRole("radio", { name: "From connected fields" }),
+      ).toBeChecked();
+      expect(
+        screen.getByRole("radio", { name: "From another model or question" }),
+      ).toBeInTheDocument();
     });
 
     it("should preserve custom list option for variable template tags", async () => {
@@ -120,7 +131,7 @@ describe("ValuesSourceModal", () => {
       });
       expect(screen.getByRole("textbox")).toHaveValue("C\nD");
 
-      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
       expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
       expect(screen.getByRole("textbox")).toHaveValue("C\nD");
     });
@@ -141,7 +152,7 @@ describe("ValuesSourceModal", () => {
         screen.getByText(/We don’t have any cached values/),
       ).toBeInTheDocument();
 
-      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
       expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
       expect(screen.getByRole("textbox")).toHaveValue("A\nB");
     });
@@ -199,13 +210,15 @@ describe("ValuesSourceModal", () => {
         ],
       });
 
-      userEvent.click(screen.getByRole("button", { name: /Pick a column/ }));
+      await userEvent.click(
+        screen.getByRole("button", { name: /Pick a column/ }),
+      );
       expect(
         screen.queryByRole("heading", { name: "ID" }),
       ).not.toBeInTheDocument();
 
-      userEvent.click(screen.getByRole("heading", { name: "Category" }));
-      userEvent.click(screen.getByRole("button", { name: "Done" }));
+      await userEvent.click(screen.getByRole("heading", { name: "Category" }));
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
       expect(onSubmit).toHaveBeenCalledWith("card", {
         card_id: 1,
         value_field: ["field", 2, null],
@@ -266,19 +279,38 @@ describe("ValuesSourceModal", () => {
     });
 
     it("should allow searching for a card without access to the root collection (metabase#30355)", async () => {
+      fetchMock.get(
+        { url: "path:/api/collection", overwriteRoutes: false },
+        [],
+      );
+      fetchMock.get(
+        {
+          url: "path:/api/collection/tree",
+          query: { tree: true, "exclude-archived": true },
+          overwriteRoutes: false,
+        },
+        [],
+      );
+      setupDatabaseEndpoints(
+        createMockDatabase({
+          id: -1337,
+          tables: [createMockTable({ schema: "Everything%20else" })],
+        }),
+      );
+
       await setup({
         hasCollectionAccess: false,
       });
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByRole("radio", { name: "From another model or question" }),
       );
-      userEvent.click(
+      await userEvent.click(
         screen.getByRole("button", { name: /Pick a model or question…/ }),
       );
 
       expect(
-        screen.getByPlaceholderText("Search for a question or model"),
+        await screen.findByPlaceholderText("Search for a question or model"),
       ).toBeInTheDocument();
     });
 
@@ -342,7 +374,7 @@ describe("ValuesSourceModal", () => {
       });
       expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
 
-      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
       expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
       expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
     });
@@ -352,9 +384,9 @@ describe("ValuesSourceModal", () => {
     it("should set static list values", async () => {
       const { onSubmit } = await setup();
 
-      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
-      userEvent.type(screen.getByRole("textbox"), "Gadget\nWidget");
-      userEvent.click(screen.getByRole("button", { name: "Done" }));
+      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      await userEvent.type(screen.getByRole("textbox"), "Gadget\nWidget");
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
       expect(onSubmit).toHaveBeenCalledWith("static-list", {
         values: ["Gadget", "Widget"],
@@ -364,6 +396,7 @@ describe("ValuesSourceModal", () => {
     it("should preserve the list when changing the source type", async () => {
       await setup({
         parameter: createMockUiParameter({
+          fields: [field1],
           values_source_type: "static-list",
           values_source_config: {
             values: ["Gadget", "Widget"],
@@ -371,10 +404,10 @@ describe("ValuesSourceModal", () => {
         }),
       });
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByRole("radio", { name: "From connected fields" }),
       );
-      userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
 
       expect(screen.getByRole("textbox")).toHaveValue("Gadget\nWidget");
     });
@@ -402,6 +435,7 @@ const setup = async ({
   const onClose = jest.fn();
 
   setupDatabasesEndpoints(databases);
+  setupSearchEndpoints([]);
 
   if (hasCollectionAccess) {
     setupCollectionsEndpoints({ collections });
@@ -425,9 +459,7 @@ const setup = async ({
     />,
   );
 
-  await waitFor(() => {
-    expect(screen.queryByText(/Loading/)).not.toBeInTheDocument();
-  });
+  await waitForLoaderToBeRemoved();
 
   return { onSubmit };
 };

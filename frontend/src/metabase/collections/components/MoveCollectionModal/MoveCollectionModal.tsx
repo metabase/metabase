@@ -1,20 +1,34 @@
 import { useCallback } from "react";
-import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
-import { Collection } from "metabase-types/api";
+import { t } from "ttag";
+
+import { useCollectionQuery } from "metabase/common/hooks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { MoveModal } from "metabase/containers/MoveModal";
+import Collections from "metabase/entities/collections";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import type {
+  Collection,
+  CollectionItem,
+  CollectionId,
+} from "metabase-types/api";
 
 export interface MoveCollectionModalProps {
   collection: Collection;
-  onMove: (source: Collection, destination: Collection) => void;
+  onMove: (
+    source: Collection | CollectionItem,
+    destination: { id: CollectionId },
+  ) => void;
   onClose: () => void;
 }
 
-const MoveCollectionModal = ({
+const MoveCollectionModalView = ({
   collection,
   onMove,
   onClose,
 }: MoveCollectionModalProps): JSX.Element => {
   const handleMove = useCallback(
-    async (destination: Collection) => {
+    async (destination: { id: CollectionId }) => {
       await onMove(collection, destination);
       onClose();
     },
@@ -22,14 +36,49 @@ const MoveCollectionModal = ({
   );
 
   return (
-    <CollectionMoveModal
-      title={`Move ${collection.name}?`}
-      initialCollectionId={collection.id}
+    <MoveModal
+      title={t`Move "${collection.name}"?`}
+      initialCollectionId={collection.parent_id ?? "root"}
+      movingCollectionId={collection.id}
       onMove={handleMove}
       onClose={onClose}
     />
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default MoveCollectionModal;
+// used with ModalRoute router
+export const MoveCollectionModal = ({
+  collectionId,
+  params,
+  onClose,
+}: {
+  collectionId?: CollectionId;
+  params?: { slug: string };
+  onClose: () => void;
+}) => {
+  const dispatch = useDispatch();
+  const collectionIdfromUrl = Urls.extractCollectionId(params?.slug);
+
+  const {
+    data: collection,
+    isLoading,
+    error,
+  } = useCollectionQuery({
+    id: collectionId ?? collectionIdfromUrl,
+    enabled: Boolean(collectionId || collectionIdfromUrl),
+  });
+
+  if (!collection || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return (
+    <MoveCollectionModalView
+      collection={collection}
+      onMove={async (source, destination) => {
+        await dispatch(Collections.actions.setCollection(source, destination));
+      }}
+      onClose={onClose}
+    />
+  );
+};

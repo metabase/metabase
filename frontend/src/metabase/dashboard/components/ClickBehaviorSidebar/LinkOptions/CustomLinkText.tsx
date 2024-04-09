@@ -1,21 +1,22 @@
+import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
-
+import CS from "metabase/css/core/index.css";
 import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
 } from "metabase-types/api";
 
-import { Heading } from "../ClickBehaviorSidebar.styled";
+import { Label } from "./CustomLinkText.styled";
 
 interface Props {
   clickBehavior: ArbitraryCustomDestinationClickBehavior;
   updateSettings: (settings: ClickBehavior) => void;
 }
 
-const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
+export const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
   const handleChange = useCallback(
     (e: { target: HTMLInputElement }) => {
       updateSettings({
@@ -27,10 +28,11 @@ const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
   );
 
   return (
-    <div className="mt2 mb1">
-      <Heading>{t`Customize link text (optional)`}</Heading>
+    <div className={cx(CS.mt2, CS.mb1)}>
+      <Label htmlFor="link-text-template">{t`Customize link text (optional)`}</Label>
       <InputBlurChange
-        className="block full"
+        id="link-text-template"
+        className={cx(CS.block, CS.full)}
         placeholder={t`E.x. Details for {{Column Name}}`}
         value={clickBehavior.linkTextTemplate}
         onBlurChange={handleChange}
@@ -38,6 +40,3 @@ const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
     </div>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CustomLinkText;

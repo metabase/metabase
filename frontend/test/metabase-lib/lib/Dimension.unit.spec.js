@@ -1,4 +1,13 @@
 import { createMockMetadata } from "__support__/metadata";
+import Dimension, {
+  FieldDimension,
+  TemplateTagDimension,
+} from "metabase-lib/v1/Dimension";
+import Question from "metabase-lib/v1/Question";
+import Field from "metabase-lib/v1/metadata/Field";
+import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import {
   createSampleDatabase,
   ORDERS,
@@ -7,15 +16,6 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import Dimension, {
-  FieldDimension,
-  TemplateTagDimension,
-} from "metabase-lib/Dimension";
-import Field from "metabase-lib/metadata/Field";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
-import Question from "metabase-lib/Question";
-import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -356,9 +356,9 @@ describe("Dimension", () => {
     const dimension = Dimension.parseMBQL(mbql, metadata);
 
     describe("INSTANCE METHODS", () => {
-      describe("isBinnable()", () => {
+      describe("_isBinnable()", () => {
         it("should return truthy", () => {
-          expect(dimension.isBinnable()).toBeTruthy();
+          expect(dimension._isBinnable()).toBeTruthy();
         });
       });
 
@@ -724,7 +724,7 @@ describe("Dimension", () => {
         describe("when an expression dimension has a query that relies on a nested card", () => {
           it("should return a field inferred from the expression", () => {
             const question = new Question(nestedQuestionCard, null);
-            const query = question.query();
+            const query = question.legacyQuery({ useStructuredQuery: true });
             const dimension = Dimension.parseMBQL(
               ["expression", "Foobar"], // "Foobar" does not exist in the metadata
               null,
@@ -740,7 +740,7 @@ describe("Dimension", () => {
 
           it("should return a field inferred from the expression (from metadata)", () => {
             const question = new Question(nestedQuestionCard, metadata);
-            const query = question.query();
+            const query = question.legacyQuery({ useStructuredQuery: true });
             const dimension = Dimension.parseMBQL(
               ["expression", "Foo"],
               metadata,
@@ -784,7 +784,7 @@ describe("Dimension", () => {
         const dimension = Dimension.parseMBQL(
           ["expression", 42],
           metadata,
-          question.query(),
+          question.legacyQuery({ useStructuredQuery: true }),
         );
         expect(dimension.dimensions().length).toEqual(5); // 5 different binnings for a number
       });
@@ -1020,7 +1020,7 @@ describe("Dimension", () => {
     const dimension = Dimension.parseMBQL(
       ["field", "boolean", { "base-type": "type/Boolean" }],
       metadata,
-      question.query(),
+      question.legacyQuery({ useStructuredQuery: true }),
     );
 
     describe("INSTANCE METHODS", () => {

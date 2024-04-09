@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
   display: flex;
@@ -16,7 +17,7 @@ export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
 
 export const LegendItemLabel = styled.div<{ isMuted: boolean }>`
   display: flex;
-  align-items: baseline;
+  align-items: center;
   opacity: ${({ isMuted }) => (isMuted ? "0.4" : "1")};
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
   overflow: hidden;
@@ -33,12 +34,14 @@ export const LegendItemDot = styled.div`
   height: 0.75rem;
   border-radius: 50%;
   background-color: ${({ color }) => color};
+  color-adjust: exact;
 `;
 
 export const LegendItemTitle = styled.div`
   color: ${color("text-dark")};
   font-weight: bold;
-  margin-left: 0.5rem;
+  font-size: 12px;
+  margin-left: 4px;
   overflow: hidden;
 `;
 

@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { color } from "metabase/lib/colors";
 
 export const StatusRoot = styled.div`
   width: 16rem;
@@ -21,6 +22,7 @@ export const StatusHeader = styled.div`
 
 export const StatusTitle = styled.div`
   flex: 1 1 auto;
+  width: 100%;
   color: ${color("bg-light")};
   font-size: 0.875rem;
   font-weight: bold;

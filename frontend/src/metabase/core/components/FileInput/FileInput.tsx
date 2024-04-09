@@ -1,13 +1,7 @@
-import {
-  ChangeEvent,
-  FocusEvent,
-  forwardRef,
-  HTMLAttributes,
-  Ref,
-  useCallback,
-  useState,
-} from "react";
+import type { ChangeEvent, FocusEvent, HTMLAttributes, Ref } from "react";
+import { forwardRef, useCallback, useState } from "react";
 import { t } from "ttag";
+
 import { InputButton, InputField, InputRoot } from "./FileInput.styled";
 
 export type FileInputAttributes = Omit<

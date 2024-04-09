@@ -16,7 +16,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`settings`** value must be a map.
+*  **`settings`** map
 
 ---
 

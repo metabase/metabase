@@ -58,6 +58,7 @@
                         :snippets (tru "Top folder")
                         (tru "Our analytics"))
                 :namespace collection-namespace
+                :is_personal false
                 :id   "root"))
 
 (defn- hydrated-root-collection

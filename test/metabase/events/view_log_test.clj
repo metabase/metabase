@@ -1,145 +1,91 @@
 (ns metabase.events.view-log-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
-   [metabase.events.view-log :as view-log]
-   [metabase.models :refer [Card Dashboard Table User ViewLog]]
-   [metabase.models.setting :as setting]
+   [metabase.api.common :as api]
+   [metabase.events :as events]
+   [metabase.models.data-permissions :as data-perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
-(deftest card-create-test
-  (mt/with-temp* [User [user]
-                  Card [card {:creator_id (:id user)}]]
-    (view-log/handle-view-event! {:topic :card-create
-                                  :item  card})
-    (is (= {:user_id  (:id user)
-            :model    "card"
-            :model_id (:id card)}
-           (mt/derecordize
-            (t2/select-one [ViewLog :user_id :model :model_id], :user_id (:id user)))))))
+(defn latest-view
+  "Returns the most recent view for a given user and model ID"
+  [user-id model-id]
+  (t2/select-one :model/ViewLog
+                 :user_id user-id
+                 :model_id model-id
+                 {:order-by [[:id :desc]]}))
 
-(deftest card-read-test
-  (mt/with-temp* [User [user]
-                  Card [card {:creator_id (:id user)}]]
+(deftest card-read-ee-test
+  (when (premium-features/log-enabled?)
+    (mt/with-temp [:model/User user {}
+                   :model/Card card {:creator_id (u/id user)}]
+      (testing "A basic card read event is recorded in EE"
+        (events/publish-event! :event/card-read {:object card :user-id (u/the-id user)})
+        (is (partial=
+             {:user_id  (u/id user)
+              :model    "card"
+              :model_id (u/id card)
+              :has_access true
+              :context    "question"}
+             (latest-view (u/id user) (u/id card))))))))
 
-    (view-log/handle-view-event! {:topic :card-read
-                                  :item  card})
-    (is (= {:user_id  (:id user)
-            :model    "card"
-            :model_id (:id card)}
-           (mt/derecordize
-            (t2/select-one [ViewLog :user_id :model :model_id], :user_id (:id user)))))))
+(deftest card-read-oss-no-view-logging-test
+  (when-not (premium-features/log-enabled?)
+    (mt/with-temp [:model/User user {}
+                   :model/Card card {:creator_id (u/id user)}]
+      (testing "A basic card read event is not recorded in OSS"
+        (events/publish-event! :event/card-read {:object card :user-id (u/the-id user)})
+        (is (nil? (latest-view (u/id user) (u/id card)))
+            "view log entries should not be made in OSS")))))
 
-(deftest card-query-test
-  (mt/with-temp* [User [user]
-                  Card [card {:creator_id (:id user)}]]
+(deftest table-read-ee-test
+  (when (premium-features/log-enabled?)
+    (mt/with-temp [:model/User user {}]
+      (let [table (t2/select-one :model/Table :id (mt/id :users))]
+        (testing "A basic table read event is recorded in EE"
+          (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
+          (is (partial=
+               {:user_id  (u/id user)
+                :model    "table"
+                :model_id (u/id table)
+                :has_access nil
+                :context    nil}
+               (latest-view (u/id user) (u/id table)))))
 
-    (view-log/handle-view-event! {:topic :card-query
-                                  :item  (assoc card :cached false :ignore_cache true)})
-    (is (= {:user_id  (:id user)
-            :model    "card"
-            :model_id (:id card)
-            :metadata {:cached false :ignore_cache true :context nil}}
-           (mt/derecordize
-            (t2/select-one [ViewLog :user_id :model :model_id :metadata], :user_id (:id user)))))))
+        (testing "If a user is bound, has_access is recorded in EE based on the user's current permissions"
+          (mt/with-full-data-perms-for-all-users!
+            (binding [api/*current-user-id* (u/id user)]
+              (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
+              (is (true? (:has_access (latest-view (u/id user) (u/id table)))))
 
-(deftest table-read-test
-  (mt/with-temp* [User  [user]
-                  Table [table]]
+              (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/data-access :no-self-service)
+              (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
+              (is (false? (:has_access (latest-view (u/id user) (u/id table))))))))))))
 
-    (view-log/handle-view-event! {:topic :table-read
-                                  :item  (assoc table :actor_id (:id user))})
-    (is (= {:user_id  (:id user)
-            :model    "table"
-            :model_id (:id table)}
-           (mt/derecordize
-            (t2/select-one [ViewLog :user_id :model :model_id], :user_id (:id user)))))))
+(deftest dashboard-read-ee-test
+  (when (premium-features/log-enabled?)
+    (mt/with-temp [:model/User          user      {}
+                   :model/Dashboard     dashboard {:name "Test Dashboard"}
+                   :model/Card          card      {:name "Dashboard Test Card"}
+                   :model/DashboardCard _dashcard {:dashboard_id (u/id dashboard) :card_id (u/id card)}]
+      (let [dashboard (t2/hydrate dashboard [:dashcards :card])]
+        (testing "A basic dashboard read event is recorded in EE, as well as events for its cards"
+          (events/publish-event! :event/dashboard-read {:object dashboard :user-id (u/id user)})
+          (is (partial=
+               {:user_id    (u/id user)
+                :model      "dashboard"
+                :model_id   (u/id dashboard)
+                :has_access true
+                :context    nil}
+               (latest-view (u/id user) (u/id dashboard))))
 
-(deftest dashboard-read-test
-  (mt/with-temp* [User      [user]
-                  Dashboard [dashboard {:creator_id (:id user)}]]
-    (view-log/handle-view-event! {:topic :dashboard-read
-                                  :item  dashboard})
-    (is (= {:user_id  (:id user)
-            :model    "dashboard"
-            :model_id (:id dashboard)}
-           (mt/derecordize
-            (t2/select-one [ViewLog :user_id :model :model_id], :user_id (:id user)))))))
-
-(deftest user-recent-views-test
-  (mt/with-temp* [Card      [card1 {:name                   "rand-name"
-                                    :creator_id             (mt/user->id :crowberto)
-                                    :display                "table"
-                                    :visualization_settings {}}]
-                  Card      [archived  {:name                   "archived-card"
-                                        :creator_id             (mt/user->id :crowberto)
-                                        :display                "table"
-                                        :archived               true
-                                        :visualization_settings {}}]
-                  Dashboard [dash {:name        "rand-name2"
-                                   :description "rand-name2"
-                                   :creator_id  (mt/user->id :crowberto)}]
-                  Table     [table1 {:name "rand-name"}]
-                  Table     [hidden-table {:name            "hidden table"
-                                           :visibility_type "hidden"}]
-                  Card      [dataset {:name                   "rand-name"
-                                      :dataset                true
-                                      :creator_id             (mt/user->id :crowberto)
-                                      :display                "table"
-                                      :visualization_settings {}}]]
-    (mt/with-model-cleanup [ViewLog]
-      (testing "User's recent views are updated when card/dashboard/table-read events occur."
-        (mt/with-test-user :crowberto
-          (view-log/user-recent-views! []) ;; ensure no views from any other tests/temp items exist
-          (doseq [event [{:topic :card-query :item dataset} ;; oldest view
-                         {:topic :card-query :item dataset}
-                         {:topic :card-query :item card1}
-                         {:topic :card-query :item card1}
-                         {:topic :card-query :item card1}
-                         {:topic :dashboard-read :item dash}
-                         {:topic :card-query :item card1}
-                         {:topic :dashboard-read :item dash}
-                         {:topic :table-read :item table1}
-                         {:topic :card-query :item archived}
-                         {:topic :table-read :item hidden-table}]]
-            (view-log/handle-view-event!
-             ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
-             (assoc-in event [:item :actor_id] (mt/user->id :crowberto))))
-          (let [recent-views (mt/with-test-user :crowberto (view-log/user-recent-views))]
-            (is (=
-                 [{:model "table" :model_id (u/the-id hidden-table)}
-                  {:model "card" :model_id (u/the-id archived)}
-                  {:model "table" :model_id (u/the-id table1)}
-                  {:model "dashboard" :model_id (u/the-id dash)}
-                  {:model "card" :model_id (u/the-id card1)}
-                  {:model "card" :model_id (u/the-id dataset)}]
-                 recent-views))))))))
-
-(deftest user-dismissed-toasts-setting-test
-  (testing "user-dismissed-toasts! updates user-dismissed-toasts"
-    (binding [metabase.models.setting/*user-local-values* (delay (atom {}))]
-      (view-log/dismissed-custom-dashboard-toast! false)
-      (is (= false (view-log/dismissed-custom-dashboard-toast)))
-      (view-log/dismissed-custom-dashboard-toast! true)
-      (is (= true (view-log/dismissed-custom-dashboard-toast)))
-      (view-log/dismissed-custom-dashboard-toast! false)
-      (is (= false (view-log/dismissed-custom-dashboard-toast))))))
-
-(deftest most-recently-viewed-dashboard-test
-  (t2.with-temp/with-temp [Dashboard dash {:name "Look at this Distinguished Dashboard!"}]
-    (mt/with-model-cleanup [ViewLog]
-      (testing "When a user views a dashboard, most-recently-viewed-dashboard is updated with that id."
-        (mt/with-test-user :crowberto (setting/set-value-of-type! :json :most-recently-viewed-dashboard nil))
-        (view-log/handle-view-event! {:topic :dashboard-read
-                                      :metadata {:context "question"}
-                                      :item  (assoc dash :actor_id (mt/user->id :crowberto))})
-        (is (= (u/the-id dash) (mt/with-test-user :crowberto (view-log/most-recently-viewed-dashboard)))))
-      (testing "When the user's most recent dashboard view is older than 24 hours, return `nil`."
-        (mt/with-test-user :crowberto
-          (setting/set-value-of-type! :json :most-recently-viewed-dashboard
-                                      {:id        (u/the-id dash)
-                                       :timestamp (t/minus (t/zoned-date-time) (t/hours 25))}))
-        (is (= nil (mt/with-test-user :crowberto (view-log/most-recently-viewed-dashboard))))))))
+          (is (partial=
+               {:user_id    (u/id user)
+                :model      "card"
+                :model_id   (u/id card)
+                :has_access true
+                :context    "dashboard"}
+               (latest-view (u/id user) (u/id card)))))))))

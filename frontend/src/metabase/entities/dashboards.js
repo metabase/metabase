@@ -1,24 +1,22 @@
 import { assocIn } from "icepick";
 import { t } from "ttag";
+
+import { canonicalCollectionId } from "metabase/collections/utils";
+import {
+  getCollectionType,
+  normalizedCollection,
+} from "metabase/entities/collections";
+import { POST, DELETE } from "metabase/lib/api";
+import { color } from "metabase/lib/colors";
+import { createEntity, undo } from "metabase/lib/entities";
 import {
   compose,
   withAction,
   withAnalytics,
   withRequestState,
 } from "metabase/lib/redux";
-
-import { createEntity, undo } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
-import { color } from "metabase/lib/colors";
-
+import * as Urls from "metabase/lib/urls/dashboards";
 import { addUndo } from "metabase/redux/undo";
-
-import { POST, DELETE } from "metabase/lib/api";
-import {
-  getCollectionType,
-  normalizedCollection,
-} from "metabase/entities/collections";
-import { canonicalCollectionId } from "metabase/collections/utils";
 
 import forms from "./dashboards/forms";
 
@@ -26,6 +24,9 @@ const FAVORITE_ACTION = `metabase/entities/dashboards/FAVORITE`;
 const UNFAVORITE_ACTION = `metabase/entities/dashboards/UNFAVORITE`;
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Dashboards = createEntity({
   name: "dashboards",
   nameOne: "dashboard",

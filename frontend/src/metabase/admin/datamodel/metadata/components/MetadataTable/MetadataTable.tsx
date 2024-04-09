@@ -1,22 +1,29 @@
-import { ReactNode, useCallback, useState } from "react";
+import cx from "classnames";
+import type { ReactNode } from "react";
+import { useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+
+import Radio from "metabase/core/components/Radio/Radio";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
-import Radio from "metabase/core/components/Radio/Radio";
-import {
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Table from "metabase-lib/v1/metadata/Table";
+import type {
   DatabaseId,
   SchemaId,
   TableId,
   TableVisibilityType,
 } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import Field from "metabase-lib/metadata/Field";
-import Table from "metabase-lib/metadata/Table";
-import MetadataTableSchema from "../MetadataTableSchema";
+import type { State } from "metabase-types/store";
+
 import MetadataTableColumnList from "../MetadataTableColumnList";
+import MetadataTableSchema from "../MetadataTableSchema";
+
 import {
   TableDescription,
   TableDescriptionInput,
@@ -96,7 +103,7 @@ const MetadataTable = ({
   );
 
   return (
-    <div className="MetadataTable full px3">
+    <div className={cx(AdminS.MetadataTable, CS.full)}>
       <TableTitleSection
         table={table}
         tab={tab}
@@ -156,7 +163,7 @@ const TableTitleSection = ({
   );
 
   return (
-    <div className="MetadataTable-title flex flex-column">
+    <div className={cx(CS.bgWhite, CS.flex, CS.flexColumn)}>
       {tab === "columns" ? (
         <>
           <TableNameInput
@@ -217,8 +224,16 @@ const TableVisibilitySection = ({
   );
 
   return (
-    <div className="MetadataTable-header flex align-center py2 text-medium">
-      <span className="mx1 text-uppercase">{t`Visibility`}</span>
+    <div
+      className={cx(
+        "MetadataTable-header",
+        CS.flex,
+        CS.alignCenter,
+        CS.py2,
+        CS.textMedium,
+      )}
+    >
+      <span className={cx(CS.mx1, CS.textUppercase)}>{t`Visibility`}</span>
       <span id="VisibilityTypes">
         <MetadataVisibilityBadge
           isChecked={table.visibility_type == null}
@@ -236,8 +251,10 @@ const TableVisibilitySection = ({
         </MetadataVisibilityBadge>
 
         {table.visibility_type && (
-          <span id="VisibilitySubTypes" className="border-left mx2">
-            <span className="mx2 text-uppercase text-medium">{t`Why Hide?`}</span>
+          <span id="VisibilitySubTypes" className={cx("border-left", CS.mx2)}>
+            <span
+              className={cx(CS.mx2, CS.textUppercase, CS.textMedium)}
+            >{t`Why Hide?`}</span>
             <MetadataVisibilityBadge
               isChecked={table.visibility_type === "technical"}
               onClick={handleChangeTechnical}
@@ -287,7 +304,7 @@ interface MetadataTabSectionProps {
 
 const TableTabSection = ({ tab, onChangeTab }: MetadataTabSectionProps) => {
   return (
-    <div className="mx1 border-bottom">
+    <div className={cx(CS.mx1, CS.borderBottom)}>
       <Radio
         colorScheme="default"
         value={tab}

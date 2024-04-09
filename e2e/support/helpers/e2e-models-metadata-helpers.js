@@ -1,7 +1,27 @@
-import { popover } from "e2e/support/helpers";
+import { popover, interceptIfNotPreviouslyDefined } from "e2e/support/helpers";
+
+export function saveMetadataChanges() {
+  interceptIfNotPreviouslyDefined({
+    method: "POST",
+    url: "/api/dataset",
+    alias: "dataset",
+  });
+
+  cy.intercept("PUT", "/api/card/*").as("updateModelMetadata");
+  cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+  cy.wait("@updateModelMetadata");
+  cy.findByTestId("dataset-edit-bar").should("not.exist");
+
+  cy.wait("@dataset");
+}
 
 export function openColumnOptions(column) {
-  cy.findByText(column).click();
+  const columnNameRegex = new RegExp(`^${column}$`);
+
+  cy.findAllByTestId("header-cell")
+    .contains(columnNameRegex)
+    .should("be.visible")
+    .click();
 }
 
 export function renameColumn(oldName, newName) {
@@ -9,15 +29,19 @@ export function renameColumn(oldName, newName) {
 }
 
 export function setColumnType(oldType, newType) {
-  cy.findByText(oldType).click();
+  cy.findByTestId("sidebar-right")
+    .findAllByTestId("select-button")
+    .contains(oldType)
+    .click();
+
   cy.get(".ReactVirtualized__Grid.MB-Select").scrollTo("top");
   cy.findByPlaceholderText("Search for a special type").type(newType);
-  cy.findByText(newType).click();
+  popover().findByLabelText(newType).click();
 }
 
 export function mapColumnTo({ table, column } = {}) {
   cy.findByText("Database column this maps to")
-    .closest(".Form-field")
+    .closest("[data-testid='form-field']")
     .findByTestId("select-button")
     .click({ force: true });
 

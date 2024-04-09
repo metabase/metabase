@@ -1,14 +1,16 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import cx from "classnames";
-import { t } from "ttag";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import _ from "underscore";
 import { splice } from "icepick";
+import { Component } from "react";
+import { Droppable, Draggable } from "react-beautiful-dnd";
+import { t } from "ttag";
+import _ from "underscore";
 
 import Label from "metabase/components/type/Label";
+import { DragDropContext } from "metabase/core/components/DragDropContext";
+import CS from "metabase/css/core/index.css";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import {
   DroppableContainer,
   FieldPartitionColumn,
@@ -110,7 +112,7 @@ class ChartSettingFieldsPartition extends Component {
           const partitionType = this.getPartitionType(partitionName);
           return (
             <div
-              className={cx("py2", { "border-top": index > 0 })}
+              className={cx(CS.py2, { [CS.borderTop]: index > 0 })}
               key={partitionName}
             >
               <Label color="medium">{title}</Label>
@@ -135,7 +137,7 @@ class ChartSettingFieldsPartition extends Component {
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              className="mb1"
+                              className={CS.mb1}
                             >
                               <Column
                                 key={`${partitionName}-${col.display_name}`}

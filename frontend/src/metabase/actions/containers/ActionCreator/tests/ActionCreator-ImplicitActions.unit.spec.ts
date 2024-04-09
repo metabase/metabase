@@ -1,11 +1,11 @@
 import { screen, queryIcon } from "__support__/ui";
-
 import {
   createMockActionParameter,
   createMockImplicitQueryAction,
 } from "metabase-types/api/mocks";
 
-import { setup as baseSetup, SetupOpts } from "./common";
+import type { SetupOpts } from "./common";
+import { setup as baseSetup } from "./common";
 
 async function setup({
   action = createMockImplicitQueryAction(),

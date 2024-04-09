@@ -1,25 +1,22 @@
 /* istanbul ignore file */
 import {
+  setupCollectionByIdEndpoint,
   setupCollectionVirtualSchemaEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
+  setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
-
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import Input from "metabase/core/components/Input";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-
 import {
   createMockCard,
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
   createMockTable,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
@@ -91,21 +88,21 @@ export const EMPTY_COLLECTION = createMockCollection({
 export const SAMPLE_MODEL = createMockCard({
   id: 1,
   name: "Sample Model",
-  dataset: true,
+  type: "model",
   collection_id: SAMPLE_COLLECTION_ID,
 });
 
 export const SAMPLE_MODEL_2 = createMockCard({
   id: 2,
   name: "Sample Model 2",
-  dataset: true,
+  type: "model",
   collection_id: SAMPLE_COLLECTION_ID,
 });
 
 export const SAMPLE_MODEL_3 = createMockCard({
   id: 3,
   name: "Sample Model 3",
-  dataset: true,
+  type: "model",
   collection_id: SAMPLE_COLLECTION_ID,
 });
 
@@ -215,8 +212,13 @@ export async function setup({
     setupDatabasesEndpoints([], { hasSavedQuestions: false });
   }
 
+  const collectionList = [SAMPLE_COLLECTION, EMPTY_COLLECTION];
   setupCollectionsEndpoints({
-    collections: [SAMPLE_COLLECTION, EMPTY_COLLECTION],
+    collections: collectionList,
+  });
+
+  setupCollectionByIdEndpoint({
+    collections: collectionList,
   });
 
   setupCollectionVirtualSchemaEndpoints(createMockCollection(ROOT_COLLECTION), [
@@ -244,6 +246,8 @@ export async function setup({
     setupSearchEndpoints([SAMPLE_QUESTION_SEARCH_ITEM]);
   }
 
+  setupUserRecipientsEndpoint({ users: [createMockUser()] });
+
   const settings = createMockSettingsState({
     "enable-nested-queries": hasNestedQueriesEnabled,
   });
@@ -262,7 +266,7 @@ export async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 
   return { onChange };
 }

@@ -5,7 +5,6 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.models.task-history :as task-history]
    [metabase.task :as task]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -17,13 +16,13 @@
 (defn- task-history-cleanup!
   "Delete older TaskHistory rows -- see docstring of `task-history/cleanup-task-history!` for more details."
   []
-  (log/debug (trs "Cleaning up task history"))
+  (log/debug "Cleaning up task history")
   (task-history/with-task-history {:task "task-history-cleanup"}
     (let [deleted-rows? (task-history/cleanup-task-history! history-rows-to-keep)]
       (log/debug
        (if deleted-rows?
-         (trs "Task history cleanup successful, rows were deleted")
-         (trs "Task history cleanup successful, no rows were deleted"))))))
+         "Task history cleanup successful, rows were deleted"
+         "Task history cleanup successful, no rows were deleted")))))
 
 (jobs/defjob
   ^{:doc "Delete older TaskHistory rows -- see docstring of `task-history/cleanup-task-history!` for more details."}

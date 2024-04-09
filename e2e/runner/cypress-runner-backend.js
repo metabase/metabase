@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-const fs = require("fs");
 const { spawn } = require("child_process");
-const os = require("os");
-const path = require("path");
+const fs = require("fs");
 
 const http = require("http");
+const os = require("os");
+const path = require("path");
 
 const CypressBackend = {
   createServer(port = 4000) {
@@ -27,7 +27,9 @@ const CypressBackend = {
         "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
         "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
         "-Duser.timezone=US/Pacific",
+        // if you comment this line 👇 you can get (very noisy) backend console logs in the terminal for e2e tests
         `-Dlog4j.configurationFile=file:${__dirname}/../../frontend/test/__runner__/log4j2.xml`,
+        "-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}",
       ];
 
       const metabaseConfig = {
@@ -36,6 +38,8 @@ const CypressBackend = {
         MB_JETTY_HOST: "0.0.0.0",
         MB_JETTY_PORT: server.port,
         MB_ENABLE_TEST_ENDPOINTS: "true",
+        MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE: "true",
+        MB_LAST_ANALYTICS_CHECKSUM: "-1",
       };
 
       /**

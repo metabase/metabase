@@ -1,13 +1,16 @@
 import { useCallback, useMemo, useState } from "react";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
+
+import { getColumnGroupName } from "metabase/common/utils/column-groups";
 import Input from "metabase/core/components/Input";
-import { singularize } from "metabase/lib/formatting";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { BreakoutColumnListItem } from "./BreakoutColumnListItem";
+
 import { ColumnGroupName, SearchContainer } from "./BreakoutColumnList.styled";
+import { BreakoutColumnListItem } from "./BreakoutColumnListItem";
 
 const STAGE_INDEX = -1;
 
@@ -114,62 +117,60 @@ export function BreakoutColumnList({
         />
       </SearchContainer>
       {!isSearching && (
-        <ul data-testid="pinned-dimensions">
-          {pinnedItems.map(item => (
-            <BreakoutColumnListItem
-              key={item.longDisplayName}
-              query={query}
-              item={item}
-              breakout={item.breakout}
-              isPinned
-              onAddColumn={onAddBreakout}
-              onUpdateColumn={column => {
-                if (item.breakout) {
-                  onUpdateBreakout(item.breakout, column);
-                } else {
-                  onAddBreakout(column);
-                }
-              }}
-              onRemoveColumn={handleRemovePinnedBreakout}
-            />
+        <DelayGroup>
+          <ul data-testid="pinned-dimensions">
+            {pinnedItems.map(item => (
+              <BreakoutColumnListItem
+                key={item.longDisplayName}
+                query={query}
+                item={item}
+                breakout={item.breakout}
+                isPinned
+                onAddColumn={onAddBreakout}
+                onUpdateColumn={column => {
+                  if (item.breakout) {
+                    onUpdateBreakout(item.breakout, column);
+                  } else {
+                    onAddBreakout(column);
+                  }
+                }}
+                onRemoveColumn={handleRemovePinnedBreakout}
+              />
+            ))}
+          </ul>
+        </DelayGroup>
+      )}
+      <DelayGroup>
+        <ul data-testid="unpinned-dimensions">
+          {sections.map(section => (
+            <li key={section.name}>
+              <ColumnGroupName>{section.name}</ColumnGroupName>
+              <ul>
+                {section.items.map(item => (
+                  <BreakoutColumnListItem
+                    key={item.longDisplayName}
+                    query={query}
+                    item={item}
+                    breakout={item.breakout}
+                    onAddColumn={onAddBreakout}
+                    onUpdateColumn={column => {
+                      if (item.breakout) {
+                        onUpdateBreakout(item.breakout, column);
+                      } else {
+                        onAddBreakout(column);
+                      }
+                    }}
+                    onRemoveColumn={onRemoveBreakout}
+                    onReplaceColumns={handleReplaceBreakout}
+                  />
+                ))}
+              </ul>
+            </li>
           ))}
         </ul>
-      )}
-      <ul data-testid="unpinned-dimensions">
-        {sections.map(section => (
-          <li key={section.name}>
-            <ColumnGroupName>{section.name}</ColumnGroupName>
-            <ul>
-              {section.items.map(item => (
-                <BreakoutColumnListItem
-                  key={item.longDisplayName}
-                  query={query}
-                  item={item}
-                  breakout={item.breakout}
-                  onAddColumn={onAddBreakout}
-                  onUpdateColumn={column => {
-                    if (item.breakout) {
-                      onUpdateBreakout(item.breakout, column);
-                    } else {
-                      onAddBreakout(column);
-                    }
-                  }}
-                  onRemoveColumn={onRemoveBreakout}
-                  onReplaceColumns={handleReplaceBreakout}
-                />
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ul>
+      </DelayGroup>
     </>
   );
-}
-
-function getGroupName(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
-  const columnInfo = groupInfo as Lib.ColumnDisplayInfo;
-  const tableInfo = groupInfo as Lib.TableDisplayInfo;
-  return columnInfo.fkReferenceName || singularize(tableInfo.displayName);
 }
 
 function getColumnListItem(
@@ -213,7 +214,7 @@ function getColumnSections(
     );
 
     return {
-      name: getGroupName(groupInfo),
+      name: getColumnGroupName(groupInfo),
       items,
     };
   });

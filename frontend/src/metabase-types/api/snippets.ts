@@ -1,5 +1,5 @@
-import { RegularCollectionId } from "./collection";
-import { UserId, UserInfo } from "./user";
+import type { RegularCollectionId } from "./collection";
+import type { UserId, UserInfo } from "./user";
 
 export type NativeQuerySnippetId = number;
 

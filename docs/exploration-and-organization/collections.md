@@ -6,7 +6,7 @@ redirect_from:
 
 # Collections
 
- After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions and dashboards.
+After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions and dashboards.
 
 ![Our analytics](./images/our-analytics-page.png)
 
@@ -24,9 +24,15 @@ They're like file-system folders. You can put stuff in them.
 
 ![Official collections](./images/official-collection.png)
 
-Metabase admins can designate collections as "official". These collections have a yellow badge to let people know that the items in the collection are the ones people should be looking at (or whatever "official" means to you). Questions and dashboards in official collections are also more likely to show up at the top of search results. Pairing Official badges with [verified items](./exploration.md#verified-items) can help everyone in your Metabase sort out which questions people can trust.
+Metabase admins can designate collections as "official" with the following effects:
 
-To add an official badge to a collection, an admin can visit the collection and click on the dot dot dot menu (**...**) and select **Make collection official**. Admins can also remove an official badge in the same menu. Admins can also mark a collection as official or not when they first create the collection.
+- These collections have a yellow badge to let people know that the items in the collection are the ones people should be looking at (or whatever "official" means to you).
+- Questions in Official collections added to Dashboards that are not in Official collections will show an Official badge next to their name on the Dashboard.
+- Questions and dashboards in Official collections are also more likely to show up at the top of search results.
+
+Pairing Official badges with [verified items](./exploration.md#verified-items) can help everyone in your Metabase sort out which questions people can trust.
+
+To add an Official badge to a collection, an admin can visit the collection and click on the dot dot dot menu (**...**) and select **Make collection official**. Admins can also remove an Official badge in the same menu. Admins can also mark a collection as Official or not when they first create the collection.
 
 ## Collection permissions
 
@@ -42,6 +48,8 @@ In addition to the collections you and your teammates have made, you'll also alw
 
 You can use your personal collection as a scratch space to put experiments and explorations that you don't think would be particularly interesting to the rest of your team, or as a work-in-progress space where you can work on things and then move them to a shared place once they're ready.
 
+To share items in your personal collection, for example to add a question in your personal collection to a dashboard in a public collection, you'll first need to move that item to a public collection.
+
 ## Pinned items
 
 ![Pins](./images/pinned-items.png)
@@ -54,7 +62,7 @@ If you just want to organize _your_ favorite items, you should [bookmark them](.
 
 ## Moving items from collection to collection
 
-To move a question, dashboard, or pulse into a collection, or from one collection to another, just click and drag it onto the collection where you want it to go. You can also click on the `…` menu to the right of the question and pick the Move action. If you're trying to move several things at once, click on the items' icons to select them, then click the Move action that pops up at the bottom of the screen.
+To move an item from one collection to another, just click and drag it onto the collection where you want it to go. You can also click on the `…` menu to the right of the item and pick the **Move** action. If you're trying to move several things at once, click on the items' icons to select them, then click the Move action that pops up at the bottom of the screen.
 
 ![Selecting questions](./images/question-checkbox.png)
 
@@ -74,6 +82,18 @@ Metabase will create a [model](../data-modeling/models.md) that contains that CS
 
 Uploads will only be available if your admin has enabled uploads for your Metabase, and you're in a group with Unrestricted access to the schema used to store those uploads. See [Uploading data](../databases/uploads.md).
 
+## Appending to a model created by an upload
+
+You can upload additional CSV data to an existing model created by a previous CSV upload.
+
+![Append data to existing upload model](./images/append-data.png)
+
+The uploaded CSV must have the same column name, order, and type as the columns in the model. Metabase will look for a header row to check that the column names are the same. So if you split a large CSV into multiple CSVs, make sure to include header rows for all of the files.
+
+When appending, Metabase will simply insert the rows into the underlying table, which will update the model that sits on top of that table. If you have duplicate rows from one upload to the next, Metabase will preserve those duplicate rows.
+
+The upload icon will only be visible on models created by uploads.
+
 ## Further reading
 
 - [Keeping your analytics organized](https://www.metabase.com/learn/administration/same-page)
@@ -81,4 +101,3 @@ Uploads will only be available if your admin has enabled uploads for your Metaba
 
 [dashboards]: ../dashboards/introduction.md
 [models]: ../data-modeling/models.md
-

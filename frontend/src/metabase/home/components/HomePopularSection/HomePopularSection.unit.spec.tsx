@@ -1,8 +1,10 @@
 import { screen } from "@testing-library/react";
-import { createMockPopularItem } from "metabase-types/api/mocks";
-import { renderWithProviders, waitForElementToBeRemoved } from "__support__/ui";
+
 import { setupPopularItemsEndpoints } from "__support__/server-mocks";
-import { PopularItem } from "metabase-types/api";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import type { PopularItem } from "metabase-types/api";
+import { createMockPopularItem } from "metabase-types/api/mocks";
+
 import { HomePopularSection } from "./HomePopularSection";
 
 interface SetupOpts {
@@ -12,7 +14,7 @@ interface SetupOpts {
 const setup = async ({ popularItems }: SetupOpts) => {
   setupPopularItemsEndpoints(popularItems);
   renderWithProviders(<HomePopularSection />);
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 };
 
 describe("HomePopularSection", () => {

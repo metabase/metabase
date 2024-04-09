@@ -1,8 +1,9 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+import styled from "@emotion/styled";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 const CardRootMixin = css`
   display: block;

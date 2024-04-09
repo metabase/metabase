@@ -1,0 +1,175 @@
+name: Most viewed questions
+description: null
+entity_id: _lfXwss_MckZBidbcJsgk
+created_at: '2023-08-18T19:13:04.917177Z'
+creator_id: internal@metabase.com
+display: table
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+dataset: false
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_view_log
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Entity Qualified
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Entity Qualified
+    filter:
+    - and
+    - - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - entity_type
+        - base-type: type/Text
+      - card
+    - - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_type
+        - base-type: type/Text
+          join-alias: Content - Entity Qualified
+      - question
+    joins:
+    - alias: Content - Entity Qualified
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - entity_qualified_id
+        - base-type: type/Text
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Content - Entity Qualified
+      source-table: AxSackBiyXVRUzM_TyyQY
+      strategy: left-join
+    - alias: People - Creator
+      condition:
+      - =
+      - - field
+        - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - base-type: type/Integer
+          join-alias: People - Creator
+      source-table: 0wVIfjBJWclD0lKeABYYl
+      strategy: left-join
+    - alias: Group Members - User
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - base-type: type/Integer
+          join-alias: Group Members - User
+      source-table: lTp-ATFsCUFEr9I0fMEaO
+      strategy: left-join
+    limit: 100
+    order-by:
+    - - desc
+      - - aggregation
+        - 0
+    source-table: P6Ityjj7igswKh4NgZZjz
+  type: query
+result_metadata: null
+visualization_settings:
+  column_settings:
+    '["name","count"]':
+      show_mini_bar: true
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
+    : column_title: Question ID
+      link_url: question/{{entity_id}}
+      view_as: link
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
+    : column_title: Question name
+      link_text: ''
+      link_url: question/{{entity_id}}
+      view_as: link
+  graph.dimensions:
+  - name
+  graph.metrics:
+  - count
+  graph.show_values: true
+  table.cell_column: count
+  table.columns:
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - name
+    - base-type: type/Text
+      join-alias: Content - Entity Qualified
+    name: name
+  - enabled: false
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_id
+    - base-type: type/Integer
+      join-alias: Content - Entity Qualified
+    name: entity_id
+  - enabled: true
+    fieldRef:
+    - aggregation
+    - 0
+    name: count
+serdes/meta:
+- id: _lfXwss_MckZBidbcJsgk
+  label: most_viewed_questions
+  model: Card
+initially_published_at: null
+metabase_version: null
+type: question

@@ -1,9 +1,9 @@
 import fetchMock from "fetch-mock";
-import { createMockEntitiesState } from "__support__/store";
 
+import { createMockEntitiesState } from "__support__/store";
 import { defer } from "metabase/lib/promise";
 import { getMetadata } from "metabase/selectors/metadata";
-
+import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   DashboardId,
@@ -22,8 +22,6 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-
-import Question from "metabase-lib/Question";
 
 import { runQuestionQuery } from "./services";
 

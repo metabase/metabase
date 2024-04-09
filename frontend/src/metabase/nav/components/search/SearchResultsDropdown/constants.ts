@@ -1,0 +1,1 @@
+export const MIN_RESULTS_FOR_FOOTER_TEXT = 4;

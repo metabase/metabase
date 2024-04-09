@@ -1,13 +1,16 @@
 import { t } from "ttag";
 import _ from "underscore";
-import * as Urls from "metabase/lib/urls";
-import { getIcon, getName } from "metabase/entities/popular-items";
+
 import { usePopularItemListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { PopularItem } from "metabase-types/api";
+import { getIcon, getName } from "metabase/entities/popular-items";
+import * as Urls from "metabase/lib/urls";
+import type { PopularItem } from "metabase-types/api";
+
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeModelCard } from "../HomeModelCard";
+
 import { SectionBody } from "./HomePopularSection.styled";
 
 export const HomePopularSection = (): JSX.Element => {

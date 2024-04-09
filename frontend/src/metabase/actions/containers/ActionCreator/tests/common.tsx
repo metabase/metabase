@@ -2,15 +2,10 @@
 import fetchMock from "fetch-mock";
 
 import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
-import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import type { Card, WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
@@ -45,7 +40,7 @@ export async function setup({
 }: SetupOpts = {}) {
   if (model === undefined) {
     model = createMockCard({
-      dataset: true,
+      type: "model",
       can_write: canWrite,
     });
   }
@@ -84,7 +79,5 @@ export async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryByTestId("loading-spinner"),
-  );
+  await waitForLoaderToBeRemoved();
 }

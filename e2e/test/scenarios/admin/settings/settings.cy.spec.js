@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openOrdersTable,
@@ -7,10 +9,10 @@ import {
   isOSS,
   isEE,
   setTokenFeatures,
+  undoToast,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > settings", () => {
   beforeEach(() => {
@@ -60,7 +62,7 @@ describe("scenarios > admin > settings", () => {
     //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
     cy.log("Making sure we display an error message in UI");
     // Same reasoning for regex as above
-    cy.get(".SaveStatus").contains(/^Error: Invalid site URL/);
+    undoToast().contains(/^Error: Invalid site URL/);
   });
 
   it("should save a setting", () => {
@@ -151,15 +153,18 @@ describe("scenarios > admin > settings", () => {
 
     cy.visit("/admin/settings/localization");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("January 7, 2018").click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2018/1/7").click({ force: true });
-    cy.wait("@saveFormatting");
-    cy.findAllByTestId("select-button-content").should("contain", "2018/1/7");
+    cy.findByTestId("custom-formatting-setting")
+      .findByText("January 31, 2018")
+      .click({ force: true });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("17:24 (24-hour clock)").click();
+    popover().findByText("2018/1/31").click({ force: true });
+    cy.wait("@saveFormatting");
+
+    cy.findAllByTestId("select-button-content").should("contain", "2018/1/31");
+
+    cy.findByTestId("custom-formatting-setting")
+      .findByText("17:24 (24-hour clock)")
+      .click();
     cy.wait("@saveFormatting");
     cy.findByDisplayValue("HH:mm").should("be.checked");
 
@@ -173,8 +178,10 @@ describe("scenarios > admin > settings", () => {
     // Go back to the settings and reset the time formatting
     cy.visit("/admin/settings/localization");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("5:24 PM (12-hour clock)").click();
+    cy.findByTestId("custom-formatting-setting")
+      .findByText("5:24 PM (12-hour clock)")
+      .click();
+
     cy.wait("@saveFormatting");
     cy.findByDisplayValue("h:mm A").should("be.checked");
 
@@ -182,6 +189,32 @@ describe("scenarios > admin > settings", () => {
 
     cy.findByTextEnsureVisible("Created At");
     cy.get(".cellData").and("contain", "2025/2/11, 9:40 PM");
+  });
+
+  it("should show where to display the unit of currency (metabase#table-metadata-missing-38021 and update the formatting", () => {
+    // Set the semantic type of total to currency
+    cy.request("PUT", `/api/field/${ORDERS.TOTAL}`, {
+      semantic_type: "type/Currency",
+    });
+
+    cy.visit(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.TOTAL}/formatting`,
+    );
+
+    cy.findByTestId("admin-layout-content").within(() => {
+      // Assert that this option now exists
+      cy.findByText("Where to display the unit of currency");
+      cy.findByText("In every table cell").click();
+    });
+
+    // Open the orders table
+    openOrdersTable({ limit: 2 });
+
+    cy.get("#main-data-grid").within(() => {
+      // Items in the total column should have a leading dollar sign
+      cy.findByText("$39.72");
+      cy.findByText("$117.03");
+    });
   });
 
   it("should search for and select a new timezone", () => {
@@ -244,11 +277,11 @@ describe("scenarios > admin > settings", () => {
       const lastItem = isOSS ? "Caching" : "Appearance";
 
       cy.visit("/admin/settings/setup");
-      cy.get(".AdminList .AdminList-item")
-        .as("settingsOptions")
-        .first()
-        .contains("Setup");
-      cy.get("@settingsOptions").last().contains(lastItem);
+      cy.findByTestId("admin-list-settings-items").within(() => {
+        cy.findAllByTestId("settings-sidebar-link").as("settingsOptions");
+        cy.get("@settingsOptions").first().contains("Setup");
+        cy.get("@settingsOptions").last().contains(lastItem);
+      });
     },
   );
 

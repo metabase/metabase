@@ -9,10 +9,8 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test]
    [metabase.sync :as sync]
    [metabase.test :as mt]
-   [metabase.test.data :as data]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -21,7 +19,7 @@
 
 (deftest timezone-id-test
   (mt/test-driver :sqlite
-    (is (= nil
+    (is (= "UTC"
            (driver/db-default-timezone :sqlite (mt/db))))))
 
 (deftest filter-by-date-test
@@ -33,15 +31,15 @@
               [995 "2014-03-05T00:00:00Z"]
               [159 "2014-03-06T00:00:00Z"]
               [951 "2014-03-06T00:00:00Z"]]
-             (qp.test/rows
-              (data/run-mbql-query checkins
+             (mt/rows
+              (mt/run-mbql-query checkins
                 {:fields   [$id $date]
                  :filter   [:and
                             [:>= $date "2014-03-04"]
                             [:<= $date "2014-03-06"]]
                  :order-by [[:asc $date]]}))
-             (qp.test/rows
-              (data/run-mbql-query checkins
+             (mt/rows
+              (mt/run-mbql-query checkins
                 {:fields   [$id $date]
                  :filter   [:between $date "2014-03-04" "2014-03-07"]
                  :order-by [[:asc $date]]})))))))
@@ -182,33 +180,33 @@
             (is (= [["2021-08-25T04:18:24Z"   ; TIMESTAMP
                      "2021-08-25T00:00:00Z"   ; DATE
                      "2021-08-25T04:18:24Z"]] ; DATETIME
-                   (qp.test/rows
+                   (mt/rows
                     (mt/run-mbql-query datetime_table
                       {:fields [$col_timestamp $col_date $col_datetime]
                        :filter [:= $test_case "epoch"]})))))
           (testing "select datetime stored as string with milliseconds"
             (is (= [["2021-08-25T04:18:24.111Z"   ; TIMESTAMP (raw string)
                      "2021-08-25T04:18:24.111Z"]] ; DATETIME
-                   (qp.test/rows
+                   (mt/rows
                     (mt/run-mbql-query datetime_table
                       {:fields [$col_timestamp $col_datetime]
                        :filter [:= $test_case "iso8601-ms"]})))))
           (testing "select datetime stored as string without milliseconds"
             (is (= [["2021-08-25T04:18:24Z"   ; TIMESTAMP (raw string)
                      "2021-08-25T04:18:24Z"]] ; DATETIME
-                   (qp.test/rows
+                   (mt/rows
                     (mt/run-mbql-query datetime_table
                       {:fields [$col_timestamp $col_datetime]
                        :filter [:= $test_case "iso8601-no-ms"]})))))
           (testing "select date stored as string without time"
             (is (= [["2021-08-25T00:00:00Z"]] ; DATE
-                   (qp.test/rows
+                   (mt/rows
                     (mt/run-mbql-query datetime_table
                       {:fields [$col_date]
                        :filter [:= $test_case "iso8601-no-time"]})))))
           (testing "select NULL"
             (is (= [[nil nil nil]]
-                   (qp.test/rows
+                   (mt/rows
                     (mt/run-mbql-query datetime_table
                       {:fields [$col_timestamp $col_date $col_datetime]
                        :filter [:= $test_case "null"]}))))))))))
@@ -216,8 +214,8 @@
 (deftest duplicate-identifiers-test
   (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"
     (mt/test-driver :sqlite
-      (mt/dataset sample-dataset
-        (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
+      (mt/dataset test-data
+        (is (= '{:select   [source.CATEGORY_2 AS CATEGORY
                             COUNT (*)         AS count]
                  :from     [{:select [products.category       AS category
                                       products.category || ?  AS CATEGORY_2]
@@ -238,9 +236,9 @@
   (testing "Don't allow connections to other SQLite databases with ATTACH DATABASE (https://github.com/metabase/metaboat/issues/152)"
     (mt/test-driver :sqlite
       ;; force creation of the sample dataset file
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/id))
-      (let [file (io/file "sample-dataset.sqlite")
+      (let [file (io/file "test-data.sqlite")
             path (.getAbsolutePath file)]
         (is (.exists file))
         (testing "Attach the sample dataset as an FDW called fdw_test"

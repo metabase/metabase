@@ -1,38 +1,47 @@
 import { useEffect } from "react";
-import { t } from "ttag";
 import { replace } from "react-router-redux";
-import { isSmallScreen } from "metabase/lib/dom";
-import { openNavbar } from "metabase/redux/app";
-import { updateSetting } from "metabase/admin/settings/settings";
-import { addUndo } from "metabase/redux/undo";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { t } from "ttag";
+
 import {
+  useDashboardQuery,
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
-import { CollectionItem } from "metabase-types/api";
+import { updateUserSetting } from "metabase/redux/settings";
+import { addUndo } from "metabase/redux/undo";
 import { getSettingsLoading } from "metabase/selectors/settings";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { CollectionItem, DashboardId } from "metabase-types/api";
+
 import {
   getCustomHomePageDashboardId,
   getHasDismissedCustomHomePageToast,
   getIsMetabotEnabled,
 } from "../../selectors";
-import { HomeLayout } from "../HomeLayout";
 import { HomeContent } from "../HomeContent";
+import { HomeLayout } from "../HomeLayout";
 
 const SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 
 export const HomePage = (): JSX.Element => {
-  const { databases, models, isMetabotEnabled, isLoading, error } =
-    useMetabot();
-  useNavbar();
-  useDashboardPage();
+  const {
+    databases,
+    models,
+    isMetabotEnabled,
+    isLoading: isLoadingMetabot,
+    error,
+  } = useMetabot();
+  const { isLoadingDash } = useDashboardPage();
 
-  if ((isLoading || error) && isMetabotEnabled) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if ((isLoadingMetabot || error) && isMetabotEnabled) {
+    return <LoadingAndErrorWrapper loading={isLoadingMetabot} error={error} />;
+  }
+
+  if (isLoadingDash) {
+    return <LoadingAndErrorWrapper loading={isLoadingDash} error={error} />;
   }
 
   return (
@@ -40,16 +49,6 @@ export const HomePage = (): JSX.Element => {
       <HomeContent />
     </HomeLayout>
   );
-};
-
-const useNavbar = () => {
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    if (!isSmallScreen()) {
-      dispatch(openNavbar());
-    }
-  }, [dispatch]);
 };
 
 const useMetabot = () => {
@@ -83,13 +82,28 @@ const getHasMetabot = (
 
 const useDashboardPage = () => {
   const dashboardId = useSelector(getCustomHomePageDashboardId);
-  const isLoading = useSelector(getSettingsLoading);
+  const isLoadingSettings = useSelector(getSettingsLoading);
   const hasDismissedToast = useSelector(getHasDismissedCustomHomePageToast);
   const dispatch = useDispatch();
 
+  const { data: dashboard, isLoading: isLoadingDash } = useDashboardQuery({
+    enabled: dashboardId !== null,
+    id: dashboardId as DashboardId,
+  });
+
   useEffect(() => {
-    if (dashboardId && !isLoading) {
-      dispatch(replace(`/dashboard/${dashboardId}`));
+    if (
+      dashboardId &&
+      !isLoadingSettings &&
+      !isLoadingDash &&
+      !dashboard?.archived
+    ) {
+      dispatch(
+        replace({
+          pathname: `/dashboard/${dashboardId}`,
+          state: { preserveNavbarState: true },
+        }),
+      );
 
       if (!hasDismissedToast) {
         dispatch(
@@ -98,7 +112,7 @@ const useDashboardPage = () => {
             icon: "info",
             timeout: 10000,
             actions: [
-              updateSetting({
+              updateUserSetting({
                 key: "dismissed-custom-dashboard-toast",
                 value: true,
               }),
@@ -109,5 +123,16 @@ const useDashboardPage = () => {
         );
       }
     }
-  }, [dashboardId, isLoading, hasDismissedToast, dispatch]);
+  }, [
+    dashboardId,
+    isLoadingSettings,
+    hasDismissedToast,
+    dispatch,
+    isLoadingDash,
+    dashboard?.archived,
+  ]);
+
+  return {
+    isLoadingDash: isLoadingDash || isLoadingSettings,
+  };
 };

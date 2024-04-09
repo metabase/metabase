@@ -14,7 +14,7 @@ Delete a specific `PermissionsGroup`.
 
 ### PARAMS:
 
-*  **`group-id`**
+*  **`group-id`** value must be an integer greater than zero.
 
 ## `DELETE /api/permissions/membership/:id`
 
@@ -42,6 +42,26 @@ Fetch a graph of all v2 Permissions (excludes v1 data permissions).
 
 You must be a superuser to do this.
 
+## `GET /api/permissions/graph/db/:db-id`
+
+Fetch a graph of all v1 Permissions for db-id `db-id` (excludes v2 query and data permissions).
+
+You must be a superuser to do this.
+
+### PARAMS:
+
+*  **`db-id`** value must be an integer greater than zero.
+
+## `GET /api/permissions/graph/group/:group-id`
+
+Fetch a graph of all v1 Permissions for group-id `group-id` (excludes v2 query and data permissions).
+
+You must be a superuser to do this.
+
+### PARAMS:
+
+*  **`group-id`** value must be an integer greater than zero.
+
 ## `GET /api/permissions/group`
 
 Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.
@@ -55,7 +75,7 @@ Fetch the details for a certain permissions group.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/permissions/membership`
 
@@ -119,9 +139,13 @@ Do a batch update of Permissions by passing in a modified graph. This should ret
   response will be returned if this key is present and the server is not running the Enterprise Edition, and/or the
   `:sandboxes` feature flag is not present.
 
+  If the skip-graph query param is truthy, then the graph will not be returned.
+
 You must be a superuser to do this.
 
 ### PARAMS:
+
+*  **`skip-graph`** nullable boolean
 
 *  **`body`** map
 
@@ -131,7 +155,7 @@ Update the name of a `PermissionsGroup`.
 
 ### PARAMS:
 
-*  **`group-id`** 
+*  **`group-id`** value must be an integer greater than zero.
 
 *  **`name`** value must be a non-blank string.
 

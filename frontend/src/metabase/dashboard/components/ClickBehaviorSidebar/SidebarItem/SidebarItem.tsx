@@ -1,6 +1,7 @@
-import * as React from "react";
+import type * as React from "react";
 
-import { Icon, IconProps } from "metabase/core/components/Icon";
+import type { IconProps } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
 import {
   Name,
@@ -53,7 +54,13 @@ interface SelectableSidebarItem extends Omit<SidebarItemProps, "as"> {
 }
 
 function SelectableSidebarItem(props: SelectableSidebarItem) {
-  return <SidebarItem {...props} as={SelectableSidebarItemRoot} />;
+  return (
+    <SidebarItem
+      {...props}
+      as={SelectableSidebarItemRoot}
+      aria-selected={props.isSelected}
+    />
+  );
 }
 
 SidebarItem.Selectable = SelectableSidebarItem;

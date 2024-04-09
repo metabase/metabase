@@ -19,9 +19,20 @@
               "!metabase/lib/encoding",
               "!metabase/lib/formatting",
               "!metabase/lib/time",
+              "!metabase/lib/types",
               "!metabase/lib/urls",
               "!metabase/lib/utils"
             ]
+          }
+        ],
+        "paths": [
+          {
+            "name": "moment",
+            "message": "Moment is deprecated, please use dayjs"
+          },
+          {
+            "name": "moment-timezone",
+            "message": "Moment is deprecated, please use dayjs"
           }
         ]
       }

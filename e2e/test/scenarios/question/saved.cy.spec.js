@@ -1,4 +1,9 @@
 import {
+  ORDERS_QUESTION_ID,
+  SECOND_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
+  addSummaryGroupingField,
   restore,
   popover,
   modal,
@@ -9,63 +14,51 @@ import {
   questionInfoButton,
   rightSidebar,
   appBar,
-  getCollectionIdFromSlug,
+  queryBuilderHeader,
+  openNotebook,
+  selectFilterOperator,
 } from "e2e/support/helpers";
-
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+    cy.intercept("POST", "api/card").as("cardCreate");
   });
 
   it("should should correctly display 'Save' modal (metabase#13817)", () => {
     openOrdersTable();
-    cy.icon("notebook").click();
+    openNotebook();
+
     summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count of rows").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    popover().findByText("Total").click();
+    popover().findByText("Count of rows").click();
+    addSummaryGroupingField({ field: "Total" });
+
     // Save the question
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-    modal().within(() => {
+    queryBuilderHeader().button("Save").click();
+    cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText("Save").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Not now").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").should("not.exist");
+    cy.wait("@cardCreate");
+    modal().button("Not now").click();
 
     // Add a filter in order to be able to save question again
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter").click();
-    popover()
-      .findByText(/^Total$/)
-      .click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Equal to").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Greater than").click();
-    cy.findByPlaceholderText("Enter a number").type("60");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add filter").click();
+    cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
-    // Save question - opens "Save question" modal
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
+    popover().findByText("Total: Auto binned").click();
+    selectFilterOperator("Greater than");
 
-    modal().within(() => {
-      cy.findByText("Save question");
-      cy.button("Save").as("saveButton");
-      cy.get("@saveButton").should("not.be.disabled");
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").type("60");
+      cy.button("Add filter").click();
+    });
 
-      cy.log(
-        "**When there is no question name, it shouldn't be possible to save**",
-      );
+    queryBuilderHeader().button("Save").click();
+
+    cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByText("Save question").should("be.visible");
+      cy.findByTestId("save-question-button").should("be.enabled");
+
       cy.findByText("Save as new question").click();
       cy.findByLabelText("Name")
         .click()
@@ -73,13 +66,10 @@ describe("scenarios > question > saved", () => {
         .blur();
       cy.findByLabelText("Name: required").should("be.empty");
       cy.findByLabelText("Description").should("be.empty");
-      cy.get("@saveButton").should("be.disabled");
+      cy.findByTestId("save-question-button").should("be.disabled");
 
-      cy.log(
-        "**It should `always` be possible to overwrite the original question**",
-      );
       cy.findByText(/^Replace original question,/).click();
-      cy.get("@saveButton").should("not.be.disabled");
+      cy.findByTestId("save-question-button").should("be.enabled");
     });
   });
 
@@ -90,8 +80,8 @@ describe("scenarios > question > saved", () => {
     // filter to only orders with quantity=100
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("Filter by this column").click());
+    popover().findByText("Filter by this column").click();
+    selectFilterOperator("Equal to");
     popover().within(() => {
       cy.findByPlaceholderText("Search the list").type("100");
       cy.findByText("100").click();
@@ -105,7 +95,7 @@ describe("scenarios > question > saved", () => {
     // check that save will give option to replace
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText('Replace original question, "Orders"');
       cy.findByText("Save as new question");
       cy.findByText("Cancel").click();
@@ -147,6 +137,45 @@ describe("scenarios > question > saved", () => {
     });
   });
 
+  it("should duplicate a saved question to a collection created on the go", () => {
+    cy.intercept("POST", "/api/card").as("cardCreate");
+
+    visitQuestion(ORDERS_QUESTION_ID);
+
+    openQuestionActions();
+    popover().within(() => {
+      cy.findByText("Duplicate").click();
+    });
+
+    modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByTestId("select-button").click();
+    });
+    popover().findByText("New collection").click();
+
+    const NEW_COLLECTION = "Foo";
+    cy.findByTestId("new-collection-modal").then(modal => {
+      cy.findByPlaceholderText("My new fantastic collection").type(
+        NEW_COLLECTION,
+      );
+      cy.findByText("Create").click();
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
+      cy.findByText("Duplicate").click();
+      cy.wait("@cardCreate");
+    });
+
+    modal().within(() => {
+      cy.findByText("Not now").click();
+    });
+
+    cy.findByTestId("qb-header-left-side").within(() => {
+      cy.findByDisplayValue("Orders - Duplicate");
+    });
+
+    cy.get("header").findByText(NEW_COLLECTION);
+  });
+
   it("should revert a saved question to a previous version", () => {
     cy.intercept("PUT", "/api/card/**").as("updateQuestion");
 
@@ -173,13 +202,6 @@ describe("scenarios > question > saved", () => {
     cy.findByText(/This is a question/i).should("not.exist");
   });
 
-  it("should show table name in header with a table info popover on hover", () => {
-    visitQuestion(ORDERS_QUESTION_ID);
-    cy.findByTestId("question-table-badges").trigger("mouseenter");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("9 columns");
-  });
-
   it("should show collection breadcrumbs for a saved question in the root collection", () => {
     visitQuestion(ORDERS_QUESTION_ID);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -190,8 +212,8 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should show collection breadcrumbs for a saved question in a non-root collection", () => {
-    getCollectionIdFromSlug("second_collection", collection_id => {
-      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { collection_id });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      collection_id: SECOND_COLLECTION_ID,
     });
 
     visitQuestion(ORDERS_QUESTION_ID);
@@ -254,7 +276,7 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should always be possible to view the full title text of the saved question", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     const savedQuestionTitle = cy.findByTestId("saved-question-header-title");
     savedQuestionTitle.clear();
     savedQuestionTitle.type(

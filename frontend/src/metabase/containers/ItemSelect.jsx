@@ -1,12 +1,13 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+import PropTypes from "prop-types";
 import { Component } from "react";
 import ReactDOM from "react-dom";
-import PropTypes from "prop-types";
-
 import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/core/components/SelectButton";
+import CS from "metabase/css/core/index.css";
 
 const MIN_POPOVER_WIDTH = 300;
 
@@ -86,7 +87,7 @@ export default (PickerComponent, NameComponent, type) =>
                   ? { width: Math.max(this.state.width, MIN_POPOVER_WIDTH) }
                   : { minWidth: MIN_POPOVER_WIDTH }
               }
-              className="p2 overflow-auto"
+              className={cx(CS.p2, CS.overflowAuto)}
               value={value}
               onChange={itemId => {
                 onChange(itemId);

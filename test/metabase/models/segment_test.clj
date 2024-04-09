@@ -34,10 +34,10 @@
                (t2/update! Segment id {:creator_id (mt/user->id :rasta)})))))))
 
 (deftest serialize-segment-test
-  (mt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Segment  [segment        {:table_id   table-id
-                                            :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]]
+  (mt/with-temp [Database {database-id :id} {}
+                 Table    {table-id :id} {:db_id database-id}
+                 Segment  segment        {:table_id   table-id
+                                          :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]
     (is (= {:id                      true
             :table_id                true
             :creator_id              (mt/user->id :rasta)
@@ -54,10 +54,10 @@
                         (update :table_id boolean)))))))
 
 (deftest diff-segments-test
-  (mt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Segment  [segment        {:table_id   table-id
-                                            :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]]
+  (mt/with-temp [Database {database-id :id} {}
+                 Table    {table-id :id} {:db_id database-id}
+                 Segment  segment        {:table_id   table-id
+                                          :definition {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}]
     (is (= {:definition  {:before {:filter [:> [:field 4 nil] "2014-10-19"]}
                           :after  {:filter [:between [:field 4 nil] "2014-07-01" "2014-10-19"]}}
             :description {:before "Lookin' for a blueberry"
@@ -110,9 +110,9 @@
 (deftest identity-hash-test
   (testing "Segment hashes are composed of the segment name and table identity-hash"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp* [Database [db      {:name "field-db" :engine :h2}]
-                      Table    [table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-                      Segment  [segment {:name "big customers" :table_id (:id table) :created_at now}]]
+      (mt/with-temp [Database db      {:name "field-db" :engine :h2}
+                     Table    table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}
+                     Segment  segment {:name "big customers" :table_id (:id table) :created_at now}]
         (is (= "be199b7c"
                (serdes/raw-hash ["big customers" (serdes/identity-hash table) now])
                (serdes/identity-hash segment)))))))
@@ -124,14 +124,14 @@
       (is (=? {:definition_description nil}
               (t2/hydrate segment :definition_description))))))
 
-(deftest definition-description-test
+(deftest ^:parallel definition-description-test
   (t2.with-temp/with-temp [Segment segment {:name       "Expensive BBQ Spots"
                                             :definition (:query (mt/mbql-query venues
                                                                   {:filter
                                                                    [:and
                                                                     [:= $price 4]
                                                                     [:= $category_id->categories.name "BBQ"]]}))}]
-    (is (= "Filtered by Price equals 4 and Category → Name equals \"BBQ\""
+    (is (= "Filtered by Price is equal to 4 and Category → Name is BBQ"
            (:definition_description (t2/hydrate segment :definition_description))))
     (testing "Segments that reference other Segments (inception)"
       (t2.with-temp/with-temp [Segment segment-2 {:name "Segment 2"
@@ -149,7 +149,7 @@
                                               :definition (mt/$ids venues
                                                             {:filter
                                                              [:= $price 4]})}]
-      (is (= "Filtered by Price equals 4"
+      (is (= "Filtered by Price is equal to 4"
              (:definition_description (t2/hydrate segment :definition_description)))))))
 
 (deftest definition-description-invalid-query-test

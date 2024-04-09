@@ -3,10 +3,8 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import NewItemMenu from "metabase/components/NewItemMenu";
-
 import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
-
 import { closeNavbar } from "metabase/redux/app";
 import {
   getHasDataAccess,
@@ -14,10 +12,9 @@ import {
   getHasNativeWrite,
   getHasDatabaseWithActionsEnabled,
 } from "metabase/selectors/data";
-
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { CollectionItem } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import Database from "metabase-lib/metadata/Database";
 
 interface MenuDatabaseProps {
   databases?: Database[];

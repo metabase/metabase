@@ -1,14 +1,19 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  assertQueryBuilderRowCount,
   popover,
   restore,
   visitQuestionAdhoc,
   setupBooleanQuery,
+  modal,
   filter,
   filterField,
   filterFieldPopover,
+  filterSelectField,
+  hovercard,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -80,15 +85,15 @@ describe("scenarios > filters > bulk filtering", () => {
     filter();
 
     modal().within(() => {
-      cy.findAllByTestId(/filter-field-/)
+      cy.findAllByTestId(/filter-column-/)
         .eq(0)
         .should("include.text", "Created At");
 
-      cy.findAllByTestId(/filter-field-/)
+      cy.findAllByTestId(/filter-column-/)
         .eq(1)
         .should("include.text", "Discount");
 
-      cy.findAllByTestId(/filter-field-/)
+      cy.findAllByTestId(/filter-column-/)
         .last()
         .should("include.text", "ID");
     });
@@ -111,6 +116,20 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.findByText("Showing 4 rows").should("be.visible");
   });
 
+  it("should have an info icon on the filter modal filters", () => {
+    visitQuestionAdhoc(rawQuestionDetails);
+    filter();
+
+    modal().within(() => {
+      cy.get("li").findByLabelText("More info").realHover();
+    });
+
+    hovercard().within(() => {
+      cy.contains("The date and time an order was submitted");
+      cy.contains("Creation timestamp");
+    });
+  });
+
   it("should add a filter for an aggregated query", () => {
     visitQuestionAdhoc(aggregatedQuestionDetails);
     filter();
@@ -120,7 +139,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     filterField("Count", {
-      placeholder: "min",
+      placeholder: "Min",
       value: "500",
     });
 
@@ -137,17 +156,19 @@ describe("scenarios > filters > bulk filtering", () => {
     filter();
 
     modal().within(() => {
-      cy.findByText("Product").click();
-
+      cy.findByText("Product").click({ force: true });
       filterField("Category").findByText("Gadget").click();
     });
 
     applyFilters();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Category is Gadget").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing first 2,000 rows").should("be.visible");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Product → Category is Gadget")
+      .should("be.visible");
+
+    cy.findByTestId("view-footer")
+      .findByText("Showing first 2,000 rows")
+      .should("be.visible");
   });
 
   it("should update an existing filter", () => {
@@ -187,7 +208,7 @@ describe("scenarios > filters > bulk filtering", () => {
     const SEGMENT_2_NAME = "Discounted Orders";
 
     beforeEach(() => {
-      cy.request("POST", "/api/segment", {
+      createSegment({
         name: SEGMENT_1_NAME,
         description: "All orders with a total under $100.",
         table_id: ORDERS_ID,
@@ -198,7 +219,7 @@ describe("scenarios > filters > bulk filtering", () => {
         },
       });
 
-      cy.request("POST", "/api/segment", {
+      createSegment({
         name: SEGMENT_2_NAME,
         description: "All orders with a discount",
         table_id: ORDERS_ID,
@@ -216,7 +237,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
       modal().within(() => {
         filterField("segments").within(() =>
-          cy.findByText("Filter segments").click(),
+          cy.findByPlaceholderText("Filter segments").click(),
         );
       });
 
@@ -235,12 +256,8 @@ describe("scenarios > filters > bulk filtering", () => {
 
       modal().within(() => {
         filterField("segments").within(() =>
-          cy.findByText(SEGMENT_2_NAME).click(),
+          cy.findByText(SEGMENT_2_NAME).next().click(),
         );
-      });
-
-      popover().within(() => {
-        cy.findByText(SEGMENT_2_NAME).click();
       });
 
       applyFilters();
@@ -338,29 +355,22 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("can add a date shortcut filter", () => {
-      modal().within(() => {
-        cy.findByText("Today").click();
-      });
+      modal().findByText("Today").click();
       applyFilters();
 
       cy.findByTestId("qb-filters-panel")
-        .findByText("Created At Today")
+        .findByText("Created At is today")
         .should("be.visible");
     });
 
     it("can add a date shortcut filter from the popover", () => {
-      filterField("Created At").findByLabelText("more options").click();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Last 3 Months").click();
-
-      modal().within(() => {
-        cy.findByText("Previous 3 Months");
-      });
+      filterField("Created At").findByLabelText("More options").click();
+      popover().contains("Last 3 months").findByText("Last 3 months").click();
+      modal().findByText("Previous 3 Months").should("be.visible");
       applyFilters();
 
       cy.findByTestId("qb-filters-panel")
-        .findByText("Created At Previous 3 Months")
+        .findByText("Created At is in the previous 3 months")
         .should("be.visible");
     });
 
@@ -368,7 +378,7 @@ describe("scenarios > filters > bulk filtering", () => {
     it.skip("can add a date range filter", () => {
       modal().within(() => {
         cy.findByLabelText("Created At").within(() => {
-          cy.findByLabelText("more options").click();
+          cy.findByLabelText("More options").click();
         });
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -398,10 +408,9 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("Can cancel adding date filter", () => {
-      filterField("Created At").findByLabelText("more options").click();
+      filterField("Created At").findByLabelText("More options").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Discount").click();
+      filterField("Created At").click({ position: "topRight", force: true });
 
       filterField("Created At").within(() => {
         // there should be no filter so the X should not populate
@@ -449,7 +458,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("filters by primary keys", () => {
       filterField("ID", {
-        value: "17, 18",
+        value: ["17", "18"],
       });
 
       applyFilters();
@@ -505,9 +514,9 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("adds multiple is text filters", () => {
-      filterField("City", {
+      filterSelectField("City", {
         operator: "is",
-        value: "Indianeown, Indian Valley",
+        value: ["Indiantown", "Indian Valley"],
       });
 
       applyFilters();
@@ -515,7 +524,7 @@ describe("scenarios > filters > bulk filtering", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("City is 2 selections").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 1 row").should("be.visible");
+      cy.findByText("Showing 3 rows").should("be.visible");
     });
   });
 
@@ -527,21 +536,22 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("applies a between filter", () => {
       filterField("Price", {
-        placeholder: "min",
+        placeholder: "Min",
         value: "50",
       });
 
       filterField("Price", {
-        placeholder: "max",
+        placeholder: "Max",
         value: "80",
       });
 
       applyFilters();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Price between 50 80").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 72 rows").should("be.visible");
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Price is between 50 and 80")
+        .should("be.visible");
+
+      assertQueryBuilderRowCount(72);
     });
 
     it("applies a greater than filter", () => {
@@ -560,7 +570,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("infers a <= filter from an invalid between filter", () => {
       filterField("Price", {
-        placeholder: "max",
+        placeholder: "Max",
         value: "50",
       });
 
@@ -577,7 +587,6 @@ describe("scenarios > filters > bulk filtering", () => {
     beforeEach(() => {
       visitQuestionAdhoc(productsQuestion);
       filter();
-      cy.get("body").type(`{ctrl}k`);
     });
 
     it("can search for a column", () => {
@@ -585,7 +594,7 @@ describe("scenarios > filters > bulk filtering", () => {
         cy.findByText("In").should("not.exist");
         cy.findByText("Category").should("be.visible");
 
-        cy.findByPlaceholderText("Search for a column...").clear().type("vend");
+        cy.findByPlaceholderText("Search for a column…").clear().type("vend");
 
         cy.findByText("Category").should("not.exist");
 
@@ -599,9 +608,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("can apply a filter from a searched column", () => {
       modal().within(() => {
-        cy.findByPlaceholderText("Search for a column...")
-          .clear()
-          .type("price");
+        cy.findByPlaceholderText("Search for a column…").clear().type("price");
 
         // need to block until filter is applied
         cy.findByText("Category").should("not.exist");
@@ -621,10 +628,6 @@ describe("scenarios > filters > bulk filtering", () => {
     });
   });
 });
-
-const modal = () => {
-  return cy.get(".Modal");
-};
 
 const applyFilters = () => {
   modal().within(() => {

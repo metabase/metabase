@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openQuestionActions,
@@ -5,13 +6,12 @@ import {
   sidebar,
   openColumnOptions,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createModelIndex } from "e2e/support/helpers/e2e-model-index-helper";
 
 const { PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > model indexes", () => {
-  const modelId = 4;
+  let modelId;
 
   beforeEach(() => {
     restore();
@@ -23,10 +23,17 @@ describe("scenarios > model indexes", () => {
     cy.intercept("PUT", "/api/card/*").as("cardUpdate");
     cy.intercept("GET", "/api/card/*").as("cardGet");
 
-    cy.createQuestion({
-      name: "Products Model",
-      query: { "source-table": PRODUCTS_ID },
-      dataset: true,
+    cy.createQuestion(
+      {
+        name: "Products Model",
+        query: { "source-table": PRODUCTS_ID },
+        type: "model",
+      },
+      { wrapId: true, idAlias: "modelId" },
+    );
+
+    cy.get("@modelId").then(_modelId => {
+      modelId = _modelId;
     });
   });
 
@@ -119,7 +126,9 @@ describe("scenarios > model indexes", () => {
       .findByPlaceholderText("Search…")
       .type("marble shoes");
 
-    cy.findByTestId("search-results-list").findByText(/didn't find anything/i);
+    cy.wait("@searchQuery");
+
+    cy.findByTestId("search-results-empty-state").should("be.visible");
   });
 
   it("should be able to search model index values and visit detail records", () => {
@@ -147,12 +156,25 @@ describe("scenarios > model indexes", () => {
   });
 
   it("should be able to see details of a record outside the first 2000", () => {
-    cy.createQuestion({
-      name: "People Model",
-      query: { "source-table": PEOPLE_ID },
-      dataset: true,
+    cy.createQuestion(
+      {
+        name: "People Model",
+        query: { "source-table": PEOPLE_ID },
+        type: "model",
+      },
+      {
+        wrapId: true,
+        idAlias: "people_model_id",
+      },
+    );
+
+    cy.get("@people_model_id").then(peopleModelId => {
+      createModelIndex({
+        modelId: peopleModelId,
+        pkName: "ID",
+        valueName: "NAME",
+      });
     });
-    createModelIndex({ modelId: 5, pkName: "ID", valueName: "NAME" });
 
     cy.visit("/");
 
@@ -194,8 +216,7 @@ describe("scenarios > model indexes", () => {
       cy.findByText("Doohickey");
     });
 
-    // for some reason we hit this endpoint twice on initial load
-    expectCardQueries(2);
+    expectCardQueries(1);
 
     cy.get("body").type("{esc}");
 
@@ -212,7 +233,7 @@ describe("scenarios > model indexes", () => {
       cy.findByText("Upton, Kovacek and Halvorson");
     });
 
-    expectCardQueries(2);
+    expectCardQueries(1);
   });
 });
 
@@ -223,33 +244,6 @@ function editTitleMetadata() {
   cy.findByTestId("TableInteractive-root").findByTextEnsureVisible("Title");
 
   openColumnOptions("Title");
-}
-
-function createModelIndex({ modelId, pkName, valueName }) {
-  // since field ids are non-deterministic, we need to get them from the api
-  cy.request("GET", `/api/table/card__${modelId}/query_metadata`).then(
-    ({ body }) => {
-      const pkRef = [
-        "field",
-        body.fields.find(f => f.name === pkName).id,
-        null,
-      ];
-      const valueRef = [
-        "field",
-        body.fields.find(f => f.name === valueName).id,
-        null,
-      ];
-
-      cy.request("POST", "/api/model-index", {
-        pk_ref: pkRef,
-        value_ref: valueRef,
-        model_id: modelId,
-      }).then(response => {
-        expect(response.body.state).to.equal("indexed");
-        expect(response.body.id).to.equal(1);
-      });
-    },
-  );
 }
 
 const expectCardQueries = num =>

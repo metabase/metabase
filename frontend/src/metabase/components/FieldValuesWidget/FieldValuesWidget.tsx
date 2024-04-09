@@ -1,51 +1,46 @@
-import { useState, useRef, StyleHTMLAttributes } from "react";
-import { useMount, useUnmount } from "react-use";
-
+import cx from "classnames";
+import type { StyleHTMLAttributes } from "react";
+import { useState, useRef, useEffect } from "react";
 import { connect } from "react-redux";
+import { useMount, usePrevious, useUnmount } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
+import { ListField } from "metabase/components/ListField";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import SingleSelectListField from "metabase/components/SingleSelectListField";
 import TokenField, {
   parseNumberValue,
   parseStringValue,
 } from "metabase/components/TokenField";
-import ListField from "metabase/components/ListField";
-import ValueComponent from "metabase/components/Value";
-import SingleSelectListField from "metabase/components/SingleSelectListField";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-
-import AutoExpanding from "metabase/hoc/AutoExpanding";
-
-import { addRemappings } from "metabase/redux/metadata";
-import { defer } from "metabase/lib/promise";
 import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
+import ValueComponent from "metabase/components/Value";
+import CS from "metabase/css/core/index.css";
+import Fields from "metabase/entities/fields";
+import { defer } from "metabase/lib/promise";
+import { useDispatch } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,
   fetchParameterValues,
 } from "metabase/parameters/actions";
-
-import Fields from "metabase/entities/fields";
-import type { State } from "metabase-types/store";
-
+import { addRemappings } from "metabase/redux/metadata";
+import type Question from "metabase-lib/v1/Question";
+import type Field from "metabase-lib/v1/metadata/Field";
 import type {
-  CardId,
   Dashboard,
-  DashboardId,
   Parameter,
-  FieldId,
-  FieldReference,
   FieldValue,
   RowValue,
-  Field as APIField,
-  ParameterValues,
 } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
-import type Field from "metabase-lib/metadata/Field";
-import type Question from "metabase-lib/Question";
+import ExplicitSize from "../ExplicitSize";
 
+import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 import type { ValuesMode, LoadingStateType } from "./types";
-
 import {
   canUseParameterEndpoints,
   isNumeric,
@@ -62,17 +57,8 @@ import {
   canUseCardEndpoints,
   getTokenFieldPlaceholder,
 } from "./utils";
-import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 
 const MAX_SEARCH_RESULTS = 100;
-
-const mapDispatchToProps = {
-  addRemappings,
-  fetchFieldValues: Fields.objectActions.fetchFieldValues,
-  fetchParameterValues,
-  fetchCardParameterValues,
-  fetchDashboardParameterValues,
-};
 
 function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
   return {
@@ -83,50 +69,22 @@ function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
   };
 }
 
-type FieldValuesResponse = {
-  payload: APIField;
-};
-
-interface FetcherOptions {
-  query?: string;
-  parameter?: Parameter;
-  parameters?: Parameter[];
-  dashboardId?: DashboardId;
-  cardId?: CardId;
-}
-
 export interface IFieldValuesWidgetProps {
   color?: string;
   maxResults?: number;
   style?: StyleHTMLAttributes<HTMLDivElement>;
   formatOptions?: Record<string, any>;
-  maxWidth?: number;
-  minWidth?: number;
 
-  expand?: boolean;
+  containerWidth?: number | string;
+  maxWidth?: number | null;
+  minWidth?: number | null;
+  width?: number | null;
+
   disableList?: boolean;
   disableSearch?: boolean;
   disablePKRemappingForSearch?: boolean;
   alwaysShowOptions?: boolean;
   showOptionsInPopover?: boolean;
-
-  fetchFieldValues: ({
-    id,
-  }: {
-    id: FieldId | FieldReference;
-  }) => Promise<FieldValuesResponse>;
-  fetchParameterValues: (options: FetcherOptions) => Promise<ParameterValues>;
-  fetchCardParameterValues: (
-    options: FetcherOptions,
-  ) => Promise<ParameterValues>;
-  fetchDashboardParameterValues: (
-    options: FetcherOptions,
-  ) => Promise<ParameterValues>;
-
-  addRemappings: (
-    value: FieldReference | FieldId,
-    options: FieldValue[],
-  ) => void;
 
   parameter?: Parameter;
   parameters?: Parameter[];
@@ -142,7 +100,6 @@ export interface IFieldValuesWidgetProps {
   className?: string;
   prefix?: string;
   placeholder?: string;
-  forceTokenField?: boolean;
   checkedColor?: string;
 
   valueRenderer?: (value: string | number) => JSX.Element;
@@ -156,18 +113,14 @@ export function FieldValuesWidgetInner({
   alwaysShowOptions = true,
   style = {},
   formatOptions = {},
+  containerWidth,
   maxWidth = 500,
   minWidth,
-  expand,
+  width,
   disableList = false,
   disableSearch = false,
   disablePKRemappingForSearch,
   showOptionsInPopover = false,
-  fetchFieldValues: fetchFieldValuesProp,
-  fetchParameterValues: fetchParameterValuesProp,
-  fetchCardParameterValues: fetchCardParameterValuesProp,
-  fetchDashboardParameterValues: fetchDashboardParameterValuesProp,
-  addRemappings,
   parameter,
   parameters,
   fields,
@@ -180,7 +133,6 @@ export function FieldValuesWidgetInner({
   className,
   prefix,
   placeholder,
-  forceTokenField = false,
   checkedColor,
   valueRenderer,
   optionRenderer,
@@ -197,12 +149,26 @@ export function FieldValuesWidgetInner({
       disablePKRemappingForSearch,
     }),
   );
+  const [isExpanded, setIsExpanded] = useState(false);
+  const dispatch = useDispatch();
+
+  const previousWidth = usePrevious(width);
 
   useMount(() => {
     if (shouldList({ parameter, fields, disableSearch })) {
       fetchValues();
     }
   });
+
+  useEffect(() => {
+    if (
+      typeof width === "number" &&
+      typeof previousWidth === "number" &&
+      width > previousWidth
+    ) {
+      setIsExpanded(true);
+    }
+  }, [width, previousWidth]);
 
   const _cancel = useRef<null | (() => void)>(null);
 
@@ -218,19 +184,19 @@ export function FieldValuesWidgetInner({
     let newValuesMode = valuesMode;
     try {
       if (canUseDashboardEndpoints(dashboard)) {
-        const { values, has_more_values } = await fetchDashboardParameterValues(
-          query,
-        );
+        const { values, has_more_values } =
+          await dispatchFetchDashboardParameterValues(query);
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else if (canUseCardEndpoints(question)) {
-        const { values, has_more_values } = await fetchCardParameterValues(
-          query,
-        );
+        const { values, has_more_values } =
+          await dispatchFetchCardParameterValues(query);
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else if (canUseParameterEndpoints(parameter)) {
-        const { values, has_more_values } = await fetchParameterValues(query);
+        const { values, has_more_values } = await dispatchFetchParameterValues(
+          query,
+        );
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else {
@@ -257,7 +223,9 @@ export function FieldValuesWidgetInner({
       const nonVirtualFields = getNonVirtualFields(fields);
 
       const results = await Promise.all(
-        nonVirtualFields.map(field => fetchFieldValuesProp({ id: field.id })),
+        nonVirtualFields.map(field =>
+          dispatch(Fields.objectActions.fetchFieldValues(field)),
+        ),
       );
 
       // extract the field values from the API response(s)
@@ -266,7 +234,7 @@ export function FieldValuesWidgetInner({
         (field, index) =>
           results[index]?.payload?.values ??
           Fields.selectors.getFieldValues(results[index]?.payload, {
-            entityId: field.id,
+            entityId: field.getUniqueId(),
           }),
       );
 
@@ -294,28 +262,50 @@ export function FieldValuesWidgetInner({
     }
   };
 
-  const fetchParameterValues = async (query?: string) => {
-    return fetchParameterValuesProp({
-      parameter,
-      query,
-    });
+  const dispatchFetchParameterValues = async (query?: string) => {
+    if (!parameter) {
+      return { has_more_values: false, values: [] };
+    }
+
+    return dispatch(
+      fetchParameterValues({
+        parameter,
+        query,
+      }),
+    );
   };
 
-  const fetchCardParameterValues = async (query?: string) => {
-    return fetchCardParameterValuesProp({
-      cardId: question?.id(),
-      parameter,
-      query,
-    });
+  const dispatchFetchCardParameterValues = async (query?: string) => {
+    const cardId = question?.id();
+
+    if (!isNotNull(cardId) || !parameter) {
+      return { has_more_values: false, values: [] };
+    }
+
+    return dispatch(
+      fetchCardParameterValues({
+        cardId,
+        parameter,
+        query,
+      }),
+    );
   };
 
-  const fetchDashboardParameterValues = async (query?: string) => {
-    return fetchDashboardParameterValuesProp({
-      dashboardId: dashboard?.id,
-      parameter,
-      parameters,
-      query,
-    });
+  const dispatchFetchDashboardParameterValues = async (query?: string) => {
+    const dashboardId = dashboard?.id;
+
+    if (!isNotNull(dashboardId) || !parameter || !parameters) {
+      return { has_more_values: false, values: [] };
+    }
+
+    return dispatch(
+      fetchDashboardParameterValues({
+        dashboardId,
+        parameter,
+        parameters,
+        query,
+      }),
+    );
   };
 
   // ? this may rely on field mutations
@@ -325,7 +315,7 @@ export function FieldValuesWidgetInner({
       if (
         field.remappedField() === field.searchField(disablePKRemappingForSearch)
       ) {
-        addRemappings(field.id, options);
+        dispatch(addRemappings(field.id, options));
       }
     }
   };
@@ -431,8 +421,7 @@ export function FieldValuesWidgetInner({
   const isListMode =
     !disableList &&
     shouldList({ parameter, fields, disableSearch }) &&
-    valuesMode === "list" &&
-    !forceTokenField;
+    valuesMode === "list";
   const isLoading = loadingState === "LOADING";
   const hasListValues = hasList({
     parameter,
@@ -448,78 +437,85 @@ export function FieldValuesWidgetInner({
   };
 
   return (
-    <div
-      data-testid="field-values-widget"
-      style={{
-        width: expand ? maxWidth : undefined,
-        minWidth: minWidth,
-        maxWidth: maxWidth,
-      }}
-    >
-      {isListMode && isLoading ? (
-        <LoadingState />
-      ) : isListMode && hasListValues && multi ? (
-        <ListField
-          isDashboardFilter={!!parameter}
-          placeholder={tokenFieldPlaceholder}
-          value={value?.filter((v: string) => v != null)}
-          onChange={onChange}
-          options={options}
-          optionRenderer={optionRenderer}
-          checkedColor={checkedColor}
-        />
-      ) : isListMode && hasListValues && !multi ? (
-        <SingleSelectListField
-          isDashboardFilter={!!parameter}
-          placeholder={tokenFieldPlaceholder}
-          value={value.filter(v => v != null)}
-          onChange={onChange}
-          options={options}
-          optionRenderer={optionRenderer}
-          checkedColor={checkedColor}
-        />
-      ) : (
-        <TokenField
-          prefix={prefix}
-          value={value.filter(v => v != null)}
-          onChange={onChange}
-          placeholder={tokenFieldPlaceholder}
-          updateOnInputChange
-          // forwarded props
-          multi={multi}
-          autoFocus={autoFocus}
-          color={color}
-          style={{ ...style, minWidth: "inherit" }}
-          className={className}
-          optionsStyle={
-            !parameter && !showOptionsInPopover ? { maxHeight: "none" } : {}
-          }
-          // end forwarded props
-          options={options}
-          valueKey="0"
-          valueRenderer={valueRenderer}
-          optionRenderer={optionRenderer}
-          layoutRenderer={layoutRenderer}
-          filterOption={(option, filterString) => {
-            const lowerCaseFilterString = filterString.toLowerCase();
-            return option.some(
-              value =>
-                value != null &&
-                String(value).toLowerCase().includes(lowerCaseFilterString),
-            );
-          }}
-          onInputChange={onInputChange}
-          parseFreeformValue={parseFreeformValue}
-        />
-      )}
-    </div>
+    <ErrorBoundary>
+      <div
+        data-testid="field-values-widget"
+        style={{
+          width: (isExpanded ? maxWidth : containerWidth) ?? undefined,
+          minWidth: minWidth ?? undefined,
+          maxWidth: maxWidth ?? undefined,
+        }}
+      >
+        {isListMode && isLoading ? (
+          <LoadingState />
+        ) : isListMode && hasListValues && multi ? (
+          <ListField
+            isDashboardFilter={!!parameter}
+            placeholder={tokenFieldPlaceholder}
+            value={value?.filter((v: string) => v != null)}
+            onChange={onChange}
+            options={options}
+            optionRenderer={optionRenderer}
+            checkedColor={checkedColor}
+          />
+        ) : isListMode && hasListValues && !multi ? (
+          <SingleSelectListField
+            isDashboardFilter={!!parameter}
+            placeholder={tokenFieldPlaceholder}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            options={options}
+            optionRenderer={optionRenderer}
+            checkedColor={checkedColor}
+          />
+        ) : (
+          <TokenField
+            prefix={prefix}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            placeholder={tokenFieldPlaceholder}
+            updateOnInputChange
+            // forwarded props
+            multi={multi}
+            autoFocus={autoFocus}
+            color={color}
+            style={{ ...style, minWidth: "inherit" }}
+            className={className}
+            optionsStyle={
+              !parameter && !showOptionsInPopover ? { maxHeight: "none" } : {}
+            }
+            // end forwarded props
+            options={options}
+            valueKey="0"
+            valueRenderer={valueRenderer}
+            optionRenderer={optionRenderer}
+            layoutRenderer={layoutRenderer}
+            filterOption={(option, filterString) => {
+              const lowerCaseFilterString = filterString.toLowerCase();
+              return option?.some?.(
+                value =>
+                  value != null &&
+                  String(value).toLowerCase().includes(lowerCaseFilterString),
+              );
+            }}
+            onInputChange={onInputChange}
+            parseFreeformValue={parseFreeformValue}
+          />
+        )}
+      </div>
+    </ErrorBoundary>
   );
 }
 
-export const FieldValuesWidget = AutoExpanding(FieldValuesWidgetInner);
+export const FieldValuesWidget = ExplicitSize<IFieldValuesWidgetProps>()(
+  FieldValuesWidgetInner,
+);
 
 const LoadingState = () => (
-  <div className="flex layout-centered align-center" style={{ minHeight: 82 }}>
+  <div
+    className={cx(CS.flex, CS.layoutCentered, CS.alignCenter)}
+    style={{ minHeight: 82 }}
+  >
     <LoadingSpinner size={32} />
   </div>
 );
@@ -547,7 +543,7 @@ const EveryOptionState = () => (
 );
 
 // eslint-disable-next-line import/no-default-export
-export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesWidget);
+export default connect(mapStateToProps)(FieldValuesWidget);
 
 interface RenderOptionsProps {
   alwaysShowOptions: boolean;

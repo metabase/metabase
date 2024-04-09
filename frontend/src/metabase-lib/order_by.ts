@@ -1,4 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
+
 import { removeClause } from "./query";
 import type {
   ColumnMetadata,
@@ -38,10 +39,9 @@ export function changeDirection(query: Query, clause: OrderByClause): Query {
   return ML.change_direction(query, clause);
 }
 
-export function clearOrderBys(query: Query, stageIndex: number): Query {
-  let current = query;
-  orderBys(query, stageIndex).forEach(clause => {
-    current = removeClause(query, stageIndex, clause);
-  });
-  return current;
+export function removeOrderBys(query: Query, stageIndex: number): Query {
+  return orderBys(query, stageIndex).reduce(
+    (newQuery, orderBy) => removeClause(newQuery, stageIndex, orderBy),
+    query,
+  );
 }

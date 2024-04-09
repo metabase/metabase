@@ -1,17 +1,17 @@
 import userEvent from "@testing-library/user-event";
 
+import { callMockEvent } from "__support__/events";
 import { screen } from "__support__/ui";
-
+import { getDefaultFormSettings } from "metabase/actions/utils";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import {
   createMockActionParameter,
   createMockImplicitQueryAction,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
 
-import { callMockEvent } from "__support__/events";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
-import { getDefaultFormSettings } from "metabase/actions/utils";
-import { setup as baseSetup, SetupOpts } from "./common";
+import type { SetupOpts } from "./common";
+import { setup as baseSetup } from "./common";
 
 async function setup({
   action = createMockImplicitQueryAction(),
@@ -40,11 +40,11 @@ describe("ActionCreator > Common", () => {
       it("should be able to set success message", async () => {
         await setup();
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByRole("button", { name: "Action settings" }),
         );
 
-        userEvent.type(
+        await userEvent.type(
           screen.getByRole("textbox", { name: "Success message" }),
           `Thanks!`,
         );
@@ -62,16 +62,16 @@ describe("ActionCreator > Common", () => {
           canWrite: true,
         });
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByRole("button", { name: "Action settings" }),
         );
 
-        userEvent.type(
+        await userEvent.type(
           screen.getByRole("textbox", { name: "Success message" }),
           `Thanks!`,
         );
 
-        userEvent.tab();
+        await userEvent.tab();
 
         expect(
           screen.getByRole("textbox", { name: "Success message" }),
@@ -110,7 +110,7 @@ describe("ActionCreator > Common", () => {
         expect(input).toBeEnabled();
         expect(checkbox).toBeChecked();
 
-        userEvent.click(checkbox);
+        await userEvent.click(checkbox);
 
         expect(checkbox).not.toBeChecked();
         expect(input).toBeDisabled();
@@ -127,7 +127,7 @@ describe("ActionCreator > Common", () => {
       it("should not allow editing success message", async () => {
         await setup({ canWrite: false });
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByRole("button", { name: "Action settings" }),
         );
 

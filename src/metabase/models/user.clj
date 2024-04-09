@@ -2,8 +2,12 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.db.query :as mdb.query]
+   [metabase.events :as events]
    [metabase.integrations.common :as integrations.common]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -13,16 +17,18 @@
     :refer [PermissionsGroupMembership]]
    [metabase.models.serialization :as serdes]
    [metabase.models.session :refer [Session]]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.setup :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
-   [metabase.util.schema :as su]
    [methodical.core :as methodical]
-   [schema.core :as schema]
    [toucan2.core :as t2]
    [toucan2.tools.default-fields :as t2.default-fields]))
 
@@ -36,9 +42,10 @@
   :model/User)
 
 (methodical/defmethod t2/table-name :model/User [_model] :core_user)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :author]  [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :creator] [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :user]    [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :author]     [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :creator]    [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :updated_by] [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :user]       [_original-model _k] :model/User)
 
 (doto :model/User
   (derive :metabase/model)
@@ -47,7 +54,11 @@
 (t2/deftransforms :model/User
   {:login_attributes mi/transform-json-no-keywordization
    :settings         mi/transform-encrypted-json
-   :sso_source       mi/transform-keyword})
+   :sso_source       mi/transform-keyword
+   :type             mi/transform-keyword})
+
+(def ^:private allowed-user-types
+  #{:internal :personal :api-key})
 
 (def ^:private insert-default-values
   {:date_joined  :%now
@@ -66,13 +77,30 @@
       {:password_salt salt
        :password      (u.password/hash-bcrypt (str salt password))})))
 
+(defn user-local-settings
+  "Returns the user's settings (defaulting to an empty map) or `nil` if the user/user-id isn't set"
+  [user-or-user-id]
+  (when user-or-user-id
+    (or
+     (if (integer? user-or-user-id)
+       (:settings (t2/select-one [User :settings] :id user-or-user-id))
+       (:settings user-or-user-id))
+     {})))
+
 (t2/define-before-insert :model/User
-  [{:keys [email password reset_token locale], :as user}]
+  [{:keys [email password reset_token locale sso_source], :as user}]
   ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
   (assert (u/email? email))
   (assert ((every-pred string? (complement str/blank?)) password))
+  (when-let [user-type (:type user)]
+    (assert
+     (contains? allowed-user-types user-type)))
   (when locale
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
+  (when (and sso_source (not (setup/has-user-setup)))
+    ;; Only allow SSO users to be provisioned if the setup flow has been completed and an admin has been created
+    (throw (Exception. (trs "Instance has not been initialized"))))
+  (premium-features/airgap-check-user-count)
   (merge
    insert-default-values
    user
@@ -89,10 +117,16 @@
 (t2/define-after-insert :model/User
   [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
+    (let [current-version (:tag config/mb-version-info)]
+      (log/infof "Setting User %s's last_acknowledged_version to %s, the current version" user-id current-version)
+      ;; Can't use mw.session/with-current-user due to circular require
+      (binding [api/*current-user-id*       user-id
+                setting/*user-local-values* (delay (atom (user-local-settings user)))]
+        (setting/set! :last-acknowledged-version current-version)))
     ;; add the newly created user to the magic perms groups.
-    (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
+    (log/infof "Adding User %s to All Users permissions group..." user-id)
     (when superuser?
-      (log/info (trs "Adding User {0} to All Users permissions group..." user-id)))
+      (log/infof "Adding User %s to All Users permissions group..." user-id))
     (let [groups (filter some? [(perms-group/all-users)
                                 (when superuser? (perms-group/admin))])]
       (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
@@ -148,13 +182,17 @@
       email       (update :email u/lower-case-en))))
 
 (defn add-common-name
-  "Add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`."
+  "Conditionally add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`.
+  The key will only be added if `user` contains the required keys to derive it correctly."
   [{:keys [first_name last_name email], :as user}]
   (let [common-name (if (or first_name last_name)
                       (str/trim (str first_name " " last_name))
                       email)]
     (cond-> user
-      common-name (assoc :common_name common-name))))
+      (and (contains? user :first_name)
+           (contains? user :last_name)
+           common-name)
+      (assoc :common_name common-name))))
 
 (t2/define-after-select :model/User
   [user]
@@ -194,9 +232,10 @@
 (def UserGroupMembership
   "Group Membership info of a User.
   In which :is_group_manager is only included if `advanced-permissions` is enabled."
-  {:id                                su/IntGreaterThanZero
+  [:map
+   [:id ms/PositiveInt]
    ;; is_group_manager only included if `advanced-permissions` is enabled
-   (schema/optional-key :is_group_manager) schema/Bool})
+   [:is_group_manager {:optional true} :boolean]])
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -229,7 +268,11 @@
                                               [:id (when (premium-features/enable-advanced-permissions?)
                                                      :is_group_manager)]))]
       (for [user users]
-        (assoc user :user_group_memberships (map membership->group (user-id->memberships (u/the-id user))))))))
+        (assoc user :user_group_memberships (->> (user-id->memberships (u/the-id user))
+                                                 (map membership->group)
+                                                 ;; sort these so the id returned is consistent so our tests don't
+                                                 ;; randomly fail
+                                                 (sort-by :id)))))))
 
 (mi/define-batched-hydration-method add-group-ids
   :group_ids
@@ -281,38 +324,28 @@
 
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
-  (su/with-api-error-message
-    {su/KeywordOrString schema/Any}
+  (mu/with-api-error-message
+    [:map-of ms/KeywordOrString :any]
     (deferred-tru "login attribute keys must be a keyword or string")))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  {(schema/optional-key :first_name)       (schema/maybe su/NonBlankString)
-   (schema/optional-key :last_name)        (schema/maybe su/NonBlankString)
-   :email                                  su/Email
-   (schema/optional-key :password)         (schema/maybe su/NonBlankString)
-   (schema/optional-key :login_attributes) (schema/maybe LoginAttributes)
-   (schema/optional-key :sso_source)       (schema/maybe su/NonBlankString)})
-
-(def DefaultUser
-  "Standard form of a user (for consumption by the frontend and such)"
-  {:id           su/IntGreaterThanOrEqualToZero
-   :email        su/NonBlankString
-   :first_name   su/NonBlankString
-   :last_name    su/NonBlankString
-   :common_name  su/NonBlankString
-   :last_login   schema/Any
-   :date_joined  schema/Any
-   :is_qbnewb    schema/Bool
-   :is_superuser schema/Bool})
+  [:map
+   [:first_name       {:optional true} [:maybe ms/NonBlankString]]
+   [:last_name        {:optional true} [:maybe ms/NonBlankString]]
+   [:email                             ms/Email]
+   [:password         {:optional true} [:maybe ms/NonBlankString]]
+   [:login_attributes {:optional true} [:maybe LoginAttributes]]
+   [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
+   [:type             {:optional true} [:maybe ms/KeywordOrString]]])
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
-  {:email      su/Email
-   :first_name (schema/maybe su/NonBlankString)
-   schema/Any  schema/Any})
+  [:map
+   [:email      ms/Email]
+   [:first_name [:maybe ms/NonBlankString]]])
 
-(schema/defn ^:private insert-new-user!
+(mu/defn ^:private insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
   (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (random-uuid)))))))
@@ -323,14 +356,19 @@
   [new-user]
   (insert-new-user! new-user))
 
-(schema/defn create-and-invite-user!
+(mu/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending out the welcome email."
-  [new-user :- NewUser, invitor :- Invitor, setup? :- schema/Bool]
+  [new-user :- NewUser invitor :- Invitor setup? :- :boolean]
   ;; create the new user
   (u/prog1 (insert-new-user! new-user)
+    (events/publish-event! :event/user-invited
+                           {:object
+                            (assoc <>
+                                   :invite_method "email"
+                                   :sso_source (:sso_source new-user))})
     (send-welcome-email! <> invitor setup?)))
 
-(schema/defn create-new-google-auth-user!
+(mu/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
   [new-user :- NewUser]
@@ -340,7 +378,7 @@
       (classloader/require 'metabase.email.messages)
       ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
 
-(schema/defn create-new-ldap-auth-user!
+(mu/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
   will receive an email right away."
   [new-user :- NewUser]
@@ -400,3 +438,69 @@
        (doseq [group-id to-add]
          (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
     true))
+
+;;; ## ---------------------------------------- USER SETTINGS ----------------------------------------
+
+;; NB: Settings are also defined where they're used, such as in [[metabase.events.view-log]]
+
+(defsetting last-acknowledged-version
+  (deferred-tru "The last version for which a user dismissed the 'What's new?' modal.")
+  :user-local :only
+  :type :string)
+
+(defsetting last-used-native-database-id
+  (deferred-tru "The last database a user has selected for a native query or a native model.")
+  :user-local :only
+  :visibility :authenticated
+  :type :integer
+  :getter (fn []
+            (when-let [id (setting/get-value-of-type :integer :last-used-native-database-id)]
+              (when (t2/exists? :model/Database :id id) id))))
+
+(defsetting dismissed-custom-dashboard-toast
+  (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
+  :user-local :only
+  :visibility :authenticated
+  :type       :boolean
+  :default    false
+  :audit      :never)
+
+(defsetting dismissed-browse-models-banner
+  (deferred-tru "Whether the user has dismissed the explanatory banner about models that appears on the Browse Data page")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    false
+  :audit      :never)
+
+(defsetting notebook-native-preview-shown
+  (deferred-tru "User preference for the state of the native query preview in the notebook.")
+  :user-local :only
+  :visibility :authenticated
+  :type       :boolean
+  :default    false)
+
+(defsetting notebook-native-preview-sidebar-width
+  (deferred-tru "Last user set sidebar width for the native query preview in the notebook.")
+  :user-local :only
+  :visibility :authenticated
+  :type       :integer
+  :default    nil)
+
+;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
+
+(defmethod audit-log/model-details :model/User
+  [entity event-type]
+  (case event-type
+    :user-update               (select-keys (t2/hydrate entity :user_group_memberships)
+                                            [:groups :first_name :last_name :email
+                                             :invite_method :sso_source
+                                             :user_group_memberships])
+    :user-invited              (select-keys (t2/hydrate entity :user_group_memberships)
+                                            [:groups :first_name :last_name :email
+                                             :invite_method :sso_source
+                                             :user_group_memberships])
+    :password-reset-initiated  (select-keys entity [:token])
+    :password-reset-successful (select-keys entity [:token])
+    {}))

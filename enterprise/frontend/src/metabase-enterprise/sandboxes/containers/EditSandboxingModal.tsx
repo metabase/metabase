@@ -1,25 +1,26 @@
 import { useEffect } from "react";
-import _ from "underscore";
-import { withRouter } from "react-router";
 import { connect } from "react-redux";
+import { withRouter } from "react-router";
 import { push } from "react-router-redux";
+import _ from "underscore";
+
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { getParentPath } from "metabase/hoc/ModalRoute";
 import {
   getGroupTableAccessPolicy,
   getPolicyRequestState,
 } from "metabase-enterprise/sandboxes/selectors";
-import { getParentPath } from "metabase/hoc/ModalRoute";
-import { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
-import EditSandboxingModal from "../components/EditSandboxingModal";
+import type { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
 
 import {
   updatePolicy,
   fetchPolicy,
   updateTableSandboxingPermission,
 } from "../actions";
-import { GroupTableAccessPolicyParams, SandboxesState } from "../types";
+import EditSandboxingModal from "../components/EditSandboxingModal";
+import type { GroupTableAccessPolicyParams, SandboxesState } from "../types";
 
 interface EditSandboxingModalContainerProps {
   policy: GroupTableAccessPolicy;

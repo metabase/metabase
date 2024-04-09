@@ -1,4 +1,4 @@
-import {
+import type {
   Card,
   NativeDatasetQuery,
   StructuredDatasetQuery,
@@ -8,6 +8,7 @@ import {
   createMockStructuredCard,
   createMockNativeCard,
 } from "metabase-types/api/mocks";
+
 import { ORDERS_ID, SAMPLE_DB_ID } from "./sample_database";
 
 type StructuredCard = Card<StructuredDatasetQuery>;
@@ -101,7 +102,7 @@ export const createStructuredModelCard = (
   opts?: Partial<StructuredCard>,
 ): StructuredCard => {
   return createSavedStructuredCard({
-    dataset: true,
+    type: "model",
     ...opts,
   });
 };
@@ -110,7 +111,7 @@ export const createNativeModelCard = (
   opts?: Partial<NativeCard>,
 ): NativeCard => {
   return createSavedNativeCard({
-    dataset: true,
+    type: "model",
     ...opts,
   });
 };

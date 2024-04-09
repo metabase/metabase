@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+
 import { color } from "metabase/lib/colors";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { space } from "metabase/styled-components/theme";
 
 export const ActionCreatorBodyContainer = styled.div`

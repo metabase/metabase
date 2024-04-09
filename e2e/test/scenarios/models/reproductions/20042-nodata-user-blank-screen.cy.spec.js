@@ -1,16 +1,16 @@
-import { restore } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { restore } from "e2e/support/helpers";
 
 describe("issue 20042", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/card/1/query").as("query");
+    cy.intercept("POST", `/api/card/${ORDERS_QUESTION_ID}/query`).as("query");
 
     restore();
     cy.signInAsAdmin();
 
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
       name: "Orders Model",
-      dataset: true,
+      type: "model",
     });
 
     cy.signIn("nodata");

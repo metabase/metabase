@@ -1,12 +1,16 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
-import { Group, GroupsPermissions } from "metabase-types/api";
+
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
-import { EntityId, PermissionSubject } from "metabase/admin/permissions/types";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
 } from "metabase/admin/permissions/selectors/confirmations";
+import type {
+  EntityId,
+  PermissionSubject,
+} from "metabase/admin/permissions/types";
+import type { Group, GroupsPermissions } from "metabase-types/api";
 
 export const DETAILS_PERMISSION_OPTIONS = {
   no: {

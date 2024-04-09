@@ -2,10 +2,19 @@ import {
   restore,
   popover,
   filterWidget,
+  clearFilterWidget,
   visitEmbeddedPage,
   visitIframe,
+  openStaticEmbeddingModal,
+  closeStaticEmbeddingModal,
+  publishChanges,
+  setEmbeddingParameter,
+  assertEmbeddingParameter,
 } from "e2e/support/helpers";
 
+import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
+
+import { questionDetailsWithDefaults } from "./shared/embedding-dashboard";
 import { questionDetails } from "./shared/embedding-native";
 
 describe("scenarios > embedding > native questions", () => {
@@ -15,16 +24,25 @@ describe("scenarios > embedding > native questions", () => {
   });
 
   context("UI", () => {
-    beforeEach(() => {
-      cy.createNativeQuestion(questionDetails, {
+    function createAndVisitQuestion({ requiredTagName, defaultValue } = {}) {
+      const details = structuredClone(questionDetails);
+
+      if (requiredTagName) {
+        details.native["template-tags"][requiredTagName].default = defaultValue;
+        details.native["template-tags"][requiredTagName].required = true;
+      }
+
+      cy.createNativeQuestion(details, {
         visitQuestion: true,
       });
 
-      enableSharing();
-    });
+      openStaticEmbeddingModal({ activeTab: "parameters" });
+    }
 
     it("should not display disabled parameters", () => {
-      publishChanges(({ request }) => {
+      createAndVisitQuestion();
+
+      publishChanges("card", ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {});
       });
 
@@ -41,25 +59,15 @@ describe("scenarios > embedding > native questions", () => {
     });
 
     it("should display and work with enabled parameters while hiding the locked one", () => {
-      setParameter("Order ID", "Editable");
-      setParameter("Created At", "Editable");
-      setParameter("Total", "Locked");
-      setParameter("State", "Editable");
-      setParameter("Product ID", "Editable");
+      createAndVisitQuestion();
 
-      // We must enter a value for a locked parameter
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Preview Locked Parameters")
-        .parent()
-        .within(() => {
-          cy.findByText("Total").click();
-        });
+      setEmbeddingParameter("Order ID", "Editable");
+      setEmbeddingParameter("Created At", "Editable");
+      setEmbeddingParameter("Total", "Locked");
+      setEmbeddingParameter("State", "Editable");
+      setEmbeddingParameter("Product ID", "Editable");
 
-      // Total is greater than or equal to 0
-      cy.findByPlaceholderText("Enter a number").type("0").blur();
-      cy.button("Add filter").click();
-
-      publishChanges(({ request }) => {
+      publishChanges("card", ({ request }) => {
         const actual = request.body.embedding_params;
 
         const expected = {
@@ -80,7 +88,7 @@ describe("scenarios > embedding > native questions", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Twitter").should("not.exist");
 
-      // Created At: Q2, 2023
+      // Created At: Q2 2023
       filterWidget().contains("Created At").click();
       cy.findByTestId("select-button").click();
       popover().last().contains("2023").click();
@@ -105,7 +113,7 @@ describe("scenarios > embedding > native questions", () => {
 
       // Let's try to remove one filter
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q2, 2023")
+      cy.findByText("Q2 2023")
         .closest("fieldset")
         .within(() => {
           cy.icon("close").click();
@@ -125,7 +133,63 @@ describe("scenarios > embedding > native questions", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sid Mills").should("not.exist");
 
-      cy.location("search").should("eq", "?id=926&state=KS&product_id=10");
+      cy.location("search").should(
+        "eq",
+        "?id=926&created_at=&state=KS&product_id=10",
+      );
+    });
+
+    it("should handle required parameters", () => {
+      createAndVisitQuestion({ requiredTagName: "total", defaultValue: [100] });
+
+      assertEmbeddingParameter("Total", "Editable");
+
+      publishChanges("card", ({ request }) => {
+        const actual = request.body.embedding_params;
+
+        // We only expect total to be "enabled" because the rest
+        // weren't touched and therefore aren't changed, whereas
+        // "enabled" must be set by default for required params.
+        const expected = {
+          total: "enabled",
+        };
+
+        assert.deepEqual(actual, expected);
+      });
+
+      visitIframe();
+
+      // Filter widget must be visible
+      filterWidget().contains("Total");
+
+      // And its default value must be in the URL
+      cy.location("search").should("eq", "?total=100");
+    });
+
+    it("should (dis)allow setting parameters as required for a published embedding", () => {
+      createAndVisitQuestion();
+      // Make one parameter editable and one locked
+      setEmbeddingParameter("Order ID", "Editable");
+      setEmbeddingParameter("Total", "Locked");
+
+      publishChanges("card");
+      closeStaticEmbeddingModal();
+
+      cy.findByTestId("native-query-editor-container")
+        .findByText("Open Editor")
+        .click();
+
+      // Open variable editor
+      cy.findByTestId("native-query-editor-sidebar").icon("variable").click();
+
+      // Now check that all disabled parameters can't be required and the rest can
+      assertRequiredEnabledForName({ name: "id", enabled: true });
+      assertRequiredEnabledForName({ name: "total", enabled: true });
+      // disabled parameters
+      assertRequiredEnabledForName({ name: "created_at", enabled: false });
+      assertRequiredEnabledForName({ name: "source", enabled: false });
+      assertRequiredEnabledForName({ name: "state", enabled: false });
+      assertRequiredEnabledForName({ name: "product_id", enabled: false });
     });
   });
 
@@ -157,8 +221,8 @@ describe("scenarios > embedding > native questions", () => {
         // It should be possible to both set the filter value and hide it at the same time.
         // That's the synonymous to the locked filter.
         visitEmbeddedPage(payload, {
-          setFilters: "id=92",
-          hideFilters: "id,product_id,state,created_at,total",
+          setFilters: { id: 92 },
+          hideFilters: ["id", "product_id", "state", "created_at", "total"],
         });
 
         cy.findByTestId("table-row").should("have.length", 1);
@@ -186,13 +250,13 @@ describe("scenarios > embedding > native questions", () => {
         };
 
         visitEmbeddedPage(payload, {
-          setFilters: "created_at=Q2-2025&source=Organic&state=OR",
+          setFilters: { created_at: "Q2-2025", source: "Organic", state: "OR" },
         });
 
         filterWidget()
           .should("have.length", 4)
           .and("contain", "OR")
-          .and("contain", "Q2, 2025");
+          .and("contain", "Q2 2025");
         // Why do we use input field in one filter widget but a simple `span` in the other one?
         cy.findByDisplayValue("Organic");
 
@@ -204,7 +268,7 @@ describe("scenarios > embedding > native questions", () => {
 
         // OTOH, we should also be able to override the default filter value by eplixitly setting it
         visitEmbeddedPage(payload, {
-          setFilters: "total=80",
+          setFilters: { total: 80 },
         });
 
         cy.get("legend").contains("Total").parent("fieldset").contains("80");
@@ -250,36 +314,45 @@ describe("scenarios > embedding > native questions", () => {
   });
 });
 
-function setParameter(name, filter) {
-  cy.findByText("Which parameters can users of this embed use?")
-    .parent()
-    .within(() => {
-      cy.findByText(name).siblings("a").click();
+describe("scenarios > embedding > native questions with default parameters", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
+    cy.createNativeQuestion(questionDetailsWithDefaults, {
+      visitQuestion: true,
     });
 
-  popover().contains(filter).click();
-}
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
-function enableSharing() {
-  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+    // Note: ID is disabled
+    setEmbeddingParameter("Source", "Locked");
+    setEmbeddingParameter("Name", "Editable");
+    publishChanges("card", ({ request }) => {
+      assert.deepEqual(request.body.embedding_params, {
+        source: "locked",
+        name: "enabled",
+      });
+    });
 
-  cy.icon("share").click();
-  cy.findByText("Embed in your application").click();
-  cy.wait("@sessionProperties");
-}
+    visitIframe();
 
-function publishChanges(callback) {
-  cy.intercept("PUT", "/api/card/*").as("publishChanges");
+    // Remove default filter value
+    clearFilterWidget();
+    // The ID default (1, 2) should apply, because it is disabled.
+    // The Name default ('Lina Heaney') should not apply, because the Name param is editable and empty
+    // The Source default ('Facebook') should not apply because the param is locked but the value is unset
+    // If either the Name or Source default applied the result would be 0.
+    cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
+  });
+});
 
-  cy.button("Publish").click();
-
-  cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
-    // Unfortunately, the order of requests is not always the same.
-    // Therefore, we must first get the one that has the `embedding_params` and then assert on it.
-    const targetXhr = xhrs.find(({ request }) =>
-      Object.keys(request.body).includes("embedding_params"),
+function assertRequiredEnabledForName({ name, enabled }) {
+  cy.findByTestId(`tag-editor-variable-${name}`).within(() => {
+    SQLFilter.getRequiredInput().should(
+      enabled ? "be.enabled" : "not.be.enabled",
     );
-
-    callback && callback(targetXhr);
   });
 }

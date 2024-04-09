@@ -1,19 +1,16 @@
 /* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectBannerToBeHidden"] }] */
 import { render, screen } from "__support__/ui";
-
-import type { TokenStatusStatus } from "metabase-types/api";
+import type { TokenStatus } from "metabase-types/api";
 
 import { PaymentBanner, shouldRenderPaymentBanner } from "./PaymentBanner";
 
 interface SetupOpts {
   isAdmin: boolean;
-  tokenStatusStatus: TokenStatusStatus;
+  tokenStatus: TokenStatus;
 }
 
-function setup({ isAdmin, tokenStatusStatus }: SetupOpts) {
-  render(
-    <PaymentBanner isAdmin={isAdmin} tokenStatusStatus={tokenStatusStatus} />,
-  );
+function setup({ isAdmin, tokenStatus }: SetupOpts) {
+  render(<PaymentBanner isAdmin={isAdmin} tokenStatus={tokenStatus} />);
 }
 
 const PAST_DUE_BANNER_REGEX =
@@ -27,7 +24,7 @@ describe("PaymentBanner", () => {
     it("should render past-due banner when token status status is `past-due`", () => {
       setup({
         isAdmin: true,
-        tokenStatusStatus: "past-due",
+        tokenStatus: { status: "past-due", valid: false, trial: false },
       });
 
       expect(screen.getByText(PAST_DUE_BANNER_REGEX)).toBeInTheDocument();
@@ -36,16 +33,30 @@ describe("PaymentBanner", () => {
     it("should render unpaid banner when token status status is `unpaid`", () => {
       setup({
         isAdmin: true,
-        tokenStatusStatus: "unpaid",
+        tokenStatus: { status: "unpaid", valid: false, trial: false },
       });
 
       expect(screen.getByText(UNPAID_BANNER_REGEX)).toBeInTheDocument();
     });
 
+    it("should render an error with details when the token is `invalid`", () => {
+      setup({
+        isAdmin: true,
+        tokenStatus: {
+          status: "invalid",
+          valid: false,
+          trial: false,
+          "error-details": "This is critical damage.",
+        },
+      });
+
+      expect(screen.getByText(/This is critical damage\./)).toBeInTheDocument();
+    });
+
     it("should not render any banner when token status status is not `past-due` or `unpaid`", () => {
       setup({
         isAdmin: true,
-        tokenStatusStatus: "something-else",
+        tokenStatus: { status: "something-else", valid: false, trial: false },
       });
 
       expectBannerToBeHidden();
@@ -55,18 +66,18 @@ describe("PaymentBanner", () => {
   describe("non-admin users", () => {
     it.each([
       {
-        tokenStatusStatus: "past-due",
+        tokenStatus: { status: "past-due", valid: false, trial: false },
       },
       {
-        tokenStatusStatus: "unpaid",
+        tokenStatus: { status: "unpaid", valid: false, trial: false },
       },
       {
-        tokenStatusStatus: "something-else",
+        tokenStatus: { status: "something-else", valid: false, trial: false },
       },
     ])(
-      "should not render any banner when tokenStatusStatus is `$tokenStatusStatus`",
-      ({ tokenStatusStatus }) => {
-        setup({ isAdmin: false, tokenStatusStatus });
+      "should not render any banner when tokenStatus.status is `${tokenStatus.status}`",
+      ({ tokenStatus }) => {
+        setup({ isAdmin: false, tokenStatus });
 
         expectBannerToBeHidden();
       },
@@ -77,40 +88,50 @@ describe("PaymentBanner", () => {
     it.each([
       {
         isAdmin: true,
-        tokenStatusStatus: "past-due",
+        tokenStatus: { status: "past-due", valid: false, trial: false },
         hasBanner: true,
       },
       {
         isAdmin: true,
-        tokenStatusStatus: "unpaid",
+        tokenStatus: { status: "unpaid", valid: false, trial: false },
         hasBanner: true,
       },
       {
         isAdmin: true,
-        tokenStatusStatus: "something-else",
+        tokenStatus: { status: "invalid", valid: false, trial: false },
+        hasBanner: true,
+      },
+      {
+        isAdmin: true,
+        tokenStatus: { status: "something-else", valid: false, trial: false },
         hasBanner: false,
       },
       {
         isAdmin: false,
-        tokenStatusStatus: "past-due",
+        tokenStatus: { status: "past-due", valid: false, trial: false },
         hasBanner: false,
       },
       {
         isAdmin: false,
-        tokenStatusStatus: "unpaid",
+        tokenStatus: { status: "unpaid", valid: false, trial: false },
         hasBanner: false,
       },
       {
         isAdmin: false,
-        tokenStatusStatus: "something-else",
+        tokenStatus: { status: "invalid", valid: false, trial: false },
+        hasBanner: false,
+      },
+      {
+        isAdmin: false,
+        tokenStatus: { status: "something-else", valid: false, trial: false },
         hasBanner: false,
       },
     ])(
-      "should return `${shouldRenderPaymentBanner} when isAdmin: $isAdmin, and tokenStatusStatus: $tokenStatusStatus`",
-      ({ isAdmin, tokenStatusStatus, hasBanner }) => {
-        expect(
-          shouldRenderPaymentBanner({ isAdmin, tokenStatusStatus }),
-        ).toEqual(hasBanner);
+      "should return `${shouldRenderPaymentBanner} when isAdmin: $isAdmin, and tokenStatus.status: ${tokenStatus.status}`",
+      ({ isAdmin, tokenStatus, hasBanner }) => {
+        expect(shouldRenderPaymentBanner({ isAdmin, tokenStatus })).toEqual(
+          hasBanner,
+        );
       },
     );
   });

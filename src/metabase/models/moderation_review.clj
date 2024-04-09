@@ -1,14 +1,14 @@
 (ns metabase.models.moderation-review
-  "TODO -- this should be moved to `metabase-enterprise.content-management.models.moderation-review` since it's a
+  "TODO -- this should be moved to `metabase-enterprise.content-verification.models.moderation-review` since it's a
   premium-only model."
   (:require
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.moderation :as moderation]
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (def statuses
@@ -17,18 +17,18 @@
 
 (def Statuses
   "Schema of valid statuses"
-  (apply s/enum statuses))
+  [:maybe (into [:enum] statuses)])
 
 ;;; currently unused, but I'm leaving this in commented out because it serves as documentation
 (comment
   (def ReviewChanges
     "Schema for a ModerationReview that's being updated (so most keys are optional)"
-    {(s/optional-key :id)                  su/IntGreaterThanZero
-     (s/optional-key :moderated_item_id)   su/IntGreaterThanZero
-     (s/optional-key :moderated_item_type) moderation/moderated-item-types
-     (s/optional-key :status)              Statuses
-     (s/optional-key :text)                (s/maybe s/Str)
-     s/Any                                 s/Any}))
+    [:map
+     [:id                  {:optional true} mu/IntGreaterThanZero]
+     [:moderated_item_id   {:optional true} mu/IntGreaterThanZero]
+     [:moderated_item_type {:optional true} moderation/moderated-item-types]
+     [:status              {:optional true} Statuses]
+     [:text                {:optional true} [:maybe :string]]]))
 
 (def ModerationReview
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
@@ -50,10 +50,11 @@
   "The amount of moderation reviews we will keep on hand."
   10)
 
-(s/defn delete-extra-reviews!
+(mu/defn delete-extra-reviews!
   "Delete extra reviews to maintain an invariant of only `max-moderation-reviews`. Called before inserting so actuall
   insures there are one fewer than that so you can add afterwards."
-  [item-id :- s/Int item-type :- s/Str]
+  [item-id   :- :int
+   item-type :- :string]
   (let [ids (into #{} (comp (map :id)
                             (drop (dec max-moderation-reviews)))
                   (mdb.query/query {:select   [:id]
@@ -69,14 +70,15 @@
     (when (seq ids)
       (t2/delete! ModerationReview :id [:in ids]))))
 
-(s/defn create-review!
+(mu/defn create-review!
   "Create a new ModerationReview"
   [params :-
-   {:moderated_item_id       su/IntGreaterThanZero
-    :moderated_item_type     moderation/moderated-item-types
-    :moderator_id            su/IntGreaterThanZero
-    (s/optional-key :status) Statuses
-    (s/optional-key :text)   (s/maybe s/Str)}]
+   [:map
+    [:moderated_item_id       ms/PositiveInt]
+    [:moderated_item_type     moderation/moderated-item-types]
+    [:moderator_id            ms/PositiveInt]
+    [:status              {:optional true} Statuses]
+    [:text                {:optional true} [:maybe :string]]]]
   (t2/with-transaction [_conn]
    (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
    (t2/update! ModerationReview {:moderated_item_id   (:moderated_item_id params)

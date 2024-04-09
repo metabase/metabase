@@ -1,10 +1,13 @@
 import { t } from "ttag";
-import { Icon, IconName } from "metabase/core/components/Icon";
+
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
+
+import type { HeaderTitleContainerVariant } from "./SidebarHeader.styled";
 import {
   HeaderRoot,
   HeaderIcon,
   HeaderTitleContainer,
-  HeaderTitleContainerVariant,
   CloseButton,
 } from "./SidebarHeader.styled";
 

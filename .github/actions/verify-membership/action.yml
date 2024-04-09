@@ -1,0 +1,22 @@
+name: 'Verify Organization Membership'
+description: 'Check if a user is a member of a GitHub organization'
+inputs:
+  github_token:
+    description: 'Token with access to the organization'
+    required: true
+  organization_name:
+    description: 'Organization name'
+    required: true
+  username:
+    description: 'Username'
+    required: true
+outputs:
+  is_member:
+    value: ${{ steps.verify-membership.outputs.is_member }}
+    description: "Is the user a member of the organization"
+runs:
+  using: "composite"
+  steps:
+    - run: bash ${{ github.action_path }}/verify_membership.sh ${{ inputs.github_token }} ${{ inputs.organization_name }} ${{ inputs.username }}
+      id: verify-membership
+      shell: bash

@@ -1,19 +1,20 @@
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
+import produce from "immer";
 import reduceReducers from "reduce-reducers";
 import _ from "underscore";
 
-import { handleActions, combineReducers } from "metabase/lib/redux";
+import Actions from "metabase/entities/actions";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
-import Actions from "metabase/entities/actions";
+import { handleActions, combineReducers } from "metabase/lib/redux";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 
 import {
   INITIALIZE,
-  FETCH_DASHBOARD,
   SET_EDITING_DASHBOARD,
   SET_DASHBOARD_ATTRIBUTES,
   ADD_CARD_TO_DASH,
+  ADD_MANY_CARDS_TO_DASH,
   CREATE_PUBLIC_LINK,
   DELETE_PUBLIC_LINK,
   UPDATE_EMBEDDING_PARAMS,
@@ -43,31 +44,37 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   tabsReducer,
-  SET_LOADING_DASHCARDS_COMPLETE,
+  FETCH_CARD_DATA_PENDING,
+  fetchDashboard,
 } from "./actions";
-import { syncParametersAndEmbeddingParams } from "./utils";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
+import {
+  calculateDashCardRowAfterUndo,
+  syncParametersAndEmbeddingParams,
+} from "./utils";
 
 const dashboardId = handleActions(
   {
     [INITIALIZE]: { next: state => null },
-    [FETCH_DASHBOARD]: {
-      next: (state, { payload: { dashboardId } }) => dashboardId,
+    [fetchDashboard.fulfilled]: {
+      next: (state, { payload }) => {
+        return payload.dashboardId;
+      },
     },
     [RESET]: { next: state => null },
   },
   INITIAL_DASHBOARD_STATE.dashboardId,
 );
 
-const isEditing = handleActions(
+const editingDashboard = handleActions(
   {
-    [INITIALIZE]: { next: state => null },
+    [INITIALIZE]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
     [SET_EDITING_DASHBOARD]: {
-      next: (state, { payload }) => (payload ? payload : null),
+      next: (state, { payload }) => payload ?? null,
     },
-    [RESET]: { next: state => null },
+    [RESET]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
   },
-  INITIAL_DASHBOARD_STATE.isEditing,
+  INITIAL_DASHBOARD_STATE.editingDashboard,
 );
 
 const loadingControls = handleActions(
@@ -96,7 +103,7 @@ function newDashboard(before, after, isDirty) {
 
 const dashboards = handleActions(
   {
-    [FETCH_DASHBOARD]: {
+    [fetchDashboard.fulfilled]: {
       next: (state, { payload }) => ({
         ...state,
         ...payload.entities.dashboard,
@@ -114,12 +121,20 @@ const dashboards = handleActions(
       ...state,
       [dashcard.dashboard_id]: {
         ...state[dashcard.dashboard_id],
-        ordered_cards: [
-          ...state[dashcard.dashboard_id].ordered_cards,
-          dashcard.id,
-        ],
+        dashcards: [...state[dashcard.dashboard_id].dashcards, dashcard.id],
       },
     }),
+    [ADD_MANY_CARDS_TO_DASH]: (state, { payload: dashcards }) => {
+      const [{ dashboard_id }] = dashcards;
+      const dashcardIds = dashcards.map(({ id }) => id);
+      return {
+        ...state,
+        [dashboard_id]: {
+          ...state[dashboard_id],
+          dashcards: [...state[dashboard_id].dashcards, ...dashcardIds],
+        },
+      };
+    },
     [CREATE_PUBLIC_LINK]: {
       next: (state, { payload }) =>
         assocIn(state, [payload.id, "public_uuid"], payload.uuid),
@@ -138,19 +153,22 @@ const dashboards = handleActions(
     },
     [UPDATE_ENABLE_EMBEDDING]: {
       next: (state, { payload }) =>
-        assocIn(
-          state,
-          [payload.id, "enable_embedding"],
-          payload.enable_embedding,
-        ),
+        produce(state, draftState => {
+          const dashboard = draftState[payload.id];
+          dashboard.enable_embedding = payload.enable_embedding;
+          dashboard.initially_published_at = payload.initially_published_at;
+        }),
     },
     [Dashboards.actionTypes.UPDATE]: {
-      next: (state, { payload }) =>
-        assocIn(
-          state,
-          [payload.dashboard.id, "collection_id"],
-          payload.dashboard.collection_id,
-        ),
+      next: (state, { payload }) => {
+        return produce(state, draftState => {
+          const draftDashboard = draftState[payload.dashboard.id];
+          if (draftDashboard) {
+            draftDashboard.collection_id = payload.dashboard.collection_id;
+            draftDashboard.collection = payload.dashboard.collection;
+          }
+        });
+      },
     },
   },
   INITIAL_DASHBOARD_STATE.dashboards,
@@ -158,7 +176,7 @@ const dashboards = handleActions(
 
 const dashcards = handleActions(
   {
-    [FETCH_DASHBOARD]: {
+    [fetchDashboard.fulfilled]: {
       next: (state, { payload }) => ({
         ...state,
         ...payload.entities.dashcard,
@@ -220,13 +238,29 @@ const dashcards = handleActions(
       ...state,
       [dashcard.id]: { ...dashcard, isAdded: true, justAdded: true },
     }),
+    [ADD_MANY_CARDS_TO_DASH]: (state, { payload: dashcards }) => {
+      const storeDashcards = dashcards.map((dc, index) => ({
+        ...dc,
+        isAdded: true,
+        justAdded: index === 0,
+      }));
+      const storeDashCardsMap = _.indexBy(storeDashcards, "id");
+      return {
+        ...state,
+        ...storeDashCardsMap,
+      };
+    },
     [REMOVE_CARD_FROM_DASH]: (state, { payload: { dashcardId } }) => ({
       ...state,
       [dashcardId]: { ...state[dashcardId], isRemoved: true },
     }),
     [UNDO_REMOVE_CARD_FROM_DASH]: (state, { payload: { dashcardId } }) => ({
       ...state,
-      [dashcardId]: { ...state[dashcardId], isRemoved: false },
+      [dashcardId]: {
+        ...state[dashcardId],
+        isRemoved: false,
+        row: calculateDashCardRowAfterUndo(state[dashcardId].row),
+      },
     }),
     [MARK_NEW_CARD_SEEN]: (state, { payload: dashcardId }) => ({
       ...state,
@@ -274,6 +308,7 @@ const isNavigatingBackToDashboard = handleActions(
   INITIAL_DASHBOARD_STATE.isNavigatingBackToDashboard,
 );
 
+// Many of these slices are also updated by `tabsReducer` in `frontend/src/metabase/dashboard/actions/tabs.ts`
 const dashcardData = handleActions(
   {
     // clear existing dashboard data when loading a dashboard
@@ -314,7 +349,7 @@ const parameterValues = handleActions(
         return clearCache ? {} : state;
       },
     },
-    [FETCH_DASHBOARD]: {
+    [fetchDashboard.fulfilled]: {
       next: (state, { payload: { parameterValues } }) => parameterValues,
     },
     [SET_PARAMETER_VALUE]: {
@@ -338,8 +373,12 @@ const parameterValues = handleActions(
 
 const draftParameterValues = handleActions(
   {
-    [INITIALIZE]: { next: () => ({}) },
-    [FETCH_DASHBOARD]: {
+    [INITIALIZE]: {
+      next: (state, { payload: { clearCache = true } = {} }) => {
+        return clearCache ? {} : state;
+      },
+    },
+    [fetchDashboard.fulfilled]: {
       next: (
         state,
         { payload: { dashboard, parameterValues, preserveParameters } },
@@ -358,7 +397,6 @@ const draftParameterValues = handleActions(
     [REMOVE_PARAMETER]: {
       next: (state, { payload: { id } }) => dissoc(state, id),
     },
-    [RESET]: { next: () => ({}) },
   },
   {},
 );
@@ -372,15 +410,23 @@ const loadingDashCards = handleActions(
       }),
     },
     [FETCH_DASHBOARD_CARD_DATA]: {
-      next: (state, { payload: { currentTime, dashcardIds } }) => {
-        const loadingIds = Array.isArray(dashcardIds) ? dashcardIds : [];
-
+      next: (state, { payload: { currentTime, loadingIds } }) => {
         return {
           ...state,
-          dashcardIds: loadingIds,
           loadingIds,
           loadingStatus: loadingIds.length > 0 ? "running" : "idle",
           startTime: loadingIds.length > 0 ? currentTime : null,
+        };
+      },
+    },
+    [FETCH_CARD_DATA_PENDING]: {
+      next: (state, { payload: { dashcard_id } }) => {
+        const loadingIds = !state.loadingIds.includes(dashcard_id)
+          ? state.loadingIds.concat(dashcard_id)
+          : state.loadingIds;
+        return {
+          ...state,
+          loadingIds,
         };
       },
     },
@@ -403,15 +449,6 @@ const loadingDashCards = handleActions(
           ...state,
           loadingIds,
           ...(loadingIds.length === 0 ? { startTime: null } : {}),
-        };
-      },
-    },
-    [SET_LOADING_DASHCARDS_COMPLETE]: {
-      next: state => {
-        return {
-          ...state,
-          loadingIds: [],
-          loadingStatus: "complete",
         };
       },
     },
@@ -478,11 +515,11 @@ export const autoApplyFilters = handleActions(
   INITIAL_DASHBOARD_STATE.autoApplyFilters,
 );
 
-export default reduceReducers(
+export const dashboardReducers = reduceReducers(
   INITIAL_DASHBOARD_STATE,
   combineReducers({
     dashboardId,
-    isEditing,
+    editingDashboard,
     loadingControls,
     dashboards,
     dashcards,

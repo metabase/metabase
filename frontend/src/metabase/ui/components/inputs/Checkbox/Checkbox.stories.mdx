@@ -1,12 +1,48 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
-import { Checkbox } from "./";
+import { Checkbox, Stack } from "metabase/ui";
 
+export const args = {
+  label: "Label",
+  description: undefined,
+  disabled: false,
+  labelPosition: "right",
+  size: "md",
+};
 
-<Meta title="Inputs/Checkbox & Checkbox Group" component={Checkbox}  />
+export const argTypes = {
+  label: {
+    control: { type: "text" },
+  },
+  description: {
+    control: { type: "text" },
+  },
+  disabled: {
+    control: { type: "boolean" },
+  },
+  labelPosition: {
+    options: ["left", "right"],
+    control: { type: "inline-radio" },
+  },
+  size: {
+    options: ["xs", "md", "lg", "xl"],
+    control: { type: "inline-radio" },
+  },
+  variant: {
+    options: ["default", "stacked"],
+    control: { type: "inline-radio" },
+  },
+};
 
-# Checkbox & Checkbox.Group
+<Meta
+  title="Inputs/Checkbox"
+  component={Checkbox}
+  args={args}
+  argTypes={argTypes}
+/>
 
-Our themed wrapper around [Mantine Checkbox](https://mantine.dev/core/checkbox/).
+# Checkbox
+
+Our themed wrapper around [Mantine Checkbox](https://v6.mantine.dev/core/checkbox/).
 
 ## When to use Checkbox
 
@@ -14,13 +50,8 @@ Checkbox buttons allow users to select a single option from a list of mutually e
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/sF1qSHk6yVqO1rFgmH0nzT/Input-%2F-Checkbox?type=design&node-id=1-96&t=4851xqAoQVenSrTX-11)
-- [Mantine Checkbox Docs](https://mantine.dev/core/checkbox/)
-
-## Caveats
-
-- As of right now, don't use the size prop.
-- Please don't use the `error` prop on Checkbox components (We'll standardize on this as other inputs get converted).
+- [Figma File](https://www.figma.com/file/sF1qSHk6yVqO1rFgmH0nzT/Input-%2F-Checkbox?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
+- [Mantine Checkbox Docs](https://v6.mantine.dev/core/checkbox/)
 
 ## Usage guidelines
 
@@ -28,78 +59,117 @@ Checkbox buttons allow users to select a single option from a list of mutually e
 - For option ordering, try to use your best judgement on a sensible order. For example, Yes should come before No. Alphabetical ordering is usually a good fallback if there's no inherent order in your set of choices.
 - In almost all circumstances you'll want to use `<Checkbox.Group>` to provide a set of options and help with defaultValues and state management between them.
 
-## General
+## Examples
+
+export const DefaultTemplate = args => <Checkbox {...args} />;
+
+export const CheckboxGroupTemplate = args => (
+  <Checkbox.Group
+    defaultValue={["react"]}
+    label="An array of good frameworks"
+    description="But which one to use?"
+  >
+    <Stack mt="md">
+      <Checkbox {...args} value="react" label="React" />
+      <Checkbox {...args} value="svelte" label="Svelte" />
+      <Checkbox {...args} value="ng" label="Angular" />
+      <Checkbox {...args} value="vue" label="Vue" />
+    </Stack>
+  </Checkbox.Group>
+);
+
+export const StateTemplate = args => (
+  <Stack>
+    <Checkbox {...args} label="Default checkbox" />
+    <Checkbox {...args} label="Indeterminate checkbox" indeterminate />
+    <Checkbox
+      {...args}
+      label="Indeterminate checked checkbox"
+      defaultChecked
+      indeterminate
+    />
+    <Checkbox {...args} label="Checked checkbox" defaultChecked />
+    <Checkbox {...args} label="Disabled checkbox" disabled />
+    <Checkbox
+      {...args}
+      label="Disabled indeterminate checked checkbox"
+      disabled
+      defaultChecked
+      indeterminate
+    />
+    <Checkbox
+      {...args}
+      label="Disabled checked checkbox"
+      disabled
+      defaultChecked
+    />
+  </Stack>
+);
+
+export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">
-    <Checkbox.Group defaultValue="yes">
-      <Checkbox label="Yes" value="yes" />
-      <Checkbox label="No" value="no" />
-      <Checkbox label="I'm not sure" indeterminate />
-    </Checkbox.Group>
-  </Story>
+  <Story name="Default">{Default}</Story>
 </Canvas>
 
-## Disabled
+### Checkbox.Group
+
+export const CheckboxGroup = CheckboxGroupTemplate.bind({});
 
 <Canvas>
-  <Story name="Disabled">
-    <Checkbox.Group value={["yes"]}>
-      <Checkbox label="Yes" value="yes" disabled />
-      <Checkbox label="No" value="no" disabled />
-      <Checkbox label="I'm not sure" indeterminate disabled />
-    </Checkbox.Group>
-  </Story>
+  <Story name="Checkbox group">{CheckboxGroup}</Story>
 </Canvas>
 
-## Description
+### Label
 
-If needed you can add a description value to a Checkbox button to give more context about the choice.
+export const Label = StateTemplate.bind({});
 
 <Canvas>
-  <Story name="Descriptions">
-    <Checkbox.Group defaultValue={["chocolate"]}>
-      <Checkbox
-        label="Chocolate"
-        value="chocolate"
-        description="One of our most popular flavors"
-      />
-      <Checkbox
-        label="Vanilla"
-        value="vanilla"
-        description="A classic for all seasons"
-      />
-      <Checkbox
-        label="Strawberry, no description needed!"
-        value="strawberry"
-      />
-      <Checkbox
-        label="Swirl"
-        value="swirl"
-        description="Why not have it both ways?"
-      />
-    </Checkbox.Group>
-  </Story>
+  <Story name="Label">{Label}</Story>
 </Canvas>
 
-## Using the Checkbox group props
+#### Left label position
 
-You can use `label` and `description` on the Checkbox.Group component to provide a label and description for the set of choices.
+export const LabelLeft = StateTemplate.bind({});
+LabelLeft.args = {
+  labelPosition: "left",
+};
 
 <Canvas>
-  <Story name="Checkbox Group props">
-    <Checkbox.Group
-      label="A set of options"
-      description="You could so something like this if there was a deprecated setting that a user needs to update."
-      defaultValue={["one"]}
-    >
-      <Checkbox label="Old bad setting" value="one" disabled />
-      <Checkbox label="A better newer setting" value="two" />
-    </Checkbox.Group>
-  </Story>
+  <Story name="Label, left position">{LabelLeft}</Story>
+</Canvas>
+
+### Description
+
+export const Description = StateTemplate.bind({});
+
+<Canvas>
+  <Story name="Description">{Description}</Story>
+</Canvas>
+
+#### Left label position
+
+export const DescriptionLeft = StateTemplate.bind({});
+DescriptionLeft.args = {
+  labelPosition: "left",
+};
+
+<Canvas>
+  <Story name="Description, left position">{DescriptionLeft}</Story>
+</Canvas>
+
+#### Stacked Variant
+
+export const Stacked = StateTemplate.bind({});
+Stacked.args = {
+  variant: "stacked",
+};
+
+<Canvas>
+  <Story name="Stacked">{Stacked}</Story>
 </Canvas>
 
 ## Related components
 
+- Radio
 - Select
-- Checkbox

@@ -1,12 +1,12 @@
-import { restore, startNewQuestion } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, startNewQuestion } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   name: "Orders model",
   query: { "source-table": ORDERS_ID },
-  dataset: true,
+  type: "model",
 };
 
 describe("issue 25537", () => {

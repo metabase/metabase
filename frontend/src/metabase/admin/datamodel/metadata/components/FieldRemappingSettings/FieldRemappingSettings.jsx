@@ -1,24 +1,25 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { createRef, Component } from "react";
 import { connect } from "react-redux";
-
 import { t } from "ttag";
 import _ from "underscore";
 
-import Select from "metabase/core/components/Select";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-
-import * as MetabaseAnalytics from "metabase/lib/analytics";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Select from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
-
-import { isEntityName, isFK } from "metabase-lib/types/utils/isa";
 import {
   hasSourceField,
   getFieldTargetId,
-} from "metabase-lib/queries/utils/field-ref";
+} from "metabase-lib/v1/queries/utils/field-ref";
+import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
+
 import FieldSeparator from "../FieldSeparator";
+
 import {
   FieldMappingContainer,
   FieldMappingRoot,
@@ -246,7 +247,7 @@ class FieldRemappingSettings extends Component {
             onChange={this.handleChangeMappingType}
             options={this.getAvailableMappingTypes()}
             optionValueFn={o => o}
-            className="inline-block"
+            className={CS.inlineBlock}
           />
           {mappingType === MAP_OPTIONS.foreign && (
             <>
@@ -282,7 +283,9 @@ class FieldRemappingSettings extends Component {
                 />
               </PopoverWithTrigger>
               {dismissedInitialFkTargetPopover && (
-                <div className="text-error ml2">{t`Please select a column to use for display.`}</div>
+                <div
+                  className={cx(CS.textError, CS.ml2)}
+                >{t`Please select a column to use for display.`}</div>
               )}
             </>
           )}
@@ -290,11 +293,11 @@ class FieldRemappingSettings extends Component {
         {hasChanged && hasFKMappingValue && <RemappingNamingTip />}
         {mappingType === MAP_OPTIONS.custom &&
           (isFieldsAccessRestricted ? (
-            <div className="pt2 text-error">
+            <div className={cx(CS.pt2, CS.textError)}>
               {t`You need unrestricted data access on this table to map custom display values.`}
             </div>
           ) : (
-            <div className="mt3">
+            <div className={CS.mt3}>
               {hasChanged && <RemappingNamingTip />}
               <ValueRemappings
                 remappings={remapping}
@@ -394,13 +397,21 @@ class ValueRemappings extends Component {
 
     return (
       <FieldMappingRoot>
-        <div className="flex align-center my1 pb2 border-bottom">
+        <div
+          className={cx(
+            CS.flex,
+            CS.alignCenter,
+            CS.my1,
+            CS.pb2,
+            CS.borderBottom,
+          )}
+        >
           <h3>{t`Original value`}</h3>
-          <h3 className="ml-auto">{t`Mapped value`}</h3>
+          <h3 className={CS.mlAuto}>{t`Mapped value`}</h3>
         </div>
         <ol>
           {[...editingRemappings].map(([original, mapped]) => (
-            <li key={original} className="mb1">
+            <li key={original} className={CS.mb1}>
               <FieldValueMapping
                 original={original}
                 mapped={mapped}
@@ -411,9 +422,9 @@ class ValueRemappings extends Component {
             </li>
           ))}
         </ol>
-        <div className="flex align-center">
+        <div className={cx(CS.flex, CS.alignCenter)}>
           <ButtonWithStatus
-            className="ml-auto"
+            className={CS.mlAuto}
             disabled={!this.customValuesAreNonEmpty()}
             onClickOperation={this.onSaveClick}
           >
@@ -433,10 +444,10 @@ class FieldValueMapping extends Component {
   render() {
     const { original, mapped } = this.props;
     return (
-      <div className="flex align-center">
+      <div className={cx(CS.flex, CS.alignCenter)}>
         <h3>{original}</h3>
         <FieldValueMappingInput
-          className="ml-auto"
+          className={CS.mlAuto}
           value={mapped}
           onChange={this.onInputChange}
           placeholder={t`Enter value`}
@@ -447,8 +458,17 @@ class FieldValueMapping extends Component {
 }
 
 const RemappingNamingTip = () => (
-  <div className="bordered rounded p1 mt1 mb2 border-brand">
-    <span className="text-brand text-bold">{t`Tip: `}</span>
+  <div
+    className={cx(
+      CS.bordered,
+      CS.rounded,
+      CS.p1,
+      CS.mt1,
+      CS.mb2,
+      CS.borderBrand,
+    )}
+  >
+    <span className={cx("text-brand", CS.textBold)}>{t`Tip: `}</span>
     {t`You might want to update the field name to make sure it still makes sense based on your remapping choices.`}
   </div>
 );

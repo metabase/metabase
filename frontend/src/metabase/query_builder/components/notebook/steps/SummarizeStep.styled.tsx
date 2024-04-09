@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 export const StepRoot = styled.div`

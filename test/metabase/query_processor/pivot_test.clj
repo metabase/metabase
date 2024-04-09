@@ -7,13 +7,13 @@
    [medley.core :as m]
    [metabase.api.pivots :as api.pivots]
    [metabase.models :refer [Card Collection]]
-   [metabase.models.permissions :as perms]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [schema.core :as s]))
+   [metabase.test.data :as data]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -87,7 +87,7 @@
 
 
 (defn- test-query []
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (mt/$ids orders
       {:database     (mt/id)
        :type         :query
@@ -103,15 +103,15 @@
        :pivot-rows [0 1 2]
        :pivot-cols []})))
 
-(deftest allow-snake-case-test
+(deftest ^:parallel allow-snake-case-test
   (testing "make sure the stuff works with either normal lisp-case keys or snake_case"
     (is (= (mt/rows (qp.pivot/run-pivot-query (test-query)))
            (mt/rows (qp.pivot/run-pivot-query (set/rename-keys (test-query)
                                                                {:pivot-rows :pivot_rows, :pivot-cols :pivot_cols})))))))
 
-(deftest generate-queries-test
+(deftest ^:parallel generate-queries-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [request {:database   (mt/db)
                      :query      {:source-table (mt/$ids $$orders)
                                   :aggregation  [[:count] [:sum (mt/$ids $orders.quantity)]]
@@ -128,23 +128,23 @@
                                                    $orders.user_id->people.source
                                                    $orders.product_id->products.category
                                                    [:expression "pivot-grouping"]]
-                                     :expressions {:pivot-grouping [:abs 0]}}}
+                                     :expressions {"pivot-grouping" [:abs 0]}}}
                             {:query {:breakout    [$orders.user_id->people.source
                                                    $orders.product_id->products.category
                                                    [:expression "pivot-grouping"]]
-                                     :expressions {:pivot-grouping [:abs 1]}}}
+                                     :expressions {"pivot-grouping" [:abs 1]}}}
                             {:query {:breakout    [$orders.product_id->products.category
                                                    [:expression "pivot-grouping"]]
-                                     :expressions {:pivot-grouping [:abs 3]}}}
+                                     :expressions {"pivot-grouping" [:abs 3]}}}
                             {:query {:breakout    [$orders.user_id->people.source
                                                    $orders.user_id->people.state
                                                    [:expression "pivot-grouping"]]
-                                     :expressions {:pivot-grouping [:abs 4]}}}
+                                     :expressions {"pivot-grouping" [:abs 4]}}}
                             {:query {:breakout    [$orders.user_id->people.source
                                                    [:expression "pivot-grouping"]]
-                                     :expressions {:pivot-grouping [:abs 5]}}}
+                                     :expressions {"pivot-grouping" [:abs 5]}}}
                             {:query {:breakout    [[:expression "pivot-grouping"]]
-                                     :expressions {:pivot-grouping [:abs 7]}}}])
+                                     :expressions {"pivot-grouping" [:abs 7]}}}])
                 expected (for [expected-val expected]
                            (-> expected-val
                                (assoc :type       :query
@@ -153,11 +153,78 @@
                                       :pivot-cols [2])
                                (assoc-in [:query :aggregation] [[:count] [:sum (mt/$ids $orders.quantity)]])
                                (assoc-in [:query :source-table] (mt/$ids $$orders))))
-                actual   (map (fn [actual-val] (dissoc actual-val :database)) (#'qp.pivot/generate-queries request))]
+                actual   (map (fn [actual-val] (dissoc actual-val :database))
+                              (#'qp.pivot/generate-queries request {:pivot-rows [1 0] :pivot-cols [2]}))]
             (is (= 6 (count actual)))
             (is (= expected actual))))))))
 
-(deftest dont-return-too-many-rows-test
+(deftest ^:parallel pivot-options-test
+  (testing "`pivot-options` correctly generates pivot-rows and pivot-cols from a card's viz settings"
+    (let [query         (api.pivots/pivot-query false)
+          viz-settings  (:visualization_settings (api.pivots/pivot-card))
+          pivot-options {:pivot-rows [1 0], :pivot-cols [2]}]
+      (is (= pivot-options
+             (#'qp.pivot/pivot-options query viz-settings)))
+      (are [num-breakouts expected] (= expected
+                                       (#'qp.pivot/breakout-combinations
+                                        num-breakouts
+                                        (:pivot-rows pivot-options)
+                                        (:pivot-cols pivot-options)))
+        3 [[0 1 2]   [1 2] [2] [1 0] [1] []]
+        4 [[0 1 2 3] [1 2] [2] [1 0] [1] []]))))
+
+(deftest ^:parallel ignore-bad-pivot-options-test
+  (mt/dataset test-data
+    (let [query         (mt/mbql-query products
+                          {:breakout    [$category
+                                         [:field
+                                          (mt/id :products :created_at)
+                                          {:base-type :type/DateTime, :temporal-unit :month}]]
+                           :aggregation [[:count]]})
+          viz-settings  (select-keys
+                         (mt/query products
+                           {:pivot_table.column_split
+                            {:rows    [$id]
+                             :columns [[:field "RATING" {:base-type :type/Integer}]]}})
+                         [:pivot_table.column_split])
+          pivot-options (#'qp.pivot/pivot-options query viz-settings)]
+      (is (= {:pivot-rows [], :pivot-cols []}
+             pivot-options))
+      (is (= [[0 1] [1] [0] []]
+             (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options)))))))
+
+(deftest ^:parallel nested-question-pivot-options-test
+  (testing "#35025"
+    (mt/dataset test-data
+      (doseq [[message query] {"Query (incorrectly) uses :field ID refs in second stage"
+                               (mt/mbql-query products
+                                 {:source-query {:source-table $$products}
+                                  :aggregation  [[:count]]
+                                  :breakout     [$category !month.created_at]})
+
+                               "Query uses nominal :field literal refs in second stage"
+                               (mt/mbql-query products
+                                 {:source-query {:source-table $$products}
+                                  :aggregation  [[:count]]
+                                  :breakout     [*category !month.*CREATED_AT/DateTime]})}]
+        (testing message
+          (testing "Sanity check: query should work in non-pivot mode"
+            (is (=? {:status :completed}
+                    (qp/process-query query))))
+          (let [viz-settings  (mt/$ids products
+                                {:pivot_table.column_split
+                                 {:rows    [$category]
+                                  :columns [$created_at]}})
+                pivot-options (#'qp.pivot/pivot-options query viz-settings)]
+            (is (= {:pivot-rows [0], :pivot-cols [1]}
+                   pivot-options))
+            (is (= [[0 1] [1] [0] []]
+                   (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options))))
+            (is (=? {:status    :completed
+                     :row_count 156}
+                    (qp.pivot/run-pivot-query (assoc query :info {:visualization-settings viz-settings}))))))))))
+
+(deftest ^:parallel dont-return-too-many-rows-test
   (testing "Make sure pivot queries don't return too many rows (#14329)"
     (let [results (qp.pivot/run-pivot-query (test-query))
           rows    (mt/rows results)]
@@ -187,7 +254,7 @@
 
 (defn- distinct-values [table col]
   (->> (mt/rows
-         (mt/dataset sample-dataset
+         (mt/dataset test-data
            (qp/process-query
             {:database (mt/id)
              :type     :query
@@ -196,7 +263,7 @@
        (map first)
        set))
 
-(deftest return-correct-columns-test
+(deftest ^:parallel return-correct-columns-test
   (let [results (qp.pivot/run-pivot-query (api.pivots/pivot-query))
         rows    (mt/rows results)]
     (testing "Columns should come back in the expected order"
@@ -208,33 +275,39 @@
               "Sum of Quantity"]
              (map :display_name (mt/cols results)))))
     (testing "Rows should have the correct shape"
-      (let [Row [(s/one (s/maybe (apply s/enum (distinct-values :people   :state)))    "state")
-                 (s/one (s/maybe (apply s/enum (distinct-values :people   :source)))   "source")
-                 (s/one (s/maybe (apply s/enum (distinct-values :products :category))) "category")
-                 (s/one (s/enum 0 1 3 4 5 7)                                           "pivot group bitmask")
-                 (s/one s/Int                                                          "count")
-                 (s/one s/Int                                                          "sum")]]
-        (is (schema= [Row]
-                     rows))))))
+      (let [Row [:cat
+                 ;; state
+                 [:maybe (into [:enum] (distinct-values :people :state))]
+                 ;; source
+                 [:maybe (into [:enum] (distinct-values :people :source))]
+                 ;; category
+                 [:maybe (into [:enum] (distinct-values :products :category))]
+                 ;; pivot group bitmask
+                 [:enum 0 1 3 4 5 7]
+                 ;; count
+                 :int
+                 ;; sum
+                 :int]]
+        (is (malli= [:sequential {:min 1} Row]
+                    rows))))))
 
-(deftest allow-other-rfs-test
+(deftest ^:parallel allow-other-rfs-test
   (letfn [(rff [_]
             (fn
               ([] 0)
               ([acc] acc)
               ([acc _] (inc acc))))]
     (is (= (count (mt/rows (qp.pivot/run-pivot-query (api.pivots/pivot-query))))
-           (qp.pivot/run-pivot-query (api.pivots/pivot-query) nil {:rff rff})))))
+           (qp.pivot/run-pivot-query (api.pivots/pivot-query) rff)))))
 
-(deftest parameters-query-test
-  (mt/dataset sample-dataset
-    (is (schema= {:status    (s/eq :completed)
-                  :row_count (s/eq 137)
-                  s/Keyword  s/Any}
-                 (qp.pivot/run-pivot-query (api.pivots/parameters-query))))))
+(deftest ^:parallel parameters-query-test
+  (mt/dataset test-data
+    (is (=? {:status    :completed
+             :row_count 137}
+            (qp.pivot/run-pivot-query (api.pivots/parameters-query))))))
 
-(deftest pivots-should-not-return-expressions-test
-  (mt/dataset sample-dataset
+(deftest ^:parallel pivots-should-not-return-expressions-test
+  (mt/dataset test-data
     (let [query (assoc (mt/mbql-query orders
                          {:aggregation [[:count]]
                           :breakout    [$user_id->people.source $product_id->products.category]})
@@ -247,8 +320,15 @@
                    (m/dissoc-in [:data :native_form]))
                (-> (qp.pivot/run-pivot-query (assoc-in query [:query :expressions] {"Don't include me pls" [:+ 1 1]}))
                    (m/dissoc-in [:data :results_metadata :checksum])
-                   (m/dissoc-in [:data :native_form])))))
+                   (m/dissoc-in [:data :native_form]))))))))
 
+(deftest ^:parallel pivots-should-not-return-expressions-test-2
+  (mt/dataset test-data
+    (let [query (assoc (mt/mbql-query orders
+                         {:aggregation [[:count]]
+                          :breakout    [$user_id->people.source $product_id->products.category]})
+                       :pivot-rows [0]
+                       :pivot-cols [1])]
       (testing "If the expression is *explicitly* included in `:fields`, then return it, I guess"
         ;; I'm not sure this behavior makes sense -- it seems liable to result in a query the FE can't handle
         ;; correctly, like #14604. The difference here is that #14064 was including expressions that weren't in
@@ -264,52 +344,82 @@
                 "test-expr"]
                (map :display_name
                     (mt/cols
-                      (qp.pivot/run-pivot-query (-> query
-                                                    (assoc-in [:query :fields] [[:expression "test-expr"]])
-                                                    (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]})))))))))
+                     (qp.pivot/run-pivot-query (-> query
+                                                   (assoc-in [:query :fields] [[:expression "test-expr"]])
+                                                   (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]})))))))))))
 
+(deftest ^:parallel pivots-should-not-return-expressions-test-3
+  (mt/dataset test-data
     (testing "We should still be able to use expressions inside the aggregations"
-      (is (schema= {:status   (s/eq :completed)
-                    s/Keyword s/Any}
-                   (qp.pivot/run-pivot-query
-                    (mt/mbql-query orders
-                      {:expressions {"Product Rating + 1" [:+ $product_id->products.rating 1]}
-                       :aggregation [[:count]]
-                       :breakout    [$user_id->people.source [:expression "Product Rating + 1"]]})))))))
+      (is (=? {:status :completed}
+              (qp.pivot/run-pivot-query
+               (mt/mbql-query orders
+                 {:expressions {"Product Rating + 1" [:+ $product_id->products.rating 1]}
+                  :aggregation [[:count]]
+                  :breakout    [$user_id->people.source [:expression "Product Rating + 1"]]})))))))
 
 (deftest pivot-query-should-work-without-data-permissions-test
   (testing "Pivot queries should work if the current user only has permissions to view the Card -- no data perms (#14989)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp-copy-of-db
         (let [query (mt/mbql-query orders
                       {:aggregation [[:count]]
                        :breakout    [$product_id->products.category $user_id->people.source]})]
-          (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-          (testing "User without perms shouldn't be able to run the query normally"
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"You do not have permissions to run this query"
-                 (mt/with-test-user :rasta
-                   (qp/process-query query)))))
-          (testing "Should be able to run the query via a Card that All Users has perms for"
-            ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
-            ;; Collection inherits Root Collection perms when created
-            (mt/with-temp* [Collection [collection]
-                            Card       [card {:collection_id (u/the-id collection), :dataset_query query}]]
-              (is (schema= {:status   (s/eq "completed")
-                            s/Keyword s/Any}
-                           (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
-              (testing "... with the pivot-table endpoints"
-                (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))]
-                  (is (schema= {:status   (s/eq "completed")
-                                s/Keyword s/Any}
-                               result))
-                  (is (= (mt/rows (qp.pivot/run-pivot-query query))
-                         (mt/rows result))))))))))))
+           (mt/with-no-data-perms-for-all-users!
+             (data-perms/set-table-permission! (perms-group/all-users) (data/id :orders) :perms/data-access :no-self-service)
+             (testing "User without perms shouldn't be able to run the query normally"
+               (is (thrown-with-msg?
+                    clojure.lang.ExceptionInfo
+                    #"You do not have permissions to run this query"
+                    (mt/with-test-user :rasta
+                      (qp/process-query query)))))
+            (testing "Should be able to run the query via a Card that All Users has perms for"
+              ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
+              ;; Collection inherits Root Collection perms when created
+              (mt/with-temp [Collection collection {}
+                             Card       card {:collection_id (u/the-id collection), :dataset_query query}]
+                (is (=? {:status "completed"}
+                        (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
+                (testing "... with the pivot-table endpoints"
+                  (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))]
+                    (is (=? {:status "completed"}
+                            result))
+                    (is (= [["Doohickey" "Affiliate" 0 783]
+                            ["Doohickey" "Facebook" 0 816]
+                            ["Doohickey" "Google" 0 844]
+                            ["Doohickey" "Organic" 0 738]
+                            ["Doohickey" "Twitter" 0 795]
+                            ["Gadget" "Affiliate" 0 899]
+                            ["Gadget" "Facebook" 0 1041]
+                            ["Gadget" "Google" 0 971]
+                            ["Gadget" "Organic" 0 1038]
+                            ["Gadget" "Twitter" 0 990]
+                            ["Gizmo" "Affiliate" 0 876]
+                            ["Gizmo" "Facebook" 0 994]
+                            ["Gizmo" "Google" 0 956]
+                            ["Gizmo" "Organic" 0 972]
+                            ["Gizmo" "Twitter" 0 986]
+                            ["Widget" "Affiliate" 0 962]
+                            ["Widget" "Facebook" 0 1055]
+                            ["Widget" "Google" 0 1027]
+                            ["Widget" "Organic" 0 1016]
+                            ["Widget" "Twitter" 0 1001]
+                            [nil "Affiliate" 1 3520]
+                            [nil "Facebook" 1 3906]
+                            [nil "Google" 1 3798]
+                            [nil "Organic" 1 3764]
+                            [nil "Twitter" 1 3772]
+                            ["Doohickey" nil 2 3976]
+                            ["Gadget" nil 2 4939]
+                            ["Gizmo" nil 2 4784]
+                            ["Widget" nil 2 5061]
+                            [nil nil 3 18760]]
+                           (mt/rows (qp.pivot/run-pivot-query query))
+                           (mt/rows result)))))))))))))
 
-(deftest pivot-with-order-by-test
+(deftest ^:parallel pivot-with-order-by-test
   (testing "Pivot queries should work if there is an `:order-by` clause (#17198)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mt/mbql-query products
                     {:breakout    [$category]
                      :aggregation [[:count]]
@@ -322,14 +432,14 @@
                (mt/rows
                 (qp.pivot/run-pivot-query query))))))))
 
-(deftest pivot-with-order-by-metric-test
+(deftest ^:parallel pivot-with-order-by-metric-test
   (testing "Pivot queries should allow ordering by aggregation (#22872)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let  [query (mt/mbql-query reviews
-                     {:breakout [$rating [:field (mt/id :reviews :created_at) {:temporal-unit :year}]]
+                     {:breakout    [$rating [:field (mt/id :reviews :created_at) {:temporal-unit :year}]]
                       :aggregation [[:count]]
-                      :order-by [[:asc [:aggregation 0 nil]]]
-                      :filter [:between $created_at "2019-01-01" "2021-01-01"]})]
+                      :order-by    [[:asc [:aggregation 0 nil]]]
+                      :filter      [:between $created_at "2019-01-01" "2021-01-01"]})]
         (mt/with-native-query-testing-context query
           (is (= [[1 "2020-01-01T00:00:00Z" 0 5]
                   [2 "2020-01-01T00:00:00Z" 0 13]

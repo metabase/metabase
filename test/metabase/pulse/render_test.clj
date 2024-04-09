@@ -1,7 +1,7 @@
 (ns metabase.pulse.render-test
   (:require
    [clojure.test :refer :all]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
    [metabase.pulse :as pulse]
@@ -10,6 +10,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(set! *warn-on-reflection* true)
 
 ;; Let's make sure rendering Pulses actually works
 
@@ -27,7 +29,7 @@
 
 (deftest render-test
   (testing "if the pulse rendered correctly it will have an img tag."
-    (is (some? (mbql.u/match-one (render-results
+    (is (some? (lib.util.match/match-one (render-results
                                   (mt/mbql-query checkins
                                     {:aggregation [[:count]]
                                      :breakout    [!month.date]}))
@@ -73,7 +75,7 @@
                                            {}
                                            {:cols [{:base_type :type/Number}]
                                             :rows [[6]]})))
-    (is (= :smartscalar
+    (is (= :javascript_visualization
            (render/detect-pulse-chart-type {:display :smartscalar}
                                            {}
                                            {:cols     [{:base_type :type/Temporal
@@ -111,11 +113,11 @@
                                                    ["banana" 4]]}))))
   (testing "Dashboard Cards can return `:multiple`."
     (is (= :multiple
-           (mt/with-temp* [Card                [card1 {:display :pie}]
-                           Card                [card2 {:display :funnel}]
-                           Dashboard           [dashboard]
-                           DashboardCard       [dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}]
-                           DashboardCardSeries [_   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]]
+           (mt/with-temp [Card                card1 {:display :pie}
+                          Card                card2 {:display :funnel}
+                          Dashboard           dashboard {}
+                          DashboardCard       dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}
+                          DashboardCardSeries _   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]
              (render/detect-pulse-chart-type card1
                                              dc1
                                              {:cols [{:base_type :type/Temporal}
@@ -123,11 +125,11 @@
                                               :rows [[#t "2020" 2]
                                                      [#t "2021" 3]]}))))
     (is (= :multiple
-         (mt/with-temp* [Card                [card1 {:display :line}]
-                         Card                [card2 {:display :funnel}]
-                         Dashboard           [dashboard]
-                         DashboardCard       [dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}]
-                         DashboardCardSeries [_   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]]
+         (mt/with-temp [Card                card1 {:display :line}
+                        Card                card2 {:display :funnel}
+                        Dashboard           dashboard {}
+                        DashboardCard       dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}
+                        DashboardCardSeries _   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]
            (render/detect-pulse-chart-type card1
                                            dc1
                                            {:cols [{:base_type :type/Temporal}
@@ -137,23 +139,94 @@
 
 (deftest make-description-if-needed-test
   (testing "Use Visualization Settings's description if it exists"
-    (mt/with-temp* [Card          [card {:description "Card description"}]
-                    Dashboard     [dashboard]
-                    DashboardCard [dc1 {:dashboard_id (:id dashboard) :card_id (:id card)
-                                        :visualization_settings {:card.description "Visualization description"}}]]
+    (mt/with-temp [Card          card {:description "Card description"}
+                   Dashboard     dashboard {}
+                   DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)
+                                      :visualization_settings {:card.description "Visualization description"}}]
       (binding [render/*include-description* true]
         (is (= "<p>Visualization description</p>\n" (last (:content (#'render/make-description-if-needed dc1 card))))))))
 
   (testing "Fallback to Card's description if Visualization Settings's description not exists"
-    (mt/with-temp* [Card          [card {:description "Card description"}]
-                    Dashboard     [dashboard]
-                    DashboardCard [dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]]
+    (mt/with-temp [Card          card {:description "Card description"}
+                   Dashboard     dashboard {}
+                   DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]
       (binding [render/*include-description* true]
         (is (= "<p>Card description</p>\n" (last (:content (#'render/make-description-if-needed dc1 card))))))))
 
-    (testing "Test markdown converts to html"
-      (mt/with-temp* [Card          [card {:description "# Card description"}]
-                      Dashboard     [dashboard]
-                      DashboardCard [dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]]
-        (binding [render/*include-description* true]
-          (is (= "<h1>Card description</h1>\n" (last (:content (#'render/make-description-if-needed dc1 card)))))))))
+  (testing "Test markdown converts to html"
+    (mt/with-temp [Card          card {:description "# Card description"}
+                   Dashboard     dashboard {}
+                   DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]
+      (binding [render/*include-description* true]
+        (is (= "<h1>Card description</h1>\n" (last (:content (#'render/make-description-if-needed dc1 card)))))))))
+
+(deftest table-rendering-of-percent-types-test
+  (testing "If a column is marked as a :type/Percentage semantic type it should render as a percent"
+    (mt/dataset test-data
+      (mt/with-temp [Card {base-card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (mt/id :orders)
+                                                                         :expressions  {"Tax Rate" [:/
+                                                                                                    [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                                    [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                                                                         :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                        [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                                                                        [:expression "Tax Rate"]]
+                                                                         :limit        10}}}
+                     Card {model-card-id  :id
+                           model-query    :dataset_query
+                           model-metadata :result_metadata
+                           :as            model-card} {:type            :model
+                                                       :dataset_query   {:type     :query
+                                                                         :database (mt/id)
+                                                                         :query    {:source-table (format "card__%s" base-card-id)}}
+                                                       :result_metadata [{:name         "TAX"
+                                                                          :display_name "Tax"
+                                                                          :base_type    :type/Float}
+                                                                         {:name         "TOTAL"
+                                                                          :display_name "Total"
+                                                                          :base_type    :type/Float}
+                                                                         {:name          "Tax Rate"
+                                                                          :display_name  "Tax Rate"
+                                                                          :base_type     :type/Float
+                                                                          :semantic_type :type/Percentage
+                                                                          :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
+                     Card {question-query :dataset_query
+                           :as            question-card} {:dataset_query {:type     :query
+                                                                          :database (mt/id)
+                                                                          :query    {:source-table (format "card__%s" model-card-id)}}}]
+        ;; NOTE -- The logic in metabase.formatter/number-formatter renders values between 1 and 100 as an
+        ;; integer value. IDK if this is what we want long term, but this captures the current logic. If we do extend
+        ;; the significant digits in the formatter, we'll need to modify this test as well.
+        (letfn [(create-comparison-results [query-results card]
+                  (let [expected      (mapv (fn [row]
+                                              (format "%.2f%%" (* 100 (peek row))))
+                                            (get-in query-results [:data :rows]))
+                        rendered-card (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil query-results)
+                        table         (get-in rendered-card [:content 1 2 4 2 1])
+                        tax-col       (->>
+                                        (rest (get-in table [2 1]))
+                                        (map-indexed (fn [i v] [i (last v)]))
+                                        (some (fn [[i v]] (when (= v "Tax Rate") i))))]
+                    {:expected expected
+                     :actual   (->> (get-in table [3 1])
+                                    (map #(peek (get (vec (get % 2)) tax-col))))}))]
+          (testing "To apply the custom metadata to a model, you must explicitly pass the result metadata"
+            (let [query-results (qp/process-query
+                                  (assoc-in model-query [:info :metadata/model-metadata] model-metadata))
+                  {:keys [expected actual]} (create-comparison-results query-results model-card)]
+              (is (= expected actual))))
+          (testing "A question based on a model will use the underlying model's metadata"
+            (let [query-results (qp/process-query question-query)
+                  {:keys [expected actual]} (create-comparison-results query-results question-card)]
+              (is (= expected actual)))))))))
+
+(deftest title-should-be-an-a-tag-test
+  (testing "the title of the card should be an <a> tag so you can click on title using old outlook clients (#12901)"
+    (mt/with-temp [Card card {:name          "A Card"
+                              :dataset_query (mt/mbql-query venues {:limit 1})}]
+      (mt/with-temp-env-var-value! [mb-site-url "https://mb.com"]
+        (let [rendered-card-content (:content (binding [render/*include-title* true]
+                                                (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil (qp/process-query (:dataset_query card)))))]
+          (is (some? (lib.util.match/match-one rendered-card-content
+                                       [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))

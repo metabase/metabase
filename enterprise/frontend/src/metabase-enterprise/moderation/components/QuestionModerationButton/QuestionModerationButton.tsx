@@ -1,21 +1,22 @@
 import * as React from "react";
-import { t } from "ttag";
 import { connect } from "react-redux";
+import { t } from "ttag";
 
+import {
+  removeCardReview,
+  verifyCard,
+} from "metabase-enterprise/moderation/actions";
+import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 import {
   MODERATION_STATUS,
   getLatestModerationReview,
   getStatusIcon,
   isItemVerified,
 } from "metabase-enterprise/moderation/service";
-import { getIsModerator } from "metabase-enterprise/moderation/selectors";
-import {
-  verifyCard,
-  removeCardReview,
-} from "metabase-enterprise/moderation/actions";
+import type Question from "metabase-lib/v1/Question";
+import type { State } from "metabase-types/store";
 
-import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
+import { getVerifyQuestionTitle } from "../../utils";
 import { VerifyButton as DefaultVerifyButton } from "../QuestionModerationSection/QuestionModerationSection.styled";
 
 interface Props {
@@ -76,9 +77,7 @@ function QuestionModerationButton({
           data-testid="moderation-verify-action"
           {...verifyButtonProps}
         >
-          {question.isDataset()
-            ? t`Verify this model`
-            : t`Verify this question`}
+          {getVerifyQuestionTitle(question)}
         </VerifyButton>
       )}
       {isModerator && isVerified && (

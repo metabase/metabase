@@ -26,19 +26,22 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.events :as events]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.pulse.parameters :as params]
-   [metabase.query-processor :as qp]
+   [metabase.models.params :as params]
+   [metabase.pulse.parameters :as pulse-params]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n
+    :as i18n
+    :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -85,20 +88,19 @@
   (check-params-exist object-embedding-params (set/union token-params user-params)))
 
 (defn- valid-param?
-  "Is V a valid param value? (Is it non-`nil`, and, if a String, non-blank?)"
+  "Is V a valid param value? (If it is a String, is it non-blank?)"
   [v]
-  (and (some? v)
-       (or (not (string? v))
-           (not (str/blank? v)))))
+  (or (not (string? v))
+      (not (str/blank? v))))
 
-(s/defn ^:private validate-and-merge-params :- {s/Keyword s/Any}
+(mu/defn ^:private validate-and-merge-params :- [:map-of :keyword :any]
   "Validate that the `token-params` passed in the JWT and the `user-params` (passed as part of the URL) are allowed, and
   that ones that are required are specified by checking them against a Card or Dashboard's `object-embedding-params`
   (the object's value of `:embedding_params`). Throws a 400 if any of the checks fail. If all checks are successful,
   returns a *merged* parameters map."
-  [object-embedding-params :- su/EmbeddingParams
-   token-params            :- {s/Keyword s/Any}
-   user-params             :- {s/Keyword s/Any}]
+  [object-embedding-params :- ms/EmbeddingParams
+   token-params            :- [:map-of :keyword :any]
+   user-params             :- [:map-of :keyword :any]]
   (check-param-sets object-embedding-params
                     (set (keys (m/filter-vals valid-param? token-params)))
                     (set (keys (m/filter-vals valid-param? user-params))))
@@ -115,18 +117,23 @@
         :when (not (contains? params-to-remove (keyword (:slug param))))]
     param))
 
-(s/defn ^:private remove-locked-and-disabled-params
+(defn- get-params-to-remove
+  "Gets the params in both the provided embedding-params and dashboard-or-card object that we should remove."
+  [dashboard-or-card embedding-params]
+  (set (concat (for [[param status] embedding-params
+                     :when          (not= status "enabled")]
+                 param)
+               (for [{slug :slug} (:parameters dashboard-or-card)
+                     :let         [param (keyword slug)]
+                     :when        (not (contains? embedding-params param))]
+                 param))))
+
+(mu/defn ^:private remove-locked-and-disabled-params
   "Remove the `:parameters` for `dashboard-or-card` that listed as `disabled` or `locked` in the `embedding-params`
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
-  [dashboard-or-card embedding-params :- su/EmbeddingParams]
-  (let [params-to-remove (set (concat (for [[param status] embedding-params
-                                            :when          (not= status "enabled")]
-                                        param)
-                                      (for [{slug :slug} (:parameters dashboard-or-card)
-                                            :let         [param (keyword slug)]
-                                            :when        (not (contains? embedding-params param))]
-                                        param)))]
+  [dashboard-or-card embedding-params :- ms/EmbeddingParams]
+  (let [params-to-remove (get-params-to-remove dashboard-or-card embedding-params)]
     (update dashboard-or-card :parameters remove-params-in-set params-to-remove)))
 
 (defn- remove-token-parameters
@@ -141,7 +148,7 @@
   make these parameters visible at all to the frontend."
   [dashboard token-params]
   (let [params             (:parameters dashboard)
-        ordered-cards      (:ordered_cards dashboard)
+        dashcards      (:dashcards dashboard)
         params-with-values (reduce
                             (fn [acc param]
                              (if-let [value (get token-params (keyword (:slug param)))]
@@ -150,31 +157,34 @@
                             []
                             params)]
     (assoc dashboard
-           :ordered_cards
+           :dashcards
            (map
             (fn [card]
               (if (-> card :visualization_settings :virtual_card)
-                (params/process-virtual-dashcard card params-with-values)
+                (pulse-params/process-virtual-dashcard card params-with-values)
                 card))
-            ordered-cards))))
+            dashcards))))
 
-(s/defn ^:private apply-slug->value :- (s/maybe [{:slug   su/NonBlankString
-                                                  :type   s/Keyword
-                                                  :target s/Any
-                                                  :value  s/Any}])
+(mu/defn ^:private apply-slug->value :- [:maybe [:sequential
+                                                 [:map
+                                                  [:slug ms/NonBlankString]
+                                                  [:type :keyword]
+                                                  [:target :any]
+                                                  [:value :any]]]]
   "Adds `value` to parameters with `slug` matching a key in `merged-slug->value` and removes parameters without a
    `value`."
   [parameters slug->value]
   (when (seq parameters)
     (for [param parameters
-          :let  [value (get slug->value (keyword (:slug param)))
+          :let  [slug  (keyword (:slug param))
+                 value (get slug->value slug)
                  ;; operator parameters expect a sequence of values so if we get a lone value (e.g. from a single URL
                  ;; query parameter) wrap it in a sequence
                  value (if (and (some? value)
                                 (params.ops/operator? (:type param)))
                          (u/one-or-many value)
                          value)]
-          :when (some? value)]
+          :when (contains? slug->value slug)]
       (assoc (select-keys param [:type :target :slug])
              :value value))))
 
@@ -185,12 +195,12 @@
       api.public/combine-parameters-and-template-tags
       :parameters))
 
-(s/defn ^:private resolve-dashboard-parameters :- [api.dashboard/ParameterWithID]
+(mu/defn ^:private resolve-dashboard-parameters :- [:sequential api.dashboard/ParameterWithID]
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
   that can be passed to various functions in the `metabase.api.dashboard` namespace such as
-  [[metabase.api.dashboard/run-query-for-dashcard-async]]."
-  [dashboard-id :- su/IntGreaterThanZero
-   slug->value  :- {s/Any s/Any}]
+  [[metabase.api.dashboard/process-query-for-dashcard]]."
+  [dashboard-id :- ms/PositiveInt
+   slug->value  :- :map]
   (let [parameters (t2/select-one-fn :parameters Dashboard :id dashboard-id)
         slug->id   (into {} (map (juxt :slug :id)) parameters)]
     (vec (for [[slug value] slug->value
@@ -203,13 +213,16 @@
                                         :dashboard-parameters parameters})))
             :value value}))))
 
-(s/defn ^:private normalize-query-params :- {s/Keyword s/Any}
+(mu/defn ^:private normalize-query-params :- [:map-of :keyword :any]
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
   `wrap-keyword-params` middleware normally converts all query params keys to keywords, but only if they seem like
   ones that make sense as keywords. Some params, such as ones that start with a number, do not pass this test, and are
-  not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect."
+  not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect.
+  Also, any param values that are blank strings should be parsed as nil, representing the absence of a value."
   [query-params]
-  (update-keys query-params keyword))
+  (-> query-params
+      (update-keys keyword)
+      (update-vals (fn [v] (if (= v "") nil v)))))
 
 
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
@@ -227,25 +240,55 @@
         (remove-locked-and-disabled-params (or embedding-params
                                                (t2/select-one-fn :embedding_params Card :id card-id))))))
 
-(defn run-query-for-card-with-params-async
+(defn process-query-for-card-with-params
   "Run the query associated with Card with `card-id` using JWT `token-params`, user-supplied URL `query-params`,
    an `embedding-params` whitelist, and additional query `options`. Returns `StreamingResponse` that should be
   returned as the API endpoint result."
-  {:style/indent 0}
-  [& {:keys [export-format card-id embedding-params token-params query-params qp-runner constraints options]
-      :or   {qp-runner qp/process-query-and-save-execution!}}]
+  [& {:keys [export-format card-id embedding-params token-params query-params qp constraints options]
+      :or   {qp qp.card/process-query-for-card-default-qp}}]
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
-    (m/mapply api.public/run-query-for-card-with-id-async
+    (m/mapply api.public/process-query-for-card-with-id
               card-id export-format parameters
-              :context :embedded-question,
-              :constraints constraints,
-              :qp-runner qp-runner,
+              :context     :embedded-question
+              :constraints constraints
+              :qp          qp
               options)))
 
 
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
+
+(defn- remove-linked-filters-param-values [dashboard]
+  (let [param-ids (set (map :id (:parameters dashboard)))
+        param-ids-to-remove (set (for [{param-id :id
+                                        filtering-parameters :filteringParameters} (:parameters dashboard)
+                                       filtering-parameter-id filtering-parameters
+                                       :when (not (contains? param-ids filtering-parameter-id))]
+                                   param-id))
+        linked-field-ids (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-remove))]
+    (update dashboard :param_values #(->> %
+                                          (map (fn [[param-id param]]
+                                                 {param-id (cond-> param
+                                                             (contains? linked-field-ids param-id) ;; is param linked?
+                                                             (assoc :values []))}))
+                                          (into {})))))
+
+(defn- remove-locked-parameters [dashboard embedding-params]
+  (let [params-to-remove (get-params-to-remove dashboard embedding-params)
+        param-ids-to-remove (set (for [parameter (:parameters dashboard)
+                                       :when     (contains? params-to-remove (keyword (:slug parameter)))]
+                                   (:id parameter)))
+        linked-field-ids (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-remove))
+        remove-parameters (fn [dashcard]
+                            (update dashcard :parameter_mappings
+                                    (fn [param-mappings]
+                                      (remove (fn [{:keys [parameter_id]}]
+                                                (contains? param-ids-to-remove parameter_id)) param-mappings))))]
+    (-> dashboard
+        (update :dashcards #(map remove-parameters %))
+        (update :param_fields #(apply dissoc % linked-field-ids))
+        (update :param_values #(apply dissoc % linked-field-ids)))))
 
 (defn dashboard-for-unsigned-token
   "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to
@@ -253,33 +296,45 @@
   [unsigned-token & {:keys [embedding-params constraints]}]
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
   (let [dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        embedding-params (or embedding-params
+                             (t2/select-one-fn :embedding_params Dashboard, :id dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-dashboard :id dashboard-id, constraints)
         (substitute-token-parameters-in-text token-params)
+        (remove-locked-parameters embedding-params)
         (remove-token-parameters token-params)
-        (remove-locked-and-disabled-params (or embedding-params
-                                               (t2/select-one-fn :embedding_params Dashboard, :id dashboard-id))))))
+        (remove-locked-and-disabled-params embedding-params)
+        (remove-linked-filters-param-values))))
 
-(defn dashcard-results-async
+(defn- get-embed-dashboard-context
+  "If a certain export-format is given, return the correct embedded dashboard context."
+  [export-format]
+  (case export-format
+    "csv"  :embedded-csv-download
+    "xlsx" :embedded-xlsx-download
+    "json" :embedded-json-download
+    :embedded-dashboard))
+
+(defn process-query-for-dashcard
   "Return results for running the query belonging to a DashboardCard. Returns a `StreamingResponse`."
-  {:style/indent 0}
-  [& {:keys [dashboard-id dashcard-id card-id export-format embedding-params token-params
-             query-params constraints qp-runner]
+  [& {:keys [dashboard-id dashcard-id card-id export-format embedding-params token-params middleware
+             query-params constraints qp]
       :or   {constraints (qp.constraints/default-query-constraints)
-             qp-runner   qp/process-query-and-save-execution!}}]
+             qp          qp.card/process-query-for-card-default-qp}}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
   (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters  (resolve-dashboard-parameters dashboard-id slug->value)]
-    (api.public/public-dashcard-results-async
+    (api.public/process-query-for-dashcard
      :dashboard-id  dashboard-id
      :card-id       card-id
      :dashcard-id   dashcard-id
      :export-format export-format
      :parameters    parameters
-     :qp-runner     qp-runner
-     :context       :embedded-dashboard
-     :constraints   constraints)))
+     :qp            qp
+     :context       (get-embed-dashboard-context export-format)
+     :constraints   constraints
+     :middleware    middleware)))
 
 
 ;;; ------------------------------------- Other /api/embed-specific utility fns --------------------------------------
@@ -287,6 +342,8 @@
 (defn- check-embedding-enabled-for-object
   "Check that embedding is enabled, that `object` exists, and embedding for `object` is enabled."
   ([entity id]
+   (api/check (pos-int? id)
+     [400 (tru "{0} id should be a positive integer." (name entity))])
    (check-embedding-enabled-for-object (t2/select-one [entity :enable_embedding] :id id)))
 
   ([object]
@@ -321,19 +378,19 @@
 (defn ^:private run-query-for-unsigned-token-async
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
   for this Card. Returns core.async channel to fetch the results."
-  [unsigned-token export-format query-params & {:keys [constraints qp-runner]
+  [unsigned-token export-format query-params & {:keys [constraints qp]
                                                 :or   {constraints (qp.constraints/default-query-constraints)
-                                                       qp-runner   qp/process-query-and-save-execution!}
+                                                       qp          qp.card/process-query-for-card-default-qp}
                                                 :as   options}]
   (let [card-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (check-embedding-enabled-for-card card-id)
-    (run-query-for-card-with-params-async
+    (process-query-for-card-with-params
       :export-format     export-format
       :card-id           card-id
       :token-params      (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
       :embedding-params  (t2/select-one-fn :embedding_params Card :id card-id)
       :query-params      query-params
-      :qp-runner         qp-runner
+      :qp                qp
       :constraints       constraints
       :options           options)))
 
@@ -349,16 +406,17 @@
 
 (api/defendpoint GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
-  [token export-format :as {:keys [query-params]}]
-  {export-format (into [:enum] api.dataset/export-formats)}
+  [token export-format :as {:keys [query-params format_rows]}]
+  {export-format (into [:enum] api.dataset/export-formats)
+   format_rows   [:maybe :boolean]}
   (run-query-for-unsigned-token-async
    (embed/unsign token)
    export-format
-   (update-keys query-params keyword)
+   (m/map-keys keyword query-params)
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
-                :format-rows?          false}))
+                :format-rows?          format_rows}))
 
 
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
@@ -372,9 +430,11 @@
   [token]
   (let [unsigned (embed/unsign token)]
     (check-embedding-enabled-for-dashboard (embed/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
-    (dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
+    (u/prog1 (dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])
+      (events/publish-event! :event/dashboard-read {:user-id api/*current-user-id*
+                                                    :object <>}))))
 
-(defn- dashcard-results-for-signed-token-async
+(defn- process-query-for-dashcard-with-signed-token
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
    `embedding-secret-key`.
 
@@ -386,26 +446,24 @@
   Additional dashboard parameters can be provided in the query string, but params in the JWT token take precedence.
 
   Returns a `StreamingResponse`."
-  {:style/indent 1}
   [token dashcard-id card-id export-format query-params
-   & {:keys [constraints qp-runner]
+   & {:keys [constraints qp middleware]
       :or   {constraints (qp.constraints/default-query-constraints)
-             qp-runner   qp/process-query-and-save-execution!}}]
-  {dashcard-id ms/PositiveInt
-   card-id     ms/PositiveInt}
+             qp          qp.card/process-query-for-card-default-qp}}]
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
-    (dashcard-results-async
+    (process-query-for-dashcard
       :export-format    export-format
       :dashboard-id     dashboard-id
       :dashcard-id      dashcard-id
       :card-id          card-id
       :embedding-params (t2/select-one-fn :embedding_params Dashboard :id dashboard-id)
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-      :query-params     query-params
+      :query-params     (dissoc query-params :format_rows)
       :constraints      constraints
-      :qp-runner        qp-runner)))
+      :qp               qp
+      :middleware       middleware)))
 
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
@@ -413,7 +471,7 @@
   [token dashcard-id card-id & query-params]
   {dashcard-id ms/PositiveInt
    card-id     ms/PositiveInt}
-  (dashcard-results-for-signed-token-async token dashcard-id card-id :api query-params))
+  (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api query-params))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -499,19 +557,20 @@
                                          :export-format api.dataset/export-format-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
-  [token export-format dashcard-id card-id, :as {:keys [query-params]}]
+  [token export-format dashcard-id card-id format_rows, :as {:keys [query-params]}]
   {dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
+   format_rows   [:maybe :boolean]
    export-format (into [:enum] api.dataset/export-formats)}
-  (dashcard-results-for-signed-token-async token
+  (process-query-for-dashcard-with-signed-token token
     dashcard-id
     card-id
     export-format
-    (update-keys query-params keyword)
+    (m/map-keys keyword query-params)
     :constraints nil
     :middleware {:process-viz-settings? true
                  :js-int-to-string?     false
-                 :format-rows?          false}))
+                 :format-rows?          format_rows}))
 
 
 ;;; ----------------------------------------------- Param values -------------------------------------------------
@@ -522,7 +581,7 @@
 ;; variables whose name includes `id-` e.g. `id-query-params` below are ones that are keyed by ID; ones whose name
 ;; includes `slug-` are keyed by slug.
 
-(s/defn ^:private param-values-merged-params :- {su/NonBlankString s/Any}
+(mu/defn ^:private param-values-merged-params :- [:map-of ms/NonBlankString :any]
   [id->slug slug->id embedding-params token-params id-query-params]
   (let [slug-query-params  (into {}
                                  (for [[id v] id-query-params]
@@ -558,7 +617,8 @@
         (throw (ex-info (tru "You can''t specify a value for {0} if it's already set in the JWT." (pr-str searched-param-slug))
                         {:status-code 400})))
       (try
-        (binding [api/*current-user-permissions-set* (atom #{"/"})]
+        (binding [api/*current-user-permissions-set* (atom #{"/"})
+                  api/*is-superuser?* true]
           (api.card/param-values card param-key search-prefix))
         (catch Throwable e
           (throw (ex-info (.getMessage e)
@@ -602,7 +662,8 @@
       ;; ok, at this point we can run the query
       (let [merged-id-params (param-values-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
         (try
-          (binding [api/*current-user-permissions-set* (atom #{"/"})]
+          (binding [api/*current-user-permissions-set* (atom #{"/"})
+                    api/*is-superuser?*                 true]
             (api.dashboard/param-values (t2/select-one Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
           (catch Throwable e
             (throw (ex-info (.getMessage e)
@@ -663,7 +724,7 @@
      {:resource {:question <card-id>}
       :params   <parameters>}"
   [token & query-params]
-  (run-query-for-unsigned-token-async (embed/unsign token) :api query-params :qp-runner qp.pivot/run-pivot-query))
+  (run-query-for-unsigned-token-async (embed/unsign token) :api query-params :qp qp.pivot/run-pivot-query))
 
 (api/defendpoint GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
@@ -671,6 +732,6 @@
   [token dashcard-id card-id & query-params]
   {dashcard-id ms/PositiveInt
    card-id ms/PositiveInt}
-  (dashcard-results-for-signed-token-async token dashcard-id card-id :api query-params :qp-runner qp.pivot/run-pivot-query))
+  (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api query-params :qp qp.pivot/run-pivot-query))
 
 (api/define-routes)

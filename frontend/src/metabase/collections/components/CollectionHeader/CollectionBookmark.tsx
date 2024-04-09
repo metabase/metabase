@@ -1,7 +1,8 @@
 import { useCallback } from "react";
-import BookmarkToggle from "metabase/core/components/BookmarkToggle";
+
 import { isRootCollection } from "metabase/collections/utils";
-import { Collection } from "metabase-types/api";
+import BookmarkToggle from "metabase/core/components/BookmarkToggle";
+import type { Collection } from "metabase-types/api";
 
 export interface CollectionBookmarkProps {
   collection: Collection;

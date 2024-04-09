@@ -1,12 +1,14 @@
-import fetchMock from "fetch-mock";
 import { screen, render } from "@testing-library/react";
-import _ from "underscore";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+import _ from "underscore";
+
+import type { Card, GetCompatibleCardsPayload } from "metabase-types/api";
 import {
   createMockCard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
 } from "metabase-types/api/mocks";
-import { Card, GetCompatibleCardsPayload } from "metabase-types/api";
+
 import { QuestionList } from "./QuestionList";
 
 const compatibleCardsFirstPage = _.range(50).map(index =>
@@ -47,7 +49,7 @@ describe("QuestionList", () => {
     mockCompatibleCardsPage(compatibleCardsFirstPage);
 
     const onSelect = jest.fn();
-    const dashcard = createMockDashboardOrderedCard({ card_id: 1 });
+    const dashcard = createMockDashboardCard({ card_id: 1 });
 
     render(
       <QuestionList
@@ -65,7 +67,7 @@ describe("QuestionList", () => {
       last_cursor: _.last(compatibleCardsFirstPage)?.id,
     });
 
-    userEvent.click(
+    await userEvent.click(
       await screen.findByRole("button", {
         name: /load more/i,
       }),
@@ -73,7 +75,7 @@ describe("QuestionList", () => {
 
     const secondPageItem = await screen.findByText("compatible card 50 page 2");
 
-    userEvent.click(secondPageItem);
+    await userEvent.click(secondPageItem);
     expect(onSelect).toHaveBeenCalledWith(compatibleCardsSecondPage[0], true);
   });
 
@@ -81,7 +83,7 @@ describe("QuestionList", () => {
     mockCompatibleCardsPage(compatibleCardsFirstPage);
 
     const onSelect = jest.fn();
-    const dashcard = createMockDashboardOrderedCard({ card_id: 1 });
+    const dashcard = createMockDashboardCard({ card_id: 1 });
     const selectedCard = createMockCard({
       id: 500,
       name: "search text selected card",
@@ -105,7 +107,7 @@ describe("QuestionList", () => {
       },
     );
 
-    userEvent.type(
+    await userEvent.type(
       screen.getByPlaceholderText("Search for a question"),
       "search text",
     );
@@ -120,7 +122,7 @@ describe("QuestionList", () => {
     mockCompatibleCardsPage([createMockCard({ id: 3, name: "fetched card" })]);
 
     const cards = [createMockCard({ id: 2, name: "added card" })];
-    const dashcard = createMockDashboardOrderedCard({ card_id: 1 });
+    const dashcard = createMockDashboardCard({ card_id: 1 });
 
     render(
       <QuestionList

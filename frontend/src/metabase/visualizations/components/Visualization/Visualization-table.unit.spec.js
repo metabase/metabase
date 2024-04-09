@@ -1,7 +1,12 @@
+import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
-
-import Visualization from "metabase/visualizations/components/Visualization";
 import { NumberColumn } from "__support__/visualizations";
+import Visualization from "metabase/visualizations/components/Visualization";
+import registerVisualizations from "metabase/visualizations/register";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+registerVisualizations();
 
 const series = (rows, settings = {}) => {
   const cols = [NumberColumn({ name: "Foo" })];
@@ -10,6 +15,7 @@ const series = (rows, settings = {}) => {
       card: {
         display: "table",
         visualization_settings: settings,
+        dataset_query: createMockStructuredDatasetQuery(),
       },
       data: { rows, cols },
     },
@@ -35,8 +41,11 @@ describe("Table", () => {
         },
       ],
     };
+    const metadata = createMockMetadata({ databases: createSampleDatabase() });
 
-    renderWithProviders(<Visualization rawSeries={series(rows, settings)} />);
+    renderWithProviders(
+      <Visualization rawSeries={series(rows, settings)} metadata={metadata} />,
+    );
     jest.runAllTimers();
 
     const bgColors = rows

@@ -1,21 +1,7 @@
-import { t } from "ttag";
+import { assocIn, merge } from "icepick";
 import { push } from "react-router-redux";
-import { assocIn } from "icepick";
+import { t } from "ttag";
 
-import {
-  PLUGIN_DATA_PERMISSIONS,
-  PLUGIN_ADVANCED_PERMISSIONS,
-} from "metabase/plugins";
-import {
-  createAction,
-  createThunkAction,
-  handleActions,
-  combineReducers,
-} from "metabase/lib/redux";
-import { CollectionsApi, PermissionsApi } from "metabase/services";
-import Group from "metabase/entities/groups";
-import Tables from "metabase/entities/tables";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   inferAndUpdateEntityPermissions,
   updateFieldsPermission,
@@ -25,9 +11,24 @@ import {
   updatePermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+import Group from "metabase/entities/groups";
+import Tables from "metabase/entities/tables";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import {
+  createAction,
+  createThunkAction,
+  handleActions,
+  combineReducers,
+} from "metabase/lib/redux";
+import {
+  PLUGIN_DATA_PERMISSIONS,
+  PLUGIN_ADVANCED_PERMISSIONS,
+} from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
-import { isDatabaseEntityId } from "./utils/data-entity-id";
+import { CollectionsApi, PermissionsApi } from "metabase/services";
+
 import { trackPermissionChange } from "./analytics";
+import { isDatabaseEntityId } from "./utils/data-entity-id";
 
 const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
@@ -47,6 +48,25 @@ export const loadDataPermissions = createThunkAction(
   LOAD_DATA_PERMISSIONS,
   () => async () => PermissionsApi.graph(),
 );
+
+export const RESTORE_LOADED_PERMISSIONS =
+  "metabase/admin/permissions/RESTORE_LOADED_PERMISSIONS";
+
+export const restoreLoadedPermissions = createThunkAction(
+  RESTORE_LOADED_PERMISSIONS,
+  () => async (dispatch, getState) => {
+    const state = getState();
+    const groups = state.admin.permissions.originalDataPermissions;
+    const revision = state.admin.permissions.dataPermissionsRevision;
+    dispatch({ type: LOAD_DATA_PERMISSIONS, payload: { groups, revision } });
+  },
+);
+
+export const LOAD_DATA_PERMISSIONS_FOR_GROUP =
+  "metabase/admin/permissions/LOAD_DATA_PERMISSIONS_FOR_GROUP";
+
+export const LOAD_DATA_PERMISSIONS_FOR_DB =
+  "metabase/admin/permissions/LOAD_DATA_PERMISSIONS_FOR_GROUP";
 
 const INITIALIZE_COLLECTION_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_COLLECTION_PERMISSIONS";
@@ -106,6 +126,7 @@ export const updateDataPermission = createThunkAction(
           Tables.actions.fetchList({
             dbId: entityId.databaseId,
             include_hidden: true,
+            remove_inactive: true,
           }),
         );
       }
@@ -229,6 +250,12 @@ const dataPermissions = handleActions(
     [LOAD_DATA_PERMISSIONS]: {
       next: (_state, { payload }) => payload.groups,
     },
+    [LOAD_DATA_PERMISSIONS_FOR_GROUP]: {
+      next: (state, { payload }) => merge(payload.groups, state),
+    },
+    [LOAD_DATA_PERMISSIONS_FOR_DB]: {
+      next: (state, { payload }) => merge(payload.groups, state),
+    },
     [SAVE_DATA_PERMISSIONS]: { next: (_state, { payload }) => payload.groups },
     [UPDATE_DATA_PERMISSION]: {
       next: (state, { payload }) => {
@@ -316,6 +343,12 @@ const originalDataPermissions = handleActions(
     [LOAD_DATA_PERMISSIONS]: {
       next: (_state, { payload }) => payload.groups,
     },
+    [LOAD_DATA_PERMISSIONS_FOR_GROUP]: {
+      next: (state, { payload }) => merge(payload.groups, state),
+    },
+    [LOAD_DATA_PERMISSIONS_FOR_DB]: {
+      next: (state, { payload }) => merge(payload.groups, state),
+    },
     [SAVE_DATA_PERMISSIONS]: {
       next: (_state, { payload }) => payload.groups,
     },
@@ -327,6 +360,12 @@ const dataPermissionsRevision = handleActions(
   {
     [LOAD_DATA_PERMISSIONS]: {
       next: (_state, { payload }) => payload.revision,
+    },
+    [LOAD_DATA_PERMISSIONS_FOR_GROUP]: {
+      next: (state, { payload }) => payload.revision,
+    },
+    [LOAD_DATA_PERMISSIONS_FOR_DB]: {
+      next: (state, { payload }) => payload.revision,
     },
     [SAVE_DATA_PERMISSIONS]: {
       next: (_state, { payload }) => payload.revision,
@@ -401,6 +440,46 @@ export const isHelpReferenceOpen = handleActions(
   false,
 );
 
+const checkRevisionChanged = (state, { payload }) => {
+  if (!state.revision) {
+    return {
+      revision: payload.revision,
+      hasChanged: false,
+    };
+  } else if (state.revision === payload.revision && !state.hasChanged) {
+    return state;
+  } else {
+    return {
+      revision: payload.revision,
+      hasChanged: true,
+    };
+  }
+};
+
+const hasRevisionChanged = handleActions(
+  {
+    [LOAD_DATA_PERMISSIONS]: {
+      next: checkRevisionChanged,
+    },
+    [LOAD_DATA_PERMISSIONS_FOR_GROUP]: {
+      next: checkRevisionChanged,
+    },
+    [LOAD_DATA_PERMISSIONS_FOR_DB]: {
+      next: checkRevisionChanged,
+    },
+    [SAVE_DATA_PERMISSIONS]: {
+      next: (state, { payload }) => ({
+        revision: payload.revision,
+        hasChanged: false,
+      }),
+    },
+  },
+  {
+    revision: null,
+    hasChanged: false,
+  },
+);
+
 export default combineReducers({
   saveError,
   dataPermissions,
@@ -410,4 +489,5 @@ export default combineReducers({
   originalCollectionPermissions,
   collectionPermissionsRevision,
   isHelpReferenceOpen,
+  hasRevisionChanged,
 });

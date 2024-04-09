@@ -1,11 +1,10 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visualize,
   startNewQuestion,
   selectSavedQuestionsToJoin,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -38,7 +37,7 @@ describe("issue 18502", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("April, 2022");
+    cy.findByText("April 2022");
   });
 });
 

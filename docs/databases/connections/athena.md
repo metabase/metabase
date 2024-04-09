@@ -110,7 +110,17 @@ Options are:
 
 If you are on a paid plan, you can also set cache duration per questions. See [Advanced caching controls](../../configuring-metabase/caching.md#advanced-caching-controls).
 
-## Example IAM Policy
+## Permissions and IAM Policies
+
+Most issues that we see when people attempt to connect to AWS Athena involve permissions. Querying AWS Athena requires permissions to:
+
+- AWS Athena.
+- AWS Glue.
+- The S3 bucket where Athena results are stored.
+- The resources that Athena is querying against (i.e., the S3 bucket(s) Athena is querying).
+- If you're using AWS Lake Formation, then you also need to grant AWS Lake Formation permissions through the AWS Console (AWS Lake Formation > Permissions > Data Lake Permissions > Grant data lake permissions; the role Metabase uses needs SELECT and DESCRIBE table permissions).
+
+### Example IAM Policy
 
 This policy provides read-only permissions for data in S3. You'll need to specify any S3 buckets that you want Metabase to be able to query from _as well as_ the S3 bucket provided as part of the configuration where results are written to.
 

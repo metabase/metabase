@@ -1,36 +1,38 @@
 /* eslint-disable react/prop-types */
-import { createRef, Component } from "react";
 import cx from "classnames";
 import d3 from "d3";
-import _ from "underscore";
+import { createRef, Component } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
+import { color } from "metabase/lib/colors";
+import { getColorsForValues } from "metabase/lib/colors/charts";
+import { formatValue } from "metabase/lib/formatting";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import {
   ChartSettingsError,
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import {
+  metricSetting,
+  dimensionSetting,
+} from "metabase/visualizations/lib/settings/utils";
 import {
   getFriendlyName,
   computeMaxDecimalsForValues,
 } from "metabase/visualizations/lib/utils";
 import {
-  metricSetting,
-  dimensionSetting,
-} from "metabase/visualizations/lib/settings/utils";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
-import { formatValue } from "metabase/lib/formatting";
-
-import { color } from "metabase/lib/colors";
-import { getColorsForValues } from "metabase/lib/colors/charts";
-import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+
 import ChartWithLegend from "../../components/ChartWithLegend";
-import styles from "./PieChart.css";
 
 import { PieArc } from "./PieArc";
+import styles from "./PieChart.module.css";
 import { getTooltipModel } from "./utils";
 
 const SIDE_PADDING = 24;
@@ -48,7 +50,7 @@ export default class PieChart extends Component {
   constructor(props) {
     super(props);
 
-    this.state = { width: 0, height: 0 };
+    this.state = { width: 0, height: 0, showChartDetail: true };
 
     this.chartContainer = createRef();
     this.chartDetail = createRef();
@@ -277,13 +279,12 @@ export default class PieChart extends Component {
         return;
       }
 
-      if (
-        groupElement.getBoundingClientRect().width < 120 ||
-        !settings["pie.show_total"]
-      ) {
-        detailElement.classList.add("hide");
-      } else {
-        detailElement.classList.remove("hide");
+      const showChartDetail =
+        groupElement.getBoundingClientRect().width >= 120 &&
+        settings["pie.show_total"];
+
+      if (showChartDetail !== this.state.showChartDetail) {
+        this.setState({ showChartDetail });
       }
     });
 
@@ -504,12 +505,23 @@ export default class PieChart extends Component {
       };
     };
 
-    const isClickable =
-      onVisualizationClick && visualizationIsClickable(getSliceClickObject(0));
-    const getSliceIsClickable = index =>
-      isClickable && slices[index] !== otherSlice;
-
+    const isClickable = onVisualizationClick != null;
     const shouldRenderLabels = settings["pie.percent_visibility"] === "inside";
+
+    const handleSliceClick = (e, index) => {
+      if (onVisualizationClick) {
+        const isSliceClickable =
+          visualizationIsClickable(getSliceClickObject(index)) &&
+          slices[index] !== otherSlice;
+
+        if (isSliceClickable) {
+          onVisualizationClick({
+            ...getSliceClickObject(index),
+            event: e.nativeEvent,
+          });
+        }
+      }
+    };
 
     return (
       <ChartWithLegend
@@ -527,20 +539,26 @@ export default class PieChart extends Component {
       >
         <div>
           <div ref={this.chartDetail} className={styles.Detail}>
-            <div
-              data-testid="detail-value"
-              className={cx(
-                styles.Value,
-                "fullscreen-normal-text fullscreen-night-text",
-              )}
-            >
-              {value}
-            </div>
-            <div className={styles.Title}>{title}</div>
+            {this.state.showChartDetail && (
+              <>
+                <div
+                  data-testid="detail-value"
+                  className={cx(
+                    styles.Value,
+                    DashboardS.fullscreenNormalText,
+                    DashboardS.fullscreenNightText,
+                    EmbedFrameS.fullscreenNightText,
+                  )}
+                >
+                  {value}
+                </div>
+                <div className={styles.Title}>{title}</div>
+              </>
+            )}
           </div>
           <div
             ref={this.chartContainer}
-            className={cx(styles.Chart, "layout-centered")}
+            className={cx(styles.Chart, CS.layoutCentered)}
           >
             <svg
               data-testid="pie-chart"
@@ -579,19 +597,9 @@ export default class PieChart extends Component {
                       }
                       onMouseLeave={() => onHoverChange?.(null)}
                       className={cx({
-                        "cursor-pointer": getSliceIsClickable(index),
+                        [CS.cursorPointer]: isClickable,
                       })}
-                      onClick={
-                        // We use a ternary here because using
-                        // `condition && function` yields a console warning.
-                        getSliceIsClickable(index)
-                          ? e =>
-                              onVisualizationClick({
-                                ...getSliceClickObject(index),
-                                event: e.nativeEvent,
-                              })
-                          : undefined
-                      }
+                      onClick={e => handleSliceClick(e, index)}
                       data-testid="slice"
                     />
                   );

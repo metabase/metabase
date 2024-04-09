@@ -1,7 +1,7 @@
 (ns metabase-enterprise.search.scoring
   ;; TODO -- move to `metabase-enterprise.<feature>.*`
   (:require
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.search.scoring :as scoring]))
 
 (defn- official-collection-score
@@ -20,12 +20,14 @@
 
 (defenterprise score-result
   "Scoring implementation that adds score for items in official collections."
-  :feature :content-management
+  :feature :none
   [result]
-  (conj (scoring/weights-and-scores result)
-        {:weight 2
-         :score  (official-collection-score result)
-         :name   "official collection score"}
-        {:weight 2
-         :score  (verified-score result)
-         :name   "verified"}))
+  (cond-> (scoring/weights-and-scores result)
+    (premium-features/has-feature? :official-collections)
+    (conj {:weight 2
+            :score  (official-collection-score result)
+            :name   "official collection score"})
+    (premium-features/has-feature? :content-verification)
+    (conj {:weight 2
+           :score  (verified-score result)
+           :name   "verified"})))

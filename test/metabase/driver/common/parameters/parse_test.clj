@@ -11,7 +11,7 @@
   (for [token tokens]
     (or (:token token) token)))
 
-(deftest tokenize-test
+(deftest ^:parallel tokenize-test
   (doseq [[query expected]
           {"{{num_toucans}}"
            [:param-begin "num_toucans" :param-end]
@@ -36,7 +36,7 @@
            (normalize-tokens (#'params.parse/tokenize query true)))
         (format "%s should get tokenized to %s" (pr-str query) (pr-str expected)))))
 
-(deftest tokenize-no-sql-comments-test
+(deftest ^:parallel tokenize-no-sql-comments-test
   (doseq [[query expected]
           {"-- {{num_toucans}}"
            ["-- " :param-begin "num_toucans" :param-end]
@@ -47,7 +47,7 @@
            (normalize-tokens (#'params.parse/tokenize query false)))
         (format "%s should get tokenized to %s" (pr-str query) (pr-str expected)))))
 
-(deftest parse-test
+(deftest ^:parallel parse-test
   (doseq [[group s->expected]
           {"queries with one param"
            {"select * from foo where bar=1"              ["select * from foo where bar=1"]
@@ -124,7 +124,7 @@
                    (params.parse/parse invalid))
           (format "Parsing %s should throw an exception" (pr-str invalid))))))
 
-(deftest disable-comment-handling-test
+(deftest ^:parallel disable-comment-handling-test
   (testing "SQL comments are ignored when handle-sql-comments = false, e.g. in Mongo driver queries"
     (doseq [[query result] [["{{{foo}}: -- {{bar}}}"
                              ["{" (param "foo") ": -- " (param "bar") "}"]]

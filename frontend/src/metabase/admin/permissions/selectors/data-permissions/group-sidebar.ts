@@ -1,9 +1,12 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { State } from "metabase-types/store";
-import { Group } from "metabase-types/api";
-import { RawGroupRouteParams } from "../../types";
+import { getGroupNameLocalized } from "metabase/lib/groups";
+import type { Group } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
+import type { RawGroupRouteParams } from "../../types";
+
 import { getOrderedGroups } from "./groups";
 
 const getGroupRouteParams = (
@@ -28,11 +31,13 @@ export const getGroupsSidebar = createSelector(
 
     const pinnedGroupItems = pinnedGroups.map(group => ({
       ...group,
+      name: getGroupNameLocalized(group),
       icon: "bolt",
     }));
 
     const unpinnedGroupItems = unpinnedGroups.map(group => ({
       ...group,
+      name: getGroupNameLocalized(group),
       icon: "group",
     }));
 

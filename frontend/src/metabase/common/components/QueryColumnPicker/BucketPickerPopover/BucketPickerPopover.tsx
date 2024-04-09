@@ -1,8 +1,12 @@
 import * as Lib from "metabase-lib";
-import { BaseBucketPickerPopover } from "./BaseBucketPickerPopover";
+
+import {
+  BaseBucketPickerPopover,
+  INITIALLY_VISIBLE_ITEMS_COUNT,
+} from "./BaseBucketPickerPopover";
 import { BinningStrategyPickerPopover } from "./BinningStrategyPickerPopover";
 import { TemporalBucketPickerPopover } from "./TemporalBucketPickerPopover";
-import { CommonBucketPickerProps } from "./types";
+import type { CommonBucketPickerProps } from "./types";
 
 interface BucketPickerPopoverProps
   extends Omit<CommonBucketPickerProps, "buckets"> {
@@ -52,6 +56,8 @@ function _BucketPickerPopover({
 
   return null;
 }
+
+export { INITIALLY_VISIBLE_ITEMS_COUNT };
 
 export const BucketPickerPopover = Object.assign(_BucketPickerPopover, {
   displayName: "BucketPickerPopover",

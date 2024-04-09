@@ -1,7 +1,10 @@
-import { ComponentType, ReactNode, useState } from "react";
+import type { ComponentType, ReactNode } from "react";
+import { useState } from "react";
 import { jt, t } from "ttag";
-import SlackBadge from "../SlackBadge";
+
 import SlackAppsLink from "../SlackAppsLink";
+import SlackBadge from "../SlackBadge";
+
 import {
   HeaderMessage,
   HeaderRoot,

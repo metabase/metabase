@@ -1,9 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-
-import { Icon } from "metabase/core/components/Icon";
+import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 type VariantProp = { variant?: "default" | "form-field" };
 
@@ -61,7 +60,7 @@ export const Root = styled.div<{
       border-bottom: 1px solid ${color("border")};
     `}
 
-  input, .AdminSelect {
+  input {
     transition: border 0.3s;
 
     &:hover {

@@ -1,8 +1,8 @@
 import { screen, render } from "__support__/ui";
 import { createMockColumn } from "metabase-types/api/mocks";
-import { formatValue } from "./value";
 
 import type { OptionsType } from "./types";
+import { formatValue } from "./value";
 
 const setup = (value: any, overrides: Partial<OptionsType> = {}) => {
   const column = createMockColumn({
@@ -43,10 +43,10 @@ describe("link", () => {
       link_url: "http://google.ca",
     });
     expect(
-      screen.getByText((content, element) => content.startsWith("foo")),
+      screen.getByText(content => content.startsWith("foo")),
     ).toBeInTheDocument();
     expect(
-      screen.getByText((content, element) => content.endsWith("bar")),
+      screen.getByText(content => content.endsWith("bar")),
     ).toBeInTheDocument();
     expect(screen.getByText("23.12")).toBeInTheDocument();
   });

@@ -1,14 +1,16 @@
 import { t } from "ttag";
-import ImageToggle from "../ImageToggle";
-import { MetabotSetting } from "./types";
+
+import { ImageToggle } from "../ImageToggle";
+
 import { MetabotIcon } from "./MetabotToggleWidget.styled";
+import type { MetabotSetting } from "./types";
 
 interface MetabotToggleWidgetProps {
   setting: MetabotSetting;
   onChange: (value: boolean) => void;
 }
 
-const MetabotToggleWidget = ({
+export const MetabotToggleWidget = ({
   setting,
   onChange,
 }: MetabotToggleWidgetProps): JSX.Element => {
@@ -24,6 +26,3 @@ const MetabotToggleWidget = ({
     </ImageToggle>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default MetabotToggleWidget;

@@ -68,6 +68,11 @@
   :parent invalid-query
   :show-in-embeds? true)
 
+(deferror disabled-feature
+  "The query is using a feature that is disabled globally."
+  :parent invalid-query
+  :show-in-embeds? true)
+
 ;;;; ### Server-Side Errors
 
 (deferror server

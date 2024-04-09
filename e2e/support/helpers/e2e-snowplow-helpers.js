@@ -1,10 +1,13 @@
-import _ from "underscore";
+import { isEE } from "e2e/support/helpers";
+
 const HAS_SNOWPLOW = Cypress.env("HAS_SNOWPLOW_MICRO");
 const SNOWPLOW_URL = Cypress.env("SNOWPLOW_MICRO_URL");
 const SNOWPLOW_INTERVAL = 100;
 const SNOWPLOW_TIMEOUT = 1000;
 
 export const describeWithSnowplow = HAS_SNOWPLOW ? describe : describe.skip;
+export const describeWithSnowplowEE =
+  HAS_SNOWPLOW && isEE ? describe : describe.skip;
 
 export const enableTracking = () => {
   cy.request("PUT", "/api/setting/anon-tracking-enabled", { value: true });
@@ -29,10 +32,57 @@ export const expectGoodSnowplowEvent = (eventData, count = 1) => {
     "micro/good",
     ({ body }) =>
       body.filter(snowplowEvent =>
-        _.isMatch(snowplowEvent?.event?.unstruct_event?.data?.data, eventData),
+        isDeepMatch(
+          snowplowEvent?.event?.unstruct_event?.data?.data,
+          eventData,
+        ),
       ).length === count,
   ).should("be.ok");
 };
+
+export function isDeepMatch(objectOrValue, partialObjectOrValue) {
+  if (isMatcher(partialObjectOrValue)) {
+    return partialObjectOrValue(objectOrValue);
+  }
+
+  const bothAreNotObjects =
+    // Check null because typeof null === "object"
+    objectOrValue == null ||
+    partialObjectOrValue == null ||
+    typeof objectOrValue !== "object" ||
+    typeof partialObjectOrValue !== "object";
+
+  // Exit condition when calling recursively
+  if (bothAreNotObjects) {
+    return objectOrValue === partialObjectOrValue;
+  }
+
+  for (const [key, value] of Object.entries(partialObjectOrValue)) {
+    if (Array.isArray(value)) {
+      if (!isArrayDeepMatch(objectOrValue[key], value)) {
+        return false;
+      }
+    } else if (!isDeepMatch(objectOrValue[key], value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function isMatcher(value) {
+  return typeof value === "function";
+}
+
+function isArrayDeepMatch(array, partialArray) {
+  for (const index in partialArray) {
+    if (!isDeepMatch(array[index], partialArray[index])) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 export const expectGoodSnowplowEvents = count => {
   retrySnowplowRequest("micro/good", ({ body }) => body.length >= count)
@@ -41,7 +91,7 @@ export const expectGoodSnowplowEvents = count => {
 };
 
 export const expectNoBadSnowplowEvents = () => {
-  sendSnowplowRequest("micro/bad").its("body").should("have.length", 0);
+  sendSnowplowRequest("micro/bad").its("body").should("deep.equal", []);
 };
 
 const sendSnowplowRequest = url => {

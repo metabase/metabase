@@ -1,6 +1,12 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
+import {
+  setupActionEndpoints,
+  setupCardsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,
   queryIcon,
@@ -9,14 +15,13 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import {
-  setupActionEndpoints,
-  setupCardsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
-
-import type { ActionDashboardCard, ParameterTarget } from "metabase-types/api";
+import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
+import { checkNotNull } from "metabase/lib/types";
+import type {
+  ActionDashboardCard,
+  ParameterTarget,
+  Database,
+} from "metabase-types/api";
 import {
   createMockActionDashboardCard as _createMockActionDashboardCard,
   createMockActionParameter,
@@ -28,11 +33,9 @@ import {
   createMockStructuredDatasetQuery,
   createMockDatabase,
 } from "metabase-types/api/mocks";
-import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
-import { checkNotNull } from "metabase/core/utils/types";
 
-import { Database } from "metabase-types/api";
-import Action, { ActionProps } from "./Action";
+import type { ActionProps } from "./Action";
+import Action from "./Action";
 
 const DASHBOARD_ID = 123;
 const DASHCARD_ID = 456;
@@ -87,7 +90,7 @@ const CARD = createMockCard({
   }),
   display: "action",
   can_write: true,
-  dataset: true,
+  type: "model",
 });
 
 function createMockActionDashboardCard(
@@ -128,6 +131,7 @@ async function setup({
   const card = checkNotNull(dashcard.card);
 
   if (getActionIsEnabledInDatabase(dashcard)) {
+    fetchMock.get(ACTION_EXEC_MOCK_PATH, {});
     fetchMock.post(ACTION_EXEC_MOCK_PATH, { "rows-updated": [1] });
 
     // for ActionCreator modal (action edit modal)
@@ -206,7 +210,7 @@ describe("Actions > ActionViz > Action", () => {
     it("clicking an action button with parameters should open a modal action form", async () => {
       await setup();
 
-      userEvent.click(screen.getByRole("button"));
+      await userEvent.click(screen.getByRole("button"));
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       expect(screen.getByLabelText("Parameter 1")).toBeInTheDocument();
@@ -223,7 +227,7 @@ describe("Actions > ActionViz > Action", () => {
         }),
       });
 
-      userEvent.click(screen.getByRole("button"));
+      await userEvent.click(screen.getByRole("button"));
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       expect(screen.queryByLabelText(/^Parameter/)).not.toBeInTheDocument();
@@ -232,16 +236,16 @@ describe("Actions > ActionViz > Action", () => {
     it("the modal should have the action name as a title", async () => {
       await setup();
 
-      userEvent.click(screen.getByRole("button"));
+      await userEvent.click(screen.getByRole("button"));
       expect(screen.getByRole("dialog")).toHaveTextContent("My Awesome Action");
     });
 
     it("clicking the cancel button on the form should close the modal", async () => {
       await setup();
 
-      userEvent.click(screen.getByRole("button"));
+      await userEvent.click(screen.getByRole("button"));
       expect(screen.getByRole("dialog")).toHaveTextContent("My Awesome Action");
-      userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
@@ -285,10 +289,10 @@ describe("Actions > ActionViz > Action", () => {
         parameterValues: { "dash-param-1": "44" },
       });
 
-      userEvent.click(screen.getByRole("button", { name: "Click me" }));
+      await userEvent.click(screen.getByRole("button", { name: "Click me" }));
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
-      userEvent.click(
+      await userEvent.click(
         within(screen.getByRole("dialog")).getByRole("button", {
           name: action.name,
         }),
@@ -317,7 +321,7 @@ describe("Actions > ActionViz > Action", () => {
         }),
       });
 
-      userEvent.click(screen.getByText("Click me"));
+      await userEvent.click(screen.getByText("Click me"));
 
       expect(queryIcon("pencil")).not.toBeInTheDocument();
     });
@@ -330,7 +334,7 @@ describe("Actions > ActionViz > Action", () => {
 
       await setup({ database: readOnlyDB });
 
-      userEvent.click(screen.getByText("Click me"));
+      await userEvent.click(screen.getByText("Click me"));
 
       expect(queryIcon("pencil")).not.toBeInTheDocument();
     });
@@ -338,25 +342,23 @@ describe("Actions > ActionViz > Action", () => {
     it("should allow to edit underlying action if a user has edit permissions", async () => {
       await setup();
 
-      userEvent.click(screen.getByText("Click me"));
+      await userEvent.click(screen.getByText("Click me"));
 
       const editActionEl = getIcon("pencil");
       expect(editActionEl).toBeInTheDocument();
 
-      userEvent.click(editActionEl);
+      await userEvent.click(editActionEl);
 
       const editorModal = await screen.findByTestId("action-editor-modal");
 
-      expect(
-        within(editorModal).getByText("My Awesome Action"),
-      ).toBeInTheDocument();
+      await within(editorModal).findByText("My Awesome Action");
 
       const cancelEditButton = within(editorModal).getByText("Cancel");
       expect(cancelEditButton).toBeInTheDocument();
 
       expect(within(editorModal).getByText("Update")).toBeInTheDocument();
 
-      userEvent.click(cancelEditButton);
+      await userEvent.click(cancelEditButton);
 
       expect(
         screen.getByTestId("action-parameters-input-modal"),
@@ -380,21 +382,27 @@ describe("Actions > ActionViz > Action", () => {
         },
       );
 
-      userEvent.click(screen.getByText("Click me"));
+      await userEvent.click(screen.getByText("Click me"));
 
-      userEvent.click(getIcon("pencil"));
+      await userEvent.click(getIcon("pencil"));
 
       // wait for action edit form to be loaded
       const editorModal = await screen.findByTestId("action-editor-modal");
 
       // edit action title
-      const actionTitleField = within(editorModal).getByTestId("editable-text");
-      userEvent.type(actionTitleField, updatedTitle);
-      userEvent.tab(); // blur field
+      const actionTitleField = await within(editorModal).findByTestId(
+        "editable-text",
+      );
+      await userEvent.type(actionTitleField, updatedTitle);
+      await userEvent.tab(); // blur field
 
-      userEvent.click(within(editorModal).getByText("Update"));
+      await userEvent.click(within(editorModal).getByText("Update"));
 
       expect(fetchMock.called(`path:/api/action/${ACTION.id}`)).toBe(true);
+
+      await waitFor(() => {
+        expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();
+      });
 
       expect(
         screen.getByTestId("action-parameters-input-modal"),
@@ -454,17 +462,17 @@ describe("Actions > ActionViz > Action", () => {
 
       await setup({ settings: formSettings });
 
-      userEvent.type(screen.getByLabelText("Parameter 1"), "foo");
+      await userEvent.type(screen.getByLabelText("Parameter 1"), "foo");
       await waitFor(() =>
         expect(screen.getByLabelText("Parameter 1")).toHaveValue("foo"),
       );
 
-      userEvent.type(screen.getByLabelText("Parameter 2"), "5");
+      await userEvent.type(screen.getByLabelText("Parameter 2"), "5");
       await waitFor(() =>
         expect(screen.getByLabelText("Parameter 2")).toHaveValue(5),
       );
 
-      userEvent.click(screen.getByRole("button", { name: ACTION.name }));
+      await userEvent.click(screen.getByRole("button", { name: ACTION.name }));
 
       await waitFor(async () => {
         const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
@@ -486,12 +494,12 @@ describe("Actions > ActionViz > Action", () => {
         parameterValues: { "dash-param-2": "5" },
       });
 
-      userEvent.type(screen.getByLabelText("Parameter 1"), "foo");
+      await userEvent.type(screen.getByLabelText("Parameter 1"), "foo");
       await waitFor(() =>
         expect(screen.getByLabelText("Parameter 1")).toHaveValue("foo"),
       );
 
-      userEvent.click(screen.getByRole("button", { name: ACTION.name }));
+      await userEvent.click(screen.getByRole("button", { name: ACTION.name }));
 
       await waitFor(async () => {
         const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
@@ -521,7 +529,7 @@ describe("Actions > ActionViz > Action", () => {
         parameterValues: { "dash-param-1": "foo" },
       });
 
-      userEvent.click(screen.getByRole("button"));
+      await userEvent.click(screen.getByRole("button"));
       expect(screen.getByRole("dialog")).toHaveTextContent(/cannot be undone/i);
       expect(
         screen.getByRole("button", { name: "Delete" }),

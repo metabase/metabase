@@ -1,16 +1,19 @@
+import cx from "classnames";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
-import cx from "classnames";
+import { push, replace } from "react-router-redux";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import * as Urls from "metabase/lib/urls";
+
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import Schemas from "metabase/entities/schemas";
-import { Icon } from "metabase/core/components/Icon";
-import { DatabaseId, SchemaId } from "metabase-types/api";
-import { Dispatch, State } from "metabase-types/store";
-import Schema from "metabase-lib/metadata/Schema";
+import * as Urls from "metabase/lib/urls";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { Icon } from "metabase/ui";
+import type Schema from "metabase-lib/v1/metadata/Schema";
+import type { DatabaseId, SchemaId } from "metabase-types/api";
+import type { Dispatch, State } from "metabase-types/store";
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
@@ -22,14 +25,24 @@ interface SchemaLoaderProps {
 }
 
 interface DispatchProps {
-  onSelectSchema: (databaseId: DatabaseId, schemaId: SchemaId) => void;
+  onSelectSchema: (
+    databaseId: DatabaseId,
+    schemaId: SchemaId,
+    options?: { useReplace?: boolean },
+  ) => void;
 }
 
 type MetadataSchemaListProps = OwnProps & SchemaLoaderProps & DispatchProps;
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onSelectSchema: (databaseId, schemaId) =>
-    dispatch(push(Urls.dataModelSchema(databaseId, schemaId))),
+  // When navigating programatically, use replace so that the browser back button works
+  onSelectSchema: (databaseId, schemaId, { useReplace = false } = {}) => {
+    dispatch(
+      useReplace
+        ? replace(Urls.dataModelSchema(databaseId, schemaId))
+        : push(Urls.dataModelSchema(databaseId, schemaId)),
+    );
+  },
 });
 
 const MetadataSchemaList = ({
@@ -58,24 +71,26 @@ const MetadataSchemaList = ({
 
   useLayoutEffect(() => {
     if (allSchemas.length === 1 && selectedSchemaId == null) {
-      onSelectSchema(selectedDatabaseId, allSchemas[0].id);
+      onSelectSchema(selectedDatabaseId, allSchemas[0].id, {
+        useReplace: true,
+      });
     }
   }, [selectedDatabaseId, selectedSchemaId, allSchemas, onSelectSchema]);
 
   return (
-    <div className="MetadataEditor-table-list AdminList flex-no-shrink">
-      <div className="AdminList-search">
-        <Icon name="search" size={16} />
+    <aside className={cx(AdminS.AdminList, CS.flexNoShrink)}>
+      <div className={AdminS.AdminListSearch}>
+        <Icon className={AdminS.Icon} name="search" size={16} />
         <input
-          className="AdminInput pl4 border-bottom"
+          className={cx(AdminS.AdminInput, CS.pl4, CS.borderBottom)}
           type="text"
           placeholder={t`Find a schema`}
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
         />
       </div>
-      <ul className="AdminList-items">
-        <div className="AdminList-section">
+      <ul>
+        <div className={AdminS.AdminListSection}>
           {ngettext(
             msgid`${schemas.length} schema`,
             `${schemas.length} schemas`,
@@ -91,7 +106,7 @@ const MetadataSchemaList = ({
           />
         ))}
       </ul>
-    </div>
+    </aside>
   );
 };
 
@@ -110,8 +125,12 @@ const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
     <li key={schema.id}>
       <a
         className={cx(
-          "AdminList-item flex align-center no-decoration text-wrap",
-          { selected: isSelected },
+          CS.textWrap,
+          AdminS.AdminListItem,
+          { [AdminS.selected]: isSelected },
+          CS.flex,
+          CS.alignCenter,
+          CS.noDecoration,
         )}
         onClick={handleSelect}
       >

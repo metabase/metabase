@@ -1,6 +1,7 @@
-import { ComponentPropsWithRef } from "react";
+import type { ComponentPropsWithRef } from "react";
+import type ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import ReactMarkdown from "react-markdown";
+
 import { MarkdownRoot } from "./Markdown.styled";
 
 const REMARK_PLUGINS = [remarkGfm];
@@ -12,6 +13,7 @@ export interface MarkdownProps
   disallowHeading?: boolean;
   unstyleLinks?: boolean;
   children: string;
+  lineClamp?: number;
 }
 
 const Markdown = ({

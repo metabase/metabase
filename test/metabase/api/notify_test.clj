@@ -3,11 +3,12 @@
    [clj-http.client :as http]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.http-client :as client]
    [metabase.models.database :as database :refer [Database]]
    [metabase.server.middleware.auth :as mw.auth]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata]
    [metabase.test :as mt]
@@ -25,11 +26,11 @@
                (client/client :post 403 "notify/db/100")))))
     (testing "endpoint requires authentication"
       (mt/with-temporary-setting-values [api-key "test-api-key"] ;; set in :test but not in :dev
-        (is (= (get mw.util/response-forbidden :body)
+        (is (= (get req.util/response-forbidden :body)
                (client/client :post 403 "notify/db/100")))))))
 
-(def api-headers {:headers {"X-METABASE-APIKEY" "test-api-key"
-                            "Content-Type"      "application/json"}})
+(def ^:private api-headers {:headers {"x-metabase-apikey" "test-api-key"
+                                      "content-type"      "application/json"}})
 
 (deftest not-found-test
   (mt/with-temporary-setting-values [api-key "test-api-key"]
@@ -70,32 +71,32 @@
                        ([payload expected-code]
                         (mt/with-temporary-setting-values [api-key "test-api-key"]
                           (mt/client :post expected-code (format "notify/db/%d" (u/the-id (mt/db)))
-                                     {:request-options api-headers}
-                                     (merge {:synchronous? true}
-                                            payload)))))]
+                                          {:request-options api-headers}
+                                          (merge {:synchronous? true}
+                                                 payload)))))]
       (testing "sync just table when table is provided"
         (let [long-sync-called? (promise), short-sync-called? (promise)]
-          (with-redefs [metabase.sync/sync-table!                        (fn [_table] (deliver long-sync-called? true))
+          (with-redefs [sync/sync-table!                                 (fn [_table] (deliver long-sync-called? true))
                         metabase.sync.sync-metadata/sync-table-metadata! (fn [_table] (deliver short-sync-called? true))]
             (post {:scan :full, :table_name table-name})
             (is @long-sync-called?)
             (is (not (realized? short-sync-called?))))))
       (testing "only a quick sync when quick parameter is provided"
         (let [long-sync-called? (promise), short-sync-called? (promise)]
-          (with-redefs [metabase.sync/sync-table!                        (fn [_table] (deliver long-sync-called? true))
+          (with-redefs [sync/sync-table!                                 (fn [_table] (deliver long-sync-called? true))
                         metabase.sync.sync-metadata/sync-table-metadata! (fn [_table] (deliver short-sync-called? true))]
             (post {:scan :schema, :table_name table-name})
             (is (not (realized? long-sync-called?)))
             (is @short-sync-called?))))
       (testing "full db sync by default"
         (let [full-sync? (promise)]
-          (with-redefs [metabase.sync/sync-database! (fn [_db] (deliver full-sync? true))]
+          (with-redefs [sync/sync-database! (fn [_db] (deliver full-sync? true))]
             (post {})
             (is @full-sync?))))
       (testing "simple sync with params"
         (let [full-sync?   (promise)
               smaller-sync (promise)]
-          (with-redefs [metabase.sync/sync-database!                  (fn [_db] (deliver full-sync? true))
+          (with-redefs [sync/sync-database!                           (fn [_db] (deliver full-sync? true))
                         metabase.sync.sync-metadata/sync-db-metadata! (fn [_db] (deliver smaller-sync true))]
             (post {:scan :schema})
             (is (not (realized? full-sync?)))
@@ -104,30 +105,13 @@
         (is (= {:scan "nullable enum of full, schema"}
                (:errors (post {:scan :unrecognized} 400))))))))
 
-;; TODO - Consider generalizing this in the future. It was taken from `metabase.driver.postgres-test`
-;; Perhaps if there's another instance where it is used put it somewhere common.
-
-(defn- drop-if-exists-and-create-db!
-  "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
-  [db-name]
-  (let [spec (sql-jdbc.conn/connection-details->spec :postgres (mt/dbdef->connection-details :postgres :server nil))]
-    ;; kill any open connections
-    (jdbc/query spec ["SELECT pg_terminate_backend(pg_stat_activity.pid)
-                       FROM pg_stat_activity
-                       WHERE pg_stat_activity.datname = ?;" db-name])
-    ;; create the DB
-    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
-                                  CREATE DATABASE \"%s\";"
-                                 db-name db-name)]
-                   {:transaction? false})))
-
 (deftest add-new-table-sync-test
   (mt/test-driver :postgres
     (testing "Ensure we have the ability to add a single new table"
       (let [db-name "add_new_table_sync_test_table"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})]
-        (drop-if-exists-and-create-db! db-name)
-        (mt/with-temp* [Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]]
+        (postgres-test/drop-if-exists-and-create-db! db-name)
+        (mt/with-temp [Database database {:engine :postgres :details (assoc details :dbname db-name)}]
           (let [spec     (sql-jdbc.conn/connection-details->spec :postgres details)
                 exec!    (fn [spec statements] (doseq [statement statements] (jdbc/execute! spec [statement])))
                 tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (t2/select 'Table :db_id (:id %))))

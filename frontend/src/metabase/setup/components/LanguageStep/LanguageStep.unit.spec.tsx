@@ -1,21 +1,23 @@
 import userEvent from "@testing-library/user-event";
-import { Locale } from "metabase-types/store";
+
+import { renderWithProviders, screen } from "__support__/ui";
+import type { SetupStep } from "metabase/setup/types";
+import type { Locale } from "metabase-types/store";
 import {
   createMockLocale,
   createMockSettingsState,
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import { LANGUAGE_STEP, USER_STEP } from "../../constants";
+
 import { LanguageStep } from "./LanguageStep";
 
 interface SetupOpts {
-  step?: number;
+  step?: SetupStep;
   locale?: Locale;
 }
 
-const setup = ({ step = LANGUAGE_STEP, locale }: SetupOpts = {}) => {
+const setup = ({ step = "language", locale }: SetupOpts = {}) => {
   const state = createMockState({
     setup: createMockSetupState({
       step,
@@ -26,26 +28,28 @@ const setup = ({ step = LANGUAGE_STEP, locale }: SetupOpts = {}) => {
     }),
   });
 
-  renderWithProviders(<LanguageStep />, { storeInitialState: state });
+  renderWithProviders(<LanguageStep stepLabel={0} />, {
+    storeInitialState: state,
+  });
 };
 
 describe("LanguageStep", () => {
   it("should render in inactive state", () => {
     setup({
-      step: USER_STEP,
+      step: "user_info",
       locale: createMockLocale({ name: "English" }),
     });
 
     expect(screen.getByText(/set to English/)).toBeInTheDocument();
   });
 
-  it("should allow language selection", () => {
+  it("should allow language selection", async () => {
     setup({
-      step: LANGUAGE_STEP,
+      step: "language",
     });
 
     const option = screen.getByRole("radio", { name: "English" });
-    userEvent.click(option);
+    await userEvent.click(option);
 
     expect(option).toBeChecked();
   });

@@ -8,48 +8,51 @@
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require
    [honey.sql :as sql]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
-   metabase.db.custom-migrations ;; load our custom migrations
+   [metabase.db.custom-migrations]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.liquibase :as liquibase]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.honey-sql-2]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [schema.core :as s]
-   [toucan2.jdbc :as t2.jdbc]
-   [toucan2.map-backend.honeysql2 :as t2.honeysql]
+   [toucan2.honeysql2 :as t2.honeysql]
+   [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (liquibase.exception LockException)))
 
 (set! *warn-on-reflection* true)
 
-;;; needed so the `:h2` dialect gets registered with Honey SQL
-(comment metabase.util.honey-sql-2/keep-me)
+(comment
+  ;; load our custom migrations
+  metabase.db.custom-migrations/keep-me
+  ;; needed so the `:h2` dialect gets registered with Honey SQL
+  metabase.util.honey-sql-2/keep-me)
 
 (defn- print-migrations-and-quit-if-needed!
   "If we are not doing auto migrations then print out migration SQL for user to run manually. Then throw an exception to
   short circuit the setup process and make it clear we can't proceed."
-  [liquibase]
-  (when (liquibase/has-unrun-migrations? liquibase)
-    (log/info (str (trs "Database Upgrade Required")
+  [liquibase data-source]
+  (when (seq (liquibase/unrun-migrations data-source))
+    (log/info (str "Database Upgrade Required"
                    "\n\n"
-                   (trs "NOTICE: Your database requires updates to work with this version of Metabase.")
+                   "NOTICE: Your database requires updates to work with this version of Metabase."
                    "\n"
-                   (trs "Please execute the following sql commands on your database before proceeding.")
+                   "Please execute the following sql commands on your database before proceeding."
                    "\n\n"
                    (liquibase/migrations-sql liquibase)
                    "\n\n"
-                   (trs "Once your database is updated try running the application again.")
+                   "Once your database is updated try running the application again."
                    "\n"))
     (throw (Exception. (trs "Database requires manual upgrade.")))))
 
-(s/defn migrate!
+(mu/defn migrate!
   "Migrate the application database specified by `data-source`.
 
   *  `:up`            - Migrate up
@@ -58,103 +61,110 @@
   *  `:print`         - Just print the SQL for running the migrations, don't actually run them.
   *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
                         (This shouldn't be necessary now that we run migrations inside a transaction, but is
-                        available just in case).
-
-  Note that this only performs *schema migrations*, not data migrations. Data migrations are handled separately by
-  [[metabase.db.data-migrations/run-all!]]. ([[setup-db!]], below, calls both this function and [[run-all!]])."
-  [db-type     :- s/Keyword
-   data-source :- javax.sql.DataSource
-   direction   :- s/Keyword
-   & args      :- [s/Any]]
-  (with-open [conn (.getConnection data-source)]
+                        available just in case)."
+  [data-source :- (ms/InstanceOfClass javax.sql.DataSource)
+   direction   :- :keyword
+   & args]
+  ;; TODO: use [[jdbc/with-db-transaction]] instead of manually commit/rollback
+  (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (.setAutoCommit conn false)
     ;; Set up liquibase and let it do its thing
-    (log/info (trs "Setting up Liquibase..."))
+    (log/info "Setting up Liquibase...")
     (liquibase/with-liquibase [liquibase conn]
       (try
-        (liquibase/consolidate-liquibase-changesets! db-type conn)
-        (log/info (trs "Liquibase is ready."))
-        (case direction
-          :up            (liquibase/migrate-up-if-needed! liquibase)
-          :force         (liquibase/force-migrate-up-if-needed! liquibase)
-          :down          (apply liquibase/rollback-major-version db-type conn liquibase args)
-          :print         (print-migrations-and-quit-if-needed! liquibase)
-          :release-locks (liquibase/force-release-locks! liquibase))
-        ;; Migrations were successful; commit everything and re-enable auto-commit
-        (.commit conn)
-        (.setAutoCommit conn true)
-        :done
-        ;; In the Throwable block, we're releasing the lock assuming we have the lock and we failed while in the
-        ;; middle of a migration. It's possible that we failed because we couldn't get the lock. We don't want to
-        ;; clear the lock in that case, so handle that case separately
-        (catch LockException e
-          (.rollback conn)
-          (throw e))
-        ;; If for any reason any part of the migrations fail then rollback all changes
-        (catch Throwable e
-          (.rollback conn)
-          ;; With some failures, it's possible that the lock won't be released. To make this worse, if we retry the
-          ;; operation without releasing the lock first, the real error will get hidden behind a lock error
-          (liquibase/release-lock-if-needed! liquibase)
-          (throw e))))))
+        ;; Consolidating the changeset requires the lock, so we may need to release it first.
+       (when (= :force direction)
+         (liquibase/release-lock-if-needed! liquibase))
+        ;; Releasing the locks does not depend on the changesets, so we skip this step as it might require locking.
+       (when-not (= :release-locks direction)
+         (liquibase/consolidate-liquibase-changesets! conn liquibase))
 
-(s/defn ^:private verify-db-connection
+       (log/info "Liquibase is ready.")
+       (case direction
+         :up            (liquibase/migrate-up-if-needed! liquibase data-source)
+         :force         (liquibase/force-migrate-up-if-needed! liquibase data-source)
+         :down          (apply liquibase/rollback-major-version conn liquibase args)
+         :print         (print-migrations-and-quit-if-needed! liquibase data-source)
+         :release-locks (liquibase/force-release-locks! liquibase))
+       ;; Migrations were successful; commit everything and re-enable auto-commit
+       (.commit conn)
+       (.setAutoCommit conn true)
+       :done
+       ;; In the Throwable block, we're releasing the lock assuming we have the lock and we failed while in the
+       ;; middle of a migration. It's possible that we failed because we couldn't get the lock. We don't want to
+       ;; clear the lock in that case, so handle that case separately
+       (catch LockException e
+         (.rollback conn)
+         (throw e))
+       ;; If for any reason any part of the migrations fail then rollback all changes
+       (catch Throwable e
+         (.rollback conn)
+         ;; With some failures, it's possible that the lock won't be released. To make this worse, if we retry the
+         ;; operation without releasing the lock first, the real error will get hidden behind a lock error
+         (liquibase/release-lock-if-needed! liquibase)
+         (throw e))))))
+
+(mu/defn ^:private verify-db-connection
   "Test connection to application database with `data-source` and throw an exception if we have any troubles
   connecting."
-  [db-type     :- s/Keyword
-   data-source :- javax.sql.DataSource]
-  (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name db-type))))
-  (classloader/require 'metabase.driver.util)
+  [db-type     :- :keyword
+   data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name db-type)))
+  (classloader/require 'metabase.driver.sql-jdbc.connection)
   (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
-    (try (assert (sql-jdbc.conn/can-connect-with-spec? {:datasource data-source}) error-msg)
+    (try (assert ((requiring-resolve 'metabase.driver.sql-jdbc.connection/can-connect-with-spec?) {:datasource data-source}) error-msg)
          (catch Throwable e
            (throw (ex-info error-msg {} e)))))
-  (with-open [conn (.getConnection data-source)]
+  (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (let [metadata (.getMetaData conn)]
-      (log/info (trs "Successfully verified {0} {1} application database connection."
-                     (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata))
-                (u/emoji "✅")))))
+      (log/infof "Successfully verified %s %s application database connection. %s"
+                 (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅")))))
 
-(def ^:dynamic ^Boolean *disable-data-migrations*
-  "Should we skip running data migrations when setting up the DB? (Default is `false`).
-  There are certain places where we don't want to do this; for example, none of the migrations should be ran when
-  Metabase is launched via `load-from-h2`.  That's because they will end up doing things like creating duplicate
-  entries for the \"magic\" groups and permissions entries. "
-  false)
+(mu/defn ^:private error-if-downgrade-required!
+  [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  (log/info (u/format-color 'cyan "Checking if a database downgrade is required..."))
+  (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
+    (liquibase/with-liquibase [liquibase conn]
+      (let [latest-available (liquibase/latest-available-major-version liquibase)
+            latest-applied (liquibase/latest-applied-major-version conn)]
+        ;; `latest-applied` will be `nil` for fresh installs
+        (when (and latest-applied (< latest-available latest-applied))
+          (throw (ex-info
+                  (str (u/format-color 'red (trs "ERROR: Downgrade detected."))
+                       "\n\n"
+                       (trs "Your metabase instance appears to have been downgraded without a corresponding database downgrade.")
+                       "\n\n"
+                       (trs "You must run `java -jar metabase.jar migrate down` from version {0}." latest-applied)
+                       "\n\n"
+                       (trs "Once your database has been downgraded, try running the application again.")
+                       "\n\n"
+                       (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade"))
+                  {})))))))
 
-(s/defn ^:private run-schema-migrations!
+(mu/defn ^:private run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
-  [db-type       :- s/Keyword
-   data-source   :- javax.sql.DataSource
-   auto-migrate? :- (s/maybe s/Bool)]
-  (log/info (trs "Running Database Migrations..."))
-  (migrate! db-type data-source (if auto-migrate? :up :print))
-  (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
-
-(s/defn ^:private run-data-migrations!
-  "Do any custom code-based migrations now that the db structure is up to date."
-  []
-  ;; TODO -- check whether we can remove the circular ref busting here.
-  (when-not *disable-data-migrations*
-    (classloader/require 'metabase.db.data-migrations)
-    ((resolve 'metabase.db.data-migrations/run-all!))))
+  [data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
+   auto-migrate? :- [:maybe :boolean]]
+  (log/info "Running Database Migrations...")
+  (migrate! data-source (if auto-migrate? :up :print))
+  (log/info "Database Migrations Current ..." (u/emoji "✅")))
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 ;;
 ;; TODO -- consider whether this should be done automatically the first time someone calls `getConnection`
-(s/defn setup-db!
+(mu/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
   use [[metabase.db/setup-db!]] instead, which can be called more than once without issue and is thread-safe."
-  [db-type       :- s/Keyword
-   data-source   :- javax.sql.DataSource
-   auto-migrate? :- (s/maybe s/Bool)]
+  [db-type       :- :keyword
+   data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
+   auto-migrate? :- [:maybe :boolean]]
   (u/profile (trs "Database setup")
     (u/with-us-locale
-       (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
-                 setting/*disable-cache*         true]
-         (verify-db-connection   db-type data-source)
-         (run-schema-migrations! db-type data-source auto-migrate?)
-         (run-data-migrations!))))
+      (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+                config/*disable-setting-cache*  true]
+         (verify-db-connection db-type data-source)
+         (error-if-downgrade-required! data-source)
+         (run-schema-migrations! data-source auto-migrate?))))
   :done)
 
 ;;;; Toucan Setup.
@@ -182,7 +192,7 @@
          :dialect      ::application-db
          :quoted-snake false})
 
-(reset! t2.jdbc/global-options
+(reset! t2.jdbc.options/global-options
         {:read-columns mdb.jdbc-protocols/read-columns
          :label-fn     u/lower-case-en})
 

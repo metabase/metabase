@@ -1,16 +1,17 @@
-import _ from "underscore";
-import { t } from "ttag";
 import { createSelector } from "@reduxjs/toolkit";
+import { t } from "ttag";
+import _ from "underscore";
 
-import { createEntity, undo } from "metabase/lib/entities";
-import { SnippetCollectionSchema } from "metabase/schema";
-
+import { canonicalCollectionId } from "metabase/collections/utils";
 import NormalCollections, {
   getExpandedCollectionsById,
 } from "metabase/entities/collections";
+import { createEntity, undo } from "metabase/lib/entities";
+import { SnippetCollectionSchema } from "metabase/schema";
 
-import { canonicalCollectionId } from "metabase/collections/utils";
-
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const SnippetCollections = createEntity({
   name: "snippetCollections",
   schema: SnippetCollectionSchema,

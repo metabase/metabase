@@ -8,11 +8,15 @@
 [![codecov](https://codecov.io/gh/metabase/metabase/branch/master/graph/badge.svg)](https://codecov.io/gh/metabase/metabase)
 ![Docker Pulls](https://img.shields.io/docker/pulls/metabase/metabase)
 
+## Get started
+
+The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving Metabase). Check out our quick overview of [cloud vs self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting). If you need to, you can always switch to [self-hosting](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase) Metabase at any time (or vice versa).
+
 ## Features
 
 - [Set up in five minutes](https://www.metabase.com/docs/latest/setting-up-metabase.html) (we're not kidding).
 - Let anyone on your team [ask questions](https://www.metabase.com/docs/latest/users-guide/04-asking-questions.html) without knowing SQL.
-- Use the [SQL editor](https://www.metabase.com/docs/latest/users-guide/writing-sql.html) for more complex queries.
+- Use the [SQL editor](https://www.metabase.com/docs/latest/questions/native-editor/writing-sql) for more complex queries.
 - Build handsome, interactive [dashboards](https://www.metabase.com/docs/latest/users-guide/07-dashboards.html) with filters, auto-refresh, fullscreen, and custom click behavior.
 - Create [models](https://www.metabase.com/learn/getting-started/models) that clean up, annotate, and/or combine raw tables.
 - Define canonical [segments and metrics](https://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html) for your team to use.
@@ -29,11 +33,44 @@ Take a [tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of
 
 ## Installation
 
-Metabase can be run just about anywhere. Check out our [Installation Guides](https://www.metabase.com/docs/latest/operations-guide/installing-metabase.html).
+Metabase can be run just about anywhere. Check out our [Installation Guides](https://www.metabase.com/docs/latest/operations-guide/installing-metabase).
 
 ## Contributing
 
-To get started with a development installation of the Metabase, check out our [Developers Guide](https://www.metabase.com/docs/latest/developers-guide/start).
+## Quick Setup: Dev environment
+
+In order to spin up a development environment, you need to start the front end and the backend as follows:
+
+### Frontend quick setup
+
+The following command will install the Javascript dependencies:
+
+```
+$ yarn install
+```
+
+To build and run without watching changes:
+
+```
+$ yarn build
+```
+
+To build and run with hot-reload:
+
+```
+$ yarn build-hot
+```
+
+### Backend  quick setup
+
+In order to run the backend, you'll need to build the drivers first, and then start the backend:
+
+```
+$ ./bin/build-drivers.sh
+$ clojure -M:run
+```
+
+For a more detailed setup of a dev environment for Metabase, check out our [Developers Guide](./docs/developers-guide/start.md).
 
 ## Internationalization
 
@@ -59,7 +96,7 @@ This repository contains the source code for both the Open Source edition of Met
 
 See [LICENSE.txt](./LICENSE.txt) for details.
 
-Unless otherwise noted, all files © 2023 Metabase, Inc.
+Unless otherwise noted, all files © 2024 Metabase, Inc.
 
 ## [Metabase Experts](https://www.metabase.com/partners/)
 

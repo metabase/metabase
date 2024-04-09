@@ -1,5 +1,6 @@
 import { push } from "react-router-redux";
 
+import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
 import {
   getNativePermission,
   getTablesPermission,
@@ -8,17 +9,17 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
-import { Group, GroupsPermissions } from "metabase-types/api";
-import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
+import type { Group, GroupsPermissions } from "metabase-types/api";
+
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
+import type { PermissionSectionConfig, SchemaEntityId } from "../../types";
+import { getGroupFocusPermissionsUrl } from "../../utils/urls";
 import {
   getControlledDatabaseWarningModal,
   getPermissionWarning,
   getPermissionWarningModal,
 } from "../confirmations";
-import { PermissionSectionConfig, SchemaEntityId } from "../../types";
-import { getGroupFocusPermissionsUrl } from "../../utils/urls";
 
 const buildAccessPermission = (
   entityId: SchemaEntityId,

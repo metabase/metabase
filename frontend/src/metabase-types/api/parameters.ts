@@ -1,6 +1,6 @@
-import { CardId } from "./card";
-import { RowValue } from "./dataset";
-import { LocalFieldReference } from "./query";
+import type { CardId } from "./card";
+import type { RowValue } from "./dataset";
+import type { ConcreteFieldReference, ExpressionReference } from "./query";
 
 export type StringParameterType =
   | "string/="
@@ -22,8 +22,8 @@ export type DateParameterType =
   | "date/range"
   | "date/relative"
   | "date/month-year"
-  | "date/quarter-year";
-("date/all-options");
+  | "date/quarter-year"
+  | "date/all-options";
 
 export type ParameterType =
   | StringParameterType
@@ -47,6 +47,7 @@ export interface Parameter extends ParameterValuesConfig {
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
+  target?: ParameterTarget;
 }
 
 export interface ParameterValuesConfig {
@@ -67,15 +68,22 @@ export interface ValuesSourceConfig {
 
 export type VariableTarget = ["template-tag", string];
 export type ParameterVariableTarget = ["variable", VariableTarget];
+export type ParameterTextTarget = ["text-tag", string];
 
 export type ParameterTarget =
   | ParameterVariableTarget
-  | ParameterDimensionTarget;
+  | ParameterDimensionTarget
+  | ParameterTextTarget;
 
-type DimensionTarget = LocalFieldReference;
-export type ParameterDimensionTarget = [
+export type ParameterDimensionTarget =
+  | NativeParameterDimensionTarget
+  | StructuredParameterDimensionTarget;
+
+export type NativeParameterDimensionTarget = ["dimension", VariableTarget];
+
+export type StructuredParameterDimensionTarget = [
   "dimension",
-  DimensionTarget | VariableTarget,
+  ConcreteFieldReference | ExpressionReference,
 ];
 
 export type ParameterValueOrArray = string | number | Array<any>;

@@ -4,8 +4,10 @@ import _ from "underscore";
 
 import Search from "metabase/entities/search";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { SearchResult } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import Database from "metabase-lib/metadata/Database";
+
 import {
   NodeListItemLink,
   NodeListItemName,
@@ -18,15 +20,15 @@ import {
 } from "./NodeList.styled";
 import { PaneContent } from "./Pane.styled";
 
-interface DatabaseTablesPaneProps {
+export interface DatabaseTablesPaneProps {
   onBack: () => void;
   onClose: () => void;
   onItemClick: (type: string, item: unknown) => void;
   database: Database;
-  searchResults: any[]; // TODO: /api/search is yet to be typed
+  searchResults: SearchResult[];
 }
 
-const DatabaseTablesPane = ({
+export const DatabaseTablesPane = ({
   database,
   onItemClick,
   searchResults,
@@ -97,9 +99,16 @@ const DatabaseTablesPane = ({
           <ul>
             {tables.map(table => (
               <li key={table.id}>
-                <NodeListItemLink onClick={() => onItemClick("table", table)}>
+                <NodeListItemLink
+                  disabled={table.initial_sync_status !== "complete"}
+                  onClick={() => onItemClick("table", table)}
+                >
                   <NodeListItemIcon name="table" />
-                  <NodeListItemName>{table.table_name}</NodeListItemName>
+                  <NodeListItemName
+                    data-disabled={table.initial_sync_status !== "complete"}
+                  >
+                    {table.table_name}
+                  </NodeListItemName>
                 </NodeListItemLink>
               </li>
             ))}

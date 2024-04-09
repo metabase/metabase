@@ -7,8 +7,7 @@
    [metabase.email.messages :as messages]
    [metabase.integrations.slack :as slack]
    [metabase.test :as mt]
-   [metabase.test.util :as tu]
-   [schema.core :as s])
+   [metabase.test.util :as tu])
   (:import
    (java.nio.charset Charset)
    (org.apache.http NameValuePair)
@@ -78,6 +77,12 @@
   [endpoint thunk]
   (doseq [f [test-no-auth-token test-invalid-auth-token]]
     (f endpoint thunk)))
+
+(deftest slack-app-token-truncation-test
+  (testing "slack-app-token is truncated when fetched by the setting's custom getter"
+    (tu/with-temporary-setting-values [slack-app-token "xoxb-781236542736-2364535789652-GkwFDQoHqzXDVsC6GzqYUypD"]
+      (is (= "xoxb-7812...UypD"
+             (slack/slack-app-token))))))
 
 (deftest conversations-list-test
   (testing "conversations-list"
@@ -248,20 +253,18 @@
   (testing "post-chat-message!"
     (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*" (fn [_]
                                                                                  (mock-200-response (slurp "./test_resources/slack_post_chat_message_response.json")))}
-      (let [expected-schema {:ok       (s/eq true)
-                             :message  {:type     (s/eq "message")
-                                        :subtype  (s/eq "bot_message")
-                                        :text     (s/eq ":wow:")
-                                        s/Keyword s/Any}
-                             s/Keyword s/Any}]
+      (let [expected {:ok      true
+                      :message {:type    "message"
+                                :subtype "bot_message"
+                                :text    ":wow:"}}]
         (tu/with-temporary-setting-values [slack-token "test-token"
                                            slack-app-token nil]
-          (is (schema= expected-schema
-                       (slack/post-chat-message! "C94712B6X" ":wow:"))))
+          (is (=? expected
+                  (slack/post-chat-message! "C94712B6X" ":wow:"))))
         (tu/with-temporary-setting-values [slack-app-token "test-token"
                                            slack-token nil]
-          (is (schema= expected-schema
-                       (slack/post-chat-message! "C94712B6X" ":wow:"))))))))
+          (is (=? expected
+                  (slack/post-chat-message! "C94712B6X" ":wow:"))))))))
 
 (deftest slack-token-error-test
   (with-redefs [messages/all-admin-recipients (constantly ["crowberto@metabase.com"])]

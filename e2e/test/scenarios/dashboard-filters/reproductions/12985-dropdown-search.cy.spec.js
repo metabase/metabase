@@ -1,10 +1,10 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   filterWidget,
   popover,
   visitDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -41,8 +41,8 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
       }).then(({ body: { id, card_id, dashboard_id } }) => {
         cy.log("Connect dashboard filters to the nested card");
 
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               id,
               card_id,
@@ -101,8 +101,8 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.log("Connect dashboard filter to the aggregated card");
 
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               id,
               card_id,

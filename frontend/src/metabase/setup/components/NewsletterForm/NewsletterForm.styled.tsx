@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
-import Form from "metabase/core/components/Form";
+
 import FormInput from "metabase/core/components/FormInput";
+import { Form } from "metabase/forms";
+import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const EmailFormRoot = styled.div`
   position: relative;

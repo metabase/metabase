@@ -2,14 +2,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.util.date-2 :as u.date])
   (:import
    (java.time OffsetDateTime)))
 
-(deftest unprepare-string-test
+(deftest ^:parallel unprepare-string-test
   (testing "check simple unprepare with only one string arg"
     (is (= "SELECT count(*) FROM venues WHERE venues.name = 'Barney''s Beanery'"
            (unprepare/unprepare :sql
@@ -34,7 +34,7 @@
   [_ t]
   (format "from_iso8601_timestamp('%s')" (u.date/format t)))
 
-(deftest override-unprepare-test
+(deftest ^:parallel override-unprepare-test
   (testing "check that we can override methods for unpreparing values of specific classes"
     (is (= "SELECT 'Cam\\'s Cool Toucan' FROM TRUE WHERE x ?? y AND z = from_iso8601_timestamp('2017-01-01T00:00:00Z')"
            (unprepare/unprepare ::unprepare-test

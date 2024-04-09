@@ -5,16 +5,17 @@
    [buddy.core.hash :as buddy-hash]
    [cheshire.core :as json]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.convert :as lib.convert]
    [metabase.util :as u]
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-;; TODO - I think most of the functions in this namespace that we don't remove could be moved to [[metabase.mbql.util]]
+;; TODO - I think most of the functions in this namespace that we don't remove could be moved to [[metabase.legacy-mbql.util]]
 
 (defn query-without-aggregations-or-limits?
   "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
@@ -59,11 +60,11 @@
 
 ;;; ------------------------------------------------- Normalization --------------------------------------------------
 
-;; TODO - this has been moved to `metabase.mbql.util`; use that implementation instead.
-(s/defn ^:deprecated normalize-token :- s/Keyword
+;; TODO - this has been moved to `metabase.legacy-mbql.util`; use that implementation instead.
+(mu/defn ^:deprecated normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
-  [token :- su/KeywordOrString]
+  [token :- [:or :keyword :string]]
   (-> (name token)
       u/lower-case-en
       (str/replace #"_" "-")
@@ -72,23 +73,54 @@
 
 ;;; ---------------------------------------------------- Hashing -----------------------------------------------------
 
-(defn- select-keys-for-hashing
+(defn- walk-query-sort-maps
+  "We don't want two queries to have different hashes because their map keys are in different orders, now do we? Convert
+  all the maps to sorted maps so queries are serialized to JSON in an identical order."
+  [x]
+  (walk/postwalk
+   (fn [x]
+     (if (and (map? x)
+              (not (sorted? x)))
+       (into (sorted-map) x)
+       x))
+   x))
+
+(defn- remove-lib-uuids
+  "Two queries should be the same even if they have different :lib/uuids, because they might have both been converted
+  from the same legacy query."
+  [x]
+  (walk/postwalk
+   (fn [x]
+     (if (map? x)
+       (dissoc x :lib/uuid)
+       x))
+   x))
+
+(mu/defn ^:private select-keys-for-hashing
   "Return `query` with only the keys relevant to hashing kept.
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
   producing different hashes.)"
-  [query]
-  {:pre [(map? query)]}
-  (let [{:keys [constraints parameters], :as query} (select-keys query [:database :type :query :native :parameters
-                                                                        :constraints])]
+  [query :- [:maybe :map]]
+  (let [{:keys [constraints parameters], :as query} (select-keys query [:database :lib/type :stages :parameters :constraints])]
     (cond-> query
       (empty? constraints) (dissoc :constraints)
-      (empty? parameters)  (dissoc :parameters))))
+      (empty? parameters)  (dissoc :parameters)
+      true                 remove-lib-uuids
+      true                 walk-query-sort-maps)))
 
-#_{:clj-kondo/ignore [:non-arg-vec-return-type-hint]}
-(s/defn ^bytes query-hash :- (Class/forName "[B")
+(mu/defn query-hash :- bytes?
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
-  [query]
-  (buddy-hash/sha3-256 (json/generate-string (select-keys-for-hashing query))))
+  ^bytes [query :- [:maybe :map]]
+  ;; convert to pMBQL first if this is a legacy query.
+  (let [query (try
+                (cond-> query
+                  (#{"query" "native"} (:type query)) (#(lib.convert/->pMBQL (mbql.normalize/normalize %)))
+                  (#{:query :native} (:type query))   lib.convert/->pMBQL)
+                (catch Throwable e
+                  (throw (ex-info "Error hashing query. Is this a valid query?"
+                                  {:query query}
+                                  e))))]
+    (buddy-hash/sha3-256 (json/generate-string (select-keys-for-hashing query)))))
 
 
 ;;; --------------------------------------------- Query Source Card IDs ----------------------------------------------
@@ -110,7 +142,7 @@
   [[tyype identifier]]
   [tyype identifier])
 
-(def field-options-for-identification
+(def ^:private field-options-for-identification
   "Set of FieldOptions that only mattered for identification purposes." ;; base-type is required for field that use name instead of id
   #{:source-field :join-alias :base-type})
 

@@ -1,10 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
-import EventCard, { EventCardProps } from "./EventCard";
+
+import type { EventCardProps } from "./EventCard";
+import EventCard from "./EventCard";
 
 describe("EventCard", () => {
   it("should render an event with date", () => {
@@ -33,7 +36,7 @@ describe("EventCard", () => {
     expect(screen.getByText("January 1, 2020, 10:20 AM")).toBeInTheDocument();
   });
 
-  it("should toggle an event's visibility", () => {
+  it("should toggle an event's visibility", async () => {
     const props = getProps({
       event: createMockTimelineEvent({
         timestamp: "2020-01-01T10:20:00Z",
@@ -47,7 +50,7 @@ describe("EventCard", () => {
 
     expect(checkbox).toBeChecked();
 
-    userEvent.click(screen.getByRole("checkbox"));
+    await userEvent.click(screen.getByRole("checkbox"));
     expect(props.onHideTimelineEvents).toHaveBeenCalled();
   });
 });

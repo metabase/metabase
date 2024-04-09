@@ -1,20 +1,23 @@
 import { t } from "ttag";
 import _ from "underscore";
+
+import api from "metabase/lib/api";
 import * as Urls from "metabase/lib/urls";
-import { getCardKey } from "metabase/visualizations/lib/utils";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
-import {
+import { getCardKey } from "metabase/visualizations/lib/utils";
+import type Question from "metabase-lib/v1/Question";
+import type {
   DashboardId,
   DashCardId,
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
-import Question from "metabase-lib/Question";
 
 export interface DownloadQueryResultsOpts {
   type: string;
   question: Question;
   result: Dataset;
+  enableFormatting?: boolean;
   dashboardId?: DashboardId;
   dashcardId?: DashCardId;
   uuid?: string;
@@ -26,7 +29,8 @@ export interface DownloadQueryResultsOpts {
 interface DownloadQueryResultsParams {
   method: string;
   url: string;
-  params: URLSearchParams;
+  body?: Record<string, unknown>;
+  params?: URLSearchParams;
 }
 
 export const downloadQueryResults =
@@ -57,6 +61,7 @@ const getDatasetParams = ({
   question,
   dashboardId,
   dashcardId,
+  enableFormatting,
   uuid,
   token,
   params = {},
@@ -65,11 +70,15 @@ const getDatasetParams = ({
 }: DownloadQueryResultsOpts): DownloadQueryResultsParams => {
   const cardId = question.id();
   const isSecureDashboardEmbedding = dashcardId != null && token != null;
+
+  // Formatting is always enabled for Excel
+  const format_rows = enableFormatting && type !== "xlsx" ? "true" : "false";
+
   if (isSecureDashboardEmbedding) {
     return {
       method: "GET",
       url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
-      params: new URLSearchParams(Urls.extractQueryParams(params)),
+      params: Urls.getEncodedUrlSearchParams({ ...params, format_rows }),
     };
   }
 
@@ -78,9 +87,10 @@ const getDatasetParams = ({
     return {
       method: "POST",
       url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query/${type}`,
-      params: new URLSearchParams({
-        parameters: JSON.stringify(result?.json_query?.parameters ?? []),
-      }),
+      params: new URLSearchParams({ format_rows }),
+      body: {
+        parameters: result?.json_query?.parameters ?? [],
+      },
     };
   }
 
@@ -88,9 +98,10 @@ const getDatasetParams = ({
   if (isPublicQuestion) {
     return {
       method: "GET",
-      url: Urls.publicQuestion(uuid, type),
+      url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
       params: new URLSearchParams({
         parameters: JSON.stringify(result?.json_query?.parameters ?? []),
+        format_rows,
       }),
     };
   }
@@ -99,10 +110,12 @@ const getDatasetParams = ({
   if (isEmbeddedQuestion) {
     // For whatever wacky reason the /api/embed endpoint expect params like ?key=value instead
     // of like ?params=<json-encoded-params-array> like the other endpoints do.
+    const params = new URLSearchParams(window.location.search);
+    params.set("format_rows", format_rows);
     return {
       method: "GET",
       url: Urls.embedCard(token, type),
-      params: new URLSearchParams(window.location.search),
+      params,
     };
   }
 
@@ -111,31 +124,53 @@ const getDatasetParams = ({
     return {
       method: "POST",
       url: `/api/card/${cardId}/query/${type}`,
-      params: new URLSearchParams({
-        parameters: JSON.stringify(result?.json_query?.parameters ?? []),
-      }),
+      params: new URLSearchParams({ format_rows }),
+      body: {
+        parameters: result?.json_query?.parameters ?? [],
+      },
     };
   }
 
   return {
-    url: `/api/dataset/${type}`,
     method: "POST",
-    params: new URLSearchParams({
-      query: JSON.stringify(_.omit(result?.json_query ?? {}, "constraints")),
-      visualization_settings: JSON.stringify(visualizationSettings ?? {}),
-    }),
+    url: `/api/dataset/${type}`,
+    params: new URLSearchParams({ format_rows }),
+    body: {
+      query: _.omit(result?.json_query ?? {}, "constraints"),
+      visualization_settings: visualizationSettings ?? {},
+    },
   };
 };
+
+export function getDatasetDownloadUrl(url: string, params?: URLSearchParams) {
+  url = url.replace(api.basename, ""); // make url relative if it's not
+  url = api.basename + url;
+  if (params) {
+    url += `?${params.toString()}`;
+  }
+  const requestUrl = new URL(url, location.origin);
+  return requestUrl.href;
+}
 
 const getDatasetResponse = ({
   url,
   method,
+  body,
   params,
 }: DownloadQueryResultsParams) => {
+  const requestUrl = getDatasetDownloadUrl(url, params);
+
   if (method === "POST") {
-    return fetch(url, { method, body: params });
+    // BE expects the body to be form-encoded :(
+    const formattedBody = new URLSearchParams();
+    if (body != null) {
+      for (const key in body) {
+        formattedBody.append(key, JSON.stringify(body[key]));
+      }
+    }
+    return fetch(requestUrl, { method, body: formattedBody });
   } else {
-    return fetch(`${url}?${params}`);
+    return fetch(requestUrl);
   }
 };
 

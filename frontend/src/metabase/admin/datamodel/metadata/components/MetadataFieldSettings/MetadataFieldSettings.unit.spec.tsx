@@ -1,7 +1,27 @@
-import { Route } from "react-router";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { Database, Field, FieldValues, Table } from "metabase-types/api";
+import fetchMock from "fetch-mock";
+import { Route } from "react-router";
+
+import {
+  setupDatabasesEndpoints,
+  setupFieldValuesEndpoints,
+  setupSearchEndpoints,
+  setupUnauthorizedFieldValuesEndpoints,
+} from "__support__/server-mocks";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
+import { TYPE } from "metabase-lib/v1/types/constants";
+import type {
+  Database,
+  Field,
+  GetFieldValuesResponse,
+  Table,
+} from "metabase-types/api";
 import {
   createMockField,
   createMockFieldDimension,
@@ -21,20 +41,7 @@ import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import {
-  setupDatabasesEndpoints,
-  setupFieldValuesEndpoints,
-  setupSearchEndpoints,
-  setupUnauthorizedFieldValuesEndpoints,
-} from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitFor,
-  waitForElementToBeRemoved,
-  within,
-} from "__support__/ui";
-import { TYPE } from "metabase-lib/types/constants";
+
 import { getMetadataRoutes } from "../../routes";
 
 const ORDERS_ID_FIELD = createOrdersIdField();
@@ -106,7 +113,7 @@ interface SetupOpts {
   database?: Database;
   table?: Table;
   field?: Field;
-  fieldValues?: FieldValues;
+  fieldValues?: GetFieldValuesResponse;
   hasDataAccess?: boolean;
 }
 
@@ -134,16 +141,12 @@ const setup = async ({
     },
   );
 
-  await waitUntilLoaded();
+  await waitForLoaderToBeRemoved();
 };
 
 const fieldLink = (field: Field) => {
   const section = within(screen.getByLabelText(field.name));
   return section.getByLabelText("Field settings");
-};
-
-const waitUntilLoaded = async () => {
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/));
 };
 
 describe("MetadataFieldSettings", () => {
@@ -152,16 +155,16 @@ describe("MetadataFieldSettings", () => {
       await setup();
       expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
 
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      await waitUntilLoaded();
-      userEvent.click(fieldLink(ORDERS_ID_FIELD));
-      await waitUntilLoaded();
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+      await userEvent.click(fieldLink(ORDERS_ID_FIELD));
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(SAMPLE_DB.name));
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(fieldLink(ORDERS_ID_FIELD));
-      await waitUntilLoaded();
+      await userEvent.click(screen.getByText(SAMPLE_DB.name));
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(fieldLink(ORDERS_ID_FIELD));
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
     });
 
@@ -172,23 +175,29 @@ describe("MetadataFieldSettings", () => {
         field: PEOPLE_ID_FIELD,
       });
 
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
-      await waitUntilLoaded();
-      userEvent.click(fieldLink(PEOPLE_ID_FIELD));
-      await waitUntilLoaded();
+      await userEvent.click(
+        screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
+      );
+      await waitForLoaderToBeRemoved();
+      await userEvent.click(fieldLink(PEOPLE_ID_FIELD));
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
-      userEvent.click(fieldLink(PEOPLE_ID_FIELD));
-      await waitUntilLoaded();
+      await userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
+      await userEvent.click(
+        screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
+      );
+      await userEvent.click(fieldLink(PEOPLE_ID_FIELD));
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
-      userEvent.click(fieldLink(PEOPLE_ID_FIELD));
-      await waitUntilLoaded();
+      await userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
+      await userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
+      await userEvent.click(
+        screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
+      );
+      await userEvent.click(fieldLink(PEOPLE_ID_FIELD));
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
     });
   });
@@ -197,8 +206,10 @@ describe("MetadataFieldSettings", () => {
     it("should not allow to enter an empty field name", async () => {
       await setup();
 
-      userEvent.clear(screen.getByDisplayValue(ORDERS_ID_FIELD.display_name));
-      userEvent.tab();
+      await userEvent.clear(
+        screen.getByDisplayValue(ORDERS_ID_FIELD.display_name),
+      );
+      await userEvent.tab();
 
       expect(
         screen.getByDisplayValue(ORDERS_ID_FIELD.display_name),
@@ -221,8 +232,8 @@ describe("MetadataFieldSettings", () => {
         screen.getByText("Cast to a specific data type"),
       ).toBeInTheDocument();
 
-      userEvent.click(screen.getByText("Don't cast"));
-      userEvent.type(screen.getByPlaceholderText("Find..."), "Micro");
+      await userEvent.click(screen.getByText("Don't cast"));
+      await userEvent.type(screen.getByPlaceholderText("Find..."), "Micro");
       expect(
         screen.getByText("Coercion/UNIXMicroSeconds->DateTime"),
       ).toBeInTheDocument();
@@ -260,7 +271,7 @@ describe("MetadataFieldSettings", () => {
     it("should allow to rescan field values", async () => {
       await setup();
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByRole("button", { name: "Re-scan this field" }),
       );
 
@@ -273,7 +284,7 @@ describe("MetadataFieldSettings", () => {
     it("should allow to discard field values", async () => {
       await setup();
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByRole("button", {
           name: "Discard cached field values",
         }),

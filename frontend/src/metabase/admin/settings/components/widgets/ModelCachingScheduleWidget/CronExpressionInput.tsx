@@ -1,11 +1,11 @@
-import { useCallback, useState } from "react";
-import * as React from "react";
 import cx from "classnames";
+import type * as React from "react";
+import { useCallback, useState } from "react";
 import { t, jt } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-
+import ExternalLink from "metabase/core/components/ExternalLink";
+import FormS from "metabase/css/components/form.module.css";
 import { validateCronExpression } from "metabase/lib/cron";
 
 import {
@@ -73,7 +73,7 @@ function Input({
     <StyledInput
       {...props}
       className={cx(
-        "Form-input",
+        FormS.FormInput,
         {
           "border-error bg-error-input": hasError,
         },

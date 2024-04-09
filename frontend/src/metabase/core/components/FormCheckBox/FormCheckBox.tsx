@@ -1,8 +1,11 @@
-import { forwardRef, ReactNode, Ref } from "react";
 import { useField } from "formik";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-import CheckBox, { CheckBoxProps } from "metabase/core/components/CheckBox";
+import type { ReactNode, Ref } from "react";
+import { forwardRef } from "react";
+
+import type { CheckBoxProps } from "metabase/core/components/CheckBox";
+import CheckBox from "metabase/core/components/CheckBox";
 import FormField from "metabase/core/components/FormField";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 
 export interface FormCheckBoxProps
   extends Omit<CheckBoxProps, "checked" | "onChange" | "onBlur"> {
@@ -12,6 +15,9 @@ export interface FormCheckBoxProps
   optional?: boolean;
 }
 
+/**
+ * @deprecated: use FormCheckbox from "metabase/forms"
+ */
 const FormCheckBox = forwardRef(function FormCheckBox(
   {
     name,

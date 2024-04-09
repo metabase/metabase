@@ -3,6 +3,7 @@
   certain permission groups when running queries."
   (:require
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util.log :as log]
@@ -20,23 +21,30 @@
 (defenterprise add-impersonations-to-permissions-graph
   "Augment a provided permissions graph with active connection impersonation policies."
   :feature :advanced-permissions
-  [graph]
+  [graph & {:keys [group-id db-id audit-db?]}]
   (m/deep-merge
    graph
-   (let [impersonations (t2/select :model/ConnectionImpersonation)]
+   (let [impersonations (t2/select :model/ConnectionImpersonation
+                                   {:where [:and
+                                            (when db-id [:= :db_id db-id])
+                                            (when group-id [:= :group_id group-id])
+                                            (when-not audit-db? [:not [:= :db_id config/audit-db-id]])]})]
      (reduce (fn [acc {:keys [db_id group_id]}]
                (assoc-in acc [group_id db_id] {:data {:schemas :impersonated}}))
              {}
              impersonations))))
 
-(defenterprise upsert-impersonations!
-  "Create new Connection Impersonation records or update existing ones, if they have an `:id`."
+(defenterprise insert-impersonations!
+  "Create new Connection Impersonation records. Deletes any existing Connection Impersonation records for the same
+  group and database before creating new ones."
   :feature :advanced-permissions
   [impersonations]
   (doall
    (for [impersonation impersonations]
-     (if-let [id (:id impersonation)]
-       (t2/update! :model/ConnectionImpersonation id impersonation)
+     (do
+       (t2/delete! :model/ConnectionImpersonation
+                   :group_id (:group_id impersonation)
+                   :db_id (:db_id impersonation))
        (-> (t2/insert-returning-instances! :model/ConnectionImpersonation impersonation)
            first)))))
 
@@ -56,9 +64,10 @@
 (defn- delete-impersonations-for-group! [{:keys [group-id]} changes]
   (log/debugf "Deleting unneeded Connection Impersonation policies for Group %d. Graph changes: %s" group-id (pr-str changes))
   (doseq [database-id (set (keys changes))]
-    (delete-impersonations-for-group-database!
-     {:group-id group-id, :database-id database-id}
-     (get-in changes [database-id :data :schemas]))))
+    (when-let [data-perm-changes (get-in changes [database-id :data :schemas])]
+      (delete-impersonations-for-group-database!
+       {:group-id group-id, :database-id database-id}
+       data-perm-changes))))
 
 (defenterprise delete-impersonations-if-needed-after-permissions-change!
   "For use only inside `metabase.models.permissions`; don't call this elsewhere. Delete Connection Impersonations that

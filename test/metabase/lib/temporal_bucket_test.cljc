@@ -3,9 +3,12 @@
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel describe-temporal-interval-test
   (doseq [unit [:day nil]]
@@ -150,15 +153,54 @@
             {:unit :week-of-year}
             {:unit :month-of-year}
             {:unit :quarter-of-year}]
-           (->> (lib.metadata.calculation/returned-columns query)
+           (->> (lib/returned-columns query)
                 first
                 (lib/available-temporal-buckets query)
                 (mapv #(select-keys % [:unit :default])))))))
 
 (deftest ^:parallel temporal-bucketing-options-expressions-test
   (testing "There should be no bucketing options for expressions as they are not supported (#31367)"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+    (let [query (-> lib.tu/venues-query
                     (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))]
-      (is (empty? (->> (lib.metadata.calculation/returned-columns query)
+      (is (empty? (->> (lib/returned-columns query)
                        (m/find-first (comp #{"myadd"} :name))
                        (lib/available-temporal-buckets query)))))))
+
+(deftest ^:parallel option-raw-temporal-bucket-test
+  (let [option (m/find-first #(= (:unit %) :month)
+                             (lib.temporal-bucket/available-temporal-buckets lib.tu/venues-query (meta/field-metadata :checkins :date)))]
+    (is (=? {:lib/type :option/temporal-bucketing}
+            option))
+    (is (= :month
+           (lib.temporal-bucket/raw-temporal-bucket option)))))
+
+(deftest ^:parallel short-name-display-info-test
+  (let [query lib.tu/venues-query]
+    (is (= {"minute"          false
+            "hour"            false
+            "day"             false
+            "week"            false
+            "month"           false
+            "quarter"         false
+            "year"            false
+            "minute-of-hour"  true
+            "hour-of-day"     true
+            "day-of-week"     true
+            "day-of-month"    true
+            "day-of-year"     true
+            "week-of-year"    true
+            "month-of-year"   true
+            "quarter-of-year" true}
+           (into {}
+                 (comp (map #(lib/display-info query -1 %))
+                       (map (juxt :short-name :is-temporal-extraction)))
+                 (lib.temporal-bucket/available-temporal-buckets query (meta/field-metadata :products :created-at)))))))
+
+(deftest ^:parallel source-card-temporal-extraction-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)))]
+    (is (=? {:display-name "Created At: Year"
+             :is-temporal-extraction false}
+            (->> (lib/breakouts query)
+                 first
+                 (lib/display-info query -1))))))

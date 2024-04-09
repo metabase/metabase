@@ -11,11 +11,11 @@
   complained that we first fixed it and then the fix wasn't good enough so we removed it."
   (:require
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   [schema.core :as s]
-   [toucan.db :as db]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (declare humanization-strategy)
@@ -45,17 +45,17 @@
                 custom-display-name?      (not= old-strategy-display-name display-name)]
             (when (and (not= display-name new-strategy-display-name)
                        (not custom-display-name?))
-              (log/info (trs "Updating display name for {0} ''{1}'': ''{2}'' -> ''{3}''"
-                             (name model) internal-name display-name new-strategy-display-name))
+              (log/infof "Updating display name for %s '%s': '%s' -> '%s'"
+                         (name model) internal-name display-name new-strategy-display-name)
               (t2/update! model id
-                {:display_name new-strategy-display-name}))))
-        (db/select-reducible [model :id :name :display_name])))
+                          {:display_name new-strategy-display-name}))))
+        (t2/reducible-select [model :id :name :display_name])))
 
-(s/defn ^:private re-humanize-table-and-field-names!
+(mu/defn ^:private re-humanize-table-and-field-names!
   "Update the non-custom display names of all Tables & Fields in the database using new values obtained from
   the (obstensibly swapped implementation of) `name->human-readable-name`."
-  [old-strategy :- s/Keyword]
-  (doseq [model ['Table 'Field]]
+  [old-strategy :- :keyword]
+  (doseq [model [:model/Table :model/Field]]
     (re-humanize-names! old-strategy model)))
 
 (defn- set-humanization-strategy! [new-value]
@@ -64,14 +64,15 @@
     (when-not (get-method u.humanization/name->human-readable-name new-strategy)
       (throw (IllegalArgumentException.
                (tru "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
-                    new-strategy (keys (methods name->human-readable-name))))))
+                    new-strategy (keys (methods u.humanization/name->human-readable-name))))))
     (let [old-strategy (setting/get-value-of-type :keyword :humanization-strategy)]
       ;; ok, now set the new value
       (setting/set-value-of-type! :keyword :humanization-strategy new-value)
       ;; now rehumanize all the Tables and Fields using the new strategy.
       ;; TODO: Should we do this in a background thread because it is potentially slow?
-      (log/info (trs "Changing Table & Field names humanization strategy from ''{0}'' to ''{1}''"
-                     (name old-strategy) (name new-strategy)))
+      ;; https://github.com/metabase/metabase/issues/39406
+      (log/infof "Changing Table & Field names humanization strategy from '%s' to '%s'"
+                 (name old-strategy) (name new-strategy))
       (re-humanize-table-and-field-names! old-strategy))))
 
 (defsetting ^{:added "0.28.0"} humanization-strategy
@@ -81,11 +82,12 @@
   :type       :keyword
   :default    :simple
   :visibility :settings-manager
+  :export?    true
+  :audit      :raw-value
   :getter     (fn []
-                (let [strategy (setting/get-value-of-type :keyword :humanization-strategy)]
-                  ;; actual advanced method has been excised. Use `:simple` instead if someone had specified
-                  ;; `:advanced`.
-                  (if (= strategy :advanced)
-                    :simple
-                    strategy)))
+                (let [strategy (setting/get-value-of-type :keyword :humanization-strategy)
+                      valid-values (set (keys (methods u.humanization/name->human-readable-name)))
+                      valid-strategy? (contains? valid-values strategy)]
+                  (when (not valid-strategy?) (log/warn (u/format-color :yellow "Invalid humanization strategy '%s'. Defaulting to 'simple'" strategy)))
+                  (if valid-strategy? strategy :simple)))
   :setter     set-humanization-strategy!)

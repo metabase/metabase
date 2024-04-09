@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openOrdersTable,
@@ -8,8 +9,6 @@ import {
   updateDashboardCards,
   addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -45,13 +44,8 @@ describe("scenarios > question > null", () => {
     });
   });
 
-  // [quarantine]
-  //  - possible app corruption and new issue with rendering discovered
-  //  - see: https://github.com/metabase/metabase/pull/13721#issuecomment-724931075
-  //  - test was intermittently failing
-  it.skip("pie chart should handle `0`/`null` values (metabase#13626)", () => {
+  it("pie chart should handle `0`/`null` values (metabase#13626)", () => {
     // Preparation for the test: "Arrange and Act phase" - see repro steps in #13626
-
     cy.createQuestionAndDashboard({
       questionDetails: {
         name: "13626",
@@ -81,15 +75,13 @@ describe("scenarios > question > null", () => {
           },
         ],
       },
-      cardDetails: {
-        size_x: 11,
-        size_y: 6,
-      },
     }).then(({ body: { card_id, dashboard_id } }) => {
       addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
         card: {
+          size_x: 12,
+          size_y: 8,
           parameter_mappings: [
             {
               parameter_id: "1f97c149",
@@ -102,17 +94,16 @@ describe("scenarios > question > null", () => {
 
       // NOTE: The actual "Assertion" phase begins here
       cy.visit(`/dashboard/${dashboard_id}?id=1`);
-      cy.findByText("13626D");
+      cy.findByDisplayValue("13626D");
 
       cy.log("Reported failing in v0.37.0.2");
-      cy.get(".DashCard").within(() => {
+      cy.findByTestId("dashcard-container").within(() => {
         cy.findByTestId("loading-spinner").should("not.exist");
-        cy.findByText("13626");
-        // [quarantine]: flaking in CircleCI, passing locally
-        // TODO: figure out the cause of the failed test in CI after #13721 is merged
-        // cy.get("svg[class*=PieChart__Donut]");
-        // cy.get("[class*=PieChart__Value]").contains("0");
-        // cy.get("[class*=PieChart__Title]").contains(/total/i);
+        cy.findByTestId("legend-caption-title").should("have.text", "13626");
+        cy.findByTestId("pie-chart").should("be.visible");
+        cy.findByTestId("detail-value")
+          .should("be.visible")
+          .and("have.text", "0");
       });
     });
   });
@@ -143,7 +134,7 @@ describe("scenarios > question > null", () => {
           cy.log("P0 regression in v0.37.1!");
           cy.findByTestId("loading-spinner").should("not.exist");
           cy.findByText("13801_Q1");
-          cy.get(".ScalarValue").should("contain", "0");
+          cy.findAllByTestId("scalar-value").should("contain", "0");
           cy.findByText("13801_Q2");
         });
       });

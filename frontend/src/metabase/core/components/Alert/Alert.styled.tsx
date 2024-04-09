@@ -1,7 +1,9 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import { Icon } from "metabase/core/components/Icon";
+
 import { color, lighten } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
+
 import type { AlertVariant } from "./Alert";
 
 export interface AlertRootProps {

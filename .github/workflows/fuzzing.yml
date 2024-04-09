@@ -1,21 +1,23 @@
 name: Fuzzing
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - 'master'
       - 'release-**'
+    paths:
+      - 'frontend/src/metabase-lib/expressions/**'
   pull_request:
-    paths-ignore:
-    - 'docs/**'
+    paths:
+      - 'frontend/src/metabase-lib/expressions/**'
 
 jobs:
-
   fe-fuzz-tokenizer:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
@@ -31,7 +33,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment

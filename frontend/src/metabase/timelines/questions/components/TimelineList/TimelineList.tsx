@@ -1,5 +1,5 @@
-import { Timeline, TimelineEvent } from "metabase-types/api";
 import TimelineCard from "metabase/timelines/questions/components/TimelineCard/TimelineCard";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 export interface TimelineListProps {
   timelines: Timeline[];

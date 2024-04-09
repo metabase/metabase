@@ -4,10 +4,13 @@
    [clojure.set :refer [difference]]
    [compojure.core :refer [GET POST PUT]]
    [hiccup.core :refer [html]]
+   [hiccup.page :refer [html5]]
    [metabase.api.alert :as api.alert]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.config :as config]
    [metabase.email :as email]
+   [metabase.events :as events]
    [metabase.integrations.slack :as slack]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
@@ -21,22 +24,23 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse]
+   [metabase.pulse.preview :as preview]
    [metabase.pulse.render :as render]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.urls :as urls]
-   [schema.core :as s]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
 
-(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
-                                          'metabase-enterprise.advanced-permissions.common))
+(when config/ee-available?
+  (classloader/require 'metabase-enterprise.sandbox.api.util
+                       'metabase-enterprise.advanced-permissions.common))
 
 (defn- maybe-filter-pulses-recipients
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
@@ -67,8 +71,7 @@
                 (fn [channels]
                   (map #(dissoc % :recipients) channels))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write
   permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.
 
@@ -80,9 +83,9 @@
   This may include subscriptions which the current user does not have collection permissions for, in which case
   some sensitive metadata (the list of cards and recipients) is stripped out."
   [archived dashboard_id creator_or_recipient]
-  {archived           (s/maybe su/BooleanString)
-   dashboard_id       (s/maybe su/IntGreaterThanZero)
-   creator_or_recipient (s/maybe su/BooleanString)}
+  {archived             [:maybe ms/BooleanString]
+   dashboard_id         [:maybe ms/PositiveInt]
+   creator_or_recipient [:maybe ms/BooleanString]}
   (let [creator-or-recipient (Boolean/parseBoolean creator_or_recipient)
         archived?            (Boolean/parseBoolean archived)
         pulses               (->> (pulse/retrieve-pulses {:archived?    archived?
@@ -103,18 +106,17 @@
     (assert (integer? card-id))
     (api/read-check Card card-id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new `Pulse`."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id parameters]} :body}]
-  {name                su/NonBlankString
-   cards               (su/non-empty [pulse/CoercibleToCardRef])
-   channels            (su/non-empty [su/Map])
-   skip_if_empty       (s/maybe s/Bool)
-   collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)
-   dashboard_id        (s/maybe su/IntGreaterThanZero)
-   parameters          [su/Map]}
+  {name                ms/NonBlankString
+   cards               [:+ pulse/CoercibleToCardRef]
+   channels            [:+ :map]
+   skip_if_empty       [:maybe :boolean]
+   collection_id       [:maybe ms/PositiveInt]
+   collection_position [:maybe ms/PositiveInt]
+   dashboard_id        [:maybe ms/PositiveInt]
+   parameters          [:maybe [:sequential :map]]}
   (validation/check-has-application-permission :subscription false)
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
@@ -137,14 +139,16 @@
      ;; check that and fix it if needed
      (api/maybe-reconcile-collection-position! pulse-data)
      ;; ok, now create the Pulse
-     (api/check-500
-      (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
+     (let [pulse (api/check-500
+                  (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data))]
+       (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
+       pulse))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
   we still return it but with some sensitive metadata removed."
   [id]
+  {id ms/PositiveInt}
   (api/let-404 [pulse (pulse/retrieve-pulse id)]
    (api/check-403 (mi/can-read? pulse))
    (-> pulse
@@ -169,17 +173,17 @@
                  channel))))
     pulse-updates))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update a Pulse with `id`."
   [id :as {{:keys [name cards channels skip_if_empty collection_id archived parameters], :as pulse-updates} :body}]
-  {name          (s/maybe su/NonBlankString)
-   cards         (s/maybe (su/non-empty [pulse/CoercibleToCardRef]))
-   channels      (s/maybe (su/non-empty [su/Map]))
-   skip_if_empty (s/maybe s/Bool)
-   collection_id (s/maybe su/IntGreaterThanZero)
-   archived      (s/maybe s/Bool)
-   parameters    [su/Map]}
+  {id            ms/PositiveInt
+   name          [:maybe ms/NonBlankString]
+   cards         [:maybe [:+ pulse/CoercibleToCardRef]]
+   channels      [:maybe [:+ :map]]
+   skip_if_empty [:maybe :boolean]
+   collection_id [:maybe ms/PositiveInt]
+   archived      [:maybe :boolean]
+   parameters    [:maybe [:sequential ms/Map]]}
   ;; do various perms checks
   (try
    (validation/check-has-application-permission :monitoring)
@@ -219,8 +223,7 @@
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/form_input"
+(api/defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
   (validation/check-has-application-permission :subscription false)
@@ -251,33 +254,54 @@
   {:arglists '([card])}
   [{query :dataset_query, card-id :id}]
   (binding [qp.perms/*card-id* card-id]
-    (qp/process-query-and-save-execution!
-     (assoc query
-            :async? false
-            :middleware {:process-viz-settings? true
-                         :js-int-to-string?     false})
-     {:executed-by api/*current-user-id*
-      :context     :pulse
-      :card-id     card-id})))
+    (qp/process-query
+     (qp/userland-query
+      (assoc query
+             :middleware {:process-viz-settings? true
+                          :js-int-to-string?     false})
+      {:executed-by api/*current-user-id*
+       :context     :pulse
+       :card-id     card-id}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/preview_card/:id"
+(api/defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
   [id]
+  {id ms/PositiveInt}
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)]
     {:status 200
-     :body   (html
+     :body   (html5
               [:html
                [:body {:style "margin: 0;"}
                 (binding [render/*include-title*   true
                           render/*include-buttons* true]
                   (render/render-pulse-card-for-display (metabase.pulse/defaulted-timezone card) card result))]])}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/preview_card_info/:id"
+(api/defendpoint GET "/preview_dashboard/:id"
+  "Get HTML rendering of a Dashboard with `id`.
+
+  This endpoint relies on a custom middleware defined in `metabase.pulse.preview/style-tag-nonce-middleware` to
+  allow the style tag to render properly, given our Content Security Policy setup. This middleware is attached to these
+  routes at the bottom of this namespace using `metabase.api.common/define-routes`."
+  [id]
+  {id ms/PositiveInt}
+  (api/read-check :model/Dashboard id)
+  {:status  200
+   :headers {"Content-Type" "text/html"}
+   :body    (preview/style-tag-from-inline-styles
+             (html5
+               [:head
+                [:meta {:charset "utf-8"}]
+                [:link {:nonce "%NONCE%" ;; this will be str/replaced by 'style-tag-nonce-middleware
+                        :rel  "stylesheet"
+                        :href "https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap"}]]
+               [:body [:h2 (format "Backend Artifacts Preview for Dashboard %s" id)]
+                (preview/render-dashboard-to-html id)]))})
+
+(api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
   [id]
+  {id ms/PositiveInt}
   (let [card      (api/read-check Card id)
         result    (pulse-card-query-results card)
         data      (:data result)
@@ -294,42 +318,48 @@
 
 (def ^:private preview-card-width 400)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/preview_card_png/:id"
+(api/defendpoint GET "/preview_card_png/:id"
   "Get PNG rendering of a Card with `id`."
   [id]
+  {id ms/PositiveInt}
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)
         ba     (binding [render/*include-title* true]
                  (render/render-pulse-card-to-png (metabase.pulse/defaulted-timezone card) card result preview-card-width))]
     {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/test"
+(api/defendpoint POST "/test"
   "Test send an unsaved pulse."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id] :as body} :body}]
-  {name                su/NonBlankString
-   cards               (su/non-empty [pulse/CoercibleToCardRef])
-   channels            (su/non-empty [su/Map])
-   skip_if_empty       (s/maybe s/Bool)
-   collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)
-   dashboard_id        (s/maybe su/IntGreaterThanZero)}
-  (check-card-read-permissions cards)
+  {name                ms/NonBlankString
+   cards               [:+ pulse/CoercibleToCardRef]
+   channels            [:+ :map]
+   skip_if_empty       [:maybe :boolean]
+   collection_id       [:maybe ms/PositiveInt]
+   collection_position [:maybe ms/PositiveInt]
+   dashboard_id        [:maybe ms/PositiveInt]}
+  ;; Check permissions on cards that exist. Placeholders don't matter.
+  (check-card-read-permissions
+    (remove (fn [{:keys [id display]}]
+              (and (nil? id)
+                   (= "placeholder" display))) cards))
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
   (metabase.pulse/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:id/subscription"
+(api/defendpoint DELETE "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
   [id]
+  {id ms/PositiveInt}
   (api/let-404 [pulse-id (t2/select-one-pk Pulse :id id)
                 pc-id    (t2/select-one-pk PulseChannel :pulse_id pulse-id :channel_type "email")
                 pcr-id   (t2/select-one-pk PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
     (t2/delete! PulseChannelRecipient :id pcr-id))
   api/generic-204-no-content)
 
-(api/define-routes)
+(def ^:private style-nonce-middleware
+  (partial preview/style-tag-nonce-middleware "/api/pulse/preview_dashboard"))
+
+(api/define-routes style-nonce-middleware)

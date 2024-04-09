@@ -1,7 +1,9 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
+import FormS from "metabase/css/components/form.module.css";
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 export const FieldRow = styled.div`
   display: flex;
@@ -26,7 +28,7 @@ export const Label = styled.label<{
     `}
 `;
 
-Label.defaultProps = { className: "Form-label" };
+Label.defaultProps = { className: FormS.FormLabel };
 
 export const InfoIcon = styled(Icon)`
   margin-left: 8px;

@@ -1,0 +1,41 @@
+name: duration_seconds
+display_name: Duration Seconds
+description: null
+created_at: '2023-11-13T18:40:43.716586Z'
+active: true
+visibility_type: normal
+table_id:
+- Internal Metabase Database
+- public
+- v_tasks
+database_type: float8
+base_type: type/Float
+effective_type: type/Float
+semantic_type: type/Quantity
+database_is_auto_increment: false
+database_required: false
+fk_target_field_id: null
+dimensions: []
+json_unfolding: false
+parent_id: null
+coercion_strategy: null
+preview_display: true
+position: 5
+custom_position: 0
+database_position: 5
+has_field_values: null
+settings: null
+caveats: null
+points_of_interest: null
+nfc_path: null
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_tasks
+  model: Table
+- id: duration_seconds
+  model: Field
+database_indexed: null
+database_partitioned: null

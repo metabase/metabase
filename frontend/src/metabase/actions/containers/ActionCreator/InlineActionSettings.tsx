@@ -1,10 +1,22 @@
-import { ChangeEvent } from "react";
-import { t } from "ttag";
+import type { ChangeEvent } from "react";
 import { connect } from "react-redux";
+import { t } from "ttag";
 
+import ConfirmContent from "metabase/components/ConfirmContent";
+import CopyWidget from "metabase/components/CopyWidget";
+import Modal from "metabase/components/Modal";
+import Button from "metabase/core/components/Button";
+import FormField from "metabase/core/components/FormField";
+import TextArea from "metabase/core/components/TextArea";
+import Toggle from "metabase/core/components/Toggle";
+import Tooltip from "metabase/core/components/Tooltip";
+import Actions from "metabase/entities/actions/actions";
+import { useToggle } from "metabase/hooks/use-toggle";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import * as Urls from "metabase/lib/urls";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { getSetting } from "metabase/selectors/settings";
-
+import { getUserIsAdmin } from "metabase/selectors/user";
 import type {
   ActionFormSettings,
   WritebackAction,
@@ -12,22 +24,8 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import Tooltip from "metabase/core/components/Tooltip";
-import Button from "metabase/core/components/Button";
-import Toggle from "metabase/core/components/Toggle";
-import FormField from "metabase/core/components/FormField";
-import TextArea from "metabase/core/components/TextArea";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-import { getUserIsAdmin } from "metabase/selectors/user";
-
-import Actions from "metabase/entities/actions/actions";
-import ConfirmContent from "metabase/components/ConfirmContent";
-import Modal from "metabase/components/Modal";
-import { useToggle } from "metabase/hooks/use-toggle";
-import CopyWidget from "metabase/components/CopyWidget";
-
 import { isActionPublic, isSavedAction } from "../../utils";
+
 import {
   ActionSettingsContent,
   CopyWidgetContainer,

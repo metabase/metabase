@@ -1,17 +1,25 @@
 /* eslint-disable react/prop-types */
+import styled from "@emotion/styled";
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
-import styled from "@emotion/styled";
 import _ from "underscore";
+
+import CS from "metabase/css/core/index.css";
+import {
+  OptionItemDescription,
+  OptionItemRoot,
+  OptionItemTitle,
+} from "metabase/dashboard/components/ParametersPopover.styled";
 import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
-import { Icon } from "metabase/core/components/Icon";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
+import { Icon } from "metabase/ui";
 
 const PopoverBody = styled.div`
   max-width: 300px;
 `;
 
-export default class ParametersPopover extends Component {
+export class ParametersPopover extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {};
@@ -57,21 +65,27 @@ export default class ParametersPopover extends Component {
 }
 
 export const ParameterOptionsSection = ({ section, onClick }) => (
-  <li onClick={onClick} className="p1 px3 cursor-pointer brand-hover">
-    <div
-      className="text-brand text-bold flex align-center"
+  <OptionItemRoot onClick={onClick}>
+    <OptionItemTitle
+      className={cx(CS.textBold, CS.flex, CS.alignCenter)}
       style={{ marginBottom: 4 }}
     >
-      <Icon size="16" name={getParameterIconName(section.id)} className="mr1" />
+      <Icon
+        size="16"
+        name={getParameterIconName(section.id)}
+        className={CS.mr1}
+      />
       {section.name}
-    </div>
-    <div className="text-medium">{section.description}</div>
-  </li>
+    </OptionItemTitle>
+    <OptionItemDescription>{section.description}</OptionItemDescription>
+  </OptionItemRoot>
 );
 
 export const ParameterOptionsSectionsPane = ({ sections, onSelectSection }) => (
-  <PopoverBody className="pb2">
-    <h3 className="pb2 pt3 px3">{t`What do you want to filter?`}</h3>
+  <PopoverBody className={CS.pb2}>
+    <h3
+      className={cx(CS.pb2, CS.pt3, CS.px3)}
+    >{t`What do you want to filter?`}</h3>
     <ul>
       {sections.map(section => (
         <ParameterOptionsSection
@@ -85,17 +99,17 @@ export const ParameterOptionsSectionsPane = ({ sections, onSelectSection }) => (
 );
 
 export const ParameterOptionItem = ({ option, onClick }) => (
-  <li onClick={onClick} className="p1 px3 cursor-pointer brand-hover">
-    <div className="text-brand text-bold" style={{ marginBottom: 4 }}>
+  <OptionItemRoot onClick={onClick}>
+    <OptionItemTitle className={CS.textBold} style={{ marginBottom: 4 }}>
       {option.menuName || option.name}
-    </div>
-    <div className="text-medium">{option.description}</div>
-  </li>
+    </OptionItemTitle>
+    <OptionItemDescription>{option.description}</OptionItemDescription>
+  </OptionItemRoot>
 );
 
 export const ParameterOptionsPane = ({ options, onSelectOption }) => (
-  <PopoverBody className="pb2">
-    <h3 className="pb2 pt3 px3">{t`What kind of filter?`}</h3>
+  <PopoverBody className={CS.pb2}>
+    <h3 className={cx(CS.pb2, CS.pt3, CS.px3)}>{t`What kind of filter?`}</h3>
     <ul>
       {options &&
         options.map(option => (

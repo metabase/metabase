@@ -1,13 +1,14 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openNativeEditor,
+  clearFilterWidget,
   filterWidget,
   popover,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -17,6 +18,76 @@ describe("scenarios > filters > sql filters > field filter", () => {
     cy.intercept("POST", "api/dataset").as("dataset");
 
     cy.signInAsAdmin();
+  });
+
+  describe("required tag", () => {
+    beforeEach(() => {
+      openNativeEditor();
+      SQLFilter.enterParameterizedQuery(
+        "SELECT * FROM products WHERE {{filter}}",
+      );
+
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Field Filter");
+
+      FieldFilter.mapTo({
+        table: "Products",
+        field: "ID",
+      });
+
+      cy.findByTestId("filter-widget-type-select")
+        .should("have.value", "ID")
+        .should("be.disabled");
+    });
+
+    function setDefaultFieldValue(value) {
+      cy.findByTestId("sidebar-content")
+        .findByText("Enter a default value…")
+        .click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter a default value…").type(value);
+        cy.button("Add filter").click();
+      });
+    }
+
+    it("does not need a default value to run and save the query", () => {
+      SQLFilter.toggleRequired();
+      SQLFilter.getRunQueryButton().should("not.be.disabled");
+      SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
+    });
+
+    it("when there's a default value, enabling required sets it as a parameter value", () => {
+      setDefaultFieldValue(5);
+      filterWidget().click();
+      clearFilterWidget();
+      SQLFilter.toggleRequired();
+      filterWidget().findByTestId("field-set-content").should("have.text", "5");
+    });
+
+    it("when there's a default value and value is unset, updating filter sets the default back", () => {
+      setDefaultFieldValue(10);
+      SQLFilter.toggleRequired();
+      filterWidget().click();
+      popover().within(() => {
+        cy.icon("close").click();
+        cy.findByText("Set to default").click();
+      });
+      filterWidget()
+        .findByTestId("field-set-content")
+        .should("have.text", "10");
+    });
+
+    it("when there's a default value and template tag is required, can reset it back", () => {
+      setDefaultFieldValue(8);
+      SQLFilter.toggleRequired();
+      filterWidget().click();
+      popover().within(() => {
+        cy.get("input").type("10{enter}");
+        cy.findByText("Update filter").click();
+      });
+      filterWidget().icon("time_history").click();
+      filterWidget().findByTestId("field-set-content").should("have.text", "8");
+    });
   });
 
   context("ID filter", () => {
@@ -34,27 +105,24 @@ describe("scenarios > filters > sql filters > field filter", () => {
         field: "ID",
       });
 
-      FieldFilter.setWidgetType("ID");
+      cy.findByTestId("filter-widget-type-select")
+        .should("have.value", "ID")
+        .should("be.disabled");
     });
 
     it("should work when set initially as default value and then through the filter widget", () => {
-      SQLFilter.toggleRequired();
-
-      FieldFilter.openEntryForm({ isFilterRequired: true });
+      cy.log("the default value should apply");
       FieldFilter.addDefaultStringFilter("2");
-
       SQLFilter.runQuery();
-
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Small Marble Shoes");
       });
 
-      FieldFilter.openEntryForm();
-      FieldFilter.addWidgetStringFilter("1");
-
+      cy.log("the default value should not apply when the value is cleared");
+      clearFilterWidget();
       SQLFilter.runQuery();
-
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
+        cy.findByText("Small Marble Shoes");
         cy.findByText("Rustic Paper Wallet");
       });
     });
@@ -75,14 +143,15 @@ describe("scenarios > filters > sql filters > field filter", () => {
         field: "Longitude",
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("None").should("be.visible");
+      cy.findByTestId("filter-widget-type-select")
+        .should("have.value", "None")
+        .should("be.disabled");
 
       filterWidget().should("not.exist");
     });
 
     it("should be runnable with the None filter being ignored (metabase#20643)", () => {
-      cy.get(".RunButton").first().click();
+      cy.findAllByTestId("run-button").first().click();
 
       cy.wait("@dataset");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -102,7 +171,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("111 Leupp Road");
       });
     });
@@ -136,12 +205,12 @@ describe("scenarios > filters > sql filters > field filter", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 42 rows");
 
-      clearFilterValue();
+      clearFilterWidget();
       filterWidget().click();
 
       popover().within(() => {
         cy.findByText("Gizmo").click();
-        cy.button("Add filter").click();
+        cy.button("Update filter").click();
       });
 
       cy.findByTestId("qb-header").find(".Icon-play").click();
@@ -155,12 +224,10 @@ describe("scenarios > filters > sql filters > field filter", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter widget type")
         .parent()
-        .findAllByTestId("select-button")
-        .contains("String");
+        .findByTestId("filter-widget-type-select")
+        .click();
+
+      popover().contains("String");
     });
   });
 });
-
-function clearFilterValue() {
-  filterWidget().find(".Icon-close").click();
-}

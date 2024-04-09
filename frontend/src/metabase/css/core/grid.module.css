@@ -1,0 +1,23 @@
+.Grid {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.GridCell {
+  flex: 1;
+}
+
+.Grid1of2 > .GridCell {
+  flex: 0 0 50%;
+}
+
+.GridGutters {
+  margin: -1em 0 1em -1em;
+}
+
+.GridGutters > .GridCell {
+  padding: 1em 0 0 1em;
+}

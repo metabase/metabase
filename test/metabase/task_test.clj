@@ -9,8 +9,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
-   [metabase.util.schema :as su]
-   [schema.core :as s])
+   [metabase.util.malli.schema :as ms])
   (:import
    (org.quartz CronTrigger JobDetail)))
 
@@ -57,7 +56,7 @@
 
 (defn- triggers []
   (set
-   (for [^CronTrigger trigger (qs/get-triggers-of-job (#'metabase.task/scheduler) (.getKey (job)))]
+   (for [^CronTrigger trigger (qs/get-triggers-of-job (#'task/scheduler) (.getKey (job)))]
      {:cron-expression     (.getCronExpression trigger)
       :misfire-instruction (.getMisfireInstruction trigger)})))
 
@@ -90,16 +89,23 @@
 (deftest scheduler-info-test
   (testing "Make sure scheduler-info doesn't explode and returns info in the general shape we expect"
     (mt/with-temp-scheduler
-      (is (schema= {:scheduler (su/non-empty [s/Str])
-                    :jobs      [{:key         su/NonBlankString
-                                 :description su/NonBlankString
-                                 :triggers    [{:key                 su/NonBlankString
-                                                :description         su/NonBlankString
-                                                :misfire-instruction su/NonBlankString
-                                                :state               su/NonBlankString
-                                                s/Keyword            s/Any}]
-                                 s/Keyword    s/Any}]}
-                   (task/scheduler-info))))))
+      (is (malli= [:map {:closed true}
+                   [:scheduler [:+ :string]]
+                   [:jobs      [:sequential
+                                [:and
+                                 [:map-of :keyword :any]
+                                 [:map
+                                  [:key         ms/NonBlankString]
+                                  [:description ms/NonBlankString]
+                                  [:triggers    [:sequential
+                                                 [:and
+                                                  [:map-of :keyword :any]
+                                                  [:map
+                                                   [:key ms/NonBlankString]
+                                                   [:description ms/NonBlankString]
+                                                   [:misfire-instruction ms/NonBlankString]
+                                                   [:state ms/NonBlankString]]]]]]]]]]
+                  (task/scheduler-info))))))
 
 (deftest start-scheduler-no-op-with-env-var-test
   (tu/do-with-unstarted-temp-scheduler
@@ -107,11 +113,11 @@
     (testing (format "task/start-scheduler! should no-op When MB_DISABLE_SCHEDULER is set")
       (testing "Sanity check"
         (is (not (qs/started? (#'task/scheduler)))))
-      (mt/with-temp-env-var-value ["MB_DISABLE_SCHEDULER" "TRUE"]
+      (mt/with-temp-env-var-value! ["MB_DISABLE_SCHEDULER" "TRUE"]
         (task/start-scheduler!)
         (is (not (qs/started? (#'task/scheduler)))))
       (testing "Should still be able to 'schedule' tasks even if scheduler is unstarted"
         (is (some? (task/schedule-task! (job) (trigger-1)))))
-      (mt/with-temp-env-var-value ["MB_DISABLE_SCHEDULER" "FALSE"]
+      (mt/with-temp-env-var-value! ["MB_DISABLE_SCHEDULER" "FALSE"]
         (task/start-scheduler!)
         (is (qs/started? (#'task/scheduler))))))))

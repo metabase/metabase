@@ -1,5 +1,5 @@
-import { restore, filterWidget, popover } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, filterWidget, popover } from "e2e/support/helpers";
 
 import { runQuery } from "../helpers/e2e-sql-filter-helpers";
 
@@ -45,19 +45,20 @@ describe("issue 16756", () => {
     cy.icon("variable").click();
 
     // Update the filter widget type
-    cy.findByTestId("sidebar-right").findByText("Date Range").click();
+    cy.findByTestId("sidebar-right").findByDisplayValue("Date Range").click();
 
     popover().contains("Single Date").click();
 
     // The previous filter value should reset
-    cy.location("search").should("eq", "");
+    cy.location("search").should("eq", "?filter=");
 
-    // Set the date to the 15th of whichever the month and year are when this tests runs
+    cy.log("Set the date to the 15th of October 2023");
+    cy.clock(new Date("2023-10-31"), ["Date"]);
     filterWidget().click();
 
     popover().contains("15").click();
 
-    cy.button("Update filter").click();
+    cy.button("Add filter").click();
 
     runQuery();
 

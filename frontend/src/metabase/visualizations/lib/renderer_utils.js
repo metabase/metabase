@@ -1,16 +1,20 @@
 /// Utility functions used by both the LineAreaBar renderer and the RowRenderer
 
-import _ from "underscore";
 import { getIn } from "icepick";
+import _ from "underscore";
 
-import { parseTimestamp } from "metabase/lib/time";
 import {
   NULL_NUMERIC_VALUE,
   TOTAL_ORDINAL_VALUE,
 } from "metabase/lib/constants";
 import { formatNullable } from "metabase/lib/formatting/nullable";
-import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
+import { parseTimestamp } from "metabase/lib/time";
+import { isNative } from "metabase-lib/v1/queries/utils/card";
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
+import { computeNumericDataInverval, dimensionIsNumeric } from "./numeric";
+import { getLineAreaBarComparisonSettings } from "./settings";
 import {
   computeTimeseriesDataInverval,
   dimensionIsTimeseries,
@@ -18,11 +22,8 @@ import {
   getTimezone,
   minTimeseriesUnit,
 } from "./timeseries";
-import { computeNumericDataInverval, dimensionIsNumeric } from "./numeric";
-
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
 import { invalidDateWarning, nullDimensionWarning } from "./warnings";
-import { getLineAreaBarComparisonSettings } from "./settings";
 
 export function initChart(chart, element) {
   // set the bounds
@@ -353,17 +354,38 @@ export function xValueForWaterfallTotal({ settings, series }) {
   return TOTAL_ORDINAL_VALUE;
 }
 
+const uniqueCards = series => _.uniq(series.map(({ card }) => card.id)).length;
+
+const getMetricColumnsCount = series => {
+  const metricColumnPredicate = !isNative(series[0]?.card)
+    ? column => column.source === "aggregation"
+    : column => isNumeric(column);
+
+  return _.uniq(
+    series
+      .flatMap(({ data: { cols } }) => cols.filter(metricColumnPredicate))
+      .map(({ name }) => name),
+  ).length;
+};
+
 export function shouldSplitYAxis(
   { settings, chartType, isScalarSeries, series },
   datas,
   yExtents,
 ) {
-  if (
-    isScalarSeries ||
-    chartType === "scatter" ||
-    settings["graph.y_axis.auto_split"] === false ||
-    isStacked(settings, datas)
-  ) {
+  const isSuitableChartType = !isScalarSeries && chartType !== "scatter";
+  if (!isSuitableChartType) {
+    return false;
+  }
+
+  if (!settings["graph.y_axis.auto_split"]) {
+    return false;
+  }
+
+  const isSingleCardWithSingleMetricColumn =
+    uniqueCards(series) <= 1 && getMetricColumnsCount(series) <= 1;
+
+  if (isSingleCardWithSingleMetricColumn || isStacked(settings, datas)) {
     return false;
   }
 

@@ -1,8 +1,10 @@
-import _ from "underscore";
 import { updateIn } from "icepick";
 import { t } from "ttag";
+import _ from "underscore";
+
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+
 import { SettingsCloudStoreLink } from "./components/SettingsCloudStoreLink";
 
 if (hasPremiumFeature("hosting")) {

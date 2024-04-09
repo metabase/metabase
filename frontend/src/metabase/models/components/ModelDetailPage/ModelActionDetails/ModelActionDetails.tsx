@@ -5,22 +5,20 @@ import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-
 import Actions from "metabase/entities/actions";
 import Databases from "metabase/entities/databases";
+import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { parseTimestamp } from "metabase/lib/time";
 import * as Urls from "metabase/lib/urls";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
-
-import type { Card, WritebackAction } from "metabase-types/api";
-import type { Dispatch, State } from "metabase-types/store";
-import type Question from "metabase-lib/Question";
-import Database from "metabase-lib/metadata/Database";
+import type Question from "metabase-lib/v1/Question";
 import {
   canArchiveAction,
   canEditAction,
   canRunAction,
-} from "metabase-lib/actions/utils";
+} from "metabase-lib/v1/actions/utils";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { Card, WritebackAction } from "metabase-types/api";
+import type { Dispatch, State } from "metabase-types/store";
 
 import {
   EmptyStateContainer,
@@ -28,7 +26,7 @@ import {
   EmptyStateMessage,
   EmptyStateActionContainer,
 } from "../EmptyState.styled";
-import ModelActionListItem from "./ModelActionListItem";
+
 import {
   Root,
   ActionsHeader,
@@ -36,10 +34,10 @@ import {
   ActionList,
   ActionAlert,
 } from "./ModelActionDetails.styled";
+import ModelActionListItem from "./ModelActionListItem";
 
 interface OwnProps {
   model: Question;
-  canRunActions: boolean;
 }
 
 interface DispatchProps {

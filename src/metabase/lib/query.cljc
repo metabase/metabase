@@ -1,26 +1,24 @@
 (ns metabase.lib.query
   (:refer-clojure :exclude [remove])
   (:require
+   [malli.core :as mc]
+   [medley.core :as m]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.log :as log]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
-
-(defmethod lib.normalize/normalize :mbql/query
-  [query]
-  (lib.normalize/normalize-map
-   query
-   keyword
-   {:type   keyword
-    :stages (partial mapv lib.normalize/normalize)}))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
   [_query _stage-number _query]
@@ -36,6 +34,43 @@
   [query stage-number x style]
   (lib.metadata.calculation/display-name query stage-number (lib.util/query-stage x stage-number) style))
 
+(mu/defn native? :- :boolean
+  "Given a query, return whether it is a native query."
+  [query :- ::lib.schema/query]
+  (let [stage (lib.util/query-stage query 0)]
+    (= (:lib/type stage) :mbql.stage/native)))
+
+(defmethod lib.metadata.calculation/display-info-method :mbql/query
+  [_query _stage-number query]
+  {:is-native   (native? query)
+   :is-editable (lib.metadata/editable? query)})
+
+(mu/defn stage-count :- ::lib.schema.common/int-greater-than-or-equal-to-zero
+  "Returns the count of stages in query"
+  [query :- ::lib.schema/query]
+  (count (:stages query)))
+
+(defmulti can-run-method
+  "Returns whether the query is runnable based on first stage :lib/type"
+  (fn [query]
+    (:lib/type (lib.util/query-stage query 0))))
+
+(defmethod can-run-method :default
+  [_query]
+  true)
+
+(mu/defn can-run :- :boolean
+  "Returns whether the query is runnable. Manually validate schema for cljs."
+  [query :- ::lib.schema/query]
+  (and (mc/validate ::lib.schema/query query)
+       (boolean (can-run-method query))))
+
+(mu/defn can-save :- :boolean
+  "Returns whether the query can be saved."
+  [query :- ::lib.schema/query]
+  (and (lib.metadata/editable? query)
+       (can-run query)))
+
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
   ([metadata-providerable stages]
@@ -49,44 +84,99 @@
     :database     database-id
     :stages       stages}))
 
-(mu/defn query-with-stage
-  "Create a query from a specific stage."
-  ([metadata-providerable stage]
-   (query-with-stages metadata-providerable [stage]))
+(defn- query-from-legacy-query
+  [metadata-providerable legacy-query]
+  (try
+    (let [pmbql-query (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query))]
+      (merge
+       pmbql-query
+       (query-with-stages metadata-providerable (:stages pmbql-query))))
+    (catch #?(:clj Throwable :cljs :default) e
+      (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
+                      {:legacy-query legacy-query}
+                      e)))))
 
-  ([database-id           :- ::lib.schema.id/database
-    metadata-providerable :- lib.metadata/MetadataProviderable
-    stage]
-   (query-with-stages database-id metadata-providerable [stage])))
-
-(mu/defn ^:private query-from-existing :- ::lib.schema/query
-  [metadata-providerable :- lib.metadata/MetadataProviderable
-   query                 :- lib.util/LegacyOrPMBQLQuery]
-  (let [query (lib.util/pipeline query)]
-    (query-with-stages metadata-providerable (:stages query))))
-
-(defmulti ^:private ->query
+(defmulti ^:private query-method
   "Implementation for [[query]]."
   {:arglists '([metadata-providerable x])}
   (fn [_metadata-providerable x]
-    (lib.dispatch/dispatch-value x))
+    (or (lib.util/normalized-query-type x)
+        (lib.dispatch/dispatch-value x)))
   :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod ->query :dispatch-type/map
-  [metadata-providerable query]
-  (query-from-existing metadata-providerable query))
+(defmethod query-method :query ; legacy MBQL query
+  [metadata-providerable legacy-query]
+  (query-from-legacy-query metadata-providerable legacy-query))
 
-;;; this should already be a query in the shape we want, but let's make sure it has the database metadata that was
-;;; passed in
-(defmethod ->query :mbql/query
-  [metadata-providerable query]
-  (assoc query :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)))
+(defmethod query-method :native ; legacy native query
+  [metadata-providerable legacy-query]
+  (query-from-legacy-query metadata-providerable legacy-query))
 
-(defmethod ->query :metadata/table
+(defmethod query-method :dispatch-type/map
+  [metadata-providerable query]
+  (query-method metadata-providerable (assoc (lib.convert/->pMBQL query) :lib/type :mbql/query)))
+
+;;; this should already be a query in the shape we want but:
+;; - let's make sure it has the database metadata that was passed in
+;; - fill in field refs with metadata (#33680)
+;; - fill in top expression refs with metadata
+(defmethod query-method :mbql/query
+  [metadata-providerable {converted? :lib.convert/converted? :as query}]
+  (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
+        query (-> query
+                  (assoc :lib/metadata metadata-provider)
+                  (dissoc :lib.convert/converted?)
+                  lib.normalize/normalize)
+        stages (:stages query)]
+    (cond-> query
+      converted?
+      (assoc
+        :stages
+        (into []
+              (map (fn [[stage-number stage]]
+                     (lib.util.match/replace stage
+                       [:field
+                        (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
+                        (field-id :guard (every-pred number? pos?))]
+                       (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
+                                           (select-keys [:base-type :effective-type]))]
+                         ;; Fallback if metadata is missing
+                         [:field (merge found-ref opts) field-id])
+                       [:expression
+                        (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
+                        expression-name]
+                       (let [found-ref (try
+                                         (m/remove-vals
+                                           #(= :type/* %)
+                                           (-> (lib.expression/expression-ref query stage-number expression-name)
+                                               second
+                                               (select-keys [:base-type :effective-type])))
+                                         (catch #?(:clj Exception :cljs :default) _
+                                           ;; This currently does not find expressions defined in join stages
+                                           nil))]
+                         ;; Fallback if metadata is missing
+                         [:expression (merge found-ref opts) expression-name]))))
+              (m/indexed stages))))))
+
+(defmethod query-method :metadata/table
   [metadata-providerable table-metadata]
   (query-with-stages metadata-providerable
                      [{:lib/type     :mbql.stage/mbql
-                       :source-table (:id table-metadata)}]))
+                       :source-table (u/the-id table-metadata)}]))
+
+(defmethod query-method :metadata/card
+  [metadata-providerable card-metadata]
+  (query-with-stages metadata-providerable
+                     [{:lib/type     :mbql.stage/mbql
+                       :source-card (u/the-id card-metadata)}]))
+
+(defmethod query-method :mbql.stage/mbql
+  [metadata-providerable mbql-stage]
+  (query-with-stages metadata-providerable [mbql-stage]))
+
+(defmethod query-method :mbql.stage/native
+  [metadata-providerable native-stage]
+  (query-with-stages metadata-providerable [native-stage]))
 
 (mu/defn query :- ::lib.schema/query
   "Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
@@ -94,22 +184,7 @@
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- lib.metadata/MetadataProviderable
    x]
-  (->query metadata-providerable x))
-
-(mu/defn saved-question-query :- ::lib.schema/query
-  "Convenience for creating a query from a Saved Question (i.e., a Card)."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
-   {mbql-query :dataset-query, metadata :result-metadata, :as saved-question}]
-  (assert mbql-query (i18n/tru "Saved Question is missing query"))
-  (when-not metadata
-    (log/warn (i18n/trs "Saved Question {0} {1} is missing result metadata"
-                        (:id saved-question)
-                        (pr-str (:name saved-question-query)))))
-  (let [mbql-query (cond-> (assoc (lib.convert/->pMBQL mbql-query)
-                                  :lib/metadata (lib.metadata/->metadata-provider metadata-providerable))
-                     metadata
-                     (lib.util/update-query-stage -1 assoc :lib/stage-metadata (lib.util/->stage-metadata metadata)))]
-    (query metadata-providerable mbql-query)))
+  (query-method metadata-providerable x))
 
 (mu/defn query-from-legacy-inner-query :- ::lib.schema/query
   "Create a pMBQL query from a legacy inner query."
@@ -119,3 +194,46 @@
   (->> (lib.convert/legacy-query-from-inner-query database-id inner-query)
        lib.convert/->pMBQL
        (query metadata-providerable)))
+
+(mu/defn with-different-table :- ::lib.schema/query
+  "Changes an existing query to use a different source table or card.
+   Can be passed an integer table id or a legacy `card__<id>` string."
+  [original-query :- ::lib.schema/query
+   table-id :- [:or ::lib.schema.id/table :string]]
+  (let [metadata-provider (lib.metadata/->metadata-provider original-query)]
+   (query metadata-provider (lib.metadata/table-or-card metadata-provider table-id))))
+
+(defn- occurs-in-expression?
+  [expression-clause clause-type expression-body]
+  (or (and (lib.util/clause-of-type? expression-clause clause-type)
+           (= (nth expression-clause 2) expression-body))
+      (and (sequential? expression-clause)
+           (boolean
+            (some #(occurs-in-expression? % clause-type expression-body)
+                  (nnext expression-clause))))))
+
+(defn- occurs-in-stage-clause?
+  "Tests whether predicate `pred` is true for an element of clause `clause` of `query-or-join`.
+  The test is transitive over joins."
+  [query-or-join clause pred]
+  (boolean
+   (some (fn [stage]
+           (or (some pred (clause stage))
+               (some #(occurs-in-stage-clause? % clause pred) (:joins stage))))
+         (:stages query-or-join))))
+
+(mu/defn uses-segment? :- :boolean
+  "Tests whether `a-query` uses segment with ID `segment-id`.
+  `segment-id` can be a regular segment ID or a string. The latter is for symmetry
+  with [[uses-legacy-metric?]]."
+  [a-query :- ::lib.schema/query
+   segment-id :- [:or ::lib.schema.id/segment :string]]
+  (occurs-in-stage-clause? a-query :filters #(occurs-in-expression? % :segment segment-id)))
+
+(mu/defn uses-legacy-metric? :- :boolean
+  "Tests whether `a-query` uses metric with ID `metric-id`.
+  `metric-id` can be a regular metric ID or a string. The latter is to support
+  some strange use-cases (see [[metabase.lib.legacy-metric-test/ga-metric-metadata-test]])."
+  [a-query :- ::lib.schema/query
+   metric-id :- [:or ::lib.schema.id/legacy-metric :string]]
+  (occurs-in-stage-clause? a-query :aggregation #(occurs-in-expression? % :metric metric-id)))

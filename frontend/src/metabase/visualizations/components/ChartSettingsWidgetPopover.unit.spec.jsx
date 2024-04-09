@@ -1,8 +1,7 @@
-import { useState } from "react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-
 import ChartSettingsWidgetPopover from "metabase/visualizations/components/ChartSettingsWidgetPopover";
 
 const DEFAULT_PROPS = {
@@ -71,7 +70,7 @@ it("should change tabs when clicked", async () => {
   //Should Default to rendering formatting
   expect(await screen.findByText("Foo")).toBeInTheDocument();
 
-  userEvent.click(await screen.findByText("Style"));
+  await userEvent.click(await screen.findByText("Style"));
 
   expect(await screen.findByText("Bar")).toBeInTheDocument();
 });

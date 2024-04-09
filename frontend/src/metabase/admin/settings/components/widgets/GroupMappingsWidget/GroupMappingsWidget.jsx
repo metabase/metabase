@@ -1,15 +1,18 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { useState } from "react";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
 
 import AdminContentTable from "metabase/components/AdminContentTable";
-import { isDefaultGroup } from "metabase/lib/groups";
-
-import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
+import { FormSwitch } from "metabase/forms";
+import { isDefaultGroup } from "metabase/lib/groups";
+import { Icon } from "metabase/ui";
 
 import SettingToggle from "../SettingToggle";
+
 import AddMappingRow from "./AddMappingRow";
 import {
   GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,
@@ -33,6 +36,7 @@ function GroupMappingsWidget({
   clearGroupMember,
   updateSetting,
   mappings,
+  isFormik,
   ...props
 }) {
   const [showAddRow, setShowAddRow] = useState(false);
@@ -105,7 +109,14 @@ function GroupMappingsWidget({
         <Header>
           <ToggleRoot>
             <span>{t`Synchronize Group Memberships`}</span>
-            <SettingToggle {...props} hideLabel />
+            {isFormik ? ( // temporary until SettingsJWTForm and SettingsLdapForm are migrated to formik
+              <FormSwitch
+                data-testid="group-sync-switch"
+                name={props.setting.key}
+              />
+            ) : (
+              <SettingToggle {...props} hideLabel />
+            )}
           </ToggleRoot>
           <About>
             <Tooltip
@@ -162,7 +173,9 @@ function GroupMappingsWidget({
         </div>
       </Root>
       {saveError?.data?.message && (
-        <div className="text-error text-bold m1">{saveError.data.message}</div>
+        <div className={cx(CS.textError, CS.textBold, CS.m1)}>
+          {saveError.data.message}
+        </div>
       )}
     </WidgetAndErrorRoot>
   );

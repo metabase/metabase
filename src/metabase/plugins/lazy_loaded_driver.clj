@@ -29,7 +29,7 @@
     (throw (Exception. (trs "Invalid connection property {0}: not a string or map." prop)))
 
     (:merge prop)
-    (reduce merge (map parse-connection-property (:merge prop)))
+    (into {} (map parse-connection-property) (:merge prop))
 
     :else
     prop))
@@ -79,8 +79,7 @@
     ;; about it
     (when (and (not abstract)
                (empty? connection-props))
-      (log/warn
-       (u/format-color 'red (trs "Warning: plugin manifest for {0} does not include connection properties" driver))))
+      (log/warn (u/format-color :red "Warning: plugin manifest for %s does not include connection properties" driver)))
     ;; ok, now add implementations for the so-called "non-trivial" driver multimethods
     (doseq [[^MultiFn multifn, f]
             {driver/initialize!           (make-initialize! driver add-to-classpath! init-steps)
@@ -91,5 +90,5 @@
       (when f
         (.addMethod multifn driver f)))
     ;; finally, register the Metabase driver
-    (log/debug (u/format-color 'magenta (trs "Registering lazy loading driver {0}..." driver)))
+    (log/debug (u/format-color :magenta "Registering lazy loading driver %s..." driver))
     (driver/register! driver, :parent (set (map keyword (u/one-or-many parent))), :abstract? abstract)))

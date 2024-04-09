@@ -1,9 +1,10 @@
+import { renderWithProviders, waitFor } from "__support__/ui";
+import * as domUtils from "metabase/lib/dom";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { renderWithProviders, waitFor } from "__support__/ui";
-import * as domUtils from "metabase/lib/dom";
+
 import { SsoButton } from "./SsoButton";
 
 const SITE_URL = "http://metabase.test";
@@ -21,7 +22,7 @@ const setup = () => {
   renderWithProviders(<SsoButton />, { storeInitialState: state });
 };
 
-describe("SsoButton", () => {
+describe("SSOButton", () => {
   it("should login immediately when embedded", async () => {
     jest.spyOn(domUtils, "redirect").mockImplementation(() => undefined);
 

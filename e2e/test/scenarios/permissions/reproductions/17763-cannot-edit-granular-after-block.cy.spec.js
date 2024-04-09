@@ -1,10 +1,10 @@
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   restore,
   popover,
   describeEE,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 

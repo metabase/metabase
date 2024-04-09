@@ -1,41 +1,37 @@
-import PropTypes from "prop-types";
 import styled from "@emotion/styled";
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Tooltip from "metabase/core/components/Tooltip";
+import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
+
 import { NotebookCell } from "./NotebookCell";
 
-export const FieldPickerContentContainer = styled.div`
+const FieldPickerContentContainer = styled(IconButtonWrapper)`
+  color: ${color("white")};
   padding: ${NotebookCell.CONTAINER_PADDING};
-`;
-
-const StyledIcon = styled(Icon)`
   opacity: 0.5;
 `;
 
-const propTypes = {
-  isTriggeredComponentOpen: PropTypes.bool,
-};
+interface FieldsPickerIconProps {
+  isTriggeredComponentOpen?: boolean;
+}
 
 export function FieldsPickerIcon({
   isTriggeredComponentOpen,
-}: {
-  isTriggeredComponentOpen?: boolean;
-}) {
+}: FieldsPickerIconProps) {
   return (
-    <Tooltip
-      tooltip={<span>{t`Pick columns`}</span>}
-      isEnabled={!isTriggeredComponentOpen}
-    >
-      <FieldPickerContentContainer data-testid="fields-picker">
-        <StyledIcon name="chevrondown" />
+    <Tooltip tooltip={t`Pick columns`} isEnabled={!isTriggeredComponentOpen}>
+      <FieldPickerContentContainer
+        aria-label={t`Pick columns`}
+        data-testid="fields-picker"
+      >
+        <Icon name="chevrondown" />
       </FieldPickerContentContainer>
     </Tooltip>
   );
 }
-
-FieldsPickerIcon.propTypes = propTypes;
 
 export const FIELDS_PICKER_STYLES = {
   notebookItemContainer: {

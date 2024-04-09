@@ -1,0 +1,207 @@
+name: Recent activity
+description: null
+entity_id: WlQ-en2l-iRRCvO2-v5j1
+created_at: '2023-11-01T01:06:15.554648Z'
+creator_id: internal@metabase.com
+display: table
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+dataset: false
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_audit_log
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - topic
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - entity_qualified_id
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - details
+      - base-type: type/Text
+    joins:
+    - alias: People - User
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - base-type: type/Integer
+          join-alias: People - User
+      fields: none
+      source-table: 0wVIfjBJWclD0lKeABYYl
+      strategy: left-join
+    - alias: Content - Entity Qualified
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - entity_qualified_id
+        - base-type: type/Text
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Content - Entity Qualified
+      fields:
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_id
+        - base-type: type/Integer
+          join-alias: Content - Entity Qualified
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_type
+        - base-type: type/Text
+          join-alias: Content - Entity Qualified
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - name
+        - base-type: type/Text
+          join-alias: Content - Entity Qualified
+      source-table: AxSackBiyXVRUzM_TyyQY
+      strategy: left-join
+    limit: 200
+    order-by:
+    - - desc
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - timestamp
+        - base-type: type/DateTimeWithLocalTZ
+    source-table: -lNDM3tJmuL5ltGbX0oyT
+  type: query
+result_metadata: null
+visualization_settings:
+  column_settings:
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
+    : column_title: Content name
+      link_url: /{{entity_type}}/{{entity_id}}
+      view_as: link
+  table.cell_column: details
+  table.columns:
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_audit_log
+      - timestamp
+    - base-type: type/DateTimeWithLocalTZ
+      temporal-unit: default
+    name: timestamp
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_audit_log
+      - topic
+    - base-type: type/Text
+    name: topic
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - name
+    - base-type: type/Text
+      join-alias: Content - Entity Qualified
+    name: name
+  - enabled: false
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_audit_log
+      - entity_qualified_id
+    - base-type: type/Text
+    name: entity_qualified_id
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_audit_log
+      - details
+    - base-type: type/Text
+    name: details
+  - enabled: false
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_id
+    - base-type: type/Integer
+      join-alias: Content - Entity Qualified
+    name: entity_id
+  - enabled: false
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_type
+    - base-type: type/Text
+      join-alias: Content - Entity Qualified
+    name: entity_type
+  table.pivot_column: topic
+serdes/meta:
+- id: WlQ-en2l-iRRCvO2-v5j1
+  label: recent_activity
+  model: Card
+initially_published_at: null
+metabase_version: vUNKNOWN (ad99d37)
+type: question

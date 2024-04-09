@@ -1,23 +1,19 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+import { assoc } from "icepick";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import cx from "classnames";
-
 import _ from "underscore";
-import { isWithinIframe } from "metabase/lib/dom";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
-import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
+import * as dashboardActions from "metabase/dashboard/actions";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-import title from "metabase/hoc/Title";
-
-import { setErrorPage } from "metabase/redux/app";
-import { getMetadata } from "metabase/selectors/metadata";
-
-import PublicMode from "metabase/modes/components/modes/PublicMode";
-
+import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
+import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import {
   getDashboardComplete,
   getCardData,
@@ -27,21 +23,21 @@ import {
   getDraftParameterValues,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
-
-import * as dashboardActions from "metabase/dashboard/actions";
-
+import { isActionDashCard } from "metabase/dashboard/utils";
+import title from "metabase/hoc/Title";
+import { isWithinIframe } from "metabase/lib/dom";
+import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
+import { setErrorPage } from "metabase/redux/app";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   setPublicDashboardEndpoints,
   setEmbedDashboardEndpoints,
 } from "metabase/services";
-import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
+
 import EmbedFrame from "../components/EmbedFrame";
 
-import {
-  DashboardContainer,
-  DashboardGridContainer,
-  Separator,
-} from "./PublicDashboard.styled";
+import { DashboardContainer } from "./PublicDashboard.styled";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -64,7 +60,6 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-// NOTE: this should use DashboardData HoC
 class PublicDashboard extends Component {
   _initialize = async () => {
     const {
@@ -82,9 +77,19 @@ class PublicDashboard extends Component {
     }
 
     initialize();
+
+    const result = await fetchDashboard({
+      dashId: uuid || token,
+      queryParams: location.query,
+    });
+
+    if (result.error) {
+      setErrorPage(result.payload);
+      return;
+    }
+
     try {
-      await fetchDashboard(uuid || token, location.query);
-      if (this.props.dashboard.ordered_tabs.length === 0) {
+      if (this.props.dashboard.tabs.length === 0) {
         await fetchDashboardCardData({ reload: false, clearCache: true });
       }
     } catch (error) {
@@ -117,6 +122,31 @@ class PublicDashboard extends Component {
     }
   }
 
+  getCurrentTabDashcards = () => {
+    const { dashboard, selectedTabId } = this.props;
+    if (!Array.isArray(dashboard?.dashcards)) {
+      return [];
+    }
+    if (!selectedTabId) {
+      return dashboard.dashcards;
+    }
+    return dashboard.dashcards.filter(
+      dashcard => dashcard.dashboard_tab_id === selectedTabId,
+    );
+  };
+
+  getHiddenParameterSlugs = () => {
+    const { parameters } = this.props;
+    const currentTabParameterIds = this.getCurrentTabDashcards().flatMap(
+      dashcard =>
+        dashcard.parameter_mappings?.map(mapping => mapping.parameter_id) ?? [],
+    );
+    const hiddenParameters = parameters.filter(
+      parameter => !currentTabParameterIds.includes(parameter.id),
+    );
+    return hiddenParameters.map(parameter => parameter.slug).join(",");
+  };
+
   render() {
     const {
       dashboard,
@@ -125,11 +155,16 @@ class PublicDashboard extends Component {
       draftParameterValues,
       isFullscreen,
       isNightMode,
+      setParameterValueToDefault,
     } = this.props;
 
     const buttons = !isWithinIframe()
-      ? getDashboardActions(this, { ...this.props, isPublic: true })
+      ? getDashboardActions({ ...this.props, isPublic: true })
       : [];
+
+    const visibleDashcards = (dashboard?.dashcards ?? []).filter(
+      dashcard => !isActionDashCard(dashcard),
+    );
 
     return (
       <EmbedFrame
@@ -139,32 +174,34 @@ class PublicDashboard extends Component {
         parameters={parameters}
         parameterValues={parameterValues}
         draftParameterValues={draftParameterValues}
+        hiddenParameterSlugs={this.getHiddenParameterSlugs()}
         setParameterValue={this.props.setParameterValue}
+        setParameterValueToDefault={setParameterValueToDefault}
+        enableParameterRequiredBehavior
         actionButtons={
-          buttons.length > 0 && <div className="flex">{buttons}</div>
+          buttons.length > 0 && <div className={CS.flex}>{buttons}</div>
         }
+        dashboardTabs={<DashboardTabs location={this.props.location} />}
       >
         <LoadingAndErrorWrapper
           className={cx({
-            "Dashboard--fullscreen": isFullscreen,
-            "Dashboard--night": isNightMode,
+            [DashboardS.DashboardFullscreen]: isFullscreen,
+            [DashboardS.DashboardNight]: isNightMode,
+            [ParametersS.DashboardNight]: isNightMode,
           })}
           loading={!dashboard}
         >
           {() => (
             <DashboardContainer>
-              <DashboardTabs location={this.props.location} />
-              <Separator />
-              <DashboardGridContainer>
-                <DashboardGrid
-                  {...this.props}
-                  isPublic
-                  className="spread"
-                  mode={PublicMode}
-                  metadata={this.props.metadata}
-                  navigateToNewCardFromDashboard={() => {}}
-                />
-              </DashboardGridContainer>
+              <DashboardGridConnected
+                {...this.props}
+                dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
+                isPublic
+                className={CS.spread}
+                mode={PublicMode}
+                metadata={this.props.metadata}
+                navigateToNewCardFromDashboard={() => {}}
+              />
             </DashboardContainer>
           )}
         </LoadingAndErrorWrapper>

@@ -3,19 +3,18 @@
    [clojure.test :refer :all]
    [metabase.models :refer [PermissionsGroup]]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest application-permissions-test
   (t2.with-temp/with-temp [PermissionsGroup _]
     (testing "GET /api/ee/advanced-permissions/application/graph"
-      (premium-features-test/with-premium-features #{}
+      (mt/with-premium-features #{}
         (testing "Should require a token with `:advanced-permissions`"
-          (is (= "This API endpoint is only enabled if you have a premium token with the :advanced-permissions feature."
+          (is (= "Advanced Permissions is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                  (mt/user-http-request :crowberto :get 402 "ee/advanced-permissions/application/graph")))))
 
-      (premium-features-test/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:advanced-permissions}
         (testing "have to be a superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "ee/advanced-permissions/application/graph"))))
@@ -37,16 +36,16 @@
 (deftest application-permissions-test-2
   (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
     (testing "PUT /api/ee/advanced-permissions/application/graph"
-      (let [current-graph (premium-features-test/with-premium-features #{:advanced-permissions}
+      (let [current-graph (mt/with-premium-features #{:advanced-permissions}
                             (mt/user-http-request :crowberto :get 200 "ee/advanced-permissions/application/graph"))
             new-graph     (assoc-in current-graph [:groups group-id :setting] "yes")]
 
-        (premium-features-test/with-premium-features #{}
+        (mt/with-premium-features #{}
           (testing "Should require a token with `:advanced-permissions`"
-            (is (= "This API endpoint is only enabled if you have a premium token with the :advanced-permissions feature."
+            (is (= "Advanced Permissions is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                    (mt/user-http-request :crowberto :put 402 "ee/advanced-permissions/application/graph" new-graph)))))
 
-        (premium-features-test/with-premium-features #{:advanced-permissions}
+        (mt/with-premium-features #{:advanced-permissions}
           (testing "have to be a superuser"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :put 403 "ee/advanced-permissions/application/graph" new-graph))))

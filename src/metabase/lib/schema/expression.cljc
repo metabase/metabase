@@ -4,12 +4,10 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.types]
+   [metabase.types :as types]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
-  #?(:cljs (:require-macros [metabase.lib.schema.expression])))
-
-(comment metabase.types/keep-me)
+   [metabase.util.malli.registry :as mr]))
 
 (defmulti type-of-method
   "Impl for [[type-of]]. Use [[type-of]], but implement [[type-of-method]].
@@ -31,25 +29,22 @@
         dispatch-value)))
   :hierarchy lib.hierarchy/hierarchy)
 
-(defn- mbql-clause? [expr]
-  (and (vector? expr)
-       (keyword? (first expr))))
-
 (mr/def ::base-type
-  [:or
-   [:= ::type.unknown]
-   ::common/base-type])
+  [:multi {:dispatch (partial = ::type.unknown)}
+   [true  [:= ::type.unknown]]
+   [false [:ref ::common/base-type]]])
 
-(mu/defn type-of :- [:or
-                     ::base-type
-                     [:set {:min 2} ::base-type]]
+(mu/defn type-of :- [:multi
+                     {:dispatch set?}
+                     [true  [:set {:min 2} [:ref ::base-type]]]
+                     [false [:ref ::base-type]]]
   "Determine the type of an MBQL expression. Returns either a type keyword, or if the type is ambiguous, a set of
   possible types."
   [expr]
   (or
    ;; for MBQL clauses with `:effective-type` or `:base-type` in their options: ignore their dumb [[type-of-method]] methods
    ;; and return that type directly. Ignore everything else! Life hack!
-   (and (mbql-clause? expr)
+   (and (common/mbql-clause-tag expr)
         (map? (second expr))
         (or (:effective-type (second expr))
             (:base-type (second expr))))
@@ -92,13 +87,11 @@
   2. expression's [[type-of]] isa? `base-type`"
   [base-type description]
   [:and
-   [:or
-    [:fn
-     {:error/message "valid MBQL clause"
-      :error/fn      (fn [{:keys [value]} _]
-                       (str "invalid MBQL clause: " (pr-str value)))}
-     (complement mbql-clause?)]
-    [:ref :metabase.lib.schema.mbql-clause/clause]]
+   ;; vector = MBQL clause, anything else = not an MBQL clause
+   [:multi
+    {:dispatch vector?}
+    [true  [:ref :metabase.lib.schema.mbql-clause/clause]]
+    [false [:ref :metabase.lib.schema.literal/literal]]]
    [:fn
     {:error/message description}
     #(type-of? % base-type)]])
@@ -132,15 +125,43 @@
 
 (def orderable-types
   "Set of base types that are orderable."
-  #{:type/Text :type/Number :type/Temporal})
+  #{:type/Text :type/Number :type/Temporal :type/Boolean})
 
 (mr/def ::orderable
   (expression-schema orderable-types
                      "an expression that can be compared with :> or :<"))
 
+(defn comparable-expressions?
+  "Returns whether expressions `x` and `y` can be compared.
+
+  Expressions are comparable if their types are comparable.
+  Two types t1 and t2 are comparable if either one is ::type.unknown, or
+  there is an orderable type t such that both `t1` and `t2` are assignable to t."
+  [x y]
+  (some boolean
+        (for [t1 (u/one-or-many (type-of x))
+              t2 (u/one-or-many (type-of y))
+              t orderable-types]
+          (or (= t1 ::type.unknown)
+              (= t2 ::type.unknown)
+              (and (types/assignable? t1 t)
+                   (types/assignable? t2 t))))))
+
 (def equality-comparable-types
-  "Set of base types that can be campared with equality."
-   #{:type/Boolean :type/Text :type/Number :type/Temporal})
+  "Set of base types that can be compared with equality."
+  ;; TODO: Adding :type/* here was necessary to prevent type errors for queries where a field's type in the DB could not
+  ;; be determined better than :type/*. See #36841, where a MySQL enum field gets `:base-type :type/*`, and this check
+  ;; would fail on `[:= {} [:field ...] "enum-str"]` without `:type/*` here.
+  ;; This typing of each input should be replaced with an alternative scheme that checks that it's plausible to compare
+  ;; all the args to an `:=` clause. Eg. comparing `:type/*` and `:type/String` is cool. Comparing `:type/IPAddress` to
+  ;; `:type/Boolean` should fail; we can prove it's the wrong thing to do.
+  #{:type/Boolean :type/Text :type/Number :type/Temporal :type/IPAddress :type/MongoBSONID :type/Array :type/*})
+
+(derive :type/Text        ::emptyable)
+(derive :type/MongoBSONID ::emptyable)
+
+(mr/def ::emptyable
+  (expression-schema ::emptyable "expression returning something emptyable (e.g. a string or BSON ID)"))
 
 (mr/def ::equality-comparable
   [:maybe
@@ -151,7 +172,15 @@
 (mr/def ::expression
   [:maybe (expression-schema :type/* "any type of expression")])
 
+(mr/def ::expression.definition
+  [:and
+   [:ref ::expression]
+   [:cat
+    #_tag :any
+    #_opts [:map
+            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]]
+    #_args [:* :any]]])
+
 ;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
 (mr/def ::expressions
-  [:sequential {:min 1} [:and [:ref ::expression]
-                         [:cat :any [:map [:lib/expression-name :string]] [:* :any]]]])
+  [:sequential {:min 1} [:ref ::expression.definition]])

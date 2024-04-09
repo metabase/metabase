@@ -5,9 +5,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.test :as mt]
-   [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (deftest ^:parallel inline-Ratio-test
   (testing ":inline behavior for clojure.lang.Ratio should make sense (#28354)"
@@ -169,7 +167,7 @@
         (is (= ["SELECT CAST(field AS text)"]
                (maybe-cast (h2x/cast "text" :field)))))
       (testing "should not cast something that's already typed"
-        (let [typed-expr (h2x/with-type-info :field {::hx/database-type "text"})]
+        (let [typed-expr (h2x/with-type-info :field {:database-type "text"})]
           (is (= ["SELECT field"]
                  (maybe-cast typed-expr)))
           (testing "should work with different string/keyword and case combos"
@@ -187,17 +185,17 @@
   (letfn [(cast-unless-type-in [expr]
             (first (->sql (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz"} expr))))]
     (is (= "SELECT field"
-           (cast-unless-type-in (h2x/with-type-info :field {::hx/database-type "timestamp"}))))
+           (cast-unless-type-in (h2x/with-type-info :field {:database-type "timestamp"}))))
     (is (= "SELECT field"
-           (cast-unless-type-in (h2x/with-type-info :field {::hx/database-type "timestamptz"}))))
+           (cast-unless-type-in (h2x/with-type-info :field {:database-type "timestamptz"}))))
     (is (= "SELECT CAST(field AS timestamp)"
-           (cast-unless-type-in (h2x/with-type-info :field {::hx/database-type "date"}))))))
+           (cast-unless-type-in (h2x/with-type-info :field {:database-type "date"}))))))
 
-(def ^:private typed-form (h2x/with-type-info :field {::hx/database-type "text"}))
+(def ^:private typed-form (h2x/with-type-info :field {:database-type "text"}))
 
 (deftest ^:parallel type-info-test
   (testing "should let you get info"
-    (is (= {::hx/database-type "text"}
+    (is (= {:database-type "text"}
            (h2x/type-info typed-form)))
     (is (= nil
            (h2x/type-info :field)
@@ -205,11 +203,11 @@
 
 (deftest ^:parallel with-type-info-test
   (testing "should let you update info"
-    (is (= (h2x/with-type-info :field {::hx/database-type "date"})
-           (h2x/with-type-info typed-form {::hx/database-type "date"})))
+    (is (= (h2x/with-type-info :field {:database-type "date"})
+           (h2x/with-type-info typed-form {:database-type "date"})))
     (testing "should normalize :database-type"
-      (is (= (h2x/with-type-info :field {::hx/database-type "date"})
-             (h2x/with-type-info typed-form {::hx/database-type "date"})))))
+      (is (= (h2x/with-type-info :field {:database-type "date"})
+             (h2x/with-type-info typed-form {:database-type "date"})))))
   (testing "Should compile with parentheses if the form it wraps would have been compiled with parens"
     (is (= ["(x - 1) + 2"]
            (sql/format-expr [:+
@@ -220,8 +218,8 @@
                              [:inline 2]])))))
 
 (deftest ^:parallel with-database-type-info-test
-  (testing "should be the same as calling `with-type-info` with `::hx/database-type`"
-    (is (= (h2x/with-type-info :field {::hx/database-type "date"})
+  (testing "should be the same as calling `with-type-info` with `:database-type`"
+    (is (= (h2x/with-type-info :field {:database-type "date"})
            (h2x/with-database-type-info :field "date"))))
   (testing "Passing `nil` should"
     (testing "return untyped clause as-is"
@@ -270,3 +268,20 @@
                      "int"
                      nil)
                    (h2x/type-info->db-type (h2x/type-info expr))))))))))
+
+(deftest ^:parallel identifier->name-test
+  (is (= ["public" "db" "table" "field"]
+         (h2x/identifier->components
+          (h2x/identifier :field :public :db :table :field))))
+
+  (is (= ["public" "db" "table"]
+         (h2x/identifier->components
+          (h2x/identifier :table :public :db :table))))
+
+  (is (= ["public" "db"]
+         (h2x/identifier->components
+          (h2x/identifier :database :public :db))))
+
+  (is (=  ["count"]
+         (h2x/identifier->components
+          (h2x/identifier :field-alias :count)))))

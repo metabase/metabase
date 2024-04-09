@@ -1,8 +1,7 @@
-import PersistedModels from "metabase/entities/persisted-models";
-import { ModelCacheRefreshStatus } from "metabase-types/api";
-import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
-
 import { renderWithProviders, screen } from "__support__/ui";
+import PersistedModels from "metabase/entities/persisted-models";
+import type { ModelCacheRefreshStatus } from "metabase-types/api";
+import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
 
 import ModelCacheRefreshJobs from "./ModelCacheRefreshJobs";
 

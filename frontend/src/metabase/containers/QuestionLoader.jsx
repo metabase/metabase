@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
-import renderPropToHOC from "metabase/hoc/RenderPropToHOC";
 
 import AdHocQuestionLoader from "metabase/containers/AdHocQuestionLoader";
 import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
-
+import renderPropToHOC from "metabase/hoc/RenderPropToHOC";
 import { serializeCardForUrl } from "metabase/lib/card";
 
 /*
@@ -25,15 +24,7 @@ import { serializeCardForUrl } from "metabase/lib/card";
  *
  *        { // link to a new question created by adding a filter }
  *        <Link
- *          to={
- *            question.query()
- *                    .filter([
- *                      "segment",
- *                      question.query().filterSegmentOptions()[0]
- *                    ])
- *                    .question()
- *                    .getUrl()
- *          }
+ *          to={question.getUrl()}
  *        >
  *          View this ad-hoc exploration
  *        </Link>

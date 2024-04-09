@@ -1,31 +1,31 @@
-import {
-  restore,
-  openOrdersTable,
-  popover,
-  visualize,
-  summarize,
-  startNewQuestion,
-  filter,
-  visitQuestionAdhoc,
-  enterCustomColumnDetails,
-  openProductsTable,
-  selectSavedQuestionsToJoin,
-  getNotebookStep,
-} from "e2e/support/helpers";
-
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  addCustomColumn,
+  addSummaryField,
+  addSummaryGroupingField,
+  assertJoinValid,
+  assertQueryBuilderRowCount,
+  enterCustomColumnDetails,
+  filter,
+  getNotebookStep,
+  join,
+  joinTable,
+  openNotebook,
+  openOrdersTable,
+  popover,
+  queryBuilderMain,
+  restore,
+  saveQuestion,
+  selectFilterOperator,
+  selectSavedQuestionsToJoin,
+  startNewQuestion,
+  summarize,
+  visitQuestionAdhoc,
+  visualize,
+} from "e2e/support/helpers";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  PEOPLE,
-  PEOPLE_ID,
-  REVIEWS,
-  REVIEWS_ID,
-} = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > joined questions", () => {
   beforeEach(() => {
@@ -33,122 +33,144 @@ describe("scenarios > question > joined questions", () => {
     cy.signInAsAdmin();
   });
 
-  it("should allow joins on tables (metabase#11452, metabase#12221, metabase#13468, metabase#15570)", () => {
+  it("should join raw tables (metabase#11452, metabase#12221, metabase#13468, metabase#15570)", () => {
     openOrdersTable({ mode: "notebook" });
 
-    // join to Reviews on orders.product_id = reviews.product_id
-    cy.icon("join_left_outer").click();
-    getNotebookStep("join").findByText("Pick data…").should("exist");
-
-    popover().contains("Reviews").click();
-    popover().contains("Product ID").click();
-    popover().contains("Product ID").click();
+    join();
+    joinTable("Reviews", "Product ID", "Product ID");
 
     visualize();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
-
-    cy.findByTestId("question-table-badges").within(() => {
-      cy.findByText("Orders");
-      cy.findByText("Reviews");
+    assertJoinValid({
+      lhsTable: "Orders",
+      rhsTable: "Reviews",
+      lhsSampleColumn: "Product ID",
+      rhsSampleColumn: "Reviews - Product → ID",
     });
+
+    openNotebook();
+    getNotebookStep("join").icon("chevrondown").click();
+    popover().within(() => {
+      cy.findByText("Product ID").click();
+      cy.findByText("Body").click();
+      cy.findByText("Created At").click();
+    });
+    visualize();
+
+    assertJoinValid({
+      lhsTable: "Orders",
+      rhsTable: "Reviews",
+      lhsSampleColumn: "Product ID",
+      rhsSampleColumn: "Reviews - Product → Reviewer",
+    });
+    queryBuilderMain().findByText("Body").should("not.exist");
 
     // Post-join filters on the joined table (metabase#12221, metabase#15570)
-    filter();
-
-    cy.get(".Modal").within(() => {
-      // Temporal compat between MLv1 and MLv2
-      // MLv2 does a better job naming joined tables,
-      // but simple mode's summarization sidebar still uses MLv1
-      // Once it's ported, we should just look for "Review"
-      const joinedTable = new RegExp(/Reviews? - Products?/);
-      cy.findByText(joinedTable).click();
-
-      cy.findByTestId("filter-field-Rating").contains("2").click();
-      cy.button("Apply Filters").click();
-      cy.wait("@dataset");
+    openNotebook();
+    filter({ mode: "notebook" });
+    popover().within(() => {
+      cy.findByText("Review").click();
+      cy.findByText("Rating").click();
+    });
+    selectFilterOperator("Equal to");
+    popover().within(() => {
+      cy.findByLabelText("2").click();
+      cy.button("Add filter").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rating is equal to 2");
-
     // Post-join aggregation (metabase#11452):
-    cy.icon("notebook").click();
     summarize({ mode: "notebook" });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Average of ...").click();
-    popover().contains("Review").click();
-    popover().contains("Rating").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    popover().contains("Review").click();
-    popover().contains("Reviewer").click();
+    addSummaryField({
+      metric: "Average of ...",
+      table: "Review",
+      field: "Rating",
+    });
+    addSummaryGroupingField({ table: "Review", field: "Reviewer" });
 
     visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rating is equal to 2");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 89 rows");
+    cy.findByTestId("qb-filters-panel").findByText(
+      "Reviews - Product → Rating is equal to 2",
+    );
+    assertQueryBuilderRowCount(89);
 
     // Make sure UI overlay doesn't obstruct viewing results after we save this question (metabase#13468)
     saveQuestion();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rating is equal to 2");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 89 rows");
-
-    function saveQuestion() {
-      cy.intercept("POST", "/api/card").as("saveQuestion");
-      cy.findByText("Save").click();
-      cy.button("Save").click();
-      cy.wait("@saveQuestion");
-      cy.button("Not now").click();
-    }
+    cy.findByTestId("qb-filters-panel").findByText(
+      "Reviews - Product → Rating is equal to 2",
+    );
+    assertQueryBuilderRowCount(89);
   });
 
-  it("should join on field literals", () => {
-    // create two native questions
+  it("should join a native question (metabase#37100)", () => {
     cy.createNativeQuestion({
       name: "question a",
-      native: { query: "select 'foo' as a_column" },
+      native: { query: "select ID, PRODUCT_ID, TOTAL from orders" },
     });
 
     cy.createNativeQuestion({
       name: "question b",
-      native: { query: "select 'foo' as b_column" },
+      native: { query: "select * from products" },
     });
 
-    // start a custom question with question a
     startNewQuestion();
     selectSavedQuestionsToJoin("question a", "question b");
-
-    // select the join columns
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("A_COLUMN").click());
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("B_COLUMN").click());
+    popover().findByText("PRODUCT_ID").click();
+    popover().findByText("ID").click();
 
     visualize();
 
-    // check that query worked
-
-    cy.findByTestId("question-table-badges").within(() => {
-      cy.findByText("question a");
-      cy.findByText("question b");
+    assertJoinValid({
+      lhsTable: "question a",
+      rhsTable: "question b",
+      lhsSampleColumn: "TOTAL",
+      rhsSampleColumn: "question b - PRODUCT_ID → ID",
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("A_COLUMN");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Question 5 → B Column");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 1 row");
+
+    openNotebook();
+    getNotebookStep("join").icon("chevrondown").click();
+    popover().within(() => {
+      cy.findByText("EAN").click();
+      cy.findByText("VENDOR").click();
+      cy.findByText("PRICE").click();
+      cy.findByText("CATEGORY").click();
+      cy.findByText("CREATED_AT").click();
+    });
+    visualize();
+    assertJoinValid({
+      lhsTable: "question a",
+      rhsTable: "question b",
+      lhsSampleColumn: "TOTAL",
+      rhsSampleColumn: "question b - PRODUCT_ID → Rating",
+    });
+    queryBuilderMain().findByText("EAN").should("not.exist");
+
+    openNotebook();
+    filter({ mode: "notebook" });
+    popover().within(() => {
+      cy.findByText("question b").click();
+      cy.findByText("CATEGORY").click();
+    });
+    selectFilterOperator("Is");
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter some text").type("Gadget");
+      cy.button("Add filter").click();
+    });
+
+    summarize({ mode: "notebook" });
+    addSummaryGroupingField({
+      table: "question b",
+      field: "CATEGORY",
+    });
+    visualize();
+
+    cy.findByTestId("qb-filters-panel")
+      .findByText("question b - PRODUCT_ID → Category is Gadget")
+      .should("be.visible");
+    cy.findByTestId("scalar-value").contains("Gadget").should("be.visible");
   });
 
-  it("should allow joins based on saved questions (metabase#13000, metabase#13649, metabase#13744)", () => {
+  it("should join structured questions (metabase#13000, metabase#13649, metabase#13744)", () => {
     cy.intercept("GET", `/api/table/${PRODUCTS_ID}/query_metadata`).as(
       "metadata",
     );
@@ -174,320 +196,179 @@ describe("scenarios > question > joined questions", () => {
     });
 
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Saved Questions").click();
-      cy.findByText("Q1").click();
-    });
-
-    cy.wait("@metadata");
-
-    cy.icon("join_left_outer").click();
-
-    popover().within(() => {
-      cy.icon("chevronleft").click();
-      cy.findByText("Saved Questions").click();
-      cy.findByText("Q2").click();
-    });
-
-    popover().findByText("Product ID").click();
-    popover().findByText("ID").click();
-
+    selectSavedQuestionsToJoin("Q1", "Q2");
     visualize();
 
-    cy.icon("notebook").click();
-    cy.url().should("contain", "/notebook");
+    assertJoinValid({
+      lhsTable: "Q1",
+      rhsTable: "Q2",
+      lhsSampleColumn: "Product ID",
+      rhsSampleColumn: "Q2 - Product → ID",
+    });
 
-    // cy.log("joined questions should create custom column (metabase#13649)");
+    openNotebook();
+    getNotebookStep("join").icon("chevrondown").click();
+    popover().findByText("ID").click();
+    visualize();
+
+    assertJoinValid({
+      lhsTable: "Q1",
+      rhsTable: "Q2",
+      lhsSampleColumn: "Product ID",
+      rhsSampleColumn: "Q2 - Product → Sum of Total",
+    });
+    queryBuilderMain().findByText("Q2 → ID").should("not.exist");
+
+    openNotebook();
     // add a custom column on top of the steps from the #13000 repro which was simply asserting
     // that a question could be made by joining two previously saved questions
-    cy.icon("add_data").click();
-
+    addCustomColumn();
     enterCustomColumnDetails({
-      formula: "[Question 5 → Sum of Rating] / [Sum of Total]",
+      formula: "[Q2 - Product → Sum of Rating] / [Sum of Total]",
       name: "Sum Divide",
     });
+    popover().button("Done").click();
 
-    cy.button("Done").click();
+    filter({ mode: "notebook" });
+    popover().within(() => {
+      cy.findByText("Q2").click();
+      cy.findByText("ID").click();
+      cy.findByPlaceholderText("Enter an ID").type("12");
+      cy.button("Add filter").click();
+    });
+
+    visualize();
+    queryBuilderMain().findByText("Sum Divide");
+
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Q2 - Product → ID is 12")
+      .should("be.visible");
+  });
+
+  it("should handle joins on different stages", () => {
+    openOrdersTable({ mode: "notebook" });
+
+    join();
+    joinTable("Products");
+
+    summarize({ mode: "notebook" });
+    addSummaryField({ metric: "Count of rows" });
+    addSummaryGroupingField({ table: "Product", field: "ID" });
+
+    cy.findAllByTestId("action-buttons").last().button("Join data").click();
+    joinTable("Reviews", "ID", "Product ID");
+    visualize();
+
+    assertJoinValid({
+      lhsSampleColumn: "Count",
+      rhsSampleColumn: "Reviews → ID",
+    });
+    assertQueryBuilderRowCount(1136);
+  });
+
+  it("should allow joins with multiple conditions", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    openOrdersTable({ mode: "notebook" });
+
+    join();
+    joinTable("Products");
+    selectJoinStrategy("Inner join");
+
+    getNotebookStep("join").icon("add").click();
+    popover().findByText("Created At").click();
+    popover().findByText("Created At").click();
 
     visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sum Divide");
+    assertJoinValid({
+      lhsTable: "Orders",
+      rhsTable: "Products",
+      lhsSampleColumn: "Product ID",
+      rhsSampleColumn: "Products → ID",
+    });
+    assertQueryBuilderRowCount(415);
   });
 
-  it("should join saved questions that themselves contain joins (metabase#12928)", () => {
-    // Save Question 1
-    cy.createQuestion({
-      name: "12928_Q1",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
-          ["field", PEOPLE.SOURCE, { "join-alias": "People - User" }],
-        ],
-        joins: [
-          {
-            alias: "Products",
-            condition: [
-              "=",
-              ["field", ORDERS.PRODUCT_ID, null],
-              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-            ],
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-          },
-          {
-            alias: "People - User",
-            condition: [
-              "=",
-              ["field", ORDERS.USER_ID, null],
-              ["field", PEOPLE.ID, { "join-alias": "People - User" }],
-            ],
-            fields: "all",
-            "source-table": PEOPLE_ID,
-          },
-        ],
-      },
-    });
+  it("should sync join condition's date-time column units", () => {
+    openOrdersTable({ mode: "notebook" });
 
-    // Save Question 2
-    cy.createQuestion({
-      name: "12928_Q2",
-      query: {
-        "source-table": REVIEWS_ID,
-        aggregation: [["avg", ["field", REVIEWS.RATING, null]]],
-        breakout: [["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }]],
-        joins: [
-          {
-            alias: "Products",
-            condition: [
-              "=",
-              ["field", REVIEWS.PRODUCT_ID, null],
-              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-            ],
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-          },
-        ],
-      },
-    });
+    join();
+    joinTable("Products");
+    selectJoinStrategy("Inner join");
 
-    // Join two previously saved questions
-    startNewQuestion();
-    selectSavedQuestionsToJoin("12928_Q1", "12928_Q2");
+    // Test LHS column infers RHS column's temporal unit
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/Products? → Category/).click();
+    cy.findByLabelText("Left column").click();
+    popover().findByText("Created At").click();
 
-    popover()
-      .contains(/Products? → Category/)
-      .click();
+    cy.findByLabelText("Right column").click();
+    popover().findByText("by month").click({ force: true });
+    popover().last().findByText("Week").click();
+
+    assertJoinColumnName("left", "Created At: Week");
+    assertJoinColumnName("right", "Created At: Week");
+
+    // Test changing a temporal unit on one column would update a second one
+
+    cy.findByLabelText("Right column").click();
+    popover().findByText("by week").click({ force: true });
+    popover().last().findByText("Day").click();
+
+    assertJoinColumnName("left", "Created At: Day");
+    assertJoinColumnName("right", "Created At: Day");
+
+    summarize({ mode: "notebook" });
+    addSummaryField({ metric: "Count of rows" });
 
     visualize();
 
-    cy.log("Reported failing in v1.35.4.1 and `master` on July, 16 2026");
-
-    cy.findByTestId("question-table-badges").within(() => {
-      cy.findByText("12928_Q1");
-      cy.findByText("12928_Q2");
-    });
-
-    cy.findAllByText(/Products? → Category/).should("have.length", 1);
-    cy.findAllByText(/Question \d+? → Category/).should("have.length", 1);
+    cy.findByTestId("scalar-value").contains("2,087");
   });
 
-  it("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
-    const XRAY_DATASETS = 11; // enough to load most questions
-
-    cy.intercept("GET", "/api/automagic-dashboards/adhoc/**").as("xray");
-    cy.intercept("POST", "/api/dataset").as("postDataset");
-
-    visitQuestionAdhoc({
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": REVIEWS_ID,
-          joins: [
-            {
-              fields: "all",
-              "source-table": PRODUCTS_ID,
-              condition: [
-                "=",
-                ["field", REVIEWS.PRODUCT_ID, null],
-                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-              ],
-              alias: "Products",
-            },
-          ],
-          aggregation: [
-            ["sum", ["field", PRODUCTS.PRICE, { "join-alias": "Products" }]],
-          ],
-          breakout: [
-            ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
-          ],
+  it("should remove a join when changing the source table", () => {
+    visitQuestionAdhoc(
+      {
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                alias: "Products",
+                condition: [
+                  "=",
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+                ],
+                fields: "all",
+                "source-table": PRODUCTS_ID,
+              },
+            ],
+          },
         },
-        database: SAMPLE_DB_ID,
       },
-      display: "line",
-    });
-
-    cy.get(".dot").eq(2).click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Automatic insights…").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("X-ray").click();
-
-    cy.wait("@xray").then(xhr => {
-      for (let c = 0; c < XRAY_DATASETS; ++c) {
-        cy.wait("@postDataset");
-      }
-      expect(xhr.response.body.cause).not.to.exist;
-      expect(xhr.status).not.to.eq(500);
-    });
-
-    // Metric title
-    cy.findByTextEnsureVisible(
-      "How this metric is distributed across different numbers",
+      { mode: "notebook" },
     );
-    // Main title
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^A closer look at/);
-    // Make sure at least one card is rendered
-    cy.get(".DashCard");
-  });
 
-  it("joining on a question with remapped values should work (metabase#15578)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    // Remap display value
-    cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
-      name: "Product ID",
-      type: "external",
-      human_readable_field_id: PRODUCTS.TITLE,
-    });
+    getNotebookStep("data").findByTestId("data-step-cell").click();
+    popover().findByText("People").click();
 
-    cy.createQuestion({
-      name: "15578",
-      query: { "source-table": ORDERS_ID },
-    });
-
-    openProductsTable({ mode: "notebook" });
-
-    cy.icon("join_left_outer").click();
-
-    popover().findByText("Sample Database").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("15578").click();
-
-    popover().findByText("ID").click();
-    popover()
-      // Implicit assertion - test will fail for multiple strings
-      .findByText("Product ID")
-      .click();
-
-    visualize(response => {
-      expect(response.body.error).to.not.exist;
-    });
-  });
-
-  it("should allow joins on multiple dimensions", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    openOrdersTable({ mode: "notebook" });
-
-    joinTable("Products");
-    selectJoinType("Inner join");
-
-    cy.findByTestId("step-join-0-0").within(() => {
-      cy.icon("add").click();
-    });
-
-    selectFromDropdown("Created At");
-    selectFromDropdown("Created At");
+    getNotebookStep("join").should("not.exist");
 
     visualize();
-
-    // 415 rows mean the join is done correctly,
-    // (join on product's FK + join on the same "created_at" field)
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 415 rows");
-  });
-
-  it("should allow joins on date-time fields", () => {
-    openOrdersTable({ mode: "notebook" });
-
-    joinTable("Products");
-    selectJoinType("Inner join");
-
-    // Test join dimension infers parent dimension's temporal unit
-
-    cy.findByTestId("parent-dimension").click();
-    selectFromDropdown("by month", { force: true });
-    selectFromDropdown("Week");
-
-    cy.findByTestId("join-dimension").click();
-    selectFromDropdown("Created At");
-
-    assertDimensionName("parent", "Created At: Week");
-    assertDimensionName("join", "Created At: Week");
-
-    // Test changing a temporal unit on one dimension would update a second one
-
-    cy.findByTestId("join-dimension").click();
-    selectFromDropdown("by week", { force: true });
-    selectFromDropdown("Day");
-
-    assertDimensionName("parent", "Created At: Day");
-    assertDimensionName("join", "Created At: Day");
-
-    summarize({ mode: "notebook" });
-    selectFromDropdown("Count of rows");
-
-    visualize();
-
-    // 2087 rows mean the join is done correctly,
-    // (orders joined with products on the same day-month-year)
-    cy.get(".ScalarValue").contains("2,087");
-  });
-
-  it("should show 'Previous results' instead of a table name for non-field dimensions (metabase#17968)", () => {
-    openOrdersTable({ mode: "notebook" });
-
-    summarize({ mode: "notebook" });
-    selectFromDropdown("Count of rows");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    selectFromDropdown("Created At");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Join data").click();
-    selectFromDropdown("Products");
-    selectFromDropdown("Count");
-
-    cy.findByTestId("step-join-1-0")
-      .findByTestId("parent-dimension")
-      .findByText("Previous results");
+    queryBuilderMain()
+      .findAllByText(/Product/)
+      .should("have.length", 0);
   });
 });
 
-function joinTable(table) {
-  cy.findByText("Join data").click();
-  popover().findByText(table).click();
-}
-
-function selectJoinType(strategy) {
-  cy.icon("join_left_outer").first().click();
+function selectJoinStrategy(strategy) {
+  cy.findByLabelText("Change join type").click();
   popover().findByText(strategy).click();
 }
 
-function selectFromDropdown(option, clickOpts) {
-  popover().last().findByText(option).click(clickOpts);
-}
-
-function assertDimensionName(type, name) {
-  cy.findByTestId(`${type}-dimension`).within(() => {
-    cy.findByText(name);
-  });
+function assertJoinColumnName(side, name) {
+  const label = side === "left" ? "Left column" : "Right column";
+  cy.findByLabelText(label).findByText(name).should("exist");
 }

@@ -1,8 +1,8 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/core/utils/types";
+import { isImplicitDeleteAction } from "metabase/actions/utils";
+import { isNotNull } from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
-
 import type {
   ActionDashboardCard,
   ActionParametersMapping,
@@ -100,9 +100,7 @@ export const shouldShowConfirmation = (action?: WritebackAction) => {
   }
   const hasConfirmationMessage =
     !!action.visualization_settings?.confirmMessage;
-  const isImplicitDelete =
-    action.type === "implicit" && action.kind === "row/delete";
-  return hasConfirmationMessage || isImplicitDelete;
+  return hasConfirmationMessage || isImplicitDeleteAction(action);
 };
 
 export const isParameterHidden = (

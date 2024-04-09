@@ -5,6 +5,7 @@
     "allowSyntheticDefaultImports": true,
     "module": "commonjs",
     "isolatedModules": true,
+    "importsNotUsedAsValues": "error",
     "strict": true,
     "moduleResolution": "node",
     "skipLibCheck": true,

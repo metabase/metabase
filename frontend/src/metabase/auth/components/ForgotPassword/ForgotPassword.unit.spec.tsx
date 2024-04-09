@@ -1,11 +1,13 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
+
+import { setupForgotPasswordEndpoint } from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { setupForgotPasswordEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+
 import { ForgotPassword } from "./ForgotPassword";
 
 const TEST_EMAIL = "user@metabase.test";
@@ -44,12 +46,12 @@ describe("ForgotPassword", () => {
 
   it("should show a success message when the form is submitted", async () => {
     setup({ isEmailConfigured: true });
-    userEvent.type(screen.getByLabelText("Email address"), TEST_EMAIL);
+    await userEvent.type(screen.getByLabelText("Email address"), TEST_EMAIL);
     await waitFor(() => {
       expect(screen.getByText("Send password reset email")).toBeEnabled();
     });
 
-    userEvent.click(screen.getByText("Send password reset email"));
+    await userEvent.click(screen.getByText("Send password reset email"));
     expect(await screen.findByText(/Check your email/)).toBeInTheDocument();
   });
 

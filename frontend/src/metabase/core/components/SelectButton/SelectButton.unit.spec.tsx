@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import SelectButton from "./SelectButton";
 
 describe("SelectButton", () => {
@@ -11,16 +12,16 @@ describe("SelectButton", () => {
     expect(screen.getByRole("button")).toHaveTextContent(title);
   });
 
-  it("should receive focus on tab", () => {
+  it("should receive focus on tab", async () => {
     render(<SelectButton>{title}</SelectButton>);
-    userEvent.tab();
+    await userEvent.tab();
 
     expect(screen.getByRole("button")).toHaveFocus();
   });
 
-  it("should not receive focus on tab when disabled", () => {
+  it("should not receive focus on tab when disabled", async () => {
     render(<SelectButton disabled>{title}</SelectButton>);
-    userEvent.tab();
+    await userEvent.tab();
 
     expect(screen.getByRole("button")).not.toHaveFocus();
   });
@@ -40,7 +41,7 @@ describe("SelectButton", () => {
       expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
     });
 
-    it("should call onClear when close icon is clicked", () => {
+    it("should call onClear when close icon is clicked", async () => {
       const onClear = jest.fn();
       render(
         <SelectButton hasValue onClear={onClear}>
@@ -48,12 +49,12 @@ describe("SelectButton", () => {
         </SelectButton>,
       );
 
-      userEvent.click(screen.getByLabelText("close icon"));
+      await userEvent.click(screen.getByLabelText("close icon"));
 
       expect(onClear).toHaveBeenCalledTimes(1);
     });
 
-    it("should not call usual onClick when close icon is clicked", () => {
+    it("should not call usual onClick when close icon is clicked", async () => {
       const onClick = jest.fn();
       render(
         <SelectButton hasValue onClick={onClick} onClear={jest.fn()}>
@@ -61,7 +62,7 @@ describe("SelectButton", () => {
         </SelectButton>,
       );
 
-      userEvent.click(screen.getByLabelText("close icon"));
+      await userEvent.click(screen.getByLabelText("close icon"));
 
       expect(onClick).not.toHaveBeenCalled();
     });

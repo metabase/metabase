@@ -1,11 +1,12 @@
-import _ from "underscore";
 import { assoc } from "icepick";
+import _ from "underscore";
+
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   updateDashboardCards,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 describe("scenarios > dashboard > permissions", () => {
   let dashboardId;
@@ -21,7 +22,6 @@ describe("scenarios > dashboard > permissions", () => {
 
     cy.request("POST", "/api/collection", {
       name: "locked down collection",
-      color: "#509EE3",
       parent_id: null,
     }).then(({ body: { id: collection_id } }) => {
       cy.request("GET", "/api/collection/graph").then(

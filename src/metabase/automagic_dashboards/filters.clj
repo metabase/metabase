@@ -1,24 +1,12 @@
 (ns metabase.automagic-dashboards.filters
   (:require
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.automagic-dashboards.util :as magic.util]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.field :as field :refer [Field]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
-
-(s/defn field-reference->id :- (s/maybe (s/cond-pre su/NonBlankString su/IntGreaterThanZero))
-  "Extract field ID from a given field reference form."
-  [clause]
-  (mbql.u/match-one clause [:field id _] id))
-
-(s/defn collect-field-references :- [mbql.s/field]
-  "Collect all `:field` references from a given form."
-  [form]
-  (mbql.u/match form :field &match))
 
 (defn- temporal?
   "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
@@ -68,8 +56,8 @@
 (defn- candidates-for-filtering
   [fieldset cards]
   (->> cards
-       (mapcat collect-field-references)
-       (map field-reference->id)
+       (mapcat magic.util/collect-field-references)
+       (map magic.util/field-reference->id)
        distinct
        (map fieldset)
        interesting-fields))
@@ -135,7 +123,7 @@
         (add-filters dashboard max-filters)))
   ([dashboard dimensions max-filters]
    (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
-                                                        (:ordered_cards dashboard))))]
+                                                        (:dashcards dashboard))))]
                (->> (t2/select Field :fk_target_field_id [:not= nil]
                                :table_id [:in table-ids])
                     field/with-targets))]
@@ -147,12 +135,12 @@
            (fn [dashboard candidate]
              (let [filter-id     (-> candidate ((juxt :id :name :unit)) hash str)
                    candidate     (assoc candidate :fk-map (build-fk-map fks candidate))
-                   dashcards     (:ordered_cards dashboard)
+                   dashcards     (:dashcards dashboard)
                    dashcards-new (keep #(add-filter % filter-id candidate) dashcards)]
                ;; Only add filters that apply to all cards.
                (if (= (count dashcards) (count dashcards-new))
                  (-> dashboard
-                     (assoc :ordered_cards dashcards-new)
+                     (assoc :dashcards dashcards-new)
                      (update :parameters conj {:id   filter-id
                                                :type (filter-type candidate)
                                                :name (:display_name candidate)
@@ -189,11 +177,11 @@
   (ie. no `:and`s inside `:or` or `:not`)."
   [filter-clause refinement]
   (let [in-refinement?   (into #{}
-                               (map collect-field-references)
+                               (map magic.util/collect-field-references)
                                (flatten-filter-clause refinement))
         existing-filters (->> filter-clause
                               flatten-filter-clause
-                              (remove (comp in-refinement? collect-field-references)))]
+                              (remove (comp in-refinement? magic.util/collect-field-references)))]
     (if (seq existing-filters)
       ;; since the filters are programatically generated they won't have passed thru normalization, so make sure we
       ;; normalize them before passing them to `combine-filter-clauses`, which validates its input

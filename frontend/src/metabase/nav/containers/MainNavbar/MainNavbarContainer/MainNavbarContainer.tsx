@@ -1,36 +1,33 @@
+import type { LocationDescriptor } from "history";
 import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
-import { LocationDescriptor } from "history";
 
-import Modal from "metabase/components/Modal";
-
-import * as Urls from "metabase/lib/urls";
-
-import type { Bookmark, Collection, User } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-
-import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
-import Collections, {
-  buildCollectionTree,
-  getCollectionIcon,
-  ROOT_COLLECTION,
-  CollectionTreeItem,
-} from "metabase/entities/collections";
-import Databases from "metabase/entities/databases";
 import { logout } from "metabase/auth/actions";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
-
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import {
   currentUserPersonalCollections,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
-import Database from "metabase-lib/metadata/Database";
+import Modal from "metabase/components/Modal";
+import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
+import type { CollectionTreeItem } from "metabase/entities/collections";
+import Collections, {
+  buildCollectionTree,
+  getCollectionIcon,
+  ROOT_COLLECTION,
+} from "metabase/entities/collections";
+import Databases from "metabase/entities/databases";
+import * as Urls from "metabase/lib/urls";
+import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { Bookmark, Collection, User } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
-import { MainNavbarProps, SelectedItem } from "../types";
-import NavbarLoadingView from "../NavbarLoadingView";
+import { NavbarErrorView } from "../NavbarErrorView";
+import { NavbarLoadingView } from "../NavbarLoadingView";
+import type { MainNavbarProps, SelectedItem } from "../types";
 
 import MainNavbarView from "./MainNavbarView";
 
@@ -60,6 +57,7 @@ interface Props extends MainNavbarProps {
   rootCollection: Collection;
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
+  allError: boolean;
   allFetched: boolean;
   logout: () => void;
   onReorderBookmarks: (bookmarks: Bookmark[]) => void;
@@ -80,6 +78,7 @@ function MainNavbarContainer({
   collections = [],
   rootCollection,
   hasDataAccess,
+  allError,
   allFetched,
   location,
   params,
@@ -152,6 +151,10 @@ function MainNavbarContainer({
     }
     return null;
   }, [modal, closeModal, onChangeLocation]);
+
+  if (allError) {
+    return <NavbarErrorView />;
+  }
 
   if (!allFetched) {
     return <NavbarLoadingView />;

@@ -20,21 +20,21 @@ describe("issue 11480", () => {
     // Mark field as required and add a default text value.
     SQLFilter.toggleRequired();
     SQLFilter.setDefaultValue("some text");
+    cy.location("search").should("eq", "?x=some%20text");
 
     // Run the query and see an error.
     SQLFilter.runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(`Data conversion error converting "some text"`);
+    cy.contains('Data conversion error converting "some text"');
 
     // Oh wait! That doesn't match the total column, so we'll change the parameter to a number.
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Number");
+    cy.location("search").should("eq", "?x=");
 
-    // When we run it again, the default has been cleared out so we get the right error.
-    SQLFilter.runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(
-      "You'll need to pick a value for 'X' before this query can run.",
-    );
+    // Although there's no default, we should be still able to run the query.
+    cy.findByTestId("native-query-editor-sidebar")
+      .button("Get Answer")
+      .should("not.be.disabled");
   });
 });

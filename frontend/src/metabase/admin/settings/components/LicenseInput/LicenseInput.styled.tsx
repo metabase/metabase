@@ -1,12 +1,12 @@
 import styled from "@emotion/styled";
+
 import Input from "metabase/core/components/Input";
 import { color } from "metabase/lib/colors";
 
 export const LicenseInputContainer = styled.div`
   display: flex;
   flex-wrap: nowrap;
-  // min-width: 680px;
-  width: 680px;
+  width: 100%;
 `;
 
 export const LicenseTextInput = styled(Input)`

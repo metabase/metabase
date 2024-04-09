@@ -1,8 +1,14 @@
-import { IndexRedirect, Redirect, Route } from "react-router";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+import { IndexRedirect, Redirect, Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
+import {
+  setupModelActionsEndpoints,
+  setupCardsEndpoints,
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 import {
   fireEvent,
   getIcon,
@@ -10,35 +16,27 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import {
-  setupModelActionsEndpoints,
-  setupCardsEndpoints,
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
-
-import { checkNotNull } from "metabase/core/utils/types";
-import { ActionsApi } from "metabase/services";
-
+import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
 import Actions from "metabase/entities/actions";
 import Models from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-
-import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
-
+import { checkNotNull } from "metabase/lib/types";
+import { ActionsApi } from "metabase/services";
+import { TYPE } from "metabase-lib/v1/types/constants";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   Card,
   Collection,
   Database,
   Field,
+  Settings,
   WritebackAction,
   WritebackQueryAction,
 } from "metabase-types/api";
 import {
-  createMockCollection,
   createMockDatabase,
   createMockField,
   createMockImplicitCUDActions,
@@ -57,14 +55,12 @@ import {
   createSavedStructuredCard,
   createStructuredModelCard as _createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
-
-import * as ML_Urls from "metabase-lib/urls";
-import { TYPE } from "metabase-lib/types/constants";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import ModelDetailPage from "./ModelDetailPage";
-
-console.warn = jest.fn();
-console.error = jest.fn();
 
 // eslint-disable-next-line react/display-name
 jest.mock("metabase/actions/containers/ActionCreator", () => () => (
@@ -124,6 +120,13 @@ const TEST_DATABASE = createMockDatabase({
   tables: [TEST_TABLE, TEST_FK_TABLE_1],
 });
 
+const TEST_DATABASE_WITHOUT_NESTED_QUERIES = createMockDatabase({
+  ...TEST_DATABASE,
+  features: TEST_DATABASE.features.filter(
+    feature => feature !== "nested-queries",
+  ),
+});
+
 const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
   ...TEST_DATABASE,
   settings: { "database-enable-actions": true },
@@ -173,18 +176,6 @@ function createMockQueryAction(
   });
 }
 
-const COLLECTION_1 = createMockCollection({
-  id: 5,
-  name: "C1",
-  can_write: true,
-});
-
-const COLLECTION_2 = createMockCollection({
-  id: 10,
-  name: "C2",
-  can_write: true,
-});
-
 type SetupOpts = {
   model: Card;
   tab?: string;
@@ -192,6 +183,7 @@ type SetupOpts = {
   databases?: Database[];
   collections?: Collection[];
   usedBy?: Card[];
+  settings?: Partial<Settings>;
 };
 
 async function setup({
@@ -201,7 +193,11 @@ async function setup({
   databases = [TEST_DATABASE],
   collections = [],
   usedBy = [],
+  settings = {},
 }: SetupOpts) {
+  const storeInitialState = createMockState({
+    settings: createMockSettingsState(settings),
+  });
   const metadata = createMockMetadata({
     databases: databases,
     tables: [TEST_TABLE, TEST_FK_TABLE_1],
@@ -257,10 +253,10 @@ async function setup({
       </Route>
       <Route path="/question/:slug" component={() => null} />
     </>,
-    { withRouter: true, initialRoute },
+    { withRouter: true, initialRoute, storeInitialState },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryAllByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 
   return { model, history, baseUrl, metadata, usedByQuestions, modelUpdateSpy };
 }
@@ -277,10 +273,10 @@ async function setupActions({
   });
 }
 
-function openActionMenu(action: WritebackAction) {
+async function openActionMenu(action: WritebackAction) {
   const listItem = screen.getByRole("listitem", { name: action.name });
   const menuButton = within(listItem).getByLabelText("ellipsis icon");
-  userEvent.click(menuButton);
+  await userEvent.click(menuButton);
 }
 
 describe("ModelDetailPage", () => {
@@ -307,12 +303,12 @@ describe("ModelDetailPage", () => {
     });
 
     describe("management", () => {
-      it("allows to rename modal", async () => {
+      it("allows to rename model", async () => {
         const { model, modelUpdateSpy } = await setup({ model: getModel() });
 
         const input = screen.getByDisplayValue(model.displayName() as string);
-        userEvent.clear(input);
-        userEvent.type(input, "New model name");
+        await userEvent.clear(input);
+        await userEvent.type(input, "New model name");
         fireEvent.blur(input);
 
         await waitFor(() => {
@@ -327,7 +323,7 @@ describe("ModelDetailPage", () => {
         const { model, modelUpdateSpy } = await setup({ model: getModel() });
 
         const input = screen.getByPlaceholderText("Add description");
-        userEvent.type(input, "Foo bar");
+        await userEvent.type(input, "Foo bar");
         fireEvent.blur(input);
 
         await waitFor(() => {
@@ -344,40 +340,16 @@ describe("ModelDetailPage", () => {
       it("can be archived", async () => {
         const { model, modelUpdateSpy } = await setup({ model: getModel() });
 
-        userEvent.click(getIcon("ellipsis"));
-        userEvent.click(screen.getByText("Archive"));
+        await userEvent.click(getIcon("ellipsis"));
+        await userEvent.click(await screen.findByText("Archive"));
 
         expect(screen.getByRole("dialog")).toBeInTheDocument();
-        userEvent.click(screen.getByRole("button", { name: "Archive" }));
+        await userEvent.click(screen.getByRole("button", { name: "Archive" }));
 
         await waitFor(() => {
           expect(modelUpdateSpy).toHaveBeenCalledWith(
             { id: model.id() },
             { archived: true },
-            expect.anything(),
-          );
-        });
-      });
-
-      it("can be moved to another collection", async () => {
-        const { model, modelUpdateSpy } = await setup({
-          model: getModel({ collection_id: 1 }),
-          collections: [COLLECTION_1, COLLECTION_2],
-        });
-
-        userEvent.click(getIcon("ellipsis"));
-        userEvent.click(screen.getByText("Move"));
-
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
-        userEvent.click(await screen.findByText(COLLECTION_2.name));
-        userEvent.click(screen.getByRole("button", { name: "Move" }));
-
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-
-        await waitFor(() => {
-          expect(modelUpdateSpy).toHaveBeenCalledWith(
-            { id: model.id() },
-            { collection_id: COLLECTION_2.id },
             expect.anything(),
           );
         });
@@ -394,6 +366,30 @@ describe("ModelDetailPage", () => {
         expect(
           screen.getByText(/This model is not used by any questions yet/i),
         ).toBeInTheDocument();
+      });
+
+      it("does not offer creating new questions if database does not support nested queries", async () => {
+        await setup({
+          model: getModel(),
+          databases: [TEST_DATABASE_WITHOUT_NESTED_QUERIES],
+        });
+
+        expect(
+          screen.queryByRole("link", { name: /Create a new question/i }),
+        ).not.toBeInTheDocument();
+      });
+
+      it("does not offer creating new questions if nested queries are disabled", async () => {
+        await setup({
+          model: getModel(),
+          settings: {
+            "enable-nested-queries": false,
+          },
+        });
+
+        expect(
+          screen.queryByRole("link", { name: /Create a new question/i }),
+        ).not.toBeInTheDocument();
       });
 
       it("lists questions based on the model", async () => {
@@ -429,7 +425,7 @@ describe("ModelDetailPage", () => {
         const { model } = await setup({ model: getModel(), tab: "schema" });
         const fields = model.getResultMetadata();
 
-        userEvent.click(screen.getByText("Schema"));
+        await userEvent.click(screen.getByText("Schema"));
 
         expect(fields.length).toBeGreaterThan(0);
         expect(screen.getByText(`${fields.length} fields`)).toBeInTheDocument();
@@ -516,7 +512,7 @@ describe("ModelDetailPage", () => {
 
       it("allows to create a new query action from the empty state", async () => {
         await setupActions({ model: getModel(), actions: [] });
-        userEvent.click(screen.getByRole("link", { name: "New action" }));
+        await userEvent.click(screen.getByRole("link", { name: "New action" }));
         expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
       });
 
@@ -571,7 +567,7 @@ describe("ModelDetailPage", () => {
           actions: [createMockQueryAction({ model_id: model.id })],
         });
 
-        userEvent.click(screen.getByRole("link", { name: "New action" }));
+        await userEvent.click(screen.getByRole("link", { name: "New action" }));
 
         expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
       });
@@ -581,7 +577,7 @@ describe("ModelDetailPage", () => {
         const action = createMockQueryAction({ model_id: model.id });
         await setupActions({ model, actions: [action] });
 
-        userEvent.click(screen.getByRole("link", { name: action.name }));
+        await userEvent.click(screen.getByRole("link", { name: action.name }));
 
         expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
       });
@@ -591,8 +587,8 @@ describe("ModelDetailPage", () => {
         const action = createMockQueryAction({ model_id: model.id });
         await setupActions({ model, actions: [action] });
 
-        openActionMenu(action);
-        userEvent.click(screen.getByText("Edit"));
+        await openActionMenu(action);
+        await userEvent.click(await screen.findByText("Edit"));
 
         expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
       });
@@ -604,13 +600,17 @@ describe("ModelDetailPage", () => {
         await setupActions({ model, actions: [action] });
 
         const listItem = screen.getByRole("listitem", { name: action.name });
-        userEvent.click(within(listItem).getByLabelText("ellipsis icon"));
-        userEvent.click(screen.getByText("Archive"));
+        await userEvent.click(within(listItem).getByLabelText("ellipsis icon"));
+        await userEvent.click(await screen.findByText("Archive"));
 
         const modal = screen.getByRole("dialog");
-        userEvent.click(within(modal).getByRole("button", { name: "Archive" }));
+        await userEvent.click(
+          within(modal).getByRole("button", { name: "Archive" }),
+        );
 
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        await waitFor(() =>
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+        );
         expect(updateActionSpy).toHaveBeenCalledWith({
           id: action.id,
           archived: true,
@@ -624,7 +624,7 @@ describe("ModelDetailPage", () => {
         });
         await setupActions({ model, actions: [action] });
 
-        openActionMenu(action);
+        await openActionMenu(action);
 
         expect(screen.queryByText("Archive")).not.toBeInTheDocument();
       });
@@ -635,9 +635,9 @@ describe("ModelDetailPage", () => {
         const actions = createMockImplicitCUDActions(model.id);
         await setupActions({ model, actions });
 
-        userEvent.click(screen.getByLabelText("Actions menu"));
-        userEvent.click(screen.getByText("Disable basic actions"));
-        userEvent.click(screen.getByRole("button", { name: "Disable" }));
+        await userEvent.click(screen.getByLabelText("Actions menu"));
+        await userEvent.click(await screen.findByText("Disable basic actions"));
+        await userEvent.click(screen.getByRole("button", { name: "Disable" }));
 
         actions.forEach(action => {
           expect(deleteActionSpy).toHaveBeenCalledWith({ id: action.id });
@@ -674,7 +674,7 @@ describe("ModelDetailPage", () => {
 
       it("doesn't show a link to the metadata editor", async () => {
         await setup({ model: modelCard });
-        userEvent.click(screen.getByText("Schema"));
+        await userEvent.click(screen.getByText("Schema"));
         expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
       });
 
@@ -691,16 +691,16 @@ describe("ModelDetailPage", () => {
         const action = createMockQueryAction({ model_id: modelCard.id });
         await setupActions({ model: modelCard, actions: [action] });
 
-        openActionMenu(action);
+        await openActionMenu(action);
 
-        expect(screen.getByText("View")).toBeInTheDocument();
+        expect(await screen.findByText("View")).toBeInTheDocument();
       });
 
       it("doesn't allow to archive actions", async () => {
         const action = createMockQueryAction({ model_id: modelCard.id });
         await setupActions({ model: modelCard, actions: [action] });
 
-        openActionMenu(action);
+        await openActionMenu(action);
 
         expect(screen.queryByText("Archive")).not.toBeInTheDocument();
       });
@@ -806,8 +806,8 @@ describe("ModelDetailPage", () => {
       const action = createMockQueryAction({ model_id: modelCard.id });
       await setupActions({ model: modelCard, actions: [action] });
 
-      userEvent.click(screen.getByLabelText("Actions menu"));
-      userEvent.click(screen.getByText("Create basic actions"));
+      await userEvent.click(screen.getByLabelText("Actions menu"));
+      await userEvent.click(await screen.findByText("Create basic actions"));
 
       await waitFor(() => {
         expect(createActionSpy).toHaveBeenCalledWith({
@@ -835,7 +835,7 @@ describe("ModelDetailPage", () => {
       const createActionSpy = jest.spyOn(ActionsApi, "create");
       await setupActions({ model: modelCard, actions: [] });
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByRole("button", { name: /Create basic action/i }),
       );
 
@@ -867,7 +867,7 @@ describe("ModelDetailPage", () => {
         actions: createMockImplicitCUDActions(modelCard.id),
       });
 
-      userEvent.click(screen.getByLabelText("Actions menu"));
+      await userEvent.click(screen.getByLabelText("Actions menu"));
 
       expect(
         screen.queryByText(/Create basic action/i),
@@ -877,7 +877,7 @@ describe("ModelDetailPage", () => {
     it("doesn't allow to disable implicit actions if they don't exist", async () => {
       await setupActions({ model: modelCard, actions: [] });
 
-      userEvent.click(screen.getByLabelText("Actions menu"));
+      await userEvent.click(screen.getByLabelText("Actions menu"));
 
       expect(
         screen.queryByText("Disable basic actions"),
@@ -937,21 +937,21 @@ describe("ModelDetailPage", () => {
         "true",
       );
 
-      userEvent.click(screen.getByText("Schema"));
+      await userEvent.click(screen.getByText("Schema"));
       expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/schema`);
       expect(screen.getByRole("tab", { name: "Schema" })).toHaveAttribute(
         "aria-selected",
         "true",
       );
 
-      userEvent.click(screen.getByText("Actions"));
+      await userEvent.click(screen.getByText("Actions"));
       expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/actions`);
       expect(screen.getByRole("tab", { name: "Actions" })).toHaveAttribute(
         "aria-selected",
         "true",
       );
 
-      userEvent.click(screen.getByText("Used by"));
+      await userEvent.click(screen.getByText("Used by"));
       expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
       expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
         "aria-selected",

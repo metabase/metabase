@@ -1,19 +1,41 @@
-import { UserId } from "./user";
-import { CardDisplayType } from "./card";
-import { DatabaseId } from "./database";
+import type { ColorName } from "metabase/lib/colors/types";
+import type { IconName } from "metabase/ui";
+
+import type { CardDisplayType } from "./card";
+import type { DatabaseId } from "./database";
+import type { TableId } from "./table";
+import type { UserId } from "./user";
 
 export type RegularCollectionId = number;
 
-export type CollectionId = RegularCollectionId | "root" | "personal";
+export type CollectionId = RegularCollectionId | "root" | "personal" | "users";
 
 export type CollectionContentModel = "card" | "dataset";
 
 export type CollectionAuthorityLevel = "official" | null;
 
+export type CollectionType = "instance-analytics" | null;
+
+export type LastEditInfo = {
+  email: string;
+  first_name: string;
+  last_name: string;
+  id: UserId;
+  timestamp: string;
+};
+
 export type CollectionAuthorityLevelConfig = {
   type: CollectionAuthorityLevel;
   name: string;
-  icon: string;
+  icon: IconName;
+  color?: ColorName;
+  tooltips?: Record<string, string>;
+};
+
+export type CollectionInstanceAnaltyicsConfig = {
+  type: CollectionType;
+  name: string;
+  icon: IconName;
   color?: string;
   tooltips?: Record<string, string>;
 };
@@ -21,17 +43,21 @@ export type CollectionAuthorityLevelConfig = {
 export interface Collection {
   id: CollectionId;
   name: string;
+  slug?: string;
+  entity_id?: string;
   description: string | null;
   can_write: boolean;
-  color?: string;
   archived: boolean;
   children?: Collection[];
   authority_level?: "official" | null;
+  type?: "instance-analytics" | null;
 
   parent_id?: CollectionId;
   personal_owner_id?: UserId;
+  is_personal?: boolean;
 
-  location?: string;
+  location: string | null;
+  effective_location?: string; // location path containing only those collections that the user has permission to access
   effective_ancestors?: Collection[];
 
   here?: CollectionContentModel[];
@@ -42,12 +68,13 @@ export interface Collection {
   path?: CollectionId[];
 }
 
-type CollectionItemModel =
+export type CollectionItemModel =
   | "card"
   | "dataset"
   | "dashboard"
-  | "pulse"
-  | "collection";
+  | "snippet"
+  | "collection"
+  | "indexed-entity";
 
 export type CollectionItemId = number;
 
@@ -59,13 +86,21 @@ export interface CollectionItem {
   copy?: boolean;
   collection_position?: number | null;
   collection_preview?: boolean | null;
-  fully_parametrized?: boolean | null;
-  collection?: Collection;
+  fully_parameterized?: boolean | null;
+  based_on_upload?: TableId | null; // only for models
+  collection?: Collection | null;
   display?: CardDisplayType;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
   moderated_status?: string;
-  getIcon: () => { name: string };
+  type?: string;
+  here?: CollectionItemModel[];
+  below?: CollectionItemModel[];
+  can_write?: boolean;
+  "last-edit-info"?: LastEditInfo;
+  location?: string;
+  effective_location?: string;
+  getIcon: () => { name: IconName };
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;
   setPinned?: (isPinned: boolean) => void;
@@ -76,5 +111,27 @@ export interface CollectionItem {
 export interface CollectionListQuery {
   archived?: boolean;
   "exclude-other-user-collections"?: boolean;
+  "exclude-archived"?: boolean;
+  "personal-only"?: boolean;
   namespace?: string;
+  tree?: boolean;
+}
+
+export interface ListCollectionItemsRequest {
+  id: CollectionId;
+  models?: CollectionItemModel | CollectionItemModel[];
+  archived?: boolean;
+  pinned_state?: "all" | "is_pinned" | "is_not_pinned";
+  limit?: number;
+  offset?: number;
+  sort_column?: "name" | "last_edited_at" | "last_edited_by" | "model";
+  sort_direction?: "asc" | "desc";
+}
+
+export interface ListCollectionItemsResponse {
+  data: CollectionItem[];
+  models: CollectionItemModel[] | null;
+  limit: number;
+  offset: number;
+  total: number;
 }

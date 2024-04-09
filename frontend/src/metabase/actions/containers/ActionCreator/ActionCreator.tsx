@@ -1,18 +1,23 @@
 import { useState } from "react";
+import { connect } from "react-redux";
+import type { Route } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
-import { connect } from "react-redux";
 
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
-
-import Actions, {
+import type {
   CreateActionParams,
   UpdateActionParams,
 } from "metabase/entities/actions";
+import Actions from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
+import useBeforeUnload from "metabase/hooks/use-before-unload";
+import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { getMetadata } from "metabase/selectors/metadata";
-
+import type Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CardId,
   DatabaseId,
@@ -22,17 +27,13 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import useBeforeUnload from "metabase/hooks/use-before-unload";
-import Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
-
 import { isSavedAction } from "../../utils";
+
 import ActionContext, { useActionContext } from "./ActionContext";
 import { ACE_ELEMENT_ID } from "./ActionContext/QueryActionContextProvider";
 import ActionCreatorView from "./ActionCreatorView";
-import CreateActionForm, {
-  FormValues as CreateActionFormValues,
-} from "./CreateActionForm";
+import type { FormValues as CreateActionFormValues } from "./CreateActionForm";
+import CreateActionForm from "./CreateActionForm";
 
 interface OwnProps {
   actionId?: WritebackActionId;
@@ -40,6 +41,7 @@ interface OwnProps {
   databaseId?: DatabaseId;
 
   action?: WritebackAction;
+  route: Route;
 
   onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
@@ -85,6 +87,7 @@ function ActionCreator({
   onUpdateAction,
   onSubmit,
   onClose,
+  route,
 }: Props) {
   const {
     action,
@@ -98,11 +101,19 @@ function ActionCreator({
     renderEditorBody,
   } = useActionContext();
 
-  useBeforeUnload(isDirty);
-
+  /**
+   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * prop has a chance to re-compute on re-render
+   */
+  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
   const isEditable = isNew || (model != null && model.canWriteActions());
+
+  const showUnsavedChangesWarning =
+    isEditable && isDirty && !isCallbackScheduled;
+
+  useBeforeUnload(!route && showUnsavedChangesWarning);
 
   const handleCreate = async (values: CreateActionFormValues) => {
     if (action.type !== "query") {
@@ -121,7 +132,10 @@ function ActionCreator({
 
     setShowSaveModal(false);
     onSubmit?.(createdAction);
-    onClose?.();
+
+    scheduleCallback(() => {
+      onClose?.();
+    });
   };
 
   const handleUpdate = async () => {
@@ -131,8 +145,13 @@ function ActionCreator({
         model_id: model?.id(),
         visualization_settings: formSettings,
       });
+
       const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
       onSubmit?.(updatedAction);
+
+      scheduleCallback(() => {
+        onClose?.();
+      });
     }
   };
 
@@ -146,7 +165,6 @@ function ActionCreator({
       showSaveModal();
     } else {
       handleUpdate();
-      onClose?.();
     }
   };
 
@@ -180,6 +198,13 @@ function ActionCreator({
             onCancel={handleCloseNewActionModal}
           />
         </Modal>
+      )}
+
+      {route && (
+        <LeaveConfirmationModal
+          isEnabled={showUnsavedChangesWarning}
+          route={route}
+        />
       )}
     </>
   );

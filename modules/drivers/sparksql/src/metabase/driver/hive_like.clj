@@ -3,7 +3,7 @@
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -12,6 +12,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x])
   (:import
@@ -52,7 +53,7 @@
 
 (defmethod sql-jdbc.sync/database-type->base-type :hive-like
   [_ database-type]
-  (condp re-matches (name database-type)
+  (condp re-matches (u/lower-case-en (name database-type))
     #"boolean"          :type/Boolean
     #"tinyint"          :type/Integer
     #"smallint"         :type/Integer
@@ -74,10 +75,6 @@
     #"map"              :type/Dictionary
     #".*"               :type/*))
 
-(defmethod sql.qp/honey-sql-version :hive-like
-  [_driver]
-  2)
-
 (defmethod sql.qp/current-datetime-honeysql-form :hive-like
   [_]
   (h2x/with-database-type-info :%now "timestamp"))
@@ -95,7 +92,7 @@
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
 
-(defmethod sql.qp/date [:hive-like :default]         [_ _ expr] (h2x/->timestamp expr))
+(defmethod sql.qp/date [:hive-like :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:hive-like :minute]          [_ _ expr] (trunc-with-format "yyyy-MM-dd HH:mm" (h2x/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :minute-of-hour]  [_ _ expr] [:minute (h2x/->timestamp expr)])
 (defmethod sql.qp/date [:hive-like :hour]            [_ _ expr] (trunc-with-format "yyyy-MM-dd HH" (h2x/->timestamp expr)))
@@ -263,6 +260,9 @@
   (sql-jdbc.execute/set-parameter driver ps i (t/local-date-time t (t/local-time 0))))
 
 ;; TIMEZONE FIXME — not sure what timezone the results actually come back as
+;;
+;; Also, pretty sure Spark SQL doesn't have a TIME type anyway.
+;; https://spark.apache.org/docs/latest/sql-ref-datatypes.html
 (defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/TIME]
   [_ ^ResultSet rs _rsmeta ^Integer i]
   (fn []
@@ -272,8 +272,8 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/DATE]
   [_ ^ResultSet rs _rsmeta ^Integer i]
   (fn []
-    (when-let [t (.getDate rs i)]
-      (t/zoned-date-time (t/local-date t) (t/local-time 0) (t/zone-id "UTC")))))
+    (when-let [s (.getString rs i)]
+      (u.date/parse s))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/TIMESTAMP]
   [_ ^ResultSet rs _rsmeta ^Integer i]

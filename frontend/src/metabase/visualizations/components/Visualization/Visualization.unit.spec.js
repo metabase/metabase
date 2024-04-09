@@ -1,10 +1,12 @@
 import { renderWithProviders, screen } from "__support__/ui";
-
-import { delay } from "metabase/lib/promise";
-
-import { color } from "metabase/lib/colors";
-import Visualization from "metabase/visualizations/components/Visualization";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import { color } from "metabase/lib/colors";
+import { delay } from "metabase/lib/promise";
+import Visualization from "metabase/visualizations/components/Visualization";
+import registerVisualizations from "metabase/visualizations/register";
+import { createMockCard } from "metabase-types/api/mocks";
+
+registerVisualizations();
 
 describe("Visualization", () => {
   const renderViz = async series => {
@@ -24,7 +26,7 @@ describe("Visualization", () => {
     it("should render", async () => {
       await renderViz([
         {
-          card: { display: "scalar" },
+          card: createMockCard({ display: "scalar" }),
           data: { rows: [[1]], cols: [NumberColumn({ name: "Count" })] },
         },
       ]);
@@ -38,7 +40,7 @@ describe("Visualization", () => {
       it("should have correct colors", async () => {
         const { container } = await renderViz([
           {
-            card: { name: "Card", display: "bar" },
+            card: createMockCard({ name: "Card", display: "bar" }),
             data: {
               cols: [
                 StringColumn({ name: "Dimension" }),
@@ -61,7 +63,7 @@ describe("Visualization", () => {
       it("should have correct colors", async () => {
         const { container } = await renderViz([
           {
-            card: { name: "Card", display: "bar" },
+            card: createMockCard({ name: "Card", display: "bar" }),
             data: {
               cols: [
                 StringColumn({ name: "Dimension" }),
@@ -87,7 +89,7 @@ describe("Visualization", () => {
       it("should have correct colors", async () => {
         const { container } = await renderViz([
           {
-            card: { name: "Card", display: "bar" },
+            card: createMockCard({ name: "Card", display: "bar" }),
             data: {
               cols: [
                 StringColumn({ name: "Dimension1" }),
@@ -115,7 +117,7 @@ describe("Visualization", () => {
       it("should have correct colors", async () => {
         const { container } = await renderViz([
           {
-            card: { name: "Card1", display: "bar" },
+            card: createMockCard({ name: "Card1", display: "bar" }),
             data: {
               cols: [
                 StringColumn({ name: "Dimension" }),
@@ -128,7 +130,7 @@ describe("Visualization", () => {
             },
           },
           {
-            card: { name: "Card2", display: "bar" },
+            card: createMockCard({ name: "Card2", display: "bar" }),
             data: {
               cols: [
                 StringColumn({ name: "Dimension" }),

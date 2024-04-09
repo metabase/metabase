@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import PropTypes from "prop-types";
-
+import { Component } from "react";
 import _ from "underscore";
 
 import { KEYCODE_ENTER, KEYCODE_UP, KEYCODE_DOWN } from "metabase/lib/keyboard";

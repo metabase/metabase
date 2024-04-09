@@ -1,10 +1,11 @@
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
+import { Group } from "@visx/group";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
-import { Group } from "@visx/group";
 import { Text } from "@visx/text";
 import { assoc, merge } from "icepick";
+
 import {
   getLabelProps,
   getXTickLabelProps,
@@ -13,6 +14,7 @@ import {
   getYTickWidth,
 } from "metabase/static-viz/lib/axes";
 import { formatNumber } from "metabase/static-viz/lib/numbers";
+import { measureTextHeight, truncateText } from "metabase/static-viz/lib/text";
 import {
   calculateWaterfallDomain,
   calculateWaterfallEntries,
@@ -20,13 +22,13 @@ import {
   formatTimescaleWaterfallTick,
   getWaterfallEntryColor,
 } from "metabase/static-viz/lib/waterfall";
-import { measureTextHeight, truncateText } from "metabase/static-viz/lib/text";
-import { sortTimeSeries } from "../../lib/sort";
+
 import {
   DATE_ACCESSORS,
   POSITIONAL_ACCESSORS,
 } from "../../constants/accessors";
 import { getWaterfallColors } from "../../lib/colors";
+import { sortTimeSeries } from "../../lib/sort";
 import Values from "../Values";
 import { createXScale } from "../XYChart/utils";
 

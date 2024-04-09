@@ -1,8 +1,8 @@
 import Collection from "metabase/entities/collections";
 
-import ItemSelect from "./ItemSelect";
-import CollectionPicker from "./CollectionPicker";
 import CollectionName from "./CollectionName";
+import CollectionPicker from "./CollectionPicker";
+import ItemSelect from "./ItemSelect";
 
 const CollectionSelect = ItemSelect(
   CollectionPicker,

@@ -1,13 +1,16 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
-import { useSelector } from "metabase/lib/redux";
-import FormProvider from "metabase/core/components/FormProvider";
+
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import * as Errors from "metabase/core/utils/errors";
-import { SubscribeInfo } from "metabase-types/store";
-import { subscribeToNewsletter } from "../../utils";
+import { FormProvider } from "metabase/forms";
+import * as Errors from "metabase/lib/errors";
+import { useSelector } from "metabase/lib/redux";
+import type { SubscribeInfo } from "metabase-types/store";
+
 import { getUserEmail } from "../../selectors";
+import { subscribeToNewsletter } from "../../utils";
+
 import {
   EmailForm,
   EmailFormHeader,

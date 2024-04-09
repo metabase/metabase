@@ -108,7 +108,7 @@ type Value = null | boolean | StringLiteral | NumericLiteral | DatetimeLiteral;
 type OrderableValue = NumericLiteral | DatetimeLiteral;
 
 type RelativeDatetimePeriod = "current" | "last" | "next" | number;
-type RelativeDatetimeUnit =
+export type RelativeDatetimeUnit =
   | "minute"
   | "hour"
   | "day"
@@ -199,7 +199,7 @@ export type FieldFilter =
 type NotFilter = ["not", Filter];
 
 type EqualityFilter = ["=" | "!=", ConcreteFieldReference, Value];
-type ComparisonFilter = [
+export type ComparisonFilter = [
   "<" | "<=" | ">=" | ">",
   ConcreteFieldReference,
   OrderableValue,
@@ -336,11 +336,9 @@ export type BinnedField = [
   },
 ];
 
-export type AggregateFieldReference = [
-  "aggregation",
-  number,
-  ReferenceOptions | null,
-];
+export type AggregateFieldReference =
+  | ["aggregation", number, ReferenceOptions | null]
+  | ["aggregation", number];
 
 export type ExpressionClause = {
   [key: ExpressionName]: Expression;
@@ -357,7 +355,8 @@ export type Expression =
       ExpressionOperand,
       ExpressionOperand,
       ExpressionOperand,
-    ];
+    ]
+  | ConcreteFieldReference;
 
 type ExpressionOperator = string;
 type ExpressionOperand =
@@ -368,19 +367,6 @@ type ExpressionOperand =
   | Expression;
 
 type FieldsClause = ConcreteFieldReference[];
-
-type DependentTable = {
-  id: number | string;
-  type: "table";
-  foreignTables?: boolean;
-};
-
-type DependentField = {
-  id: number;
-  type: "field";
-};
-
-export type DependentMetadataItem = DependentTable | DependentField;
 
 export type TagName = string;
 export type TemplateTagReference = ["template-tag", TagName];

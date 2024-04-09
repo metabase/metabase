@@ -1,14 +1,14 @@
 (ns metabase.models.native-query-snippet
   (:require
+   [medley.core :as m]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
@@ -67,11 +67,13 @@
 
 (def NativeQuerySnippetName
   "Schema checking that snippet names do not include \"}\" or start with spaces."
-  (su/with-api-error-message
-    (s/pred (every-pred
+  (mu/with-api-error-message
+    [:fn (fn [x]
+           ((every-pred
              string?
              (complement #(boolean (re-find #"^\s+" %)))
-             (complement #(boolean (re-find #"}" %)))))
+             (complement #(boolean (re-find #"}" %))))
+            x))]
     (deferred-tru "snippet names cannot include '}' or start with spaces")))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
@@ -83,13 +85,13 @@
   [_model-name _opts snippet]
   (-> (serdes/extract-one-basics "NativeQuerySnippet" snippet)
       (update :creator_id serdes/*export-user*)
-      (update :collection_id #(when % (serdes/*export-fk* % 'Collection)))))
+      (m/update-existing :collection_id #(serdes/*export-fk* % 'Collection))))
 
 (defmethod serdes/load-xform "NativeQuerySnippet" [snippet]
   (-> snippet
       serdes/load-xform-basics
       (update :creator_id serdes/*import-user*)
-      (update :collection_id #(when % (serdes/*import-fk* % 'Collection)))))
+      (m/update-existing :collection_id #(serdes/*import-fk* % 'Collection))))
 
 (defmethod serdes/dependencies "NativeQuerySnippet"
   [{:keys [collection_id]}]
@@ -98,10 +100,20 @@
     []))
 
 (defmethod serdes/storage-path "NativeQuerySnippet" [snippet ctx]
-  ;; Intended path here is ["snippets" "nested" "collections" "snippet_eid_and_slug"]
+  ;; Intended path here is ["snippets" "<nested ... collections>" "<snippet_eid_and_slug>"]
   ;; We just the default path, then pull it apart.
-  ;; The default is ["collections" "nested" collections" "nativequerysnippets" "base_name"]
+  ;; The default is ["collections" "<nested ... collections>" "nativequerysnippets" "<base_name>"]
   (let [basis  (serdes/storage-default-collection-path snippet ctx)
         file   (last basis)
         colls  (->> basis rest (drop-last 2))] ; Drops the "collections" at the start, and the last two.
     (concat ["snippets"] colls [file])))
+
+(defmethod serdes/load-one! "NativeQuerySnippet" [ingested maybe-local]
+  ;; if we got local snippet in db and it has same name as incoming one, we can be sure
+  ;; there will be no conflicts and skip the query to the db
+  (if (and (not= (:name ingested) (:name maybe-local))
+           (t2/exists? :model/NativeQuerySnippet
+                       :name (:name ingested) :entity_id [:!= (:entity_id ingested)]))
+    (recur (update ingested :name str " (copy)")
+           maybe-local)
+    (serdes/default-load-one! ingested maybe-local)))

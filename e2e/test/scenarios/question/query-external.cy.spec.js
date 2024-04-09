@@ -1,10 +1,11 @@
-import { restore, startNewQuestion, visualize } from "e2e/support/helpers";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { openTable, restore, visualize } from "e2e/support/helpers";
 
 const supportedDatabases = [
   {
     database: "Mongo",
-    snapshotName: "mongo-4",
-    dbName: "QA Mongo4",
+    snapshotName: "mongo-5",
+    dbName: "QA Mongo",
   },
   {
     database: "MySQL",
@@ -20,14 +21,21 @@ supportedDatabases.forEach(({ database, snapshotName, dbName }) => {
 
       restore(snapshotName);
       cy.signInAsAdmin();
+
+      cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).as("schema");
     });
 
     it(`can query ${database} database`, () => {
-      startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(dbName).click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders").click();
+      cy.get("@schema").then(({ body }) => {
+        const tabelId = body.find(
+          table => table.name.toLowerCase() === "orders",
+        ).id;
+        openTable({
+          database: WRITABLE_DB_ID,
+          table: tabelId,
+          mode: "notebook",
+        });
+      });
 
       visualize();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

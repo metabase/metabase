@@ -1,17 +1,17 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import { t } from "ttag";
-import d3 from "d3";
-import ss from "simple-statistics";
-import _ from "underscore";
+import cx from "classnames";
 import Color from "color";
+import d3 from "d3";
+import { Component } from "react";
+import ss from "simple-statistics";
+import { t } from "ttag";
+import _ from "underscore";
+
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-
-import { MinColumnsError } from "metabase/visualizations/lib/errors";
-import MetabaseSettings from "metabase/lib/settings";
-
+import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/lib/formatting";
-
+import MetabaseSettings from "metabase/lib/settings";
+import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import {
   computeMinimalBounds,
   getCanonicalRowKey,
@@ -20,10 +20,11 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { isMetric, isString } from "metabase-lib/types/utils/isa";
+import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
+
 import ChartWithLegend from "./ChartWithLegend";
-import LegacyChoropleth from "./LegacyChoropleth";
 import LeafletChoropleth from "./LeafletChoropleth";
+import LegacyChoropleth from "./LegacyChoropleth";
 
 // TODO COLOR
 const HEAT_MAP_COLORS = ["#C4E4FF", "#81C5FF", "#51AEFF", "#1E96FF", "#0061B5"];
@@ -154,7 +155,7 @@ export default class ChoroplethMap extends Component {
           this.setState({
             geoJson: geoJson,
             geoJsonPath: geoJsonPath,
-            minimalBounds: computeMinimalBounds(geoJson.features),
+            minimalBounds: computeMinimalBounds(geoJson?.features ?? []),
           });
         });
       }
@@ -203,7 +204,7 @@ export default class ChoroplethMap extends Component {
 
     if (!geoJson) {
       return (
-        <div className={className + " flex layout-centered"}>
+        <div className={cx(className, CS.flex, CS.layoutCentered)}>
           <LoadingSpinner />
         </div>
       );
@@ -280,20 +281,20 @@ export default class ChoroplethMap extends Component {
             settings,
           };
 
-    const isClickable =
-      onVisualizationClick &&
-      visualizationIsClickable(getFeatureClickObject(rows[0]));
+    const isClickable = onVisualizationClick != null;
 
     const onClickFeature =
       isClickable &&
       (click => {
-        const featureKey = getFeatureKey(click.feature);
-        const row = rowByFeatureKey.get(featureKey);
-        if (onVisualizationClick) {
-          onVisualizationClick({
-            ...getFeatureClickObject(row, click.feature),
-            event: click.event,
-          });
+        if (visualizationIsClickable(getFeatureClickObject(rows[0]))) {
+          const featureKey = getFeatureKey(click.feature);
+          const row = rowByFeatureKey.get(featureKey);
+          if (onVisualizationClick) {
+            onVisualizationClick({
+              ...getFeatureClickObject(row, click.feature),
+              event: click.event,
+            });
+          }
         }
       });
     const onHoverFeature =

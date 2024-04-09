@@ -1,9 +1,10 @@
-import _ from "underscore";
 import type { ScaleContinuousNumeric } from "d3-scale";
-import { ValueFormatter } from "metabase/visualizations/shared/types/format";
-import { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
-import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
-import { ChartFont } from "metabase/visualizations/shared/types/style";
+import _ from "underscore";
+
+import type { ValueFormatter } from "metabase/visualizations/shared/types/format";
+import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import type { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
+import type { ChartFont } from "metabase/visualizations/shared/types/style";
 
 const TICK_SPACING = 20;
 

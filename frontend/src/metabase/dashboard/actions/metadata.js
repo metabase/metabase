@@ -1,8 +1,7 @@
 import Questions from "metabase/entities/questions";
-import { getMetadata } from "metabase/selectors/metadata";
-import { loadMetadataForQueries } from "metabase/redux/metadata";
 import { getLinkTargets } from "metabase/lib/click-behavior";
-import Question from "metabase-lib/Question";
+import { loadMetadataForCard } from "metabase/questions/actions";
+
 import { isVirtualDashCard } from "../utils";
 
 export const loadMetadataForDashboard = dashCards => async dispatch => {
@@ -17,17 +16,10 @@ export const loadMetadataForDashboard = dashCards => async dispatch => {
 };
 
 const loadMetadataForCards = cards => (dispatch, getState) => {
-  const metadata = getMetadata(getState());
-
-  const questions = cards
-    .filter(card => card.dataset_query) // exclude queries without perms
-    .map(card => new Question(card, metadata));
-
-  return dispatch(
-    loadMetadataForQueries(
-      questions.map(question => question.query()),
-      questions.map(question => question.dependentMetadata()),
-    ),
+  return Promise.all(
+    cards
+      .filter(card => card.dataset_query) // exclude queries without perms
+      .map(card => dispatch(loadMetadataForCard(card))),
   );
 };
 

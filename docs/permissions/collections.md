@@ -14,11 +14,49 @@ Metabase starts out with a default top-level collection which is called **Our an
 
 ## Collection permission levels
 
-- **Curate access**: the user can edit, move, archive, and pin items saved in this collection, and can save or move new items into it. They can also create new sub-collections within this collection. In order to archive a sub-collection within this collection, they'll need to have Curate access for it and any and all collections within it.
-- **View access**: people in the group can see all the questions, dashboards, and models in the collection. If a person lacks permission to view some or all of the questions included in a given dashboard, then those questions will be invisible to them; but any questions that are saved in this collection _will_ be visible to them, _even if the person lacks access to the underlying data used in the question._
-- **No access**: the people in the group won't see this collection listed, and they'll lack access to any of the items saved within it.
+There are three permission levels for collections:
 
-### Setting permissions for collections
+- [Curate access](#curate-access)
+- [View access](#view-access)
+- [No access](#no-access)
+
+| Action                             | Curate Access | View Access | No Access |
+| ---------------------------------- | ------------- | ----------- | --------- |
+| View items                         | ✅            | ✅          | ❌        |
+| Edit items' title and descriptions | ✅            | ❌          | ❌        |
+| Move items                         | ✅            | ❌          | ❌        |
+| Archive items                      | ✅            | ❌          | ❌        |
+| Pin items                          | ✅            | ❌          | ❌        |
+| View events and timelines          | ✅            | ✅          | ❌        |
+| Edit events and timelines          | ✅            | ❌          | ❌        |
+
+### Curate access
+
+The group can view, edit, move, archive, and pin items saved in this collection, and can save or move new items into it. The group can also create new sub-collections within this collection. The group can also create and edit [events and timelines](../exploration-and-organization/events-and-timelines.md).
+
+### View access
+
+The group can see all the questions, dashboards, and models in the collection, as well as [events and timelines](../exploration-and-organization/events-and-timelines.md).
+
+### No access
+
+The group won't see this collection listed, and they'll lack access to any of the items saved within it.
+
+## Collection vs data permissions
+
+Collection permissions only apply to viewing and curating existing questions, models, and dashboards. Changing the query on an existing question, or creating a new question, requires that the group have [data permissions](./data.md) for the underlying data.
+
+There is one, important exception: when a group has their data permission set to [Block](./data.md#block-access) for a database or table, the group won't be able to view questions based on that data, even if they have curate access to the collection where those questions are saved.
+
+## Dashboards with questions from multiple collections
+
+If a dashboard includes questions saved to other collections, the group will need view or curate access to all of those collections in order to view those questions. If not, Metabase will apologize and tell you that you lack permissions to see the cards saved to the other collections.
+
+![Dashboard with questions from multiple collections, where the person is not in a group with access to one of the collections](./images/dashboard-no-permissions.png)
+
+In general, it's easier to manage permissions when keeping all of a dashboard's questions in the same collection.
+
+## Setting permissions for collections
 
 You can set permissions on collections by clicking on the lock icon in the top-right of the screen while viewing the collection and clicking on **Edit permissions**. Only Administrators can edit collection permissions. Each [user group](./introduction.md) can have either View, Curate, or No access to a collection:
 
@@ -30,11 +68,11 @@ If you want to see the bigger picture of what permissions your user groups have 
 
 Just like with data access permissions, collection permissions are _additive_, meaning that if a user belongs to more than one group, if one of their groups has a more restrictive setting for a collection than another one of their groups, they'll be given the _more permissive_ setting. This is especially important to remember when dealing with the All Users group: since all users are members of this group, if you give the All Users group Curate access to a collection, then _all_ users will be given Curate access for that collection, even if they also belong to a group with _less_ access than that.
 
-### Permissions and sub-collections
+## Permissions and sub-collections
 
 A group can be given access to a collection located somewhere within one or more sub-collections _without_ having to have access to every collection "above" it. For example, if a group had access to the "Super Secret Collection" that's saved several layers deep within a "Marketing" collection that the group lacks access to, the "Super Secret Collection" would show up at the top-most level that the group _does_ have access to.
 
-### Archiving collections
+## Archiving collections
 
 Users with curate permission for a collection can archive collections. Click the edit icon in the top-right of the collection screen and select **Archive this collection** to archive it. This will also archive all questions, dashboards, models, and all other sub-collections and their contents. Importantly, this will also remove any archived questions from all dashboards that use them.
 
@@ -52,7 +90,13 @@ Note that collections themselves can't be pinned. If you're running on a [paid p
 
 ## Special collections
 
+### Our analytics
+
 The "Our analytics" collection and individual personal collections are invincible; they cannot be archived, injured, or slain. They are eternal.
+
+### Metabase analytics
+
+See [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
 ### Personal collections
 

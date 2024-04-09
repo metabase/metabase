@@ -1,5 +1,5 @@
-import { VisualizationSettings } from "metabase-types/api";
-import { Series } from "metabase/visualizations/shared/components/RowChart/types";
+import type { Series } from "metabase/visualizations/shared/components/RowChart/types";
+import type { VisualizationSettings } from "metabase-types/api";
 
 export const getLegendItems = <TDatum>(
   multipleSeries: Series<TDatum, unknown>[],

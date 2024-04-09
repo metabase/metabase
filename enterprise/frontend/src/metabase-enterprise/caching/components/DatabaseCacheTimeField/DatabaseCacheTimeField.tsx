@@ -1,10 +1,12 @@
-import { useCallback } from "react";
 import { useField, useFormikContext } from "formik";
+import { useCallback } from "react";
 import { jt, t } from "ttag";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-import Link from "metabase/core/components/Link/Link";
+
 import FormField from "metabase/core/components/FormField";
-import { DatabaseData } from "metabase-types/api";
+import Link from "metabase/core/components/Link/Link";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
+import type { DatabaseData } from "metabase-types/api";
+
 import DatabaseCacheTimeInput from "../DatabaseCacheTimeInput";
 
 const FIELD = "cache_ttl";
@@ -46,6 +48,7 @@ const DatabaseCacheTimeField = () => {
 const DatabaseCacheTimeDescription = (): JSX.Element => {
   return (
     <div>
+      {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
       {jt`How long to keep question results. By default, Metabase will use the value you supply on the ${(
         <Link key="link" to="/admin/settings/caching">
           {t`cache settings page`}

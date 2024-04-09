@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
-// TODO: merge with metabase/dashboard/components/Dashboard.jsx
 
-import { Component } from "react";
 import cx from "classnames";
+import { Component } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
-import DashboardData from "metabase/dashboard/hoc/DashboardData";
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
+import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 
 export class Dashboard extends Component {
   render() {
@@ -14,17 +14,19 @@ export class Dashboard extends Component {
 
     return (
       <LoadingAndErrorWrapper
-        className={cx("Dashboard p1 flex-full", className)}
+        className={cx(DashboardS.Dashboard, CS.p1, CS.flexFull, className)}
         style={style}
         loading={!dashboard}
         noBackground
       >
         {() => (
-          <DashboardGrid dashboard={dashboard} {...props} className="spread" />
+          <DashboardGridConnected
+            dashboard={dashboard}
+            {...props}
+            className={CS.spread}
+          />
         )}
       </LoadingAndErrorWrapper>
     );
   }
 }
-
-export default DashboardData(Dashboard);

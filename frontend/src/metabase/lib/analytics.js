@@ -1,4 +1,6 @@
 import * as Snowplow from "@snowplow/browser-tracker";
+
+import { shouldLogAnalytics } from "metabase/env";
 import Settings from "metabase/lib/settings";
 import { getUserId } from "metabase/selectors/user";
 
@@ -30,6 +32,9 @@ export const trackPageView = url => {
   }
 };
 
+/**
+ * @deprecated This uses GA which is not setup. We should use `trackSchemaEvent`.
+ */
 export const trackStructEvent = (category, action, label, value) => {
   if (!category || !label || !Settings.trackingEnabled()) {
     return;
@@ -41,6 +46,17 @@ export const trackStructEvent = (category, action, label, value) => {
 };
 
 export const trackSchemaEvent = (schema, version, data) => {
+  if (shouldLogAnalytics) {
+    const { event, ...other } = data;
+    // eslint-disable-next-line no-console
+    console.log(
+      `%c[SNOWPLOW EVENT]%c, ${event}`,
+      "background: #222; color: #bada55",
+      "color: ",
+      other,
+    );
+  }
+
   if (!schema || !Settings.trackingEnabled()) {
     return;
   }

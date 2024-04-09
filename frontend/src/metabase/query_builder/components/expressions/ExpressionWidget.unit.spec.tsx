@@ -1,16 +1,13 @@
 import userEvent from "@testing-library/user-event";
-import { checkNotNull } from "metabase/core/utils/types";
-import { getIcon, render, screen } from "__support__/ui";
-import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/selectors/metadata";
+
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { createQuery } from "metabase-lib/test-helpers";
 import type { Expression } from "metabase-types/api";
-import { createMockState } from "metabase-types/store/mocks";
-import {
-  createSampleDatabase,
-  ORDERS_ID,
-} from "metabase-types/api/mocks/presets";
+
+import type { ExpressionWidgetProps } from "./ExpressionWidget";
+import { ExpressionWidget } from "./ExpressionWidget";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
-import { ExpressionWidget, ExpressionWidgetProps } from "./ExpressionWidget";
 
 describe("ExpressionWidget", () => {
   it("should render proper controls", () => {
@@ -27,7 +24,7 @@ describe("ExpressionWidget", () => {
     expect(screen.queryByText("Name")).not.toBeInTheDocument();
   });
 
-  it("should render help icon with tooltip which opens documentation page", () => {
+  it("should render help icon with tooltip which opens documentation page", async () => {
     setup();
 
     const icon = getIcon("info");
@@ -43,7 +40,7 @@ describe("ExpressionWidget", () => {
       "https://www.metabase.com/docs/latest/questions/query-builder/expressions.html",
     );
 
-    userEvent.hover(link);
+    await userEvent.hover(link);
 
     expect(
       screen.getByText(
@@ -52,7 +49,7 @@ describe("ExpressionWidget", () => {
     ).toBeInTheDocument();
   });
 
-  it("should trigger onChangeExpression if expression is valid", () => {
+  it("should trigger onChangeExpression if expression is valid", async () => {
     const { onChangeExpression } = setup();
 
     const doneButton = screen.getByRole("button", { name: "Done" });
@@ -61,18 +58,39 @@ describe("ExpressionWidget", () => {
     const expressionInput = screen.getByRole("textbox");
     expect(expressionInput).toHaveClass("ace_text-input");
 
-    userEvent.type(expressionInput, "1 + 1");
-    userEvent.tab();
+    await userEvent.type(expressionInput, "1 + 1");
+    await userEvent.tab();
 
     expect(doneButton).toBeEnabled();
 
-    userEvent.click(doneButton);
+    await userEvent.click(doneButton);
 
     expect(onChangeExpression).toHaveBeenCalledTimes(1);
     expect(onChangeExpression).toHaveBeenCalledWith("", ["+", 1, 1]);
   });
 
-  it(`should render interactive header if it is passed`, () => {
+  it("should trigger onChangeClause if expression is valid", async () => {
+    const { getRecentExpressionClauseInfo, onChangeClause } = setup();
+
+    const doneButton = screen.getByRole("button", { name: "Done" });
+    expect(doneButton).toBeDisabled();
+
+    const expressionInput = screen.getByRole("textbox");
+    expect(expressionInput).toHaveClass("ace_text-input");
+
+    await userEvent.type(expressionInput, "1 + 1");
+    await userEvent.tab();
+
+    expect(doneButton).toBeEnabled();
+
+    await userEvent.click(doneButton);
+
+    expect(onChangeClause).toHaveBeenCalledTimes(1);
+    expect(onChangeClause).toHaveBeenCalledWith("", expect.anything());
+    expect(getRecentExpressionClauseInfo().displayName).toBe("1 + 1");
+  });
+
+  it(`should render interactive header if it is passed`, async () => {
     const mockTitle = "Some Title";
     const onClose = jest.fn();
     setup({
@@ -83,7 +101,7 @@ describe("ExpressionWidget", () => {
     const titleEl = screen.getByText(mockTitle);
     expect(titleEl).toBeInTheDocument();
 
-    userEvent.click(titleEl);
+    await userEvent.click(titleEl);
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -95,63 +113,105 @@ describe("ExpressionWidget", () => {
       expect(screen.getByText("Name")).toBeInTheDocument();
     });
 
-    it("should validate name value", () => {
+    it("should validate name value", async () => {
       const expression: Expression = ["+", 1, 1];
-      const { onChangeExpression } = setup({ expression, withName: true });
+      const {
+        getRecentExpressionClauseInfo,
+        onChangeExpression,
+        onChangeClause,
+      } = setup({
+        expression,
+        withName: true,
+      });
 
       const doneButton = screen.getByRole("button", { name: "Done" });
+      const expressionNameInput = screen.getByPlaceholderText(
+        "Something nice and descriptive",
+      );
 
       expect(doneButton).toBeDisabled();
 
-      userEvent.type(screen.getByDisplayValue("1 + 1"), "{enter}");
+      await userEvent.type(screen.getByDisplayValue("1 + 1"), "{enter}");
 
-      // enter in expression editor should not trigger "onChangeExpression" as popover is not valid with empty "name"
+      // enter in expression editor should not trigger "onChangeClause" or "onChangeExpression"
+      // as popover is not valid with empty "name"
+      expect(onChangeClause).toHaveBeenCalledTimes(0);
       expect(onChangeExpression).toHaveBeenCalledTimes(0);
 
-      userEvent.type(
-        screen.getByPlaceholderText("Something nice and descriptive"),
-        "some name",
+      // The name must not be empty
+      await userEvent.clear(expressionNameInput);
+      expect(doneButton).toBeDisabled();
+
+      // The name must not consist of spaces or tabs only.
+      await userEvent.type(expressionNameInput, " ");
+      expect(doneButton).toBeDisabled();
+      await userEvent.type(expressionNameInput, "\t");
+      expect(doneButton).toBeDisabled();
+      await userEvent.type(expressionNameInput, "  \t\t");
+      expect(doneButton).toBeDisabled();
+
+      await userEvent.clear(expressionNameInput);
+
+      await userEvent.type(
+        expressionNameInput,
+        "Some n_am!e 2q$w&YzT(6i~#sLXv7+HjP}Ku1|9c*RlF@4o5N=e8;G*-bZ3/U0:Qa'V,t(W-_D",
       );
 
       expect(doneButton).toBeEnabled();
 
-      userEvent.click(doneButton);
+      await userEvent.click(doneButton);
 
       expect(onChangeExpression).toHaveBeenCalledTimes(1);
-      expect(onChangeExpression).toHaveBeenCalledWith("some name", expression);
+      expect(onChangeExpression).toHaveBeenCalledWith(
+        "Some n_am!e 2q$w&YzT(6i~#sLXv7+HjP}Ku1|9c*RlF@4o5N=e8;G*-bZ3/U0:Qa'V,t(W-_D",
+        expression,
+      );
+      expect(onChangeClause).toHaveBeenCalledTimes(1);
+      expect(onChangeClause).toHaveBeenCalledWith(
+        "Some n_am!e 2q$w&YzT(6i~#sLXv7+HjP}Ku1|9c*RlF@4o5N=e8;G*-bZ3/U0:Qa'V,t(W-_D",
+        expect.anything(),
+      );
+      expect(getRecentExpressionClauseInfo().displayName).toBe("1 + 1");
     });
   });
 });
 
-const createMockQueryForExpressions = () => {
-  const state = createMockState({
-    entities: createMockEntitiesState({
-      databases: [createSampleDatabase()],
-    }),
-  });
-
-  const metadata = getMetadata(state);
-  const query = checkNotNull(metadata.table(ORDERS_ID)).query();
-
-  return query;
-};
-
 function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
-  const mocks = {
-    onClose: jest.fn(),
-    onChangeExpression: jest.fn(),
+  const query = createQuery();
+  const stageIndex = 0;
+  const onChangeExpression = jest.fn();
+  const onChangeClause = jest.fn();
+  const onClose = jest.fn();
+
+  function getRecentExpressionClause(): Lib.Clause {
+    expect(onChangeClause).toHaveBeenCalled();
+    const [_name, clause] = onChangeClause.mock.lastCall;
+    return clause;
+  }
+
+  function getRecentExpressionClauseInfo() {
+    return Lib.displayInfo(query, stageIndex, getRecentExpressionClause());
+  }
+
+  renderWithProviders(
+    <ExpressionWidget
+      expression={undefined}
+      clause={undefined}
+      name={undefined}
+      query={query}
+      reportTimezone="UTC"
+      stageIndex={stageIndex}
+      onChangeExpression={onChangeExpression}
+      onChangeClause={onChangeClause}
+      onClose={onClose}
+      {...additionalProps}
+    />,
+  );
+
+  return {
+    getRecentExpressionClauseInfo,
+    onChangeExpression,
+    onChangeClause,
+    onClose,
   };
-
-  const props = {
-    expression: undefined,
-    name: undefined,
-    query: createMockQueryForExpressions(),
-    reportTimezone: "UTC",
-    ...mocks,
-    ...additionalProps,
-  };
-
-  render(<ExpressionWidget {...props} />);
-
-  return mocks;
 }

@@ -1,32 +1,39 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockCollection,
   createMockTimeline,
 } from "metabase-types/api/mocks";
-import TimelinePanel, { TimelinePanelProps } from "./TimelinePanel";
+
+import type { TimelinePanelProps } from "./TimelinePanel";
+import TimelinePanel from "./TimelinePanel";
+
+function setup(props: TimelinePanelProps) {
+  renderWithProviders(<TimelinePanel {...props} />);
+}
 
 describe("TimelinePanel", () => {
-  it("should allow creating an event and a default timeline", () => {
+  it("should allow creating an event and a default timeline", async () => {
     const props = getProps({
       timelines: [],
       collection: createMockCollection({ can_write: true }),
     });
 
-    render(<TimelinePanel {...props} />);
-    userEvent.click(screen.getByText("Add an event"));
+    setup(props);
+    await userEvent.click(screen.getByText("Add an event"));
 
     expect(props.onNewEvent).toHaveBeenCalled();
   });
 
-  it("should allow creating an event within existing timelines", () => {
+  it("should allow creating an event within existing timelines", async () => {
     const props = getProps({
       timelines: [createMockTimeline()],
       collection: createMockCollection({ can_write: true }),
     });
 
-    render(<TimelinePanel {...props} />);
-    userEvent.click(screen.getByText("Add an event"));
+    setup(props);
+    await userEvent.click(screen.getByText("Add an event"));
 
     expect(props.onNewEvent).toHaveBeenCalled();
   });
@@ -37,7 +44,7 @@ describe("TimelinePanel", () => {
       collection: createMockCollection({ can_write: false }),
     });
 
-    render(<TimelinePanel {...props} />);
+    setup(props);
 
     expect(screen.queryByText("Add an event")).not.toBeInTheDocument();
   });

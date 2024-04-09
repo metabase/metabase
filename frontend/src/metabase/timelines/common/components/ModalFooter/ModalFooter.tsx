@@ -1,4 +1,5 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
+
 import { FooterRoot } from "./ModalFooter.styled";
 
 export interface ModalFooterProps {

@@ -1,16 +1,16 @@
-import { Component, CSSProperties } from "react";
-import { CSSTransition, TransitionGroup } from "react-transition-group";
 import cx from "classnames";
+import type { CSSProperties } from "react";
+import { Component } from "react";
+import { CSSTransition, TransitionGroup } from "react-transition-group";
 
-import {
-  getModalContent,
+import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
+import type {
   ModalSize,
-  modalSizes,
   BaseModalProps,
 } from "metabase/components/Modal/utils";
-
+import { getModalContent, modalSizes } from "metabase/components/Modal/utils";
 import SandboxedPortal from "metabase/components/SandboxedPortal";
-import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
+import CS from "metabase/css/core/index.css";
 import { FocusTrap } from "metabase/ui";
 
 export type WindowModalProps = BaseModalProps & {
@@ -43,7 +43,7 @@ export class WindowModal extends Component<WindowModalProps> {
     this._modalElement.className = "ModalContainer";
 
     if (props.zIndex != null) {
-      this._modalElement.setAttribute("style", `z-index:${props.zIndex}`);
+      this._modalElement.style.zIndex = String(props.zIndex);
     }
     document.body.appendChild(this._modalElement);
   }
@@ -59,6 +59,7 @@ export class WindowModal extends Component<WindowModalProps> {
       this.props.onClose();
     }
   };
+
   _modalComponent() {
     const className = cx(
       this.props.className,
@@ -74,7 +75,7 @@ export class WindowModal extends Component<WindowModalProps> {
       >
         <FocusTrap active={this.props.trapFocus}>
           <div
-            className={cx(className, "relative bg-white rounded")}
+            className={cx(className, CS.relative, CS.bgWhite, CS.rounded)}
             role="dialog"
           >
             {getModalContent({
@@ -99,13 +100,23 @@ export class WindowModal extends Component<WindowModalProps> {
       enableTransition,
       "data-testid": dataTestId,
     } = this.props;
-    const backdropClassnames =
-      "flex justify-center align-center fixed top left bottom right";
+    const backdropClassnames = cx(
+      CS.flex,
+      CS.justifyCenter,
+      CS.alignCenter,
+      CS.fixed,
+      CS.top,
+      CS.left,
+      CS.bottom,
+      CS.right,
+    );
 
     return (
       <SandboxedPortal
         container={this._modalElement}
         enableMouseEvents={enableMouseEvents}
+        // disable keydown to allow FocusTrap to work
+        unsandboxEvents={["onKeyDown"]}
       >
         <TransitionGroup
           appear={enableTransition}

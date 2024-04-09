@@ -1,19 +1,17 @@
 import styled from "@emotion/styled";
 
+import Card from "metabase/components/Card";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-import Card from "metabase/components/Card";
-import { Icon } from "metabase/core/components/Icon";
-
 export const StyledCard = styled(Card)`
-  padding: 2rem;
+  padding: 2.5rem;
   width: 100%;
-  max-width: 31.25rem;
+  max-width: 40rem;
 `;
 
 export const Label = styled.span`
-  margin-bottom: ${space(2)};
   padding: ${space(0)} ${space(1)};
   display: inline-block;
 
@@ -22,25 +20,11 @@ export const Label = styled.span`
   font-weight: 700;
   border-radius: 0.25rem;
   text-transform: uppercase;
+  color: ${color("white")};
+  background: ${color("brand")};
+`;
+
+export const BoldExternalLink = styled(ExternalLink)`
   color: ${color("brand")};
-  background: ${color("brand-light")};
-`;
-
-export const Header = styled.h2`
-  font-size: 0.875rem;
-  margin-bottom: ${space(1)};
-`;
-
-export const Description = styled.p`
-  margin-top: 0;
-  margin-bottom: ${space(2)};
-  color: ${color("text-medium")};
-`;
-
-export const MoreDetails = styled.span`
-  font-weight: 700;
-`;
-
-export const StyledIcon = styled(Icon)`
-  margin-left: ${space(1)};
+  font-weight: bold;
 `;

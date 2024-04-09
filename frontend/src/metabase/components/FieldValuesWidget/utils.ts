@@ -1,25 +1,23 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { MetabaseApi } from "metabase/services";
 import { stripId } from "metabase/lib/formatting";
-
-import type { Dashboard, Parameter, FieldValue } from "metabase-types/api";
-import type Field from "metabase-lib/metadata/Field";
-
-import {
-  isIdParameter,
-  isNumberParameter,
-  isStringParameter,
-} from "metabase-lib/parameters/utils/parameter-type";
+import { MetabaseApi } from "metabase/services";
+import type Question from "metabase-lib/v1/Question";
+import type Field from "metabase-lib/v1/metadata/Field";
 import {
   canListFieldValues,
   canListParameterValues,
   canSearchFieldValues,
   canSearchParameterValues,
   getSourceType,
-} from "metabase-lib/parameters/utils/parameter-source";
-import Question from "metabase-lib/Question";
+} from "metabase-lib/v1/parameters/utils/parameter-source";
+import {
+  isIdParameter,
+  isNumberParameter,
+  isStringParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
+import type { Dashboard, Parameter, FieldValue } from "metabase-types/api";
 
 import type { ValuesMode } from "./types";
 
@@ -37,7 +35,7 @@ export async function searchFieldValues(
   },
   cancelled: Promise<unknown>,
 ) {
-  let options: null | FieldValue[] = dedupeValues(
+  const options: null | FieldValue[] = dedupeValues(
     await Promise.all(
       fields.map((field: Field) =>
         MetabaseApi.field_search(
@@ -53,7 +51,6 @@ export async function searchFieldValues(
     ),
   );
 
-  options = options?.map(result => (Array.isArray(result) ? result : [result]));
   return options;
 }
 

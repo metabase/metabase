@@ -1,17 +1,22 @@
-import { User } from "metabase-types/api";
-import { AdminState } from "./admin";
-import { AppState } from "./app";
-import { DashboardState } from "./dashboard";
-import { EmbedState } from "./embed";
-import { EntitiesState } from "./entities";
-import { MetabotState } from "./metabot";
-import { QueryBuilderState } from "./qb";
-import { ParametersState } from "./parameters";
-import { SettingsState } from "./settings";
-import { SetupState } from "./setup";
-import { FileUploadState } from "./upload";
-import { AuthState } from "./auth";
+import type { RouterState } from "react-router-redux";
 
+import type { User } from "metabase-types/api";
+
+import type { AdminState } from "./admin";
+import type { AppState } from "./app";
+import type { AuthState } from "./auth";
+import type { DashboardState } from "./dashboard";
+import type { EmbedState } from "./embed";
+import type { EntitiesState } from "./entities";
+import type { MetabotState } from "./metabot";
+import type { ParametersState } from "./parameters";
+import type { QueryBuilderState } from "./qb";
+import type { RequestsState } from "./requests";
+import type { SettingsState } from "./settings";
+import type { SetupState } from "./setup";
+import type { FileUploadState } from "./upload";
+
+type modalName = null | "collection" | "dashboard" | "action";
 export interface State {
   admin: AdminState;
   app: AppState;
@@ -21,11 +26,14 @@ export interface State {
   embed: EmbedState;
   entities: EntitiesState;
   metabot: MetabotState;
-  qb: QueryBuilderState;
   parameters: ParametersState;
+  qb: QueryBuilderState;
+  requests: RequestsState;
+  routing: RouterState;
   settings: SettingsState;
   setup: SetupState;
   upload: FileUploadState;
+  modal: modalName;
 }
 
 export type Dispatch<T = any> = (action: T) => void;

@@ -1,5 +1,7 @@
 import type { ComponentStory } from "@storybook/react";
+
 import { createMockCollection } from "metabase-types/api/mocks";
+
 import FileUploadStatusLarge from "./FileUploadStatusLarge";
 
 export default {
@@ -21,7 +23,7 @@ Incomplete.args = {
       collectionId: "root",
     },
   ],
-  collection: createMockCollection({ name: "Revenue" }),
+  uploadDestination: createMockCollection({ name: "Revenue" }),
   isActive: true,
 };
 
@@ -35,7 +37,7 @@ Complete.args = {
       collectionId: "root",
     },
   ],
-  collection: createMockCollection({ name: "Revenue" }),
+  uploadDestination: createMockCollection({ name: "Revenue" }),
   isActive: true,
 };
 
@@ -50,6 +52,6 @@ Aborted.args = {
       message: "It's dead Jim",
     },
   ],
-  collection: createMockCollection({ name: "Revenue" }),
+  uploadDestination: createMockCollection({ name: "Revenue" }),
   isActive: true,
 };

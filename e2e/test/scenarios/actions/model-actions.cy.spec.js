@@ -1,42 +1,28 @@
 import { assocIn } from "icepick";
-import {
-  setActionsEnabledForDB,
-  modal,
-  popover,
-  restore,
-  fillActionQuery,
-  createAction,
-  navigationSidebar,
-  openNavigationSidebar,
-  resetTestTable,
-  resyncDatabase,
-  createModelFromTableName,
-  queryWritableDB,
-  setTokenFeatures,
-} from "e2e/support/helpers";
 
 import {
   SAMPLE_DB_ID,
   USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
-
-import { createMockActionParameter } from "metabase-types/api/mocks";
+import {
+  createImplicitActions,
+  setActionsEnabledForDB,
+  modal,
+  popover,
+  restore,
+  fillActionQuery,
+  createAction,
+  resetTestTable,
+  resyncDatabase,
+  createModelFromTableName,
+  queryWritableDB,
+  setTokenFeatures,
+} from "e2e/support/helpers";
 import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
+import { createMockActionParameter } from "metabase-types/api/mocks";
 
-const PG_DB_ID = 2;
-const PG_ORDERS_TABLE_ID = 9;
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
-
-const SAMPLE_ORDERS_MODEL = {
-  name: "Order",
-  dataset: true,
-  display: "table",
-  database: PG_DB_ID,
-  query: {
-    "source-table": PG_ORDERS_TABLE_ID,
-  },
-};
 
 const TEST_PARAMETER = createMockActionParameter({
   id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
@@ -58,7 +44,7 @@ const SAMPLE_QUERY_ACTION = {
   name: "Demo Action",
   type: "query",
   parameters: [TEST_PARAMETER],
-  database_id: PG_DB_ID,
+  database_id: WRITABLE_DB_ID,
   dataset_query: {
     type: "native",
     native: {
@@ -67,7 +53,7 @@ const SAMPLE_QUERY_ACTION = {
         [TEST_TEMPLATE_TAG.name]: TEST_TEMPLATE_TAG,
       },
     },
-    database: PG_DB_ID,
+    database: WRITABLE_DB_ID,
   },
   visualization_settings: {
     fields: {
@@ -94,15 +80,23 @@ describe(
     beforeEach(() => {
       restore("postgres-12");
       cy.signInAsAdmin();
-      setActionsEnabledForDB(PG_DB_ID);
+      setActionsEnabledForDB(WRITABLE_DB_ID);
 
-      cy.createQuestion(SAMPLE_ORDERS_MODEL, {
-        wrapId: true,
+      createModelFromTableName({
+        tableName: "orders",
+        modelName: "Order",
         idAlias: "modelId",
       });
 
       cy.intercept("GET", "/api/card/*").as("getModel");
+      cy.intercept("GET", "/api/action/*").as("getAction");
+      cy.intercept("GET", "/api/action?model-id=*").as("getModelAction");
       cy.intercept("PUT", "/api/action/*").as("updateAction");
+      cy.intercept("POST", "/api/action/*/execute").as("executeAction");
+      cy.intercept("POST", "/api/action").as("createAction");
+      cy.intercept("GET", "/api/table/*/query_metadata*").as("fetchMetadata");
+      cy.intercept("GET", "/api/search?archived=true").as("getArchived");
+      cy.intercept("GET", "/api/search?*").as("getSearchResults");
     });
 
     it("should allow CRUD operations on model actions", () => {
@@ -111,10 +105,11 @@ describe(
         cy.wait("@getModel");
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Actions").click();
+      cy.findByRole("tablist").within(() => {
+        cy.findByText("Actions").click();
+      });
 
-      cy.findByRole("button", { name: /Create basic actions/i }).click();
+      createBasicActions();
       cy.findByLabelText("Action list").within(() => {
         cy.get("li").eq(0).findByText("Create").should("be.visible");
         cy.get("li").eq(1).findByText("Update").should("be.visible");
@@ -127,10 +122,12 @@ describe(
         .findByText("Number")
         .click();
       cy.findByRole("button", { name: "Save" }).click();
-      modal().within(() => {
-        cy.findByLabelText("Name").type("Delete Order");
-        cy.findByRole("button", { name: "Create" }).click();
-      });
+      modal()
+        .eq(1)
+        .within(() => {
+          cy.findByLabelText("Name").type("Delete Order");
+          cy.findByRole("button", { name: "Create" }).click();
+        });
       cy.findByLabelText("Action list")
         .findByText("Delete Order")
         .should("be.visible");
@@ -174,32 +171,34 @@ describe(
           cy.findByText("Delete").should("not.exist");
         });
 
-      openNavigationSidebar();
-      navigationSidebar().within(() => {
-        cy.icon("ellipsis").click();
-      });
-      popover().findByText("View archive").click();
+      cy.log("Go to the archive");
+      cy.visit("/archive");
 
-      getArchiveListItem("Delete Order").within(() => {
-        cy.icon("unarchive").click({ force: true });
-      });
+      getArchiveListItem("Delete Order")
+        .icon("unarchive")
+        .click({ force: true });
 
-      cy.get("main").within(() => {
-        cy.findByText("Delete Order");
+      cy.findByTestId("archived-list").within(() => {
+        cy.findByText("Items you archive will appear here.");
+        cy.findByText("Delete Order").should("not.exist");
       });
 
-      cy.findByRole("button", { name: "Undo" }).click();
+      cy.findByTestId("toast-undo").button("Undo").click();
 
-      cy.get("main").within(() => {
+      cy.findByTestId("archived-list").within(() => {
+        cy.findByText("Items you archive will appear here.").should(
+          "not.exist",
+        );
         cy.findByText("Delete Order").should("be.visible");
       });
 
-      getArchiveListItem("Delete Order").within(() => {
-        cy.icon("trash").click({ force: true });
-      });
+      cy.log("Delete the action");
+      getArchiveListItem("Delete Order").icon("trash").click({ force: true });
 
-      cy.findByTestId("Delete Order").should("not.exist");
-      cy.findByRole("button", { name: "Undo" }).should("not.exist");
+      cy.findByTestId("archived-list").within(() => {
+        cy.findByText("Items you archive will appear here.");
+        cy.findByText("Delete Order").should("not.exist");
+      });
     });
 
     it("should allow to create an action with the New button", () => {
@@ -219,10 +218,8 @@ describe(
         cy.findByRole("button", { name: "Save" }).click();
       });
 
-      modal().within(() => {
-        cy.findByText("Select a model").click();
-      });
-      popover().findByText(SAMPLE_ORDERS_MODEL.name).click();
+      modal().eq(1).findByText("Select a model").click();
+      popover().findByText("Order").click();
       cy.findByRole("button", { name: "Create" }).click();
 
       cy.get("@modelId").then(modelId => {
@@ -244,10 +241,10 @@ describe(
 
       cy.updatePermissionsGraph({
         [USER_GROUPS.ALL_USERS_GROUP]: {
-          [PG_DB_ID]: { data: { schemas: "none", native: "none" } },
+          [WRITABLE_DB_ID]: { data: { schemas: "none", native: "none" } },
         },
         [USER_GROUPS.DATA_GROUP]: {
-          [PG_DB_ID]: { data: { schemas: "all", native: "write" } },
+          [WRITABLE_DB_ID]: { data: { schemas: "all", native: "write" } },
         },
       });
 
@@ -326,6 +323,37 @@ describe(
       cy.findByLabelText("101").should("not.exist");
       cy.findByLabelText("ID").should("be.visible");
     });
+
+    it("should show detailed form errors for constraint violations when executing model actions", () => {
+      const actionName = "Update";
+
+      cy.get("@modelId").then(modelId => {
+        createImplicitActions({ modelId });
+
+        cy.visit(`/model/${modelId}/detail`);
+        cy.wait("@getModel");
+      });
+
+      cy.findByRole("tablist").findByText("Actions").click();
+
+      runActionFor(actionName);
+
+      cy.wait("@getAction");
+
+      modal().within(() => {
+        cy.findByLabelText("ID").type("1");
+        cy.findByLabelText("User ID").type("999999");
+        cy.button(actionName).click();
+        cy.wait("@executeAction");
+
+        cy.findByLabelText("User ID").should("not.exist");
+        cy.findByLabelText("User ID: This User_id does not exist.").should(
+          "exist",
+        );
+
+        cy.findByText("Unable to update the record.").should("exist");
+      });
+    });
   },
 );
 
@@ -333,6 +361,16 @@ describe(
   describe(`Write actions on model detail page (${dialect})`, () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/card/*").as("getModel");
+      cy.intercept("GET", "/api/action/*").as("getAction");
+
+      cy.intercept("PUT", "/api/action/*").as("updateAction");
+      cy.intercept("POST", "/api/action").as("createAction");
+      cy.intercept("POST", "/api/action/*/public_link").as(
+        "enableActionSharing",
+      );
+      cy.intercept("DELETE", "/api/action/*/public_link").as(
+        "disableActionSharing",
+      );
 
       resetTestTable({ type: dialect, table: WRITABLE_TEST_TABLE });
       restore(`${dialect}-writable`);
@@ -591,9 +629,15 @@ describe(
         cy.findByText("Actions").click();
       });
 
-      cy.findByRole("button", { name: /Create basic actions/i }).click();
+      createBasicActions();
 
       openActionEditorFor("Create");
+
+      cy.wait("@getAction").then(({ response }) => {
+        const { parameters, visualization_settings } = response.body;
+        expect(parameters).to.have.length(5);
+        expect(visualization_settings).to.have.property("fields");
+      });
 
       cy.findAllByTestId("form-field-container")
         .filter(":contains('Created At')")
@@ -615,7 +659,7 @@ describe(
       });
 
       cy.findByTestId("toast-undo")
-        .findByText(`Successfully saved`)
+        .findByText("Successfully saved")
         .should("be.visible");
 
       // show toast
@@ -699,7 +743,7 @@ describe(
         cy.findByText("Actions").click();
       });
 
-      cy.findByRole("button", { name: /Create basic actions/i }).click();
+      createBasicActions();
 
       enableSharingFor("Update", { publicUrlAlias: "updatePublicURL" });
 
@@ -713,6 +757,8 @@ describe(
         });
 
       cy.findByRole("button", { name: "Update" }).click();
+
+      cy.wait("@updateAction");
 
       cy.signOut();
 
@@ -759,12 +805,12 @@ describe(
       cy.updatePermissionsGraph(
         {
           [USER_GROUPS.ALL_USERS_GROUP]: {
-            [PG_DB_ID]: { data: { schemas: "all", native: "write" } },
+            [WRITABLE_DB_ID]: { data: { schemas: "all", native: "write" } },
           },
         },
         [
           {
-            db_id: PG_DB_ID,
+            db_id: WRITABLE_DB_ID,
             group_id: USER_GROUPS.ALL_USERS_GROUP,
             attribute: "role",
           },
@@ -847,6 +893,7 @@ function enableSharingFor(actionName, { publicUrlAlias }) {
   cy.findByRole("dialog").within(() => {
     cy.button("Action settings").click();
     cy.findByLabelText("Make public").should("not.be.checked").click();
+    cy.wait("@enableActionSharing");
     cy.findByLabelText("Public action form URL")
       .invoke("val")
       .then(url => {
@@ -862,10 +909,13 @@ function disableSharingFor(actionName) {
     cy.findByRole("button", { name: "Action settings" }).click();
     cy.findByLabelText("Make public").should("be.checked").click();
   });
-  modal().within(() => {
-    cy.findByText("Disable this public link?").should("be.visible");
-    cy.findByRole("button", { name: "Yes" }).click();
-  });
+  modal()
+    .eq(1)
+    .within(() => {
+      cy.findByText("Disable this public link?").should("be.visible");
+      cy.findByRole("button", { name: "Yes" }).click();
+    });
+  cy.wait("@disableActionSharing");
   cy.findByRole("dialog").within(() => {
     cy.button("Cancel").click();
   });
@@ -895,4 +945,10 @@ function verifyScoreValue(value, dialect) {
 
     expect(row.score).to.equal(value);
   });
+}
+
+function createBasicActions() {
+  cy.findByRole("button", { name: /Create basic actions/i }).click();
+
+  cy.wait(["@createAction", "@createAction", "@createAction"]);
 }

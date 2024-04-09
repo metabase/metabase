@@ -1,5 +1,6 @@
 import type { ComponentStory } from "@storybook/react";
-import Ellipsified from "./Ellipsified";
+
+import { Ellipsified } from "./Ellipsified";
 
 const testLabels = [
   "Short Title",

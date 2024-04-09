@@ -20,17 +20,6 @@
       (mc/validate unit-schema unit)
       true)))
 
-(mr/def ::args.temporal
-  [:and
-   [:catn
-    [:expr      [:schema [:ref ::expression/temporal]]]
-    [:intervals [:+ :mbql.clause/interval]]]
-   [:fn
-    {:error/message "Temporal arithmetic expression with valid interval units for the expression type"}
-    (fn [[expr & intervals]]
-      (let [expr-type (expression/type-of expr)]
-        (every? #(valid-interval-for-type? % expr-type) intervals)))]])
-
 (mr/def ::args.numbers
   [:repeat {:min 2} [:schema [:ref ::expression/number]]])
 
@@ -53,35 +42,34 @@
                   (str "Cannot add a " unit " interval to a " expr-type " expression")))
               intervals)))))
 
-(defn- plus-minus-temporal-schema
-  "Create a schema for `:+` or `:-` with temporal args: <temporal> ± <interval(s)> in any order"
-  [tag]
+(mr/def ::plus-minus-temporal-interval-schema
   [:and
-   {:error/message (str tag " clause with a temporal expression and one or more :interval clauses")}
+   {:error/message ":+ or :- clause with a temporal expression and one or more :interval clauses"}
    [:cat
-    [:= tag]
+    {:min 4}
+    [:enum :+ :-]
     [:schema [:ref ::common/options]]
     [:repeat [:schema [:ref :mbql.clause/interval]]]
     [:schema [:ref ::expression/temporal]]
     [:repeat [:schema [:ref :mbql.clause/interval]]]]
    [:fn
     {:error/fn (fn [{:keys [value]} _]
-                 (str "Invalid " tag " clause: " (validate-plus-minus-temporal-arithmetic-expression value)))}
+                 (str "Invalid :+ or :- clause: " (validate-plus-minus-temporal-arithmetic-expression value)))}
     (complement validate-plus-minus-temporal-arithmetic-expression)]])
 
-(defn- plus-minus-numeric-schema
-  "Create a schema for `:+` or `:-` with numeric args."
-  [tag]
+(mr/def ::plus-minus-numeric-schema
   [:cat
-   {:error/message (str tag " clause with numeric args")}
-   [:= tag]
+   {:error/message ":+ or :- clause with numeric args"}
+   :keyword
    [:schema [:ref ::common/options]]
    [:repeat {:min 2} [:schema [:ref ::expression/number]]]])
 
-(defn- plus-minus-schema [tag]
-  [:or
-   (plus-minus-temporal-schema tag)
-   (plus-minus-numeric-schema tag)])
+(defn- type-of-numeric-arithmetic-arg [expr]
+  (let [expr-type (expression/type-of expr)]
+    (if (and (isa? expr-type ::expression/type.unknown)
+             (mr/validate :metabase.lib.schema.ref/ref expr))
+      :type/Number
+      expr-type)))
 
 (defn- type-of-numeric-arithmetic-args
   "Given a sequence of args to a numeric arithmetic expression like `:+`, determine the type returned by the expression
@@ -90,17 +78,14 @@
   `:type/Integer` arg; the most-specific common ancestor type is `:type/Number`. For refs without type
   information (e.g. `:field` clauses), assume `:type/Number`."
   [args]
-  ;; Okay to use reduce without an init value here since we know we have >= 2 args
-  #_{:clj-kondo/ignore [:reduce-without-init]}
-  (reduce
-   types/most-specific-common-ancestor
-   (map (fn [expr]
-          (let [expr-type (expression/type-of expr)]
-            (if (and (isa? expr-type ::expression/type.unknown)
-                     (mc/validate :metabase.lib.schema.ref/ref expr))
-              :type/Number
-              expr-type)))
-        args)))
+  (transduce
+   (map type-of-numeric-arithmetic-arg)
+   (completing (fn [x y]
+                 (if (nil? x)
+                   y
+                   (types/most-specific-common-ancestor x y))))
+   nil
+   args))
 
 (defn- type-of-temporal-arithmetic-args
   "Given a temporal value plus one or more intervals `args` passed to an arithmetic expression like `:+`, determine the
@@ -115,24 +100,75 @@
 
 (defn- type-of-arithmetic-args
   "Given a sequence of `args` to an arithmetic expression like `:+`, determine the overall type that the expression
-  returns. There are two types of arithmetic expressions:
+  returns. There are three types of arithmetic expressions:
 
   * Ones consisting of numbers. See [[type-of-numeric-arithmetic-args]].
 
   * Ones consisting of a temporal value like a Date plus one or more `:interval` clauses, in any order. See
+    [[type-of-temporal-arithmetic-args]].
+
+  * Ones consisting of exactly two temporal values being subtracted to produce an `:interval`. See
     [[type-of-temporal-arithmetic-args]]."
-  [args]
-  (if (some #(isa? (expression/type-of %) :type/Interval) args)
+  [tag args]
+  (cond
     ;; temporal value + intervals
+    (some #(isa? (expression/type-of %) :type/Interval) args)
     (type-of-temporal-arithmetic-args args)
-    (type-of-numeric-arithmetic-args args)))
+
+    ;; the difference of exactly two temporal values
+    (and (= tag :-)
+         (= (count args) 2)
+         (or (every? #(isa? (expression/type-of %) :type/Date) args)
+             (every? #(isa? (expression/type-of %) :type/DateTime) args)))
+    :type/Interval
+
+    ;; fall back to numeric args
+    :else (type-of-numeric-arithmetic-args args)))
+
+(mr/def ::temporal-difference-schema
+  [:cat
+   {:error/message ":- clause taking the difference of two temporal expressions"}
+   [:= {:decode/normalize common/normalize-keyword} :-]
+   [:schema [:ref ::common/options]]
+   [:schema [:ref ::expression/temporal]]
+   [:schema [:ref ::expression/temporal]]])
 
 (mbql-clause/define-mbql-clause :+
-  (plus-minus-schema :+))
+  [:and
+   {:error/message "valid :+ clause"}
+   [:cat
+    [:= {:decode/normalize common/normalize-keyword} :+]
+    [:schema [:ref ::common/options]]
+    [:+ {:min 2} :any]]
+   [:multi
+    {:dispatch (fn [[_tag _opts & args]]
+                 (if (some #(common/is-clause? :interval %)
+                           args)
+                   :temporal
+                   :numeric))}
+    [:temporal [:ref ::plus-minus-temporal-interval-schema]]
+    [:numeric  [:ref ::plus-minus-numeric-schema]]]])
 
 ;;; TODO -- should `:-` support just a single arg (for numbers)? What about `:+`?
 (mbql-clause/define-mbql-clause :-
-  (plus-minus-schema :-))
+  [:and
+   [:cat
+    [:= {:decode/normalize common/normalize-keyword} :-]
+    [:schema [:ref ::common/options]]
+    [:+ {:min 2} :any]]
+   [:multi
+    {:dispatch (fn [[_tag _opts & args]]
+                 (cond
+                   (some #(common/is-clause? :interval %) args) :temporal
+                   (> (count args) 2)                           :numeric
+                   :else                                        :numeric-or-temporal-difference))}
+    [:temporal [:ref ::plus-minus-temporal-interval-schema]]
+    [:numeric  [:ref ::plus-minus-numeric-schema]]
+    ;; TODO -- figure out a way to know definitively what type of `:-` this should be so we don't need to use `:or`
+    [:numeric-or-temporal-difference
+     [:or
+      [:ref ::plus-minus-numeric-schema]
+      [:ref ::temporal-difference-schema]]]]])
 
 (mbql-clause/define-catn-mbql-clause :*
   [:args ::args.numbers])
@@ -150,8 +186,8 @@
 
 ;;; `:+`, `:-`, and `:*` all have the same logic; also used for [[metabase.lib.metadata.calculation/type-of-method]]
 (defmethod expression/type-of-method :lib.type-of/type-is-type-of-arithmetic-args
-  [[_tag _opts & args]]
-  (type-of-arithmetic-args args))
+  [[tag _opts & args]]
+  (type-of-arithmetic-args tag args))
 
 (mbql-clause/define-tuple-mbql-clause :abs
   [:schema [:ref ::expression/number]])

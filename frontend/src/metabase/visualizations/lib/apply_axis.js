@@ -1,21 +1,20 @@
 /// functions for "applying" axes to charts, whatever that means.
 
-import _ from "underscore";
 import d3 from "d3";
 import dc from "dc";
-import moment from "moment-timezone";
-
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
+import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
-
 import { hasEventAxis } from "metabase/visualizations/lib/timelines";
-import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
+
+import { isMultipleOf } from "./numeric";
+import { isHistogram } from "./renderer_utils";
 import { computeTimeseriesTicksInterval } from "./timeseries";
 import timeseriesScale from "./timeseriesScale";
-import { isMultipleOf } from "./numeric";
 import { getFriendlyName } from "./utils";
-import { isHistogram } from "./renderer_utils";
 
 // label offset (doesn't increase padding)
 const X_LABEL_PADDING = 10;
@@ -352,7 +351,10 @@ export function applyChartOrdinalXAxis(
 // The tolerance is arbitrarily set to one millionth of the yExtent.
 const TOLERANCE_TO_Y_EXTENT = 1e6;
 export function maybeRoundValueToZero(value, [yMin, yMax]) {
-  const tolerance = Math.abs(yMax - yMin) / TOLERANCE_TO_Y_EXTENT;
+  const tolerance =
+    yMin !== yMax
+      ? Math.abs(yMax - yMin) / TOLERANCE_TO_Y_EXTENT
+      : 1 / TOLERANCE_TO_Y_EXTENT;
   return Math.abs(value) < tolerance ? 0 : value;
 }
 
@@ -490,7 +492,8 @@ export function getYValueFormatter(chart, series, yExtent) {
     const metricColumn = series[seriesIndex].data.cols[1];
     const columnSettings = chart.settings.column(metricColumn);
     const columnExtent = options.extent ?? yExtent;
-    const roundedValue = maybeRoundValueToZero(value, columnExtent);
+    const roundedValue =
+      value === null ? "" : maybeRoundValueToZero(value, columnExtent);
     return formatValue(roundedValue, { ...columnSettings, ...options });
   };
 }

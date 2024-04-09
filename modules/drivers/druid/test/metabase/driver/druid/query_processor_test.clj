@@ -4,13 +4,14 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.druid.query-processor :as druid.qp]
-   [metabase.models :refer [Field Metric Table]]
+   [metabase.models :refer [Field LegacyMetric Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
@@ -93,7 +94,7 @@
   (driver/with-driver :druid
     (tqpt/with-flattened-dbdef
       (with-redefs [druid.qp/random-query-id (constantly "<Query ID>")]
-        (qp/compile query)))))
+        (qp.compile/compile query)))))
 
 (defmacro ^:private query->native [query]
   `(do-query->native
@@ -259,7 +260,7 @@
           (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
             (is (= expected
                    (table-rows-sample))))
-          (mt/with-system-timezone-id "America/Chicago"
+          (mt/with-system-timezone-id! "America/Chicago"
             (is (= expected
                    (table-rows-sample)))))))))
 
@@ -530,25 +531,26 @@
                         ["4"  155.0]]
               :columns ["venue_price" "Sum-41"]}
              (mt/rows+column-names
-               (druid-query
-                 {:aggregation [[:aggregation-options [:- [:sum $venue_price] 41] {:name "Sum-41"}]]
-                  :breakout    [$venue_price]})))))))
+              (druid-query
+                {:aggregation [[:aggregation-options [:- [:sum $venue_price] 41] {:name "Sum-41"}]]
+                 :breakout    [$venue_price]})))))))
 
 (deftest distinct-count-of-two-dimensions-test
   (mt/test-driver :druid
-    (is (= {:rows    [[98]]
+    (is (= {:rows    [[979]]
             :columns ["count"]}
            (mt/rows+column-names
-             (druid-query
-               {:aggregation [[:distinct [:+ $checkins.venue_category_name $checkins.venue_name]]]}))))))
+            (druid-query
+              {:aggregation [[:distinct [:+ $id $checkins.venue_price]]]}))))))
 
 (deftest metrics-inside-aggregation-clauses-test
   (mt/test-driver :druid
     (testing "check that we can handle METRICS inside expression aggregation clauses"
       (tqpt/with-flattened-dbdef
-        (t2.with-temp/with-temp [Metric metric {:definition (mt/$ids checkins
+        (t2.with-temp/with-temp [LegacyMetric metric {:definition (mt/$ids checkins
                                                               {:aggregation [:sum $venue_price]
-                                                               :filter      [:> $venue_price 1]})}]
+                                                               :filter      [:> $venue_price 1]})
+                                                :table_id (mt/id :checkins)}]
           (is (= [["2" 1231.0]
                   ["3"  346.0]
                   ["4" 197.0]]
@@ -595,7 +597,7 @@
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (letfn [(compiled [query]
-                (-> (qp/compile query) :query (select-keys [:filter :queryType])))]
+                (-> (qp.compile/compile query) :query (select-keys [:filter :queryType])))]
         (doseq [[message field] {"Make sure we can filter by numeric columns (#10935)" :venue_price
                                  "We should be able to filter by Metrics (#11823)"     :count}
                 :let            [field-clause [:field (mt/id :checkins field) nil]
@@ -654,7 +656,7 @@
   (mt/test-driver :druid
     (testing "parse-filter should generate the correct filter clauses"
       (tqpt/with-flattened-dbdef
-        (mt/with-everything-store
+        (mt/with-metadata-provider (mt/id)
           (tools.macro/macrolet [(parse-filter [filter-clause]
                                    `(#'druid.qp/parse-filter (mt/$ids ~'checkins ~filter-clause)))]
             (testing "normal non-compound filters should work as expected"

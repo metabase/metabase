@@ -9,7 +9,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.timeline :refer [Timeline]]
    [metabase.models.timeline-event :refer [TimelineEvent]]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -17,9 +17,9 @@
 
 (deftest auth-tests
   (testing "Authentication"
-    (is (= (get mw.util/response-unauthentic :body)
+    (is (= (get req.util/response-unauthentic :body)
            (client/client :get 401 "/timeline")))
-    (is (= (get mw.util/response-unauthentic :body)
+    (is (= (get req.util/response-unauthentic :body)
            (client/client :get 401 "/timeline/1")))))
 
 (deftest list-timelines-test
@@ -30,9 +30,9 @@
                         (into #{} (comp (filter (comp #{id} :collection_id))
                                         (map :name))
                               tls))]
-        (mt/with-temp* [Timeline [_ {:name "Timeline A", :collection_id id}]
-                        Timeline [_ {:name "Timeline B", :collection_id id}]
-                        Timeline [_ {:name "Timeline C", :collection_id id :archived true}]]
+        (mt/with-temp [Timeline _ {:name "Timeline A" :collection_id id}
+                       Timeline _ {:name "Timeline B" :collection_id id}
+                       Timeline _ {:name "Timeline C" :collection_id id :archived true}]
           (testing "check that we only get un-archived timelines"
             (is (= #{"Timeline A" "Timeline B"}
                    (events-of (mt/user-http-request :rasta :get 200 "timeline")))))
@@ -52,11 +52,11 @@
                       (filter (comp #{id} :collection_id))
                       :collection)))))))
     (testing "checks permissions"
-      (mt/with-temp* [Collection    [{coll-id :id} {:name "private collection"}]
-                      Timeline      [tl-a {:name "Timeline A" :collection_id coll-id}]
-                      Timeline      [tl-b {:name "Timeline B" :collection_id coll-id}]
-                      TimelineEvent [_    {:name "Event 1" :timeline_id (u/the-id tl-a)}]
-                      TimelineEvent [_    {:name "Event 2" :timeline_id (u/the-id tl-b)}]]
+      (mt/with-temp [Collection    {coll-id :id} {:name "private collection"}
+                     Timeline      tl-a {:name "Timeline A" :collection_id coll-id}
+                     Timeline      tl-b {:name "Timeline B" :collection_id coll-id}
+                     TimelineEvent _    {:name "Event 1" :timeline_id (u/the-id tl-a)}
+                     TimelineEvent _    {:name "Event 2" :timeline_id (u/the-id tl-b)}]
         (letfn [(events-for [user events?]
                   (->> (m/mapply mt/user-http-request user :get 200 "timeline" (when events? {:include "events"}))
                        (filter (comp #{coll-id} :collection_id))))]
@@ -75,8 +75,8 @@
 
 (deftest get-timeline-test
   (testing "GET /api/timeline/:id"
-    (mt/with-temp* [Timeline [tl-a {:name "Timeline A"}]
-                    Timeline [tl-b {:name "Timeline B" :archived true}]]
+    (mt/with-temp [Timeline tl-a {:name "Timeline A"}
+                   Timeline tl-b {:name "Timeline B" :archived true}]
       (testing "check that we get the timeline with the id specified"
         (is (= "Timeline A"
                (->> (mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl-a)))
@@ -108,22 +108,22 @@
 
 (deftest timelines-range-test
   (testing "GET /api/timeline/:id?include=events&start=TIME&end=TIME"
-    (mt/with-temp* [Collection [collection {:name "Collection"}]
-                    Timeline [tl-a {:name          "Timeline A"
-                                    :collection_id (u/the-id collection)}]
-                    ;; the temp defaults set {:time_matters true}
-                    TimelineEvent [_ {:name        "event-a"
-                                      :timeline_id (u/the-id tl-a)
-                                      :timestamp   #t "2020-01-01T10:00:00.0Z"}]
-                    TimelineEvent [_ {:name        "event-b"
-                                      :timeline_id (u/the-id tl-a)
-                                      :timestamp   #t "2021-01-01T10:00:00.0Z"}]
-                    TimelineEvent [_ {:name        "event-c"
-                                      :timeline_id (u/the-id tl-a)
-                                      :timestamp   #t "2022-01-01T10:00:00.0Z"}]
-                    TimelineEvent [_ {:name        "event-d"
-                                      :timeline_id (u/the-id tl-a)
-                                      :timestamp   #t "2023-01-01T10:00:00.0Z"}]]
+    (mt/with-temp [Collection    collection {:name "Collection"}
+                   Timeline      tl-a       {:name          "Timeline A"
+                                             :collection_id (u/the-id collection)}
+                   ;; the temp defaults set {:time_matters true}
+                   TimelineEvent _          {:name        "event-a"
+                                                      :timeline_id (u/the-id tl-a)
+                                                      :timestamp   #t "2020-01-01T10:00:00.0Z"}
+                   TimelineEvent _          {:name        "event-b"
+                                             :timeline_id (u/the-id tl-a)
+                                             :timestamp   #t "2021-01-01T10:00:00.0Z"}
+                   TimelineEvent _          {:name        "event-c"
+                                             :timeline_id (u/the-id tl-a)
+                                             :timestamp   #t "2022-01-01T10:00:00.0Z"}
+                   TimelineEvent _          {:name        "event-d"
+                                             :timeline_id (u/the-id tl-a)
+                                             :timestamp   #t "2023-01-01T10:00:00.0Z"}]
       (testing "Events are properly filtered when given only `start=` parameter"
         (is (= #{"event-c" "event-d"}
                (event-names (timelines-range-request tl-a {:start "2022-01-01T10:00:00.0Z"})))))

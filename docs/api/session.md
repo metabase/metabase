@@ -18,11 +18,11 @@ Logout.
 
 ## `GET /api/session/password_reset_token_valid`
 
-Check is a password reset token is valid and isn't expired.
+Check if a password reset token is valid and isn't expired.
 
 ### PARAMS:
 
-*  **`token`** value must be a string.
+*  **`token`** value must be a non-blank string.
 
 ## `GET /api/session/properties`
 

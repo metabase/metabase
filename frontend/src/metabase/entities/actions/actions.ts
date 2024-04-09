@@ -1,13 +1,12 @@
-import { t } from "ttag";
 import { updateIn } from "icepick";
-import _ from "underscore";
 import { createAction } from "redux-actions";
+import { t } from "ttag";
+import _ from "underscore";
 
-import { ActionSchema } from "metabase/schema";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
+import { ActionSchema } from "metabase/schema";
 import { ActionsApi } from "metabase/services";
-
 import type {
   WritebackAction,
   WritebackActionId,
@@ -93,6 +92,9 @@ const enableImplicitActionsForModel =
 const CREATE_PUBLIC_LINK = "metabase/entities/actions/CREATE_PUBLIC_LINK";
 const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Actions = createEntity({
   name: "actions",
   nameOne: "action",

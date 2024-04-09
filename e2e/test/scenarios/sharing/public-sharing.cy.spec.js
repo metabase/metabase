@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   modal,
@@ -5,8 +7,6 @@ import {
   createAction,
   visitDashboardAndCreateTab,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -119,9 +119,14 @@ describe("scenarios > admin > settings > public sharing", () => {
 
     cy.get("@dashboardId").then(dashboardId => {
       cy.findByText(expectedDashboardName).click();
+      cy.log(
+        "Sometimes the URL will be updated with the tab ID, so we need to account for that",
+      );
       cy.url().should(
-        "eq",
-        `${location.origin}/dashboard/${dashboardId}-${expectedDashboardSlug}`,
+        "match",
+        new RegExp(
+          `${location.origin}/dashboard/${dashboardId}-${expectedDashboardSlug}*`,
+        ),
       );
       cy.visit("/admin/settings/public-sharing");
     });
@@ -200,7 +205,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       query: {
         "source-table": ORDERS_ID,
       },
-      dataset: true,
+      type: "model",
     }).then(({ body }) => {
       const modelId = body.id;
       cy.wrap(modelId).as("modelId");

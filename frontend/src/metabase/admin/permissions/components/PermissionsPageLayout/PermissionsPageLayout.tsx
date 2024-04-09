@@ -1,18 +1,10 @@
-import { ReactNode, useCallback } from "react";
-import _ from "underscore";
-import { t } from "ttag";
+import cx from "classnames";
+import type { ReactNode } from "react";
+import { useCallback } from "react";
+import type { Route } from "react-router";
 import { push } from "react-router-redux";
-import { Route, Router, withRouter } from "react-router";
+import { t } from "ttag";
 
-import { Location } from "history";
-import Button from "metabase/core/components/Button";
-import fitViewport from "metabase/hoc/FitViewPort";
-import Modal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
-
-import { PermissionsGraph } from "metabase-types/api";
-import useBeforeUnload from "metabase/hooks/use-before-unload";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   FullHeightContainer,
   TabsContainer,
@@ -22,17 +14,32 @@ import {
   CloseSidebarButton,
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
-import { IconName } from "metabase/core/components/Icon";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
-import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import Modal from "metabase/components/Modal";
+import ModalContent from "metabase/components/ModalContent";
+import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
+import fitViewport from "metabase/hoc/FitViewPort";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import type { IconName } from "metabase/ui";
+import {
+  Modal as NewModal,
+  Text,
+  Button as NewButton,
+  Group,
+} from "metabase/ui";
+import type { PermissionsGraph } from "metabase-types/api";
+
 import {
   clearSaveError as clearPermissionsSaveError,
   toggleHelpReference,
 } from "../../permissions";
+import { showRevisionChangedModal } from "../../selectors/data-permissions/revision";
 import { ToolbarButton } from "../ToolbarButton";
-import { PermissionsTabs } from "./PermissionsTabs";
 
 import { PermissionsEditBar } from "./PermissionsEditBar";
+import { PermissionsTabs } from "./PermissionsTabs";
 
 type PermissionsPageTab = "data" | "collections";
 type PermissionsPageLayoutProps = {
@@ -46,8 +53,7 @@ type PermissionsPageLayoutProps = {
   saveError?: string;
   clearSaveError: () => void;
   navigateToLocation: (location: string) => void;
-  router: typeof Router;
-  route: typeof Route;
+  route: Route;
   navigateToTab: (tab: string) => void;
   helpContent?: ReactNode;
   toolbarRightContent?: ReactNode;
@@ -68,33 +74,22 @@ function PermissionsPageLayout({
   isDirty,
   onSave,
   onLoad,
-  router,
   route,
   toolbarRightContent,
   helpContent,
 }: PermissionsPageLayoutProps) {
   const saveError = useSelector(state => state.admin.permissions.saveError);
-
+  const showRefreshModal = useSelector(showRevisionChangedModal);
   const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
   const dispatch = useDispatch();
 
   const navigateToTab = (tab: PermissionsPageTab) =>
     dispatch(push(`/admin/permissions/${tab}`));
-  const navigateToLocation = (location: Location) =>
-    dispatch(push(location.pathname + location.hash));
   const clearSaveError = () => dispatch(clearPermissionsSaveError());
 
   const handleToggleHelpReference = useCallback(() => {
     dispatch(toggleHelpReference());
   }, [dispatch]);
-
-  const beforeLeaveConfirmation = useLeaveConfirmation({
-    router,
-    route,
-    onConfirm: navigateToLocation,
-    isEnabled: isDirty,
-  });
-  useBeforeUnload(isDirty);
 
   return (
     <PermissionPageRoot>
@@ -114,14 +109,14 @@ function PermissionsPageLayout({
             formModal
             onClose={clearSaveError}
           >
-            <p className="mb4">{saveError}</p>
-            <div className="ml-auto">
+            <p className={CS.mb4}>{saveError}</p>
+            <div className={cx(CS.mlAuto)}>
               <Button onClick={clearSaveError}>{t`OK`}</Button>
             </div>
           </ModalContent>
         </Modal>
 
-        {beforeLeaveConfirmation}
+        <LeaveConfirmationModal isEnabled={isDirty} route={route} />
 
         <TabsContainer className="border-bottom">
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
@@ -146,9 +141,27 @@ function PermissionsPageLayout({
           {helpContent}
         </PermissionPageSidebar>
       )}
+      <NewModal
+        title="Someone just changed permissions"
+        opened={showRefreshModal}
+        size="lg"
+        padding="2.5rem"
+        withCloseButton={false}
+        onClose={() => true}
+      >
+        <Text mb="1rem">
+          To edit permissions, you need to start from the latest version. Please
+          refresh the page.
+        </Text>
+        <Group position="right">
+          <NewButton onClick={() => location.reload()} variant="filled">
+            Refresh the page
+          </NewButton>
+        </Group>
+      </NewModal>
     </PermissionPageRoot>
   );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(fitViewport, withRouter)(PermissionsPageLayout);
+export default fitViewport(PermissionsPageLayout);

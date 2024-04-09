@@ -1,8 +1,9 @@
 (ns metabase.search.scoring-test
   (:require
+   [cheshire.core :as json]
    [clojure.test :refer :all]
-   [java-time :as t]
-   [metabase.search.config :as search-config]
+   [java-time.api :as t]
+   [metabase.search.config :as search.config]
    [metabase.search.scoring :as scoring]))
 
 (defn- result-row
@@ -136,7 +137,7 @@
         (is (= (map :result items)
                (scoring/top-results items large xf)))))
     (testing "a full queue only saves the top items"
-      (let [sorted-items (->> (+ small search-config/max-filtered-results)
+      (let [sorted-items (->> (+ small search.config/max-filtered-results)
                               range
                               reverse ;; descending order
                               (map (fn [i]
@@ -217,7 +218,7 @@
                   reverse
                   (map :id)))))
     (testing "it treats stale items as being equally old"
-      (let [stale search-config/stale-time-in-days]
+      (let [stale search.config/stale-time-in-days]
         (is (= [1 2 3 4]
                (->> [(item 1 (days-ago (+ stale 1)))
                      (item 2 (days-ago (+ stale 50)))
@@ -272,7 +273,21 @@
                      {:weight 100 :score 0 :name "Some other score type"}])]
       (is (= 0 (:score (scoring/score-and-result "" {:name "racing yo" :model "card"})))))))
 
-(deftest force-weight-test
+(deftest ^:parallel serialize-test
+  (testing "It normalizes dataset queries from strings"
+    (let [query  {:type     :query
+                  :query    {:source-query {:source-table 1}}
+                  :database 1}
+          result {:name          "card"
+                  :model         "card"
+                  :dataset_query (json/generate-string query)}]
+      (is (= query (-> result (#'scoring/serialize {} {}) :dataset_query)))))
+  (testing "Doesn't error on other models without a query"
+    (is (nil? (-> {:name "dash" :model "dashboard"}
+                  (#'scoring/serialize {} {})
+                  :dataset_query)))))
+
+(deftest ^:parallel force-weight-test
   (is (= [{:weight 10}]
          (scoring/force-weight [{:weight 1}] 10)))
 

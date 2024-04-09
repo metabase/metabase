@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { useState, useEffect } from "react";
 import { connect } from "react-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
-import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Tables from "metabase/entities/tables";
-import Table from "metabase-lib/metadata/Table";
+import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
+import Table from "metabase-lib/v1/metadata/Table";
 
 import {
   Description,
@@ -15,17 +15,21 @@ import {
   AbsoluteContainer,
   Fade,
 } from "../MetadataInfo.styled";
-import { InfoContainer, MetadataContainer } from "./TableInfo.styled";
+
 import ColumnCount from "./ColumnCount";
 import ConnectedTables from "./ConnectedTables";
+import { InfoContainer, MetadataContainer } from "./TableInfo.styled";
 
-type OwnProps = {
+export type TableInfoProps = {
   className?: string;
   tableId: Table["id"];
   onConnectedTableClick?: (table: Table) => void;
 };
 
-const mapStateToProps = (state: any, props: OwnProps): { table?: Table } => {
+const mapStateToProps = (
+  state: any,
+  props: TableInfoProps,
+): { table?: Table } => {
   return {
     table: Tables.selectors.getObject(state, {
       entityId: props.tableId,
@@ -49,7 +53,7 @@ TableInfo.propTypes = {
   fetchMetadata: PropTypes.func.isRequired,
 };
 
-type AllProps = OwnProps &
+type AllProps = TableInfoProps &
   ReturnType<typeof mapStateToProps> &
   typeof mapDispatchToProps;
 
@@ -60,7 +64,7 @@ function useDependentTableMetadata({
   fetchMetadata,
 }: Pick<AllProps, "tableId" | "table" | "fetchForeignKeys" | "fetchMetadata">) {
   const isMissingFields = !table?.numFields();
-  const isMissingFks = _.isEmpty(table?.fks);
+  const isMissingFks = table?.fks === undefined;
   const shouldFetchMetadata = isMissingFields || isMissingFks;
   const [hasFetchedMetadata, setHasFetchedMetadata] = useState(
     !shouldFetchMetadata,

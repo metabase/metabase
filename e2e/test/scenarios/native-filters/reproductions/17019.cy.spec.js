@@ -1,4 +1,8 @@
-import { restore, visitQuestion } from "e2e/support/helpers";
+import {
+  openPublicLinkPopoverFromMenu,
+  restore,
+  visitQuestion,
+} from "e2e/support/helpers";
 
 const question = {
   name: "17019",
@@ -30,18 +34,19 @@ describe("issue 17019", () => {
   });
 
   it("question filters should work for embedding/public sharing scenario (metabase#17019)", () => {
-    cy.icon("share").click();
+    openPublicLinkPopoverFromMenu();
 
-    cy.findByDisplayValue(/^http/)
+    cy.findByTestId("public-link-popover-content")
+      .findByTestId("public-link-input")
       .invoke("val")
-      .then(publicURL => {
-        cy.visit(publicURL);
+      .then(publicLink => {
+        cy.visit(publicLink);
       });
 
     cy.findByPlaceholderText("Filter").type("456{enter}");
 
     // We should see the result as a scalar
-    cy.get(".ScalarValue").contains("456");
+    cy.findByTestId("scalar-value").contains("456");
     // But let's also check that the filter widget has that same value still displayed
     cy.findByDisplayValue("456");
   });

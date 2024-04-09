@@ -1,4 +1,4 @@
-import { restore, modal, openNativeEditor } from "e2e/support/helpers";
+import { restore, openNativeEditor } from "e2e/support/helpers";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 
@@ -14,23 +14,23 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
   it("can write a native MySQL query with a field filter", () => {
     // Write Native query that includes a filter
     openNativeEditor({ databaseName: MYSQL_DB_NAME }).type(
-      `SELECT TOTAL, CATEGORY FROM ORDERS LEFT JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID [[WHERE PRODUCTS.ID = {{id}}]];`,
+      "SELECT TOTAL, CATEGORY FROM ORDERS LEFT JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID [[WHERE PRODUCTS.ID = {{id}}]];",
       {
         parseSpecialCharSequences: false,
       },
     );
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.wait("@dataset");
 
-    cy.get(".Visualization").as("queryPreview");
+    cy.findByTestId("query-visualization-root").as("queryPreview");
 
     cy.get("@queryPreview").should("be.visible").contains("Widget");
 
     // Filter by Product ID = 1 (its category is Gizmo)
     cy.findByPlaceholderText(/Id/i).click().type("1");
 
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.get("@queryPreview").contains("Widget").should("not.exist");
 
@@ -39,9 +39,9 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
 
   it("can save a native MySQL query", () => {
     openNativeEditor({ databaseName: MYSQL_DB_NAME }).type(
-      `SELECT * FROM ORDERS`,
+      "SELECT * FROM ORDERS",
     );
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.wait("@dataset");
     cy.findByTextEnsureVisible("SUBTOTAL");
@@ -53,10 +53,9 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").focus().type("sql count");
-
-      cy.button("Save").should("not.be.disabled").click();
+      cy.findByText("Save").should("not.be.disabled").click();
     });
 
     cy.wait("@createQuestion");

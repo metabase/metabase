@@ -1,8 +1,9 @@
 import { useCallback } from "react";
 import { t } from "ttag";
-import Button from "metabase/core/components/Button";
+
 import ActionButton from "metabase/components/ActionButton";
 import ModalContent from "metabase/components/ModalContent";
+import Button from "metabase/core/components/Button";
 
 export interface SlackDeleteModalProps {
   onDelete: () => void;

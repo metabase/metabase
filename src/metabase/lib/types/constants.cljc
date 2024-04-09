@@ -22,6 +22,9 @@
      (def ^:export key-coordinate "JS-friendly access for the coordinate type" ::coordinate)
      (def ^:export key-foreign-KEY "JS-friendly access for the foreign-key type" ::foreign-key)
      (def ^:export key-primary-KEY "JS-friendly access for the primary-key type" ::primary-key)
+     (def ^:export key-json "JS-friendly access for the JSON type" ::json)
+     (def ^:export key-xml "JS-friendly access for the JSON type" ::xml)
+     (def ^:export key-structured "JS-friendly access for the structured type" ::structured)
 
      ;; other types used for various purposes
      (def ^:export key-summable "JS-friendly access for the summable type" ::summable)
@@ -48,6 +51,9 @@
    ::entity      {:semantic-type [:type/FK :type/PK :type/Name]}
    ::foreign_key {:semantic-type [:type/FK]}
    ::primary_key {:semantic-type [:type/PK]}
+   ::json        {:effective-type [:type/SerializedJSON]}
+   ::xml         {:effective-type [:type/XML]}
+   ::structured  {:effective-type [:type/Structured]}
    ::summable    {:include [::number]
                   :exclude [::entity ::location ::temporal]}
    ::scope       {:include [::number ::temporal ::category ::entity ::string]

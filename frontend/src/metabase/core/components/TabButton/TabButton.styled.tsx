@@ -1,8 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import Button from "metabase/core/components/Button";
+import { color } from "metabase/lib/colors";
 
 export interface TabButtonProps {
   isSelected?: boolean;

@@ -1,14 +1,18 @@
 import { t } from "ttag";
+
+import { canonicalCollectionId } from "metabase/collections/utils";
+import { getCollectionType } from "metabase/entities/collections";
+import { color } from "metabase/lib/colors";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
-import { color } from "metabase/lib/colors";
-import { PulseApi } from "metabase/services";
 import { addUndo } from "metabase/redux/undo";
-import { getCollectionType } from "metabase/entities/collections";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { PulseApi } from "metabase/services";
 
 export const UNSUBSCRIBE = "metabase/entities/pulses/unsubscribe";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Pulses = createEntity({
   name: "pulses",
   nameOne: "pulse",

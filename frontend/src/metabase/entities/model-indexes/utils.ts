@@ -1,14 +1,15 @@
 import _ from "underscore";
-import type { Field } from "metabase-types/api";
-import type { ModelIndex } from "metabase-types/api/modelIndexes";
+
+import type Question from "metabase-lib/v1/Question";
+import type FieldEntity from "metabase-lib/v1/metadata/Field";
 import {
   isString,
   isPK,
   isInteger,
   isBoolean,
-} from "metabase-lib/types/utils/isa";
-import type FieldEntity from "metabase-lib/metadata/Field";
-import type Question from "metabase-lib/Question";
+} from "metabase-lib/v1/types/utils/isa";
+import type { Field } from "metabase-types/api";
+import type { ModelIndex } from "metabase-types/api/modelIndexes";
 
 const hasSingleIntegerPk = (model?: Question) => {
   const pkFields = model

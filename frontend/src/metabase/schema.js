@@ -1,15 +1,17 @@
 // normalizr schema for use in actions/reducers
 
 import { schema } from "normalizr";
+
 import { entityTypeForObject } from "metabase/lib/schema";
-import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
-import { getUniqueFieldId } from "metabase-lib/metadata/utils/fields";
+import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 
 export const ActionSchema = new schema.Entity("actions");
 export const UserSchema = new schema.Entity("users");
 export const QuestionSchema = new schema.Entity("questions");
 export const ModelIndexSchema = new schema.Entity("modelIndexes");
+export const CacheConfigSchema = new schema.Entity("cacheConfigs");
 export const IndexedEntitySchema = new schema.Entity("indexedEntities");
 export const BookmarkSchema = new schema.Entity("bookmarks");
 export const DashboardSchema = new schema.Entity("dashboards");
@@ -112,10 +114,13 @@ TimelineSchema.define({
   events: [TimelineEventSchema],
 });
 
+CacheConfigSchema.define({});
+
 export const ENTITIES_SCHEMA_MAP = {
   actions: ActionSchema,
   questions: QuestionSchema,
   modelIndexes: ModelIndexSchema,
+  cacheConfigs: CacheConfigSchema,
   indexedEntity: IndexedEntitySchema,
   bookmarks: BookmarkSchema,
   dashboards: DashboardSchema,
@@ -142,8 +147,4 @@ export const RecentItemSchema = new schema.Entity("recentItems", undefined, {
 
 export const PopularItemSchema = new schema.Entity("popularItems", undefined, {
   idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
-});
-
-export const LoginHistorySchema = new schema.Entity("loginHistory", undefined, {
-  idAttribute: ({ timestamp }) => `${timestamp}`,
 });

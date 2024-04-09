@@ -1,47 +1,45 @@
-import { ComponentType, useState } from "react";
+import type { Location, LocationDescriptor } from "history";
+import { updateIn } from "icepick";
+import type { ComponentType } from "react";
+import { useState } from "react";
 import { connect } from "react-redux";
-
+import type { Route } from "react-router";
+import { push } from "react-router-redux";
+import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
-import { updateIn } from "icepick";
 
-import { useMount } from "react-use";
-import type { Location } from "history";
-import title from "metabase/hoc/Title";
-
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
-import { getUserIsAdmin } from "metabase/selectors/user";
-
-import { getSetting } from "metabase/selectors/settings";
-
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import DatabaseForm from "metabase/databases/containers/DatabaseForm";
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { GenericError } from "metabase/containers/ErrorPages";
-import {
+import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import { GenericError } from "metabase/components/ErrorPages";
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
+import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
+import title from "metabase/hoc/Title";
+import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
+import { getSetting } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import Database from "metabase-lib/v1/metadata/Database";
+import type {
   Database as DatabaseType,
   DatabaseData,
   DatabaseId,
 } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import useBeforeUnload from "metabase/hooks/use-before-unload";
-import Database from "metabase-lib/metadata/Database";
-
-import { getEditingDatabase, getInitializeError } from "../selectors";
+import type { State } from "metabase-types/store";
 
 import {
   reset,
   initializeDatabase,
   saveDatabase,
   updateDatabase,
-  syncDatabaseSchema,
   dismissSyncSpinner,
-  rescanDatabaseFields,
-  discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
 } from "../database";
+import { getEditingDatabase, getInitializeError } from "../selectors";
+
 import {
   DatabaseEditContent,
   DatabaseEditForm,
@@ -55,10 +53,7 @@ interface DatabaseEditAppProps {
   params: { databaseId: DatabaseId };
   reset: () => void;
   initializeDatabase: (databaseId: DatabaseId) => void;
-  syncDatabaseSchema: (databaseId: DatabaseId) => Promise<void>;
   dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
-  rescanDatabaseFields: (databaseId: DatabaseId) => Promise<void>;
-  discardSavedFieldValues: (databaseId: DatabaseId) => Promise<void>;
   deleteDatabase: (
     databaseId: DatabaseId,
     isDetailView: boolean,
@@ -72,6 +67,8 @@ interface DatabaseEditAppProps {
   isAdmin: boolean;
   isModelPersistenceEnabled: boolean;
   initializeError?: DatabaseEditErrorType;
+  route: Route;
+  onChangeLocation: (location: LocationDescriptor) => void;
 }
 
 const mapStateToProps = (state: State) => {
@@ -90,12 +87,10 @@ const mapDispatchToProps = {
   initializeDatabase,
   saveDatabase,
   updateDatabase,
-  syncDatabaseSchema,
   dismissSyncSpinner,
-  rescanDatabaseFields,
-  discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
+  onChangeLocation: push,
 };
 
 type DatabaseEditErrorType = {
@@ -112,10 +107,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
     database,
     deleteDatabase,
     updateDatabase,
-    discardSavedFieldValues,
     initializeError,
-    rescanDatabaseFields,
-    syncDatabaseSchema,
     dismissSyncSpinner,
     isAdmin,
     isModelPersistenceEnabled,
@@ -123,6 +115,8 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
     initializeDatabase,
     params,
     saveDatabase,
+    route,
+    onChangeLocation,
   } = props;
 
   const editingExistingDatabase = database?.id != null;
@@ -130,7 +124,11 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
 
   const [isDirty, setIsDirty] = useState(false);
 
-  useBeforeUnload(isDirty);
+  /**
+   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * prop has a chance to re-compute on re-render
+   */
+  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
 
   useMount(async () => {
     await reset();
@@ -144,6 +142,12 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
   const handleSubmit = async (database: DatabaseData) => {
     try {
       await saveDatabase(database);
+
+      if (addingNewDatabase) {
+        scheduleCallback(() => {
+          onChangeLocation("/admin/databases?created=true");
+        });
+      }
     } catch (error) {
       throw getSubmitError(error as DatabaseEditErrorType);
     }
@@ -153,12 +157,12 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
 
   return (
     <DatabaseEditRoot>
-      <Breadcrumbs className="py4" crumbs={crumbs} />
+      <Breadcrumbs className={CS.py4} crumbs={crumbs} />
 
       <DatabaseEditMain>
         <ErrorBoundary errorComponent={GenericError as ComponentType}>
           <div>
-            <div className="pt0">
+            <div className={CS.pt0}>
               <LoadingAndErrorWrapper
                 loading={!database}
                 error={initializeError}
@@ -187,13 +191,15 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
             isModelPersistenceEnabled={isModelPersistenceEnabled}
             updateDatabase={updateDatabase}
             deleteDatabase={deleteDatabase}
-            discardSavedFieldValues={discardSavedFieldValues}
-            rescanDatabaseFields={rescanDatabaseFields}
-            syncDatabaseSchema={syncDatabaseSchema}
             dismissSyncSpinner={dismissSyncSpinner}
           />
         )}
       </DatabaseEditMain>
+
+      <LeaveConfirmationModal
+        isEnabled={isDirty && !isCallbackScheduled}
+        route={route}
+      />
     </DatabaseEditRoot>
   );
 }

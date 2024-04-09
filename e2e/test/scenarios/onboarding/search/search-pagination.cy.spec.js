@@ -1,6 +1,7 @@
 import _ from "underscore";
-import { restore } from "e2e/support/helpers";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -25,7 +26,7 @@ describe("scenarios > search", () => {
     generateQuestions(TOTAL_ITEMS);
 
     cy.visit("/");
-    cy.findByPlaceholderText("Search…").type("generated question{enter}");
+    cy.findByPlaceholderText("Search…").type("generated_question{enter}");
     cy.findByLabelText("Previous page").should("be.disabled");
 
     // First page
@@ -56,7 +57,7 @@ describe("scenarios > search", () => {
 const generateQuestions = count => {
   _.range(count).map(i =>
     cy.createQuestion({
-      name: `generated question ${i}`,
+      name: `generated_question ${i}`,
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],

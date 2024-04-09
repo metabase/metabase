@@ -6,16 +6,24 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [schema.core :as s])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (metabase.driver.common.parameters Optional Param)))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private StringOrToken  (s/cond-pre s/Str {:token s/Keyword
-                                                 :text  s/Str}))
+(def ^:private StringOrToken  [:or
+                               :string
+                               [:map
+                                [:token :keyword]
+                                [:text  :string]]])
 
-(def ^:private ParsedToken (s/cond-pre s/Str Param Optional))
+(def ^:private ParsedToken
+  [:or
+   :string
+   (ms/InstanceOfClass Param)
+   (ms/InstanceOfClass Optional)])
 
 (defn- combine-adjacent-strings
   "Returns any adjacent strings in coll combined together"
@@ -61,8 +69,9 @@
     ["\n" :newline]]
    param-token-patterns))
 
-(s/defn ^:private tokenize :- [StringOrToken]
-  [s :- s/Str, handle-sql-comments :- s/Bool]
+(mu/defn ^:private tokenize :- [:sequential StringOrToken]
+  [s                   :- :string
+   handle-sql-comments :- :boolean]
   (reduce
    (fn [strs [token-str token]]
      (filter
@@ -95,11 +104,13 @@
                     {:type qp.error-type/invalid-query})))
   (params/->Optional (combine-adjacent-strings parsed)))
 
-(s/defn ^:private parse-tokens* :- [(s/one [ParsedToken] "parsed tokens") (s/one [StringOrToken] "remaining tokens")]
-  [tokens :- [StringOrToken]
-   optional-level :- s/Int
-   param-level :- s/Int
-   comment-mode :- (s/enum nil :block-comment-begin :line-comment-begin)]
+(mu/defn ^:private parse-tokens* :- [:tuple
+                                     [:sequential ParsedToken]
+                                     [:maybe [:sequential StringOrToken]]]
+  [tokens         :- [:sequential StringOrToken]
+   optional-level :- :int
+   param-level    :- :int
+   comment-mode   :- [:maybe [:enum :block-comment-begin :line-comment-begin]]]
   (loop [acc [], [string-or-token & more] tokens]
     (cond
       (nil? string-or-token)
@@ -152,18 +163,20 @@
             [acc more]
             (recur (conj acc text) more)))))))
 
-(s/defn parse :- [(s/cond-pre s/Str Param Optional)]
+(mu/defn parse :- [:sequential ParsedToken]
   "Attempts to parse parameters in string `s`. Parses any optional clauses or parameters found, and returns a sequence
    of non-parameter string fragments (possibly) interposed with `Param` or `Optional` instances.
 
-   If handle-sql-comments is true (default) then we make a best effort to ignore params in SQL comments."
-  ([s :- s/Str]
+   If `handle-sql-comments` is true (default) then we make a best effort to ignore params in SQL comments."
+  ([s :- :string]
    (parse s true))
-  ([s :- s/Str, handle-sql-comments :- s/Bool]
+
+  ([s                   :- :string
+    handle-sql-comments :- :boolean]
    (let [tokenized (tokenize s handle-sql-comments)]
      (if (= [s] tokenized)
        [s]
        (do
          (log/tracef "Tokenized native query ->\n%s" (u/pprint-to-str tokenized))
          (u/prog1 (combine-adjacent-strings (first (parse-tokens* tokenized 0 0 nil)))
-                  (log/tracef "Parsed native query ->\n%s" (u/pprint-to-str <>))))))))
+           (log/tracef "Parsed native query ->\n%s" (u/pprint-to-str <>))))))))

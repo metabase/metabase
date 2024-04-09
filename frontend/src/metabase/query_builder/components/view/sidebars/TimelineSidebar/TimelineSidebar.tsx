@@ -1,11 +1,12 @@
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { useCallback } from "react";
 import { t } from "ttag";
-import { Moment } from "moment-timezone";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
+
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import TimelinePanel from "metabase/timelines/questions/containers/TimelinePanel";
-import { Timeline, TimelineEvent } from "metabase-types/api";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 export interface TimelineSidebarProps {
   question: Question;

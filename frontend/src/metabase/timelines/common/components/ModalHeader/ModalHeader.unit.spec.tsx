@@ -1,4 +1,6 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
 import ModalHeader from "./ModalHeader";
 
 describe("ModalHeader", () => {
@@ -14,11 +16,15 @@ describe("ModalHeader", () => {
     expect(screen.getByText("Actions")).toBeInTheDocument();
   });
 
-  it("should render with close button", () => {
+  it("should render with close button", async () => {
     const onClose = jest.fn();
 
     render(<ModalHeader title="Events" onClose={onClose} />);
 
-    expect(screen.getByLabelText("close icon")).toBeInTheDocument();
+    const closeButton = screen.getByLabelText("close icon");
+    expect(closeButton).toBeInTheDocument();
+
+    await userEvent.click(closeButton);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

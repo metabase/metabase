@@ -1,0 +1,61 @@
+import { useState } from "react";
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Box, Button, Flex, Menu, PopoverBackButton } from "metabase/ui";
+
+export const args = {
+  children: "Back",
+};
+
+export const argTypes = {
+  children: { type: "string" },
+};
+
+<Meta
+  title="Buttons/PopoverBackButton"
+  component={PopoverBackButton}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# PopoverBackButton
+
+## Examples
+
+export const DefaultTemplate = args => {
+  const [isNestedPopoverOpen, setIsNestedPopoverOpen] = useState(false);
+  return (
+    <Flex justify="center">
+      <Menu>
+        <Menu.Target>
+          <Button variant="filled">Click to open</Button>
+        </Menu.Target>
+        <Menu.Dropdown>
+          {isNestedPopoverOpen ? (
+            <Box h="5rem">
+              <PopoverBackButton
+                {...args}
+                onClick={() => setIsNestedPopoverOpen(false)}
+              />
+            </Box>
+          ) : (
+            <>
+              <Menu.Item>Regular item</Menu.Item>
+              <Menu.Item
+                closeMenuOnClick={false}
+                onClick={() => setIsNestedPopoverOpen(true)}
+              >
+                Nested item
+              </Menu.Item>
+            </>
+          )}
+        </Menu.Dropdown>
+      </Menu>
+    </Flex>
+  );
+};
+
+export const Default = DefaultTemplate.bind(args);
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>

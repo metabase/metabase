@@ -3,21 +3,21 @@ import { forwardRef } from "react";
 
 import { PLUGIN_FORM_WIDGETS } from "metabase/plugins";
 
+import FormBooleanWidget from "./widgets/FormBooleanWidget";
+import FormCheckBoxWidget from "./widgets/FormCheckBoxWidget";
+import FormCollectionWidget from "./widgets/FormCollectionWidget";
+import FormColorWidget from "./widgets/FormColorWidget";
+import FormEmailWidget from "./widgets/FormEmailWidget";
+import FormHiddenWidget from "./widgets/FormHiddenWidget";
 import FormInfoWidget from "./widgets/FormInfoWidget";
 import FormInputWidget from "./widgets/FormInputWidget";
-import FormEmailWidget from "./widgets/FormEmailWidget";
-import FormTextAreaWidget from "./widgets/FormTextAreaWidget";
+import FormNumericInputWidget from "./widgets/FormNumericInputWidget";
 import FormPasswordWidget from "./widgets/FormPasswordWidget";
 import FormRadioWidget from "./widgets/FormRadioWidget";
-import FormCheckBoxWidget from "./widgets/FormCheckBoxWidget";
-import FormColorWidget from "./widgets/FormColorWidget";
 import FormSectionWidget from "./widgets/FormSectionWidget";
 import FormSelectWidget from "./widgets/FormSelectWidget";
-import FormNumericInputWidget from "./widgets/FormNumericInputWidget";
-import FormBooleanWidget from "./widgets/FormBooleanWidget";
-import FormCollectionWidget from "./widgets/FormCollectionWidget";
 import FormSnippetCollectionWidget from "./widgets/FormSnippetCollectionWidget";
-import FormHiddenWidget from "./widgets/FormHiddenWidget";
+import FormTextAreaWidget from "./widgets/FormTextAreaWidget";
 import FormTextFileWidget from "./widgets/FormTextFileWidget";
 
 const WIDGETS = {

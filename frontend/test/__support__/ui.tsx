@@ -1,23 +1,23 @@
-import * as React from "react";
-import { render, screen } from "@testing-library/react";
-import type { ByRoleMatcher } from "@testing-library/react";
-import _ from "underscore";
-import { createMemoryHistory, History } from "history";
-import { Router, useRouterHistory } from "react-router";
-import { routerReducer, routerMiddleware } from "react-router-redux";
 import type { Store, Reducer } from "@reduxjs/toolkit";
-import { Provider } from "react-redux";
+import type { MatcherFunction } from "@testing-library/dom";
+import type { ByRoleMatcher } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import type { History } from "history";
+import { createMemoryHistory } from "history";
+import type * as React from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import type { MatcherFunction } from "@testing-library/dom";
-import { ThemeProvider } from "metabase/ui";
+import { Provider } from "react-redux";
+import { Router, useRouterHistory } from "react-router";
+import { routerReducer, routerMiddleware } from "react-router-redux";
+import _ from "underscore";
 
-import type { State } from "metabase-types/store";
-
-import { createMockState } from "metabase-types/store/mocks";
-
+import { Api } from "metabase/api";
 import mainReducers from "metabase/reducers-main";
 import publicReducers from "metabase/reducers-public";
+import { ThemeProvider } from "metabase/ui";
+import type { State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { getStore } from "./entities-store";
 
@@ -52,7 +52,8 @@ export function renderWithProviders(
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  let initialState = createMockState(storeInitialState);
+  let { routing, ...initialState }: Partial<State> =
+    createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
@@ -71,15 +72,20 @@ export function renderWithProviders(
 
   if (withRouter) {
     Object.assign(reducers, { routing: routerReducer });
+    Object.assign(initialState, { routing });
   }
   if (customReducers) {
     reducers = { ...reducers, ...customReducers };
   }
 
+  const storeMiddleware = _.compact([
+    Api.middleware,
+    history && routerMiddleware(history),
+  ]);
   const store = getStore(
     reducers,
     initialState,
-    history ? [routerMiddleware(history)] : [],
+    storeMiddleware,
   ) as unknown as Store<State>;
 
   const wrapper = (props: any) => (
@@ -188,6 +194,63 @@ export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
 
     return hasText(element) && childrenDoNotHaveText;
   };
+}
+
+/**
+ * This utility was created as a replacement for waitForElementToBeRemoved.
+ * The difference is that waitForElementToBeRemoved expects the element
+ * to exist before being removed.
+ *
+ * The advantage of waitForLoaderToBeRemoved is that it integrates
+ * better with our async entity framework because it addresses the
+ * non-deterministic aspect of when loading states are displayed.
+ *
+ * @see https://github.com/metabase/metabase/pull/34272#discussion_r1342527087
+ * @see https://metaboat.slack.com/archives/C505ZNNH4/p1684753502335459?thread_ts=1684751522.480859&cid=C505ZNNH4
+ */
+export const waitForLoaderToBeRemoved = async () => {
+  await waitFor(() => {
+    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+  });
+};
+
+/**
+ * jsdom doesn't have getBoundingClientRect, so we need to mock it
+ */
+export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
+  jest
+    .spyOn(window.Element.prototype, "getBoundingClientRect")
+    .mockImplementation(() => {
+      return {
+        height: 200,
+        width: 200,
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+        ...options,
+      };
+    });
+};
+
+/**
+ * jsdom doesn't have scrollBy, so we need to mock it
+ */
+export const mockScrollBy = () => {
+  window.Element.prototype.scrollBy = jest.fn();
+};
+
+/**
+ * jsdom doesn't have DataTransfer
+ */
+export function createMockClipboardData(
+  opts?: Partial<DataTransfer>,
+): DataTransfer {
+  const clipboardData = { ...opts };
+  return clipboardData as unknown as DataTransfer;
 }
 
 export * from "@testing-library/react";

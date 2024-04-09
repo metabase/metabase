@@ -1,13 +1,14 @@
-import { parse as parseUrl } from "url";
-import { createAction } from "redux-actions";
 import { push, replace } from "react-router-redux";
-
-import { createThunkAction } from "metabase/lib/redux";
-import Utils from "metabase/lib/utils";
+import { createAction } from "redux-actions";
+import { parse as parseUrl } from "url";
 
 import { isEqualCard } from "metabase/lib/card";
+import { createThunkAction } from "metabase/lib/redux";
+import { equals } from "metabase/lib/utils";
+import { getLocation } from "metabase/selectors/routing";
+import * as Lib from "metabase-lib";
+import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
 
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import {
   getCard,
   getDatasetEditorTab,
@@ -26,7 +27,7 @@ import {
 import { initializeQB, setCardAndRun } from "./core";
 import { zoomInRow, resetRowZoom } from "./object-detail";
 import { cancelQuery } from "./querying";
-import { setQueryBuilderMode } from "./ui";
+import { resetUIControls, setQueryBuilderMode } from "./ui";
 
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
 const setCurrentState = createAction(SET_CURRENT_STATE);
@@ -39,8 +40,7 @@ export const popState = createThunkAction(
 
     const zoomedObjectId = getZoomedObjectId(getState());
     if (zoomedObjectId) {
-      const { locationBeforeTransitions = {} } = getState().routing;
-      const { state, query } = locationBeforeTransitions;
+      const { state, query } = getLocation(getState());
       const previouslyZoomedObjectId = state?.objectId || query?.objectId;
 
       if (
@@ -56,10 +56,11 @@ export const popState = createThunkAction(
 
     const card = getCard(getState());
     if (location.state && location.state.card) {
-      if (!Utils.equals(card, location.state.card)) {
-        const shouldRefreshUrl = location.state.card.dataset;
-        await dispatch(setCardAndRun(location.state.card, shouldRefreshUrl));
+      if (!equals(card, location.state.card)) {
+        const shouldUpdateUrl = location.state.card.type === "model";
+        await dispatch(setCardAndRun(location.state.card, { shouldUpdateUrl }));
         await dispatch(setCurrentState(location.state));
+        await dispatch(resetUIControls());
       }
     }
 
@@ -95,6 +96,7 @@ export const locationChanged =
           getURL(location, { includeMode: true })
         ) {
           // the browser forward/back button was pressed
+
           dispatch(popState(nextLocation));
         }
       } else if (
@@ -135,9 +137,10 @@ export const updateUrl = createThunkAction(
           (!isAdHocModel && question.isDirtyComparedTo(originalQuestion));
       }
 
+      const { isNative } = Lib.queryDisplayInfo(question.query());
       // prevent clobbering of hash when there are fake parameters on the question
       // consider handling this in a more general way, somehow
-      if (question.isStructured() && question.parameters().length > 0) {
+      if (!isNative && question.parameters().length > 0) {
         dirty = true;
       }
 

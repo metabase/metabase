@@ -28,6 +28,7 @@ describe("issue 29795", () => {
 
     popover().within(() => {
       cy.icon("chevronleft").click();
+      cy.findByText("Raw Data").click();
       cy.findByText("Saved Questions").click();
       cy.findByRole("menuitem", { name: NATIVE_QUESTION }).click();
     });

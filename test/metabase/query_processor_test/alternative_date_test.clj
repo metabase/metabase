@@ -3,20 +3,21 @@
   related types."
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time OffsetDateTime)))
 
 (set! *warn-on-reflection* true)
 
-(deftest semantic-type->unix-timestamp-unit-test
+(deftest ^:parallel semantic-type->unix-timestamp-unit-test
   (testing "every descendant of `:Coercion/UNIXTime->Temporal` has a unit associated with it"
     (doseq [semantic-type (descendants :Coercion/UNIXTime->Temporal)]
       (is (sql.qp/semantic-type->unix-timestamp-unit semantic-type))))
@@ -26,7 +27,7 @@
          #"Semantic type must be a UNIXTimestamp"
          (sql.qp/semantic-type->unix-timestamp-unit :type/Integer)))))
 
-(mt/defdataset toucan-microsecond-incidents
+(mt/defdataset toucan-ms-incidents
   [["incidents" [{:field-name "severity"
                   :base-type  :type/Integer}
                  {:field-name        "timestamp"
@@ -36,7 +37,20 @@
     [[4 1433587200000000]
      [0 1433965860000000]]]])
 
-(deftest microseconds-test
+(deftest double-coercion-through-model
+  (testing "Ensure that coerced values only get coerced once. #33861"
+    (mt/dataset
+      toucan-ms-incidents
+      (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                                          :type     :query
+                                                                          :query    {:source-table (mt/id :incidents)}}}]
+        (is (= [[1 4 "2015-06-06T10:40:00Z"]
+                [2 0 "2015-06-10T19:51:00Z"]]
+               (mt/rows (qp/process-query {:database (mt/id)
+                                           :type     :query
+                                           :query    {:source-table (str "card__" card-id)}}))))))))
+
+(deftest ^:parallel microseconds-test
   (mt/test-drivers (disj (mt/normal-drivers) :sqlite)
     (let [results (get {:sqlite #{[1 4 "2015-06-06 10:40:00"] [2 0 "2015-06-10 19:51:00"]}
                         :oracle #{[1M 4M "2015-06-06T10:40:00Z"] [2M 0M "2015-06-10T19:51:00Z"]}}
@@ -44,7 +58,7 @@
                        ;; default result shape
                        #{[1 4 "2015-06-06T10:40:00Z"] [2 0 "2015-06-10T19:51:00Z"]})]
       (is (= results
-             (set (mt/rows (mt/dataset toucan-microsecond-incidents
+             (set (mt/rows (mt/dataset toucan-ms-incidents
                              (mt/run-mbql-query incidents)))))))))
 
 (deftest filter-test
@@ -77,7 +91,7 @@
               ["2015-06-09"  7]
               ["2015-06-10"  9]]
 
-             (qp.test/tz-shifted-driver-bug? driver/*driver*)
+             (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
              [["2015-06-01T00:00:00-07:00" 6]
               ["2015-06-02T00:00:00-07:00" 10]
               ["2015-06-03T00:00:00-07:00" 4]
@@ -89,7 +103,7 @@
               ["2015-06-09T00:00:00-07:00" 7]
               ["2015-06-10T00:00:00-07:00" 9]]
 
-             (qp.test/supports-report-timezone? driver/*driver*)
+             (qp.test-util/supports-report-timezone? driver/*driver*)
              [["2015-06-01T00:00:00-07:00" 8]
               ["2015-06-02T00:00:00-07:00" 9]
               ["2015-06-03T00:00:00-07:00" 9]
@@ -120,7 +134,7 @@
                        :limit       10}))
                   mt/rows (mt/format-rows-by [identity int])))))))
 
-(deftest substitute-native-parameters-test
+(deftest ^:parallel substitute-native-parameters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
     (testing "Make sure `:date/range` SQL field filters work correctly with UNIX timestamps (#11934)"
       (mt/dataset tupac-sightings
@@ -179,7 +193,10 @@
      ["bar" "2008-10-19 10:23:54" "2008-10-19" "10:23:54"]
      ["baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]]])
 
-(deftest iso-8601-text-fields
+;;; TODO -- instead of having 5 different hardcoded versions of the test, maybe we should make a `iso-8601-text-fields`
+;;; multimethod with a `:default` implementation and different driver implementations as needed so third-party driver
+;;; authors can pass this test too.
+(deftest ^:parallel iso-8601-text-fields
   (testing "text fields with semantic_type :type/ISO8601DateTimeString"
     (testing "return as dates"
       (mt/test-drivers (-> (sql-jdbc.tu/sql-jdbc-drivers)
@@ -191,18 +208,17 @@
                ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
                (mt/rows (mt/dataset string-times
                           (qp/process-query
-                            (assoc (mt/mbql-query times)
-                                   :middleware {:format-rows? false})))))))
-      (testing "sparksql adds UTC"
+                           (assoc (mt/mbql-query times {:order-by [[:asc $id]]})
+                                  :middleware {:format-rows? false})))))))
+      (testing "SparkSQL returns ZonedDateTime (which isn't really correct if we asked for :type/DateTime) and doesn't have a TIME type"
         (mt/test-drivers #{:sparksql}
-          (is (= #{[1 "foo" #t "2004-10-19T10:23:54Z[UTC]" #t "2004-10-19T00:00Z[UTC]"]
-                   [3 "baz" #t "2012-10-19T10:23:54Z[UTC]" #t "2012-10-19T00:00Z[UTC]"]
-                   [2 "bar" #t "2008-10-19T10:23:54Z[UTC]" #t "2008-10-19T00:00Z[UTC]"]}
-                 ;; order seems to be nondeterministic
-                 (set (mt/rows (mt/dataset just-dates
-                                 (qp/process-query
-                                   (assoc (mt/mbql-query just-dates)
-                                          :middleware {:format-rows? false})))))))))
+          (is (= [[1 "foo" #t "2004-10-19T10:23:54Z[UTC]" #t "2004-10-19"]
+                  [2 "bar" #t "2008-10-19T10:23:54Z[UTC]" #t "2008-10-19"]
+                  [3 "baz" #t "2012-10-19T10:23:54Z[UTC]" #t "2012-10-19"]]
+                 (mt/rows (mt/dataset just-dates
+                            (qp/process-query
+                             (assoc (mt/mbql-query just-dates {:order-by [[:asc $id]]})
+                                    :middleware {:format-rows? false}))))))))
       (testing "oracle doesn't have a time type"
         (mt/test-drivers #{:oracle}
           (is (= [[1M "foo" #t "2004-10-19T10:23:54" #t "2004-10-19T00:00"]
@@ -211,8 +227,8 @@
                  ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
                  (mt/rows (mt/dataset just-dates
                             (qp/process-query
-                              (assoc (mt/mbql-query just-dates)
-                                     :middleware {:format-rows? false}))))))))
+                             (assoc (mt/mbql-query just-dates {:order-by [[:asc $id]]})
+                                    :middleware {:format-rows? false}))))))))
 
       (testing "sqlite returns as strings"
         (mt/test-drivers #{:sqlite}
@@ -222,8 +238,8 @@
                  ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
                  (mt/rows (mt/dataset string-times
                             (qp/process-query
-                              (assoc (mt/mbql-query times)
-                                     :middleware {:format-rows? false}))))))))
+                             (assoc (mt/mbql-query times {:order-by [[:asc $id]]})
+                                    :middleware {:format-rows? false}))))))))
 
       (testing "mongo only supports datetime"
         (mt/test-drivers #{:mongo}
@@ -232,46 +248,48 @@
                     [(t/instant "2008-10-19T10:23:54Z")]
                     [(t/instant "2012-10-19T10:23:54Z")]]
                    (mt/rows (qp/process-query
-                              (assoc (mt/mbql-query times
-                                                    {:fields [$ts]})
-                                     :middleware {:format-rows? false})))))
+                             (assoc (mt/mbql-query times
+                                      {:order-by [[:asc $id]], :fields [$ts]})
+                                    :middleware {:format-rows? false})))))
             (is (thrown-with-msg?
-                  clojure.lang.ExceptionInfo
-                  #"MongoDB does not support parsing strings as dates. Try parsing to a datetime instead"
-                  (qp/process-query
-                    (mt/mbql-query times {:fields [$d]}))))
+                 clojure.lang.ExceptionInfo
+                 #"MongoDB does not support parsing strings as dates. Try parsing to a datetime instead"
+                 (qp/process-query
+                  (mt/mbql-query times {:fields [$d]}))))
             (is (thrown-with-msg?
-                  clojure.lang.ExceptionInfo
-                  #"MongoDB does not support parsing strings as times. Try parsing to a datetime instead"
-                  (qp/process-query
-                    (mt/mbql-query times {:fields [$t]}))))))))
+                 clojure.lang.ExceptionInfo
+                 #"MongoDB does not support parsing strings as times. Try parsing to a datetime instead"
+                 (qp/process-query
+                  (mt/mbql-query times {:fields [$t]}))))))))))
 
+(deftest ^:parallel iso-8601-text-fields-should-be-queryable-test
+  (testing "text fields with semantic_type :type/ISO8601DateTimeString"
     (testing "are queryable as dates"
       (mt/dataset string-times
-       (testing "a datetime field"
-         ;; TODO: why does this fail on oracle? gives a NPE
-         (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
-           (is (= 1
-                  (->> (mt/run-mbql-query times
-                         {:filter [:= !day.ts "2008-10-19"]})
-                       mt/rows
-                       count))))
+        (testing "a datetime field"
+          ;; TODO: why does this fail on oracle? gives a NPE
+          (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
+            (is (= 1
+                   (->> (mt/run-mbql-query times
+                          {:filter [:= !day.ts "2008-10-19"]})
+                        mt/rows
+                        count))))
 
-         (mt/test-drivers #{:mongo}
-           (is (= 1
-                  (->> (mt/run-mbql-query times
-                         {:filter [:= !day.ts "2008-10-19"]
-                          :fields [$ts]})
-                       mt/rows
-                       count)))))
+          (mt/test-drivers #{:mongo}
+            (is (= 1
+                   (->> (mt/run-mbql-query times
+                          {:filter [:= !day.ts "2008-10-19"]
+                           :fields [$ts]})
+                        mt/rows
+                        count)))))
 
-       (testing "a date field"
-         (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
-           (is (= 1
-                  (->> (mt/run-mbql-query times
-                         {:filter [:= !day.d "2008-10-19"]})
-                       mt/rows
-                       count)))))))))
+        (testing "a date field"
+          (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
+            (is (= 1
+                   (->> (mt/run-mbql-query times
+                          {:filter [:= !day.d "2008-10-19"]})
+                        mt/rows
+                        count)))))))))
 
 (mt/defdataset yyyymmddhhss-times
   [["times" [{:field-name "name"
@@ -299,7 +317,7 @@
      ["bar" (.getBytes "20200421164300")]
      ["baz" (.getBytes "20210421164300")]]]])
 
-(deftest yyyymmddhhmmss-binary-dates
+(deftest ^:parallel yyyymmddhhmmss-binary-dates
   (mt/test-drivers #{:postgres :h2 :mysql}
     (is (= (case driver/*driver*
              (:h2 :postgres)
@@ -318,7 +336,7 @@
                                   (assoc (mt/mbql-query times)
                                          :middleware {:format-rows? false})))))))))
 
-(deftest yyyymmddhhmmss-dates
+(deftest ^:parallel yyyymmddhhmmss-dates
   (mt/test-drivers #{:mongo :oracle :postgres :h2 :mysql :bigquery-cloud-sdk :snowflake :redshift :sqlserver}
     (is (= (case driver/*driver*
              :mongo

@@ -1,7 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import { createMockUser } from "metabase-types/api/mocks";
-import UserProfileForm, { UserProfileFormProps } from "./UserProfileForm";
+
+import type { UserProfileFormProps } from "./UserProfileForm";
+import UserProfileForm from "./UserProfileForm";
 
 describe("UserProfileForm", () => {
   it("should show a success message after form submit", async () => {
@@ -10,9 +13,9 @@ describe("UserProfileForm", () => {
     });
 
     render(<UserProfileForm {...props} />);
-    userEvent.clear(screen.getByLabelText("First name"));
-    userEvent.type(screen.getByLabelText("First name"), "New name");
-    userEvent.click(screen.getByText("Update"));
+    await userEvent.clear(screen.getByLabelText("First name"));
+    await userEvent.type(screen.getByLabelText("First name"), "New name");
+    await userEvent.click(screen.getByText("Update"));
 
     expect(await screen.findByText("Success")).toBeInTheDocument();
   });

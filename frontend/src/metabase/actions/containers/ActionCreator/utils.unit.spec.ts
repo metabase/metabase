@@ -3,6 +3,7 @@ import {
   createMockFieldSettings,
   createMockParameter,
 } from "metabase-types/api/mocks";
+
 import { syncFieldsWithParameters } from "./utils";
 
 describe("syncFieldsWithParameters", () => {

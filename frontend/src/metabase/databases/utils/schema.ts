@@ -1,7 +1,9 @@
-import * as Yup from "yup";
 import type { TestContext } from "yup";
-import * as Errors from "metabase/core/utils/errors";
-import { DatabaseData, Engine, EngineField } from "metabase-types/api";
+import * as Yup from "yup";
+
+import * as Errors from "metabase/lib/errors";
+import type { DatabaseData, Engine, EngineField } from "metabase-types/api";
+
 import { ADVANCED_FIELDS, FIELD_OVERRIDES } from "../constants";
 
 const SCHEDULE_SCHEMA = Yup.object({

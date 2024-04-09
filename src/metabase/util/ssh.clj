@@ -15,7 +15,10 @@
    (org.apache.sshd.client.future ConnectFuture)
    (org.apache.sshd.client.session ClientSession)
    (org.apache.sshd.client.session.forward PortForwardingTracker)
-   (org.apache.sshd.common.config.keys FilePasswordProvider FilePasswordProvider$ResourceDecodeResult)
+   (org.apache.sshd.common.config.keys FilePasswordProvider
+                                       FilePasswordProvider$Decoder
+                                       FilePasswordProvider$ResourceDecodeResult)
+   (org.apache.sshd.common.future CancelOption)
    (org.apache.sshd.common.session SessionHeartbeatController$HeartbeatType SessionHolder)
    (org.apache.sshd.common.util GenericUtils)
    (org.apache.sshd.common.util.io.resource AbstractIoResource)
@@ -27,7 +30,8 @@
   (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")
   :visibility :public
   :type       :integer
-  :default    180)
+  :default    180
+  :audit      :getter)
 
 (set! *warn-on-reflection* true)
 
@@ -42,6 +46,9 @@
     (.start)
     (.setForwardingFilter AcceptAllForwardingFilter/INSTANCE)))
 
+(def ^:private ^"[Lorg.apache.sshd.common.future.CancelOption;" no-cancel-options
+  (make-array CancelOption 0))
+
 (defn- maybe-add-tunnel-password!
   [^ClientSession session ^String tunnel-pass]
   (when tunnel-pass
@@ -55,7 +62,9 @@
                               (getPassword [_ _ _]
                                 tunnel-private-key-passphrase)
                               (handleDecodeAttemptResult [_ _ _ _ _]
-                                FilePasswordProvider$ResourceDecodeResult/TERMINATE))
+                                FilePasswordProvider$ResourceDecodeResult/TERMINATE)
+                              (decode [_ _ ^FilePasswordProvider$Decoder decoder]
+                                (.decode decoder tunnel-private-key-passphrase)))
           ids               (with-open [is (ByteArrayInputStream. (.getBytes tunnel-private-key "UTF-8"))]
                               (SecurityUtils/loadKeyPairIdentities session resource-key is password-provider))
           keypair           (GenericUtils/head ids)]
@@ -69,7 +78,7 @@
   {:pre [(integer? port)]}
   (let [^Integer tunnel-port       (or tunnel-port default-ssh-tunnel-port)
         ^ConnectFuture conn-future (.connect client tunnel-user tunnel-host tunnel-port)
-        ^SessionHolder conn-status (.verify conn-future default-ssh-timeout)
+        ^SessionHolder conn-status (.verify conn-future default-ssh-timeout no-cancel-options)
         hb-sec                     (ssh-heartbeat-interval-sec)
         session                    (doto ^ClientSession (.getSession conn-status)
                                      (maybe-add-tunnel-password! tunnel-pass)
@@ -77,7 +86,7 @@
                                      (.setSessionHeartbeat SessionHeartbeatController$HeartbeatType/IGNORE
                                                            TimeUnit/SECONDS
                                                            hb-sec)
-                                     (.. auth (verify default-ssh-timeout)))
+                                     (.. auth (verify default-ssh-timeout no-cancel-options)))
         tracker                    (.createLocalPortForwardingTracker session
                                                                       (SshdSocketAddress. "" 0)
                                                                       (SshdSocketAddress. host port))
@@ -122,15 +131,18 @@
 ;; TODO Seems like this definitely belongs in [[metabase.driver.sql-jdbc.connection]] or something like that.
 (defmethod driver/incorporate-ssh-tunnel-details :sql-jdbc
   [_driver db-details]
-  (cond (not (use-ssh-tunnel? db-details))
-        ;; no ssh tunnel in use
-        db-details
-        (ssh-tunnel-open? db-details)
-        ;; tunnel in use, and is open
-        db-details
-        :else
-        ;; tunnel in use, and is not open
-        (include-ssh-tunnel! db-details)))
+  (cond
+    ;; no ssh tunnel in use
+    (not (use-ssh-tunnel? db-details))
+    db-details
+
+    ;; tunnel in use, and is open
+    (ssh-tunnel-open? db-details)
+    db-details
+
+    ;; tunnel in use, and is not open
+    :else
+    (include-ssh-tunnel! db-details)))
 
 (defn close-tunnel!
   "Close a running tunnel session"

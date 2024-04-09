@@ -1,5 +1,6 @@
 import d3 from "d3";
-import { Icons } from "metabase/core/components/Icon";
+
+import { Icons } from "metabase/ui";
 
 const ICON_X = -8;
 const ICON_Y = 4;

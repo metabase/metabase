@@ -1,39 +1,44 @@
-import { ChangeEvent, useCallback, useEffect } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import Button from "metabase/core/components/Button";
-import Input from "metabase/core/components/Input";
+
+import { coerceCollectionId } from "metabase/collections/utils";
 import ModalContent from "metabase/components/ModalContent";
-import DataPicker, {
+import type {
   DataPickerDataType,
   DataPickerValue,
+} from "metabase/containers/DataPicker";
+import DataPicker, {
   useDataPicker,
   useDataPickerValue,
 } from "metabase/containers/DataPicker";
-import Questions from "metabase/entities/questions";
+import Button from "metabase/core/components/Button";
+import Input from "metabase/core/components/Input";
 import Collections from "metabase/entities/collections";
+import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
-import { coerceCollectionId } from "metabase/collections/utils";
+import type Question from "metabase-lib/v1/Question";
 import {
+  getCollectionVirtualSchemaId,
+  getQuestionIdFromVirtualTableId,
+  getQuestionVirtualTableId,
+} from "metabase-lib/v1/metadata/utils/saved-questions";
+import type {
   CardId,
   Collection,
   Parameter,
   ValuesSourceConfig,
 } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
-import {
-  getCollectionVirtualSchemaId,
-  getQuestionIdFromVirtualTableId,
-  getQuestionVirtualTableId,
-} from "metabase-lib/metadata/utils/saved-questions";
-import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
+import type { State } from "metabase-types/store";
+
 import {
   DataPickerContainer,
   ModalBodyWithSearch,
   SearchInputContainer,
 } from "./ValuesSourceCardModal.styled";
+import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 
 const DATA_PICKER_FILTERS = {
   types: (type: DataPickerDataType) =>
@@ -154,15 +159,29 @@ const getInitialValue = (
 ): Partial<DataPickerValue> | undefined => {
   if (question) {
     const id = question.id();
-    const isDatasets = question.isDataset();
-
     return {
-      type: isDatasets ? "models" : "questions",
-      schemaId: getCollectionVirtualSchemaId(collection, { isDatasets }),
+      type: getInitialTypeValue(question),
+      schemaId: getCollectionVirtualSchemaId(collection, {
+        isDatasets: question.type() === "model",
+      }),
       collectionId: collection?.id,
       tableIds: [getQuestionVirtualTableId(id)],
     };
   }
+};
+
+const getInitialTypeValue = (question: Question) => {
+  const type = question.type();
+
+  if (type === "question") {
+    return "questions";
+  }
+
+  if (type === "model") {
+    return "models";
+  }
+
+  throw new Error(`Unsupported or unknown question.type(): ${type}`);
 };
 
 const getCardIdFromValue = ({ tableIds }: DataPickerValue) => {

@@ -1,6 +1,12 @@
-import type { DatabaseId, TableId, SchemaName } from "metabase-types/api";
-import { GroupId } from "./group";
-import { UserAttribute } from "./user";
+import type {
+  DatabaseId,
+  TableId,
+  SchemaName,
+  CollectionId,
+} from "metabase-types/api";
+
+import type { GroupId } from "./group";
+import type { UserAttribute } from "./user";
 
 export type PermissionsGraph = {
   groups: GroupsPermissions;
@@ -77,6 +83,17 @@ export type FieldsPermissions =
       read: "all";
       query: "segmented";
     };
+
+export type CollectionPermissionsGraph = {
+  groups: CollectionPermissions;
+  revision: number;
+};
+
+export type CollectionPermissions = {
+  [key: GroupId]: Partial<Record<CollectionId, CollectionPermission>>;
+};
+
+export type CollectionPermission = "write" | "read" | "none";
 
 // FIXME: is there a more suitable type for this?
 export type DimensionRef = ["dimension", any[]];

@@ -1,18 +1,19 @@
 (ns metabase.sync.sync-metadata.dbms-version-test
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
+   [malli.error :as me]
    [metabase.models.database :refer [Database]]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (defn- db-dbms-version [db-or-id]
   (t2/select-one-fn :dbms_version Database :id (u/the-id db-or-id)))
 
 (defn- check-dbms-version [dbms-version]
-  (s/check (s/maybe sync-dbms-ver/DBMSVersion) dbms-version))
+  (me/humanize (mc/explain [:maybe sync-dbms-ver/DBMSVersion] dbms-version)))
 
 (deftest dbms-version-test
   (mt/test-drivers (mt/normal-drivers)

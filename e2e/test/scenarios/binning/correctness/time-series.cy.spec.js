@@ -1,11 +1,12 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
   getBinningButtonForDimension,
   summarize,
+  rightSidebar,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { TIME_OPTIONS } from "./shared/constants";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -38,9 +39,12 @@ describe("scenarios > binning > correctness > time series", () => {
   });
 
   Object.entries(TIME_OPTIONS).forEach(
-    ([bucketSize, { selected, representativeValues }]) => {
+    ([bucketSize, { selected, isHiddenByDefault, representativeValues }]) => {
       it(`should return correct values for ${bucketSize}`, () => {
         popover().within(() => {
+          if (isHiddenByDefault) {
+            cy.button("More…").click();
+          }
           cy.findByText(bucketSize).click();
           cy.wait("@dataset");
         });
@@ -50,8 +54,7 @@ describe("scenarios > binning > correctness > time series", () => {
           isSelected: true,
         }).should("have.text", selected);
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Done").click();
+        rightSidebar().button("Done").click();
 
         getTitle(`Count by Created At: ${bucketSize}`);
 
@@ -86,12 +89,10 @@ function assertOnTableValues(values) {
 }
 
 function assertOnTimeSeriesFooter(str) {
-  cy.findAllByTestId("select-button-content")
-    .first()
+  cy.findByTestId("timeseries-filter-button")
     .invoke("text")
-    .should("eq", "All Time");
-  cy.findAllByTestId("select-button-content")
-    .last()
+    .should("eq", "All time");
+  cy.findByTestId("timeseries-bucket-button")
     .invoke("text")
     .should("contain", str);
 }

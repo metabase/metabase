@@ -1,4 +1,5 @@
-import { Metric } from "metabase-types/api";
+import type { Metric } from "metabase-types/api";
+
 import { createMockStructuredQuery } from "./query";
 
 export const createMockMetric = (opts?: Partial<Metric>): Metric => ({

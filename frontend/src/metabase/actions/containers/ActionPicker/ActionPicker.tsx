@@ -1,18 +1,15 @@
-import { useState, useMemo, MouseEvent } from "react";
+import type { MouseEvent } from "react";
+import { useState, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import ActionCreator from "metabase/actions/containers/ActionCreator";
 import Modal from "metabase/components/Modal";
-import { useToggle } from "metabase/hooks/use-toggle";
-
+import CS from "metabase/css/core/index.css";
 import Actions from "metabase/entities/actions";
 import Search from "metabase/entities/search";
-
-import ActionCreator from "metabase/actions/containers/ActionCreator";
-
+import { useToggle } from "metabase/hooks/use-toggle";
 import type { Card, WritebackAction } from "metabase-types/api";
-
-import { sortAndGroupActions } from "./utils";
 
 import {
   ActionsList,
@@ -23,6 +20,7 @@ import {
   EmptyModelStateContainer,
   NewActionButton,
 } from "./ActionPicker.styled";
+import { sortAndGroupActions } from "./utils";
 
 export function ActionPicker({
   models,
@@ -44,7 +42,7 @@ export function ActionPicker({
   const actionsByModel = useMemo(() => sortAndGroupActions(actions), [actions]);
 
   return (
-    <div className="scroll-y">
+    <div className={CS.scrollY}>
       {sortedModels.map(model => (
         <ModelActionPicker
           key={model.id}

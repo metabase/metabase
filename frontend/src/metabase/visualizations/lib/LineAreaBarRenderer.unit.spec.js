@@ -1,9 +1,5 @@
 import "__support__/ui-mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
 
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import lineAreaBarRenderer, {
-  getDimensionsAndGroupsAndUpdateSeriesDisplayNames,
-} from "metabase/visualizations/lib/LineAreaBarRenderer";
 import {
   NumberColumn,
   DateTimeColumn,
@@ -12,6 +8,14 @@ import {
   renderLineAreaBar,
   getFormattedTooltips,
 } from "__support__/visualizations";
+import lineAreaBarRenderer, {
+  getDimensionsAndGroupsAndUpdateSeriesDisplayNames,
+} from "metabase/visualizations/lib/LineAreaBarRenderer";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import registerVisualizations from "metabase/visualizations/register";
+import { createMockCard } from "metabase-types/api/mocks";
+
+registerVisualizations();
 
 // jsdom doesn't support layout methods like getBBox, so we need to mock it.
 window.SVGElement.prototype.getBBox = () => ({
@@ -87,7 +91,10 @@ describe("LineAreaBarRenderer", () => {
       requested_timezone: "US/Pacific",
       results_timezone: "US/Eastern",
     };
-    const card = { display: "line", visualization_settings: {} };
+    const card = createMockCard({
+      display: "line",
+      visualization_settings: {},
+    });
     const onRender = jest.fn();
 
     renderLineAreaBar(element, [{ data, card }], { onRender });
@@ -106,7 +113,7 @@ describe("LineAreaBarRenderer", () => {
         requested_timezone: tz,
         results_timezone: tz,
       },
-      card: { display: "line", visualization_settings: {} },
+      card: createMockCard({ display: "line", visualization_settings: {} }),
     });
     const onRender = jest.fn();
 
@@ -147,7 +154,9 @@ describe("LineAreaBarRenderer", () => {
 
     const cols = [dateColumn, NumberColumn()];
     const chartType = "line";
-    const series = [{ data: { cols, rows }, card: { display: chartType } }];
+    const series = [
+      { data: { cols, rows }, card: createMockCard({ display: chartType }) },
+    ];
     const settings = getComputedSettingsForSeries(series);
     const onHoverChange = jest.fn();
 
@@ -162,10 +171,10 @@ describe("LineAreaBarRenderer", () => {
 
     const ticks = qsa(".axis.x .tick text").map(e => e.textContent);
     expect(ticks).toEqual([
-      "January, 2020",
-      "February, 2020",
-      "March, 2020",
-      "April, 2020",
+      "January 2020",
+      "February 2020",
+      "March 2020",
+      "April 2020",
     ]);
   });
 
@@ -188,10 +197,10 @@ describe("LineAreaBarRenderer", () => {
         date_separator: "-",
       },
     };
-    const card = {
+    const card = createMockCard({
       display: chartType,
       visualization_settings: { column_settings },
-    };
+    });
     const series = [{ data: { cols, rows }, card }];
     const settings = getComputedSettingsForSeries(series);
     const onHoverChange = jest.fn();
@@ -350,13 +359,13 @@ describe("LineAreaBarRenderer", () => {
                 [3, 1],
               ],
             },
-            card: {
+            card: createMockCard({
               display: "bar",
               visualization_settings: {
                 "graph.x_axis.axis_enabled": true,
                 "graph.x_axis.scale": "histogram",
               },
-            },
+            }),
           },
         ],
         {},
@@ -451,7 +460,7 @@ describe("LineAreaBarRenderer", () => {
           cols: [DateTimeColumn({ unit }), NumberColumn()],
           rows: rows,
         },
-        card: {
+        card: createMockCard({
           display: "line",
           visualization_settings: {
             "graph.x_axis.scale": "timeseries",
@@ -459,7 +468,7 @@ describe("LineAreaBarRenderer", () => {
             "graph.colors": ["#000000"],
             ...settings,
           },
-        },
+        }),
       })),
       {
         onHoverChange,
@@ -476,7 +485,7 @@ describe("LineAreaBarRenderer", () => {
           cols: [StringColumn(), NumberColumn()],
           rows: [scalar],
         },
-        card: {
+        card: createMockCard({
           display: "bar",
           visualization_settings: {
             "bar.scalar_series": true,
@@ -485,7 +494,7 @@ describe("LineAreaBarRenderer", () => {
             "graph.x_axis.axis_enabled": true,
             "graph.x_axis.scale": "ordinal",
           },
-        },
+        }),
       })),
       { onHoverChange },
     );

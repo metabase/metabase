@@ -1,62 +1,21 @@
 (ns metabase.cmd.copy
-  "Shared lower-level implementation of the `dump-to-h2` and `load-from-h2` commands. The `copy!` function implemented
-  here supports loading data from an application database to any empty application database for all combinations of
-  supported application database types."
+  "Shared lower-level implementation of the [[metabase.cmd.dump-to-h2/dump-to-h2!]]
+  and [[metabase.cmd.load-from-h2/load-from-h2!]] commands. The [[copy!]] function implemented here supports loading
+  data from an application database to any empty application database for all combinations of supported application
+  database types."
   (:require
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [clojure.java.jdbc :as jdbc]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.db.data-migrations :refer [DataMigrations]]
+   [honey.sql :as sql]
+   [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.db.setup :as mdb.setup]
-   [metabase.models
-    :refer [Action
-            Activity
-            ApplicationPermissionsRevision
-            BookmarkOrdering
-            Card
-            CardBookmark
-            Collection
-            CollectionBookmark
-            CollectionPermissionGraphRevision
-            Dashboard
-            DashboardBookmark
-            DashboardCard
-            DashboardCardSeries
-            Database
-            Dimension
-            Field
-            FieldValues
-            HTTPAction
-            ImplicitAction
-            LoginHistory
-            Metric
-            MetricImportantField
-            ModerationReview
-            NativeQuerySnippet
-            ParameterCard
-            Permissions
-            PermissionsGroup
-            PermissionsGroupMembership
-            PermissionsRevision
-            PersistedInfo
-            Pulse
-            PulseCard
-            PulseChannel
-            PulseChannelRecipient
-            QueryAction
-            Revision
-            Secret
-            Segment
-            Session
-            Setting
-            Table
-            Timeline
-            TimelineEvent
-            User
-            ViewLog]]
+   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
@@ -84,56 +43,64 @@
   `(do-step ~msg (fn [] ~@body)))
 
 (def entities
-  "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load load
+  "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load
   instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
-  [Database
-   User
-   Setting
-   Table
-   Field
-   FieldValues
-   Segment
-   Metric
-   MetricImportantField
-   ModerationReview
-   Revision
-   ViewLog
-   Session
-   Collection
-   CollectionPermissionGraphRevision
-   Dashboard
-   Card
-   CardBookmark
-   DashboardBookmark
-   CollectionBookmark
-   BookmarkOrdering
-   DashboardCard
-   DashboardCardSeries
-   Activity
-   Pulse
-   PulseCard
-   PulseChannel
-   PulseChannelRecipient
-   PermissionsGroup
-   PermissionsGroupMembership
-   Permissions
-   PermissionsRevision
-   PersistedInfo
-   ApplicationPermissionsRevision
-   Dimension
-   NativeQuerySnippet
-   LoginHistory
-   Timeline
-   TimelineEvent
-   Secret
-   ParameterCard
-   Action
-   ImplicitAction
-   HTTPAction
-   QueryAction
-   ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
-   ;; above this line)
-   DataMigrations])
+  (concat
+   [:model/Database
+    :model/User
+    :model/Setting
+    :model/Table
+    :model/Field
+    :model/FieldValues
+    :model/Segment
+    :model/LegacyMetric
+    :model/LegacyMetricImportantField
+    :model/ModerationReview
+    :model/Revision
+    :model/ViewLog
+    :model/Session
+    :model/Collection
+    :model/CollectionPermissionGraphRevision
+    :model/Dashboard
+    :model/Card
+    :model/CardBookmark
+    :model/DashboardBookmark
+    :model/DataPermissions
+    :model/CollectionBookmark
+    :model/BookmarkOrdering
+    :model/DashboardCard
+    :model/DashboardCardSeries
+    :model/Pulse
+    :model/PulseCard
+    :model/PulseChannel
+    :model/PulseChannelRecipient
+    :model/PermissionsGroup
+    :model/PermissionsGroupMembership
+    :model/Permissions
+    :model/PermissionsRevision
+    :model/PersistedInfo
+    :model/ApplicationPermissionsRevision
+    :model/Dimension
+    :model/NativeQuerySnippet
+    :model/LoginHistory
+    :model/Timeline
+    :model/TimelineEvent
+    :model/Secret
+    :model/ParameterCard
+    :model/Action
+    :model/ImplicitAction
+    :model/HTTPAction
+    :model/QueryAction
+    :model/DashboardTab
+    :model/ModelIndex
+    :model/ModelIndexValue
+    ;; 48+
+    :model/TablePrivileges
+    :model/AuditLog
+    :model/RecentViews]
+   (when config/ee-available?
+     [:model/GroupTableAccessPolicy
+      :model/ConnectionImpersonation])))
 
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
@@ -143,7 +110,7 @@
   ;; should be ok now that #16344 is resolved -- we might be able to remove this code entirely now. Quoting identifiers
   ;; is still a good idea tho.)
   (let [source-keys (keys (first objs))
-        quote-fn    (partial mdb.setup/quote-for-application-db (mdb.connection/quoting-style target-db-type))
+        quote-fn    (partial mdb.setup/quote-for-application-db (mdb/quoting-style target-db-type))
         dest-keys   (for [k source-keys]
                       (quote-fn (name k)))]
     {:cols dest-keys
@@ -163,36 +130,66 @@
       (log/error (with-out-str (jdbc/print-sql-exception-chain e)))
       (throw e))))
 
-(def ^:private table-select-fragments
-  {;; ensure ID order to ensure that parent fields are inserted before children
-   "metabase_field" "ORDER BY id ASC"})
+(def ^:dynamic *copy-h2-database-details*
+  "Whether [[copy-data!]] (and thus [[metabase.cmd.load-from-h2/load-from-h2!]]) should copy connection details for H2
+  Databases from the source application database. Normally disabled for security reasons. This is only here so we can
+  disable this check for tests."
+  false)
+
+(defn- model-select-fragment
+  [model]
+  (case model
+    :model/Field {:order-by [[:id :asc]]}
+    nil))
+
+(defn- sql-for-selecting-instances-from-source-db [model]
+  (first
+   (sql/format
+    (merge {:select [[:*]]
+            :from   [[(t2/table-name model)]]}
+           (model-select-fragment model))
+    {:quoted false})))
+
+(defn- model-results-xform [model]
+  (case model
+    :model/Database
+    ;; For security purposes, do NOT copy connection details for H2 Databases by default; replace them with an empty map.
+    ;; Why? Because this is a potential pathway to injecting sneaky H2 connection parameters that cause RCEs. For the
+    ;; Sample Database, the correct details are reset automatically on every
+    ;; launch (see [[metabase.sample-data/update-sample-database-if-needed!]]), and we don't support connecting other H2
+    ;; Databases in prod anyway, so this ultimately shouldn't cause anyone any problems.
+    (if *copy-h2-database-details*
+      identity
+      (map (fn [database]
+             (cond-> database
+               (= (:engine database) "h2") (assoc :details "{}")))))
+    ;; else
+    identity))
 
 (defn- copy-data! [^javax.sql.DataSource source-data-source target-db-type target-db-conn-spec]
   (with-open [source-conn (.getConnection source-data-source)]
-    (doseq [entity entities
-            :let   [table-name (t2/table-name entity)
-                    fragment   (table-select-fragments (u/lower-case-en (name table-name)))
-                    sql        (str "SELECT * FROM "
-                                    (name table-name)
-                                    (when fragment (str " " fragment)))
-                    results    (jdbc/reducible-query {:connection source-conn} sql)]]
+    (doseq [model entities
+            :let  [table-name (t2/table-name model)
+                   sql        (sql-for-selecting-instances-from-source-db model)
+                   results    (jdbc/reducible-query {:connection source-conn} sql)]]
       (transduce
-       (partition-all chunk-size)
+       (comp (model-results-xform model)
+             (partition-all chunk-size))
        ;; cnt    = the total number we've inserted so far
        ;; chunkk = current chunk to insert
        (fn
          ([cnt]
           (when (pos? cnt)
-            (log/info (str " " (u/colorize 'green (trs "copied {0} instances." cnt))))))
+            (log/info (str " " (u/format-color :green "copied %s instances." cnt)))))
          ([cnt chunkk]
           (when (seq chunkk)
             (when (zero? cnt)
-              (log/info (u/colorize 'blue (trs "Copying instances of {0}..." (name entity)))))
+              (log/info (u/format-color :blue "Copying instances of %s..." (name model))))
             (try
               (insert-chunk! target-db-type target-db-conn-spec table-name chunkk)
               (catch Throwable e
-                (throw (ex-info (trs "Error copying instances of {0}" (name entity))
-                                {:entity (name entity)}
+                (throw (ex-info (trs "Error copying instances of {0}" (name model))
+                                {:model (name model)}
                                 e)))))
           (+ cnt (count chunkk))))
        0
@@ -202,7 +199,8 @@
   "Make sure [target] application DB is empty before we start copying data."
   [data-source]
   ;; check that there are no Users yet
-  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} "SELECT count(*) AS \"cnt\" FROM core_user;")]
+  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} ["SELECT count(*) AS cnt FROM core_user where not id = ?;"
+                                                               config/internal-mb-user-id])]
     (assert (integer? cnt))
     (when (pos? cnt)
       (throw (ex-info (trs "Target DB is already populated!")
@@ -313,7 +311,26 @@
 
 (def ^:private entities-without-autoinc-ids
   "Entities that do NOT use an auto incrementing ID column."
-  #{Setting Session DataMigrations ImplicitAction HTTPAction QueryAction})
+  #{:model/Setting
+    :model/Session
+    :model/ImplicitAction
+    :model/HTTPAction
+    :model/QueryAction
+    :model/ModelIndexValue
+    :model/TablePrivileges})
+
+(defmulti ^:private postgres-id-sequence-name
+  {:arglists '([model])}
+  keyword)
+
+(defmethod postgres-id-sequence-name :default
+  [model]
+  (str (name (t2/table-name model)) "_id_seq"))
+
+;;; we changed the table name to `sandboxes` but never updated the underlying ID sequences or constraint names.
+(defmethod postgres-id-sequence-name :model/GroupTableAccessPolicy
+  [_model]
+  "group_table_access_policy_id_seq")
 
 (defmulti ^:private update-sequence-values!
   {:arglists '([db-type data-source])}
@@ -324,21 +341,26 @@
 
 ;; Update the sequence nextvals.
 (defmethod update-sequence-values! :postgres
-  [_ data-source]
+  [_db-type data-source]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
     (step (trs "Setting Postgres sequence ids to proper values...")
-      (doseq [e     entities
-              :when (not (contains? entities-without-autoinc-ids e))
-              :let  [table-name (name (t2/table-name e))
-                     seq-name   (str table-name "_id_seq")
+      (doseq [model entities
+              :when (not (contains? entities-without-autoinc-ids model))
+              :let  [table-name (name (t2/table-name model))
+                     seq-name   (postgres-id-sequence-name model)
                      sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val"
                                         seq-name (name table-name))]]
-        (jdbc/db-query-with-resultset target-db-conn [sql] :val)))))
+        (try
+          (jdbc/db-query-with-resultset target-db-conn [sql] :val)
+          (catch Throwable e
+            (throw (ex-info (format "Error updating sequence values for %s: %s" model (ex-message e))
+                            {:model model}
+                            e))))))))
 
 
 (defmethod update-sequence-values! :h2
-  [_ data-source]
+  [_db-type data-source]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
     (step (trs "Setting H2 sequence ids to proper values...")
@@ -349,13 +371,15 @@
                                         table-name table-name)]]
         (jdbc/execute! target-db-conn sql)))))
 
-
-(s/defn copy!
+(mu/defn copy!
   "Copy data from a source application database into an empty destination application database."
-  [source-db-type     :- (s/enum :h2 :postgres :mysql)
-   source-data-source :- javax.sql.DataSource
-   target-db-type     :- (s/enum :h2 :postgres :mysql)
-   target-data-source :- javax.sql.DataSource]
+  [source-db-type     :- [:enum :h2 :postgres :mysql]
+   source-data-source :- (ms/InstanceOfClass javax.sql.DataSource)
+   target-db-type     :- [:enum :h2 :postgres :mysql]
+   target-data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  ;; make sure the entire system is loaded before running this test, to make sure we account for all the models.
+  (doseq [ns-symb u/metabase-namespace-symbols]
+    (classloader/require ns-symb))
   ;; make sure the source database is up-do-date
   (step (trs "Set up {0} source database and run migrations..." (name source-db-type))
     (mdb.setup/setup-db! source-db-type source-data-source true))
@@ -363,8 +387,7 @@
   ;;
   ;; don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
   (step (trs "Set up {0} target database and run migrations..." (name target-db-type))
-    (binding [mdb.setup/*disable-data-migrations* true]
-      (mdb.setup/setup-db! target-db-type target-data-source true)))
+    (mdb.setup/setup-db! target-db-type target-data-source true))
   ;; make sure target DB is empty
   (step (trs "Testing if target {0} database is already populated..." (name target-db-type))
     (assert-db-empty target-data-source))

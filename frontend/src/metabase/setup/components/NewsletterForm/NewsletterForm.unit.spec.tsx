@@ -1,12 +1,15 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockSetupState,
   createMockState,
   createMockUserInfo,
 } from "metabase-types/store/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import { SUBSCRIBE_URL } from "../../constants";
+
 import { NewsletterForm } from "./NewsletterForm";
 
 const USER_EMAIL = "user@metabase.test";
@@ -29,7 +32,7 @@ describe("NewsletterForm", () => {
     setup();
     expect(screen.getByDisplayValue(USER_EMAIL)).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Subscribe"));
+    await userEvent.click(screen.getByText("Subscribe"));
     expect(await screen.findByText(/You're subscribed/)).toBeInTheDocument();
     expect(fetchMock.done(SUBSCRIBE_URL)).toBe(true);
   });

@@ -117,11 +117,11 @@ Note that the first part of the timestamp is in UTC (same thing as GMT). The tim
 - Amazon Athena
 - Druid
 - Google Analytics
-- H2
 - MongoDB
 - Presto
 - SparkSQL
 - SQLite
+- Metabase Sample Database
 
 ### Notes on source time zones
 

@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
@@ -5,8 +6,6 @@ import {
   visitIframe,
   updateDashboardCards,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -169,7 +168,7 @@ describe.skip("issue 15860", () => {
 });
 
 function setDefaultValueForLockedFilter(filter, value) {
-  cy.findByText("Preview Locked Parameters")
+  cy.findByText("Previewing locked parameters")
     .parent()
     .within(() => {
       cy.findByText(filter).click({ force: true });

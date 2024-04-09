@@ -1,7 +1,12 @@
-import { FocusEvent, useCallback, useState } from "react";
+import type { FocusEvent } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
-import Select, { SelectChangeEvent } from "metabase/core/components/Select";
+
+import type { SelectChangeEvent } from "metabase/core/components/Select";
+import Select from "metabase/core/components/Select";
+
 import CacheTimeInput from "../CacheTimeInput";
+
 import { TimeInputRoot } from "./DatabaseCacheTimeInput.styled";
 
 const CACHE_OPTIONS = [

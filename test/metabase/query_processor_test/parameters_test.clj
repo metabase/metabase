@@ -4,12 +4,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.native :as lib-native]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -53,7 +54,7 @@
                                  :target [:variable [:template-tag (name field)]]
                                  :value  param-value}]))))
 
-(deftest template-tag-param-test
+(deftest ^:parallel template-tag-param-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
     (letfn [(count-with-params [table param-name param-type value & [options]]
               (run-count-query
@@ -77,7 +78,7 @@
 (deftest template-tag-generation-test
   (testing "Generating template tags produces correct types for running process-query (#31252)"
     (t2.with-temp/with-temp
-      [Card {card-id :id} {:dataset       true
+      [Card {card-id :id} {:type          :model
                            :dataset_query (mt/native-query {:query "select * from checkins"})}]
       (let [q   (str "SELECT * FROM {{#" card-id "}} LIMIT 2")
             tt  (lib-native/extract-template-tags q)
@@ -123,7 +124,7 @@
 ;; Tried manually syncing the DB (with attempted-murders dataset), and storing it to an initialized QP, to no avail.
 
 ;; this isn't a complete test for all possible field filter types, but it covers mostly everything
-(deftest field-filter-param-test
+(deftest ^:parallel field-filter-param-test
   (letfn [(is-count-= [expected-count table field value-type value]
             (let [query (field-filter-count-query table field value-type value)]
               (testing (format "\nquery = \n%s" (u/pprint-to-str 'cyan query))
@@ -166,10 +167,10 @@
             (is-count-= 2
                         :places :liked :boolean true)))))))
 
-(deftest filter-nested-queries-test
+(deftest ^:parallel filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
     (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
-      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/native-query (qp/compile (mt/mbql-query checkins)))}]
+      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]
         (let [query (assoc (mt/mbql-query nil
                              {:source-table (format "card__%d" card-id)})
                            :parameters [{:type   :date/all-options
@@ -179,7 +180,7 @@
                  (mt/formatted-rows :checkins
                    (qp/process-query query)))))))))
 
-(deftest string-escape-test
+(deftest ^:parallel string-escape-test
   ;; test `:sql` drivers that support native parameters
   (mt/test-drivers (set (filter #(isa? driver/hierarchy % :sql) (mt/normal-drivers-with-feature :native-parameters)))
     (testing "Make sure field filter parameters are properly escaped"
@@ -188,13 +189,13 @@
         (is (= [[1]]
                (mt/formatted-rows [int] results)))))))
 
-(deftest native-with-spliced-params-test
+(deftest ^:parallel native-with-spliced-params-test
   (testing "Make sure we can convert a parameterized query to a native query with spliced params"
     (testing "Multiple values"
       (mt/dataset airports
         (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX')"
                 :params nil}
-               (qp/compile-and-splice-parameters
+               (qp.compile/compile-and-splice-parameters
                 {:type       :native
                  :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
                               :template-tags {"country"
@@ -206,12 +207,52 @@
                  :database   (mt/id)
                  :parameters [{:type   :location/country
                                :target [:dimension [:template-tag "country"]]
-                               :value  ["US" "MX"]}]})))))
+                               :value  ["US" "MX"]}]})))))))
 
+(deftest ^:parallel native-with-param-options-different-than-tag-type-test
+  (testing "Overriding the widget type in parameters should drop case-senstive option when incompatible"
+    (mt/dataset airports
+      (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (\"PUBLIC\".\"COUNTRY\".\"NAME\" = 'US')"
+              :params nil}
+             (qp.compile/compile-and-splice-parameters
+               {:type       :native
+                :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
+                             :template-tags {"country"
+                                             {:name         "country"
+                                              :display-name "Country"
+                                              :type         :dimension
+                                              :dimension    [:field (mt/id :country :name) nil]
+                                              :options      {:case-sensitive false}
+                                              :widget-type  :string/contains}}}
+                :database   (mt/id)
+                :parameters [{:type   :string/=
+                              :target [:dimension [:template-tag "country"]]
+                              :value  ["US"]}]})))))
+  (testing "Overriding the widget type in parameters should not drop case-senstive option when compatible"
+    (mt/dataset airports
+      (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (LOWER(\"PUBLIC\".\"COUNTRY\".\"NAME\") LIKE '%us')"
+              :params nil}
+             (qp.compile/compile-and-splice-parameters
+               {:type       :native
+                :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
+                             :template-tags {"country"
+                                             {:name         "country"
+                                              :display-name "Country"
+                                              :type         :dimension
+                                              :dimension    [:field (mt/id :country :name) nil]
+                                              :options      {:case-sensitive false}
+                                              :widget-type  :string/contains}}}
+                :database   (mt/id)
+                :parameters [{:type   :string/ends-with
+                              :target [:dimension [:template-tag "country"]]
+                              :value  ["US"]}]}))))))
+
+(deftest ^:parallel native-with-spliced-params-test-2
+  (testing "Make sure we can convert a parameterized query to a native query with spliced params"
     (testing "Comma-separated numbers"
       (is (= {:query  "SELECT * FROM VENUES WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
               :params []}
-             (qp/compile-and-splice-parameters
+             (qp.compile/compile-and-splice-parameters
               {:type       :native
                :native     {:query         "SELECT * FROM VENUES WHERE {{price}}"
                             :template-tags {"price"
@@ -225,13 +266,50 @@
                              :target [:dimension [:template-tag "price"]]
                              :value  [1 2]}]}))))))
 
-(deftest params-in-comments-test
+(deftest ^:parallel native-with-spliced-params-test-3
+  (testing "Make sure we can convert a parameterized query to a native query with spliced params"
+    (testing "Comma-separated numbers in a number field"
+      ;; this is an undocumented feature but lots of people rely on it, so we want it to continue working.
+      (is (= {:query "SELECT * FROM VENUES WHERE price IN (1, 2, 3)"
+              :params []}
+             (qp.compile/compile-and-splice-parameters
+              {:type :native
+               :native {:query "SELECT * FROM VENUES WHERE price IN ({{number_comma}})"
+                        :template-tags {"number_comma"
+                                        {:name "number_comma"
+                                         :display-name "Number Comma"
+                                         :type :number}}}
+               :database (mt/id)
+               :parameters [{:type "number/="
+                             :value ["1,2,3"]
+                             :target [:variable [:template-tag "number_comma"]]}]}))))))
+
+(deftest ^:parallel native-with-spliced-params-test-4
+  (testing "Make sure we can convert a parameterized query to a native query with spliced params"
+    (testing "Trailing commas do not cause errors"
+      ;; this is an undocumented feature but lots of people rely on it, so we want it to continue working.
+      (is (= {:query "SELECT * FROM VENUES WHERE price IN (1, 2)"
+              :params []}
+             (qp.compile/compile-and-splice-parameters
+              {:type :native
+               :native {:query "SELECT * FROM VENUES WHERE price IN ({{number_comma}})"
+                        :template-tags {"number_comma"
+                                        {:name "number_comma"
+                                         :display-name "Number Comma"
+                                         :type :number
+                                         :dimension [:field (mt/id :venues :price) nil]}}}
+               :database (mt/id)
+               :parameters [{:type "number/="
+                             :value ["1,2,"]
+                             :target [:variable [:template-tag "number_comma"]]}]}))))))
+
+(deftest ^:parallel params-in-comments-test
   (testing "Params in SQL comments are ignored"
     (testing "Single-line comments"
       (mt/dataset airports
                   (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX') -- {{ignoreme}}"
                           :params nil}
-                         (qp/compile-and-splice-parameters
+                         (qp.compile/compile-and-splice-parameters
                           {:type       :native
                            :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}} -- {{ignoreme}}"
                                         :template-tags {"country"
@@ -243,12 +321,14 @@
                            :database   (mt/id)
                            :parameters [{:type   :location/country
                                          :target [:dimension [:template-tag "country"]]
-                                         :value  ["US" "MX"]}]})))))
+                                         :value  ["US" "MX"]}]})))))))
 
+(deftest ^:parallel params-in-comments-test-2
+  (testing "Params in SQL comments are ignored"
     (testing "Multi-line comments"
       (is (= {:query  "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
               :params []}
-             (qp/compile-and-splice-parameters
+             (qp.compile/compile-and-splice-parameters
               {:type       :native
                :native     {:query         "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ {{price}}"
                             :template-tags {"price"
@@ -262,7 +342,33 @@
                              :target [:dimension [:template-tag "price"]]
                              :value  [1 2]}]}))))))
 
-(deftest ignore-parameters-for-unparameterized-native-query-test
+(deftest ^:parallel better-error-when-parameter-mismatch
+  (mt/test-drivers (->> (mt/normal-drivers-with-feature :native-parameters)
+                        (filter #(isa? driver/hierarchy % :sql))
+                        ;; These do not support ParameterMetadata.getParameterCount
+                        (remove #{:athena
+                                  :bigquery-cloud-sdk
+                                  :presto-jdbc
+                                  :redshift
+                                  :snowflake
+                                  :sparksql
+                                  :vertica}))
+    (is (thrown-with-msg?
+          Exception
+          #"It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers."
+          (qp/process-query
+            {:type       :native
+             :native     {:query         "SELECT * FROM \n[[-- {{name}}]]\n VENUES [[WHERE {{name}} = price]]"
+                          :template-tags {"name"
+                                          {:name         "name"
+                                           :display-name "Name"
+                                           :type         :text}}}
+             :database   (mt/id)
+             :parameters [{:type   :category
+                           :target [:variable [:template-tag "name"]]
+                           :value "foobar"}]})))))
+
+(deftest ^:parallel ignore-parameters-for-unparameterized-native-query-test
   (testing "Parameters passed for unparameterized queries should get ignored"
     (let [query {:database (mt/id)
                  :type     :native
@@ -278,9 +384,9 @@
                  (m/dissoc-in [:data :native_form :params])
                  (m/dissoc-in [:data :results_metadata :checksum])))))))
 
-(deftest legacy-parameters-with-no-widget-type-test
+(deftest ^:parallel legacy-parameters-with-no-widget-type-test
   (testing "Legacy queries with parameters that don't specify `:widget-type` should still work (#20643)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mt/native-query
                     {:query         "SELECT count(*) FROM products WHERE {{cat}};"
                      :template-tags {"cat" {:id           "__MY_CAT__"
@@ -291,9 +397,9 @@
         (is (= [200]
                (mt/first-row (qp/process-query query))))))))
 
-(deftest date-parameter-for-native-query-with-nested-mbql-query-test
+(deftest ^:parallel date-parameter-for-native-query-with-nested-mbql-query-test
   (testing "Should be able to have a native query with a nested MBQL query and a date parameter (#21246)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/mbql-query products)}]
         (let [param-name (format "#%d" card-id)
               query      (mt/native-query
@@ -326,8 +432,8 @@
                 (is (= [[0]]
                        (mt/rows (qp/process-query query))))))))))))
 
-(deftest multiple-native-query-parameters-test
-  (mt/dataset sample-dataset
+(deftest ^:parallel multiple-native-query-parameters-test
+  (mt/dataset test-data
     (let [sql   (str/join
                  \newline
                  ["SELECT orders.id, orders.created_at, people.state, people.name, people.source"
@@ -341,7 +447,6 @@
           query {:database (mt/id)
                  :type     :native
                  :native   {:query         sql
-                            :type          :native
                             :template-tags {"created_at" {:id           "a21ca6d2-f742-a94a-da71-75adf379069c"
                                                           :name         "created_at"
                                                           :display-name "Created At"
@@ -389,12 +494,12 @@
                           (= people-name "Emilie Goyette"))
                         rows)))))))))
 
-(deftest inlined-number-test
+(deftest ^:parallel inlined-number-test
   (testing "Number parameters are inlined into the SQL query and not parameterized (#29690)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (= {:query  "SELECT NOW() - INTERVAL '30 DAYS'"
               :params []}
-             (qp/compile-and-splice-parameters
+             (qp.compile/compile-and-splice-parameters
               {:type       :native
                :native     {:query         "SELECT NOW() - INTERVAL '{{n}} DAYS'"
                             :template-tags {"n"

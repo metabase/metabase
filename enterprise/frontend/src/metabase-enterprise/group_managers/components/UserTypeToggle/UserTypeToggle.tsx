@@ -1,10 +1,10 @@
-import { MouseEventHandler } from "react";
+import type { MouseEventHandler } from "react";
+import type { Placement } from "tippy.js";
 import { t } from "ttag";
-// eslint-disable-next-line import/named
-import { Placement } from "tippy.js";
 
 import Tooltip from "metabase/core/components/Tooltip";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
+
 import { UserTypeToggleRoot } from "./UserTypeToggle.styled";
 
 interface UserTypeCellProps {

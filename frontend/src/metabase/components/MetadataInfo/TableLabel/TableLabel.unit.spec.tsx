@@ -1,10 +1,11 @@
-import { checkNotNull } from "metabase/core/utils/types";
-import { Table } from "metabase-types/api";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import type { Table } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/selectors/metadata";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import TableLabel from "./TableLabel";
 
 interface SetupOpts {

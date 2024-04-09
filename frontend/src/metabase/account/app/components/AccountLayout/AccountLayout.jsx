@@ -1,5 +1,7 @@
 import PropTypes from "prop-types";
+
 import AccountHeader from "../AccountHeader";
+
 import { AccountContent } from "./AccountLayout.styled";
 
 const propTypes = {

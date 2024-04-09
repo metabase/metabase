@@ -1,3 +1,5 @@
+import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeEE,
   popover,
@@ -8,9 +10,6 @@ import {
   clickSend,
   setTokenFeatures,
 } from "e2e/support/helpers";
-
-import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { admin } = USERS;
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;

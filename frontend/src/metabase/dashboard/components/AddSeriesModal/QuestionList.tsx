@@ -1,19 +1,21 @@
+import cx from "classnames";
 import { memo, useState, useEffect, useCallback, useMemo } from "react";
+import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
-import { useAsyncFn } from "react-use";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import EmptyState from "metabase/components/EmptyState";
-
+import CS from "metabase/css/core/index.css";
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { CardApi } from "metabase/services";
-import {
+import type {
   Card,
   CardId,
-  DashboardOrderedCard,
+  QuestionDashboardCard,
   GetCompatibleCardsPayload,
 } from "metabase-types/api";
+
 import {
   LoadMoreButton,
   LoadMoreRow,
@@ -30,7 +32,7 @@ const PAGE_SIZE = 50;
 interface QuestionListProps {
   enabledCards: Card[];
   onSelect: (card: Card, isChecked: boolean) => void;
-  dashcard: DashboardOrderedCard;
+  dashcard: QuestionDashboardCard;
 }
 
 export const QuestionList = memo(function QuestionList({
@@ -114,7 +116,7 @@ export const QuestionList = memo(function QuestionList({
         />
       </SearchContainer>
       <QuestionListWrapper
-        className="flex flex-full overflow-auto"
+        className={cx(CS.flex, CS.flexFull, CS.overflowAuto)}
         error={error}
         noBackground
       >

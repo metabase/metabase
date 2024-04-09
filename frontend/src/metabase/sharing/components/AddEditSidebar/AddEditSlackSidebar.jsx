@@ -1,21 +1,23 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Icon } from "metabase/core/components/Icon";
-import SchedulePicker from "metabase/containers/SchedulePicker";
 import SendTestPulse from "metabase/components/SendTestPulse";
-import Sidebar from "metabase/dashboard/components/Sidebar";
+import SchedulePicker from "metabase/containers/SchedulePicker";
 import Toggle from "metabase/core/components/Toggle";
-
+import CS from "metabase/css/core/index.css";
+import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
-
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
+import { Icon } from "metabase/ui";
+
 import SlackChannelField from "../SlackChannelField";
-import CaveatMessage from "./CaveatMessage";
-import Heading from "./Heading";
-import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
+
+import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
+import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
+import Heading from "./Heading";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
 
 function _AddEditSlackSidebar({
@@ -24,7 +26,6 @@ function _AddEditSlackSidebar({
   channel,
   channelSpec,
   parameters,
-  defaultParametersById,
   dashboard,
   // form callbacks
   handleSave,
@@ -40,16 +41,18 @@ function _AddEditSlackSidebar({
 
   return (
     <Sidebar
-      closeIsDisabled={!isValid}
+      isCloseDisabled={!isValid}
       onClose={handleSave}
       onCancel={onCancel}
     >
-      <div className="pt4 flex align-center px4">
-        <Icon name="slack" className="mr1" size={21} />
+      <div className={cx(CS.pt4, CS.flex, CS.alignCenter, CS.px4)}>
+        <Icon name="slack" className={CS.mr1} size={21} />
         <Heading>{t`Send this dashboard to Slack`}</Heading>
       </div>
       <CaveatMessage />
-      <div className="my2 px4 full-height flex flex-column">
+      <div
+        className={cx(CS.my2, CS.px4, CS.fullHeight, CS.flex, CS.flexColumn)}
+      >
         {channelSpec.fields && (
           <SlackChannelField
             channel={channel}
@@ -74,7 +77,7 @@ function _AddEditSlackSidebar({
             onChannelScheduleChange(newSchedule, changedProp)
           }
         />
-        <div className="pt2 pb1">
+        <div className={cx(CS.pt2, CS.pb1)}>
           <SendTestPulse
             channel={channel}
             channelSpecs={formInput.channels}
@@ -88,21 +91,28 @@ function _AddEditSlackSidebar({
 
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
           <PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component
-            className="py3 mt2 border-top"
+            className={cx(CS.py3, CS.mt2, CS.borderTop)}
             parameters={parameters}
             dashboard={dashboard}
             pulse={pulse}
             setPulseParameters={setPulseParameters}
-            defaultParametersById={defaultParametersById}
           />
         ) : (
           <DefaultParametersSection
-            className="py3 mt2 border-top"
+            className={cx(CS.py3, CS.mt2, CS.borderTop)}
             parameters={parameters}
-            defaultParametersById={defaultParametersById}
           />
         )}
-        <div className="text-bold py2 flex justify-between align-center border-top">
+        <div
+          className={cx(
+            CS.textBold,
+            CS.py2,
+            CS.flex,
+            CS.justifyBetween,
+            CS.alignCenter,
+            CS.borderTop,
+          )}
+        >
           <Heading>{t`Don't send if there aren't results`}</Heading>
           <Toggle
             value={pulse.skip_if_empty || false}
@@ -115,7 +125,7 @@ function _AddEditSlackSidebar({
             handleArchive={handleArchive}
           />
         )}
-        <div className="p2 mt-auto text-small text-medium">
+        <div className={cx(CS.p2, CS.mtAuto, CS.textSmall, CS.textMedium)}>
           {t`Charts in subscriptions may look slightly different from charts in dashboards.`}
         </div>
       </div>
@@ -130,7 +140,6 @@ _AddEditSlackSidebar.propTypes = {
   channelSpec: PropTypes.object.isRequired,
   users: PropTypes.array,
   parameters: PropTypes.array.isRequired,
-  defaultParametersById: PropTypes.object.isRequired,
   dashboard: PropTypes.object.isRequired,
   handleSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,

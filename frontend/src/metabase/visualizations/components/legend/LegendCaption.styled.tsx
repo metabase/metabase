@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
+
 import { color, lighten } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 export const LegendCaptionRoot = styled.div`
   display: flex;
@@ -13,6 +14,7 @@ export const LegendLabel = styled.div`
   font-weight: bold;
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
   overflow: hidden;
+  margin-top: 2px;
 
   &:hover {
     color: ${({ onClick }) => (onClick ? color("brand") : "")};

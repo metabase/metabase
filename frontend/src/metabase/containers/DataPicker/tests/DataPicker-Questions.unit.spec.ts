@@ -1,14 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, waitForElementToBeRemoved } from "__support__/ui";
-
+import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-
 import {
   getCollectionVirtualSchemaId,
   getQuestionVirtualTableId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/metadata/utils/saved-questions";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import {
   EMPTY_COLLECTION,
@@ -31,7 +29,7 @@ describe("DataPicker — picking questions", () => {
   it("opens the picker", async () => {
     await setup();
 
-    userEvent.click(screen.getByText(/Saved Questions/i));
+    await userEvent.click(screen.getByText(/Saved Questions/i));
 
     expect(await screen.findByText(SAMPLE_QUESTION.name)).toBeInTheDocument();
     expect(screen.getByText(ROOT_COLLECTION.name)).toBeInTheDocument();
@@ -42,8 +40,8 @@ describe("DataPicker — picking questions", () => {
   it("has empty state", async () => {
     await setup();
 
-    userEvent.click(screen.getByText(/Saved Questions/i));
-    userEvent.click(await screen.findByText(EMPTY_COLLECTION.name));
+    await userEvent.click(screen.getByText(/Saved Questions/i));
+    await userEvent.click(await screen.findByText(EMPTY_COLLECTION.name));
 
     expect(screen.getByText(/Nothing here/i)).toBeInTheDocument();
   });
@@ -78,9 +76,9 @@ describe("DataPicker — picking questions", () => {
   it("allows to pick a single question", async () => {
     const { onChange } = await setup();
 
-    userEvent.click(screen.getByText(/Saved Questions/i));
-    userEvent.click(await screen.findByText(SAMPLE_QUESTION.name));
-    userEvent.click(screen.getByText(SAMPLE_QUESTION_2.name));
+    await userEvent.click(screen.getByText(/Saved Questions/i));
+    await userEvent.click(await screen.findByText(SAMPLE_QUESTION.name));
+    await userEvent.click(screen.getByText(SAMPLE_QUESTION_2.name));
 
     const selectedItem = screen.getByRole("menuitem", {
       name: SAMPLE_QUESTION_2.name,
@@ -98,11 +96,11 @@ describe("DataPicker — picking questions", () => {
   it("allows to pick multiple questions", async () => {
     const { onChange } = await setup({ isMultiSelect: true });
 
-    userEvent.click(screen.getByText(/Saved Questions/i));
-    userEvent.click(await screen.findByText(SAMPLE_QUESTION.name));
-    userEvent.click(screen.getByText(SAMPLE_QUESTION_2.name));
-    userEvent.click(screen.getByText(SAMPLE_QUESTION_3.name));
-    userEvent.click(screen.getByText(SAMPLE_QUESTION.name));
+    await userEvent.click(screen.getByText(/Saved Questions/i));
+    await userEvent.click(await screen.findByText(SAMPLE_QUESTION.name));
+    await userEvent.click(screen.getByText(SAMPLE_QUESTION_2.name));
+    await userEvent.click(screen.getByText(SAMPLE_QUESTION_3.name));
+    await userEvent.click(screen.getByText(SAMPLE_QUESTION.name));
 
     expect(onChange).toHaveBeenLastCalledWith({
       type: "questions",
@@ -118,11 +116,9 @@ describe("DataPicker — picking questions", () => {
   it("allows to return to the data type picker", async () => {
     await setup();
 
-    userEvent.click(screen.getByText(/Saved Questions/i));
-    await waitForElementToBeRemoved(() =>
-      screen.queryByTestId("loading-spinner"),
-    );
-    userEvent.click(screen.getByRole("button", { name: /Back/i }));
+    await userEvent.click(screen.getByText(/Saved Questions/i));
+    await waitForLoaderToBeRemoved();
+    await userEvent.click(screen.getByRole("button", { name: /Back/i }));
 
     expect(screen.getByText(/Models/i)).toBeInTheDocument();
     expect(screen.getByText(/Raw Data/i)).toBeInTheDocument();
@@ -137,11 +133,9 @@ describe("DataPicker — picking questions", () => {
   it("resets selection on collection change", async () => {
     const { onChange } = await setup();
 
-    userEvent.click(screen.getByText(/Saved Questions/i));
-    await waitForElementToBeRemoved(() =>
-      screen.queryByTestId("loading-spinner"),
-    );
-    userEvent.click(screen.getByText(SAMPLE_COLLECTION.name));
+    await userEvent.click(screen.getByText(/Saved Questions/i));
+    await waitForLoaderToBeRemoved();
+    await userEvent.click(screen.getByText(SAMPLE_COLLECTION.name));
 
     expect(onChange).toHaveBeenLastCalledWith({
       type: "questions",
@@ -155,10 +149,10 @@ describe("DataPicker — picking questions", () => {
   it("resets selection when going back to data type picker", async () => {
     const { onChange } = await setup();
 
-    userEvent.click(screen.getByText(/Saved Questions/i));
+    await userEvent.click(screen.getByText(/Saved Questions/i));
     const tableListItem = await screen.findByText(SAMPLE_QUESTION.name);
-    userEvent.click(tableListItem);
-    userEvent.click(screen.getByRole("button", { name: /Back/i }));
+    await userEvent.click(tableListItem);
+    await userEvent.click(screen.getByRole("button", { name: /Back/i }));
 
     expect(onChange).toHaveBeenLastCalledWith({
       type: undefined,
@@ -176,11 +170,11 @@ describe("DataPicker — picking questions", () => {
       },
     });
 
-    userEvent.type(screen.getByRole("textbox"), SAMPLE_QUESTION.name);
+    await userEvent.type(screen.getByRole("textbox"), SAMPLE_QUESTION.name);
     expect(await screen.findByText(SAMPLE_QUESTION.name)).toBeInTheDocument();
     expect(screen.queryByText(SAMPLE_MODEL.name)).not.toBeInTheDocument();
 
-    userEvent.click(screen.getByText(SAMPLE_QUESTION.name));
+    await userEvent.click(screen.getByText(SAMPLE_QUESTION.name));
     expect(onChange).toHaveBeenLastCalledWith({
       type: "questions",
       databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
@@ -203,11 +197,11 @@ describe("DataPicker — picking questions", () => {
       },
     });
 
-    userEvent.type(screen.getByRole("textbox"), "Sample");
+    await userEvent.type(screen.getByRole("textbox"), "Sample");
     expect(await screen.findByText(SAMPLE_QUESTION.name)).toBeInTheDocument();
     expect(screen.getByText(SAMPLE_MODEL.name)).toBeInTheDocument();
 
-    userEvent.click(screen.getByText(SAMPLE_QUESTION.name));
+    await userEvent.click(screen.getByText(SAMPLE_QUESTION.name));
     expect(onChange).toHaveBeenLastCalledWith({
       type: "questions",
       databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,

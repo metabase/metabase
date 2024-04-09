@@ -1,23 +1,15 @@
-import Settings from "metabase/lib/settings";
-import { createAction, createThunkAction } from "metabase/lib/redux";
-import { updateSetting } from "metabase/admin/settings/settings";
+import { createAsyncThunk } from "@reduxjs/toolkit";
 
-export const DISABLE_NOTICE = "metabase/admin/app/DISABLE_NOTICE";
-export const disableNotice = createThunkAction(
-  DISABLE_NOTICE,
-  () => async (dispatch: any) => {
+import { updateSetting } from "metabase/admin/settings/settings";
+import Settings from "metabase/lib/settings";
+
+export const disableNotice = createAsyncThunk(
+  "metabase/admin/app/DISABLE_NOTICE",
+  async (_, { dispatch }) => {
     const setting = {
       key: "deprecation-notice-version",
       value: Settings.currentVersion(),
     };
     await dispatch(updateSetting(setting));
-  },
-);
-
-export const DISABLE_ADMIN_PATH = "metabase/admin/app/DISABLE_ADMIN_PATH";
-export const disableAdminPath = createAction(
-  DISABLE_ADMIN_PATH,
-  (pathKey: string) => {
-    return pathKey;
   },
 );

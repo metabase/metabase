@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import { color } from "metabase/lib/colors";
 
 import { Text } from "../Text";
@@ -115,27 +116,31 @@ describe("Text", () => {
     });
 
     describe("Edit/Focused", () => {
-      it("should display and focus textarea when clicked", () => {
+      it("should display and focus textarea when clicked", async () => {
         const options = {
           settings: getSettingsWithText(""),
           isEditing: true,
         };
         setup(options);
 
-        userEvent.click(screen.getByTestId("editing-dashboard-text-preview"));
+        await userEvent.click(
+          screen.getByTestId("editing-dashboard-text-preview"),
+        );
         expect(
           screen.getByTestId("editing-dashboard-text-input"),
         ).toHaveFocus();
       });
 
-      it("should have input placeholder when it has no content", () => {
+      it("should have input placeholder when it has no content", async () => {
         const options = {
           settings: getSettingsWithText(""),
           isEditing: true,
         };
         setup(options);
 
-        userEvent.click(screen.getByTestId("editing-dashboard-text-preview"));
+        await userEvent.click(
+          screen.getByTestId("editing-dashboard-text-preview"),
+        );
         expect(
           screen.getByPlaceholderText(
             "You can use Markdown here, and include variables {{like_this}}",
@@ -143,15 +148,38 @@ describe("Text", () => {
         ).toBeInTheDocument();
       });
 
-      it("should render input text when it has content", () => {
+      it("should render input text when it has content", async () => {
         const options = {
           settings: getSettingsWithText("text text text"),
           isEditing: true,
         };
         setup(options);
 
-        userEvent.click(screen.getByTestId("editing-dashboard-text-preview"));
+        await userEvent.click(
+          screen.getByTestId("editing-dashboard-text-preview"),
+        );
         expect(screen.getByDisplayValue("text text text")).toBeInTheDocument();
+      });
+
+      it("should call onUpdateVisualizationSettings on blur", async () => {
+        const mockOnUpdateVisualizationSettings = jest.fn();
+        const options = {
+          settings: getSettingsWithText("text"),
+          isEditing: true,
+          onUpdateVisualizationSettings: mockOnUpdateVisualizationSettings,
+        };
+        setup(options);
+
+        await userEvent.click(
+          screen.getByTestId("editing-dashboard-text-preview"),
+        );
+        await userEvent.type(screen.getByRole("textbox"), "foo");
+        await userEvent.tab();
+
+        expect(mockOnUpdateVisualizationSettings).toHaveBeenCalledTimes(1);
+        expect(mockOnUpdateVisualizationSettings).toHaveBeenCalledWith({
+          text: "textfoo",
+        });
       });
     });
   });

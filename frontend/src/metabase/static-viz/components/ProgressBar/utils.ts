@@ -1,7 +1,9 @@
 import Color from "color";
 import { t } from "ttag";
+
 import { measureTextWidth } from "metabase/static-viz/lib/text";
-import { ProgressBarData } from "./types";
+
+import type { ProgressBarData } from "./types";
 
 const createPalette = (color: string) => ({
   light: Color(color).lighten(0.25).hex(),

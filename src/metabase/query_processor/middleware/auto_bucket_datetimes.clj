@@ -3,48 +3,53 @@
   bucketing. Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against
   `yyyy-MM-dd` format datetime strings."
   (:require
-   [clojure.set :as set]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.mbql.predicates :as mbql.preds]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models.field :refer [Field]]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan2.core :as t2]))
+   [metabase.legacy-mbql.predicates :as mbql.preds]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private FieldTypeInfo
-  {:base-type                      (s/maybe su/FieldType)
-   (s/optional-key :semantic-type) (s/maybe su/FieldSemanticOrRelationType)
-   s/Keyword                       s/Any})
+  [:map
+   [:base-type [:maybe ms/FieldType]]
+   [:semantic-type {:optional true} [:maybe ms/FieldSemanticOrRelationType]]])
 
 (def ^:private FieldIDOrName->TypeInfo
-  {(s/cond-pre su/NonBlankString su/IntGreaterThanZero) (s/maybe FieldTypeInfo)})
+  [:map-of
+   [:or ms/NonBlankString ::lib.schema.id/field]
+   [:maybe FieldTypeInfo]])
 
 ;; Unfortunately these Fields won't be in the store yet since Field resolution can't happen before we add the implicit
 ;; `:fields` clause, which happens after this
 ;;
 ;; TODO - What we could do tho is fetch all the stuff we need for the Store and then save these Fields in the store,
 ;; which would save a bit of time when we do resolve them
-(s/defn ^:private unbucketed-fields->field-id->type-info :- FieldIDOrName->TypeInfo
+(mu/defn ^:private unbucketed-fields->field-id->type-info :- FieldIDOrName->TypeInfo
   "Fetch a map of Field ID -> type information for the Fields referred to by the `unbucketed-fields`."
-  [unbucketed-fields :- (su/non-empty [mbql.s/field])]
+  [unbucketed-fields :- [:sequential {:min 1} mbql.s/field]]
   (merge
    ;; build map of field-literal-name -> {:base-type base-type}
    (into {} (for [[_ id-or-name {:keys [base-type]}] unbucketed-fields
                   :when                              (string? id-or-name)]
               [id-or-name {:base-type base-type}]))
    ;; build map of field ID -> <info from DB>
-   (when-let [field-ids (seq (filter integer? (map second unbucketed-fields)))]
-     (into {} (for [{id :id, :as field}
-                    (t2/select [Field :id :base_type :effective_type :semantic_type]
-                      :id [:in (set field-ids)])]
-                [id (set/rename-keys (select-keys field
-                                                  [:base_type :effective_type :semantic_type])
-                                     {:base_type      :base-type
-                                      :effective_type :effective-type
-                                      :semantic_type  :semantic-type})])))))
+   (when-let [field-ids (not-empty (into #{}
+                                         (comp (map second)
+                                               (filter integer?))
+                                         unbucketed-fields))]
+     (into {} (for [{id :id, :as field} (try
+                                          (qp.store/bulk-metadata :metadata/column field-ids)
+                                          ;; don't fail if some of the Fields are invalid.
+                                          (catch Throwable e
+                                            (log/errorf e "Error fetching Fields: %s" (ex-message e))
+                                            nil))]
+                [id (select-keys field [:base-type :effective-type :semantic-type])])))))
 
 (defn- yyyy-MM-dd-date-string? [x]
   (and (string? x)
@@ -84,7 +89,7 @@
                 [:type/Date :type/DateTime]))
         [base-type effective-type]))
 
-(s/defn ^:private wrap-unbucketed-fields
+(mu/defn ^:private wrap-unbucketed-fields
   "Add `:temporal-unit` to `:field`s in breakouts and filters if appropriate; look at corresponing type information in
   `field-id->type-info` to see if we should do so."
   ;; we only want to wrap clauses in `:breakout` and `:filter` so just make a 3-arg version of this fn that takes the
@@ -97,7 +102,7 @@
   ([inner-query field-id->type-info clause-to-rewrite]
    (let [datetime-but-not-time? (comp date-or-datetime-field? field-id->type-info)]
      (letfn [(wrap-fields [x]
-               (mbql.u/replace x
+               (lib.util.match/replace x
                  ;; don't replace anything that's already bucketed or otherwise is not subject to autobucketing
                  (_ :guard should-not-be-autobucketed?)
                  &match
@@ -108,11 +113,11 @@
                  [:field id-or-name (assoc opts :temporal-unit :day)]))]
        (m/update-existing inner-query clause-to-rewrite wrap-fields)))))
 
-(s/defn ^:private auto-bucket-datetimes-this-level
+(mu/defn ^:private auto-bucket-datetimes-this-level
   [{breakouts :breakout, filter-clause :filter, :as inner-query}]
   ;; find any breakouts or filters in the query that are just plain `[:field-id ...]` clauses (unwrapped by any other
   ;; clause)
-  (if-let [unbucketed-fields (mbql.u/match (cons filter-clause breakouts)
+  (if-let [unbucketed-fields (lib.util.match/match (cons filter-clause breakouts)
                                (_ :guard should-not-be-autobucketed?) nil
                                :field                                 &match)]
     ;; if we found some unbucketed breakouts/filters, fetch the Fields & type info that are referred to by those

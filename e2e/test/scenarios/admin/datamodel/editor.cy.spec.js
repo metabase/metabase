@@ -1,4 +1,10 @@
 import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  USER_GROUPS,
+} from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
   describeEE,
   openOrdersTable,
   openProductsTable,
@@ -7,13 +13,8 @@ import {
   restore,
   startNewQuestion,
   setTokenFeatures,
+  openTable,
 } from "e2e/support/helpers";
-import {
-  SAMPLE_DB_ID,
-  SAMPLE_DB_SCHEMA_ID,
-  USER_GROUPS,
-} from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS_ID, REVIEWS, REVIEWS_ID, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -53,13 +54,12 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       startNewQuestion();
       popover().within(() => {
-        cy.findByText("Sample Database").click();
+        cy.findByText("Raw Data").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
     });
 
-    // QUESTION - can we check update in the admin instead?
     it("should allow changing the table description", () => {
       visitTableMetadata();
       setValueAndBlurInput(ORDERS_DESCRIPTION, "New description");
@@ -67,6 +67,12 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByDisplayValue("New description").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Table description").should("be.visible");
+
+      cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Orders").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("New description").should("be.visible");
     });
 
     it("should allow clearing the table description", () => {
@@ -75,6 +81,12 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.wait("@updateTable");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Table description").should("be.visible");
+
+      cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Orders").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("No description yet").should("be.visible");
     });
 
     it("should allow changing the table visibility", () => {
@@ -89,7 +101,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       startNewQuestion();
       popover().within(() => {
-        cy.findByText("Sample Database").click();
+        cy.findByText("Raw Data").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("not.exist");
       });
@@ -103,7 +115,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       startNewQuestion();
       popover().within(() => {
-        cy.findByText("Sample Database").click();
+        cy.findByText("Raw Data").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("be.visible");
       });
@@ -137,6 +149,14 @@ describe("scenarios > admin > datamodel > editor", () => {
         .should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Total").should("be.visible");
+
+      cy.visit(
+        `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+      );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Total").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("New description").should("be.visible");
     });
 
     it("should allow clearing the field description", () => {
@@ -147,6 +167,14 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.wait("@updateField");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Total").should("be.visible");
+
+      cy.visit(
+        `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+      );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Total").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("No description yet").should("be.visible");
     });
 
     it("should allow changing the field visibility", () => {
@@ -196,11 +224,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated User ID").should("be.visible");
 
-      startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Sample Database").click();
-        cy.findByText("Orders").click();
-      });
+      openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
       popover().within(() => {
         cy.findByText("Products").click();
@@ -319,6 +343,14 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByDisplayValue("New description").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Total").should("be.visible");
+
+      cy.visit(
+        `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+      );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Total").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("New description").should("be.visible");
     });
 
     it("should allow changing the field visibility", () => {
@@ -371,11 +403,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated User ID").should("be.visible");
 
-      startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Sample Database").click();
-        cy.findByText("Orders").click();
-      });
+      openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
       popover().within(() => {
         cy.findByText("Products").click();
@@ -407,7 +435,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signInAsNormalUser();
       startNewQuestion();
       popover().within(() => {
-        cy.findByText("Sample Database").click();
+        cy.findByText("Raw Data").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
@@ -473,11 +501,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("Updated User ID").should("be.visible");
 
       cy.signInAsNormalUser();
-      startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Sample Database").click();
-        cy.findByText("Orders").click();
-      });
+      openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
       popover().within(() => {
         cy.findByText("Products").click();
@@ -635,10 +659,25 @@ const getFieldSection = fieldName => {
 };
 
 const moveField = (fieldIndex, deltaY) => {
-  cy.get(".Grabber").eq(fieldIndex).trigger("mousedown", 0, 0, { force: true });
-  cy.get("#ColumnsList")
-    .trigger("mousemove", 10, deltaY)
-    .trigger("mouseup", 10, deltaY);
+  cy.findAllByTestId("grabber")
+    .eq(fieldIndex)
+    .trigger("pointerdown", 0, 0, { force: true, button: 0, isPrimary: true })
+    .wait(200)
+    .trigger("pointermove", 5, 5, { force: true, button: 0, isPrimary: true })
+    .wait(200)
+    //cy.get("#ColumnsList")
+    .trigger("pointermove", 10, deltaY, {
+      force: true,
+      button: 0,
+      isPrimary: true,
+    })
+    .wait(200)
+    .trigger("pointerup", 10, deltaY, {
+      force: true,
+      button: 0,
+      isPrimary: true,
+    })
+    .wait(200);
 };
 
 const setTableOrder = order => {

@@ -1,12 +1,15 @@
+import type { Location } from "history";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
-import { Location } from "history";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+
 import Button from "metabase/core/components/Button";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+
 import { forgotPassword } from "../../actions";
 import { getIsEmailConfigured, getIsLdapEnabled } from "../../selectors";
 import { AuthLayout } from "../AuthLayout";
 import { ForgotPasswordForm } from "../ForgotPasswordForm";
+
 import {
   InfoBody,
   InfoIcon,

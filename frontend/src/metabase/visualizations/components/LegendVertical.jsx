@@ -1,12 +1,14 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable react/no-string-refs */
+import cx from "classnames";
 import { Component } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
-import cx from "classnames";
-import Tooltip from "metabase/core/components/Tooltip";
-import styles from "./Legend.css";
 
+import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
+
+import styles from "./Legend.module.css";
 import LegendItem from "./LegendItem";
 
 export default class LegendVertical extends Component {
@@ -73,7 +75,7 @@ export default class LegendVertical extends Component {
             <li
               key={index}
               ref={"item" + index}
-              className="flex flex-no-shrink"
+              className={cx(CS.flex, CS.flexNoShrink)}
               onMouseEnter={e =>
                 onHoverChange &&
                 onHoverChange({
@@ -96,7 +98,13 @@ export default class LegendVertical extends Component {
               />
               {Array.isArray(title) && (
                 <span
-                  className={cx("LegendItem", "flex-align-right pl1")}
+                  className={cx(
+                    "LegendItem",
+                    CS.flex,
+                    CS.alignCenter,
+                    CS.flexAlignRight,
+                    CS.pl1,
+                  )}
                   style={{ opacity: isMuted ? 0.4 : 1 }}
                 >
                   {title[1]}
@@ -106,11 +114,11 @@ export default class LegendVertical extends Component {
           );
         })}
         {overflowCount > 0 ? (
-          <li key="extra" className="flex flex-no-shrink">
+          <li key="extra" className={cx(CS.flex, CS.flexNoShrink)}>
             <Tooltip
               tooltip={
                 <LegendVertical
-                  className="p2"
+                  className={CS.p2}
                   titles={extraItems}
                   colors={extraColors}
                 />

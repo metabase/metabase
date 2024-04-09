@@ -1,13 +1,15 @@
+import type * as React from "react";
 import { useMemo, useState } from "react";
-import * as React from "react";
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
+
+import EmptyState from "metabase/components/EmptyState";
+import Checkbox from "metabase/core/components/CheckBox";
+import type { InputProps } from "metabase/core/components/Input";
+import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import Checkbox from "metabase/core/components/CheckBox";
-import EmptyState from "metabase/components/EmptyState";
 
-import Input, { InputProps } from "metabase/core/components/Input";
 import {
   OptionContainer,
   LabelWrapper,
@@ -15,7 +17,7 @@ import {
   EmptyStateContainer,
   FilterInputContainer,
 } from "./ListField.styled";
-import { ListFieldProps, Option } from "./types";
+import type { ListFieldProps, Option } from "./types";
 import { isValidOptionItem } from "./utils";
 
 function createOptionsFromValuesWithoutOptions(
@@ -26,7 +28,7 @@ function createOptionsFromValuesWithoutOptions(
   return values.filter(value => !optionsMap[value]).map(value => [value]);
 }
 
-const ListField = ({
+export const ListField = ({
   onChange,
   value,
   options,
@@ -147,6 +149,3 @@ const ListField = ({
     </>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ListField;

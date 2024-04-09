@@ -1,8 +1,6 @@
 import { useCallback } from "react";
 import { connect } from "react-redux";
-import EventSandbox from "metabase/components/EventSandbox";
-import { getSetting } from "metabase/selectors/settings";
-import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
+
 import {
   canArchiveItem,
   canMoveItem,
@@ -11,10 +9,13 @@ import {
   isItemPinned,
   isPreviewEnabled,
 } from "metabase/collections/utils";
-import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import EventSandbox from "metabase/components/EventSandbox";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
-import Database from "metabase-lib/metadata/Database";
+import { getSetting } from "metabase/selectors/settings";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
 import { EntityItemMenu } from "./ActionMenu.styled";
 
 interface OwnProps {
@@ -121,7 +122,6 @@ function ActionMenu({
         onArchive={canArchive ? handleArchive : null}
         onToggleBookmark={handleToggleBookmark}
         onTogglePreview={canPreview ? handleTogglePreview : null}
-        analyticsContext={ANALYTICS_CONTEXT}
       />
     </EventSandbox>
   );

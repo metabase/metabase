@@ -1,15 +1,12 @@
-import { t } from "ttag";
 import { createSelector } from "@reduxjs/toolkit";
-
-import { GET } from "metabase/lib/api";
-import { createEntity, undo } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
-
-import { CollectionSchema } from "metabase/schema";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
+import { t } from "ttag";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
-
+import { GET } from "metabase/lib/api";
+import { createEntity, undo } from "metabase/lib/entities";
+import * as Urls from "metabase/lib/urls/collections";
+import { CollectionSchema } from "metabase/schema";
+import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { Collection } from "metabase-types/api";
 import type { GetState, ReduxAction } from "metabase-types/store";
 
@@ -24,6 +21,9 @@ type EntityInCollection = {
   collection?: Collection;
 };
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Collections = createEntity({
   name: "collections",
   path: "/api/collection",
@@ -97,7 +97,7 @@ const Collections = createEntity({
 
   getAnalyticsMetadata(
     [object]: [Collection],
-    { action }: { action: ReduxAction },
+    { action: _action }: { action: ReduxAction },
     getState: GetState,
   ) {
     const type = object && getCollectionType(object.parent_id, getState());

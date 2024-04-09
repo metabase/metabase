@@ -1,22 +1,21 @@
 (ns metabase-enterprise.sandbox.api.gtap-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy
+    :refer [GroupTableAccessPolicy]]
    [metabase.http-client :as client]
    [metabase.models :refer [Card Field PermissionsGroup Table]]
-   [metabase.models.permissions :as perms]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"
-    (premium-features-test/with-premium-features #{:sandboxes}
-      (is (= (get mw.util/response-unauthentic :body)
+    (mt/with-premium-features #{:sandboxes}
+      (is (= (get req.util/response-unauthentic :body)
              (client/client :get 401 "mt/gtap")))
 
       (is (= "You don't have permissions to do that."
@@ -34,7 +33,7 @@
   "Invokes `body` ensuring any `GroupTableAccessPolicy` created will be removed afterward. Leaving behind a GTAP can
   case referential integrity failures for any related `Card` that would be cleaned up as part of a `with-temp*` call"
   [& body]
-  `(premium-features-test/with-premium-features #{:sandboxes}
+  `(mt/with-premium-features #{:sandboxes}
      (mt/with-model-cleanup [GroupTableAccessPolicy]
        ~@body)))
 
@@ -48,10 +47,10 @@
     (testing "Must have a valid token to use GTAPs"
       (with-redefs [premium-features/enable-sandboxes? (constantly false)]
         (mt/with-temporary-setting-values [premium-embedding-token nil]
-          (mt/with-temp* [Table            [{table-id :id}]
-                          PermissionsGroup [{group-id :id}]
-                          Card             [{card-id :id}]]
-            (is (= "This API endpoint is only enabled if you have a premium token with the :sandboxes feature."
+          (mt/with-temp [Table            {table-id :id} {}
+                         PermissionsGroup {group-id :id} {}
+                         Card             {card-id :id}  {}]
+            (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                    (mt/user-http-request :crowberto :post 402 "mt/gtap"
                                          {:table_id             table-id
                                           :group_id             group-id
@@ -61,17 +60,17 @@
 (deftest fetch-gtap-test
   (testing "GET /api/mt/gtap/"
     (with-gtap-cleanup
-      (mt/with-temp* [Table                  [{table-id-1 :id}]
-                      Table                  [{table-id-2 :id}]
-                      PermissionsGroup       [{group-id-1 :id}]
-                      PermissionsGroup       [{group-id-2 :id}]
-                      Card                   [{card-id :id}]
-                      GroupTableAccessPolicy [{gtap-id-1 :id} {:table_id table-id-1
-                                                               :group_id group-id-1
-                                                               :card_id  card-id}]
-                      GroupTableAccessPolicy [{gtap-id-2 :id} {:table_id table-id-2
-                                                               :group_id group-id-2
-                                                               :card_id  card-id}]]
+      (mt/with-temp [Table                  {table-id-1 :id} {}
+                     Table                  {table-id-2 :id} {}
+                     PermissionsGroup       {group-id-1 :id} {}
+                     PermissionsGroup       {group-id-2 :id} {}
+                     Card                   {card-id :id} {}
+                     GroupTableAccessPolicy {gtap-id-1 :id} {:table_id table-id-1
+                                                             :group_id group-id-1
+                                                             :card_id  card-id}
+                     GroupTableAccessPolicy {gtap-id-2 :id} {:table_id table-id-2
+                                                             :group_id group-id-2
+                                                             :card_id  card-id}]
         (testing "Test that we can fetch the list of all GTAPs"
           (is (partial=
                [{:id gtap-id-1 :table_id table-id-1 :group_id group-id-1}
@@ -88,8 +87,8 @@
 
 (deftest create-gtap-test
   (testing "POST /api/mt/gtap"
-    (mt/with-temp* [Table            [{table-id :id}]
-                    PermissionsGroup [{group-id :id}]]
+    (mt/with-temp [Table            {table-id :id} {}
+                   PermissionsGroup {group-id :id} {}]
       (testing "Test that we can create a new GTAP"
         (t2.with-temp/with-temp [Card {card-id :id}]
           (with-gtap-cleanup
@@ -114,25 +113,24 @@
                    (mt/user-http-request :crowberto :get 200 (format "mt/gtap/%s" (:id post-results))))))))
 
       (testing "Meaningful errors should be returned if you create an invalid GTAP"
-        (mt/with-temp* [Field [_ {:name "My field", :table_id table-id, :base_type :type/Integer}]
-                        Card  [{card-id :id} {:dataset_query (mt/mbql-query venues
-                                                               {:fields      [[:expression "My field"]]
-                                                                :expressions {"My field" [:ltrim "wow"]}})}]]
+        (mt/with-temp [Field _ {:name "My field" :table_id table-id :base_type :type/Integer}
+                       Card  {card-id :id} {:dataset_query (mt/mbql-query venues
+                                                                          {:fields      [[:expression "My field"]]
+                                                                           :expressions {"My field" [:ltrim "wow"]}})}]
           (with-gtap-cleanup
-            (is (schema= {:message  (s/eq "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.")
-                          :expected (s/eq "type/Integer")
-                          :actual   (s/eq "type/Text")
-                          s/Keyword s/Any}
-                         (mt/user-http-request :crowberto :post 400 "mt/gtap"
-                                               {:table_id             table-id
-                                                :group_id             group-id
-                                                :card_id              card-id
-                                                :attribute_remappings {"foo" 1}})))))))))
+            (is (=? {:message  "Sandbox Questions can't return columns that have different types than the Table they are sandboxing."
+                     :expected "type/Integer"
+                     :actual   "type/Text"}
+                    (mt/user-http-request :crowberto :post 400 "mt/gtap"
+                                          {:table_id             table-id
+                                           :group_id             group-id
+                                           :card_id              card-id
+                                           :attribute_remappings {"foo" 1}})))))))))
 
 (deftest validate-sandbox-test
   (testing "POST /api/mt/gtap/validate"
-    (mt/with-temp* [Table            [{table-id :id}]
-                    PermissionsGroup [{group-id :id}]]
+    (mt/with-temp [Table            {table-id :id} {}
+                   PermissionsGroup {group-id :id} {}]
       (testing "A valid sandbox passes validation and returns no error"
         (t2.with-temp/with-temp [Card {card-id :id}]
           (with-gtap-cleanup
@@ -150,27 +148,26 @@
                                  :attribute_remappings {"foo" 1}})))
 
       (testing "An invalid sandbox results in a 400 error being returned"
-        (mt/with-temp* [Field [_ {:name "My field", :table_id table-id, :base_type :type/Integer}]
-                        Card  [{card-id :id} {:dataset_query (mt/mbql-query venues
-                                                               {:fields      [[:expression "My field"]]
-                                                                :expressions {"My field" [:ltrim "wow"]}})}]]
+        (mt/with-temp [Field _ {:name "My field", :table_id table-id, :base_type :type/Integer}
+                       Card  {card-id :id} {:dataset_query (mt/mbql-query venues
+                                                             {:fields      [[:expression "My field"]]
+                                                              :expressions {"My field" [:ltrim "wow"]}})}]
           (with-gtap-cleanup
-            (is (schema= {:message  (s/eq "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.")
-                          :expected (s/eq "type/Integer")
-                          :actual   (s/eq "type/Text")
-                          s/Keyword s/Any}
-                         (mt/user-http-request :crowberto :post 400 "mt/gtap/validate"
-                                               {:table_id             table-id
-                                                :group_id             group-id
-                                                :card_id              card-id
-                                                :attribute_remappings {"foo" 1}})))))))))
+            (is (=? {:message  "Sandbox Questions can't return columns that have different types than the Table they are sandboxing."
+                     :expected "type/Integer"
+                     :actual   "type/Text"}
+                    (mt/user-http-request :crowberto :post 400 "mt/gtap/validate"
+                                          {:table_id             table-id
+                                           :group_id             group-id
+                                           :card_id              card-id
+                                           :attribute_remappings {"foo" 1}})))))))))
 
 (deftest delete-gtap-test
   (testing "DELETE /api/mt/gtap/:id"
     (testing "Test that we can delete a GTAP"
-      (mt/with-temp* [Table            [{table-id :id}]
-                      PermissionsGroup [{group-id :id}]
-                      Card             [{card-id :id}]]
+      (mt/with-temp [Table            {table-id :id} {}
+                     PermissionsGroup {group-id :id} {}
+                     Card             {card-id :id} {}]
         (with-gtap-cleanup
           (let [{:keys [id]} (gtap-post {:table_id             table-id
                                          :group_id             group-id
@@ -185,10 +182,10 @@
 
 (deftest update-gtap-test
   (testing "PUT /api/mt/gtap"
-    (mt/with-temp* [Table            [{table-id :id}]
-                    PermissionsGroup [{group-id :id}]
-                    Card             [{card-id :id}]]
-      (premium-features-test/with-premium-features #{:sandboxes}
+    (mt/with-temp [Table            {table-id :id} {}
+                   PermissionsGroup {group-id :id} {}
+                   Card             {card-id :id}  {}]
+      (mt/with-premium-features #{:sandboxes}
         (testing "Test that we can update only the attribute remappings for a GTAP"
           (t2.with-temp/with-temp [GroupTableAccessPolicy {gtap-id :id} {:table_id             table-id
                                                                          :group_id             group-id
@@ -232,27 +229,28 @@
 
 (deftest bulk-upsert-sandboxes-test
   (testing "PUT /api/permissions/graph"
-    (mt/with-temp* [Table                  [{table-id-1 :id} {:db_id (mt/id), :schema "PUBLIC"}]
-                    Table                  [{table-id-2 :id} {:db_id (mt/id), :schema "PUBLIC"}]
-                    PermissionsGroup       [{group-id :id}]
-                    Card                   [{card-id-1 :id}]
-                    Card                   [{card-id-2 :id}]]
-      (premium-features-test/with-premium-features #{:sandboxes}
+    (mt/with-temp [Table            {table-id-1 :id} {:db_id (mt/id) :schema "PUBLIC"}
+                   Table            {table-id-2 :id} {:db_id (mt/id) :schema "PUBLIC"}
+                   PermissionsGroup {group-id :id}   {}
+                   Card             {card-id-1 :id}  {}
+                   Card             {card-id-2 :id}  {}]
+      (mt/with-premium-features #{:sandboxes}
         (with-gtap-cleanup
           (testing "Test that we can create a new sandbox using the permission graph API"
-            (let [graph  (-> (perms/data-perms-graph)
+            (let [graph  (-> (data-perms.graph/api-graph)
                              (assoc-in [:groups group-id (mt/id) :data :schemas "PUBLIC" table-id-1 :query] :segmented)
                              (assoc :sandboxes [{:table_id             table-id-1
                                                  :group_id             group-id
                                                  :card_id              card-id-1
                                                  :attribute_remappings {"foo" 1}}]))
                   result (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
-              (is (=? [{:id                   #hawk/schema s/Int
+              (def graph graph)
+              (is (=? [{:id                   (mt/malli=? :int)
                         :table_id             table-id-1
                         :group_id             group-id
                         :card_id              card-id-1
                         :attribute_remappings {:foo 1}
-                        :permission_id        #hawk/schema s/Int}]
+                        :permission_id        (mt/malli=? [:maybe :int])}]
                       (:sandboxes result)))
               (is (t2/exists? GroupTableAccessPolicy :table_id table-id-1 :group_id group-id))))
 
@@ -260,7 +258,7 @@
             (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
                                                   :table_id table-id-1
                                                   :group_id group-id)
-                  graph      (-> (perms/data-perms-graph)
+                  graph      (-> (data-perms.graph/api-graph)
                                  (assoc :sandboxes [{:id                   sandbox-id
                                                      :card_id              card-id-2
                                                      :attribute_remappings {"foo" 2}}]))
@@ -277,7 +275,7 @@
             (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
                                                   :table_id table-id-1
                                                   :group_id group-id)
-                  graph       (-> (perms/data-perms-graph)
+                  graph       (-> (data-perms.graph/api-graph)
                                   (assoc-in [:groups group-id (mt/id) :data :schemas "PUBLIC" table-id-2 :query] :segmented)
                                   (assoc :sandboxes [{:id                   sandbox-id
                                                       :card_id              card-id-1
@@ -309,6 +307,6 @@
              is not enabled"
       (with-redefs [premium-features/enable-sandboxes? (constantly false)]
         (mt/with-temporary-setting-values [premium-embedding-token nil]
-          (is (= "Sandboxes are an Enterprise feature. Please upgrade to a paid plan to use this feature."
+          (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                  (mt/user-http-request :crowberto :put 402 "permissions/graph"
-                                       (assoc (perms/data-perms-graph) :sandboxes [{:card_id 1}])))))))))
+                                       (assoc (data-perms.graph/api-graph) :sandboxes [{:card_id 1}])))))))))

@@ -1,23 +1,26 @@
-import { Fragment } from "react";
 import PropTypes from "prop-types";
+import { Fragment } from "react";
 import { t } from "ttag";
-import { color } from "metabase/lib/colors";
-import * as Urls from "metabase/lib/urls";
-import { isSyncInProgress } from "metabase/lib/syncing";
-import Database from "metabase/entities/databases";
+
+import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
 import EntityItem from "metabase/components/EntityItem";
-import { Icon } from "metabase/core/components/Icon";
-import { Grid } from "metabase/components/Grid";
+import Database from "metabase/entities/databases";
+import { color } from "metabase/lib/colors";
+import { isSyncInProgress } from "metabase/lib/syncing";
+import * as Urls from "metabase/lib/urls";
+import { Icon } from "metabase/ui";
 import {
   isVirtualCardId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/metadata/utils/saved-questions";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 
-import { ANALYTICS_CONTEXT } from "../../constants";
-import BrowseHeader from "../BrowseHeader";
+import { trackTableClick } from "../../analytics";
+import { BrowseHeaderContent } from "../BrowseHeader.styled";
+
 import {
   TableActionLink,
   TableCard,
+  TableGrid,
   TableGridItem,
   TableLink,
 } from "./TableBrowser.styled";
@@ -44,15 +47,17 @@ const TableBrowser = ({
   showSchemaInHeader = true,
 }) => {
   return (
-    <div>
-      <BrowseHeader
-        crumbs={[
-          { title: t`Our data`, to: "/browse" },
-          getDatabaseCrumbs(dbId),
-          showSchemaInHeader && { title: schemaName },
-        ]}
-      />
-      <Grid>
+    <>
+      <BrowseHeaderContent>
+        <BrowserCrumbs
+          crumbs={[
+            { title: t`Databases`, to: "/browse/databases" },
+            getDatabaseCrumbs(dbId),
+            showSchemaInHeader && { title: schemaName },
+          ]}
+        />
+      </BrowseHeaderContent>
+      <TableGrid>
         {tables.map(table => (
           <TableGridItem key={table.id}>
             <TableCard hoverable={!isSyncInProgress(table)}>
@@ -60,7 +65,7 @@ const TableBrowser = ({
                 to={
                   !isSyncInProgress(table) ? getTableUrl(table, metadata) : ""
                 }
-                data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
+                onClick={() => trackTableClick(table.id)}
               >
                 <TableBrowserItem
                   database={database}
@@ -72,8 +77,8 @@ const TableBrowser = ({
             </TableCard>
           </TableGridItem>
         ))}
-      </Grid>
-    </div>
+      </TableGrid>
+    </>
   );
 };
 
@@ -124,10 +129,7 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
   return (
     <Fragment>
       {xraysEnabled && (
-        <TableActionLink
-          to={`/auto/dashboard/table/${tableId}`}
-          data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
-        >
+        <TableActionLink to={`/auto/dashboard/table/${tableId}`}>
           <Icon
             name="bolt_filled"
             tooltip={t`X-ray this table`}
@@ -135,6 +137,13 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
           />
         </TableActionLink>
       )}
+      <TableActionLink to={`/reference/databases/${dbId}/tables/${tableId}`}>
+        <Icon
+          name="reference"
+          tooltip={t`Learn about this table`}
+          color={color("text-medium")}
+        />
+      </TableActionLink>
     </Fragment>
   );
 };

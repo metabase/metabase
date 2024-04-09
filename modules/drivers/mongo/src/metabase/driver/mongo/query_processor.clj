@@ -6,13 +6,19 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.mongo.operators :refer [$add $addToSet $and $avg $concat $cond
+                                            $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
+                                            $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min
+                                            $minute $mod $month $multiply $ne $not $or $project $regexMatch $second
+                                            $size $skip $sort $strcasecmp $subtract $sum $toLower $unwind $year]]
    [metabase.driver.util :as driver.u]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models.field :refer [Field]]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
@@ -24,13 +30,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
-   [monger.operators :refer [$add $addToSet $and $avg $cond
-                             $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
-                             $group $gt $gte $hour $limit $lookup $lt $lte $match $max $min $minute $mod $month
-                             $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
-                             $sum $toLower $unwind $year]]
-   [schema.core :as s])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -44,43 +45,52 @@
 ;; this is just a very limited schema to make sure we're generating valid queries. We should expand it more in the
 ;; future
 
-(def ^:private $ProjectStage   {(s/eq $project)    {su/NonBlankString s/Any}})
-(def ^:private $SortStage      {(s/eq $sort)       {su/NonBlankString (s/enum -1 1)}})
-(def ^:private $MatchStage     {(s/eq $match)      {(s/constrained (s/cond-pre su/NonBlankString s/Keyword)
-                                                                   #(not (#{:$not "$not"} %)))
-                                                    s/Any}})
-(def ^:private $GroupStage     {(s/eq $group)      {su/NonBlankString s/Any}})
-(def ^:private $AddFieldsStage {(s/eq :$addFields) {su/NonBlankString s/Any}})
-(def ^:private $LookupStage    {(s/eq $lookup)     {su/KeywordOrString s/Any}})
-(def ^:private $UnwindStage    {(s/eq $unwind)     {su/KeywordOrString s/Any}})
-(def ^:private $LimitStage     {(s/eq $limit)      su/IntGreaterThanZero})
-(def ^:private $SkipStage      {(s/eq $skip)       su/IntGreaterThanZero})
+(def ^:private $addFields
+  :$addFields)
 
-(defn- is-stage? [stage]
-  (fn [m] (= (first (keys m)) stage)))
+(def ^:private $ProjectStage   [:map-of [:= $project]   [:map-of ms/NonBlankString :any]])
+(def ^:private $SortStage      [:map-of [:= $sort]      [:map-of ms/NonBlankString [:enum -1 1]]])
+(def ^:private $MatchStage     [:map-of [:= $match]     [:map-of
+                                                         [:and
+                                                          [:or ms/NonBlankString :keyword]
+                                                          [:fn
+                                                           {:error/message "not a $not condition"}
+                                                           (complement #{:$not "$not"})]]
+                                                         :any]])
+(def ^:private $GroupStage     [:map-of [:= $group]     [:map-of ms/NonBlankString :any]])
+(def ^:private $AddFieldsStage [:map-of [:= $addFields] [:map-of ms/NonBlankString :any]])
+(def ^:private $LookupStage    [:map-of [:= $lookup]    [:map-of ms/KeywordOrString :any]])
+(def ^:private $UnwindStage    [:map-of [:= $unwind]    [:map-of ms/KeywordOrString :any]])
+(def ^:private $LimitStage     [:map-of [:= $limit]     ms/PositiveInt])
+(def ^:private $SkipStage      [:map-of [:= $skip]      ms/PositiveInt])
 
 (def ^:private Stage
-  (s/both
-   (s/constrained su/Map #(= (count (keys %)) 1) "map with a single key")
-   (s/conditional
-    (is-stage? $project)    $ProjectStage
-    (is-stage? $sort)       $SortStage
-    (is-stage? $group)      $GroupStage
-    (is-stage? :$addFields) $AddFieldsStage
-    (is-stage? $lookup)     $LookupStage
-    (is-stage? $unwind)     $UnwindStage
-    (is-stage? $match)      $MatchStage
-    (is-stage? $limit)      $LimitStage
-    (is-stage? $skip)       $SkipStage)))
+  [:and
+   :map
+   [:fn
+    {:error/message "map with a single key"}
+    #(= (count %) 1) ]
+   [:multi
+    {:dispatch (fn [m]
+                 (first (keys m)))}
+    [$project   $ProjectStage]
+    [$sort      $SortStage]
+    [$group     $GroupStage]
+    [$addFields $AddFieldsStage]
+    [$lookup    $LookupStage]
+    [$unwind    $UnwindStage]
+    [$match     $MatchStage]
+    [$limit     $LimitStage]
+    [$skip      $SkipStage]]])
 
-(def ^:private Pipeline [Stage])
+(def ^:private Pipeline [:sequential Stage])
 
 (def Projections
   "Schema for the `:projections` generated by the functions in this namespace. It is a sequence of the column names
   returned in an MBQL query. e.g.
 
     [\"_id\" \"date\" \"user_id\" \"venue_id\"]"
-  [s/Str])
+  [:sequential :string])
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -95,6 +105,18 @@
   "Used for tracking depth of nesting on which [[mbql->native-rec]] operates.
   That is required eg. in `->lvalue :aggregation` call."
   0)
+
+(def ^:dynamic ^:private *next-alias-index*
+  "Tracks index of next alias for join compilation. It is bound in [[mbql->native]] to `volatile!` valued 0. Hence
+   every compilation starts with a fresh 0. Indices are used in [[handle-join]] to make aliases unique. Index values
+   are gathered using [[next-alias-index]], hence first used index is of value 1."
+  nil)
+
+(defn- next-alias-index
+  "Increment [[*next-alias-index*]] counter and return new index. Further context can be found in
+   [[*next-alias-index*]] docstring."
+  []
+  (vswap! *next-alias-index* inc))
 
 (def ^:dynamic ^:private *field-mappings*
   "The mapping from the fields to the projected names created
@@ -126,7 +148,8 @@
   (some->> join-alias (str "join_alias_")))
 
 (defn- get-mongo-version []
-  (driver/dbms-version :mongo (qp.store/database)))
+  (qp.store/cached ::version
+    (driver/dbms-version :mongo (lib.metadata/database (qp.store/metadata-provider)))))
 
 (defmulti ^:private ->rvalue
   "Format this `Field` or value for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s
@@ -139,20 +162,23 @@
   {:arglists '([field])}
   mbql.u/dispatch-by-clause-name-or-class)
 
-(defn- field-name-components [field]
+(defn- field-name-components [{:keys [parent-id], field-name :name, :as _field}]
   (concat
-   (when-let [parent-id (:parent_id field)]
-     (field-name-components (qp.store/field parent-id)))
-   [(:name field)]))
+   (when parent-id
+     (field-name-components (lib.metadata/field (qp.store/metadata-provider) parent-id)))
+   [field-name]))
 
-(defn field->name
+(mu/defn field->name
   "Return a single string name for `field`. For nested fields, this creates a combined qualified name."
-  ([field] (field->name field \.))
-  ([field separator]
+  ([field]
+   (field->name field \.))
+
+  ([field     :- lib.metadata/ColumnMetadata
+    separator :- [:or :string char?]]
    (str/join separator (field-name-components field))))
 
-(defmethod add/field-reference :mongo
-  [_driver field-inst]
+(mu/defmethod add/field-reference-mlv2 :mongo
+  [_driver field-inst :- lib.metadata/ColumnMetadata]
   (field->name field-inst))
 
 (defmacro ^:private mongo-let
@@ -162,7 +188,7 @@
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})
 
-(defmethod ->lvalue Field
+(defmethod ->lvalue :metadata/column
   [field]
   (field->name field))
 
@@ -178,8 +204,8 @@
   [[_ expression-name]]
   (->rvalue (mbql.u/expression-with-name (:query *query*) expression-name)))
 
-(defmethod ->rvalue Field
-  [{coercion :coercion_strategy, ::keys [source-alias join-field] :as field}]
+(defmethod ->rvalue :metadata/column
+  [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
   (let [field-name (str \$ (cond->> (or source-alias (field->name field))
                              join-field (str join-field \.)))]
     (cond
@@ -228,7 +254,7 @@
   [[_ id-or-name _props :as field]]
   (if (integer? id-or-name)
     (or (find-mapped-field-name field)
-        (->lvalue (qp.store/field id-or-name)))
+        (->lvalue (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
     (name id-or-name)))
 
 (defn- add-start-of-week-offset [expr offset]
@@ -351,7 +377,7 @@
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
-                (->rvalue (assoc (qp.store/field id-or-name)
+                (->rvalue (assoc (lib.metadata/field (qp.store/metadata-provider) id-or-name)
                                  ::source-alias source-alias
                                  ::join-field join-field)))
               (if-let [mapped (find-mapped-field-name field)]
@@ -396,7 +422,7 @@
 
 (defmethod ->rvalue :absolute-datetime
   [[_ t unit]]
-  (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (qp.store/database))
+  (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (lib.metadata/database (qp.store/metadata-provider)))
                                    "UTC"))
         t           (condp = (class t)
                      java.time.LocalDate      t
@@ -430,7 +456,7 @@
 (defmethod ->rvalue :relative-datetime
   [[_ amount unit]]
   (let [t (-> (t/zoned-date-time)
-              (t/with-zone-same-instant (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (qp.store/database))
+              (t/with-zone-same-instant (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (lib.metadata/database (qp.store/metadata-provider)))
                                                        "UTC"))))]
     ($date-from-string
      (t/offset-date-time
@@ -530,9 +556,12 @@
   [[_ & [_ & divisors :as args]]]
   ;; division works outside in (/ 1 2 3) => (/ (/ 1 2) 3)
   (let [division (reduce
-                   (fn [accum head]
-                     {"$divide" [accum head]})
-                   (map ->rvalue args))
+                  (fn [accum head]
+                    (if accum
+                      {"$divide" [accum head]}
+                      head))
+                  nil
+                  (map ->rvalue args))
         literal-zero? (some #(and (number? %) (zero? %)) divisors)
         non-literal-nil-checks (mapv (fn [divisor] {"$eq" [(->rvalue divisor) 0]}) (remove number? divisors))]
     (cond
@@ -610,7 +639,7 @@
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
 (defmethod ->rvalue :now [[_]]
-  (if (driver/database-supports? :mongo :now (qp.store/database))
+  (if (driver/database-supports? :mongo :now (lib.metadata/database (qp.store/metadata-provider)))
     "$$NOW"
     (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
                     {:database-version (:version (get-mongo-version))}))))
@@ -630,7 +659,7 @@
 
 (defmulti datetime-diff
   "Helper function for ->rvalue for `datetime-diff` clauses."
-  {:arglists '([x y unit])}
+  {:added "0.46.0" :arglists '([x y unit])}
   (fn [_ _ unit] unit))
 
 (defmethod datetime-diff :year
@@ -689,7 +718,7 @@
 (defmulti compile-filter
   "Compile an mbql filter clause to datastructures suitable to query mongo. Note this is not the whole query but just
   compiling the \"where\" clause equivalent."
-  {:arglists '([clause])}
+  {:added "0.39.0" :arglists '([clause])}
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod compile-filter :between
@@ -698,17 +727,25 @@
                    [:>= field min-val]
                    [:<= field max-val]]))
 
-(defn- str-match-pattern [options prefix value suffix]
+(defn- str-match-pattern [field options prefix value suffix]
   (if (mbql.u/is-clause? ::not value)
-    {$not (str-match-pattern options prefix (second value) suffix)}
-    (let [case-sensitive? (get options :case-sensitive true)]
-      {$regex (str (when-not case-sensitive? "(?i)") prefix (->rvalue value) suffix)})))
+    {$not (str-match-pattern field options prefix (second value) suffix)}
+    (do
+      (assert (and (contains? #{nil "^"} prefix) (contains? #{nil "$"} suffix))
+        "Wrong prefix or suffix value.")
+      {$regexMatch {"input" (->rvalue field)
+                    "regex" (if (= (first value) :value)
+                              (str prefix (->rvalue value) suffix)
+                              {$concat (into [] (remove nil?) [(when (some? prefix) {$literal prefix})
+                                                               (->rvalue value)
+                                                               (when (some? suffix) {$literal suffix})])})
+                    "options" (if (get options :case-sensitive true) "" "i")}})))
 
 ;; these are changed to {field {$regex "regex"}} instead of {field #regex} for serialization purposes. When doing
 ;; native query substitution we need a string and the explicit regex form is better there
-(defmethod compile-filter :contains    [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v nil)})
-(defmethod compile-filter :starts-with [[_ field v opts]] {(->lvalue field) (str-match-pattern opts \^  v nil)})
-(defmethod compile-filter :ends-with   [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v \$)})
+(defmethod compile-filter :contains    [[_ field v opts]] {$expr (str-match-pattern field opts nil v nil)})
+(defmethod compile-filter :starts-with [[_ field v opts]] {$expr (str-match-pattern field opts "^" v nil)})
+(defmethod compile-filter :ends-with   [[_ field v opts]] {$expr (str-match-pattern field opts nil v "$")})
 
 (defn- rvalue-is-field? [rvalue]
   (and (string? rvalue)
@@ -842,14 +879,14 @@
   clause in :source-query clauses."
   [join-or-query]
   (or (-> join-or-query :collection)
-      (some-> join-or-query :source-table qp.store/table :name)
+      (some->> join-or-query :source-table (lib.metadata/table (qp.store/metadata-provider)) :name)
       (some-> join-or-query :source-query recur)))
 
 (defn- localize-join-alias
   "Rename :join-alias properties fields to ::join-local.
   See [[find-mapped-field-name]] for an explanation why this is done."
   [expr alias]
-  (mbql.u/replace expr
+  (lib.util.match/replace expr
     [:field _ {:join-alias alias}]
     (update &match 2 set/rename-keys {:join-alias ::join-local})))
 
@@ -880,15 +917,15 @@
         source-field-mappings (get-field-mappings source-query projections)
         ;; Find the fields the join condition refers to that are not coming from the joined query.
         ;; These have to be bound in the :let property of the $lookup stage, they cannot be referred to directly.
-        own-fields (mbql.u/match condition
+        own-fields (lib.util.match/match condition
                      [:field _ (_ :guard #(not= (:join-alias %) alias))])
         ;; Map the own fields to a fresh alias and to its rvalue.
         mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
-                                            ;; ~ in let aliases provokes a parse error in Mongo
-                                            (str/replace "~" "_")
-                                            gensym
-                                            name)]
-                              {:field f, :rvalue (->rvalue f), :alias alias}))
+                                             ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
+                                             ;; aliases should also contain no . characters (#32182).
+                                             (str/replace #"~|\." "_")
+                                             (str "__" (next-alias-index)))]
+                               {:field f, :rvalue (->rvalue f), :alias alias}))
                      own-fields)]
     ;; Add the mappings from the source query and the let bindings of $lookup to the field mappings.
     ;; In the join pipeline the let bindings have to referenced with the prefix $$, so we add $ to the name.
@@ -919,13 +956,13 @@
   #{:avg :count :count-where :distinct :max :min :share :stddev :sum :sum-where :var})
 
 (defmethod ->rvalue :case [[_ cases options]]
-  {:$switch {:branches (for [[pred expr] cases]
-                         {:case (compile-cond pred)
-                          :then (->rvalue expr)})
+  {:$switch {:branches (vec (for [[pred expr] cases]
+                              {:case (compile-cond pred)
+                               :then (->rvalue expr)}))
              :default  (->rvalue (:default options))}})
 
 (defn- aggregation->rvalue [ag]
-  (mbql.u/match-one ag
+  (lib.util.match/match-one ag
     [:aggregation-options ag' _]
     (recur ag')
 
@@ -967,8 +1004,7 @@
   (or (get-in field [2 ::add/desired-alias])
       (->lvalue field)))
 
-(s/defn ^:private breakouts-and-ags->projected-fields :- [(s/pair su/NonBlankString "projected-field-name"
-                                                                  s/Any             "source")]
+(mu/defn ^:private breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple ms/NonBlankString :any]]]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
   `[projected-field-name source]`."
   [breakout-fields aggregations]
@@ -1136,7 +1172,7 @@
         group-ags    (mapcat :group expanded-ags)
         post-ags     (order-postprocessing (map :post expanded-ags))]
     (into [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
-          (keep (fn [p] (when (seq p) {:$addFields p})))
+          (keep (fn [p] (when (seq p) {$addFields p})))
           post-ags)))
 
 (defn- projection-group-map [fields]
@@ -1144,7 +1180,7 @@
    (fn [m field-clause]
      (assoc-in
       m
-      (mbql.u/match-one field-clause
+      (lib.util.match/match-one field-clause
         [:field (field-id :guard integer?) _]
         (str/split (field-alias field-clause) #"\.")
 
@@ -1194,8 +1230,8 @@
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
-(s/defn ^:private order-by->$sort :- $SortStage
-  [order-by :- [mbql.s/OrderBy]]
+(mu/defn ^:private order-by->$sort :- $SortStage
+  [order-by :- [:sequential ::mbql.s/OrderBy]]
   {$sort (into
           (ordered-map/ordered-map)
           (for [[direction field] order-by]
@@ -1216,8 +1252,8 @@
   (let [parent->child-id (reduce (fn [acc [agg-type field-id & _]]
                                    (if (and (= agg-type :field)
                                             (integer? field-id))
-                                     (let [field (qp.store/field field-id)]
-                                       (if-let [parent-id (:parent_id field)]
+                                     (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) field-id)]
+                                       (if parent-id
                                          (update acc parent-id conj (u/the-id field))
                                          acc))
                                      acc))
@@ -1250,7 +1286,7 @@
       (cond-> pipeline-ctx
         (seq sort-fields) (update :query conj
                                   ;; We $addFields before sorting, otherwise expressions will not be available for the sort
-                                  {:$addFields (into (ordered-map/ordered-map) sort-fields)})
+                                  {$addFields (into (ordered-map/ordered-map) sort-fields)})
         explicit-order-by (update :query conj
                                   (order-by->$sort order-by))))))
 
@@ -1303,7 +1339,9 @@
             handle-limit
             handle-page])))
 
-(s/defn ^:private generate-aggregation-pipeline :- {:projections Projections, :query Pipeline}
+(mu/defn ^:private generate-aggregation-pipeline :- [:map
+                                                     [:projections Projections]
+                                                     [:query Pipeline]]
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
   [inner-query :- mbql.s/MBQLQuery]
   (add-aggregation-pipeline inner-query))
@@ -1311,7 +1349,7 @@
 (defn- query->collection-name
   "Return `:collection` from a source query, if it exists."
   [query]
-  (mbql.u/match-one query
+  (lib.util.match/match-one query
     (_ :guard (every-pred map? :collection))
     ;; ignore source queries inside `:joins` or `:collection` outside of a `:source-query`
     (when (let [parents (set &parents)]
@@ -1333,7 +1371,15 @@
   "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
   [^String s]
   (try
-    (mapv (fn [^org.bson.BsonValue v] (-> v .asDocument com.mongodb.BasicDBObject.))
+    ;; TODO: Fixme! In following expression we were previously creating BasicDBObject's. As part of Monger removal
+    ;;       in favor of plain mongo-java-driver we now create Documents. I believe following conversion was and is
+    ;;       responsible for https://github.com/metabase/metabase/issues/38181. When pipeline is deserialized,
+    ;;       we end up with vector of `Document`s into which are appended new query stages, which are clojure
+    ;;       structures. When we render the query in "view native query" in query builder, clojure structures
+    ;;       are transformed to json correctly. But documents are rendered to their string representation (screenshot
+    ;;       in the issue). Possible fix could be to represent native queries in ejson v2, which conforms to json rfc,
+    ;;       hence there would be no need for special bson values handling. That is to be further investigated.
+    (mapv (fn [^org.bson.BsonValue v] (-> v .asDocument org.bson.Document.))
           (org.bson.BsonArray/parse s))
     (catch Throwable e
       (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
@@ -1369,9 +1415,10 @@
   "Compile an MBQL query."
   [query]
   (let [query (update query :query preprocess)]
-    (binding [*query* query]
+    (binding [*query* query
+              *next-alias-index* (volatile! 0)]
       (let [source-table-name (if-let [source-table-id (mbql.u/query->source-table-id query)]
-                                (:name (qp.store/table source-table-id))
+                                (:name (lib.metadata/table (qp.store/metadata-provider) source-table-id))
                                 (query->collection-name query))
             compiled (mbql->native-rec (:query query))]
         (log-aggregation-pipeline (:query compiled))

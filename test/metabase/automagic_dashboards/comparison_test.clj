@@ -20,7 +20,7 @@
   (-> left
       (magic/automagic-analysis {})
       (c/comparison-dashboard left right {})
-      :ordered_cards
+      :dashcards
       count
       pos?))
 
@@ -34,9 +34,9 @@
         (is (some? (test-comparison (t2/select-one Segment :id segment-id) (t2/select-one Table :id (mt/id :venues)))))))))
 
 (deftest test-2
-  (mt/with-temp* [Segment [{segment1-id :id} @segment]
-                  Segment [{segment2-id :id} {:table_id   (mt/id :venues)
-                                              :definition {:filter [:< [:field (mt/id :venues :price) nil] 4]}}]]
+  (mt/with-temp [Segment {segment1-id :id} @segment
+                 Segment {segment2-id :id} {:table_id   (mt/id :venues)
+                                            :definition {:filter [:< [:field (mt/id :venues :price) nil] 4]}}]
     (mt/with-test-user :rasta
       (with-dashboard-cleanup
         (is (some? (test-comparison (t2/select-one Segment :id segment1-id) (t2/select-one Segment :id segment2-id))))))))

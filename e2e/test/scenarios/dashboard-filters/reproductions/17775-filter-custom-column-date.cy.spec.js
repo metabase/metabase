@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
@@ -7,7 +8,6 @@ import {
   visitDashboard,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { setQuarterAndYear } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -15,7 +15,12 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const questionDetails = {
   query: {
     "source-table": ORDERS_ID,
-    expressions: { "CC Date": ["field", ORDERS.CREATED_AT, null] },
+    expressions: {
+      "CC Date": ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+    },
+    "order-by": [
+      ["asc", ["field", ORDERS.ID, { "base-type": "type/BigInteger" }]],
+    ],
   },
 };
 
@@ -31,7 +36,7 @@ const parameters = [
 
 const dashboardDetails = { parameters };
 
-describe.skip("issue 17775", () => {
+describe("issue 17775", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -51,10 +56,13 @@ describe.skip("issue 17775", () => {
     editDashboard();
 
     // Make sure filter can be connected to the custom column using UI, rather than using API.
-    cy.get("main header").find(".Icon-gear").click();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .find(".Icon-gear")
+      .click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column to filter on")
+      .parent()
       .parent()
       .within(() => {
         cy.findByText("Select…").click();
@@ -70,11 +78,9 @@ describe.skip("issue 17775", () => {
   it("should be able to apply dashboard filter to a custom column (metabase#17775)", () => {
     filterWidget().click();
 
-    setQuarterAndYear({ quarter: "Q1", year: "2025" });
+    setQuarterAndYear({ quarter: "Q1", year: "2023" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("37.65");
-
-    cy.findAllByText("February 11, 2025, 9:40 PM").should("have.length", 2);
+    cy.findAllByText("44.43").should("have.length", 2);
+    cy.findAllByText("March 26, 2023, 8:45 AM").should("have.length", 2);
   });
 });

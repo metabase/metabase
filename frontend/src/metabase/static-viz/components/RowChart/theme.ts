@@ -1,5 +1,5 @@
-import { ColorGetter } from "metabase/static-viz/lib/colors";
-import { RowChartTheme } from "metabase/visualizations/shared/components/RowChart/types";
+import type { ColorGetter } from "metabase/static-viz/lib/colors";
+import type { RowChartTheme } from "metabase/visualizations/shared/components/RowChart/types";
 
 export const getStaticChartTheme = (
   getColor: ColorGetter,
@@ -7,7 +7,7 @@ export const getStaticChartTheme = (
 ): RowChartTheme => {
   return {
     axis: {
-      color: getColor("bg-dark"),
+      color: getColor("border"),
       ticks: {
         size: 12,
         weight: 700,

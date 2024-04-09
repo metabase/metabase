@@ -1,8 +1,8 @@
 import PropTypes from "prop-types";
 
-import ParametersList from "metabase/parameters/components/ParametersList";
 import { useSyncedQueryString } from "metabase/hooks/use-synced-query-string";
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
+import ParametersList from "metabase/parameters/components/ParametersList";
+import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 const propTypes = {
   parameters: PropTypes.array.isRequired,
@@ -21,6 +21,8 @@ const propTypes = {
   setParameterValue: PropTypes.func,
   setParameterIndex: PropTypes.func,
   setEditingParameter: PropTypes.func,
+  setParameterValueToDefault: PropTypes.func,
+  enableParameterRequiredBehavior: PropTypes.bool,
 };
 
 export function SyncedParametersList({
@@ -40,15 +42,12 @@ export function SyncedParametersList({
   setParameterValue,
   setParameterIndex,
   setEditingParameter,
+  setParameterValueToDefault,
+  enableParameterRequiredBehavior,
 }) {
   useSyncedQueryString(
-    () =>
-      getParameterValuesBySlug(
-        parameters,
-        undefined,
-        dashboard && { preserveDefaultedParameters: true },
-      ),
-    [parameters, dashboard],
+    () => getParameterValuesBySlug(parameters),
+    [parameters],
   );
 
   return (
@@ -66,6 +65,8 @@ export function SyncedParametersList({
       setParameterValue={setParameterValue}
       setParameterIndex={setParameterIndex}
       setEditingParameter={setEditingParameter}
+      setParameterValueToDefault={setParameterValueToDefault}
+      enableParameterRequiredBehavior={enableParameterRequiredBehavior}
     />
   );
 }

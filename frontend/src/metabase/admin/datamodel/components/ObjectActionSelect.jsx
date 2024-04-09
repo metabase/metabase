@@ -1,14 +1,17 @@
-import { createRef, Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
-
+import { createRef, Component } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import { capitalize } from "metabase/lib/formatting";
-import ObjectRetireModal from "./ObjectRetireModal";
 
-import { ActionLink } from "./ObjectActionSelect.styled";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
+import { capitalize } from "metabase/lib/formatting";
+import { Icon } from "metabase/ui";
+
+import { TriggerIconContainer, ActionLink } from "./ObjectActionSelect.styled";
+import ObjectRetireModal from "./ObjectRetireModal";
 
 export default class ObjectActionsSelect extends Component {
   constructor(props) {
@@ -16,9 +19,11 @@ export default class ObjectActionsSelect extends Component {
 
     this.retireModal = createRef();
   }
+
   static propTypes = {
     object: PropTypes.object.isRequired,
     objectType: PropTypes.string.isRequired,
+    objectTypeLocalized: PropTypes.string.isRequired,
     onRetire: PropTypes.func.isRequired,
   };
 
@@ -28,21 +33,20 @@ export default class ObjectActionsSelect extends Component {
   }
 
   render() {
-    const { object, objectType } = this.props;
+    const { object, objectType, objectTypeLocalized } = this.props;
     return (
       <div>
         <PopoverWithTrigger
           triggerElement={
-            <span className="text-light text-brand-hover">
+            <TriggerIconContainer>
               <Icon name="ellipsis" />
-            </span>
+            </TriggerIconContainer>
           }
         >
-          <ul className="UserActionsSelect">
+          <ul className={AdminS.UserActionsSelect}>
             <li>
               <ActionLink
                 to={"/admin/datamodel/" + objectType + "/" + object.id}
-                data-metabase-event={"Data Model;" + objectType + " Edit Page"}
               >
                 {t`Edit`} {capitalize(objectType)}
               </ActionLink>
@@ -56,16 +60,22 @@ export default class ObjectActionsSelect extends Component {
                   object.id +
                   "/revisions"
                 }
-                data-metabase-event={"Data Model;" + objectType + " History"}
               >
                 {t`Revision History`}
               </ActionLink>
             </li>
-            <li className="mt1 border-top">
+            <li className={cx(CS.mt1, CS.borderTop)}>
               <ModalWithTrigger
                 ref={this.retireModal}
-                triggerElement={"Retire " + capitalize(objectType)}
-                triggerClasses="block p2 bg-error-hover text-error text-white-hover cursor-pointer"
+                triggerElement={t`Retire ${objectTypeLocalized}`}
+                triggerClasses={cx(
+                  CS.block,
+                  CS.p2,
+                  "bg-error-hover",
+                  CS.textError,
+                  "text-white-hover",
+                  CS.cursorPointer,
+                )}
               >
                 <ObjectRetireModal
                   object={object}

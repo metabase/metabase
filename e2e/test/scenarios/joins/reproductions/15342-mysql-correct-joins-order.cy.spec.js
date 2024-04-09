@@ -17,10 +17,11 @@ describe("issue 15342", { tags: "@external" }, () => {
 
   it("should correctly order joins for MySQL queries (metabase#15342)", () => {
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(MYSQL_DB_NAME).click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("People").click();
+    popover().within(() => {
+      cy.findByText("Raw Data").click();
+      cy.findByText(MYSQL_DB_NAME).click();
+      cy.findByText("People").click();
+    });
 
     addJoin({
       leftColumn: "ID",
@@ -29,16 +30,13 @@ describe("issue 15342", { tags: "@external" }, () => {
     });
 
     addJoin({
-      leftTable: "Orders",
-      leftColumn: "Product ID",
       rightTable: "Products",
-      rightColumn: "ID",
       joinType: "inner",
     });
 
     visualize();
 
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("Email"); // from People table
       cy.findByText("Orders → ID"); // joined Orders table columns
       cy.findByText("Products → ID"); // joined Products table columns
@@ -71,8 +69,13 @@ function addJoin({
     selectFromDropdown(leftTable).click();
   }
 
-  selectFromDropdown(leftColumn).click();
-  selectFromDropdown(rightColumn).click();
+  if (leftColumn) {
+    selectFromDropdown(leftColumn).click();
+  }
+
+  if (rightColumn) {
+    selectFromDropdown(rightColumn).click();
+  }
 
   cy.findAllByText("Join data")
     .last()

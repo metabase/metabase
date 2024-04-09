@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import { Icon } from "metabase/core/components/Icon";
+
 import Link from "metabase/core/components/Link";
-import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
+import { space } from "metabase/styled-components/theme";
+import { Icon } from "metabase/ui";
 
 export const ItemLink = styled(Link)`
   display: block;

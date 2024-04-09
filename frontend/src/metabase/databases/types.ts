@@ -1,5 +1,6 @@
-import { ComponentType, ReactNode } from "react";
-import { EngineFieldOption, EngineFieldType } from "metabase-types/api";
+import type { ComponentType, ReactNode } from "react";
+
+import type { EngineFieldOption, EngineFieldType } from "metabase-types/api";
 
 export interface EngineOption {
   name: string;

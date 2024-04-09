@@ -1,8 +1,9 @@
 (ns metabase.driver.druid.sync
-  (:require [medley.core :as m]
-            [metabase.driver.druid.client :as druid.client]
-            [metabase.models.secret :as secret]
-            [metabase.util.ssh :as ssh]))
+  (:require
+   [medley.core :as m]
+   [metabase.driver.druid.client :as druid.client]
+   [metabase.models.secret :as secret]
+   [metabase.util.ssh :as ssh]))
 
 (defn- do-segment-metadata-query [details datasource]
   {:pre [(map? details) (string? datasource)]}

@@ -1,0 +1,101 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Grid, Paper, Text } from "metabase/ui";
+
+export const args = {
+  p: "md",
+  radius: "md",
+  shadow: "md",
+  withBorder: false,
+};
+
+export const sampleArgs = {
+  text: "The elm tree planted by Eleanor Bold, the judge’s daughter, fell last night.",
+};
+
+export const argTypes = {
+  p: {
+    options: ["xs", "sm", "md", "lg", "xl"],
+    control: { type: "inline-radio" },
+  },
+  radius: {
+    options: ["xs", "sm", "md"],
+    control: { type: "inline-radio" },
+  },
+  shadow: {
+    options: ["xs", "sm", "md", "lg", "xl"],
+    control: { type: "inline-radio" },
+  },
+  withBorder: {
+    control: { type: "boolean" },
+  },
+};
+
+<Meta title="Utils/Paper" component={Paper} args={args} argTypes={argTypes} />
+
+# Paper
+
+Our themed wrapper around [Mantine Paper](https://v6.mantine.dev/core/paper/).
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/uc2OFS4lu0GvVDFB7Sz1hw/Paper?type=design&node-id=1-227&mode=design&t=x44LGyAYVvvURkVS-0)
+- [Mantine Paper Docs](https://v6.mantine.dev/core/paper/)
+
+## Examples
+
+export const DefaultTemplate = args => (
+  <Paper {...args}>
+    <Text>{sampleArgs.text}</Text>
+  </Paper>
+);
+
+export const GridTemplate = args => (
+  <Grid columns={argTypes.radius.options.length + 1} align="center" gutter="xl">
+    <Grid.Col span={1} />
+    {argTypes.radius.options.map(radius => (
+      <Grid.Col key={radius} span={1} align="center">
+        <Text weight="bold">Radius {radius}</Text>
+      </Grid.Col>
+    ))}
+    {argTypes.p.options.flatMap(padding => (
+      <Fragment key={padding}>
+        <Grid.Col span={1}>
+          <Text weight="bold">Padding {padding}</Text>
+        </Grid.Col>
+        {argTypes.radius.options.map(radius => (
+          <Grid.Col key={radius} span={1}>
+            <Paper {...args} p={padding} radius={radius}>
+              <Text>{sampleArgs.text}</Text>
+            </Paper>
+          </Grid.Col>
+        ))}
+      </Fragment>
+    ))}
+  </Grid>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### No border
+
+export const NoBorder = GridTemplate.bind({});
+
+<Canvas>
+  <Story name="No border">{NoBorder}</Story>
+</Canvas>
+
+### Border
+
+export const Border = GridTemplate.bind({});
+Border.args = {
+  withBorder: true,
+};
+
+<Canvas>
+  <Story name="Border">{Border}</Story>
+</Canvas>

@@ -1,4 +1,4 @@
-import {
+import type {
   CardId,
   PublicWritebackAction,
   WritebackParameter,
@@ -7,8 +7,9 @@ import {
   ActionFormSettings,
   FieldSettings,
 } from "metabase-types/api";
-import { createMockNativeDatasetQuery } from "./query";
+
 import { createMockParameter } from "./parameters";
+import { createMockNativeDatasetQuery } from "./query";
 import { createMockUserInfo } from "./user";
 
 export const createMockActionParameter = ({

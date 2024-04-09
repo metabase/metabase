@@ -2,13 +2,15 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util.cron :as u.cron]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -43,7 +45,7 @@
 (def max-indexed-values
   "Maximum number of values we will index. Actually take one more than this to test if there are more than the
   threshold."
-  5000)
+  25000)
 
 ;;;; indexing functions
 
@@ -51,19 +53,41 @@
   "Filter function for valid tuples for indexing: an id and a value."
   [[id v]] (and id v))
 
+(mu/defn ^:private fix-expression-refs :- mbql.s/Field
+  "Convert expression ref into a field ref.
+
+Expression refs (`[:expression \"full-name\"]`) are how the _query_ refers to a custom column. But nested queries
+don't, (and shouldn't) care that those are expressions. They are just another field. The field type is always
+`:type/Text` enforced by the endpoint to create model indexes."
+  [field-ref :- mbql.s/Field base-type]
+  (case (first field-ref)
+    :field field-ref
+    :expression (let [[_ expression-name] field-ref]
+                  ;; api validated that this is a text field when the model-index was created. When selecting the
+                  ;; expression we treat it as a field.
+                  [:field expression-name {:base-type base-type}])
+    (throw (ex-info (format "Invalid field ref for indexing: %s" field-ref)
+                    {:field-ref field-ref
+                     :valid-clauses [:field :expression]}))))
+
 (defn- fetch-values
   [model-index]
-  (let [model (t2/select-one Card :id (:model_id model-index))]
-    (try [nil (->> (qp/process-query
-                    {:database (:database_id model)
-                     :type     :query
-                     :query    {:source-table (format "card__%d" (:id model))
-                                :breakout     [(:pk_ref model-index) (:value_ref model-index)]
-                                :limit        (inc max-indexed-values)}})
-                   :data :rows (filter valid-tuples?))]
-         (catch Exception e
-           (log/warn (trs "Error fetching indexed values for model {0}" (:id model)) e)
-           [(ex-message e) []]))))
+  (let [model     (t2/select-one Card :id (:model_id model-index))
+        fix       (fn [field-ref base-type] (-> field-ref mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))
+        ;; :type/Text and :type/Integer are ensured at creation time on the api.
+        value-ref (-> model-index :value_ref (fix :type/Text))
+        pk-ref    (-> model-index :pk_ref (fix :type/Integer))]
+    (try
+      [nil (->> (qp/process-query
+                 {:database (:database_id model)
+                  :type     :query
+                  :query    {:source-table (format "card__%d" (:id model))
+                             :breakout     [pk-ref value-ref]
+                             :limit        (inc max-indexed-values)}})
+                :data :rows (filter valid-tuples?))]
+      (catch Exception e
+        (log/warnf e "Error fetching indexed values for model %s" (:id model))
+        [(ex-message e) []]))))
 
 (defn find-changes
   "Find additions and deletions in indexed values. `source-values` are from the db, `indexed-values` are what we
@@ -83,38 +107,43 @@
   "Add indexed values to the model_index_value table."
   [model-index]
   (let [[error-message values-to-index] (fetch-values model-index)
-        current-index-values               (into #{}
-                                                 (map (juxt :model_pk :name))
-                                                 (t2/select ModelIndexValue
-                                                            :model_index_id (:id model-index)))]
+        current-index-values            (into #{}
+                                              (map (juxt :model_pk :name))
+                                              (t2/select ModelIndexValue
+                                                         :model_index_id (:id model-index)))]
     (if-not (str/blank? error-message)
-      (t2/update! ModelIndex (:id model-index) {:state           "error"
-                                                :error           error-message
+      (t2/update! ModelIndex (:id model-index) {:state      "error"
+                                                :error      error-message
                                                 :indexed_at :%now})
       (try
         (t2/with-transaction [_conn]
           (let [{:keys [additions deletions]} (find-changes {:current-index current-index-values
                                                              :source-values values-to-index})]
             (when (seq deletions)
-              (t2/delete! ModelIndexValue
-                          :model_index_id (:id model-index)
-                          :pk_ref [:in (->> deletions (map first))]))
+              (doseq [deletions-part (partition-all 10000 deletions)]
+                (t2/delete! ModelIndexValue
+                            :model_index_id (:id model-index)
+                            :model_pk [:in (->> deletions-part (map first))])))
             (when (seq additions)
-              (t2/insert! ModelIndexValue
-                          (map (fn [[id v]]
-                                 {:name           v
-                                  :model_pk       id
-                                  :model_index_id (:id model-index)})
-                               additions))))
+              (doseq [additions-part (partition-all 10000 additions)]
+                (t2/insert! ModelIndexValue
+                            (map (fn [[id v]]
+                                   {:name           v
+                                    :model_pk       id
+                                    :model_index_id (:id model-index)})
+                                 additions-part)))))
           (t2/update! ModelIndex (:id model-index)
                       {:indexed_at :%now
-                       :state           (if (> (count values-to-index) max-indexed-values)
-                                          "overflow"
-                                          "indexed")}))
+                       :error      nil
+                       :state      (if (> (count values-to-index) max-indexed-values)
+                                     "overflow"
+                                     "indexed")}))
         (catch Exception e
+          (log/error e (format "Error saving model-index values for model-index: %d, model: %d"
+                               (:id model-index) (:model-id model-index)))
           (t2/update! ModelIndex (:id model-index)
-                      {:state           "error"
-                       :error           (ex-message e)
+                      {:state      "error"
+                       :error      (ex-message e)
                        :indexed_at :%now}))))))
 
 

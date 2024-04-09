@@ -1,10 +1,12 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visitQuestion,
   popover,
   visitIframe,
+  openStaticEmbeddingModal,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import {
   regularQuestion,
@@ -14,7 +16,7 @@ import {
 
 const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
-describe("scenarios > embedding > questions ", () => {
+describe("scenarios > embedding > questions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -41,9 +43,7 @@ describe("scenarios > embedding > questions ", () => {
       visitQuestion(id);
     });
 
-    cy.icon("share").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Embed in your application").click();
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
     visitIframe();
 
@@ -86,17 +86,13 @@ describe("scenarios > embedding > questions ", () => {
       visitQuestion(id);
     });
 
-    cy.icon("share").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Embed in your application").click();
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
     visitIframe();
 
     assertOnXYAxisLabels({ xLabel: "Created At", yLabel: "Count" });
 
-    cy.get(".x.axis .tick")
-      .should("have.length", 5)
-      .and("contain", "Apr, 2022");
+    cy.get(".x.axis .tick").should("have.length", 5).and("contain", "Apr 2022");
 
     cy.get(".y.axis .tick").should("contain", "60");
 
@@ -104,7 +100,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.get(".dot").last().realHover();
 
     popover().within(() => {
-      testPairedTooltipValues("Created At", "Aug, 2022");
+      testPairedTooltipValues("Created At", "Aug 2022");
       testPairedTooltipValues("Math", "2");
       testPairedTooltipValues("Count", "79");
     });
@@ -123,9 +119,7 @@ describe("scenarios > embedding > questions ", () => {
       });
     });
 
-    cy.icon("share").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Embed in your application").click();
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
     visitIframe();
 
@@ -161,9 +155,7 @@ describe("scenarios > embedding > questions ", () => {
       visitQuestion(id);
     });
 
-    cy.icon("share").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Embed in your application").click();
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
     visitIframe();
 
@@ -198,14 +190,13 @@ describe("scenarios > embedding > questions ", () => {
   });
 
   it("should display according to `locale` parameter metabase#22561", () => {
-    const CARD_ID = 1;
-    cy.request("PUT", `/api/card/${CARD_ID}`, { enable_embedding: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      enable_embedding: true,
+    });
 
-    visitQuestion(CARD_ID);
+    visitQuestion(ORDERS_QUESTION_ID);
 
-    cy.icon("share").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Embed in your application").click();
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
     visitIframe();
 

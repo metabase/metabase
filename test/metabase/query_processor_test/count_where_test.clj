@@ -1,12 +1,13 @@
 (ns metabase.query-processor-test.count-where-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.metric :refer [Metric]]
+   [metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.segment :refer [Segment]]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 94
            (->> {:aggregation [[:count-where [:< [:field (mt/id :venues :price) nil] 4]]]}
@@ -22,7 +23,7 @@
                   ffirst
                   long))))))
 
-(deftest compound-condition-test
+(deftest ^:parallel compound-condition-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 17
            (->> {:aggregation [[:count-where
@@ -36,7 +37,7 @@
                 ffirst
                 long)))))
 
-(deftest filter-test
+(deftest ^:parallel filter-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= nil
            (->> {:aggregation [[:count-where [:< [:field (mt/id :venues :price) nil] 4]]]
@@ -45,7 +46,7 @@
                 mt/rows
                 ffirst)))))
 
-(deftest breakout-test
+(deftest ^:parallel breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= [[2 0]
             [3 0]
@@ -60,20 +61,23 @@
                 (map (fn [[k v]]
                        [(long k) (long v)])))))))
 
-(deftest count-where-inside-expression-test
+(deftest ^:parallel count-where-inside-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
-    (is (= 48
-           (->> {:aggregation [[:+
-                                [:/
-                                 [:count-where [:< [:field (mt/id :venues :price) nil] 4]]
-                                 2]
-                                1]]}
-                (mt/run-mbql-query venues)
-                mt/rows
-                ffirst
-                long)))))
+    (let [query (mt/mbql-query venues
+                  {:aggregation [[:+
+                                  [:/
+                                   [:count-where [:< [:field (mt/id :venues :price) nil] 4]]
+                                   2]
+                                  1]]})]
+      (mt/with-native-query-testing-context query
+        (is (= 48
+               (-> query
+                   qp/process-query
+                   mt/rows
+                   ffirst
+                   long)))))))
 
-(deftest segment-test
+(deftest ^:parallel segment-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (t2.with-temp/with-temp [Segment {segment-id :id} {:table_id   (mt/id :venues)
                                                        :definition {:source-table (mt/id :venues)
@@ -85,9 +89,9 @@
                   ffirst
                   long))))))
 
-(deftest metric-test
+(deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
-    (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id   (mt/id :venues)
+    (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
                                                      :definition {:source-table (mt/id :venues)
                                                                   :aggregation  [:count-where
                                                                                  [:< [:field (mt/id :venues :price) nil] 4]]}}]

@@ -1,6 +1,10 @@
-import { forwardRef, HTMLAttributes, Ref } from "react";
-import ColorPill from "metabase/core/components/ColorPill";
+import type { HTMLAttributes, Ref } from "react";
+import { forwardRef } from "react";
+
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import type { PillSize } from "metabase/core/components/ColorPill";
+import ColorPill from "metabase/core/components/ColorPill";
+
 import ColorSelectorPopover from "./ColorSelectorPopover";
 
 export type ColorSelectorAttributes = Omit<
@@ -11,6 +15,7 @@ export type ColorSelectorAttributes = Omit<
 export interface ColorSelectorProps extends ColorSelectorAttributes {
   value: string;
   colors: string[];
+  pillSize?: PillSize;
   onChange?: (newValue: string) => void;
 }
 

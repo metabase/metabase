@@ -1,16 +1,13 @@
-import * as React from "react";
-import { t } from "ttag";
-import { Location } from "history";
+import type { Location } from "history";
+import type * as React from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import Radio from "metabase/core/components/Radio";
-
-import { State } from "metabase-types/store";
-
-import { getSetting } from "metabase/selectors/settings";
-
 import { PLUGIN_ADMIN_TOOLS } from "metabase/plugins";
+import { getSetting } from "metabase/selectors/settings";
+import type { State } from "metabase-types/store";
 
 import { TabsContainer, ContentContainer } from "./Tools.styled";
 

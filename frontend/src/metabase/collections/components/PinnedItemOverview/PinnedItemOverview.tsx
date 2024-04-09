@@ -1,15 +1,15 @@
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
 
-import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-
-import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
-import PinnedQuestionCard from "metabase/collections/components/PinnedQuestionCard";
-import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";
-import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
 import PinDropZone from "metabase/collections/components/PinDropZone";
+import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
+import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";
+import PinnedQuestionCard from "metabase/collections/components/PinnedQuestionCard";
+import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
-import Database from "metabase-lib/metadata/Database";
+import CS from "metabase/css/core/index.css";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import {
   Container,
@@ -59,7 +59,7 @@ function PinnedItemOverview({
           cardGroup.length > 0 && (
             <Grid key={cardGroupIndex}>
               {cardGroup.map(item => (
-                <div key={item.id} className="relative">
+                <div key={item.id} className={CS.relative}>
                   <PinnedItemSortDropTarget
                     isFrontTarget
                     itemModel="card"
@@ -99,7 +99,7 @@ function PinnedItemOverview({
           </SectionHeader>
           <Grid>
             {dashboardItems.map(item => (
-              <div key={item.id} className="relative">
+              <div key={item.id} className={CS.relative}>
                 <PinnedItemSortDropTarget
                   isFrontTarget
                   itemModel="dashboard"
@@ -146,7 +146,7 @@ function PinnedItemOverview({
           </SectionHeader>
           <Grid>
             {dataModelItems.map(item => (
-              <div key={item.id} className="relative">
+              <div key={item.id} className={CS.relative}>
                 <PinnedItemSortDropTarget
                   isFrontTarget
                   itemModel="dataset"

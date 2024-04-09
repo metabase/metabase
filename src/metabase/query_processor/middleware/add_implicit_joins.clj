@@ -6,16 +6,19 @@
    [clojure.set :as set]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.db.query :as mdb.query]
-   [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.add-implicit-clauses
-    :as qp.add-implicit-clauses]
+   [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]))
 
 (defn- implicitly-joined-fields
   "Find fields that come from implicit join in form `x`, presumably a query.
@@ -24,38 +27,46 @@
   `:source-field` field in corresponding `:source-query` would be the one, that uses remappings. See
   [[metabase.models.params.custom-values-test/with-mbql-card-test]]."
   [x]
-  (set (mbql.u/match x [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))]
+  (set (lib.util.match/match x [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))]
                      (when-not (some #{:source-metadata} &parents)
                        &match))))
 
 (defn- join-alias [dest-table-name source-fk-field-name]
   (str dest-table-name "__via__" source-fk-field-name))
 
-(defn- fk-ids->join-infos
+(def ^:private JoinInfo
+  [:map
+   [:source-table ::lib.schema.id/table]
+   [:alias        ::lib.schema.common/non-blank-string]
+   [:fields       [:= :none]]
+   [:strategy     [:= :left-join]]
+   [:condition    mbql.s/=]
+   [:fk-field-id  ::lib.schema.id/field]])
+
+(mu/defn ^:private fk-ids->join-infos :- [:maybe [:sequential JoinInfo]]
   "Given `fk-field-ids`, return a sequence of maps containing IDs and and other info needed to generate corresponding
   `joined-field` and `:joins` clauses."
   [fk-field-ids]
   (when (seq fk-field-ids)
-    (let [infos (mdb.query/query {:select    [[:source-fk.id    :fk-field-id]
-                                              [:source-fk.name  :fk-name]
-                                              [:target-pk.id    :pk-id]
-                                              [:target-table.id :source-table]
-                                              [:target-table.name :table-name]]
-                                  :from      [[:metabase_field :source-fk]]
-                                  :left-join [[:metabase_field :target-pk]    [:= :source-fk.fk_target_field_id :target-pk.id]
-                                              [:metabase_table :target-table] [:= :target-pk.table_id :target-table.id]]
-                                  :where     [:and
-                                              [:in :source-fk.id (set fk-field-ids)]
-                                              [:= :target-table.db_id (u/the-id (qp.store/database))]
-                                              (mdb.u/isa :source-fk.semantic_type :type/FK)]})]
-      (for [{:keys [pk-id fk-name table-name fk-field-id], :as info} infos]
-        (let [join-alias (join-alias table-name fk-name)]
-          (-> info
-              (assoc :alias join-alias
-                     :fields :none
-                     :strategy :left-join
-                     :condition [:= [:field fk-field-id nil] [:field pk-id {:join-alias join-alias}]])
-              (dissoc :fk-name :table-name :pk-id)
+    (let [fk-fields        (qp.store/bulk-metadata :metadata/column fk-field-ids)
+          target-field-ids (into #{} (keep :fk-target-field-id) fk-fields)
+          target-fields    (when (seq target-field-ids)
+                             (qp.store/bulk-metadata :metadata/column fk-field-ids))
+          target-table-ids (into #{} (keep :table-id) target-fields)]
+      ;; this is for cache-warming purposes.
+      (when (seq target-table-ids)
+        (qp.store/bulk-metadata :metadata/table target-table-ids))
+      (for [{fk-name :name, fk-field-id :id, pk-id :fk-target-field-id} fk-fields
+            :when                                                       pk-id]
+        (let [{source-table :table-id} (lib.metadata.protocols/field (qp.store/metadata-provider) pk-id)
+              {table-name :name}       (lib.metadata.protocols/table (qp.store/metadata-provider) source-table)
+              alias-for-join           (join-alias table-name fk-name)]
+          (-> {:source-table source-table
+               :alias        alias-for-join
+               :fields       :none
+               :strategy     :left-join
+               :condition    [:= [:field fk-field-id nil] [:field pk-id {:join-alias alias-for-join}]]
+               :fk-field-id  fk-field-id}
               (vary-meta assoc ::needs [:field fk-field-id nil])))))))
 
 (defn- implicitly-joined-fields->joins
@@ -64,7 +75,7 @@
   (distinct
    (let [fk-field-ids (->> field-clauses-with-source-field
                            (map (fn [clause]
-                                  (mbql.u/match-one clause
+                                  (lib.util.match/match-one clause
                                     [:field (id :guard integer?) (opts :guard (every-pred :source-field (complement :join-alias)))]
                                     (:source-field opts))))
                            (filter integer?)
@@ -81,19 +92,25 @@
            (visible-joins source-query)))))
 
 (defn- distinct-fields [fields]
-  (m/distinct-by mbql.u/remove-namespaced-options fields))
+  (m/distinct-by
+   (fn [field]
+     (lib.util.match/replace (mbql.u/remove-namespaced-options field)
+       [:field id-or-name (opts :guard map?)]
+       [:field id-or-name (not-empty (dissoc opts :base-type :effective-type))]))
+   fields))
 
-(defn- construct-fk-field-id->join-alias
+(mu/defn ^:private construct-fk-field-id->join-alias :- [:map-of
+                                                         ::lib.schema.id/field
+                                                         ::lib.schema.common/non-blank-string]
   [form]
   ;; Build a map of FK Field ID -> alias used for IMPLICIT joins. Only implicit joins have `:fk-field-id`
-  (reduce
-   (fn [m {:keys [fk-field-id], join-alias :alias}]
-     (if (or (not fk-field-id)
-             (get m fk-field-id))
-       m
-       (assoc m fk-field-id join-alias)))
-   {}
-   (visible-joins form)))
+  (into {}
+        (comp (map (fn [{:keys [fk-field-id], join-alias :alias}]
+                     (when fk-field-id
+                       [fk-field-id join-alias])))
+              ;; only keep the first alias for each FK Field ID
+              (m/distinct-by first))
+        (visible-joins form)))
 
 (defn- add-implicit-joins-aliases-to-metadata
   "Add `:join-alias`es to fields containing `:source-field` in `:source-metadata` of `query`.
@@ -103,7 +120,7 @@
   [{:keys [source-query] :as query}]
   (let [fk-field-id->join-alias (construct-fk-field-id->join-alias source-query)]
     (update query :source-metadata
-            #(mbql.u/replace %
+            #(lib.util.match/replace %
                [:field id-or-name (opts :guard (every-pred :source-field (complement :join-alias)))]
                (let [join-alias (fk-field-id->join-alias (:source-field opts))]
                  (if (some? join-alias)
@@ -114,14 +131,20 @@
   "Add `:field` `:join-alias` to `:field` clauses with `:source-field` in `form`. Ignore `:source-metadata`."
   [form]
   (let [fk-field-id->join-alias (construct-fk-field-id->join-alias form)]
-    (cond-> (mbql.u/replace form
+    (cond-> (lib.util.match/replace form
               [:field id-or-name (opts :guard (every-pred :source-field (complement :join-alias)))]
               (if-not (some #{:source-metadata} &parents)
                 (let [join-alias (or (fk-field-id->join-alias (:source-field opts))
                                      (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
-                                                          (pr-str (:source-field opts)))
+                                                          (format "%s %s"
+                                                                  (pr-str (:source-field opts))
+                                                                  (let [field (lib.metadata/field
+                                                                               (qp.store/metadata-provider)
+                                                                               (:source-field opts))]
+                                                                    (pr-str (:display-name field)))))
                                                      {:resolving  &match
-                                                      :candidates fk-field-id->join-alias})))]
+                                                      :candidates fk-field-id->join-alias
+                                                      :form       form})))]
                   [:field id-or-name (assoc opts :join-alias join-alias)])
                 &match))
       (sequential? (:fields form)) (update :fields distinct-fields))))
@@ -146,7 +169,7 @@
 
 (defn- add-referenced-fields-to-source [form reused-joins]
   (let [reused-join-alias? (set (map :alias reused-joins))
-        referenced-fields  (set (mbql.u/match (dissoc form :source-query :joins)
+        referenced-fields  (set (lib.util.match/match (dissoc form :source-query :joins)
                                   [:field _ (_ :guard (fn [{:keys [join-alias]}]
                                                         (reused-join-alias? join-alias)))]
                                   &match))]
@@ -179,7 +202,7 @@
   "Get a set of join aliases that `join` has an immediate dependency on."
   [join]
   (set
-   (mbql.u/match (:condition join)
+   (lib.util.match/match (:condition join)
      [:field _ (opts :guard :join-alias)]
      (let [{:keys [join-alias]} opts]
        (when-not (= join-alias (:alias join))
@@ -265,9 +288,9 @@
 
   This middleware also adds `:join-alias` info to all `:field` forms with `:source-field`s."
   [query]
-  (if (mbql.u/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
+  (if (lib.util.match/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
     (do
-      (when-not (driver/database-supports? driver/*driver* :foreign-keys (qp.store/database))
+      (when-not (driver/database-supports? driver/*driver* :foreign-keys (lib.metadata/database (qp.store/metadata-provider)))
         (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
                         {:driver driver/*driver*
                          :type   qp.error-type/unsupported-feature})))

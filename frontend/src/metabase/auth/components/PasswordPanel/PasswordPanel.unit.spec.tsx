@@ -1,12 +1,20 @@
-import fetchMock from "fetch-mock";
+import "metabase/plugins/builtin";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
+import {
+  setupCurrentUserEndpoint,
+  setupLoginEndpoint,
+  setupPropertiesEndpoints,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import MetabaseSettings from "metabase/lib/settings";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { setupLoginEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+
 import { PasswordPanel } from "./PasswordPanel";
 
 const TEST_EMAIL = "user@example.test";
@@ -26,6 +34,8 @@ const setup = ({ isGoogleAuthEnabled = false }: SetupOpts = {}) => {
   MetabaseSettings.set("google-auth-enabled", isGoogleAuthEnabled);
 
   setupLoginEndpoint();
+  setupCurrentUserEndpoint(createMockUser());
+  setupPropertiesEndpoints(createMockSettings());
   renderWithProviders(<PasswordPanel />, { storeInitialState: state });
 };
 
@@ -41,14 +51,14 @@ describe("PasswordPanel", () => {
   it("should login successfully", async () => {
     setup();
 
-    userEvent.type(screen.getByLabelText("Email address"), TEST_EMAIL);
-    userEvent.type(screen.getByLabelText("Password"), TEST_PASSWORD);
+    await userEvent.type(screen.getByLabelText("Email address"), TEST_EMAIL);
+    await userEvent.type(screen.getByLabelText("Password"), TEST_PASSWORD);
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
     });
 
-    userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() => {
       expect(fetchMock.done("path:/api/session")).toBe(true);

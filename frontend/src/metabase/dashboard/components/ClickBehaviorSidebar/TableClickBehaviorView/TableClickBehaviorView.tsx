@@ -1,16 +1,18 @@
+import cx from "classnames";
 import { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
+import { hasActionsMenu } from "metabase/lib/click-behavior";
 import type {
-  DashboardOrderedCard,
+  QuestionDashboardCard,
   ClickBehavior,
   ClickBehaviorType,
   DatasetColumn,
 } from "metabase-types/api";
 
-import { hasActionsMenu } from "metabase/lib/click-behavior";
-import Column from "./Column";
+import { Column } from "./Column";
 
 const COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE = [
   "link",
@@ -20,7 +22,7 @@ const COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE = [
 
 function explainClickBehaviorType(
   type: ClickBehaviorType,
-  dashcard: DashboardOrderedCard,
+  dashcard: QuestionDashboardCard,
 ) {
   return {
     action: t`Execute an action`,
@@ -34,14 +36,14 @@ function explainClickBehaviorType(
 
 interface Props {
   columns: DatasetColumn[];
-  dashcard: DashboardOrderedCard;
+  dashcard: QuestionDashboardCard;
   getClickBehaviorForColumn: (
     column: DatasetColumn,
   ) => ClickBehavior | undefined;
   onColumnClick: (column: DatasetColumn) => void;
 }
 
-function TableClickBehaviorView({
+export function TableClickBehaviorView({
   columns,
   dashcard,
   getClickBehaviorForColumn,
@@ -83,8 +85,8 @@ function TableClickBehaviorView({
     group => {
       const [clickBehaviorType, columnsWithClickBehavior] = group;
       return (
-        <div key={clickBehaviorType} className="mb2 px4">
-          <h5 className="text-uppercase text-medium my1">
+        <div key={clickBehaviorType} className={cx(CS.mb2, CS.px4)}>
+          <h5 className={cx(CS.textUppercase, CS.textMedium, CS.my1)}>
             {explainClickBehaviorType(clickBehaviorType, dashcard)}
           </h5>
           {columnsWithClickBehavior.map(renderColumn)}
@@ -96,6 +98,3 @@ function TableClickBehaviorView({
 
   return <>{groupedColumns.map(renderColumnGroup)}</>;
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TableClickBehaviorView;

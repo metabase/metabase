@@ -1,16 +1,17 @@
+import { renderWithProviders, screen } from "__support__/ui";
+import type { SetupStep } from "metabase/setup/types";
 import {
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import { COMPLETED_STEP, USER_STEP } from "../../constants";
+
 import { CompletedStep } from "./CompletedStep";
 
 interface SetupOpts {
-  step?: number;
+  step?: SetupStep;
 }
 
-const setup = ({ step = COMPLETED_STEP }: SetupOpts = {}) => {
+const setup = ({ step = "completed" }: SetupOpts = {}) => {
   const state = createMockState({
     setup: createMockSetupState({
       step,
@@ -22,13 +23,13 @@ const setup = ({ step = COMPLETED_STEP }: SetupOpts = {}) => {
 
 describe("CompletedStep", () => {
   it("should render in inactive state", () => {
-    setup({ step: USER_STEP });
+    setup({ step: "user_info" });
 
     expect(screen.queryByText("You're all set up!")).not.toBeInTheDocument();
   });
 
   it("should show a newsletter form and a link to the app", () => {
-    setup({ step: COMPLETED_STEP });
+    setup({ step: "completed" });
 
     expect(screen.getByText("Metabase Newsletter")).toBeInTheDocument();
     expect(screen.getByText("Take me to Metabase")).toBeInTheDocument();

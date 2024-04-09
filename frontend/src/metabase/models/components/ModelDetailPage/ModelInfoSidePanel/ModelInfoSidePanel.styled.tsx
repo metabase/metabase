@@ -1,9 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
 import EditableText from "metabase/core/components/EditableText";
 import Link from "metabase/core/components/Link";
-
 import { color } from "metabase/lib/colors";
 
 export const ModelInfoSection = styled.div``;

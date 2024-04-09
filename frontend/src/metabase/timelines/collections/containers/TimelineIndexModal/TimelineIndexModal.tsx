@@ -1,9 +1,10 @@
-import * as Urls from "metabase/lib/urls";
 import Timelines from "metabase/entities/timelines";
-import { State } from "metabase-types/store";
-import TimelineIndexModal from "../../components/TimelineIndexModal";
+import * as Urls from "metabase/lib/urls";
+import type { State } from "metabase-types/store";
+
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import { ModalParams } from "../../types";
+import TimelineIndexModal from "../../components/TimelineIndexModal";
+import type { ModalParams } from "../../types";
 
 interface TimelineIndexModalProps {
   params: ModalParams;

@@ -1,8 +1,8 @@
-import { msgid, ngettext, t } from "ttag";
 import { getIn } from "icepick";
-import Questions from "metabase/entities/questions";
+import { msgid, ngettext, t } from "ttag";
+
 import Dashboards from "metabase/entities/dashboards";
-import Question from "metabase-lib/Question";
+import Questions from "metabase/entities/questions";
 
 export function getClickBehaviorDescription(dashcard) {
   const noBehaviorMessage = hasActionsMenu(dashcard)
@@ -42,7 +42,7 @@ export function getClickBehaviorDescription(dashcard) {
 export function hasActionsMenu(dashcard) {
   // This seems to work, but it isn't the right logic.
   // The right thing to do would be to check for any drills. However, we'd need a "clicked" object for that.
-  return !new Question(dashcard.card).isNative();
+  return dashcard.card.dataset_query?.type === "query";
 }
 
 export function isTableDisplay(dashcard) {

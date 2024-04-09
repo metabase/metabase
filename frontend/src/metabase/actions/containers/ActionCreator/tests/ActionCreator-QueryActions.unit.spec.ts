@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
-import { screen, getIcon, queryIcon, within } from "__support__/ui";
 
+import { screen, getIcon, queryIcon, within } from "__support__/ui";
 import {
   createMockActionParameter,
   createMockCard,
@@ -35,10 +35,12 @@ describe("ActionCreator > Query Actions", () => {
 
     it("should show clickable data reference icon", async () => {
       await setup();
-      userEvent.click(getIcon("reference"));
+      await userEvent.click(getIcon("reference"));
 
       expect(screen.getAllByText("Data Reference")).toHaveLength(2);
-      expect(screen.getByText("Database")).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId("sidebar-content")).getByText("Database"),
+      ).toBeInTheDocument();
     });
 
     it("should show action settings button", async () => {
@@ -54,16 +56,14 @@ describe("ActionCreator > Query Actions", () => {
 
         // put query into textbox
         const view = screen.getByTestId("mock-native-query-editor");
-        userEvent.paste(
-          within(view).getByRole("textbox"),
-          "select * from orders where {{paramNane}}",
-        );
+        await userEvent.click(within(view).getByRole("textbox"));
+        await userEvent.paste("select * from orders where {{paramNane}}");
 
-        userEvent.click(screen.getByRole("button", { name: "Save" }));
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
         // form is rendered
         expect(
-          screen.getByPlaceholderText("My new fantastic action"),
+          await screen.findByPlaceholderText("My new fantastic action"),
         ).toBeInTheDocument();
         expect(screen.getByTestId("select-button-content")).toHaveTextContent(
           "Select a model",
@@ -72,7 +72,7 @@ describe("ActionCreator > Query Actions", () => {
       it("should preselect model", async () => {
         const MODEL_NAME = "Awesome Model";
         const model = createMockCard({
-          dataset: true,
+          type: "model",
           can_write: true,
           name: MODEL_NAME,
         });
@@ -80,12 +80,10 @@ describe("ActionCreator > Query Actions", () => {
 
         // put query into textbox
         const view = screen.getByTestId("mock-native-query-editor");
-        userEvent.paste(
-          within(view).getByRole("textbox"),
-          "select * from orders where {{paramNane}}",
-        );
+        await userEvent.click(within(view).getByRole("textbox"));
+        await userEvent.paste("select * from orders where {{paramNane}}");
 
-        userEvent.click(screen.getByRole("button", { name: "Save" }));
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
         // form is rendered
         expect(

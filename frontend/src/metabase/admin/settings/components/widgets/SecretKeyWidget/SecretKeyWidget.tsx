@@ -1,17 +1,26 @@
 import { t } from "ttag";
+
 import Confirm from "metabase/components/Confirm";
+import CS from "metabase/css/core/index.css";
 import { UtilApi } from "metabase/services";
-import SettingInput from "../SettingInput";
+
+import { SettingInput } from "../SettingInput";
+
 import { GenerateButton, SecretKeyWidgetRoot } from "./SecretKeyWidget.styled";
 
 interface SecretKeyWidgetProps {
   onChange: (token: string) => void;
   setting: any;
+  confirmation: {
+    header: string;
+    dialog: string;
+  };
 }
 
 const SecretKeyWidget = ({
   onChange,
   setting,
+  confirmation,
   ...rest
 }: SecretKeyWidgetProps) => {
   const generateToken = async () => {
@@ -24,9 +33,9 @@ const SecretKeyWidget = ({
       <SettingInput setting={setting} onChange={onChange} {...(rest as any)} />
       {setting.value ? (
         <Confirm
-          triggerClasses="full-height"
-          title={t`Regenerate embedding key?`}
-          content={t`This will cause existing embeds to stop working until they are updated with the new key.`}
+          triggerClasses={CS.fullHeight}
+          title={confirmation.header}
+          content={confirmation.dialog}
           action={generateToken}
         >
           <GenerateButton primary>{t`Regenerate key`}</GenerateButton>

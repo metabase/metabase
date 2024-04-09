@@ -1,8 +1,10 @@
 import { connect } from "react-redux";
-import { State } from "metabase-types/store";
+
+import type { State } from "metabase-types/store";
+
+import { updateSettings } from "../../actions";
 import SlackStatus from "../../components/SlackStatus";
 import SlackStatusForm from "../../containers/SlackStatusForm";
-import { updateSettings } from "../../actions";
 import { isSlackTokenValid } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({

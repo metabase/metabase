@@ -1,12 +1,13 @@
 import { assocIn } from "icepick";
 
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   createAction,
   createThunkAction,
   handleActions,
   combineReducers,
 } from "metabase/lib/redux";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
+
 import { ApplicationPermissionsApi } from "./api";
 
 const INITIALIZE_APPLICATION_PERMISSIONS =

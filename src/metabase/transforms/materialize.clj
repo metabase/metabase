@@ -3,7 +3,7 @@
    [metabase.api.common :as api]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [toucan2.core :as t2]))
 
 (declare get-or-create-root-container-collection!)
@@ -25,12 +25,11 @@
      :location location)))
 
 (defn- create-collection!
-  ([collection-name color description]
-   (create-collection! collection-name color description (root-container-location)))
-  ([collection-name color description location]
+  ([collection-name description]
+   (create-collection! collection-name description (root-container-location)))
+  ([collection-name description location]
    (first (t2/insert-returning-pks! Collection
                                     {:name        collection-name
-                                     :color       color
                                      :description description
                                      :location    location}))))
 
@@ -40,7 +39,7 @@
   (let [location "/"
         name     "Automatically Generated Transforms"]
     (or (get-collection name location)
-        (create-collection! name "#509EE3" nil location))))
+        (create-collection! name nil location))))
 
 (defn fresh-collection-for-transform!
   "Create a new collection for all the artefacts belonging to transform, or reset it if it already
@@ -48,7 +47,7 @@
   [{:keys [name description]}]
   (if-let [collection-id (get-collection name)]
     (t2/delete! Card :collection_id collection-id)
-    (create-collection! name "#509EE3" description)))
+    (create-collection! name description)))
 
 (defn make-card-for-step!
   "Make and save a card for a given transform step and query."
@@ -58,7 +57,7 @@
         :description            description
         :name                   name
         :collection_id          (get-collection transform)
-        :result_metadata        (qp/query->expected-cols query)
+        :result_metadata        (qp.preprocess/query->expected-cols query)
         :visualization_settings {}
         :display                :table}
        card/populate-query-fields

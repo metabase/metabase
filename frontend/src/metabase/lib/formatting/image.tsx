@@ -1,9 +1,9 @@
+import type { OptionsType } from "./types";
 import { getUrlProtocol } from "./url";
-import { OptionsType } from "./types";
 
 export function formatImage(
   value: string,
-  { jsx, rich, view_as = "auto", link_text }: OptionsType = {},
+  { jsx, rich, view_as = "auto" }: OptionsType = {},
 ) {
   const url = String(value);
   const protocol = getUrlProtocol(url);

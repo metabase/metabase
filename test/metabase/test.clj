@@ -3,29 +3,23 @@
 
   (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
   reduces the cognitive load required to write tests.)"
-  (:refer-clojure :exclude [compile])
   (:require
-   [clojure.data]
-   [clojure.test :refer :all]
-   [environ.core :as env]
    [humane-are.core :as humane-are]
-   [java-time :as t]
+   [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [mb.hawk.init]
    [mb.hawk.parallel]
-   [medley.core :as m]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
+   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.email-test :as et]
    [metabase.http-client :as client]
-   [metabase.models :refer [PermissionsGroupMembership User]]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test]
-   [metabase.query-processor.context :as qp.context]
-   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -37,19 +31,19 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.initialize :as initialize]
    [metabase.test.persistence :as test.persistence]
-   [metabase.test.redefs]
+   [metabase.test.redefs :as test.redefs]
    [metabase.test.util :as tu]
    [metabase.test.util.async :as tu.async]
+   [metabase.test.util.dynamic-redefs :as tu.dr]
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
-   [metabase.test.util.random :as tu.random]
+   [metabase.test.util.misc :as tu.misc]
+   [metabase.test.util.public-settings :as tu.public-setings]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.test.util.timezone :as test.tz]
-   [metabase.util.log :as log]
+   [metabase.util.random :as u.random]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
-   [toucan.util.test :as tt]
-   [toucan2.core :as t2]
-   [toucan2.model :as t2.model]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
@@ -63,36 +57,44 @@
 ;; Fool the linters into thinking these namespaces are used! See discussion on
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
 (comment
+  actions.test-util/keep-me
   client/keep-me
-  data/keep-me
   data.impl/keep-me
+  data/keep-me
   datasets/keep-me
   driver/keep-me
   et/keep-me
   i18n.tu/keep-me
   initialize/keep-me
-  metabase.test.redefs/keep-me
+  lib.metadata.jvm/keep-me
+  mb.hawk.init/keep-me
+  mb.hawk.parallel/keep-me
+  test.redefs/keep-me
   mw.session/keep-me
-  test.persistence/keep-me
-  qp/keep-me
+  perms.test-util/keep-me
+  qp.store/keep-me
   qp.test-util/keep-me
-  qp.test/keep-me
+  qp/keep-me
   sql-jdbc.tu/keep-me
   sql.qp-test-util/keep-me
-  test-runner.assert-exprs/keep-me
-  test.users/keep-me
-  tt/keep-me
   t2.with-temp/keepme
-  tu/keep-me
+  test-runner.assert-exprs/keep-me
+  test.persistence/keep-me
+  test.tz/keep-me
+  test.users/keep-me
   tu.async/keep-me
   tu.log/keep-me
-  tu.random/keep-me
-  test.tz/keep-me
+  tu.misc/keep-me
+  tu.public-setings/keep-me
+  tu.thread-local/keep-me
+  u.random/keep-me
+  tu/keep-me
+  tx.env/keep-me
   tx/keep-me
-  tx.env/keep-me)
+  schema-migrations-test.impl/keep-me)
 
 ;; Add more stuff here as needed
-#_{:clj-kondo/ignore [:discouraged-var]}
+#_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
 (p/import-vars
  [actions.test-util
   with-actions
@@ -123,8 +125,7 @@
 
  [datasets
   test-driver
-  test-drivers
-  when-testing-driver]
+  test-drivers]
 
  [driver
   with-driver]
@@ -145,7 +146,9 @@
   authenticate
   build-url
   client
-  client-full-response]
+  real-client
+  client-full-response
+  client-real-response]
 
  [i18n.tu
   with-mock-i18n-bundles
@@ -154,15 +157,29 @@
  [initialize
   initialize-if-needed!]
 
+ [lib.metadata.jvm
+  application-database-metadata-provider]
+
  [mw.session
   with-current-user]
 
+ [perms.test-util
+  with-restored-data-perms!
+  with-restored-data-perms-for-group!
+  with-restored-data-perms-for-groups!
+  with-no-data-perms-for-all-users!
+  with-full-data-perms-for-all-users!
+  with-perm-for-group!
+  with-perm-for-group-and-table!]
+
  [qp
-  compile
-  preprocess
   process-query]
 
- [qp.test
+ [qp.store
+  with-metadata-provider]
+
+ [qp.test-util
+  card-with-source-metadata-for-query
   col
   cols
   first-row
@@ -175,14 +192,9 @@
   normal-drivers-without-feature
   rows
   rows+column-names
-  with-bigquery-fks]
-
- [qp.test-util
-  card-with-source-metadata-for-query
-  store-contents
   with-database-timezone-id
-  with-everything-store
-  with-report-timezone-id
+  with-mock-fks-for-drivers-without-fk-constraints
+  with-report-timezone-id!
   with-results-timezone-id]
 
  [sql-jdbc.tu
@@ -204,14 +216,13 @@
   user->id
   user-descriptor
   user-http-request
+  user-real-request
   with-group
   with-group-for-user
   with-test-user]
 
- [tt
-  with-temp*]
-
  [t2.with-temp
+  with-temp
   with-temp-defaults]
 
  [tu
@@ -221,6 +232,8 @@
   doall-recursive
   file->bytes
   is-uuid-string?
+  latest-audit-log-entry
+  let-url
   obj->json->obj
   postwalk-pred
   round-all-decimals
@@ -231,19 +244,23 @@
   with-all-users-permission
   with-column-remappings
   with-discarded-collections-perms-changes
+  with-discard-model-updates
   with-env-keys-renamed-by
   with-locale
   with-model-cleanup
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
-  with-temp-env-var-value
+  with-non-admin-groups-no-collection-perms
+  with-all-users-data-perms-graph!
+  with-temp-env-var-value!
   with-temp-dir
   with-temp-file
   with-temp-scheduler
   with-temp-vals-in-db
   with-temporary-setting-values
   with-temporary-raw-setting-values
-  with-user-in-groups]
+  with-user-in-groups
+  with-verified-cards]
 
  [tu.async
   wait-for-result
@@ -255,13 +272,25 @@
   with-log-messages-for-level
   with-log-level]
 
- [tu.random
+ [tu.misc
+  object-defaults
+  with-clock
+  with-single-admin-user]
+
+ [tu.public-setings
+  with-premium-features
+  with-additional-premium-features]
+
+ [u.random
   random-name
   random-hash
   random-email]
 
+ [tu.thread-local
+  test-helpers-set-global-values!]
+
  [test.tz
-  with-system-timezone-id]
+  with-system-timezone-id!]
 
  [tx
   count-with-template-tag-query
@@ -283,148 +312,23 @@
 
  [tx.env
   set-test-drivers!
-  with-test-drivers])
+  with-test-drivers]
 
-;;; TODO -- move all the stuff below into some other namespace and import it here.
+ [schema-migrations-test.impl
+  with-temp-empty-app-db])
 
-(defn do-with-clock [clock thunk]
-  (mb.hawk.parallel/assert-test-is-not-parallel "with-clock")
-  (testing (format "\nsystem clock = %s" (pr-str clock))
-    (let [clock (cond
-                  (t/clock? clock)           clock
-                  (t/zoned-date-time? clock) (t/mock-clock (t/instant clock) (t/zone-id clock))
-                  :else                      (throw (Exception. (format "Invalid clock: ^%s %s"
-                                                                        (.getName (class clock))
-                                                                        (pr-str clock)))))]
-      #_{:clj-kondo/ignore [:discouraged-var]}
-      (t/with-clock clock
-        (thunk)))))
+;; Rename this instead of using `import-vars` to make it clear that it's related to `=?`
+(p/import-fn hawk.approx/malli malli=?)
+(p/import-fn hawk.approx/exactly exactly=?)
 
-(defmacro with-clock
-  "Same as [[t/with-clock]], but adds [[testing]] context, and also supports using `ZonedDateTime` instances
-  directly (converting them to a mock clock automatically).
+(alter-meta! #'with-temp update :doc str "\n\n  Note: by default, this will execute its body inside a transaction, making
+  it thread safe. If it is wrapped in a call to [[metabase.test/test-helpers-set-global-values!]], it will affect the
+  global state of the application database.")
 
-    (mt/with-clock #t \"2019-12-10T00:00-08:00[US/Pacific]\"
-      ...)"
-  [clock & body]
-  `(do-with-clock ~clock (fn [] ~@body)))
-
-(defn do-with-single-admin-user
-  [attributes thunk]
-  (let [existing-admin-memberships (t2/select PermissionsGroupMembership :group_id (:id (perms-group/admin)))
-        _                          (t2/delete! (t2/table-name PermissionsGroupMembership) :group_id (:id (perms-group/admin)))
-        existing-admin-ids         (t2/select-pks-set User :is_superuser true)
-        _                          (when (seq existing-admin-ids)
-                                     (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser false}))
-        temp-admin                 (first (t2/insert-returning-instances! User (merge (with-temp-defaults User)
-                                                                                      attributes
-                                                                                      {:is_superuser true})))]
-    (try
-      (thunk temp-admin)
-      (finally
-        (t2/delete! User (:id temp-admin))
-        (when (seq existing-admin-ids)
-          (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser true}))
-        (t2/insert! PermissionsGroupMembership existing-admin-memberships)))))
-
-(defmacro with-single-admin-user
-  "Creates an admin user (with details described in the `options-map`) and (temporarily) removes the administrative
-  powers of all other users in the database.
-
-  Example:
-
-  (testing \"Check that the last superuser cannot deactivate themselves\"
-    (mt/with-single-admin-user [{id :id}]
-      (is (= \"You cannot remove the last member of the 'Admin' group!\"
-             (mt/user-http-request :crowberto :delete 400 (format \"user/%d\" id))))))"
-  [[binding-form & [options-map]] & body]
-  `(do-with-single-admin-user ~options-map (fn [~binding-form]
-                                             ~@body)))
-
-;;;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
-
-(defn test-qp-middleware
-  "Helper for testing QP middleware that uses the
-
-    (defn middleware [qp]
-      (fn [query rff context]
-        (qp query rff context)))
-
-  pattern, such as stuff in [[metabase.query-processor/around-middleware]]. Changes are returned in a map with keys:
-
-    * `:result`   ­ final result
-    * `:pre`      ­ `query` after preprocessing
-    * `:metadata` ­ `metadata` after post-processing. Should be a map e.g. with `:cols`
-    * `:post`     ­ `rows` after post-processing transduction"
-  ([middleware-fn]
-   (test-qp-middleware middleware-fn {}))
-
-  ([middleware-fn query]
-   (test-qp-middleware middleware-fn query []))
-
-  ([middleware-fn query rows]
-   (test-qp-middleware middleware-fn query {} rows))
-
-  ([middleware-fn query metadata rows]
-   (test-qp-middleware middleware-fn query metadata rows nil))
-
-  ([middleware-fn query metadata rows {:keys [run async?], :as context}]
-   {:pre [((some-fn nil? map?) metadata)]}
-   (let [async-qp (qp.reducible/async-qp
-                   (qp.reducible/combine-middleware
-                    (if (sequential? middleware-fn)
-                      middleware-fn
-                      [middleware-fn])))
-         context  (merge
-                   ;; CI is S U P E R  S L O W so give this a longer timeout.
-                   {:timeout (if (env/env :ci)
-                               5000
-                               500)
-                    :runf    (fn [query rff context]
-                               (try
-                                 (when run (run))
-                                 (qp.context/reducef rff context (assoc metadata :pre query) rows)
-                                 (catch Throwable e
-                                   (log/errorf "Error in test-qp-middleware runf: %s" e)
-                                   (throw e))))}
-                   context)]
-     (if async?
-       (async-qp query context)
-       (binding [qp.reducible/*run-on-separate-thread?* true]
-         (let [qp     (qp.reducible/sync-qp async-qp)
-               result (qp query context)]
-           {:result   (m/dissoc-in result [:data :pre])
-            :pre      (-> result :data :pre)
-            :post     (-> result :data :rows)
-            :metadata (update result :data #(dissoc % :pre :rows))}))))))
-
-(def ^{:arglists '([toucan-model])} object-defaults
-  "Return the default values for columns in an instance of a `toucan-model`, excluding ones that differ between
-  instances such as `:id`, `:name`, or `:created_at`. Useful for writing tests and comparing objects from the
-  application DB. Example usage:
-
-    (deftest update-user-first-name-test
-      (t2.with-temp/with-temp [User user]
-        (update-user-first-name! user \"Cam\")
-        (is (= (merge (mt/object-defaults User)
-                      (select-keys user [:id :last_name :created_at :updated_at])
-                      {:name \"Cam\"})
-               (mt/decrecordize (t2/select-one User :id (:id user)))))))"
-  (comp
-   (memoize
-    (fn [toucan-model]
-      (with-temp* [toucan-model [x]
-                   toucan-model [y]]
-        (let [[_ _ things-in-both] (clojure.data/diff x y)]
-          ;; don't include created_at/updated_at even if they're the exactly the same, as might be the case with MySQL
-          ;; TIMESTAMP columns (which only have second resolution by default)
-          (dissoc things-in-both :created_at :updated_at)))))
-   (fn [toucan-model]
-     (mb.hawk.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
-     (initialize/initialize-if-needed! :db)
-     (t2.model/resolve-model toucan-model))))
-
-;;; these are deprecated at runtime so Kondo doesn't complain, also because we can't go around deprecating stuff from
-;;; other libaries any other way. They're marked deprecated to encourage you to use the `t2.with-temp` versions.
-#_{:clj-kondo/ignore [:discouraged-var]}
-(alter-meta! #'with-temp* assoc :deprecated true)
+;; Cursive does not understand p/import-macro, so we just proxy this manually
+(defmacro with-dynamic-redefs
+  "A thread-safe version of with-redefs. It only support functions, and adds a fair amount of overhead.
+   It works by replacing each original definition with a proxy the first time it is redefined.
+   This proxy uses a dynamic mapping to check whether the function is currently redefined."
+  [bindings & body]
+  `(tu.dr/with-dynamic-redefs ~bindings ~@body))

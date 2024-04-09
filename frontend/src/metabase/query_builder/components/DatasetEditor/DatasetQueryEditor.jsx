@@ -1,8 +1,11 @@
-import { memo, useMemo, useState } from "react";
-import PropTypes from "prop-types";
 import styled from "@emotion/styled";
-import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import PropTypes from "prop-types";
+import { memo, useMemo, useState } from "react";
+
 import { isReducedMotionPreferred } from "metabase/lib/dom";
+import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import * as Lib from "metabase-lib";
+
 import ResizableNotebook from "./ResizableNotebook";
 
 const QueryEditorContainer = styled.div`
@@ -15,19 +18,17 @@ const propTypes = {
   question: PropTypes.object.isRequired,
   isActive: PropTypes.bool.isRequired, // if QB mode is set to "query"
   height: PropTypes.number.isRequired,
+  onSetDatabaseId: PropTypes.func,
 };
 
 function DatasetQueryEditor({
-  // See below, where we convert the dataset/model question back into a "normal" question
-  // so that we can do question-y things and not dataset-y things within the Notebook editor
-  question: dataset_DO_NOT_USE,
+  question,
   isActive,
   height,
+  onSetDatabaseId,
   ...props
 }) {
-  // Datasets/models by default behave like they are already nested,
-  // so we need to edit the dataset/model question like it is a normal question
-  const question = dataset_DO_NOT_USE.setDataset(false);
+  const { isNative } = Lib.queryDisplayInfo(question.query());
 
   const [isResizing, setResizing] = useState(false);
 
@@ -64,10 +65,11 @@ function DatasetQueryEditor({
 
   return (
     <QueryEditorContainer isActive={isActive}>
-      {question.isNative() ? (
+      {isNative ? (
         <NativeQueryEditor
           {...props}
           question={question}
+          query={question.legacyQuery()} // memoized query
           isInitiallyOpen
           hasTopBar={isActive}
           hasEditingSidebar={isActive}
@@ -78,6 +80,7 @@ function DatasetQueryEditor({
           // which can also cancel the expected query rerun
           // (see https://github.com/metabase/metabase/issues/19180)
           cancelQueryOnLeave={false}
+          onSetDatabaseId={onSetDatabaseId}
         />
       ) : (
         <ResizableNotebook

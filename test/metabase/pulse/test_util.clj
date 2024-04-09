@@ -5,7 +5,7 @@
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.pulse :as pulse]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.util :as u]
@@ -22,7 +22,7 @@
                   pulse/parts->notifications (fn [_ results]
                                                (vec results))]
       (let [[{:keys [result]}] (pulse/send-pulse! pulse)]
-        (qp.test/rows result)))))
+        (qp.test-util/rows result)))))
 
 (def card-name "Test card")
 
@@ -70,8 +70,8 @@
 (defmacro slack-test-setup
   "Macro that ensures test-data is present and disables sending of all notifications"
   [& body]
-  `(with-redefs [metabase.pulse/send-notifications! realize-lazy-seqs
-                 slack/files-channel                (constantly "FOO")]
+  `(with-redefs [pulse/send-notifications! realize-lazy-seqs
+                 slack/files-channel       (constantly "FOO")]
      (do-with-site-url (fn [] ~@body))))
 
 (def png-attachment
@@ -83,14 +83,14 @@
 (def csv-attachment
   {:type         :attachment
    :content-type "text/csv"
-   :file-name    "Test card.csv",
+   :file-name    "test_card.csv",
    :content      java.net.URL
    :description  "More results for 'Test card'"
    :content-id   false})
 
 (def xls-attachment
   {:type         :attachment
-   :file-name    "Test card.xlsx"
+   :file-name    "test_card.xlsx"
    :content-type "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
    :content      java.net.URL
    :description  "More results for 'Test card'"

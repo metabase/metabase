@@ -68,18 +68,14 @@
  *   )(BookContainer);
  */
 
-import createCachedSelector from "re-reselect";
-
-// NOTE: need to use inflection directly here due to circular dependency
-import inflection from "inflection";
-
 import { createSelector } from "@reduxjs/toolkit";
-import { normalize, denormalize, schema } from "normalizr";
 import { getIn, merge } from "icepick";
+import inflection from "inflection"; // NOTE: need to use inflection directly here due to circular dependency
+import { normalize, denormalize, schema } from "normalizr";
+import createCachedSelector from "re-reselect";
 import _ from "underscore";
+
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
-import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
-import { addUndo } from "metabase/redux/undo";
 import {
   combineReducers,
   handleEntities,
@@ -89,7 +85,14 @@ import {
   withRequestState,
   withCachedDataAndRequestState,
 } from "metabase/lib/redux";
+import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
+import { addUndo } from "metabase/redux/undo";
 
+const EMPTY_ENTITY_QUERY = {};
+
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export function createEntity(def) {
   const entity = { ...def };
 
@@ -166,7 +169,7 @@ export function createEntity(def) {
 
   // normalize helpers
   entity.normalize = (object, schema = entity.schema) => ({
-    // include raw `object` (and alias under nameOne) for convienence
+    // include raw `object` (and alias under nameOne) for convenience
     object,
     [entity.nameOne]: object,
     // include standard normalizr properties, `result` and `entities`
@@ -174,7 +177,7 @@ export function createEntity(def) {
   });
 
   entity.normalizeList = (list, schema = entity.schema) => ({
-    // include raw `list` (and alias under nameMany) for convienence
+    // include raw `list` (and alias under nameMany) for convenience
     list,
     [entity.nameMany]: list,
     // include standard normalizr properties, `result` and `entities`
@@ -220,7 +223,9 @@ export function createEntity(def) {
     )(
       (entityQuery, options = {}) =>
         async (dispatch, getState) =>
-          entity.normalize(await entity.api.get(entityQuery, options)),
+          entity.normalize(
+            await entity.api.get(entityQuery, options, dispatch, getState),
+          ),
     ),
 
     create: compose(
@@ -230,7 +235,11 @@ export function createEntity(def) {
       withEntityActionDecorators("create"),
     )(entityObject => async (dispatch, getState) => {
       return entity.normalize(
-        await entity.api.create(getWritableProperties(entityObject)),
+        await entity.api.create(
+          getWritableProperties(entityObject),
+          dispatch,
+          getState,
+        ),
       );
     }),
 
@@ -255,7 +264,11 @@ export function createEntity(def) {
           }
 
           const result = entity.normalize(
-            await entity.api.update(getWritableProperties(entityObject)),
+            await entity.api.update(
+              getWritableProperties(entityObject),
+              dispatch,
+              getState,
+            ),
           );
 
           if (notify) {
@@ -292,7 +305,7 @@ export function createEntity(def) {
       withEntityRequestState(object => [object.id, "delete"]),
       withEntityActionDecorators("delete"),
     )(entityObject => async (dispatch, getState) => {
-      await entity.api.delete(entityObject);
+      await entity.api.delete(entityObject, dispatch, getState);
       return {
         entities: { [entity.name]: { [entityObject.id]: null } },
         result: entityObject.id,
@@ -312,7 +325,11 @@ export function createEntity(def) {
         entityQuery => [...getListStatePath(entityQuery), "fetch"],
       ),
     )((entityQuery = null) => async (dispatch, getState) => {
-      const fetched = await entity.api.list(entityQuery || {});
+      const fetched = await entity.api.list(
+        entityQuery || EMPTY_ENTITY_QUERY,
+        dispatch,
+        getState,
+      );
       // for now at least paginated endpoints have a 'data' property that
       // contains the actual entries, if that is on the response we should
       // use that as the 'results'
@@ -664,33 +681,12 @@ export const notify = (opts = {}, subject, verb) =>
 export const undo = (opts = {}, subject, verb) =>
   merge({ notify: { subject, verb, undo: true } }, opts || {});
 
-// decorator versions disabled due to incompatibility with current version of flow
-//
-// // merges in options to give an object action a notification
-// export function notify(subject: string, verb: string, undo: boolean = false) {
-//   return function(target: Object, name: string, descriptor: any) {
-//     // https://github.com/loganfsmyth/babel-plugin-transform-decorators-legacy/issues/34
-//     const original = descriptor.initializer
-//       ? descriptor.initializer()
-//       : descriptor.value;
-//     delete descriptor.initializer;
-//     descriptor.value = function(o, arg, opts = {}) {
-//       opts = merge(
-//         {
-//           notify: {
-//             subject: typeof subject === "function" ? subject(o, arg) : subject,
-//             verb: typeof verb === "function" ? verb(o, arg) : verb,
-//             undo,
-//           },
-//         },
-//         opts,
-//       );
-//       return original(o, arg, opts);
-//     };
-//   };
-// }
-//
-// // merges in options to give make object action undo-able
-// export function undo(subject: string, verb: string) {
-//   return notify(subject, verb, true);
-// }
+export async function entityCompatibleQuery(entityQuery, dispatch, endpoint) {
+  const request = entityQuery === EMPTY_ENTITY_QUERY ? undefined : entityQuery;
+  const action = dispatch(endpoint.initiate(request, { forceRefetch: true }));
+  try {
+    return await action.unwrap();
+  } finally {
+    action.unsubscribe();
+  }
+}

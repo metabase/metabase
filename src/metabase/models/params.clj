@@ -8,24 +8,26 @@
   There are 3 mains ways to provide values to a parameter:
   - chain-filter: see [metabase.models.params.chain-filter]
   - field-values: see [metabase.models.params.field-values]
-  - custom-values: see [metabase.models.params.custom-values]
-  "
+  - custom-values: see [metabase.models.params.custom-values]"
   (:require
    [clojure.set :as set]
+   [malli.core :as mc]
    [medley.core :as m]
-   [metabase.db.util :as mdb.u]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.db.query :as mdb.query]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -34,39 +36,16 @@
 (defn assert-valid-parameters
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameters]}]
-  (when (s/check (s/maybe [su/Parameter]) parameters)
+  (when-not (mc/validate [:maybe [:sequential ms/Parameter]] parameters)
     (throw (ex-info (tru ":parameters must be a sequence of maps with :id and :type keys")
                     {:parameters parameters}))))
 
 (defn assert-valid-parameter-mappings
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameter_mappings]}]
-  (when (s/check (s/maybe [su/ParameterMapping]) parameter_mappings)
+  (when-not (mc/validate [:maybe [:sequential ms/ParameterMapping]] parameter_mappings)
     (throw (ex-info (tru ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys")
                     {:parameter_mappings parameter_mappings}))))
-
-(s/defn unwrap-field-clause :- mbql.s/field
-  "Unwrap something that contains a `:field` clause, such as a template tag, Also handles unwrapped integers for
-  legacy compatibility.
-
-    (unwrap-field-clause [:field-id 100]) ; -> [:field-id 100]"
-  [field-form]
-  (if (integer? field-form)
-    [:field field-form nil]
-    (mbql.u/match-one field-form :field)))
-
-(defn wrap-field-id-if-needed
-  "Wrap a raw Field ID in a `:field` clause if needed."
-  [field-id-or-form]
-  (cond
-    (mbql.u/mbql-clause? field-id-or-form)
-    field-id-or-form
-
-    (integer? field-id-or-form)
-    [:field field-id-or-form nil]
-
-    :else
-    field-id-or-form))
 
 (def ^:dynamic *ignore-current-user-perms-and-return-all-field-values*
   "Whether to ignore permissions for the current User and return *all* FieldValues for the Fields being parameterized by
@@ -77,10 +56,12 @@
 
 (defn- field-ids->param-field-values-ignoring-current-user
   [param-field-ids]
-  (t2/select-fn->fn :field_id (comp identity t2.realize/realize)
-                    ['FieldValues :values :human_readable_values :field_id]
-                    :type :full
-                    :field_id [:in param-field-ids]))
+  (not-empty
+   (into {}
+         (map (comp (juxt :field_id identity)
+                    #(select-keys % [:field_id :human_readable_values :values])
+                    #(field-values/get-latest-full-field-values (:id %))))
+         (t2/hydrate (t2/select :model/Field :id [:in (set param-field-ids)]) :values))))
 
 (defn- field-ids->param-field-values
   "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference.
@@ -98,20 +79,24 @@
   [[_ tag] card]
   (get-in card [:dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
-(s/defn param-target->field-clause :- (s/maybe mbql.s/field)
+(mu/defn param-target->field-clause :- [:maybe mbql.s/Field]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target card]
-  (let [target (mbql.normalize/normalize-tokens target :ignore-path)]
+  (let [target (mbql.normalize/normalize target)]
     (when (mbql.u/is-clause? :dimension target)
-      (let [[_ dimension] target]
-        (try
-          (unwrap-field-clause
-           (if (mbql.u/is-clause? :template-tag dimension)
-             (template-tag->field-form dimension card)
-             dimension))
-          (catch Throwable e
-            (log/error e (tru "Could not find matching Field ID for target:") target)))))))
+      (let [[_ dimension] target
+            field-form    (if (mbql.u/is-clause? :template-tag dimension)
+                            (template-tag->field-form dimension card)
+                            dimension)]
+        ;; Being extra safe here since we've got many reports on this cause loading dashboard to fail
+        ;; for unknown reasons. See #8917
+        (if field-form
+          (try
+           (mbql.u/unwrap-field-or-expression-clause field-form)
+           (catch Exception e
+             (log/error e "Failed unwrap field form" field-form)))
+          (log/error "Could not find matching field clause for target:" target))))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."
@@ -134,10 +119,10 @@
   (when-let [table-ids (seq (map :table_id fields))]
     (m/index-by :table_id (-> (t2/select Field:params-columns-only
                                 :table_id      [:in table-ids]
-                                :semantic_type (mdb.u/isa :type/Name))
-                              ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
+                                :semantic_type (mdb.query/isa :type/Name))
+                              ;; run [[metabase.lib.field/infer-has-field-values]] on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
-                              ;; `list` instead of `auto-list`.)
+                              ;; `:list` instead of `:auto-list`.)
                               (t2/hydrate :has_field_values)))))
 
 (mi/define-batched-hydration-method add-name-field
@@ -172,11 +157,11 @@
     (update field :dimensions (partial map remove-dimension-nonpublic-columns))))
 
 
-(s/defn ^:private param-field-ids->fields
-  "Get the Fields (as a map of Field ID -> Field) that shoudl be returned for hydrated `:param_fields` for a Card or
+(mu/defn ^:private param-field-ids->fields
+  "Get the Fields (as a map of Field ID -> Field) that should be returned for hydrated `:param_fields` for a Card or
   Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
-  [field-ids :- (s/maybe #{su/IntGreaterThanZero})]
+  [field-ids :- [:maybe [:set ms/PositiveInt]]]
   (when (seq field-ids)
     (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
                         (t2/hydrate :has_field_values :name_field [:dimensions :human_readable_field])
@@ -191,7 +176,7 @@
 #_{:clj-kondo/ignore [:unused-private-var]}
 (mi/define-simple-hydration-method ^:private hydrate-param-values
   :param_values
-  "Hydration method for `:param_fields`."
+  "Hydration method for `:param_values`."
   [instance]
   (param-values instance))
 
@@ -212,7 +197,7 @@
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private dashcards->parameter-mapping-field-clauses :- (s/maybe #{mbql.s/field})
+(mu/defn ^:private dashcards->parameter-mapping-field-clauses :- [:maybe [:set mbql.s/Field]]
   "Return set of any Fields referenced directly by the Dashboard's `:parameters` (i.e., 'explicit' parameters) by
   looking at the appropriate `:parameter_mappings` entries for its Dashcards."
   [dashcards]
@@ -229,32 +214,48 @@
   "Return the IDs of any Fields referenced in the 'implicit' template tag field filter parameters for native queries in
   `cards`."
   [cards]
-  (reduce set/union (map card->template-tag-field-ids cards)))
+  (reduce set/union #{} (map card->template-tag-field-ids cards)))
 
-(s/defn dashcards->param-field-ids :- #{su/IntGreaterThanZero}
+(mu/defn dashcards->param-field-ids :- [:set ms/PositiveInt]
   "Return a set of Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if none are referenced. This
   also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL template tag Field filters.
   `dashcards` must be hydrated with :card."
   [dashcards]
   (set/union
-   (set (mbql.u/match (seq (dashcards->parameter-mapping-field-clauses dashcards))
+   (set (lib.util.match/match (seq (dashcards->parameter-mapping-field-clauses dashcards))
           [:field (id :guard integer?) _]
           id))
    (cards->card-param-field-ids (map :card dashcards))))
 
+(defn get-linked-field-ids
+  "Retrieve a map relating paramater ids to field ids."
+  [dashcards]
+  (letfn [(targets [params card]
+            (into {}
+                  (for [param params
+                        :let  [clause (param-target->field-clause (:target param)
+                                                                  card)
+                               ids (lib.util.match/match clause
+                                     [:field (id :guard integer?) _]
+                                     id)]
+                        :when (seq ids)]
+                    [(:parameter_id param) (set ids)])))]
+    (->> dashcards
+         (mapv (fn [{params :parameter_mappings card :card}] (targets params card)))
+         (apply merge-with into {}))))
 
 (defn- dashboard->param-field-values
   "Return a map of Field ID to FieldValues (if any) for any Fields referenced by Cards in `dashboard`,
    or `nil` if none are referenced or none of them have FieldValues."
   [dashboard]
-  (field-ids->param-field-values (dashcards->param-field-ids (:ordered_cards dashboard))))
+  (field-ids->param-field-values (dashcards->param-field-ids (:dashcards dashboard))))
 
 (defmethod param-values :model/Dashboard [dashboard]
-  (dashboard->param-field-values dashboard))
+  (not-empty (dashboard->param-field-values dashboard)))
 
 (defmethod param-fields :model/Dashboard [dashboard]
-  (-> (t2/hydrate dashboard [:ordered_cards :card])
-      :ordered_cards
+  (-> (t2/hydrate dashboard [:dashcards :card])
+      :dashcards
       dashcards->param-field-ids
       param-field-ids->fields))
 
@@ -262,22 +263,23 @@
 ;;; |                                                 CARD-SPECIFIC                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn card->template-tag-field-clauses :- #{mbql.s/field}
+(mu/defn ^:private card->template-tag-field-clauses :- [:set mbql.s/field]
   "Return a set of `:field` clauses referenced in template tag parameters in `card`."
   [card]
   (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template-tags])
              :when                      dimension
-             :let                       [field (unwrap-field-clause dimension)]
+             :let                       [field (mbql.u/unwrap-field-clause dimension)]
              :when                      field]
          field)))
 
-(s/defn card->template-tag-field-ids :- #{su/IntGreaterThanZero}
+(mu/defn card->template-tag-field-ids :- [:set ::lib.schema.id/field]
   "Return a set of Field IDs referenced in template tag parameters in `card`. This is mostly used for determining
   Fields referenced by Cards for purposes other than processing queries. Filters out `:field` clauses using names."
   [card]
-  (set (mbql.u/match (seq (card->template-tag-field-clauses card))
+  (set (lib.util.match/match (seq (card->template-tag-field-clauses card))
          [:field (id :guard integer?) _]
          id)))
+
 (defmethod param-values :model/Card [card]
   (-> card card->template-tag-field-ids field-ids->param-field-values))
 

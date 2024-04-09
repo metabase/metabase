@@ -1,22 +1,29 @@
 import { formatValue } from "metabase/lib/formatting";
-import type { DatasetColumn } from "metabase-types/api/dataset";
-import { isDate } from "metabase-lib/types/utils/isa";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
+import type { ParameterValueOrArray } from "metabase-types/api";
+import type { DatasetColumn, RowValue } from "metabase-types/api/dataset";
+
+import { NULL_DISPLAY_VALUE } from "../constants";
+
 import { formatDateTimeForParameter } from "./date";
 
+type Value = ParameterValueOrArray | RowValue | undefined;
+
 interface TemplateForClickFormatFunctionParamsType {
-  value: string;
+  value: Value;
   column: DatasetColumn;
 }
 
 export interface ValueAndColumnForColumnNameDate {
-  column: DatasetColumn;
-  parameterBySlug: string;
-  parameterByName: string;
-  userAttribute: string;
+  column: Record<string, TemplateForClickFormatFunctionParamsType>;
+  parameter: Record<string, { value: Value }>;
+  parameterBySlug: Record<string, { value: Value }>;
+  parameterByName: Record<string, { value: Value }>;
+  userAttribute: Record<string, { value: Value }>;
 }
 
-function formatValueForLinkTemplate(value: string, column: DatasetColumn) {
-  if (isDate(column) && column.unit) {
+function formatValueForLinkTemplate(value: Value, column: DatasetColumn) {
+  if (isDate(column) && column.unit && typeof value === "string") {
     return formatDateTimeForParameter(value, column.unit);
   }
   return value;
@@ -43,6 +50,11 @@ export function renderLinkURLForClick(
     data,
     ({ value, column }: TemplateForClickFormatFunctionParamsType) => {
       const valueForLinkTemplate = formatValueForLinkTemplate(value, column);
+
+      if ([null, NULL_DISPLAY_VALUE].includes(valueForLinkTemplate)) {
+        return "";
+      }
+
       return encodeURIComponent(valueForLinkTemplate);
     },
   );
@@ -76,7 +88,7 @@ function getValueAndColumnForColumnName(
   columnName: string,
 ) {
   const name = columnName.toLowerCase();
-  const dataSources: any[] = [
+  const dataSources: [string, Record<string, { value: Value }>][] = [
     ["column", column],
     ["filter", parameterByName],
     ["filter", parameterBySlug], // doubling up "filter" lets us search params both by name and slug

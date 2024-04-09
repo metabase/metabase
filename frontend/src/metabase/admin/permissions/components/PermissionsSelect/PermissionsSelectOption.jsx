@@ -1,8 +1,8 @@
-import { useState } from "react";
 import PropTypes from "prop-types";
+import { useState } from "react";
 
-import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
+import { Icon } from "metabase/ui";
 
 import {
   IconContainer,

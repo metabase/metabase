@@ -1,8 +1,10 @@
 import { connect } from "react-redux";
-import { checkNotNull } from "metabase/core/utils/types";
+
+import { checkNotNull } from "metabase/lib/types";
 import QuestionDisplayToggle from "metabase/query_builder/components/view/QuestionDisplayToggle";
-import { Dispatch, State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
+import type { Dispatch, State } from "metabase-types/store";
+
 import { setUIControls } from "../../actions";
 import { getIsShowingRawTable, getQuestion } from "../../selectors";
 

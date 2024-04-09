@@ -2,16 +2,20 @@
   "Tests for the Google Analytics driver and query processor."
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.googleanalytics]
    [metabase.driver.googleanalytics.execute :as ga.execute]
    [metabase.driver.googleanalytics.query-processor :as ga.qp]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Card Database Field Table]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -37,12 +41,22 @@
    :mbql? true})
 
 (defn- mbql->native [query]
-  (binding [qp.store/*store* (atom {:tables {1 (t2/instance :model/Table {:name   "0123456"
-                                                                          :schema nil
-                                                                          :id     1})}})]
+  (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                    meta/metadata-provider
+                                    {:tables [{:name   "0123456"
+                                               :schema nil
+                                               :id     1}]})
     (driver/mbql->native :googleanalytics (update query :query (partial merge {:source-table 1})))))
 
-(deftest basic-compilation-test
+(deftest test-fingerprint-skipped-for-ga
+  (testing "Google Analytics doesn't support fingerprinting fields"
+    (let [fake-db (-> (mt/db)
+                      (assoc :engine :googleanalytics))]
+      (with-redefs [sync.fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
+        (is (= (sync.fingerprint/empty-stats-map 0)
+               (sync.fingerprint/fingerprint-fields-for-db! fake-db [(t2/select-one Table :id (mt/id :venues))] (fn [_ _]))))))))
+
+(deftest ^:parallel basic-compilation-test
   (testing "just check that a basic almost-empty MBQL query can be compiled"
     (is (= (ga-query {})
            (mbql->native {}))))
@@ -70,7 +84,7 @@
 (defn- ga-date-field [unit]
   [:field "ga:date" {:temporal-unit unit}])
 
-(deftest filter-by-absolute-datetime-test
+(deftest ^:parallel filter-by-absolute-datetime-test
   (is (= (ga-query {:start-date "2016-11-08", :end-date "2016-11-08"})
          (mbql->native {:query {:filter [:= (ga-date-field :day) [:absolute-datetime (t/local-date "2016-11-08") :day]]}})))
   (testing "tests off by one day correction for gt/lt operators (GA doesn't support exclusive ranges)"
@@ -93,7 +107,7 @@
   (mt/with-database-timezone-id nil
     (testing "\nsystem timezone should not affect the queries that get generated"
       (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-        (mt/with-system-timezone-id system-timezone-id
+        (mt/with-system-timezone-id! system-timezone-id
           (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                    (t/local-date "2019-11-18")
                                                    (t/local-time 0)
@@ -151,7 +165,7 @@
                                         [:relative-datetime -4 :month]
                                         [:relative-datetime -1 :month]]}}))))))))))
 
-(deftest limit-test
+(deftest ^:parallel limit-test
   (is (= (ga-query {:max-results 25})
          (mbql->native {:query {:limit 25}}))))
 
@@ -159,11 +173,11 @@
 ;;; ----------------------------------------------- (Almost) E2E tests -----------------------------------------------
 
 (defn do-with-some-fields [thunk]
-  (mt/with-temp* [Database [db                 {:engine "googleanalytics"}]
-                  Table    [table              {:name "98765432", :db_id (u/the-id db)}]
-                  Field    [event-action-field {:name "ga:eventAction", :base_type "type/Text", :table_id (u/the-id table)}]
-                  Field    [event-label-field  {:name "ga:eventLabel", :base_type "type/Text", :table_id (u/the-id table)}]
-                  Field    [date-field         {:name "ga:date", :base_type "type/Date", :table_id (u/the-id table)}]]
+  (mt/with-temp [Database db                 {:engine "googleanalytics"}
+                 Table    table              {:name "98765432" :db_id (u/the-id db)}
+                 Field    event-action-field {:name "ga:eventAction" :base_type "type/Text" :table_id (u/the-id table)}
+                 Field    event-label-field  {:name "ga:eventLabel" :base_type "type/Text" :table_id (u/the-id table)}
+                 Field    date-field         {:name "ga:date" :base_type "type/Date" :table_id (u/the-id table)}]
     (mt/with-db db
       (thunk {:db                 db
               :table              table
@@ -224,7 +238,7 @@
 (deftest almost-e2e-test-1
   ;; system timezone ID shouldn't affect generated query
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (mt/with-system-timezone-id system-timezone-id
+    (mt/with-system-timezone-id! system-timezone-id
       (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                (t/local-date "2019-11-18")
                                                (t/local-time 0)
@@ -232,11 +246,9 @@
                                   (t/zone-id system-timezone-id))
         (is (= expected-ga-query
                (do-with-some-fields
-                (fn [{:keys [db table event-action-field event-label-field date-field], :as objects}]
-                  (qp.store/with-store
-                    (qp.store/fetch-and-store-database! (u/the-id db))
-                    (qp.store/fetch-and-store-tables! [(u/the-id table)])
-                    (qp.store/fetch-and-store-fields! (map u/the-id [event-action-field event-label-field date-field]))
+                (fn [{:keys [db event-action-field event-label-field date-field], :as objects}]
+                  (qp.store/with-metadata-provider (u/the-id db)
+                    (qp.store/bulk-metadata :metadata/column (map u/the-id [event-action-field event-label-field date-field]))
                     (ga.qp/mbql->native (preprocessed-query-with-some-fields objects)))))))))))
 
 ;; this was the above query before it was preprocessed. Make sure we actually handle everything correctly end-to-end
@@ -255,7 +267,7 @@
 
 (deftest almost-e2e-test-2
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (mt/with-system-timezone-id system-timezone-id
+    (mt/with-system-timezone-id! system-timezone-id
       (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                (t/local-date "2019-11-18")
                                                (t/local-time 0)
@@ -263,14 +275,14 @@
                                   (t/zone-id system-timezone-id))
         (is (= expected-ga-query
                (do-with-some-fields
-                (comp qp/compile query-with-some-fields))))))))
+                (comp qp.compile/compile query-with-some-fields))))))))
 
 ;; ok, now do the same query again, but run the entire QP pipeline, swapping out a few things so nothing is actually
 ;; run externally.
 (deftest almost-e2e-test-3
   (testing "system timezone ID shouldn't affect generated query"
     (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-      (mt/with-system-timezone-id system-timezone-id
+      (mt/with-system-timezone-id! system-timezone-id
         (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                  (t/local-date "2019-11-18")
                                                  (t/local-time 0)
@@ -282,17 +294,17 @@
                                                                :base_type    :type/Text})]
             (do-with-some-fields
              (fn [objects]
-               (let [query   (query-with-some-fields objects)
-                     cols    (for [col [{:name "ga:eventLabel"}
-                                        {:name "ga:totalEvents", :base_type :type/Text}]]
-                               (#'ga.execute/add-col-metadata query col))
-                     rows    [["Toucan Sighting" 1000]]
-                     context {:timeout 500
-                              :runf    (fn [_query rff context]
-                                         (let [metadata {:cols cols}]
-                                           (qp.context/reducef rff context metadata rows)))}
-                     qp      (fn [query]
-                               (qp/process-query query context))]
+               (let [query (query-with-some-fields objects)
+                     cols  (for [col [{:name "ga:eventLabel"}
+                                      {:name "ga:totalEvents", :base_type :type/Text}]]
+                             (#'ga.execute/add-col-metadata query col))
+                     rows  [["Toucan Sighting" 1000]]
+                     qp    (fn [query]
+                             (binding [qp.pipeline/*query-timeout-ms* (u/seconds->ms 2)
+                                       qp.pipeline/*run*              (fn [_query rff]
+                                                                        (let [metadata {:cols cols}]
+                                                                          (qp.pipeline/*reduce* rff metadata rows)))]
+                               (qp/process-query query)))]
                  (is (partial=
                       {:row_count 1
                        :status    :completed
@@ -311,12 +323,12 @@
                                                        :base_type         :type/Text
                                                        :effective_type    :type/Text
                                                        :coercion_strategy nil}
-                                                      {:name         "metric"
-                                                       :display_name "ga:totalEvents"
-                                                       :source       :aggregation
-                                                       :description  "This is ga:totalEvents"
-                                                       :base_type    :type/Text
-                                                       :effective_type    :type/Text}]
+                                                      {:name           "metric"
+                                                       :display_name   "ga:totalEvents"
+                                                       :source         :aggregation
+                                                       :description    "This is ga:totalEvents"
+                                                       :base_type      :type/Text
+                                                       :effective_type :type/Text}]
                                    :results_timezone system-timezone-id}}
                       (-> (tu/doall-recursive (qp query))
                           (update-in [:data :cols] #(for [col %]
@@ -327,7 +339,7 @@
 (deftest almost-e2e-time-interval-test
   (testing "Make sure filtering by the previous 4 months actually filters against the right months (#10701)"
     (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-      (mt/with-system-timezone-id system-timezone-id
+      (mt/with-system-timezone-id! system-timezone-id
         (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                  (t/local-date "2019-11-18")
                                                  (t/local-time 0)
@@ -346,7 +358,7 @@
                                     :breakout     [[:field (:id date-field) {:temporal-unit :day}]]}
                          :type     :query
                          :database (:id db)}
-                        qp/compile
+                        qp.compile/compile
                         :query
                         (select-keys [:start-date :end-date :dimensions :metrics :sort])))
                  "Last 4 months should includy July, August, September, and October (July 1st - October 31st)"))))))))
@@ -357,9 +369,9 @@
 ;; Can we *save* a GA query that has two aggregations?
 
 (deftest save-ga-query-test
-  (mt/with-temp* [Database [db    {:engine :googleanalytics}]
-                  Table    [table {:db_id (u/the-id db)}]
-                  Field    [field {:table_id (u/the-id table)}]]
+  (mt/with-temp [Database db    {:engine :googleanalytics}
+                 Table    table {:db_id (u/the-id db)}
+                 Field    field {:table_id (u/the-id table)}]
     (let [cnt (->> (mt/user-http-request
                     :crowberto :post 200 "card"
                     {:name                   "Metabase Websites, Sessions and 1 Day Active Users, Grouped by Date (day)"

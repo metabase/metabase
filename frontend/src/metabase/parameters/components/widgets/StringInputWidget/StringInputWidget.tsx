@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { t } from "ttag";
-import { isEqual, isString, isEmpty } from "underscore";
+import { isString, isEmpty } from "underscore";
 
 import TokenField, { parseStringValue } from "metabase/components/TokenField";
+import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
   WidgetRoot,
   WidgetLabel,
   Footer,
-  UpdateButton,
   TokenFieldWrapper,
 } from "metabase/parameters/components/widgets/Widget.styled";
+import type { Parameter } from "metabase-types/api";
 
 type StringInputWidgetProps = {
   value: string[] | undefined;
@@ -19,11 +20,10 @@ type StringInputWidgetProps = {
   placeholder?: string;
   arity?: 1 | "n";
   label?: string;
+  parameter?: Partial<Pick<Parameter, "required" | "default">>;
 };
 
-const OPTIONS: any[] = [];
-
-function StringInputWidget({
+export function StringInputWidget({
   value,
   setValue,
   className,
@@ -31,12 +31,12 @@ function StringInputWidget({
   arity = 1,
   placeholder = t`Enter some text`,
   label,
+  parameter = {},
 }: StringInputWidgetProps) {
   const arrayValue = normalize(value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
     useState<string[]>(arrayValue);
   const multi = arity === "n";
-  const hasValueChanged = !isEqual(arrayValue, unsavedArrayValue);
   const isValid = unsavedArrayValue.every(isString);
 
   const onClick = () => {
@@ -55,7 +55,7 @@ function StringInputWidget({
           value={unsavedArrayValue}
           onChange={setUnsavedArrayValue}
           placeholder={placeholder}
-          options={OPTIONS}
+          options={[]}
           autoFocus={autoFocus}
           multi={multi}
           parseFreeformValue={parseStringValue}
@@ -63,16 +63,18 @@ function StringInputWidget({
         />
       </TokenFieldWrapper>
       <Footer>
-        <UpdateButton disabled={!isValid || !hasValueChanged} onClick={onClick}>
-          {arrayValue.length ? t`Update filter` : t`Add filter`}
-        </UpdateButton>
+        <UpdateFilterButton
+          value={value}
+          unsavedValue={unsavedArrayValue}
+          defaultValue={parameter.default}
+          isValueRequired={parameter.required ?? false}
+          isValid={isValid}
+          onClick={onClick}
+        />
       </Footer>
     </WidgetRoot>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default StringInputWidget;
 
 function normalize(value: string[] | undefined): string[] {
   if (Array.isArray(value)) {

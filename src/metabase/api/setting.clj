@@ -24,8 +24,7 @@
   `(do-with-setting-access-control (fn [] ~@body)))
 
 ;; TODO: deprecate /api/session/properties and have a single endpoint for listing settings
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Get all `Settings` and their values. You must be a superuser or have `setting` permission to do this.
   For non-superusers, a list of visible settings and values can be retrieved using the /api/session/properties endpoint."
   []

@@ -1,5 +1,6 @@
-import { ReactNode } from "react";
-import { Icon } from "metabase/core/components/Icon";
+import type { ReactNode } from "react";
+
+import { Icon } from "metabase/ui";
 
 import {
   HeaderBackIcon,

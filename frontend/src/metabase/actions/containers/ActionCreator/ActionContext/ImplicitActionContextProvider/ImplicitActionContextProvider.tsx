@@ -3,15 +3,16 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ImplicitActionIcon from "metabase/actions/components/ImplicitActionIcon";
-
 import type {
   ActionFormSettings,
   WritebackImplicitQueryAction,
 } from "metabase-types/api";
 
 import { getDefaultFormSettings } from "../../../../utils";
+import type { ActionContextType } from "../ActionContext";
+import { ActionContext } from "../ActionContext";
 import type { ActionContextProviderProps } from "../types";
-import { ActionContext, ActionContextType } from "../ActionContext";
+
 import {
   EditorBodyRoot,
   EditorTitle,

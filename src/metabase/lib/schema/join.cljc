@@ -3,7 +3,6 @@
   (:require
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
-   [metabase.lib.schema.ref :as ref]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]))
 
@@ -15,17 +14,20 @@
 ;;;
 ;;; *  `:all`: will include all of the Fields from the joined table or query
 ;;;
-;;; *  a sequence of Field clauses: include only the Fields specified. Valid clauses are the same as the top-level
-;;;    `:fields` clause. This should be non-empty and all elements should be distinct. The normalizer will
+;;; * a sequence of Field clauses: include only the Fields specified. Only `:field` clauses are allowed here!
+;;;    References to expressions or aggregations in the thing we're joining should use column literal (string column
+;;;    name) `:field` references. This should be non-empty and all elements should be distinct. The normalizer will
 ;;;    automatically remove duplicate fields for you, and replace empty clauses with `:none`.
 ;;;
 ;;; Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause
 ;;; with appropriate aliases.
 (mr/def ::fields
-  [:or
-   [:enum :all :none]
-   ;; TODO -- Pretty sure fields are supposed to be unique, even excluding `:lib/uuid`
-   [:sequential {:min 1} [:ref ::ref/ref]]])
+  [:multi
+   {:dispatch (some-fn keyword? string?)}
+   [true  [:enum {:decode/normalize common/normalize-keyword} :all :none]]
+   ;; TODO -- `:fields` is supposed to be distinct (ignoring UUID), e.g. you can't have `[:field {} 1]` in there
+   ;; twice. (#32489)
+   [false [:sequential {:min 1} [:ref :mbql.clause/field]]]])
 
 ;;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
 ;;; like `table__via__field`. You can specify this yourself if you need to reference a joined field with a
@@ -33,7 +35,7 @@
 ;;;
 ;;; Driver implementations: This is guaranteed to be present after pre-processing.
 (mr/def ::alias
-  [:or
+  [:schema
    {:gen/fmap #(str % "-" (random-uuid))}
    ::common/non-blank-string])
 
@@ -47,6 +49,7 @@
 ;;; When `:strategy` is not specified, `:left-join` is the default strategy.
 (mr/def ::strategy
   [:enum
+   {:decode/normalize common/normalize-keyword}
    :left-join
    :right-join
    :inner-join
@@ -54,7 +57,8 @@
 
 (mr/def ::join
   [:map
-   [:lib/type    [:= :mbql/join]]
+   {:decode/normalize common/normalize-map}
+   [:lib/type    [:= {:decode/normalize common/normalize-keyword} :mbql/join]]
    [:lib/options ::common/options]
    [:stages      [:ref :metabase.lib.schema/stages]]
    [:conditions  ::conditions]

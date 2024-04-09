@@ -1,13 +1,15 @@
+import { StringColumn, NumberColumn } from "__support__/visualizations";
+import { getVisualizationTransformed } from "metabase/visualizations";
 import {
   dimensionIsTimeseries,
   computeTimeseriesDataInverval,
   getTimezone,
   computeTimeseriesTicksInterval,
 } from "metabase/visualizations/lib/timeseries";
-import { getVisualizationTransformed } from "metabase/visualizations";
+import registerVisualizations from "metabase/visualizations/register";
+import { TYPE } from "metabase-lib/v1/types/constants";
 
-import { StringColumn, NumberColumn } from "__support__/visualizations";
-import { TYPE } from "metabase-lib/types/constants";
+registerVisualizations();
 
 describe("visualization.lib.timeseries", () => {
   describe("dimensionIsTimeseries", () => {

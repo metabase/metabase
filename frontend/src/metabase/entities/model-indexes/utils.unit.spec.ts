@@ -1,13 +1,13 @@
+import Question from "metabase-lib/v1/Question";
+import Field from "metabase-lib/v1/metadata/Field";
 import type { Field as FieldAPI } from "metabase-types/api";
 import { createMockField, createMockCard } from "metabase-types/api/mocks";
-import Question from "metabase-lib/Question";
-import Field from "metabase-lib/metadata/Field";
 
 import { canIndexField } from "./utils";
 
 const createModelWithResultMetadata = (fields: FieldAPI[]) => {
   return new Question(
-    createMockCard({ result_metadata: fields, dataset: true }),
+    createMockCard({ result_metadata: fields, type: "model" }),
   );
 };
 

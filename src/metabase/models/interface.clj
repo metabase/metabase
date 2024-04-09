@@ -6,20 +6,24 @@
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
    [clojure.walk :as walk]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
+   [malli.core :as mc]
+   [malli.error :as me]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [potemkin :as p]
-   [schema.core :as schema]
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -39,8 +43,8 @@
 (p/import-vars
  [models.dispatch
   toucan-instance?
-  instance-of?
   InstanceOf
+  instance-of?
   model
   instance])
 
@@ -136,7 +140,7 @@
     (try
       (json/parse-string s keywordize-keys?)
       (catch Throwable e
-        (log/error e (str (trs "Error parsing JSON")))
+        (log/error e "Error parsing JSON")
         s))
     s))
 
@@ -156,10 +160,42 @@
   {:in  json-in
    :out json-out-with-keywordization})
 
-;; `metabase-query` type is for *outer* queries like Card.dataset_query. Normalizes them on the way in & out
-(defn- maybe-normalize [query]
-  (cond-> query
-    (seq query) mbql.normalize/normalize))
+(defn- serialize-mlv2-query
+  "Saving MLv2 queries​ we can assume MLv2 queries are normalized enough already, but remove the metadata provider before
+  saving it, because it's not something that lends itself well to serialization."
+  [query]
+  (dissoc query :lib/metadata))
+
+(defn- deserialize-mlv2-query
+  "Reading MLv2 queries​: normalize them, then attach a MetadataProvider based on their Database."
+  [query]
+  (let [metadata-provider (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
+                            ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
+                            ;; preserve the existing metadata provider.
+                            (:lib/metadata query)
+                            ((requiring-resolve 'metabase.lib.metadata.jvm/application-database-metadata-provider)
+                             (u/the-id (some #(get query %) [:database "database"]))))]
+    (lib/query metadata-provider query)))
+
+(mu/defn maybe-normalize-query
+  "For top-level query maps like `Card.dataset_query`. Normalizes them on the way in & out."
+  [in-or-out :- [:enum :in :out]
+   query]
+  (letfn [(normalize [query]
+            (let [f (if (= (lib/normalized-query-type query) :mbql/query)
+                      ;; MLv2 queries
+                      (case in-or-out
+                        :in  serialize-mlv2-query
+                        :out deserialize-mlv2-query)
+                      ;; legacy queries: just normalize them with the legacy normalization code for now... in the near
+                      ;; future we'll probably convert to MLv2 before saving so everything in the app DB is MLv2
+                      (case in-or-out
+                        :in  mbql.normalize/normalize
+                        :out mbql.normalize/normalize))]
+              (f query)))]
+    (cond-> query
+      (and (map? query) (seq query))
+      normalize)))
 
 (defn catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
@@ -170,8 +206,7 @@
     (try
       (doall (f query))
       (catch Throwable e
-        (log/error e (tru "Unable to normalize:") "\n"
-                   (u/pprint-to-str 'red query))
+        (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red query))
         nil))))
 
 (defn normalize-parameters-list
@@ -182,27 +217,23 @@
 
 (def transform-metabase-query
   "Transform for metabase-query."
-  {:in  (comp json-in maybe-normalize)
-   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization)})
+  {:in  (comp json-in (partial maybe-normalize-query :in))
+   :out (comp (catch-normalization-exceptions (partial maybe-normalize-query :out)) json-out-without-keywordization)})
 
 (def transform-parameters-list
   "Transform for parameters list."
   {:in  (comp json-in normalize-parameters-list)
    :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
 
-(def normalize-field-ref
-  "Normalize the field ref. Ensure it's well-formed mbql, not just json."
-  (comp #'mbql.normalize/canonicalize-mbql-clauses
-        #'mbql.normalize/normalize-tokens))
-
 (def transform-field-ref
   "Transform field refs"
   {:in  json-in
-   :out (comp (catch-normalization-exceptions normalize-field-ref) json-out-with-keywordization)})
+   :out (comp (catch-normalization-exceptions mbql.normalize/normalize-field-ref) json-out-with-keywordization)})
 
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
   [metadata]
+  ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
     (seq (map mbql.normalize/normalize-source-metadata metadata))))
 
@@ -221,8 +252,22 @@
   {:in  json-in
    :out json-out-without-keywordization})
 
-(def ^:private encrypted-json-in  (comp encryption/maybe-encrypt json-in))
-(def ^:private encrypted-json-out (comp json-out-with-keywordization encryption/maybe-decrypt))
+(def encrypted-json-in
+  "Serialize encrypted json."
+  (comp encryption/maybe-encrypt json-in))
+
+(defn encrypted-json-out
+  "Deserialize encrypted json."
+  [v]
+  (let [decrypted (encryption/maybe-decrypt v)]
+    (try
+      (json/parse-string decrypted true)
+      (catch Throwable e
+        (if (or (encryption/possibly-encrypted-string? decrypted)
+                (encryption/possibly-encrypted-bytes? decrypted))
+          (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
+          (log/error e "Error parsing JSON"))  ; same message as in `json-out`
+        v))))
 
 ;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
 ;; cache the decrypted JSON for one hour
@@ -287,41 +332,48 @@
 ;; migrate-viz settings was introduced with v. 2, so we'll never be in a situation where we can downgrade from 2 to 1.
 ;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8
 
-
 (def transform-visualization-settings
   "Transform for viz-settings."
   {:in  (comp json-in migrate-viz-settings)
    :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
 
-
-
-(defn- validate-cron-string [s]
-  (schema/validate (schema/maybe u.cron/CronScheduleString) s))
+(def ^{:arglists '([s])} ^:private validate-cron-string
+  (let [validator (mc/validator u.cron/CronScheduleString)]
+    (fn [s]
+      (when (validator s)
+        s))))
 
 (def transform-cron-string
   "Transform for encrypted json."
   {:in  validate-cron-string
    :out identity})
 
-(def ^:private MetricSegmentDefinition
-  {(schema/optional-key :filter)      (schema/maybe mbql.s/Filter)
-   (schema/optional-key :aggregation) (schema/maybe [mbql.s/Aggregation])
-   schema/Keyword                     schema/Any})
+(def ^:private LegacyMetricSegmentDefinition
+  [:map
+   [:filter      {:optional true} [:maybe mbql.s/Filter]]
+   [:aggregation {:optional true} [:maybe [:sequential mbql.s/Aggregation]]]])
 
-(def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
-  (schema/validator MetricSegmentDefinition))
+(def ^:private ^{:arglists '([definition])} validate-legacy-metric-segment-definition
+  (let [explainer (mr/explainer LegacyMetricSegmentDefinition)]
+    (fn [definition]
+      (if-let [error (explainer definition)]
+        (let [humanized (me/humanize error)]
+          (throw (ex-info (tru "Invalid Metric or Segment: {0}" (pr-str humanized))
+                          {:error     error
+                           :humanized humanized})))
+        definition))))
 
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
-(defn- normalize-metric-segment-definition [definition]
+(defn- normalize-legacy-metric-segment-definition [definition]
   (when (seq definition)
     (u/prog1 (mbql.normalize/normalize-fragment [:query] definition)
-      (validate-metric-segment-definition <>))))
+      (validate-legacy-metric-segment-definition <>))))
 
 
-(def transform-metric-segment-definition
+(def transform-legacy-metric-segment-definition
   "Transform for inner queries like those in Metric definitions."
-  {:in  (comp json-in normalize-metric-segment-definition)
-   :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization)})
+  {:in  (comp json-in normalize-legacy-metric-segment-definition)
+   :out (comp (catch-normalization-exceptions normalize-legacy-metric-segment-definition) json-out-with-keywordization)})
 
 (defn- blob->bytes [^Blob b]
   (.getBytes ^Blob b 0 (.length ^Blob b)))
@@ -361,7 +413,8 @@
   max (nanosecond) resolution)."
   []
   (classloader/require 'metabase.driver.sql.query-processor)
-  ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
+  (let [db-type ((requiring-resolve 'metabase.db/db-type))]
+   ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) db-type)))
 
 (defn- add-created-at-timestamp [obj & _]
   (cond-> obj
@@ -430,7 +483,12 @@
   [modelable row-map]
   {:pre [(map? row-map)]}
   (let [model (t2/resolve-model modelable)]
-    (t2/select-one model (t2.identity-query/identity-query [row-map]))))
+    (try
+      (t2/select-one model (t2.identity-query/identity-query [row-map]))
+      (catch Throwable e
+        (throw (ex-info (format "Error doing after-select for model %s: %s" model (ex-message e))
+                        {:model model}
+                        e))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
@@ -642,3 +700,26 @@
   "In Metabase the FK key used for automagic hydration should use underscores (work around upstream Toucan 2 issue)."
   [_original-model dest-key _hydrated-key]
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
+
+(mu/defn instances-with-hydrated-data
+  "Helper function to write batched hydrations.
+  Assoc to each `instances` a key `hydration-key` with data from calling `instance-key->hydrated-data-fn` by `instance-key`.
+
+    (instances-with-hydrated-data
+      (t2/select :model/Database)
+      :tables
+      #(t2/select-fn->fn :db_id identity :model/Table)
+      :id)
+    ;; => [{:id 1 :tables [...tables-from-db-1]}
+           {:id 2 :tables [...tables-from-db-2]}]
+
+  - key->hydrated-items-fn: is a function that returns a map with key is `instance-key` and value is the hydrated data of that instance."
+  [instances                      :- [:sequential :any]
+   hydration-key                  :- :keyword
+   instance-key->hydrated-data-fn :- fn?
+   instance-key                   :- :keyword
+   & [{:keys [default] :as _options}]]
+  (when (seq instances)
+    (let [key->hydrated-items (instance-key->hydrated-data-fn)]
+      (for [item instances]
+        (assoc item hydration-key (get key->hydrated-items (get item instance-key) default))))))

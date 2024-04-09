@@ -11,6 +11,7 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.sync :as sync]
+   [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.mock.util :as mock.util]
    [metabase.test.util :as tu]
@@ -77,6 +78,7 @@
   [_ _ table]
   (get sync-test-tables (:name table)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks ::sync-test
   [_ _ table]
   (set (when (= "movie" (:name table))
@@ -202,49 +204,49 @@
     :position          0}))
 
 (deftest sync-database-test
-  (t2.with-temp/with-temp [Database db {:engine ::sync-test}]
-    (sync/sync-database! db)
-    (let [[movie studio] (mapv table-details (t2/select Table :db_id (u/the-id db) {:order-by [:name]}))]
-      (testing "`movie` Table"
-        (is (= (merge
-                (table-defaults)
-                {:schema              "default"
-                 :name                "movie"
-                 :display_name        "Movie"
-                 :initial_sync_status "complete"
-                 :fields              [(field:movie-id) (field:movie-studio) (field:movie-title)]})
-               movie)))
-      (testing "`studio` Table"
-        (is (= (merge
-                (table-defaults)
-                {:name                "studio"
-                 :display_name        "Studio"
-                 :initial_sync_status "complete"
-                 :fields              [(field:studio-name) (field:studio-studio)]})
-               studio)))))
-  (testing "Returns results from sync-database step"
+  (binding [sync-util/*log-exceptions-and-continue?* false]
     (t2.with-temp/with-temp [Database db {:engine ::sync-test}]
-      (let [results (sync/sync-database! db)]
-        (is (= ["metadata" "analyze" "field-values"]
-               (map :name results)))))))
+      (let [results        (sync/sync-database! db)
+            [movie studio] (mapv table-details (t2/select Table :db_id (u/the-id db) {:order-by [:name]}))]
+        (testing "`movie` Table"
+          (is (= (merge
+                  (table-defaults)
+                  {:schema              "default"
+                   :name                "movie"
+                   :display_name        "Movie"
+                   :initial_sync_status "complete"
+                   :fields              [(field:movie-id) (field:movie-studio) (field:movie-title)]})
+                 movie)))
+        (testing "`studio` Table"
+          (is (= (merge
+                  (table-defaults)
+                  {:name                "studio"
+                   :display_name        "Studio"
+                   :initial_sync_status "complete"
+                   :fields              [(field:studio-name) (field:studio-studio)]
+                   :description         ""})
+                 studio)))
+        (testing "Returns results from sync-database step"
+          (is (= ["metadata" "analyze" "field-values"]
+                 (map :name results))))))))
 
 (deftest sync-table-test
-  (mt/with-temp* [Database [db {:engine ::sync-test}]
-                  Table    [table {:name "movie", :schema "default", :db_id (u/the-id db)}]]
-    (sync/sync-table! table)
-    (is (= (merge
-            (table-defaults)
-            {:schema              "default"
-             :name                "movie"
-             :display_name        "Movie"
-             :initial_sync_status "complete"
-             :fields              [(field:movie-id)
-                                   (assoc (field:movie-studio)
-                                          :fk_target_field_id false
-                                          :semantic_type nil
-                                          :has_field_values :auto-list)
-                                   (field:movie-title)]})
-           (table-details (t2/select-one Table :id (:id table)))))))
+  (binding [sync-util/*log-exceptions-and-continue?* false]
+    (mt/with-temp [Database db           {:engine ::sync-test}
+                   Table    table        {:name "movie", :schema "default", :db_id (u/the-id db)}
+                   Table    studio-table {:name "studio", :schema nil, :db_id (u/the-id db)}]
+      (sync/sync-table! studio-table)
+      (sync/sync-table! table)
+      (is (= (merge
+              (table-defaults)
+              {:schema              "default"
+               :name                "movie"
+               :display_name        "Movie"
+               :initial_sync_status "complete"
+               :fields              [(field:movie-id)
+                                     (field:movie-studio)
+                                     (field:movie-title)]})
+             (table-details (t2/select-one Table :id (:id table))))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

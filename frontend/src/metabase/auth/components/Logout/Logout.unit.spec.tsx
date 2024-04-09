@@ -1,7 +1,9 @@
 import fetchMock from "fetch-mock";
+
 import { setupLogoutEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import * as domUtils from "metabase/lib/dom";
+
 import { Logout } from "./Logout";
 
 const setup = () => {

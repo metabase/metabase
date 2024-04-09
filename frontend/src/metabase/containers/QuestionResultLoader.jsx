@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
+
 import { defer } from "metabase/lib/promise";
 import { runQuestionQuery } from "metabase/services";
 

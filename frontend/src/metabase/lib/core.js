@@ -1,5 +1,6 @@
 import { t } from "ttag";
-import { TYPE } from "metabase-lib/types/constants";
+
+import { TYPE } from "metabase-lib/v1/types/constants";
 
 export const field_semantic_types = [
   /* Overall Row */
@@ -143,6 +144,12 @@ export const field_semantic_types = [
   {
     id: TYPE.Share,
     name: t`Share`,
+    section: t`Numeric`,
+    icon: "int",
+  },
+  {
+    id: TYPE.Percentage,
+    name: t`Percentage`,
     section: t`Numeric`,
     icon: "int",
   },

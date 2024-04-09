@@ -4,11 +4,11 @@
   cookie is deleted, it's fine; the user will just get an email saying they logged in from a new device next time
   they log in."
   (:require
-   [java-time :as t]
-   [metabase.server.request.util :as request.u]
-   [metabase.util.schema :as su]
-   [ring.util.response :as response]
-   [schema.core :as s]))
+   [java-time.api :as t]
+   [metabase.server.request.util :as req.util]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,11 +25,11 @@
           :path      "/"
           ;; Set the cookie to expire 20 years from now. That should be sufficient
           :expires   (t/format :rfc-1123-date-time (t/plus (t/zoned-date-time) (t/years 20)))}
-         (if (request.u/https? request)
+         (if (req.util/https? request)
            {:same-site :none, :secure true}
            {:same-site :lax})))
 
-(s/defn ^:private add-browser-id-cookie [request response browser-id :- su/NonBlankString]
+(mu/defn ^:private add-browser-id-cookie [request response browser-id :- ms/NonBlankString]
   (response/set-cookie response browser-id-cookie-name browser-id (cookie-options request)))
 
 (defn ensure-browser-id-cookie

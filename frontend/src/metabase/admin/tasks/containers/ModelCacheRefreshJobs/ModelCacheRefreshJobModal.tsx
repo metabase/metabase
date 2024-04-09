@@ -1,16 +1,15 @@
 import { useEffect, useMemo } from "react";
-import _ from "underscore";
-import { t } from "ttag";
 import { connect } from "react-redux";
-
 import { usePrevious } from "react-use";
+import { t } from "ttag";
+import _ from "underscore";
+
+import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import ModalContent from "metabase/components/ModalContent";
-
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import PersistedModels from "metabase/entities/persisted-models";
-
-import { ModelCacheRefreshStatus } from "metabase-types/api";
+import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
 import { ErrorBox } from "./ModelCacheRefreshJobs.styled";
 
@@ -71,7 +70,7 @@ function ModelCacheRefreshJobModal({
       >{t`Retry now`}</Button>,
       <Link
         key="edit"
-        className="Button"
+        className={ButtonsS.Button}
         to={`/model/${persistedModel.card_id}/query`}
       >{t`Edit model`}</Link>,
     ];

@@ -1,0 +1,41 @@
+name: updated_at
+display_name: Updated At
+description: null
+created_at: '2023-10-31T21:26:32.933732Z'
+active: true
+visibility_type: normal
+table_id:
+- Internal Metabase Database
+- public
+- v_fields
+database_type: timestamptz
+base_type: type/DateTimeWithLocalTZ
+effective_type: type/DateTimeWithLocalTZ
+semantic_type: type/UpdatedTimestamp
+database_is_auto_increment: false
+database_required: false
+fk_target_field_id: null
+dimensions: []
+json_unfolding: false
+parent_id: null
+coercion_strategy: null
+preview_display: true
+position: 3
+custom_position: 0
+database_position: 3
+has_field_values: null
+settings: null
+caveats: null
+points_of_interest: null
+nfc_path: null
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_fields
+  model: Table
+- id: updated_at
+  model: Field
+database_indexed: null
+database_partitioned: null

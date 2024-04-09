@@ -10,10 +10,10 @@ export function setMonthAndYear({ month, year } = {}) {
 }
 
 export function setQuarterAndYear({ quarter, year } = {}) {
-  cy.findByText(currentYearString).click();
+  popover().findByText(currentYearString).click();
 
-  cy.findByText(year).click();
-  cy.findByText(quarter).click();
+  popover().last().findByText(year).click();
+  popover().findByText(quarter).click();
 }
 
 function setDate(date, container) {
@@ -22,6 +22,14 @@ function setDate(date, container) {
 
 export function setSingleDate(date) {
   setDate(date, cy.findByTestId("specific-date-picker"));
+}
+
+export function setTime({ hours, minutes }) {
+  popover().within(() => {
+    cy.findByText("Add a time").click();
+    cy.findByPlaceholderText("hh").clear().type(hours);
+    cy.findByPlaceholderText("mm").clear().type(minutes);
+  });
 }
 
 export function setDateRange({ startDate, endDate } = {}) {
@@ -63,5 +71,5 @@ export function setAdHocFilter({
     cy.findByText(/^Include/).click();
   }
 
-  cy.button("Update filter").click();
+  cy.button("Add filter").click();
 }

@@ -1,17 +1,20 @@
 import fetchMock from "fetch-mock";
-import { LocationDescriptorObject } from "history";
+import type { LocationDescriptorObject } from "history";
 
-import * as CardLib from "metabase/lib/card";
-import * as Urls from "metabase/lib/urls";
-
+import { createMockEntitiesState } from "__support__/store";
 import * as alert from "metabase/alert/alert";
-import * as questionActions from "metabase/questions/actions";
 import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
+import * as CardLib from "metabase/lib/card";
+import * as Urls from "metabase/lib/urls";
+import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
-
-import {
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import type {
   Card,
   DatabaseId,
   NativeDatasetQuery,
@@ -20,7 +23,11 @@ import {
   UnsavedCard,
   User,
 } from "metabase-types/api";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockMetric,
+  createMockSegment,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   createAdHocCard,
@@ -34,11 +41,6 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { createMockEntitiesState } from "__support__/store";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
-import Question from "metabase-lib/Question";
-
 import * as querying from "../querying";
 
 import * as core from "./core";
@@ -51,16 +53,28 @@ type BaseSetupOpts = {
   user?: User;
   location: LocationDescriptorObject;
   params: Record<string, unknown>;
+  hasDataPermissions?: boolean;
 };
 
-async function baseSetup({ user, location, params }: BaseSetupOpts) {
+const SEGMENT = createMockSegment();
+
+const METRIC = createMockMetric();
+
+async function baseSetup({
+  user,
+  location,
+  params,
+  hasDataPermissions = true,
+}: BaseSetupOpts) {
   jest.useFakeTimers();
 
   const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
 
   const state = createMockState({
     entities: createMockEntitiesState({
-      databases: [createSampleDatabase()],
+      databases: hasDataPermissions ? [createSampleDatabase()] : [],
+      metrics: [METRIC],
+      segments: [SEGMENT],
     }),
   });
 
@@ -314,13 +328,6 @@ describe("QB Actions > initializeQB", () => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
-        it("locks question display", async () => {
-          const { result } = await setup({
-            card: { ...card, displayIsLocked: true },
-          });
-          expect(result.card.displayIsLocked).toBe(true);
-        });
-
         it("fetches alerts", async () => {
           const fetchAlertsForQuestionSpy = jest.spyOn(
             alert,
@@ -387,6 +394,11 @@ describe("QB Actions > initializeQB", () => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
+        it("locks question display", async () => {
+          const { result } = await setup({ card });
+          expect(result.card.displayIsLocked).toBe(true);
+        });
+
         it("throws not found error when opening question with /model URL", async () => {
           const { dispatch } = await setup({
             card: card,
@@ -536,6 +548,11 @@ describe("QB Actions > initializeQB", () => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
+        it("doesn't lock display", async () => {
+          const { result } = await setup({ card });
+          expect(result.card.displayIsLocked).toBeFalsy();
+        });
+
         it("runs question query on /query route", async () => {
           const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
           const baseUrl = Urls.question(card);
@@ -547,6 +564,7 @@ describe("QB Actions > initializeQB", () => {
 
           expect(runQuestionQuerySpy).toHaveBeenCalledTimes(1);
         });
+
         it("runs question query on /metadata route", async () => {
           const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
           const baseUrl = Urls.question(card);
@@ -591,32 +609,27 @@ describe("QB Actions > initializeQB", () => {
       const { card, questionType } = testCase;
 
       type SnippetsSetupOpts = Omit<SetupOpts, "card"> & {
-        hasLoadedDatabase?: boolean;
         hasDatabaseWritePermission?: boolean;
         snippet?: unknown;
       };
 
       function setupSnippets({
-        hasLoadedDatabase = true,
         hasDatabaseWritePermission = true,
         snippet,
         ...opts
       }: SnippetsSetupOpts) {
         const clone = { ...card };
 
-        jest
-          .spyOn(NativeQuery.prototype, "readOnly")
-          .mockReturnValue(!hasDatabaseWritePermission);
-        jest
-          .spyOn(NativeQuery.prototype, "isEditable")
-          .mockReturnValue(hasDatabaseWritePermission);
-
         Snippets.actions.fetchList = jest.fn();
         Snippets.selectors.getList = jest
           .fn()
           .mockReturnValue(snippet ? [snippet] : []);
 
-        return setup({ card: clone, ...opts });
+        return setup({
+          card: clone,
+          hasDataPermissions: hasDatabaseWritePermission,
+          ...opts,
+        });
       }
 
       describe(questionType, () => {
@@ -645,7 +658,7 @@ describe("QB Actions > initializeQB", () => {
             },
           });
           const formattedQuestion = new Question(result.card, metadata);
-          const query = formattedQuestion.query() as NativeQuery;
+          const query = formattedQuestion.legacyQuery() as NativeQuery;
 
           expect(query.queryText().toLowerCase()).toBe(
             "select * from orders {{snippet: bar}}",
@@ -707,7 +720,9 @@ describe("QB Actions > initializeQB", () => {
       });
 
       const question = new Question(result.card, metadata);
-      const query = question.query() as StructuredQuery;
+      const query = question.legacyQuery({
+        useStructuredQuery: true,
+      }) as StructuredQuery;
 
       return {
         question,
@@ -725,10 +740,10 @@ describe("QB Actions > initializeQB", () => {
 
       const { result, metadata } = await setupBlank({ db: SAMPLE_DB_ID });
       const question = new Question(result.card, metadata);
-      const query = question.query() as StructuredQuery;
+      const query = question.query();
 
       expect(result.card).toEqual(expectedCard);
-      expect(query.sourceTableId()).toBe(null);
+      expect(Lib.sourceTableOrCardId(query)).toBe(null);
       expect(result.originalCard).toBeUndefined();
     });
 
@@ -741,42 +756,38 @@ describe("QB Actions > initializeQB", () => {
     });
 
     it("applies 'segment' param correctly", async () => {
-      const SEGMENT_ID = 777;
-
-      const { query } = await setupOrdersTable({ segment: SEGMENT_ID });
+      const { query } = await setupOrdersTable({ segment: SEGMENT.id });
       const [filter] = query.filters();
 
-      expect(filter.raw()).toEqual(["segment", SEGMENT_ID]);
+      expect(filter.raw()).toEqual(["segment", SEGMENT.id]);
     });
 
     it("applies 'metric' param correctly", async () => {
-      const METRIC_ID = 777;
-
-      const { query } = await setupOrdersTable({ metric: METRIC_ID });
+      const { query } = await setupOrdersTable({
+        metric: Number(METRIC.id),
+      });
       const [aggregation] = query.aggregations();
 
-      expect(aggregation.raw()).toEqual(["metric", METRIC_ID]);
+      expect(aggregation.raw()).toEqual(["metric", METRIC.id]);
     });
 
     it("opens summarization sidebar if metric is applied", async () => {
-      const METRIC_ID = 777;
-      const { result } = await setupOrdersTable({ metric: METRIC_ID });
+      const { result } = await setupOrdersTable({
+        metric: Number(METRIC.id),
+      });
       expect(result.uiControls.isShowingSummarySidebar).toBe(true);
     });
 
     it("applies both 'metric' and 'segment' params", async () => {
-      const SEGMENT_ID = 111;
-      const METRIC_ID = 222;
-
       const { query } = await setupOrdersTable({
-        segment: SEGMENT_ID,
-        metric: METRIC_ID,
+        segment: SEGMENT.id,
+        metric: Number(METRIC.id),
       });
       const [filter] = query.filters();
       const [aggregation] = query.aggregations();
 
-      expect(filter.raw()).toEqual(["segment", SEGMENT_ID]);
-      expect(aggregation.raw()).toEqual(["metric", METRIC_ID]);
+      expect(filter.raw()).toEqual(["segment", SEGMENT.id]);
+      expect(aggregation.raw()).toEqual(["metric", METRIC.id]);
     });
 
     it("fetches question metadata", async () => {

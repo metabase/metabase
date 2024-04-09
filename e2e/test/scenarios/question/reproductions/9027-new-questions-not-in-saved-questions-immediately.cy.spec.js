@@ -25,7 +25,7 @@ describe("issue 9027", () => {
     openNativeEditor({ fromCurrentPage: true });
 
     cy.get(".ace_content").type("select 0");
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     saveQuestion(QUESTION_NAME);
   });
@@ -51,8 +51,12 @@ function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
 function saveQuestion(name) {
   cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByText("Save").click();
-  cy.findByLabelText("Name").clear().type(name);
-  cy.button("Save").click();
+
+  cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByLabelText("Name").clear().type(name);
+    cy.findByText("Save").click();
+  });
+
   cy.button("Not now").click();
   cy.wait("@saveQuestion");
 }

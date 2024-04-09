@@ -4,38 +4,25 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
+   [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.email :as email]
+   [metabase.embed.settings :as embed.settings]
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models
-    :refer [Card
-            Collection
-            Dashboard
-            DashboardCard
-            Database
-            Field
-            Metric
-            PermissionsGroup
-            Pulse
-            PulseCard
-            PulseChannel
-            QueryCache
-            QueryExecution
-            Segment
-            Table
-            User]]
+    :refer [Card Collection Dashboard DashboardCard Database Field LegacyMetric
+            PermissionsGroup Pulse PulseCard PulseChannel QueryCache Segment
+            Table User]]
    [metabase.models.humanization :as humanization]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -45,11 +32,13 @@
   considered to add a count of `1`, while non-truthy values do not affect the result count."
   [ms]
   (reduce (partial merge-with +)
+          {}
           (for [m ms]
-            (update-vals m #(cond
-                              (number? %) %
-                              %           1
-                              :else       0)))))
+            (m/map-vals #(cond
+                           (number? %) %
+                           %           1
+                           :else       0)
+                        m))))
 
 (def ^:private ^String metabase-usage-url "https://xuq0fbkk0j.execute-api.us-east-1.amazonaws.com/prod")
 
@@ -121,34 +110,61 @@
     (config/config-str :database-url)        :heroku ;; Putting this last as 'database-url' seems least specific
     :else                                    :unknown))
 
+(def ^:private ui-colors #{:brand :filter :summarize})
+
+(defn appearance-ui-colors-changed?
+  "Returns true if the 'User Interface Colors' have been customized"
+  []
+  (boolean (seq (select-keys (public-settings/application-colors) ui-colors))))
+
+(defn appearance-chart-colors-changed?
+  "Returns true if the 'Chart Colors' have been customized"
+  []
+  (boolean (seq (apply dissoc (public-settings/application-colors) ui-colors))))
+
 (defn- instance-settings
   "Figure out global info about this instance"
   []
-  {:version              (config/mb-version-info :tag)
-   :running_on           (environment-type)
-   :startup_time_millis  (public-settings/startup-time-millis)
-   :application_database (config/config-str :mb-db-type)
-   :check_for_updates    (public-settings/check-for-updates)
-   :site_name            (not= (public-settings/site-name) "Metabase")
-   :report_timezone      (driver/report-timezone)
+  {:version                              (config/mb-version-info :tag)
+   :running_on                           (environment-type)
+   :startup_time_millis                  (public-settings/startup-time-millis)
+   :application_database                 (config/config-str :mb-db-type)
+   :check_for_updates                    (public-settings/check-for-updates)
+   :report_timezone                      (driver/report-timezone)
    ; We deprecated advanced humanization but have this here anyways
-   :friendly_names       (= (humanization/humanization-strategy) "advanced")
-   :email_configured     (email/email-configured?)
-   :slack_configured     (slack/slack-configured?)
-   :sso_configured       (google/google-auth-enabled)
-   :instance_started     (snowplow/instance-creation)
-   :has_sample_data      (t2/exists? Database, :is_sample true)})
+   :friendly_names                       (= (humanization/humanization-strategy) "advanced")
+   :email_configured                     (email/email-configured?)
+   :slack_configured                     (slack/slack-configured?)
+   :sso_configured                       (google/google-auth-enabled)
+   :instance_started                     (snowplow/instance-creation)
+   :has_sample_data                      (t2/exists? Database, :is_sample true)
+   :enable_embedding                     (embed.settings/enable-embedding)
+   :embedding_app_origin_set             (boolean (embed.settings/embedding-app-origin))
+   :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
+   :appearance_help_link                 (public-settings/help-link)
+   :appearance_logo                      (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
+   :appearance_favicon                   (not= (public-settings/application-favicon-url) "app/assets/img/favicon.ico")
+   :appearance_loading_message           (not= (public-settings/loading-message) :doing-science)
+   :appearance_metabot_greeting          (not (public-settings/show-metabot))
+   :appearance_login_page_illustration   (public-settings/login-page-illustration)
+   :appearance_landing_page_illustration (public-settings/landing-page-illustration)
+   :appearance_no_data_illustration      (public-settings/no-data-illustration)
+   :appearance_no_object_illustration    (public-settings/no-object-illustration)
+   :appearance_ui_colors                 (appearance-ui-colors-changed?)
+   :appearance_chart_colors              (appearance-chart-colors-changed?)
+   :appearance_show_mb_links             (not (public-settings/show-metabase-links))})
 
 (defn- user-metrics
   "Get metrics based on user records.
   TODO: get activity in terms of created questions, pulses and dashboards"
   []
-  {:users (merge-count-maps (for [user (t2/select [User :is_active :is_superuser :last_login :sso_source])]
+  {:users (merge-count-maps (for [user (t2/select [User :is_active :is_superuser :last_login :sso_source]
+                                                  :type :personal)]
                               {:total     1
                                :active    (:is_active    user)
                                :admin     (:is_superuser user)
                                :logged_in (:last_login   user)
-                               :sso       (= :google (:sso_source  user))}))})
+                               :sso       (= :google (:sso_source user))}))})
 
 (defn- group-metrics
   "Get metrics based on groups:
@@ -224,9 +240,9 @@
 
     ;; Include `WHERE` clause that includes conditions for a Table related by an FK relationship:
     ;; (Number of Tables per DB engine)
-    (db-frequencies Table (db/qualify Database :engine)
-      {:left-join [Database [:= (db/qualify Database :id)
-                                (db/qualify Table :db_id)]]})
+    (db-frequencies Table (mdb.query/qualify Database :engine)
+      {:left-join [Database [:= (mdb.query/qualify Database :id)
+                                (mdb.query/qualify Table :db_id)]]})
     ;; -> {\"googleanalytics\" 4, \"postgres\" 48, \"h2\" 9}"
   {:style/indent 2}
   [model column & [additonal-honeysql]]
@@ -269,7 +285,7 @@
      :num_cards_per_pulses (medium-histogram (vals (db-frequencies PulseCard :pulse_id   pulse-conditions)))}))
 
 (defn- alert-metrics []
-  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (db/qualify Pulse :alert_condition) nil]}]
+  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (mdb.query/qualify Pulse :alert_condition) nil]}]
     {:alerts               (t2/count Pulse :alert_condition [:not= nil])
      :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
      :first_time_only      (t2/count Pulse :alert_condition [:not= nil], :alert_first_only true)
@@ -327,7 +343,7 @@
 (defn- metric-metrics
   "Get metrics based on Metrics."
   []
-  {:metrics (t2/count Metric)})
+  {:metrics (t2/count LegacyMetric)})
 
 
 ;;; Execution Metrics
@@ -335,7 +351,7 @@
 (defn summarize-executions
   "Summarize `executions`, by incrementing approriate counts in a summary map."
   ([]
-   (summarize-executions (db/select-reducible [QueryExecution :executor_id :running_time :error])))
+   (summarize-executions (t2/reducible-select [:model/QueryExecution :executor_id :running_time :error])))
   ([executions]
    (reduce summarize-executions {:executions 0, :by_status {}, :num_per_user {}, :num_by_latency {}} executions))
   ([summary execution]
@@ -420,7 +436,7 @@
   (try
      (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
      (catch Throwable e
-       (log/error e (trs "Sending usage stats FAILED")))))
+       (log/error e "Sending usage stats FAILED"))))
 
 
 (defn phone-home-stats!

@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { alpha, color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+
 import DateTime from "metabase/components/DateTime";
+import { alpha, color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const EmptyStateRoot = styled.div`
   display: flex;

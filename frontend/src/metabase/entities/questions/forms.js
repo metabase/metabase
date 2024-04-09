@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import validate from "metabase/lib/validate";
-
 import { PLUGIN_CACHING } from "metabase/plugins";
 
 const FORM_FIELDS = [

@@ -1,11 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import { getSortedTimelines } from "metabase/lib/timelines";
+
 import Button from "metabase/core/components/Button/Button";
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
-import ModalHeader from "../ModalHeader";
+import { getSortedTimelines } from "metabase/lib/timelines";
+import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+
 import ModalFooter from "../ModalFooter";
+import ModalHeader from "../ModalHeader";
 import TimelinePicker from "../TimelinePicker";
+
 import { ModalRoot, ModalBody } from "./MoveEventModal.styled";
 
 export interface MoveEventModalProps {

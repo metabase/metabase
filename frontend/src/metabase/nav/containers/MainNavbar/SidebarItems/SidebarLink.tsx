@@ -3,7 +3,7 @@ import * as React from "react";
 import _ from "underscore";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";
-import { IconName, IconProps } from "metabase/core/components/Icon";
+import type { IconName, IconProps } from "metabase/ui";
 
 import {
   FullWidthLink,

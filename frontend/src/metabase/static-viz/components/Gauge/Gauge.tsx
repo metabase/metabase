@@ -1,9 +1,11 @@
-import { Pie } from "@visx/shape";
 import { Group } from "@visx/group";
-import { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
+import { Pie } from "@visx/shape";
+import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
 
-import { ColorGetter } from "metabase/static-viz/lib/colors";
+import type { ColorGetter } from "metabase/static-viz/lib/colors";
 
+import GaugeLabel from "./GaugeLabel";
+import GaugeNeedle from "./GaugeNeedle";
 import {
   START_ANGLE,
   END_ANGLE,
@@ -13,6 +15,7 @@ import {
   SEGMENT_LABEL_FONT_SIZE,
   CHART_HEIGHT,
 } from "./constants";
+import type { GaugeLabelData, GaugeSegment, Position } from "./types";
 import {
   limit,
   calculateChartScale,
@@ -23,11 +26,6 @@ import {
   gaugeSorter,
   colorGetter,
 } from "./utils";
-
-import GaugeNeedle from "./GaugeNeedle";
-import GaugeLabel from "./GaugeLabel";
-
-import type { GaugeLabelData, GaugeSegment, Position } from "./types";
 
 interface GaugeProps {
   value: number;

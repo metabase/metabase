@@ -1,14 +1,14 @@
-import _ from "underscore";
 import { t } from "ttag";
-import { getRelativeTime } from "metabase/lib/time";
+import _ from "underscore";
 
-import type { RevisionOrModerationEvent } from "metabase/plugins";
-import type { Revision } from "metabase-types/api";
 import Button from "metabase/core/components/Button";
-import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-
 import { color } from "metabase/lib/colors";
+import { getRelativeTime } from "metabase/lib/time";
+import type { RevisionOrModerationEvent } from "metabase/plugins";
+import { Icon } from "metabase/ui";
+import type { Revision } from "metabase-types/api";
+
 import {
   TimelineContainer,
   TimelineEvent,

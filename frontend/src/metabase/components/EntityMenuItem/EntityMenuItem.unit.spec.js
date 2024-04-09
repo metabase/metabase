@@ -1,5 +1,4 @@
 import { fireEvent, render, screen, getIcon } from "__support__/ui";
-
 import EntityMenuItem from "metabase/components/EntityMenuItem";
 
 describe("EntityMenuItem", () => {

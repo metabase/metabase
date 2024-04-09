@@ -1,27 +1,25 @@
-import {
-  createRef,
-  Children,
-  Component,
+import { createSelector } from "@reduxjs/toolkit";
+import cx from "classnames";
+import type {
   CSSProperties,
   Key,
   ReactElement,
   ReactNode,
   RefObject,
 } from "react";
-
+import { createRef, Children, Component } from "react";
 import _ from "underscore";
-import cx from "classnames";
-import { createSelector } from "@reduxjs/toolkit";
-import { Icon, IconName } from "metabase/core/components/Icon";
+
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton, {
-  SelectButtonProps,
-} from "metabase/core/components/SelectButton";
-
-import { color } from "metabase/lib/colors";
-
+import type { SelectButtonProps } from "metabase/core/components/SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
+import CS from "metabase/css/core/index.css";
 import Uncontrollable from "metabase/hoc/Uncontrollable";
+import { color } from "metabase/lib/colors";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
+
 import { SelectAccordionList } from "./Select.styled";
 
 const MIN_ICON_WIDTH = 20;
@@ -56,6 +54,7 @@ export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
   searchCaseInsensitive?: boolean;
   searchPlaceholder?: string;
   searchFuzzy?: boolean;
+  globalSearch?: boolean;
   hideEmptySectionsInSearch?: boolean;
   width?: number;
 
@@ -98,7 +97,7 @@ export interface SelectChangeTarget<TValue> {
   value: TValue;
 }
 
-class Select<TValue, TOption = SelectOption<TValue>> extends Component<
+class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
   SelectProps<TValue, TOption>
 > {
   _popover?: any;
@@ -169,17 +168,14 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
   }
 
   itemIsSelected = (option: TOption) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const optionValue = this.props.optionValueFn!(option);
     return this._getValuesSet().has(optionValue);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   itemIsClickable = (option: TOption) => !this.props.optionDisabledFn!(option);
 
   handleChange = (option: TOption) => {
     const { name, multiple, onChange } = this.props;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const optionValue = this.props.optionValueFn!(option);
     let value: any;
     if (multiple) {
@@ -203,7 +199,6 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
       return null;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const icon = this.props.optionIconFn!(item);
     if (icon) {
       return (
@@ -274,7 +269,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
           this.props.triggerElement || (
             <SelectButton
               ref={this.selectButtonRef}
-              className="flex-full"
+              className={CS.flexFull}
               hasValue={selectedNames.length > 0}
               disabled={disabled}
               {...buttonProps}
@@ -293,7 +288,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
           )
         }
         onClose={composeEventHandlers(onClose, this.handleClose)}
-        triggerClasses={cx("flex", className)}
+        triggerClasses={cx(CS.flex, className)}
         isInitiallyOpen={isInitiallyOpen}
         disabled={disabled}
         verticalAttachments={["top", "bottom"]}
@@ -307,6 +302,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
           className="MB-Select"
           alwaysExpanded
           width={width}
+          role="listbox"
           itemIsSelected={this.itemIsSelected}
           itemIsClickable={this.itemIsClickable}
           renderItemName={this.props.optionNameFn}
@@ -320,6 +316,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
           searchCaseInsensitive={searchCaseInsensitive}
           searchFuzzy={searchFuzzy}
           searchPlaceholder={searchPlaceholder}
+          globalSearch={this.props.globalSearch}
           hideEmptySectionsInSearch={hideEmptySectionsInSearch}
           data-testid={testId ? `${testId}-list` : null}
         />
@@ -329,8 +326,13 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
   }
 }
 
+/**
+ * @deprecated: use Select from "metabase/ui"
+ */
+const Select = Uncontrollable()(BaseSelect);
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Uncontrollable()(Select);
+export default Select;
 
 export interface OptionSectionProps {
   name?: string;

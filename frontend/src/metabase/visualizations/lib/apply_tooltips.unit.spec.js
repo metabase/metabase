@@ -1,10 +1,4 @@
-import moment from "moment-timezone";
-
-import {
-  getClickHoverObject,
-  getStackedTooltipModel,
-} from "metabase/visualizations/lib/apply_tooltips";
-import { getDatas } from "metabase/visualizations/lib/renderer_utils";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import {
   getFormattedTooltips,
@@ -13,6 +7,11 @@ import {
   StringColumn,
   NumberColumn,
 } from "__support__/visualizations";
+import {
+  getClickHoverObject,
+  getStackedTooltipModel,
+} from "metabase/visualizations/lib/apply_tooltips";
+import { getDatas } from "metabase/visualizations/lib/renderer_utils";
 
 describe("getClickHoverObject", () => {
   it("should return data for tooltip", () => {
@@ -53,7 +52,7 @@ describe("getClickHoverObject", () => {
 
     const obj = getClickHoverObject(d, otherArgs);
 
-    expect(getFormattedTooltips(obj)).toEqual(["April, 2016", "2"]);
+    expect(getFormattedTooltips(obj)).toEqual(["April 2016", "2"]);
   });
 
   it("should show the correct tooltip for months", () => {
@@ -78,7 +77,7 @@ describe("getClickHoverObject", () => {
 
     const obj = getClickHoverObject(d, otherArgs);
 
-    expect(getFormattedTooltips(obj)).toEqual(["April, 2016", "2"]);
+    expect(getFormattedTooltips(obj)).toEqual(["April 2016", "2"]);
   });
 
   describe("event/element target", () => {
@@ -208,37 +207,30 @@ describe("getStackedTooltipModel", () => {
     series: () => null,
   };
   const dashboard = {
-    ordered_cards: [],
+    dashcards: [],
   };
   const cols = [StringColumn(), NumberColumn()];
-  const getMockSeries = hasBreakout => [
-    {
-      data: {
-        cols,
-        rows: [["foo", 100]],
-        settings: {},
-        _breakoutColumn: hasBreakout ? StringColumn() : undefined,
-      },
-      card: {
-        name: "Series 1",
-        _breakoutColumn: hasBreakout ? StringColumn() : undefined,
-      },
-    },
-    {
-      data: {
-        cols,
-        rows: [["foo", 200]],
-        settings: {},
-      },
-      card: { name: "Series 2" },
-    },
+  const getMockSeries = ({ card, rows, hasBreakout }) => {
+    const _breakoutColumn = hasBreakout ? StringColumn() : undefined;
+    return {
+      data: { cols, rows, _breakoutColumn },
+      card: { ...card, _breakoutColumn },
+    };
+  };
+  const getMockMultipleSeries = hasBreakout => [
+    getMockSeries({
+      card: { id: 1, name: "Series 1" },
+      rows: [["foo", 100]],
+      hasBreakout,
+    }),
+    getMockSeries({ card: { id: 2, name: "Series 2" }, rows: [["foo", 200]] }),
   ];
 
   const hoveredIndex = 0;
   const xValue = "foo";
 
   it("sets tooltip model rows", () => {
-    const series = getMockSeries();
+    const series = getMockMultipleSeries();
     const datas = getDatas({ series, settings });
     const { bodyRows, headerRows, headerTitle } = getStackedTooltipModel(
       series,
@@ -268,10 +260,20 @@ describe("getStackedTooltipModel", () => {
     );
   });
 
-  it("sets showTotal and showPercentages to true for charts with breakouts", () => {
-    const series = getMockSeries(true);
+  it("should show sum of a metric for the same X-axis value", () => {
+    const hasBreakout = true;
+    const series = [
+      getMockSeries({
+        card: { id: 1, name: "Series 1", _breakoutColumn: StringColumn() },
+        rows: [
+          ["foo", 100],
+          ["foo", 100],
+        ],
+        hasBreakout,
+      }),
+    ];
     const datas = getDatas({ series, settings });
-    const { showTotal, showPercentages } = getStackedTooltipModel(
+    const { headerRows } = getStackedTooltipModel(
       series,
       datas,
       settings,
@@ -280,24 +282,60 @@ describe("getStackedTooltipModel", () => {
       xValue,
     );
 
+    expect(headerRows).toHaveLength(1);
+    expect(headerRows[0].value).toBe(200);
+  });
+
+  it("should include breakouts from all cards", () => {
+    const cardA = { id: 1, name: "Series 1" };
+    const cardB = { id: 2, name: "Series 2" };
+    const hasBreakout = true;
+    const series = [
+      getMockSeries({ card: cardA, rows: [["foo", 100]], hasBreakout }),
+      getMockSeries({ card: cardA, rows: [["foo", 200]], hasBreakout }),
+      getMockSeries({ card: cardB, rows: [["foo", 300]], hasBreakout }),
+      getMockSeries({ card: cardB, rows: [["foo", 400]], hasBreakout }),
+    ];
+    const datas = getDatas({ series, settings });
+    const { bodyRows, headerRows, showTotal, showPercentages } =
+      getStackedTooltipModel(
+        series,
+        datas,
+        settings,
+        hoveredIndex,
+        dashboard,
+        xValue,
+      );
+    expect(headerRows).toHaveLength(1);
+    expect(bodyRows).toHaveLength(3);
     expect(showTotal).toBe(true);
     expect(showPercentages).toBe(true);
   });
 
-  it("sets showTotal and showPercentages to false for charts without breakouts", () => {
-    const series = getMockSeries();
+  it("should include metrics and breakouts from all cards", () => {
+    const cardA = { id: 1, name: "Series 1" };
+    const cardB = { id: 2, name: "Series 2" };
+    const hasBreakout = true;
+    const series = [
+      getMockSeries({ card: cardA, rows: [["foo", 100]], hasBreakout }),
+      getMockSeries({ card: cardA, rows: [["foo", 200]], hasBreakout }),
+      getMockSeries({ card: cardB, rows: [["foo", 300]] }),
+      getMockSeries({ card: cardB, rows: [["foo", 400]] }),
+    ];
     const datas = getDatas({ series, settings });
-    const { showTotal, showPercentages } = getStackedTooltipModel(
-      series,
-      datas,
-      settings,
-      hoveredIndex,
-      dashboard,
-      xValue,
-    );
-
-    expect(showTotal).toBe(false);
-    expect(showPercentages).toBe(false);
+    const { bodyRows, headerRows, showTotal, showPercentages } =
+      getStackedTooltipModel(
+        series,
+        datas,
+        settings,
+        hoveredIndex,
+        dashboard,
+        xValue,
+      );
+    expect(headerRows).toHaveLength(1);
+    expect(bodyRows).toHaveLength(3);
+    expect(showTotal).toBe(true);
+    expect(showPercentages).toBe(true);
   });
 });
 

@@ -1,13 +1,11 @@
 import { t } from "ttag";
 
-import ObjectDetail from "metabase/visualizations/components/ObjectDetail";
-
-import {
-  columnSettings,
-  tableColumnSettings,
-} from "metabase/visualizations/lib/settings/column";
-
 import { formatColumn } from "metabase/lib/formatting";
+import ObjectDetail from "metabase/visualizations/components/ObjectDetail";
+import {
+  buildTableColumnSettings,
+  columnSettings,
+} from "metabase/visualizations/lib/settings/column";
 import {
   getDefaultSize,
   getMinSize,
@@ -25,7 +23,7 @@ const ObjectDetailProperties = {
   disableClickBehavior: true,
   settings: {
     ...columnSettings({ hidden: true }),
-    ...tableColumnSettings,
+    ...buildTableColumnSettings({ getIsColumnVisible: () => true }),
   },
   columnSettings: column => {
     const settings = {

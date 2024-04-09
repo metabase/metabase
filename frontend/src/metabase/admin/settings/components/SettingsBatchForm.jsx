@@ -1,27 +1,29 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-
-import * as React from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { Component } from "react";
+import * as React from "react";
+import Collapse from "react-collapse";
 import { connect } from "react-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
-import Collapse from "react-collapse";
-import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import Button from "metabase/core/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
-import MetabaseUtils from "metabase/lib/utils";
-import { updateSettings as defaultUpdateSettings } from "../settings";
-import SettingsSetting from "./SettingsSetting";
+import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
+import { isEmail, isEmpty } from "metabase/lib/utils";
+
+import { CollapsibleSectionContent } from "./SettingsBatchForm.styled";
+import { SettingsSetting } from "./SettingsSetting";
 
 const VALIDATIONS = {
   email: {
-    validate: value => MetabaseUtils.isEmail(value),
+    validate: value => isEmail(value),
     message: t`That's not a valid email address`,
   },
   email_list: {
-    validate: value => value.every(MetabaseUtils.isEmail),
+    validate: value => value.every(isEmail),
     message: t`That's not a valid email address`,
   },
   integer: {
@@ -49,11 +51,14 @@ class SettingsBatchForm extends Component {
   }
 
   static propTypes = {
+    breadcrumbs: PropTypes.array,
     elements: PropTypes.array.isRequired,
-    formErrors: PropTypes.object,
-    updateSettings: PropTypes.func.isRequired,
+    layout: PropTypes.array,
     renderSubmitButton: PropTypes.func,
     renderExtraButtons: PropTypes.func,
+    ref: PropTypes.forwardRef,
+    settingValues: PropTypes.object,
+    updateSettings: PropTypes.func.isRequired,
   };
 
   componentDidMount() {
@@ -87,7 +92,7 @@ class SettingsBatchForm extends Component {
 
   // return null if element passes validation, otherwise return an error message
   validateElement(validation, value, element) {
-    if (MetabaseUtils.isEmpty(value)) {
+    if (isEmpty(value)) {
       return;
     }
 
@@ -118,7 +123,7 @@ class SettingsBatchForm extends Component {
     if (!enabledKey || formData[enabledKey]) {
       availableElements.forEach(function (element) {
         // test for required elements
-        if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
+        if (element.required && isEmpty(formData[element.key])) {
           valid = false;
         }
 
@@ -279,7 +284,7 @@ class SettingsBatchForm extends Component {
     return (
       <div>
         {breadcrumbs && (
-          <Breadcrumbs crumbs={breadcrumbs} className="ml2 mb3" />
+          <Breadcrumbs crumbs={breadcrumbs} className={cx(CS.ml2, CS.mb3)} />
         )}
 
         {layout.map((section, index) =>
@@ -295,10 +300,12 @@ class SettingsBatchForm extends Component {
         )}
 
         {formErrors && formErrors.message && (
-          <div className="m2 text-error text-bold">{formErrors.message}</div>
+          <div className={cx(CS.m2, CS.textError, CS.textBold)}>
+            {formErrors.message}
+          </div>
         )}
 
-        <div className="m2 mb4">
+        <div className={cx(CS.m2, CS.mb4)}>
           {renderSubmitButton ? (
             renderSubmitButton({
               valid,
@@ -309,7 +316,7 @@ class SettingsBatchForm extends Component {
             })
           ) : (
             <Button
-              className="mr1"
+              className={CS.mr1}
               primary={!disabled}
               success={submitting === "success"}
               disabled={disabled || pristine}
@@ -335,17 +342,14 @@ class SettingsBatchForm extends Component {
 
 export default connect(
   null,
-  (dispatch, { updateSettings }) => ({
-    updateSettings:
-      updateSettings || (settings => dispatch(defaultUpdateSettings(settings))),
-  }),
+  null,
   null,
   { forwardRef: true }, // HACK: needed so consuming components can call methods on the component :-/
 )(SettingsBatchForm);
 
 const StandardSection = ({ title, children }) => (
   <div>
-    {title && <h2 className="mx2">{title}</h2>}
+    {title && <h2 className={CS.mx2}>{title}</h2>}
     <ul>{children}</ul>
   </div>
 );
@@ -364,16 +368,13 @@ class CollapsibleSection extends React.Component {
     const { title, children } = this.props;
     const { show } = this.state;
     return (
-      <section className="mb4">
-        <div
-          className="inline-block ml1 cursor-pointer text-brand-hover"
-          onClick={this.handleToggle.bind(this)}
-        >
-          <div className="flex align-center">
-            <DisclosureTriangle className="mx1" open={show} />
+      <section className={CS.mb4}>
+        <CollapsibleSectionContent onClick={this.handleToggle.bind(this)}>
+          <div className={cx(CS.flex, CS.alignCenter)}>
+            <DisclosureTriangle className={CS.mx1} open={show} />
             <h3>{title}</h3>
           </div>
-        </div>
+        </CollapsibleSectionContent>
         <Collapse isOpened={show} keepCollapsedContent>
           <ul>{children}</ul>
         </Collapse>

@@ -1,13 +1,15 @@
 import type { ScaleContinuousNumeric } from "d3-scale";
-import { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
-import { Margin } from "metabase/visualizations/shared/types/layout";
-import {
+
+import type { Margin } from "metabase/visualizations/shared/types/layout";
+import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import type { ChartGoal } from "metabase/visualizations/shared/types/settings";
+import type {
   ChartFont,
   GoalStyle,
 } from "metabase/visualizations/shared/types/style";
-import { ChartGoal } from "metabase/visualizations/shared/types/settings";
+
 import { LABEL_PADDING } from "../constants";
-import { SeriesData } from "../types";
+import type { SeriesData } from "../types";
 
 const CHART_PADDING = 10;
 const TICKS_OFFSET = 10;

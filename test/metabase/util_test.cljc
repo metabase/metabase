@@ -1,13 +1,15 @@
 (ns ^:mb/once metabase.util-test
   "Tests for functions in `metabase.util`."
   (:require
+   #?@(:clj [[metabase.test :as mt]])
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase.util :as u]
-   #?@(:clj [[metabase.test :as mt]])))
+   #_:clj-kondo/ignore
+   [malli.generator :as mg]
+   [metabase.util :as u]))
 
 (deftest ^:parallel add-period-test
   (is (= "This sentence needs a period."
@@ -201,6 +203,15 @@
     [-1 0 -2 -3] nil
     nil          nil
     []           nil))
+
+(deftest ^:parallel index-of-lazy-test
+  (testing "index-of should be lazy"
+    (let [evaluated? (atom false)]
+      (is (= 3
+             (u/index-of string? (lazy-cat [1 2 3 "STRING"]
+                                           (reset! evaluated? true)
+                                           [4]))))
+      (is (false? @evaluated?)))))
 
 (deftest ^:parallel snake-key-test
   (is (= {:num_cans 2, :lisp_case? {:nested_maps? true}}
@@ -410,9 +421,12 @@
            (u/assoc-default {:x nil} :x 0 :y nil :z 1))))
   (testing "multiple defaults for the same key"
     (is (= {:x nil, :y 1, :z 2}
-           (u/assoc-default {:x nil} :x 0, :y nil, :y 1, :z 2, :x 3, :z 4)))))
+           (u/assoc-default {:x nil} :x 0, :y nil, :y 1, :z 2, :x 3, :z 4))))
+  (testing "preserves metadata"
+    (is (= {:m true}
+           (meta (u/assoc-default ^:m {:x 0} :y 1 :z 2 :a nil))))))
 
-(deftest classify-changes-test
+(deftest ^:parallel classify-changes-test
   (testing "classify correctly"
     (is (= {:to-update [{:id 2 :name "c3"} {:id 4 :name "c4"}]
             :to-delete [{:id 1 :name "c1"} {:id 3 :name "c3"}]
@@ -420,3 +434,64 @@
            (u/classify-changes
              [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
              [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))))
+
+(deftest ^:parallel empty-or-distinct?-test
+  (are [xs expected] (= expected
+                        (u/empty-or-distinct? xs))
+    nil     true
+    []      true
+    '()     true
+    #{}     true
+    {}      true
+    [1]     true
+    [1 1]   false
+    '(1 1)  false
+    #{1}    true
+    [1 2]   true
+    [1 2 1] false))
+
+(deftest ^:parallel round-to-decimals-test
+  (are [decimal-place expected] (= expected
+                                   (u/round-to-decimals decimal-place 1250.04253))
+    5 1250.04253
+    4 1250.0425
+    3 1250.043
+    2 1250.04
+    1 1250.0
+    0 1250.0))
+
+(deftest conflicting-keys-test
+  (testing "non intersecting maps should not return any conflicts"
+    (is (= [] (u/conflicting-keys {:a 1 :b 2}
+                                  {:c 3 :d 4}))))
+  (testing "consistent maps should not return any conflicts"
+    (is (= [] (u/conflicting-keys {:a 1 :b 2}
+                                  {:b 2 :c 3}))))
+  (testing "conflicting maps should return the correct conflicts"
+    (is (= [:c :e] (u/conflicting-keys {:a 1 :b 2 :c 3 :e nil}
+                                       {:b 2 :c 4 :d 5 :e 6})))))
+
+(deftest map-all-test
+  (testing "map-all with 1 collection is just map"
+    (is (= [[0] [1] [2] [3] [4]] (u/map-all vector (range 5)))))
+  (testing "map-all works with 3 collections"
+    (is (=  [[0 0] [1 1] [2 2] [3 nil] [4 nil]] (u/map-all vector (range 5) (range 3)))))
+  (testing "map-all works with higher arity"
+    (is (= [[0 0 0] [1 1 1] [2 2 2] [3 nil 3] [nil nil 4]] (u/map-all vector (range 4) (range 3) (range 5))))))
+
+#?(:clj
+   (defspec map-all-returns-max-coll-input-size-test 1000
+     (prop/for-all [xs (mg/generator [:sequential :int])
+                    ys (mg/generator [:sequential :int])
+                    zs (mg/generator [:sequential :int])]
+       (let [total-result-count (count (u/map-all vector xs ys zs))]
+         (= total-result-count (max (count xs) (count ys) (count zs)))))))
+
+#?(:clj
+   (defspec map-all-consumes-all-lengths-of-inputs-test 1000
+     (prop/for-all [xs (mg/generator [:sequential [:int {:min -1000 :max 1000}]])
+                    ys (mg/generator [:sequential [:int {:min -1000 :max 1000}]])
+                    zs (mg/generator [:sequential [:int {:min -1000 :max 1000}]])]
+       (let [expected (reduce + (u/map-all (fnil + 0 0 0) xs ys zs))
+             sum (+ (reduce + 0 xs) (reduce + 0 ys) (reduce + 0 zs))]
+         (= expected sum)))))

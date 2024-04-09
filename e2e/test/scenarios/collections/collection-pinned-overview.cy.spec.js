@@ -1,3 +1,9 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   popover,
   restore,
@@ -6,10 +12,8 @@ import {
   openPinnedItemMenu,
   openUnpinnedItemMenu,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
 const DASHBOARD_NAME = "Orders in a dashboard";
 const QUESTION_NAME = "Orders, Count";
@@ -34,7 +38,7 @@ const PIVOT_QUESTION_DETAILS = {
   },
 };
 
-const SQL_QUESTION_DETAILS = {
+const SQL_QUESTION_DETAILS_REQUIRED_PARAMETER = {
   name: "SQL with parameters",
   display: "scalar",
   native: {
@@ -51,12 +55,31 @@ const SQL_QUESTION_DETAILS = {
   },
 };
 
+const SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE = {
+  name: "SQL with parameters",
+  display: "scalar",
+  native: {
+    "template-tags": {
+      filter: {
+        type: "dimension",
+        name: "filter",
+        id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
+        "display-name": "date",
+        default: "1999-02-26~2024-02-26",
+        dimension: ["field", PEOPLE.BIRTH_DATE, null],
+        "widget-type": "date/range",
+      },
+    },
+    query: "select count(*) from people where {{filter}}",
+  },
+};
+
 describe("scenarios > collection pinned items overview", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
-    cy.intercept("POST", `/api/card/**/query`).as("getCardQuery");
+    cy.intercept("POST", "/api/card/**/query").as("getCardQuery");
     cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
   });
 
@@ -70,7 +93,7 @@ describe("scenarios > collection pinned items overview", () => {
       cy.icon("dashboard").should("be.visible");
       cy.findByText("A dashboard").should("be.visible");
       cy.findByText(DASHBOARD_NAME).click();
-      cy.url().should("include", "/dashboard/1");
+      cy.url().should("include", `/dashboard/${ORDERS_DASHBOARD_ID}`);
     });
   });
 
@@ -83,7 +106,7 @@ describe("scenarios > collection pinned items overview", () => {
     getPinnedSection().within(() => {
       cy.findByText("18,760").should("be.visible");
       cy.findByText(QUESTION_NAME).click();
-      cy.url().should("include", "/question/2");
+      cy.url().should("include", `/question/${ORDERS_COUNT_QUESTION_ID}`);
     });
   });
 
@@ -103,7 +126,7 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to pin a model", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
 
     openRootCollection();
     openUnpinnedItemMenu(MODEL_NAME);
@@ -119,7 +142,9 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to unpin a pinned dashboard", () => {
-    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      collection_position: 1,
+    });
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
@@ -130,7 +155,9 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to move a pinned dashboard", () => {
-    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      collection_position: 1,
+    });
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
@@ -141,7 +168,9 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to duplicate a pinned dashboard", () => {
-    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      collection_position: 1,
+    });
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
@@ -154,7 +183,9 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to archive a pinned dashboard", () => {
-    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      collection_position: 1,
+    });
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
@@ -167,7 +198,9 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to hide the visualization for a pinned question", () => {
-    cy.request("PUT", "/api/card/2", { collection_position: 1 });
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+      collection_position: 1,
+    });
 
     openRootCollection();
     openPinnedItemMenu(QUESTION_NAME);
@@ -178,12 +211,12 @@ describe("scenarios > collection pinned items overview", () => {
       cy.findByText("18,760").should("not.exist");
       cy.findByText("A question").should("be.visible");
       cy.findByText(QUESTION_NAME).click();
-      cy.url().should("include", "/question/2");
+      cy.url().should("include", `/question/${ORDERS_COUNT_QUESTION_ID}`);
     });
   });
 
   it("should be able to show the visualization for a pinned question", () => {
-    cy.request("PUT", "/api/card/2", {
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       collection_position: 1,
       collection_preview: false,
     });
@@ -199,20 +232,42 @@ describe("scenarios > collection pinned items overview", () => {
     });
   });
 
-  it("should automatically hide the visualization for pinned native questions with missing required parameters", () => {
-    cy.createNativeQuestion(SQL_QUESTION_DETAILS).then(({ body: { id } }) => {
-      cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+  describe("native questions", () => {
+    it("should automatically hide the visualization for pinned native questions with missing required parameters", () => {
+      cy.createNativeQuestion(SQL_QUESTION_DETAILS_REQUIRED_PARAMETER).then(
+        ({ body: { id } }) => {
+          cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+        },
+      );
+
+      openRootCollection();
+      getPinnedSection().within(() => {
+        cy.findByText(SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE.name).should(
+          "be.visible",
+        );
+        cy.findByText("A question").should("be.visible");
+      });
     });
 
-    openRootCollection();
-    getPinnedSection().within(() => {
-      cy.findByText(SQL_QUESTION_DETAILS.name).should("be.visible");
-      cy.findByText("A question").should("be.visible");
+    it("should apply default value of variable for pinned native questions (metabase#37831)", () => {
+      cy.createNativeQuestion(SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE).then(
+        ({ body: { id } }) => {
+          cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+        },
+      );
+
+      openRootCollection();
+      getPinnedSection().within(() => {
+        cy.findByText(SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE.name).should(
+          "be.visible",
+        );
+        cy.findByTestId("scalar-value").should("have.text", "68");
+      });
     });
   });
 
   it("should be able to pin a visualization by dragging it up", () => {
-    cy.request("PUT", "/api/card/2", {
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       collection_position: 1,
       collection_preview: false,
     });
@@ -241,6 +296,24 @@ describe("scenarios > collection pinned items overview", () => {
     cy.findByTestId("pinned-items")
       .findByText("Orders, Count, Grouped by Created At (year)")
       .should("exist");
+  });
+
+  it("should allow switching between different pages for a pinned question (metabase#23515)", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      collection_position: 1,
+    });
+
+    cy.visit("/collection/root");
+    cy.wait("@getPinnedItems");
+    cy.wait("@getCardQuery");
+
+    cy.findByLabelText("Next page").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Rows 4-6 of first 2000").should("be.visible");
+
+    cy.findByLabelText("Previous page").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Rows 1-3 of first 2000").should("be.visible");
   });
 });
 

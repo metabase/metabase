@@ -1,8 +1,12 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import cx from "classnames";
+import { Component } from "react";
 import { Link } from "react-router";
+
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
+
+import S from "./NewModelOption.module.css";
 
 export default class NewModelOption extends Component {
   state = {
@@ -16,7 +20,7 @@ export default class NewModelOption extends Component {
     return (
       <Link
         {...props}
-        className="block no-decoration bg-white p4 align-center bordered rounded cursor-pointer transition-all full-height text-centered"
+        className={S.linkWrapper}
         style={{
           boxSizing: "border-box",
           boxShadow: hover
@@ -28,7 +32,7 @@ export default class NewModelOption extends Component {
         onMouseLeave={() => this.setState({ hover: false })}
       >
         <div
-          className="flex align-center layout-centered"
+          className={cx(CS.flex, CS.alignCenter, CS.layoutCentered)}
           style={{ height: "160px" }}
         >
           <img
@@ -38,13 +42,14 @@ export default class NewModelOption extends Component {
           />
         </div>
         <div
-          className="text-normal mt2 mb2 text-paragraph"
+          className={cx(CS.textNormal, CS.mt2, CS.mb2, CS.textParagraph)}
           style={{ lineHeight: "1.25em" }}
         >
-          <h2 className={cx("transition-all", { "text-brand": hover })}>
-            {title}
-          </h2>
-          <p className="text-medium text-small" style={{ maxWidth: "360px" }}>
+          <h2 className={cx(S.modelTitle, { "text-brand": hover })}>{title}</h2>
+          <p
+            className={cx("text-medium", CS.textSmall)}
+            style={{ maxWidth: "360px" }}
+          >
             {description}
           </p>
         </div>

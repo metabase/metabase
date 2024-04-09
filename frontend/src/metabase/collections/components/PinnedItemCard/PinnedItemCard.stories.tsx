@@ -1,5 +1,6 @@
 import { action } from "@storybook/addon-actions";
 import type { ComponentStory } from "@storybook/react";
+
 import PinnedItemCard from "./PinnedItemCard";
 
 export default {
@@ -13,6 +14,7 @@ const collection = {
   name: "Collection Foo",
   description: null,
   archived: false,
+  location: "/",
 };
 
 const onCopy = action("onCopy");

@@ -4,13 +4,11 @@
    [metabase.integrations.ldap :as ldap]
    [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.models.user :as user :refer [User]]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.integrations.ldap :as ldap.test]
    [toucan2.core :as t2])
   (:import
-   (com.unboundid.ldap.sdk LDAPConnectionPool)))
+   (com.unboundid.ldap.sdk DN LDAPConnectionPool)))
 
 (set! *warn-on-reflection* true)
 
@@ -71,7 +69,7 @@
 
 (deftest find-test
   ;; there are EE-specific versions of this test in [[metabase-enterprise.enhancements.integrations.ldap-test]]
-  (premium-features-test/with-premium-features #{}
+  (mt/with-premium-features #{}
     (ldap.test/with-ldap-server
       (testing "find by username"
         (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
@@ -126,7 +124,7 @@
 
 (deftest fetch-or-create-user-test
   ;; there are EE-specific versions of this test in [[metabase-enterprise.enhancements.integrations.ldap-test]]
-  (premium-features-test/with-premium-features #{}
+  (mt/with-premium-features #{}
     (ldap.test/with-ldap-server
       (testing "a new user is created when they don't already exist"
         (try
@@ -171,6 +169,14 @@
               ["CN=Accounting,OU=Groups,DC=metabase,DC=com"
                "CN=Shipping,OU=Groups,DC=metabase,DC=com"]
               {:group-mappings (ldap/ldap-group-mappings)}))))))
+
+(deftest valid-group-mapping
+  (testing "Validating that a group mapping DN can contain a forward slash when set as a keyword (#29629)"
+    (mt/with-temporary-setting-values
+      [ldap-group-mappings nil]
+      (ldap/ldap-group-mappings! {(keyword "CN=People,OU=Security/Distribution Groups,DC=metabase,DC=com") []})
+      (is (= {(DN. "CN=People,OU=Security/Distribution Groups,DC=metabase,DC=com") []}
+             (ldap/ldap-group-mappings))))))
 
 ;; For hosts that do not support IPv6, the connection code will return an error
 ;; This isn't a failure of the code, it's a failure of the host.

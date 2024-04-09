@@ -1,36 +1,35 @@
-import { Route } from "react-router";
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
+import {
+  setupCardsEndpoints,
+  setupDatabasesEndpoints,
+  setupModelActionsEndpoints,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitFor,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import {
-  setupModelActionsEndpoints,
-  setupCardsEndpoints,
-} from "__support__/server-mocks";
-
+import { checkNotNull } from "metabase/lib/types";
 import type { Card, WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import ActionCreatorModal from "./ActionCreatorModal";
 
-jest.mock(
-  "metabase/actions/containers/ActionCreator",
-  () =>
-    function MockActionCreator() {
-      return <div data-testid="mock-action-creator" />;
-    },
-);
-
-const MODEL = createMockCard({ id: 1, dataset: true });
+const MODEL = createMockCard({ id: 1, type: "model" });
 const MODEL_SLUG = `${MODEL.id}-${MODEL.name.toLowerCase()}`;
 const ACTION = createMockQueryAction({ model_id: MODEL.id });
 const ACTION_NOT_FOUND_ID = 999;
+const DATABASE = createSampleDatabase({
+  settings: { "database-enable-actions": true },
+});
 
 type SetupOpts = {
   initialRoute: string;
@@ -43,6 +42,7 @@ async function setup({
   model = MODEL,
   action = ACTION,
 }: SetupOpts) {
+  setupDatabasesEndpoints([DATABASE]);
   setupCardsEndpoints([model]);
 
   if (action) {
@@ -55,7 +55,14 @@ async function setup({
     <>
       <Route
         path="/model/:slug/detail/actions/:actionId"
-        component={ActionCreatorModal}
+        component={routeProps => (
+          <ActionCreatorModal
+            {...routeProps}
+            onClose={() => {
+              history?.push(`/model/${MODEL.id}/detail/actions`);
+            }}
+          />
+        )}
       />
       <Route
         path="/model/:slug/detail/actions"
@@ -68,9 +75,9 @@ async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryAllByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 
-  return { history };
+  return { history: checkNotNull(history) };
 }
 
 describe("actions > containers > ActionCreatorModal", () => {
@@ -81,9 +88,10 @@ describe("actions > containers > ActionCreatorModal", () => {
   it("renders correctly", async () => {
     const initialRoute = `/model/${MODEL.id}/detail/actions/${ACTION.id}`;
     await setup({ initialRoute });
-    expect(
-      await screen.findByTestId("mock-action-creator"),
-    ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+    });
   });
 
   it("redirects back to the model detail page if the action is not found", async () => {
@@ -91,8 +99,8 @@ describe("actions > containers > ActionCreatorModal", () => {
     const { history } = await setup({ initialRoute, action: null });
 
     expect(await screen.findByTestId("mock-model-detail")).toBeInTheDocument();
-    expect(screen.queryByTestId("mock-action-creator")).not.toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe(
+    expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();
+    expect(history.getCurrentLocation().pathname).toBe(
       `/model/${MODEL_SLUG}/detail/actions`,
     );
   });
@@ -103,9 +111,183 @@ describe("actions > containers > ActionCreatorModal", () => {
     const { history } = await setup({ initialRoute, action });
 
     expect(await screen.findByTestId("mock-model-detail")).toBeInTheDocument();
-    expect(screen.queryByTestId("mock-action-creator")).not.toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe(
+    expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();
+    expect(history.getCurrentLocation().pathname).toBe(
       `/model/${MODEL_SLUG}/detail/actions`,
     );
+  });
+
+  describe("creating new action", () => {
+    it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
+      const initialRoute = `/model/${MODEL.id}/detail/actions`;
+      const actionRoute = `/model/${MODEL.id}/detail/actions/action`;
+      const { history } = await setup({ initialRoute, action: null });
+
+      history.push(actionRoute);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+      });
+
+      history.goBack();
+
+      expect(
+        screen.queryByTestId("leave-confirmation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
+      const initialRoute = `/model/${MODEL.id}/detail/actions`;
+      const actionRoute = `/model/${MODEL.id}/detail/actions/new`;
+      const { history } = await setup({ initialRoute, action: null });
+
+      history.push(actionRoute);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+      });
+
+      await userEvent.type(screen.getByDisplayValue("New Action"), "a change");
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+
+      history.goBack();
+
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+    });
+
+    it("does not show custom warning modal when saving changes", async () => {
+      const initialRoute = `/model/${MODEL.id}/detail/actions`;
+      const actionRoute = `/model/${MODEL.id}/detail/actions/new`;
+      const { history } = await setup({ initialRoute, action: null });
+
+      history.push(actionRoute);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+      });
+
+      const query = "select 1;";
+
+      await userEvent.type(screen.getByDisplayValue("New Action"), "a change");
+      await userEvent.type(screen.queryAllByRole("textbox")[1], query);
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+
+      fetchMock.post("path:/api/action", {
+        name: "New Actiona change",
+        dataset_query: {
+          type: "native",
+          database: DATABASE.id,
+          native: {
+            query,
+            "template-tags": {},
+          },
+        },
+        database_id: DATABASE.id,
+        parameters: [],
+        type: "query",
+        visualization_settings: {
+          name: "",
+          type: "button",
+          description: "",
+          confirmMessage: "",
+          successMessage: "",
+          fields: {},
+        },
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+      await waitFor(() => {
+        expect(history.getCurrentLocation().pathname).toBe(initialRoute);
+      });
+
+      expect(
+        screen.queryByTestId("leave-confirmation"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("editing existing action", () => {
+    it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
+      const action = ACTION;
+      const initialRoute = `/model/${MODEL.id}/detail/actions`;
+      const actionRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
+      const { history } = await setup({ initialRoute, action });
+
+      history.push(actionRoute);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+      });
+
+      const input = screen.getByDisplayValue(action.name);
+      await userEvent.type(input, "12");
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+      await userEvent.type(input, "{backspace}{backspace}");
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+
+      history.goBack();
+
+      expect(
+        screen.queryByTestId("leave-confirmation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
+      const action = ACTION;
+      const initialRoute = `/model/${MODEL.id}/detail/actions`;
+      const actionRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
+      const { history } = await setup({ initialRoute, action });
+
+      history.push(actionRoute);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+      });
+
+      await userEvent.type(screen.getByDisplayValue(action.name), "a change");
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+
+      history.goBack();
+
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+    });
+
+    it("does not show custom warning modal when saving changes", async () => {
+      const action = ACTION;
+
+      const initialRoute = `/model/${MODEL.id}/detail/actions`;
+      const actionRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
+      const { history } = await setup({ initialRoute, action });
+
+      history.push(actionRoute);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+      });
+
+      await userEvent.type(screen.getByDisplayValue(action.name), "a change");
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+
+      fetchMock.put(
+        `path:/api/action/${action.id}`,
+        {
+          ...action,
+          name: `${action.name}a change`,
+        },
+        { overwriteRoutes: true },
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: "Update" }));
+
+      await waitFor(() => {
+        expect(history.getCurrentLocation().pathname).toBe(initialRoute);
+      });
+
+      expect(
+        screen.queryByTestId("leave-confirmation"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

@@ -2,20 +2,22 @@
   (:require
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
-   [schema.core :as s])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr])
   (:import
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetDeleteOption BigQuery$DatasetListOption BigQuery$DatasetOption
                               BigQuery$TableListOption BigQuery$TableOption Dataset DatasetId DatasetInfo Field
@@ -26,7 +28,15 @@
 
 (sql.tx/add-test-extensions! :bigquery-cloud-sdk)
 
-(def ^:private ns-load-time (System/currentTimeMillis))
+(defonce ^:private ^{:arglists '(^java.lang.Long [])} ^{:doc "Timestamp to use for unique dataset identifiers. Initially
+  this is the UNIX timestamp in milliseconds of when this namespace was loaded; it refreshes every two hours thereafter.
+  Datasets with a timestamp older than two hours will get automatically cleaned up."} dataset-timestamp
+  (let [timestamp* (atom (System/currentTimeMillis))]
+    (fn []
+      (when (t/before? (t/instant ^Long @timestamp*)
+                       (t/minus (t/instant) (t/hours 2)))
+        (reset! timestamp* (System/currentTimeMillis)))
+      @timestamp*)))
 
 ;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still
 ;; allowed, which puts us in a weird position, however; people can manually specifiy "foreign key" relationships in
@@ -35,22 +45,35 @@
 ;;
 ;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK
 ;; relationships for FK tables
-(defmethod driver/database-supports? [:bigquery-cloud-sdk :foreign-keys] [_driver _feature _db] (not config/is-test?))
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :foreign-keys]
+  [_driver _feature _db]
+  (if config/is-test?
+    qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests*
+    true))
 
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
 (defn normalize-name
   "Returns a normalized name for a test database or table"
-  ^String [db-or-table identifier]
-  (let [s (str/replace (name identifier) "-" "_")]
-    (case db-or-table
-      ;; All databases created during test runs by this JVM instance get a suffix based on the timestamp from when
-      ;; this namespace was loaded. This dataset will not be deleted after this test run finishes, since there is no
-      ;; reasonable hook to do so (from this test extension namespace), so instead we will rely on each run cleaning
-      ;; up outdated, transient datasets via the `transient-dataset-outdated?` mechanism.
-      :db    (str "v3_" s "__transient_" ns-load-time)
-      :table s)))
+  [identifier]
+  (str/replace (name identifier) "-" "_"))
+
+(mr/def ::dataset-id
+  [:and
+   [:string {:min 1, :max 1024}]
+   [:re
+    {:error/message "Dataset IDs must be alphanumeric (plus underscores)"}
+    #"^[\w_]+$"]])
+
+(mu/defn test-dataset-id :- ::dataset-id
+  "All databases created during test runs by this JVM instance get a suffix based on the timestamp from when this
+  namespace was loaded. This dataset will not be deleted after this test run finishes, since there is no reasonable
+  hook to do so (from this test extension namespace), so instead we will rely on each run cleaning up outdated,
+  transient datasets via the [[transient-dataset-outdated?]] mechanism."
+  ^String [database-name :- :string]
+  (let [s (normalize-name database-name)]
+    (str "v4_" s "__transient_" (dataset-timestamp))))
 
 (defn- test-db-details []
   (reduce
@@ -62,7 +85,7 @@
 (defn- bigquery
   "Get an instance of a `Bigquery` client."
   ^BigQuery []
-  (#'bigquery/database->client {:details (test-db-details)}))
+  (#'bigquery/database-details->client (test-db-details)))
 
 (defn project-id
   "BigQuery project ID that we're using for tests, either from the env var `MB_BIGQUERY_TEST_PROJECT_ID`, or if that is
@@ -75,7 +98,10 @@
 
 (defmethod tx/dbdef->connection-details :bigquery-cloud-sdk
   [_driver _context {:keys [database-name]}]
-  (assoc (test-db-details) :dataset-id (normalize-name :db database-name) :include-user-id-and-hash true))
+  (assoc (test-db-details)
+         :dataset-filters-type "inclusion"
+         :dataset-filters-patterns (test-dataset-id database-name)
+         :include-user-id-and-hash true))
 
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
@@ -84,8 +110,7 @@
   [_driver table-or-field-name]
   (str/replace table-or-field-name #"-" "_"))
 
-(defn- create-dataset! [^String dataset-id]
-  {:pre [(seq dataset-id)]}
+(mu/defn ^:private create-dataset! [^String dataset-id :- ::dataset-id]
   (.create (bigquery) (DatasetInfo/of (DatasetId/of (project-id) dataset-id)) (u/varargs BigQuery$DatasetOption))
   (log/info (u/format-color 'blue "Created BigQuery dataset `%s.%s`." (project-id) dataset-id)))
 
@@ -111,17 +136,19 @@
 
 ;; Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be at most 128
 ;; characters long.
-(def ^:private ValidFieldName #"^[A-Za-z_]\w{0,127}$")
+(def ^:private ValidFieldName
+  [:re #"^[A-Za-z_]\w{0,127}$"])
 
-(s/defn ^:private delete-table!
-  [dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
+(mu/defn ^:private delete-table!
+  [dataset-id :- ::lib.schema.common/non-blank-string
+   table-id   :- ::lib.schema.common/non-blank-string]
   (.delete (bigquery) (TableId/of dataset-id table-id))
   (log/error (u/format-color 'red "Deleted table `%s.%s.%s`" (project-id) dataset-id table-id)))
 
-(s/defn ^:private create-table!
-  [^String dataset-id :- su/NonBlankString
-   table-id           :- su/NonBlankString
-   field-name->type   :- {ValidFieldName (apply s/enum valid-field-types)}]
+(mu/defn ^:private create-table!
+  [^String dataset-id :- ::lib.schema.common/non-blank-string
+   ^String table-id   :- ::lib.schema.common/non-blank-string
+   field-name->type   :- [:map-of ValidFieldName (into [:enum] valid-field-types)]]
   (u/ignore-exceptions
    (delete-table! dataset-id table-id))
   (let [tbl-id (TableId/of dataset-id table-id)
@@ -142,7 +169,7 @@
                                         (ffirst rows))
         client                        (bigquery)
         ^TableResult query-response   (#'bigquery/execute-bigquery client sql [] nil nil)]
-    (#'bigquery/post-process-native (test-db-details) respond query-response (atom false))))
+    (#'bigquery/post-process-native respond query-response (atom false))))
 
 (defprotocol ^:private Insertable
   (^:private ->insertable [this]
@@ -160,7 +187,13 @@
     (u/qualified-name k))
 
   java.time.temporal.Temporal
-  (->insertable [t] (u.date/format-sql t))
+  (->insertable [t]
+    ;; BigQuery will barf if you try to specify greater than microsecond precision.
+    (u.date/format-sql (t/truncate-to t :micros)))
+
+  java.time.LocalDate
+  (->insertable [t]
+    (u.date/format-sql t))
 
   ;; normalize to UTC. BigQuery normalizes it anyway and tends to complain when inserting values that have an offset
   java.time.OffsetDateTime
@@ -175,13 +208,7 @@
   ;; normalize to UTC, since BigQuery doesn't support TIME WITH TIME ZONE
   java.time.OffsetTime
   (->insertable [t]
-    (u.date/format-sql (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
-
-  ;; Convert the HoneySQL `timestamp(...)` form we sometimes use to wrap a `Timestamp` to a plain literal string
-  honeysql.types.SqlCall
-  (->insertable [{[{s :literal}] :args, fn-name :name}]
-    (assert (= (name fn-name) "timestamp"))
-    (->insertable (u.date/parse (str/replace s #"'" "")))))
+    (->insertable (t/local-time (t/with-offset-same-instant t (t/zone-offset 0))))))
 
 (defn- ->json [row-map]
   (into {} (for [[k v] row-map]
@@ -274,14 +301,14 @@
       (assoc (zipmap field-names row)
              :id (inc i)))))
 
-(defn- load-tabledef! [dataset-name {:keys [table-name field-definitions], :as tabledef}]
-  (let [table-name (normalize-name :table table-name)]
-    (create-table! dataset-name table-name (fielddefs->field-name->base-type field-definitions))
+(defn- load-tabledef! [dataset-id {:keys [table-name field-definitions], :as tabledef}]
+  (let [table-name (normalize-name table-name)]
+    (create-table! dataset-id table-name (fielddefs->field-name->base-type field-definitions))
     ;; retry the `insert-data!` step up to 5 times because it seens to fail silently a lot. Since each row is given a
     ;; unique key it shouldn't result in duplicates.
     (loop [num-retries 5]
       (let [^Throwable e (try
-                           (insert-data! dataset-name table-name (tabledef->prepared-rows tabledef))
+                           (insert-data! dataset-id table-name (tabledef->prepared-rows tabledef))
                            nil
                            (catch Throwable e
                              e))]
@@ -297,14 +324,14 @@
     (.. dataset getDatasetId getDataset)))
 
 (defn- transient-dataset-outdated?
-  "Checks whether the given `dataset-name` is a transient dataset that is outdated, and should be deleted.  Note that
+  "Checks whether the given `dataset-id` is a transient dataset that is outdated, and should be deleted.  Note that
   this doesn't need any domain specific knowledge about which transient datasets are
   outdated. The fact that a *created* dataset (i.e. created on BigQuery) is transient has already been encoded by a
   suffix, so we can just look for that here."
-  [dataset-name]
-  (when-let [[_ ^String ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-name)]
-    ;; millis to hours
-    (< (* 1000 60 60 2) (- ns-load-time (Long. ds-timestamp-str)))))
+  [dataset-id]
+  (when-let [[_ ^String ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-id)]
+    (t/before? (t/instant (parse-long ds-timestamp-str))
+               (t/minus (t/instant) (t/hours 2)))))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk [_ {:keys [database-name table-definitions]} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
@@ -313,27 +340,27 @@
     (log/info (u/format-color 'blue "Deleting temporary dataset more than two hours old: %s`." outdated))
     (u/ignore-exceptions
      (destroy-dataset! outdated)))
-  (let [database-name (normalize-name :db database-name)]
+  (let [dataset-id (test-dataset-id database-name)]
     (u/auto-retry 2
      (try
-       (log/infof "Creating dataset %s..." (pr-str database-name))
+       (log/infof "Creating dataset %s..." (pr-str dataset-id))
        ;; if the dataset failed to load successfully last time around, destroy whatever was loaded so we start
        ;; again from a blank slate
        (u/ignore-exceptions
-        (destroy-dataset! database-name))
-       (create-dataset! database-name)
+        (destroy-dataset! dataset-id))
+       (create-dataset! dataset-id)
        ;; now create tables and load data.
        (doseq [tabledef table-definitions]
-         (load-tabledef! database-name tabledef))
-       (log/info (u/format-color 'green "Successfully created %s." (pr-str database-name)))
+         (load-tabledef! dataset-id tabledef))
+       (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
        (catch Throwable e
-         (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str database-name)))
+         (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
          (log/error (u/pprint-to-str 'red (Throwable->map e)))
          (throw e))))))
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ {:keys [database-name]}]
-  (destroy-dataset! database-name))
+  (destroy-dataset! (test-dataset-id database-name)))
 
 (defmethod tx/aggregate-column-info :bigquery-cloud-sdk
   ([driver aggregation-type]

@@ -4,7 +4,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.interface :as mi]
@@ -69,15 +69,15 @@
   [f]
   (let [step-info-atom           (atom [])
         created-task-history-ids (atom [])
-        orig-log-fn              @#'metabase.sync.util/log-sync-summary
-        orig-store-fn            @#'metabase.sync.util/store-sync-summary!]
-    (with-redefs [metabase.sync.util/log-sync-summary    (fn [operation database operation-metadata]
-                                                           (swap! step-info-atom conj operation-metadata)
-                                                           (orig-log-fn operation database operation-metadata))
-                  metabase.sync.util/store-sync-summary! (fn [operation database operation-metadata]
-                                                           (let [result (orig-store-fn operation database operation-metadata)]
-                                                             (swap! created-task-history-ids concat result)
-                                                             result))]
+        orig-log-fn              @#'sync-util/log-sync-summary
+        orig-store-fn            @#'sync-util/store-sync-summary!]
+    (with-redefs [sync-util/log-sync-summary    (fn [operation database operation-metadata]
+                                                  (swap! step-info-atom conj operation-metadata)
+                                                  (orig-log-fn operation database operation-metadata))
+                  sync-util/store-sync-summary! (fn [operation database operation-metadata]
+                                                  (let [result (orig-store-fn operation database operation-metadata)]
+                                                    (swap! created-task-history-ids concat result)
+                                                    result))]
       (f))
     {:operation-results @step-info-atom
      :task-history-ids  @created-task-history-ids}))
@@ -197,14 +197,17 @@
           (is (= true
                  (str/includes? results "4.0 s"))))))))
 
-(deftest error-handling-test
+(derive ::sync-error-handling-begin ::sync-util/event)
+(derive ::sync-error-handling-end ::sync-util/event)
+
+(deftest ^:parallel error-handling-test
   (testing "A ConnectException will cause sync to stop"
-    (mt/dataset sample-dataset
+    (mt/dataset time-test-data
       (let [expected           (java.io.IOException.
                                 "outer"
                                 (java.net.ConnectException.
                                  "inner, this one triggers the failure"))
-            actual             (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
+            actual             (sync-util/sync-operation ::sync-error-handling (mt/db) "sync error handling test"
                                  (sync-util/run-sync-operation
                                   "sync"
                                   (mt/db)
@@ -218,8 +221,9 @@
         (is (= 1 (count (:steps actual))))
         (is (= "failure-step" step-name))
         (is (= {:throwable expected :log-summary-fn nil}
-               (dissoc result :start-time :end-time))))))
+               (dissoc result :start-time :end-time)))))))
 
+(deftest ^:parallel error-handling-test-2
   (doseq [ex [(java.io.IOException.
                "outer, does not trigger"
                (java.net.SocketException. "inner, this one does not trigger"))
@@ -231,7 +235,7 @@
                 (java.lang.IllegalArgumentException.
                  "third level, does not trigger")))]]
     (testing "Other errors will not cause sync to stop"
-      (let [actual             (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
+      (let [actual             (sync-util/sync-operation ::sync-error-handling (mt/db) "sync error handling test"
                                  (sync-util/run-sync-operation
                                   "sync"
                                   (mt/db)
@@ -254,7 +258,7 @@
           (is (= {:log-summary-fn nil} (dissoc result :start-time :end-time))))))))
 
 (deftest initial-sync-status-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "If `initial-sync-status` on a DB is `incomplete`, it is marked as `complete` when sync-metadata has finished"
       (let [_  (t2/update! Database (:id (mt/db)) {:initial_sync_status "incomplete"})
             db (t2/select-one Database :id (:id (mt/db)))]
@@ -305,7 +309,7 @@
 (deftest initial-sync-status-table-only-test
   ;; Test that if a database is already completed sync'ing, then the sync is started again, it should initially be marked as
   ;; incomplete, but then marked as complete after the sync is finished.
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "If `initial-sync-status` on a DB is already `complete`"
       (let [[active-table inactive-table] (t2/select Table :db_id (mt/id))
             get-active-table #(t2/select-one Table :id (:id active-table))

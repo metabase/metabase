@@ -1,5 +1,5 @@
-import Database from "metabase-lib/metadata/Database";
-import Schema from "metabase-lib/metadata/Schema";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Schema from "metabase-lib/v1/metadata/Schema";
 
 export const getDatabaseOptions = (databases: Database[]) =>
   databases.map(db => ({ name: db.name, value: db.id }));

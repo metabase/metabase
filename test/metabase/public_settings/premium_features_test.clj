@@ -3,8 +3,8 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clj-http.fake :as http-fake]
-   [clojure.set :as set]
    [clojure.test :refer :all]
+   [mb.hawk.parallel]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.user :refer [User]]
@@ -13,48 +13,16 @@
     :as premium-features
     :refer [defenterprise defenterprise-schema]]
    [metabase.test :as mt]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
-
-(defn do-with-premium-features [features f]
-  (let [features (set (map name features))]
-    (testing (format "\nWith premium token features = %s" (pr-str features))
-      (with-redefs [premium-features/token-features (constantly features)]
-        (f)))))
-
-;; TODO -- move this to a shared `metabase-enterprise.test` namespace. Consider adding logic that will alias stuff in
-;; `metabase-enterprise.test` in `metabase.test` as well *if* EE code is available
-(defmacro with-premium-features
-  "Execute `body` with the allowed premium features for the Premium-Features token set to `features`. Intended for use testing
-  feature-flagging.
-
-    (with-premium-features #{:audit-app}
-      ;; audit app will be enabled for body, but no other premium features
-      ...)"
-  {:style/indent 1}
-  [features & body]
-  `(do-with-premium-features ~features (fn [] ~@body)))
-
-(defmacro with-additional-premium-features
-  "Execute `body` with the allowed premium features for the Premium-Features token set to the union of `features` and
-  the current feature set. Intended for use testing feature-flagging, if you don't want to override other features
-  that are already enabled.
-
-    (with-additional-premium-features #{:audit-app}
-      ;; audit app will be enabled for body, as well as any that are already enabled
-      ...)"
-  {:style/indent 1}
-  [features & body]
-  `(do-with-premium-features (set/union (premium-features/token-features) ~features)
-                             (fn [] ~@body)))
 
 (defn- token-status-response
   [token premium-features-response]
   (http-fake/with-fake-routes-in-isolation
     {{:address      (#'premium-features/token-status-url token @#'premium-features/token-check-url)
-      :query-params {:users     (str (#'premium-features/cached-active-users-count))
-                     :site-uuid (public-settings/site-uuid-for-premium-features-token-checks)}}
+      :query-params {:users      (str (#'premium-features/cached-active-users-count))
+                     :site-uuid  (public-settings/site-uuid-for-premium-features-token-checks)
+                     :mb-version (:tag config/mb-version-info)}}
      (constantly premium-features-response)}
     (#'premium-features/fetch-token-status* token)))
 
@@ -96,23 +64,20 @@
       (testing "Only attempt the token twice (default and fallback URLs)"
         (let [call-count (atom 0)
               token      (random-token)]
-          (binding [clj-http.client/request (fn [& _]
-                                              (swap! call-count inc)
-                                              (throw (Exception. "no internet")))]
+          (binding [http/request (fn [& _]
+                                   (swap! call-count inc)
+                                   (throw (Exception. "no internet")))]
 
             (mt/with-temporary-raw-setting-values [:premium-embedding-token token]
               (testing "Sanity check"
                 (is (= token
                        (premium-features/premium-embedding-token)))
                 (is (= #{}
-                       (#'premium-features/token-features))))
+                       (premium-features/*token-features*))))
               (doseq [has-feature? [#'premium-features/hide-embed-branding?
                                     #'premium-features/enable-whitelabeling?
                                     #'premium-features/enable-audit-app?
                                     #'premium-features/enable-sandboxes?
-                                    #'premium-features/enable-sso?
-                                    #'premium-features/enable-advanced-config?
-                                    #'premium-features/enable-content-management?
                                     #'premium-features/enable-serialization?]]
                 (testing (format "\n%s is false" (:name (meta has-feature?)))
                   (is (not (has-feature?)))))
@@ -168,40 +133,40 @@
         (is (= "Hi rasta, you're running the Enterprise Edition of Metabase!"
                (greeting :rasta))))
 
-     (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
-       (with-premium-features #{:special-greeting}
-         (is (= "Hi rasta, you're an extra special EE customer!"
-                (special-greeting :rasta))))
+      (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
+        (mt/with-premium-features #{:special-greeting}
+          (is (= "Hi rasta, you're an extra special EE customer!"
+                 (special-greeting :rasta))))
 
-       (with-premium-features #{}
-         (is (= "Hi rasta, you're not extra special :("
-                (special-greeting :rasta)))))
+        (mt/with-premium-features #{}
+          (is (= "Hi rasta, you're not extra special :("
+                 (special-greeting :rasta)))))
 
-     (testing "when :fallback is a function, it is run when the required token is not present"
-       (with-premium-features #{:special-greeting}
-         (is (= "Hi rasta, you're an extra special EE customer!"
-                (special-greeting-or-custom :rasta))))
+      (testing "when :fallback is a function, it is run when the required token is not present"
+        (mt/with-premium-features #{:special-greeting}
+          (is (= "Hi rasta, you're an extra special EE customer!"
+                 (special-greeting-or-custom :rasta))))
 
-       (with-premium-features #{}
-         (is (= "Hi rasta, you're an EE customer but not extra special."
-                (special-greeting-or-custom :rasta))))))))
+        (mt/with-premium-features #{}
+          (is (= "Hi rasta, you're an EE customer but not extra special."
+                 (special-greeting-or-custom :rasta))))))))
 
-(defenterprise-schema greeting-with-schema :- s/Str
+(defenterprise-schema greeting-with-schema :- :string
   "Returns a greeting for a user."
   metabase-enterprise.util-test
-  [username :- s/Keyword]
+  [username :- :keyword]
   (format "Hi %s, the argument was valid" (name username)))
 
-(defenterprise-schema greeting-with-invalid-oss-return-schema :- s/Keyword
+(defenterprise-schema greeting-with-invalid-oss-return-schema :- :keyword
   "Returns a greeting for a user. The OSS implementation has an invalid return schema"
   metabase-enterprise.util-test
-  [username :- s/Keyword]
+  [username :- :keyword]
   (format "Hi %s, the return value was valid" (name username)))
 
-(defenterprise-schema greeting-with-invalid-ee-return-schema :- s/Str
+(defenterprise-schema greeting-with-invalid-ee-return-schema :- :string
   "Returns a greeting for a user."
   metabase-enterprise.util-test
-  [username :- s/Keyword]
+  [username :- :keyword]
   (format "Hi %s, the return value was valid" (name username)))
 
 (defenterprise greeting-with-only-ee-schema
@@ -216,12 +181,12 @@
       (is (= "Hi rasta, the argument was valid" (greeting-with-schema :rasta)))
 
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Input to greeting-with-schema does not match schema"
+                            #"Invalid input: \[\"should be a keyword, got: \\\"rasta\\\".*"
                             (greeting-with-schema "rasta"))))
 
    (testing "Return schemas are validated for OSS implementations"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Output of greeting-with-invalid-oss-return-schema does not match schema"
+                            #"Invalid output: \[\"should be a keyword, got: \\\"Hi rasta.*"
                             (greeting-with-invalid-oss-return-schema :rasta)))))
 
   (when config/ee-available?
@@ -230,16 +195,15 @@
              (greeting-with-schema :rasta)))
 
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Input to greeting-with-schema does not match schema"
+                            #"Invalid input: \[\"should be a keyword, got: \\\"rasta\\\".*"
                             (greeting-with-schema "rasta"))))
-
     (testing "Only EE schema is validated if EE implementation is called"
       (is (= "Hi rasta, the schema was valid, and you're running the Enterprise Edition of Metabase!"
              (greeting-with-invalid-oss-return-schema :rasta)))
 
-      (with-premium-features #{:custom-feature}
+      (mt/with-premium-features #{:custom-feature}
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Output of greeting-with-invalid-ee-return-schema does not match schema"
+                              #"Invalid output: \[\"should be a keyword, got: \\\"Hi rasta, the schema was valid.*"
                               (greeting-with-invalid-ee-return-schema :rasta)))))
 
     (testing "EE schema is not validated if OSS fallback is called"

@@ -1,20 +1,17 @@
-import { useCallback } from "react";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import PropTypes from "prop-types";
-import moment from "moment-timezone";
+import { useCallback } from "react";
 
-import { PLUGIN_MODERATION } from "metabase/plugins";
-
-import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
-
-import Ellipsified from "metabase/core/components/Ellipsified";
-import EntityItem from "metabase/components/EntityItem";
-import DateTime from "metabase/components/DateTime";
-import Tooltip from "metabase/core/components/Tooltip";
-import Markdown from "metabase/core/components/Markdown";
 import ActionMenu from "metabase/collections/components/ActionMenu";
-
+import DateTime from "metabase/components/DateTime";
+import EntityItem from "metabase/components/EntityItem";
+import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import Markdown from "metabase/core/components/Markdown";
+import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
 import { getFullName } from "metabase/lib/user";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import {
   ItemCell,
@@ -71,9 +68,6 @@ export function BaseTableItem({
       collection.can_write && typeof onToggleSelected === "function";
 
     const lastEditInfo = item["last-edit-info"];
-
-    // We don't keep last edit info for pulses
-    // TODO Remove ternary when Pulses are gone (metabase#16519-1)
     const lastEditedBy = getLastEditedBy(lastEditInfo);
     const lastEditedAt = lastEditInfo
       ? moment(lastEditInfo.timestamp).format("MMMM DD, YYYY")
@@ -85,7 +79,7 @@ export function BaseTableItem({
       height: 48,
     };
 
-    const icon = { name: item.getIcon().name };
+    const icon = item.getIcon();
     if (item.model === "card") {
       icon.color = color("text-light");
     }
@@ -98,7 +92,6 @@ export function BaseTableItem({
         {canSelect && (
           <ItemCell data-testid={`${testId}-check`}>
             <EntityIconCheckBox
-              item={item}
               variant="list"
               icon={icon}
               pinned={isPinned}
@@ -110,12 +103,7 @@ export function BaseTableItem({
           </ItemCell>
         )}
         <ItemCell data-testid={`${testId}-type`}>
-          <EntityIconCheckBox
-            item={item}
-            variant="list"
-            icon={icon}
-            pinned={isPinned}
-          />
+          <EntityIconCheckBox variant="list" icon={icon} pinned={isPinned} />
         </ItemCell>
         <ItemNameCell data-testid={`${testId}-name`}>
           <ItemLink {...linkProps} to={item.getUrl()}>
@@ -129,7 +117,7 @@ export function BaseTableItem({
                 name="info"
                 size={16}
                 tooltip={
-                  <Markdown dark disallowHeading unstyleLinks>
+                  <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
                     {item.description}
                   </Markdown>
                 }
@@ -201,7 +189,6 @@ function getLastEditedBy(lastEditInfo) {
   if (!lastEditInfo) {
     return "";
   }
-
   const name = getFullName(lastEditInfo);
   return name || lastEditInfo.email;
 }

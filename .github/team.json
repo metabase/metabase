@@ -1,46 +1,61 @@
 {
   "teams": [
     {
-      "name": "Team 42",
-      "label": ".Team/42 :milky_way:",
+      "name": "Querying Components",
+      "label": ".Team/QueryingComponents",
       "members": [
         "ranquild",
-        "WiNloSt",
-        "deniskaber",
-        "oisincoveney",
         "uladzimirdev",
+        "kamilmielnik",
+        "nemanjaglumac",
+        "romeovs"
+      ]
+    },
+    {
+      "name": "Embedding",
+      "label": ".Team/Embedding",
+      "members": ["WiNloSt", "deniskaber", "oisincoveney", "npretto"]
+    },
+    {
+      "name": "BEC",
+      "label": ".Team/BackendComponents",
+      "projectUrl": "https://github.com/orgs/metabase/projects/50/views/1",
+      "members": [
         "tsmacdonald",
         "qnkhuat",
         "calherries",
-        "kamilmielnik"
+        "piranha",
+        "crisptrutski"
       ]
     },
     {
       "name": "Query Processor",
-      "label": ".Team/QueryProcessor :hammer_and_wrench:",
-      "members": [
-        "camsaul",
-        "kulyk",
-        "snoe",
-        "bshepherdson",
-        "john-metabase",
-        "metamben"
-      ]
+      "label": ".Team/QueryProcessor",
+      "projectUrl": "https://github.com/orgs/metabase/projects/85/views/1",
+      "members": ["camsaul", "snoe", "bshepherdson", "metamben", "lbrdnk"]
     },
     {
-      "name": "Pixel Police",
-      "label": ".Team/PixelPolice :police_officer:",
+      "name": "Admin Webapp",
+      "label": ".Team/AdminWebapp",
       "members": [
         "noahmoss",
         "escherize",
-        "adam-james-v",
-        "qwef",
-        "alxnddr",
         "iethree",
         "npfitz",
+        "johnswanson",
+        "rafpaf",
+        "sloansparger"
+      ]
+    },
+    {
+      "name": "DashViz",
+      "label": ".Team/DashViz",
+      "members": [
+        "alxnddr",
         "EmmadUsmani",
         "JesseSDevaney",
-        "shaunlebron"
+        "kulyk",
+        "adam-james-v"
       ]
     }
   ]

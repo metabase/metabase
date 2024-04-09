@@ -1,9 +1,15 @@
-import { render, screen } from "@testing-library/react";
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockCollection,
   createMockTimeline,
 } from "metabase-types/api/mocks";
-import TimelineListModal, { TimelineListModalProps } from "./TimelineListModal";
+
+import type { TimelineListModalProps } from "./TimelineListModal";
+import TimelineListModal from "./TimelineListModal";
+
+function setup(props: TimelineListModalProps) {
+  renderWithProviders(<TimelineListModal {...props} />);
+}
 
 describe("TimelineListModal", () => {
   it("should render a list of timelines", () => {
@@ -12,7 +18,7 @@ describe("TimelineListModal", () => {
       collection: createMockCollection({ can_write: true }),
     });
 
-    render(<TimelineListModal {...props} />);
+    setup(props);
 
     expect(screen.getByText("Releases")).toBeInTheDocument();
   });
@@ -23,7 +29,7 @@ describe("TimelineListModal", () => {
       collection: createMockCollection({ can_write: true }),
     });
 
-    render(<TimelineListModal {...props} />);
+    setup(props);
 
     expect(screen.getByText("Add an event")).toBeInTheDocument();
   });

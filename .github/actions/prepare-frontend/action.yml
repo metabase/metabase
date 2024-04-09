@@ -3,10 +3,9 @@ runs:
   using: "composite"
   steps:
     - name: Prepare Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
-        node-version-file: '.nvmrc'
-        cache: 'yarn'
+        node-version-file: ".nvmrc"
     - name: Check to see if dependencies should be cached
       if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
       run: |
@@ -14,13 +13,13 @@ runs:
         yarn cache clean
       shell: bash
     - name: Get M2 cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
       with:
         path: ~/.m2
         key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
     - name: Get node_modules cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
       with:
         path: node_modules

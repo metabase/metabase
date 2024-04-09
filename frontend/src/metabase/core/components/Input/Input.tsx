@@ -1,14 +1,13 @@
-import {
-  forwardRef,
-  InputHTMLAttributes,
-  MouseEvent,
-  ReactNode,
-  Ref,
-} from "react";
+import type { InputHTMLAttributes, MouseEvent, ReactNode, Ref } from "react";
+import { forwardRef } from "react";
 import { t } from "ttag";
-import { Icon, IconName } from "metabase/core/components/Icon";
+
 import Tooltip from "metabase/core/components/Tooltip";
-import { InputSize } from "../../style/types";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
+
+import type { InputSize } from "../../style/types";
+
 import {
   InputField,
   InputLeftButton,
@@ -41,7 +40,7 @@ export interface InputProps extends InputAttributes {
   onResetClick?: () => void;
 }
 
-const Input = forwardRef(function Input(
+const BaseInput = forwardRef(function Input(
   {
     className,
     style,
@@ -131,9 +130,14 @@ const Input = forwardRef(function Input(
   );
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(Input, {
+/**
+ * @deprecated: use TextInput from "metabase/ui"
+ */
+const Input = Object.assign(BaseInput, {
   Root: InputRoot,
   Field: InputField,
   Subtitle: InputSubtitle,
 });
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Input;

@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import type { FieldType, InputSettingType } from "metabase-types/api";
 
 interface FieldOptionType {

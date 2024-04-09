@@ -1,24 +1,29 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
-import { Link } from "react-router";
 import { t } from "ttag";
-import { SetupApi } from "metabase/services";
-import { color } from "metabase/lib/colors";
-import MetabaseSettings from "metabase/lib/settings";
-import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
-import { getIsPaidPlan } from "metabase/selectors/settings";
 
-import { Icon } from "metabase/core/components/Icon";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
-import { SetupListRoot } from "./SetupCheckList.styled";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
+import { color } from "metabase/lib/colors";
+import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
+import MetabaseSettings from "metabase/lib/settings";
+import { getIsPaidPlan } from "metabase/selectors/settings";
+import { SetupApi } from "metabase/services";
+import { Icon } from "metabase/ui";
+
+import {
+  SetupListRoot,
+  TaskRegularLink,
+  TaskExternalLink,
+} from "./SetupCheckList.styled";
 
 const TaskList = ({ tasks }) => (
   <ol>
     {tasks.map((task, index) => (
-      <li className="mb2" key={index}>
+      <li className={CS.mb2} key={index}>
         <Task {...task} />
       </li>
     ))}
@@ -26,11 +31,13 @@ const TaskList = ({ tasks }) => (
 );
 
 const TaskSectionHeader = ({ name }) => (
-  <h4 className="text-medium text-bold text-uppercase pb2">{name}</h4>
+  <h4 className={cx(CS.textMedium, CS.textBold, CS.textUppercase, CS.pb2)}>
+    {name}
+  </h4>
 );
 
 const TaskSection = ({ name, tasks }) => (
-  <div className="mb4">
+  <div className={CS.mb4}>
     <TaskSectionHeader name={name} />
     <TaskList tasks={tasks} />
   </div>
@@ -41,12 +48,18 @@ const TaskTitle = ({ title, titleClassName }) => (
 );
 
 const TaskDescription = ({ description }) => (
-  <p className="m0 mt1">{description}</p>
+  <p className={cx(CS.m0, CS.mt1)}>{description}</p>
 );
 
 const CompletionBadge = ({ completed }) => (
   <div
-    className="mr2 flex align-center justify-center flex-no-shrink"
+    className={cx(
+      CS.mr2,
+      CS.flex,
+      CS.alignCenter,
+      CS.justifyCenter,
+      CS.flexNoShrink,
+    )}
     style={{
       borderWidth: 1,
       borderStyle: "solid",
@@ -62,10 +75,7 @@ const CompletionBadge = ({ completed }) => (
 );
 
 const Task = ({ title, description, completed, link }) => (
-  <TaskLink
-    link={link}
-    className="bordered border-brand-hover rounded transition-border flex align-center p2 no-decoration"
-  >
+  <TaskLink link={link}>
     <CompletionBadge completed={completed} />
     <div>
       <TaskTitle
@@ -77,15 +87,11 @@ const Task = ({ title, description, completed, link }) => (
   </TaskLink>
 );
 
-const TaskLink = ({ className, link, children }) =>
+const TaskLink = ({ link, children }) =>
   isSameOrSiteUrlOrigin(link) ? (
-    <Link className={className} to={link}>
-      {children}
-    </Link>
+    <TaskRegularLink to={link}>{children}</TaskRegularLink>
   ) : (
-    <ExternalLink className={className} href={link}>
-      {children}
-    </ExternalLink>
+    <TaskExternalLink href={link}>{children}</TaskExternalLink>
   );
 
 class SetupCheckList extends Component {
@@ -124,9 +130,11 @@ class SetupCheckList extends Component {
 
     return (
       <SetupListRoot>
-        <div className="px2">
+        <div className={CS.px2}>
           <h2>{t`Getting set up`}</h2>
-          <p className="mt1">{t`A few things you can do to get the most out of Metabase.`}</p>
+          <p
+            className={CS.mt1}
+          >{t`A few things you can do to get the most out of Metabase.`}</p>
           <LoadingAndErrorWrapper
             loading={!this.state.tasks}
             error={this.state.error}

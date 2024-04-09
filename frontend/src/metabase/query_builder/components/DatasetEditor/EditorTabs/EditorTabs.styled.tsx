@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { alpha, darken, color } from "metabase/lib/colors";
 
 export const TabBar = styled.ul`

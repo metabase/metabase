@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 
-import { DataTypeInfoItem, getDataTypes } from "metabase/containers/DataPicker";
+import type { DataTypeInfoItem } from "metabase/containers/DataPicker";
+import { getDataTypes } from "metabase/containers/DataPicker";
 
 import DataSelectorDataBucketPicker from "./DataSelectorDataBucketPicker";
 

@@ -1,35 +1,54 @@
 (ns metabase-enterprise.api.session-test
   (:require
    [clojure.test :refer :all]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest properties-token-features-test
-  (premium-features-test/with-premium-features #{:audit-app
-                                                 :advanced-permissions
-                                                 :embedding
-                                                 :whitelabel
-                                                 :advanced-config
-                                                 :content-management
-                                                 :sso
-                                                 :hosting
-                                                 :sandboxes
-                                                 :snippet-collections
-                                                 :disable-password-login
-                                                 :official-collections}
-    (is (= {:advanced_config        true
-            :advanced_permissions   true
-            :audit_app              true
-            :content_management     true
-            :disable_password_login true
-            :embedding              true
-            :hosting                true
-            :official_collections   true
-            :sandboxes              true
-            :snippet_collections    true
-            :sso                    true
-            :whitelabel             true}
-          (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
+  (mt/with-premium-features #{:advanced-permissions
+                              :audit-app
+                              :cache-granular-controls
+                              :config-text-file
+                              :content-verification
+                              :dashboard-subscription-filters
+                              :disable-password-login
+                              :email-allow-list
+                              :email-restrict-recipients
+                              :embedding
+                              :hosting
+                              :llm-autodescription
+                              :no-upsell
+                              :official-collections
+                              :sandboxes
+                              :serialization
+                              :session-timeout-config
+                              :snippet-collections
+                              :sso-google
+                              :sso-jwt
+                              :sso-ldap
+                              :sso-saml
+                              :whitelabel}
+          (is (= {:advanced_permissions           true
+                  :audit_app                      true
+                  :cache_granular_controls        true
+                  :config_text_file               true
+                  :content_verification           true
+                  :dashboard_subscription_filters true
+                  :disable_password_login         true
+                  :email_allow_list               true
+                  :email_restrict_recipients      true
+                  :embedding                      true
+                  :hosting                        true
+                  :llm_autodescription            true
+                  :official_collections           true
+                  :sandboxes                      true
+                  :session_timeout_config         true
+                  :snippet_collections            true
+                  :sso_google                     true
+                  :sso_jwt                        true
+                  :sso_ldap                       true
+                  :sso_saml                       true
+                  :whitelabel                     true}
+                 (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

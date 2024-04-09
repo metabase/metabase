@@ -5,9 +5,10 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 
 import { ToolbarButton } from "../ToolbarButton";
+
 import { UpsellContent } from "./ToolbarUpsell.styled";
 
 interface StateProps {

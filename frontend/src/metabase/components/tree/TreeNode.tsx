@@ -2,7 +2,7 @@
 import * as React from "react";
 import _ from "underscore";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import {
   TreeNodeRoot,
@@ -11,7 +11,7 @@ import {
   NameContainer,
   IconContainer,
 } from "./TreeNode.styled";
-import { TreeNodeProps } from "./types";
+import type { TreeNodeProps } from "./types";
 
 const BaseTreeNode = React.memo(
   React.forwardRef<HTMLLIElement, TreeNodeProps>(function TreeNode(

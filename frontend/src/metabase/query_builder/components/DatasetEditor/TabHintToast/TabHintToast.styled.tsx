@@ -1,10 +1,9 @@
 import styled from "@emotion/styled";
 
 import Card from "metabase/components/Card";
-import { Icon } from "metabase/core/components/Icon";
-
 import { color, lighten } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
+import { Icon } from "metabase/ui";
 
 export const ToastCard = styled(Card)`
   align-items: center;

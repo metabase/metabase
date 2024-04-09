@@ -1,17 +1,17 @@
+import type { LocationDescriptor } from "history";
 import { useEffect } from "react";
 import { connect } from "react-redux";
+import type { Route } from "react-router";
 import { replace } from "react-router-redux";
 import _ from "underscore";
-import type { LocationDescriptor } from "history";
 
-import * as Urls from "metabase/lib/urls";
 import Actions from "metabase/entities/actions";
 import Models from "metabase/entities/questions";
+import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
-
+import type Question from "metabase-lib/v1/Question";
 import type { WritebackAction } from "metabase-types/api";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
 
 import ActionCreator from "../ActionCreator";
 
@@ -30,12 +30,19 @@ interface EntityLoaderProps {
   loading?: boolean;
 }
 
+interface RouteProps {
+  route: Route;
+}
+
 interface DispatchProps {
   setErrorPage: (error: AppErrorDescriptor) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
-type ActionCreatorModalProps = OwnProps & EntityLoaderProps & DispatchProps;
+type ActionCreatorModalProps = OwnProps &
+  EntityLoaderProps &
+  RouteProps &
+  DispatchProps;
 
 const mapDispatchToProps = {
   setErrorPage,
@@ -47,6 +54,7 @@ function ActionCreatorModal({
   model,
   params,
   loading,
+  route,
   onClose,
   setErrorPage,
   onChangeLocation,
@@ -80,6 +88,7 @@ function ActionCreatorModal({
       actionId={actionId}
       modelId={modelId}
       databaseId={databaseId}
+      route={route}
       onClose={onClose}
     />
   );

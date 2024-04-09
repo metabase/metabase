@@ -37,9 +37,11 @@ dashboard_filters:
 groups:
   - Overview:
       title: Overview
+      score: 90
   - Breakdowns:
       title: How the [[this]] is distributed
       comparison_title: How they compare by distribution
+      score: 80
 cards:
   - Count:
       title: Count

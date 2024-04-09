@@ -1,17 +1,16 @@
 import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
-import { Icon, IconName, IconProps } from "metabase/core/components/Icon";
-
-import type { PickerItem } from "./types";
+import type { IconName, IconProps } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
 import { ItemRoot, ItemContent, ItemTitle, ExpandButton } from "./Item.styled";
+import type { PickerItem } from "./types";
 
 interface Props<TId> {
   item: PickerItem<TId>;
   name: string;
   icon: IconName | IconProps;
-  color: string;
   selected: boolean;
   canSelect: boolean;
   hasChildren?: boolean;
@@ -23,7 +22,6 @@ function Item<TId>({
   item,
   name,
   icon,
-  color,
   selected,
   canSelect,
   hasChildren,

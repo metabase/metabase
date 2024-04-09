@@ -1,11 +1,15 @@
 (ns metabase.pulse.render.table-test
   (:require
    [clojure.test :refer :all]
+   [metabase.formatter :as formatter]
+   [metabase.pulse.render :as render]
    [metabase.pulse.render.color :as color]
-   [metabase.pulse.render.common :as common]
    [metabase.pulse.render.table :as table]
    [metabase.pulse.render.test-util :as render.tu]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- query-results->header+rows
   "Makes pulse header and data rows with no bar-width. Including bar-width just adds extra HTML that will be ignored."
@@ -61,9 +65,9 @@
                        :rows [[1 2 3]
                               [4 5 6]
                               [7 8 9]
-                              [7 8 (common/map->NumericWrapper {:num-str "4.5" :num-value 4.5})]
-                              [7 8 (common/map->NumericWrapper {:num-str "1,001.5" :num-value 1001.5})]    ;; default floating point seperator .
-                              [7 8 (common/map->NumericWrapper {:num-str "1.001,5" :num-value 1001.5})]]}] ;; floating point seperator is ,
+                              [7 8 (formatter/map->NumericWrapper {:num-str "4.5" :num-value 4.5})]
+                              [7 8 (formatter/map->NumericWrapper {:num-str "1,001.5" :num-value 1001.5})]    ;; default floating point seperator .
+                              [7 8 (formatter/map->NumericWrapper {:num-str "1.001,5" :num-value 1001.5})]]}] ;; floating point seperator is ,
     (is (= {"1"       nil
             "2"       nil
             "3"       "rgba(0, 255, 0, 0.75)"
@@ -155,3 +159,105 @@
                  render.tu/remove-attrs
                  (render.tu/nodes-with-tag :td)
                  (->> (map second)))))))))
+
+(defn- render-table [dashcard results]
+  (render/render-pulse-card :attachment "America/Los_Angeles" render.tu/test-card dashcard results))
+
+(deftest render-table-columns-test
+  (testing "Disabling a column has the same effect as not having the column at all."
+    (is (=
+         (render-table
+          {:visualization_settings {:table.columns
+                                    [{:name "b" :enabled true}]}}
+          {:data {:cols [{:name         "b",
+                          :display_name "b",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}]
+                  :rows [[2] [4]]}})
+         (render-table
+          {:visualization_settings {:table.columns
+                                    [{:name "a" :enabled false}
+                                     {:name "b" :enabled true}]}}
+          {:data {:cols [{:name         "a",
+                          :display_name "a",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}
+                         {:name         "b",
+                          :display_name "b",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}]
+                  :rows [[1 2] [3 4]]}}))))
+  (testing "Column order in table.columns is respected."
+    (is (=
+         (render-table
+          {:visualization_settings {:table.columns
+                                    [{:name "b" :enabled true}
+                                     {:name "a" :enabled true}]}}
+          {:data {:cols [{:name         "a",
+                          :display_name "a",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}
+                         {:name         "b",
+                          :display_name "b",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}]
+                  :rows [[1 2] [3 4]]}})
+         (render-table
+          {:visualization_settings {:table.columns
+                                    [{:name "b" :enabled true}
+                                     {:name "a" :enabled true}]}}
+          {:data {:cols [{:name         "b",
+                          :display_name "b",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}
+                         {:name         "a",
+                          :display_name "a",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}]
+                  :rows [[2 1] [4 3]]}}))))
+  (testing "visibility_type is respected in render."
+    (is (=
+         (render-table
+          {:visualization_settings {:table.columns
+                                    [{:name "a" :enabled true}
+                                     {:name "b" :enabled true}]}}
+          {:data {:cols [{:name            "a",
+                          :display_name    "a",
+                          :base_type       :type/BigInteger
+                          :visibility_type :normal
+                          :semantic_type   nil}
+                         {:name            "b",
+                          :display_name    "b",
+                          :base_type       :type/BigInteger
+                          :visibility_type :details-only
+                          :semantic_type   nil}]
+                  :rows [[1 2] [3 4]]}})
+         (render-table
+          {:visualization_settings {:table.columns
+                                    [{:name "a" :enabled true}]}}
+          {:data {:cols [{:name         "a",
+                          :display_name "a",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}]
+                  :rows [[1 2] [3 4]]}})))))
+
+(deftest attachment-rows-limit-test
+  (doseq [[test-explanation env-var-value expected]
+          [["defaults to 20 rows." nil 20]
+           ["is respected in table renders when below the default of 20." 5 5]
+           ["is respected in table renders when above the default of 20." 25 25]
+           ["is set to 20 when the value doesn't make sense." -20 20]
+           ["is limited to a max. of 100 rows." 200 100]]]
+    (testing (format "The `metabase.public-settings/attachment-rows-limit` %s" test-explanation)
+      (mt/with-temp-env-var-value! ["MB_ATTACHMENT_TABLE_ROW_LIMIT" env-var-value]
+        (is (= expected
+               (count (-> (render-table
+                           {:visualization_settings {:table.columns
+                                                     [{:name "a" :enabled true}]}}
+                           {:data {:cols [{:name         "a",
+                                           :display_name "a",
+                                           :base_type    :type/BigInteger
+                                           :semantic_type nil}]
+                                   :rows (repeat 200 ["I will keep default limits."])}})
+                          :content
+                          (render.tu/nodes-with-text "I will keep default limits.")))))))))

@@ -3,7 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
    [metabase.driver.redshift :as redshift]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -11,6 +11,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database
     :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
@@ -22,11 +23,8 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.redshift :as redshift.test]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -37,12 +35,6 @@
 
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
-
-(use-fixtures :each (fn [thunk]
-                      ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
-                      ;; tests.
-                      (binding [hx/*honey-sql-version* 2]
-                        (thunk))))
 
 (deftest ^:parallel correct-driver-test
   (mt/test-driver :redshift
@@ -57,7 +49,7 @@
 
 (deftest ^:parallel default-select-test
   (is (= ["SELECT \"source\".* FROM (SELECT *) AS \"source\""]
-         (->> {:from [[[::sql.qp/sql-source-query "SELECT *"]
+         (->> {:from [[{::sql.qp/sql-source-query ["SELECT *"]}
                        [(h2x/identifier :table-alias "source")]]]}
               (#'sql.qp/add-default-select :redshift)
               (sql.qp/format-honeysql :redshift)))))
@@ -74,7 +66,7 @@
       @native-query)))
 
 (defn- sql->lines [sql]
-  (str/split-lines (mdb.query/format-sql sql :redshift)))
+  (str/split-lines (driver/prettify-native-form :redshift sql)))
 
 (deftest remark-test
   (testing "if I run a Redshift query, does it get a remark added to it?"
@@ -148,48 +140,48 @@
 ;; location 's3://mb-rs-test/tickit/spectrum/sales/'
 ;; table properties ('numRows'='172000');
 ;;
-(deftest test-external-table
+(deftest ^:parallel test-external-table
   (mt/test-driver :redshift
     (testing "expects spectrum schema to exist"
-      (is (= [{:description     nil
-               :table_id        (mt/id :extsales)
-               :semantic_type    nil
-               :name            "buyerid"
-               :settings        nil
-               :source          :fields
-               :field_ref       [:field (mt/id :extsales :buyerid) nil]
-               :nfc_path        nil
-               :parent_id       nil
-               :id              (mt/id :extsales :buyerid)
-               :visibility_type :normal
-               :display_name    "Buyerid"
-               :base_type       :type/Integer
-               :effective_type  :type/Integer
-               :coercion_strategy nil}
-              {:description     nil
-               :table_id        (mt/id :extsales)
-               :semantic_type    nil
-               :name            "salesid"
-               :settings        nil
-               :source          :fields
-               :field_ref       [:field (mt/id :extsales :salesid) nil]
-               :nfc_path        nil
-               :parent_id       nil
-               :id              (mt/id :extsales :salesid)
-               :visibility_type :normal
-               :display_name    "Salesid"
-               :base_type       :type/Integer
-               :effective_type  :type/Integer
-               :coercion_strategy nil}]
-             ;; in different Redshift instances, the fingerprint on these columns is different.
-             (map #(dissoc % :fingerprint)
-                  (get-in (qp/process-query (mt/mbql-query extsales
-                                              {:limit    1
-                                               :fields   [$buyerid $salesid]
-                                               :order-by [[:asc $buyerid]
-                                                          [:asc $salesid]]
-                                               :filter   [:= [:field (mt/id :extsales :buyerid) nil] 11498]}))
-                          [:data :cols])))))))
+      (is (=? [{:description     nil
+                :table_id        (mt/id :extsales)
+                :semantic_type    nil
+                :name            "buyerid"
+                :settings        nil
+                :source          :fields
+                :field_ref       [:field (mt/id :extsales :buyerid) nil]
+                :nfc_path        nil
+                :parent_id       nil
+                :id              (mt/id :extsales :buyerid)
+                :visibility_type :normal
+                :display_name    "Buyerid"
+                :base_type       :type/Integer
+                :effective_type  :type/Integer
+                :coercion_strategy nil}
+               {:description     nil
+                :table_id        (mt/id :extsales)
+                :semantic_type    nil
+                :name            "salesid"
+                :settings        nil
+                :source          :fields
+                :field_ref       [:field (mt/id :extsales :salesid) nil]
+                :nfc_path        nil
+                :parent_id       nil
+                :id              (mt/id :extsales :salesid)
+                :visibility_type :normal
+                :display_name    "Salesid"
+                :base_type       :type/Integer
+                :effective_type  :type/Integer
+                :coercion_strategy nil}]
+              ;; in different Redshift instances, the fingerprint on these columns is different.
+              (map #(dissoc % :fingerprint)
+                   (get-in (qp/process-query (mt/mbql-query extsales
+                                               {:limit    1
+                                                :fields   [$buyerid $salesid]
+                                                :order-by [[:asc $buyerid]
+                                                           [:asc $salesid]]
+                                                :filter   [:= [:field (mt/id :extsales :buyerid) nil] 11498]}))
+                           [:data :cols])))))))
 
 (deftest parameters-test
   (mt/test-driver :redshift
@@ -229,13 +221,12 @@
   (mt/test-driver
     :redshift
     (testing "Redshift specific types should be synced correctly"
-      (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
-            tbl-nm       "redshift_specific_types"
-            qual-tbl-nm  (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) tbl-nm)
-            view-nm      "late_binding_view"
-            qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
-        (t2.with-temp/with-temp [Database database {:engine :redshift, :details db-details}]
-          (try
+      (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
+        (mt/with-temp [:model/Database database {:engine :redshift, :details db-details}]
+          (let [tbl-nm       (tx/db-qualified-table-name (:name database) "table")
+                qual-tbl-nm  (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) tbl-nm)
+                view-nm      (tx/db-qualified-table-name (:name database) "view")
+                qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
             ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
             (execute!
              (str "DROP TABLE IF EXISTS %1$s;%n"
@@ -244,60 +235,55 @@
              qual-tbl-nm
              qual-view-nm)
             ;; sync the schema again to pick up the new view (and table, though we aren't checking that)
-            (sync/sync-database! database)
+            (sync/sync-database! database {:scan :schema})
             (is (contains?
                  (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced
                  view-nm))
             (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
               ;; and its columns' :base_type should have been identified correctly
-              (is (= [{:name "numeric_col",   :database_type "numeric(10,2)",         :base_type :type/Decimal}
-                      {:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}]
+              (is (= [{:name "numeric_col",   :database_type "numeric",           :base_type :type/Decimal}
+                      {:name "weird_varchar", :database_type "character varying", :base_type :type/Text}]
                      (map
                       mt/derecordize
-                      (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))
-            (finally
-              (execute! (str "DROP TABLE IF EXISTS %s;%n"
-                             "DROP VIEW IF EXISTS %s;")
-                        qual-tbl-nm
-                        qual-view-nm))))))))
+                      (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))))))))
 
 (deftest redshift-lbv-sync-error-test
   (mt/test-driver
     :redshift
     (testing "Late-binding view with with data types that cause a JDBC error can still be synced successfully (#21215)"
-      (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
-            view-nm      "weird_late_binding_view"
-            qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
+      (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
         (t2.with-temp/with-temp [Database database {:engine :redshift, :details db-details}]
-          (try
-            (execute!
-             (str "CREATE OR REPLACE VIEW %1$s AS ("
-                  "WITH test_data AS (SELECT 'open' AS shop_status UNION ALL SELECT 'closed' AS shop_status) "
-                  "SELECT NULL as raw_null, "
-                  "'hello' as raw_var, "
-                  "CASE WHEN shop_status = 'open' THEN 11387.133 END AS case_when_numeric_inc_nulls "
-                  "FROM test_data) WITH NO SCHEMA BINDING;")
-             qual-view-nm)
-            (sync/sync-database! database)
-            (is (contains?
-                 (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced without errors
-                 view-nm))
-            (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
-              ;; and its columns' :base_type should have been identified correctly
-              (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",              :base_type :type/Decimal}
-                      {:name "raw_null",                    :database_type "varchar",              :base_type :type/Text}
-                      {:name "raw_var",                     :database_type "character varying(5)", :base_type :type/Text}]
-                     (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))
-            (finally
-              (execute! (str "DROP VIEW IF EXISTS %s;")
-                        qual-view-nm))))))))
+          (let [view-nm      (tx/db-qualified-table-name (:name database) "lbv")
+                qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
+            (try
+              (execute!
+               (str "CREATE OR REPLACE VIEW %1$s AS ("
+                    "WITH test_data AS (SELECT 'open' AS shop_status UNION ALL SELECT 'closed' AS shop_status) "
+                    "SELECT NULL as raw_null, "
+                    "'hello' as raw_var, "
+                    "CASE WHEN shop_status = 'open' THEN 11387.133 END AS case_when_numeric_inc_nulls "
+                    "FROM test_data) WITH NO SCHEMA BINDING;")
+               qual-view-nm)
+              (sync/sync-database! database {:scan :schema})
+              (is (contains?
+                   (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced without errors
+                   view-nm))
+              (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
+                ;; and its columns' :base_type should have been identified correctly
+                (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",           :base_type :type/Decimal}
+                        {:name "raw_null",                    :database_type "character varying", :base_type :type/Text}
+                        {:name "raw_var",                     :database_type "character varying", :base_type :type/Text}]
+                       (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))
+              (finally
+                (execute! (str "DROP VIEW IF EXISTS %s;")
+                          qual-view-nm)))))))))
 
 (deftest filtered-syncable-schemas-test
   (mt/test-driver :redshift
     (testing "Should filter out schemas for which the user has no perms"
       ;; create a random username and random schema name, and grant the user USAGE permission for it
-      (let [temp-username (u/lower-case-en (tu.random/random-name))
-            random-schema (u/lower-case-en (tu.random/random-name))
+      (let [temp-username (u/lower-case-en (mt/random-name))
+            random-schema (u/lower-case-en (mt/random-name))
             user-pw       "Password1234"
             db-det        (:details (mt/db))]
         (execute! (str "CREATE SCHEMA %s;"
@@ -309,68 +295,86 @@
                   random-schema
                   temp-username)
         (try
-          (binding [redshift.test/*use-original-filtered-syncable-schemas-impl?* true]
-            (t2.with-temp/with-temp [Database db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
-              (sql-jdbc.execute/do-with-connection-with-options
-               :redshift
-               db
-               nil
-               (fn [^java.sql.Connection conn]
-                 (let [schemas (reduce conj
-                                       #{}
-                                       (sql-jdbc.sync/filtered-syncable-schemas :redshift
-                                                                                conn
-                                                                                (.getMetaData conn)
-                                                                                nil
-                                                                                nil))]
-                   (testing "filtered-syncable-schemas for the user should contain the newly created random schema"
-                     (is (contains? schemas random-schema)))
-                   (testing "should not contain the current session-schema name (since that was never granted)"
-                     (is (not (contains? schemas (redshift.test/unique-session-schema))))))))))
-          (finally
-            (execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
-                           "DROP USER IF EXISTS %s;%n"
-                           "DROP SCHEMA IF EXISTS %s;%n")
-                      random-schema
-                      temp-username
-                      temp-username
-                      random-schema)))))
+         (t2.with-temp/with-temp [Database db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
+           (sql-jdbc.execute/do-with-connection-with-options
+            :redshift
+            db
+            nil
+            (fn [^java.sql.Connection conn]
+              (let [schemas (reduce conj
+                                    #{}
+                                    (sql-jdbc.sync/filtered-syncable-schemas :redshift
+                                                                             conn
+                                                                             (.getMetaData conn)
+                                                                             nil
+                                                                             nil))]
+                (testing "filtered-syncable-schemas for the user should contain the newly created random schema"
+                  (is (contains? schemas random-schema)))
+                (testing "should not contain the current session-schema name (since that was never granted)"
+                  (is (not (contains? schemas (redshift.test/unique-session-schema)))))))))
+         (finally
+           (execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
+                          "DROP USER IF EXISTS %s;%n"
+                          "DROP SCHEMA IF EXISTS %s;%n")
+                     random-schema
+                     temp-username
+                     temp-username
+                     random-schema)))))
 
     (testing "Should filter out non-existent schemas (for which nobody has permissions)"
       (let [fake-schema-name (u/qualified-name ::fake-schema)]
-        (binding [redshift.test/*use-original-filtered-syncable-schemas-impl?* true]
-          ;; override `all-schemas` so it returns our fake schema in addition to the real ones.
-          (with-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
-                                                                 (fn [metadata]
-                                                                   (eduction
-                                                                    cat
-                                                                    [(orig metadata) [fake-schema-name]])))]
-            (sql-jdbc.execute/do-with-connection-with-options
-             :redshift
-             (mt/db)
-             nil
-             (fn [^java.sql.Connection conn]
-               (letfn [(schemas []
-                         (reduce
-                          conj
-                          #{}
-                          (sql-jdbc.sync/filtered-syncable-schemas :redshift conn (.getMetaData conn) nil nil)))]
-                 (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
-                   (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
-                                                                                     reducible)]
-                     (is (contains? (schemas) fake-schema-name))))
-                 (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
-                   (is (not (contains? (schemas) fake-schema-name)))))))))))))
+        (with-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
+                                                               (fn [metadata]
+                                                                 (eduction
+                                                                  cat
+                                                                  [(orig metadata) [fake-schema-name]])))]
+          (sql-jdbc.execute/do-with-connection-with-options
+           :redshift
+           (mt/db)
+           nil
+           (fn [^java.sql.Connection conn]
+             (letfn [(schemas []
+                       (reduce
+                        conj
+                        #{}
+                        (sql-jdbc.sync/filtered-syncable-schemas :redshift conn (.getMetaData conn) nil nil)))]
+               (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
+                 (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
+                                                                                   reducible)]
+                   (is (contains? (schemas) fake-schema-name))))
+               (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
+                 (is (not (contains? (schemas) fake-schema-name))))))))))))
 
-(mt/defdataset numeric-unix-timestamps
+(deftest sync-materialized-views-test
+  (mt/test-driver :redshift
+    (testing "Check that we properly fetch materialized views"
+      (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
+        (mt/with-temp [Database database {:engine :redshift, :details db-details}]
+          (let [table-name    (tx/db-qualified-table-name (:name database) "table")
+                qual-tbl-nm   (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) table-name)
+                mview-nm      (tx/db-qualified-table-name (:name database) "mv")
+                qual-mview-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) mview-nm)]
+            (try
+              (execute!
+               (str "DROP TABLE IF EXISTS %1$s CASCADE;\n"
+                    "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));\n"
+                    "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
+               qual-tbl-nm
+               qual-mview-nm)
+              (is (some #(= mview-nm (:name %))
+                        (:tables (sql-jdbc.describe-database/describe-database :redshift database))))
+              (finally
+                (execute! "DROP TABLE IF EXISTS %s CASCADE;" qual-tbl-nm)))))))))
+
+(mt/defdataset unix-timestamps
   [["timestamps"
     [{:field-name "timestamp", :base-type {:native "numeric"}}]
     [[1642704550656]]]])
 
-(deftest numeric-unix-timestamp-test
+(deftest unix-timestamp-test
   (mt/test-driver :redshift
     (testing "NUMERIC columns should work with UNIX timestamp conversion (#7487)"
-      (mt/dataset numeric-unix-timestamps
+      (mt/dataset unix-timestamps
         (testing "without coercion strategy"
           (let [query (mt/mbql-query timestamps)]
             (mt/with-native-query-testing-context query
@@ -391,3 +395,92 @@
              (mt/first-row
                (qp/process-query
                  (mt/native-query {:query "select interval '5 days'"}))))))))
+
+(deftest table-privileges-test
+  (mt/test-driver :redshift
+    (testing "`table-privileges` should return the correct data for current_user and role privileges"
+      (mt/with-temp [Database database {:engine :redshift :details (tx/dbdef->connection-details :redshift nil nil)}]
+        (let [schema-name                  (redshift.test/unique-session-schema)
+              username                     (str (sql.tu.unique-prefix/unique-prefix) "privilege_rows_test_role")
+              db-name                      (:name database)
+              table-name                   (tx/db-qualified-table-name db-name "table")
+              qual-tbl-name                (format "\"%s\".\"%s\"" schema-name table-name)
+              table-partial-select-name    (tx/db-qualified-table-name db-name "tbl_sel")
+              qual-tbl-partial-select-name (format "\"%s\".\"%s\"" schema-name table-partial-select-name)
+              table-partial-update-name    (tx/db-qualified-table-name db-name "tbl_upd")
+              qual-tbl-partial-update-name (format "\"%s\".\"%s\"" schema-name table-partial-update-name)
+              view-nm                      (tx/db-qualified-table-name db-name "view")
+              qual-view-name               (format "\"%s\".\"%s\"" schema-name view-nm)
+              mview-name                   (tx/db-qualified-table-name db-name "mview")
+              qual-mview-name              (format "\"%s\".\"%s\"" schema-name mview-name)
+              conn-spec                    (sql-jdbc.conn/db->pooled-connection-spec database)
+              get-privileges               (fn []
+                                             (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                                               [spec [:redshift (assoc (:details database) :user username)]]
+                                               (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                                 (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
+          (try
+           (execute! (format
+                      (str
+                       "CREATE TABLE %1$s (id INTEGER);\n"
+                       "CREATE VIEW %2$s AS SELECT * from %1$s;\n"
+                       "CREATE MATERIALIZED VIEW %3$s AS SELECT * from %1$s;\n"
+                       "CREATE TABLE %4$s (id INTEGER);\n"
+                       "CREATE TABLE %5$s (id INTEGER);\n"
+                       "CREATE USER \"%6$s\" WITH PASSWORD '%7$s';\n"
+                       "GRANT SELECT ON %1$s TO \"%6$s\";\n"
+                       "GRANT UPDATE ON %1$s TO \"%6$s\";\n"
+                       "GRANT SELECT ON %2$s TO \"%6$s\";\n"
+                       "GRANT SELECT ON %3$s TO \"%6$s\";\n"
+                       "GRANT SELECT (id) ON %4$s TO \"%6$s\";\n"
+                       "GRANT UPDATE (id) ON %5$s TO \"%6$s\";")
+                      qual-tbl-name
+                      qual-view-name
+                      qual-mview-name
+                      qual-tbl-partial-select-name
+                      qual-tbl-partial-update-name
+                      username
+                      (get-in database [:details :password])))
+           (testing "check that without USAGE privileges on the schema, nothing is returned"
+             (is (= #{}
+                    (get-privileges))))
+           (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
+             (jdbc/execute! conn-spec (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\";" schema-name username))
+             (is (= (into #{} (map #(merge {:schema schema-name
+                                            :role   nil
+                                            :select false
+                                            :update false
+                                            :insert false
+                                            :delete false}
+                                           %)
+                                   [{:table  table-name
+                                     :update true
+                                     :select true}
+                                    {:table  table-partial-select-name
+                                     :select true}
+                                    {:table  table-partial-update-name
+                                     :update true}
+                                    {:table  view-nm
+                                     :select true}
+                                    {:table  mview-name
+                                     :select true}]))
+                    (get-privileges))))
+           (finally
+            (execute! (format
+                       (str
+                        "DROP TABLE IF EXISTS %2$s CASCADE;\n"
+                        "DROP VIEW IF EXISTS %3$s CASCADE;\n"
+                        "DROP MATERIALIZED VIEW IF EXISTS %4$s CASCADE;\n"
+                        "DROP TABLE IF EXISTS %5$s CASCADE;\n"
+                        "DROP TABLE IF EXISTS %6$s CASCADE;\n"
+                        "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                        "REVOKE ALL PRIVILEGES ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                        "REVOKE USAGE ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                        "DROP USER IF EXISTS \"%7$s\";")
+                       schema-name
+                       qual-tbl-name
+                       qual-view-name
+                       qual-mview-name
+                       qual-tbl-partial-select-name
+                       qual-tbl-partial-update-name
+                       username)))))))))

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
-import { checkNotNull } from "metabase/core/utils/types";
+
 import ExplicitSize from "metabase/components/ExplicitSize";
+import { checkNotNull } from "metabase/lib/types";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
-import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
+import type Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type { State } from "metabase-types/store";
+
 import { cancelQuery, runQuestionQuery, updateQuestion } from "../../actions";
 import { getQuestion } from "../../selectors";
 
@@ -60,7 +62,7 @@ const MetabotQueryEditor = ({
     <NativeQueryEditor
       cancelQueryOnLeave={false}
       question={question}
-      query={question.query()}
+      query={question.legacyQuery({ useStructuredQuery: true })}
       viewHeight={height}
       resizable={false}
       hasParametersList={false}

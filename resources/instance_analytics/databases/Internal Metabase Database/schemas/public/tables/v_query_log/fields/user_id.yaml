@@ -1,0 +1,45 @@
+name: user_id
+display_name: User ID
+description: null
+created_at: '2023-10-31T21:26:33.12521Z'
+active: true
+visibility_type: normal
+table_id:
+- Internal Metabase Database
+- public
+- v_query_log
+database_type: int4
+base_type: type/Integer
+effective_type: type/Integer
+semantic_type: type/FK
+database_is_auto_increment: false
+database_required: false
+fk_target_field_id:
+- Internal Metabase Database
+- public
+- v_users
+- user_id
+dimensions: []
+json_unfolding: false
+parent_id: null
+coercion_strategy: null
+preview_display: true
+position: 7
+custom_position: 0
+database_position: 7
+has_field_values: auto-list
+settings: null
+caveats: null
+points_of_interest: null
+nfc_path: null
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_query_log
+  model: Table
+- id: user_id
+  model: Field
+database_indexed: null
+database_partitioned: null

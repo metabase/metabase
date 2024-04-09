@@ -1,4 +1,5 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
+
 import { CardLink, CardText, TextLink } from "./AuthButton.styled";
 
 interface AuthButtonProps {

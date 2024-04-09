@@ -40,7 +40,7 @@ If for any reason you want to use an H2 database file in a separate location fro
     export MB_DB_FILE=/the/path/to/my/h2.db
     java -jar metabase.jar
 
-Note that H2 automatically appends `.mv.db` or `.h2.db` to the path you specify; do not include those in you path! In other words, `MB_DB_FILE` should be something like `/path/to/metabase.db`, rather than something like `/path/to/metabase.db.mv.db` (even though this is the file that actually gets created).
+Note that H2 automatically appends `.mv.db` or `.h2.db` to the path you specify; do not include those in your path! In other words, `MB_DB_FILE` should be something like `/path/to/metabase.db`, rather than something like `/path/to/metabase.db.mv.db` (even though this is the file that actually gets created).
 
 ## [Postgres](https://www.postgresql.org/)
 
@@ -118,7 +118,7 @@ see the [PostgreSQL SSL client documentation](https://jdbc.postgresql.org/docume
 
 ## [MySQL](https://www.mysql.com/) or [MariaDB](https://www.mariadb.org/)
 
-If you prefer to use MySQL or MariaDB we've got you covered. The minimum recommended version is MySQL 5.7.7 or MariaDB
+If you prefer to use MySQL or MariaDB we've got you covered. The minimum recommended version is MySQL 8.0.17 or MariaDB
 10.2.2, and the `utf8mb4` character set is required. You can change the application database to use MySQL using
 environment variables like this:
 

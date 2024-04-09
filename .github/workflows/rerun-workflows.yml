@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: [Backend, Driver Tests, E2E Tests, Frontend]
     types: [completed]
-    branches: [master, 'release-**']
+    branches: [master, 'release-x.**', 'backport-**']
 
 jobs:
   rerun-on-failure:
@@ -12,6 +12,9 @@ jobs:
     runs-on: ubuntu-22.04
     # Do not re-run scheduled workflow runs. That's only Replay.io E2E tests for now.
     if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event != 'schedule'
+    env:
+      BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
+      AUTHOR_NAME: ${{ github.event.workflow_run.head_commit.author.name }}
     steps:
       - name: Generate job summary
         run: |
@@ -20,21 +23,21 @@ jobs:
           echo "View the failed run attempt (#${{ github.event.workflow_run.run_attempt }}) using the following link:" >> $GITHUB_STEP_SUMMARY
           echo "${{ github.event.workflow_run.html_url }}" >> $GITHUB_STEP_SUMMARY
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: lts/Hydrogen # 18.x.x
       - run: npm install @slack/web-api
       - name: Trigger a re-run
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
-          script: |
-            const MAX_ATTEMPTS = 2;
+          script: | # js
+            const MAX_ATTEMPTS = 1;
             const ATTEMPT = "${{ github.event.workflow_run.run_attempt }}";
-            const BRANCH = "${{ github.event.workflow_run.head_branch }}";
             const FAILED_RUN_URL = "${{ github.event.workflow_run.html_url }}";
             const FAILED_RUN_NAME = "${{ github.event.workflow_run.name }}";
-            const AUTHOR = "${{ github.event.workflow_run.head_commit.author.name }}";
             const BREAKING_COMMIT = "${{ github.event.workflow_run.head_sha }}";
+            const AUTHOR = process.env.AUTHOR_NAME;
+            const BRANCH = process.env.BRANCH_NAME;
 
             if (ATTEMPT <= MAX_ATTEMPTS) {
               github.rest.actions.reRunWorkflowFailedJobs({
@@ -42,65 +45,34 @@ jobs:
                 repo: context.repo.repo,
                 run_id: ${{ github.event.workflow_run.id }},
               });
-            } else {
+            } else if (!BRANCH.includes('backport-')) {
               // notify slack of repeated failure
               const { WebClient } = require('@slack/web-api');
               const slack = new WebClient('${{ secrets.SLACK_BOT_TOKEN }}');
 
               await slack.chat.postMessage({
                 channel: 'engineering-ci',
+                text: 'Failing tests',
                 blocks: [
                   {
                     "type": "header",
                     "text": {
                       "type": "plain_text",
-                      "text": `:alert: CI is failing on ${BRANCH} :alert:`,
+                      "text": `:warning: CI is failing on ${BRANCH}`,
                       "emoji": true,
                     }
                   },
                 ],
                 attachments: [{
-                  color: '#f85149',
+                  color: BRANCH === 'master' ? '#f85149' : "#ffce33",
                   blocks: [
                     {
                       "type": "section",
                       "text": {
                         "type": "mrkdwn",
-                        "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> by ${AUTHOR} has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on the \`${BRANCH}\` branch . :sad-panda:\nPlease fix ASAP. \n\nEmoji this message when it's fixed.`
+                        "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> by ${AUTHOR} has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on the <https://github.com/metabase/metabase/commits/${BRANCH}|\`${BRANCH}\`> branch. :sad-panda:`
                       }
                     },
-                    {
-                      "type": "actions",
-                      "elements": [
-                        {
-                          "type": "button",
-                          "text": {
-                            "type": "plain_text",
-                            "text": "Failing Commit",
-                            "emoji": true
-                          },
-                          "url": `https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}`
-                        },
-                        {
-                          "type": "button",
-                          "text": {
-                            "type": "plain_text",
-                            "text": `Recent commits to ${BRANCH}`,
-                            "emoji": true
-                          },
-                          "url": `https://github.com/metabase/metabase/commits/${BRANCH}`
-                        },
-                        {
-                          "type": "button",
-                          "text": {
-                            "type": "plain_text",
-                            "text": "Failed CI Run",
-                            "emoji": true
-                          },
-                          "url": `${FAILED_RUN_URL}`
-                        }
-                      ]
-                    }
                   ]
                 }]
               });

@@ -1,6 +1,7 @@
-import { Location } from "history";
+import type { Selector } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
-import { getUser } from "metabase/selectors/user";
+import type { Location } from "history";
+
 import {
   getIsEditing as getIsEditingDashboard,
   getDashboard,
@@ -11,25 +12,22 @@ import {
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
-import { State } from "metabase-types/store";
+import { getUser } from "metabase/selectors/user";
+import type { State } from "metabase-types/store";
 
 export interface RouterProps {
   location: Location;
 }
 
-const HOMEPAGE_PATH = /^\/$/;
 const PATHS_WITHOUT_NAVBAR = [
+  /^\/setup/,
   /^\/auth/,
   /\/model\/.*\/query/,
   /\/model\/.*\/metadata/,
   /\/model\/query/,
   /\/model\/metadata/,
 ];
-const EMBEDDED_PATHS_WITH_NAVBAR = [
-  HOMEPAGE_PATH,
-  /^\/collection\/.*/,
-  /^\/archive/,
-];
+
 const PATHS_WITH_COLLECTION_BREADCRUMBS = [
   /\/question\//,
   /\/model\//,
@@ -38,11 +36,11 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
 const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
 
 export const getRouterPath = (state: State, props: RouterProps) => {
-  return props.location.pathname;
+  return props?.location?.pathname ?? window.location.pathname;
 };
 
 export const getRouterHash = (state: State, props: RouterProps) => {
-  return props.location.hash;
+  return props?.location?.hash ?? window.location.hash;
 };
 
 export const getIsAdminApp = createSelector([getRouterPath], path => {
@@ -85,9 +83,7 @@ export const getIsNavBarEnabled = createSelector(
     if (isEmbedded && !embedOptions.side_nav) {
       return false;
     }
-    if (isEmbedded && embedOptions.side_nav === "default") {
-      return EMBEDDED_PATHS_WITH_NAVBAR.some(pattern => pattern.test(path));
-    }
+
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(path));
   },
 );
@@ -189,4 +185,22 @@ export const getCollectionId = createSelector(
   [getQuestion, getDashboard, getDashboardId],
   (question, dashboard, dashboardId) =>
     dashboardId ? dashboard?.collection_id : question?.collectionId(),
+);
+
+export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
+  [
+    getIsEmbedded,
+    getEmbedOptions,
+    getIsAppBarVisible,
+    (state: State) => state.app.isNavbarOpen,
+  ],
+  (isEmbedded, embedOptions, isAppBarVisible, isNavbarOpen) => {
+    // in an embedded instance, when the app bar is hidden, but the nav bar is not
+    // we need to force the sidebar to be open or else it will be totally inaccessible
+    if (isEmbedded && embedOptions.side_nav === true && !isAppBarVisible) {
+      return true;
+    }
+
+    return isNavbarOpen;
+  },
 );

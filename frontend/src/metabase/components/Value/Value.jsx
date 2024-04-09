@@ -2,7 +2,6 @@
 import { isValidElement } from "react";
 
 import RemappedValue from "metabase/containers/RemappedValue";
-
 import { formatValue } from "metabase/lib/formatting";
 
 const Value = ({ value, ...options }) => {

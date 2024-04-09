@@ -1,16 +1,13 @@
-import { restore, questionInfoButton, visitModel } from "e2e/support/helpers";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { restore, questionInfoButton, visitModel } from "e2e/support/helpers";
 
 describe("scenarios > models > revision history", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-  });
-
-  beforeEach(() => {
-    cy.request("PUT", "/api/card/3", {
+    cy.request("PUT", `/api/card/${ORDERS_BY_YEAR_QUESTION_ID}`, {
       name: "Orders Model",
-      dataset: true,
+      type: "model",
     });
   });
 
@@ -19,15 +16,15 @@ describe("scenarios > models > revision history", () => {
 
     openRevisionHistory();
     revertTo("You created this");
-    cy.wait("@modelQuery3");
+    cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
 
-    cy.location("pathname").should("match", /^\/question\/3/);
-    cy.get(".LineAreaBarChart");
+    cy.location("pathname").should("match", /^\/question\/\d+/);
+    cy.get("[data-element-id=line-area-bar-chart]");
 
     revertTo("You edited this");
-    cy.wait("@modelQuery3");
+    cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
 
-    cy.location("pathname").should("match", /^\/model\/3/);
+    cy.location("pathname").should("match", /^\/model\/\d+/);
     cy.get(".cellData");
   });
 });

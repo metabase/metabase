@@ -10,12 +10,12 @@
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -26,12 +26,8 @@
 (use-fixtures :once (fixtures/initialize :plugins))
 
 (deftest ^:parallel simple-select-probe-query-test
-  (testing "honey-sql-version produces the same query"
-    (are [version] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
-                      (binding [hx/*honey-sql-version* version]
-                        (sql-jdbc.describe-database/simple-select-probe-query :sql "schema" "wow")))
-      1
-      2))
+  (is (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
+         (sql-jdbc.describe-database/simple-select-probe-query :sql "schema" "wow")))
   (testing "real drivers produce correct query"
     (are [driver] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
                      (sql-jdbc.describe-database/simple-select-probe-query driver "schema" "wow"))
@@ -41,21 +37,23 @@
     (let [{:keys [name schema]} (t2/select-one Table :id (mt/id :venues))]
       (is (= []
              (mt/rows
-               (qp/process-query
-                 (let [[sql] (sql-jdbc.describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
-                   (mt/native-query {:query sql})))))))))
+              (qp/process-query
+               (let [[sql] (sql-jdbc.describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
+                 (mt/native-query {:query sql})))))))))
 
 (defn- sql-jdbc-drivers-with-default-describe-database-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-database`. (As far as I know, this is
   all of them.)"
   []
-  (set
-   (filter
-    #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))
-    (descendants driver/hierarchy :sql-jdbc))))
+  (conj (set
+         (filter
+          #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))
+          (descendants driver/hierarchy :sql-jdbc)))
+        ;; redshift wraps the default implementation, but additionally filters tables according to the database name
+        :redshift))
 
 (deftest fast-active-tables-test
-  (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
+  (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
          (sql-jdbc.execute/do-with-connection-with-options
           (or driver/*driver* :h2)
           (mt/db)
@@ -68,7 +66,7 @@
                    sort)))))))
 
 (deftest post-filtered-active-tables-test
-  (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
+  (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
          (sql-jdbc.execute/do-with-connection-with-options
           :h2
           (mt/db)
@@ -82,7 +80,11 @@
   (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil}
                     {:name "VENUES", :schema "PUBLIC", :description nil}
                     {:name "CATEGORIES", :schema "PUBLIC", :description nil}
-                    {:name "CHECKINS", :schema "PUBLIC", :description nil}}}
+                    {:name "CHECKINS", :schema "PUBLIC", :description nil}
+                    {:name "ORDERS", :schema "PUBLIC", :description nil}
+                    {:name "PEOPLE", :schema "PUBLIC", :description nil}
+                    {:name "PRODUCTS", :schema "PUBLIC", :description nil}
+                    {:name "REVIEWS", :schema "PUBLIC", :description nil}}}
          (sql-jdbc.describe-database/describe-database :h2 (mt/id)))))
 
 (defn- describe-database-with-open-resultset-count
@@ -104,8 +106,8 @@
        driver
        db
        nil
-       (fn [conn]
-         (sql-jdbc.describe-database/describe-database driver {:connection conn})
+       (fn [_conn]
+         (sql-jdbc.describe-database/describe-database driver db)
          (reduce + (for [^ResultSet rs @resultsets]
                      (if (.isClosed rs) 0 1))))))))
 
@@ -154,7 +156,9 @@
          driver)))
 
 (deftest database-schema-filtering-test
-  (mt/test-drivers (schema-filtering-drivers)
+  ;; BigQuery is tested separately in `metabase.driver.bigquery-cloud-sdk-test/dataset-filtering-test`, because
+  ;; otherwise this test takes too long and flakes intermittently
+  (mt/test-drivers (disj (schema-filtering-drivers) :bigquery-cloud-sdk)
     (let [driver             (driver.u/database->driver (mt/db))
           schema-filter-prop (find-schema-filters-prop driver)
           filter-type-prop   (keyword (str (:name schema-filter-prop) "-type"))
@@ -182,3 +186,46 @@
            (fn [{schema-name :schema}]
              (testing (format "schema name = %s" (pr-str schema-name))
                (is (not= \v (first schema-name)))))))))))
+
+(deftest have-select-privilege?-test
+  (testing "cheking select privilege works with and without auto commit (#36040)"
+    (let [default-have-slect-privilege?
+          #(identical? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
+                       (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
+      (mt/test-drivers (into #{}
+                             (filter default-have-slect-privilege?)
+                             (descendants driver/hierarchy :sql-jdbc))
+        (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :users))]
+          (qp.store/with-metadata-provider (mt/id)
+            (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
+              (doseq [auto-commit [true false]]
+                (testing (pr-str {:auto-commit auto-commit :schema schema :name table-name})
+                  (sql-jdbc.execute/do-with-connection-with-options
+                   driver/*driver*
+                   (mt/db)
+                   nil
+                   (fn [^java.sql.Connection conn]
+                     (.setAutoCommit conn auto-commit)
+                     (is (false? (sql-jdbc.sync.interface/have-select-privilege?
+                                  driver/*driver* conn schema (str table-name "_should_not_exist"))))
+                     (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                                 driver/*driver* conn schema table-name))))))))))))))
+
+(deftest sync-table-with-backslash-test
+  (mt/test-drivers #{:postgres} ;; TODO: fix and change this to test on (mt/sql-jdbc-drivers)
+    (testing "table with backslash in name, PKs, FKS are correctly synced"
+      (mt/with-temp-test-data [["human\\race"
+                                [{:field-name "humanraceid" :base-type :type/Integer :pk? true}
+                                 {:field-name "race" :base-type :type/Text}]
+                                [[1 "homo sapiens"]]]
+                               ["citizen"
+                                [{:field-name "citizen\\id" :base-type :type/Integer :pk? true}
+                                 {:field-name "race\\id" :base-type :type/Integer :fk "human\\race"}]
+                                [[1 1]]]]
+        (let [tables            (t2/select :model/Table :db_id (:id (mt/db)))
+              field-name->field (t2/select-fn->fn :name identity :model/Field :table_id [:in (map :id tables)])]
+          (is (= #{"human\\race" "citizen"} (set (map :name tables))))
+          (is (= #{"humanraceid" "citizen\\id" "race" "race\\id"}
+                 (set (keys field-name->field))))
+          (is (= (get-in field-name->field ["humanraceid" :id])
+                 (get-in field-name->field ["race\\id" :fk_target_field_id]))))))))

@@ -1,0 +1,29 @@
+.editHeader {
+  composes: text-white from "style";
+  align-items: center;
+  display: flex;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 43px;
+  background-color: color-mod(var(--color-bg-white) alpha(-85%));
+}
+
+.editHeaderButtons {
+  margin-left: auto;
+}
+
+.editHeaderButton {
+  border: none;
+  color: var(--color-brand);
+}
+
+.saveButton {
+  composes: editHeaderButton;
+}
+
+.cancelButton {
+  composes: editHeaderButton;
+  opacity: 0.5;
+}

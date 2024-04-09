@@ -1,3 +1,4 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   describeEE,
@@ -7,7 +8,6 @@ import {
   popover,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describeEE("scenarios > question > caching", () => {
   beforeEach(() => {
@@ -17,7 +17,7 @@ describeEE("scenarios > question > caching", () => {
     cy.request("PUT", "/api/setting/enable-query-caching", { value: true });
   });
 
-  it("can set cache ttl for a saved question", () => {
+  it("can set cache ttl for a saved question", { tags: "@flaky" }, () => {
     cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as("updateQuestion");
     visitQuestion(ORDERS_QUESTION_ID);
 

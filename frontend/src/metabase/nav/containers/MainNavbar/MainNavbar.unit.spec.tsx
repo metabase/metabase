@@ -1,38 +1,34 @@
-import { Route } from "react-router";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-
-import * as Urls from "metabase/lib/urls";
-
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-
+import * as Urls from "metabase/lib/urls";
 import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
-  createMockDatabase,
   createMockDashboard,
+  createMockDatabase,
   createMockUser,
 } from "metabase-types/api/mocks";
-
+import type { DashboardState } from "metabase-types/store";
 import {
-  createMockState,
   createMockDashboardState,
   createMockQueryBuilderState,
+  createMockState,
 } from "metabase-types/store/mocks";
 
-import { DashboardState } from "metabase-types/store";
 import MainNavbar from "./MainNavbar";
 
 type SetupOpts = {
@@ -115,7 +111,7 @@ async function setup({
     dashboardId = openDashboard.id;
     dashboardsForState[openDashboard.id] = {
       ...openDashboard,
-      ordered_cards: openDashboard.ordered_cards.map(c => c.id),
+      dashcards: openDashboard.dashcards.map(c => c.id),
     };
     dashboardsForEntities.push(openDashboard);
   }
@@ -143,9 +139,7 @@ async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryAllByTestId("loading-spinner"),
-  );
+  await waitForLoaderToBeRemoved();
 }
 
 async function setupCollectionPage({
@@ -216,7 +210,7 @@ describe("nav > containers > MainNavbar", () => {
     });
 
     it("should be highlighted if child route selected", async () => {
-      await setup({ pathname: "/browse/1" });
+      await setup({ pathname: "/browse/databases/1" });
       const link = screen.getByRole("listitem", { name: /Browse data/i });
       expect(link).toHaveAttribute("aria-selected", "true");
     });
@@ -408,7 +402,7 @@ describe("nav > containers > MainNavbar", () => {
     it("should highlight model's collection when on model detail page", async () => {
       const model = createMockCard({
         collection_id: TEST_COLLECTION.id as number,
-        dataset: true,
+        type: "model",
       });
       await setup({
         route: "/model/:slug/detail",

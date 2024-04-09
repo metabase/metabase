@@ -1,16 +1,15 @@
-import _ from "underscore";
 import { assoc, dissoc } from "icepick";
+import _ from "underscore";
+
+import Users from "metabase/entities/users";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   createAction,
+  createThunkAction,
   handleActions,
   combineReducers,
 } from "metabase/lib/redux";
-
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 import { PermissionsApi } from "metabase/services";
-
-import Users from "metabase/entities/users";
 
 import {
   LOAD_MEMBERSHIPS,
@@ -19,6 +18,7 @@ import {
   UPDATE_MEMBERSHIP,
   CLEAR_TEMPORARY_PASSWORD,
 } from "./events";
+import { getMemberships } from "./selectors";
 
 // ACTION CREATORS
 
@@ -47,12 +47,14 @@ export const createMembership = createAction(
     };
   },
 );
-export const deleteMembership = createAction(
+export const deleteMembership = createThunkAction(
   DELETE_MEMBERSHIP,
-  async membershipId => {
+  membershipId => async (_dispatch, getState) => {
+    const memberships = getMemberships(getState());
+    const membership = memberships[membershipId];
     await PermissionsApi.deleteMembership({ id: membershipId });
     MetabaseAnalytics.trackStructEvent("People Groups", "Membership Deleted");
-    return { membershipId };
+    return { membershipId, groupId: membership.group_id };
   },
 );
 

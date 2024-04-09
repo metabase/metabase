@@ -11,16 +11,18 @@
  :builds
  {:app
   {:target     :npm-module
-   :output-dir "frontend/src/cljs_release/"
-   :dev        {:output-dir "frontend/src/cljs/"
+   :output-dir "target/cljs_release/"
+   :dev        {:output-dir "target/cljs_dev/"
                 :compiler-options {:reader-features #{:cljs-dev}}}
-   :compiler-options {:reader-features #{:cljs-release}}
+   :compiler-options {:reader-features #{:cljs-release}
+                      :source-map      true}
    :entries    [metabase.domain-entities.queries.util
                 metabase.lib.column-group
                 metabase.lib.js
                 metabase.lib.limit
                 metabase.lib.types.isa
-                metabase.mbql.js
+                metabase.legacy-mbql.js
+                metabase.shared.dashboards.constants
                 metabase.shared.formatting.constants
                 metabase.shared.formatting.date
                 metabase.shared.formatting.numbers

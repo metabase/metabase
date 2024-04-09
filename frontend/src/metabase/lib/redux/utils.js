@@ -1,26 +1,22 @@
-import moment from "moment-timezone";
-import _ from "underscore";
-import { getIn } from "icepick";
-import { normalize } from "normalizr";
 import { compose } from "@reduxjs/toolkit";
+import { getIn } from "icepick";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { normalize } from "normalizr";
+import _ from "underscore";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { delay } from "metabase/lib/promise";
 import {
   setRequestLoading,
   setRequestLoaded,
   setRequestError,
   setRequestUnloaded,
+  setRequestPromise,
 } from "metabase/redux/requests";
 
 // convenience
 export { combineReducers, compose } from "@reduxjs/toolkit";
 export { handleActions, createAction } from "redux-actions";
-
-// similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
-// the promise returned from the thunk resolves or rejects, similar to redux-promise
-export function createThunkAction(actionType, thunkCreator) {
-  return withAction(actionType)(thunkCreator);
-}
 
 // turns string timestamps into moment objects
 export function momentifyTimestamps(
@@ -79,7 +75,11 @@ export const fetchData = async ({
     const requestState = getIn(getState(), ["requests", ...statePath]);
     if (!requestState || requestState.error || reload) {
       dispatch(setRequestLoading(statePath, queryKey));
-      const data = await getData();
+
+      const queryPromise = getData();
+      dispatch(setRequestPromise(statePath, queryKey, queryPromise));
+
+      const data = await queryPromise;
 
       // NOTE Atte Keinänen 8/23/17:
       // Dispatch `setRequestLoaded` after clearing the call stack because we want to the actual data to be updated
@@ -114,7 +114,11 @@ export const updateData = async ({
   const statePath = requestStatePath.concat(["update"]);
   try {
     dispatch(setRequestLoading(statePath, queryKey));
-    const data = await putData();
+
+    const queryPromise = putData();
+    dispatch(setRequestPromise(statePath, queryKey, queryPromise));
+
+    const data = await queryPromise;
     dispatch(setRequestLoaded(statePath, queryKey));
 
     (dependentRequestStatePaths || []).forEach(statePath =>
@@ -230,7 +234,10 @@ export function withRequestState(getRequestStatePath, getQueryKey) {
       try {
         dispatch(setRequestLoading(statePath, queryKey));
 
-        const result = await thunkCreator(...args)(dispatch, getState);
+        const queryPromise = thunkCreator(...args)(dispatch, getState);
+        dispatch(setRequestPromise(statePath, queryKey, queryPromise));
+
+        const result = await queryPromise;
 
         // Dispatch `setRequestLoaded` after clearing the call stack because
         // we want to the actual data to be updated before we notify
@@ -271,45 +278,62 @@ function withCachedData(
   return thunkCreator =>
     // thunk creator:
     (...args) =>
-    // thunk:
-    (dispatch, getState) => {
-      const options = args[args.length - 1] || {};
-      const { useCachedForbiddenError, reload, properties } = options;
+      // thunk:
+      async function thunk(dispatch, getState) {
+        const options = args[args.length - 1] || {};
+        const { useCachedForbiddenError, reload, properties } = options;
 
-      const existingStatePath = getExistingStatePath(...args);
-      const requestStatePath = ["requests", ...getRequestStatePath(...args)];
-      const newQueryKey = getQueryKey && getQueryKey(...args);
-      const existingData = getIn(getState(), existingStatePath);
-      const { loading, loaded, queryKey, error } =
-        getIn(getState(), requestStatePath) || {};
+        const existingStatePath = getExistingStatePath(...args);
+        const requestStatePath = ["requests", ...getRequestStatePath(...args)];
+        const newQueryKey = getQueryKey && getQueryKey(...args);
+        const existingData = getIn(getState(), existingStatePath);
+        const { loading, loaded, queryKey, error } =
+          getIn(getState(), requestStatePath) || {};
 
-      // Avoid requesting data with permanently forbidded access
-      if (useCachedForbiddenError && error?.status === 403) {
-        throw error;
-      }
+        // Avoid requesting data with permanently forbidden access
+        if (useCachedForbiddenError && error?.status === 403) {
+          throw error;
+        }
 
-      const hasRequestedProperties =
-        properties &&
-        existingData &&
-        _.all(properties, p => existingData[p] !== undefined);
+        const hasRequestedProperties =
+          properties &&
+          existingData &&
+          _.all(properties, p => existingData[p] !== undefined);
 
-      // return existing data if
-      if (
-        // we don't want to reload
-        // the check is a workaround for EntityListLoader passing reload function to children
-        reload !== true &&
-        // reload if the query used to load an entity has changed even if it's already loaded
-        newQueryKey === queryKey &&
-        // and we have a an non-error request state or have a list of properties that all exist on the object
-        (loading || loaded || hasRequestedProperties)
-      ) {
-        // TODO: if requestState is LOADING can we wait for the other reques
-        // to complete and return that result instead?
-        return existingData;
-      } else {
+        // return existing data if
+        if (
+          // we don't want to reload
+          // the check is a workaround for EntityListLoader passing reload function to children
+          reload !== true &&
+          // reload if the query used to load an entity has changed even if it's already loaded
+          newQueryKey === queryKey
+        ) {
+          // and we have a non-error request state or have a list of properties that all exist on the object
+          if (loaded || hasRequestedProperties) {
+            return existingData;
+          } else if (loading) {
+            const queryPromise = getIn(
+              getState(),
+              requestStatePath,
+            )?.queryPromise;
+
+            if (queryPromise) {
+              // wait for current loading request to be resolved
+              await queryPromise;
+
+              // need to wait for next tick to allow loaded request data to be processed and avoid loops
+              await delay(0);
+
+              // retry this function after waited request gets resolved
+              return thunk(dispatch, getState);
+            }
+
+            return existingData;
+          }
+        }
+
         return thunkCreator(...args)(dispatch, getState);
-      }
-    };
+      };
 }
 
 export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {

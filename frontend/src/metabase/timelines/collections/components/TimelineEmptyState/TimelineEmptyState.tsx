@@ -1,8 +1,14 @@
+import cx from "classnames";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
-import moment from "moment-timezone";
-import * as Urls from "metabase/lib/urls";
+
 import Link from "metabase/core/components/Link";
-import { Collection, Timeline } from "metabase-types/api";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import type { Collection, Timeline } from "metabase-types/api";
+
 import {
   EmptyStateBody,
   EmptyStateChart,
@@ -36,6 +42,7 @@ const TimelineEmptyState = ({
     ? timeline.collection?.can_write
     : collection?.can_write;
 
+  const applicationName = useSelector(getApplicationName);
   return (
     <EmptyStateRoot>
       <EmptyStateBody>
@@ -65,11 +72,14 @@ const TimelineEmptyState = ({
         </EmptyStateThread>
         <EmptyStateMessage>
           {canWrite
-            ? t`Add events to Metabase to show important milestones, launches, or anything else, right alongside your data.`
-            : t`Events in Metabase let you see important milestones, launches, or anything else, right alongside your data.`}
+            ? t`Add events to ${applicationName} to show important milestones, launches, or anything else, right alongside your data.`
+            : t`Events in ${applicationName} let you see important milestones, launches, or anything else, right alongside your data.`}
         </EmptyStateMessage>
         {canWrite && (
-          <Link className="Button Button--primary" to={link}>
+          <Link
+            className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
+            to={link}
+          >
             {t`Add an event`}
           </Link>
         )}

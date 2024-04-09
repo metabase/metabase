@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
+import { Icon } from "metabase/ui";
 
 import { CheckboxLabelRoot } from "./DashboardCopyModalShallowCheckboxLabel.styled";
 
-const DashboardCopyModalShallowCheckboxLabel = () => (
+export const DashboardCopyModalShallowCheckboxLabel = () => (
   <CheckboxLabelRoot>
     {t`Only duplicate the dashboard`}
     <Tooltip
@@ -15,6 +15,3 @@ const DashboardCopyModalShallowCheckboxLabel = () => (
     </Tooltip>
   </CheckboxLabelRoot>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DashboardCopyModalShallowCheckboxLabel;

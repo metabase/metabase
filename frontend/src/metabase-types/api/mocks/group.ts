@@ -1,4 +1,4 @@
-import { Group } from "metabase-types/api";
+import type { Group } from "metabase-types/api";
 
 export const createMockGroup = (
   opts?: Partial<Group>,

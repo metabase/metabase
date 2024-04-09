@@ -1,8 +1,11 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+import { Droppable, Draggable } from "react-beautiful-dnd";
 import { t } from "ttag";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
-import { moveElement } from "metabase/core/utils/arrays";
+import { DragDropContext } from "metabase/core/components/DragDropContext";
+import CS from "metabase/css/core/index.css";
+import { moveElement } from "metabase/lib/arrays";
 
 import ChartSettingFieldPicker from "./ChartSettingFieldPicker";
 import { AddAnotherContainer } from "./ChartSettingFieldsPicker.styled";
@@ -51,7 +54,7 @@ const ChartSettingFieldsPicker = ({
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className="mb1"
+                          className={CS.mb1}
                         >
                           <ChartSettingFieldPicker
                             {...props}
@@ -107,7 +110,7 @@ const ChartSettingFieldsPicker = ({
       {addAnother && (
         <AddAnotherContainer>
           <a
-            className="text-brand text-bold py1"
+            className={cx(CS.textBrand, CS.textBold, CS.py1)}
             onClick={() => {
               const remaining = options.filter(
                 o => fields.indexOf(o.value) < 0,

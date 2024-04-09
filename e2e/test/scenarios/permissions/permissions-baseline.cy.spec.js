@@ -1,19 +1,20 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  ORDERS_QUESTION_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visitQuestion,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import {
-  ORDERS_QUESTION_ID,
-  ADMIN_PERSONAL_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > permissions", () => {
   beforeEach(restore);
 
   const PATHS = [
-    "/dashboard/1",
+    `/dashboard/${ORDERS_DASHBOARD_ID}`,
     `/question/${ORDERS_QUESTION_ID}`,
     `/collection/${ADMIN_PERSONAL_COLLECTION_ID}`,
     "/admin",
@@ -45,14 +46,6 @@ describe("scenarios > permissions", () => {
     );
 
     cy.findAllByLabelText("Refresh").should("be.disabled");
-  });
-
-  it("should display the permissions screen for pulses", () => {
-    cy.signIn("none");
-    // There's no pulse in the fixture data, so we stub out the api call to replace the 404 with a 403.
-    cy.intercept("api/pulse/1", { statusCode: 403, body: {} });
-    cy.visit("/pulse/1");
-    checkUnauthorized();
   });
 
   it("should let a user with no data permissions view questions", () => {

@@ -1,8 +1,6 @@
-import Utils from "metabase/lib/utils";
-
-import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import Questions from "metabase/entities/questions";
-import * as Q_DEPRECATED from "metabase-lib/queries/utils";
+import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
+import { equals } from "metabase/lib/utils";
 
 export function createCard(name = null) {
   return {
@@ -13,23 +11,28 @@ export function createCard(name = null) {
   };
 }
 
-// start a new card using the given query type and optional database and table selections
-export function startNewCard(type, databaseId, tableId) {
-  // create a brand new card to work from
-  const card = createCard();
-  card.dataset_query = Q_DEPRECATED.createQuery(type, databaseId, tableId);
-
-  return card;
-}
-
 // load a card either by ID or from a base64 serialization.  if both are present then they are merged, which the serialized version taking precedence
 // TODO: move to redux
 export async function loadCard(cardId, { dispatch, getState }) {
   try {
-    await dispatch(Questions.actions.fetch({ id: cardId }, { reload: true }));
+    await dispatch(
+      Questions.actions.fetch(
+        { id: cardId },
+        {
+          properties: [
+            "id",
+            "dataset_query",
+            "display",
+            "visualization_settings",
+          ], // complies with Card interface
+        },
+      ),
+    );
+
     const question = Questions.selectors.getObject(getState(), {
       entityId: cardId,
     });
+
     return question?.card();
   } catch (error) {
     console.error("error loading card", error);
@@ -38,16 +41,11 @@ export async function loadCard(cardId, { dispatch, getState }) {
 }
 
 function getCleanCard(card) {
-  const dataset_query = Utils.copy(card.dataset_query);
-  if (dataset_query.query) {
-    dataset_query.query = Q_DEPRECATED.cleanQuery(dataset_query.query);
-  }
-
   return {
     name: card.name,
     collectionId: card.collectionId,
     description: card.description,
-    dataset_query: dataset_query,
+    dataset_query: card.dataset_query,
     display: card.display,
     displayIsLocked: card.displayIsLocked,
     parameters: card.parameters,
@@ -60,7 +58,7 @@ function getCleanCard(card) {
 
 export function isEqualCard(card1, card2) {
   if (card1 && card2) {
-    return Utils.equals(getCleanCard(card1), getCleanCard(card2));
+    return equals(getCleanCard(card1), getCleanCard(card2));
   } else {
     return false;
   }

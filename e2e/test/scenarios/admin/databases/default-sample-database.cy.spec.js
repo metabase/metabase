@@ -1,3 +1,6 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
@@ -5,10 +8,11 @@ import {
   describeEE,
   setTokenFeatures,
 } from "e2e/support/helpers";
+import {
+  createMetric,
+  createSegment,
+} from "e2e/support/helpers/e2e-table-metadata-helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { visitDatabase } from "./helpers/e2e-database-helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -116,13 +120,13 @@ describe("scenarios > admin > databases > sample database", () => {
       "discard_values",
     );
     cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/usage_info`).as(
-      `usage_info`,
+      "usage_info",
     );
     cy.intercept("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
     // model
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
     // Create a segment through API
-    cy.request("POST", "/api/segment", {
+    createSegment({
       name: "Small orders",
       description: "All orders with a total under $100.",
       table_id: ORDERS_ID,
@@ -132,8 +136,9 @@ describe("scenarios > admin > databases > sample database", () => {
         filter: ["<", ["field", ORDERS.TOTAL, null], 100],
       },
     });
+
     // metric
-    cy.request("POST", "/api/metric", {
+    createMetric({
       name: "Revenue",
       description: "Sum of orders subtotal",
       table_id: ORDERS_ID,
@@ -255,6 +260,7 @@ describe("scenarios > admin > databases > sample database", () => {
     cy.wait("@loadDatabaseUsageInfo");
     modal().within(() => {
       cy.findByLabelText(/Delete \d+ saved questions?/).click();
+      cy.findByLabelText(/Delete \d+ model?/).click();
       cy.findByTestId("database-name-confirmation-input").type(
         "Sample Database",
       );
@@ -291,6 +297,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByText("Browse data").click();
     });
 
+    cy.findByRole("tab", { name: "Databases" }).click();
     cy.findByTestId("database-browser").within(() => {
       cy.findByText("Sample Database").should("exist");
     });

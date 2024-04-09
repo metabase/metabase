@@ -1,10 +1,10 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 import _ from "underscore";
 
-import { Icon, IconProps } from "metabase/core/components/Icon";
-
 import { color, darken, alpha } from "metabase/lib/colors";
+import type { IconProps } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
 export type SegmentedControlVariant =
   | "fill-text"

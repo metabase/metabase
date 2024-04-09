@@ -1,14 +1,13 @@
-import { t } from "ttag";
 import { updateIn } from "icepick";
+import { t } from "ttag";
 
+import LdapAuthCard from "metabase/admin/settings/auth/containers/LdapAuthCard";
+import { SettingsLdapForm } from "metabase/admin/settings/components/SettingsLdapForm";
+import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_IS_PASSWORD_USER,
 } from "metabase/plugins";
-
-import SettingsLdapForm from "metabase/admin/settings/components/SettingsLdapForm";
-import LdapAuthCard from "metabase/admin/settings/auth/containers/LdapAuthCard";
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(
   sections =>
@@ -19,6 +18,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
         description: null,
         noHeader: true,
         widget: LdapAuthCard,
+        forceRenderWidget: true,
       },
     ]),
   sections => ({

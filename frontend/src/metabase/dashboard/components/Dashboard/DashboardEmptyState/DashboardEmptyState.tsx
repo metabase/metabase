@@ -1,14 +1,17 @@
+import cx from "classnames";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
-import Link from "metabase/core/components/Link";
-import Button from "metabase/core/components/Button";
 import EmptyState from "metabase/components/EmptyState";
-import { Dashboard } from "metabase-types/api";
-import { Container } from "./DashboardEmptyState.styled";
+import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
+import * as Urls from "metabase/lib/urls";
+import type { Dashboard } from "metabase-types/api";
+
+import { Container, QuestionCircleStyled } from "./DashboardEmptyState.styled";
 
 function QuestionIllustration() {
-  return <span className="QuestionCircle">?</span>;
+  return <QuestionCircleStyled>?</QuestionCircleStyled>;
 }
 
 interface DashboardEmptyStateProps {
@@ -41,8 +44,9 @@ export function DashboardEmptyState({
                 mode: "notebook",
                 creationType: "custom_question",
                 collectionId: dashboard.collection_id ?? undefined,
+                cardType: "question",
               })}
-              className="text-bold text-brand"
+              className={cx(CS.textBold, "text-brand")}
               onClick={closeNavbar}
             >
               {t`ask a new one`}
@@ -54,11 +58,13 @@ export function DashboardEmptyState({
   );
 }
 
-interface TabEmptyStateProps {
+interface DashboardEmptyStateWithoutAddPromptProps {
   isNightMode: boolean;
 }
 
-export function TabEmptyState({ isNightMode }: TabEmptyStateProps) {
+export function DashboardEmptyStateWithoutAddPrompt({
+  isNightMode,
+}: DashboardEmptyStateWithoutAddPromptProps) {
   return (
     <Container isNightMode={isNightMode}>
       <EmptyState title={t`There's nothing here, yet.`} />

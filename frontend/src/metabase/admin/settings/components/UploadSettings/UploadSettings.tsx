@@ -1,29 +1,29 @@
+import type * as React from "react";
 import { useState, useRef } from "react";
-
-import * as React from "react";
-import { jt, t } from "ttag";
 import { connect } from "react-redux";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
-import Databases from "metabase/entities/databases";
-import Schemas from "metabase/entities/schemas";
-
-import { getSetting } from "metabase/selectors/settings";
 import { updateSettings } from "metabase/admin/settings/settings";
-
-import type { State } from "metabase-types/store";
-
-import { Stack, Group } from "metabase/ui";
-import Link from "metabase/core/components/Link";
-import Select, { SelectChangeEvent } from "metabase/core/components/Select";
-import Input from "metabase/core/components/Input";
 import ActionButton from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";
-
-import Database from "metabase-lib/metadata/Database";
-import Schema from "metabase-lib/metadata/Schema";
+import Alert from "metabase/core/components/Alert";
+import Input from "metabase/core/components/Input";
+import Link from "metabase/core/components/Link";
+import type { SelectChangeEvent } from "metabase/core/components/Select";
+import Select from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
+import Databases from "metabase/entities/databases";
+import Schemas from "metabase/entities/schemas";
+import { useDispatch } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
+import { Stack, Group, Text } from "metabase/ui";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Schema from "metabase-lib/v1/metadata/Schema";
+import type { State } from "metabase-types/store";
 
 import SettingHeader from "../SettingHeader";
+
 import { SectionTitle, ColorText, PaddedForm } from "./UploadSetting.styled";
 import { getDatabaseOptions, getSchemaOptions, dbHasSchema } from "./utils";
 
@@ -38,7 +38,7 @@ export interface UploadSettings {
   uploads_table_prefix: string | null;
 }
 
-export interface UploadSettingProps {
+interface UploadSettingProps {
   databases: Database[];
   settings: UploadSettings;
   updateSettings: (
@@ -72,7 +72,7 @@ const Header = () => (
       display_name: t`Allow people to upload data to Collections`,
       description: jt`People will be able to upload CSV files that will be stored in the ${(
         <Link
-          className="link"
+          className={CS.link}
           key="db-link"
           to="/admin/databases"
         >{t`database`}</Link>
@@ -97,6 +97,7 @@ export function UploadSettingsView({
     settings.uploads_table_prefix ?? null,
   );
   const [errorMessage, setErrorMessage] = useState<null | string>(null);
+  const dispatch = useDispatch();
 
   const showSchema = dbId && dbHasSchema(databases, dbId);
   const databaseOptions = getDatabaseOptions(databases);
@@ -133,6 +134,7 @@ export function UploadSettingsView({
         setSchemaName(schemaName);
         setTablePrefix(tablePrefix);
         saveStatusRef?.current?.setSaved();
+        dispatch(Databases.actions.invalidateLists());
       })
       .catch(() => showError(enableErrorMessage));
   };
@@ -162,10 +164,14 @@ export function UploadSettingsView({
     tablePrefix !== settings.uploads_table_prefix;
 
   const hasValidDatabases = databaseOptions.length > 0;
+  const isH2db = Boolean(
+    dbId && databases.find(db => db.id === dbId)?.engine === "h2",
+  );
 
   return (
     <PaddedForm aria-label={t`Upload Settings Form`}>
       <Header />
+      {isH2db && <H2PersistenceWarning />}
       <Group>
         <Stack>
           <SectionTitle>{t`Database to use for uploads`}</SectionTitle>
@@ -271,6 +277,16 @@ export function UploadSettingsView({
     </PaddedForm>
   );
 }
+
+const H2PersistenceWarning = () => (
+  <Stack my="md" maw={620}>
+    <Alert icon="warning" variant="warning">
+      <Text>
+        {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL or MySQL database.`}
+      </Text>
+    </Alert>
+  </Stack>
+);
 
 const NoValidDatabasesMessage = () => (
   <>

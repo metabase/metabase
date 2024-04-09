@@ -1,16 +1,16 @@
-import * as React from "react";
 import cx from "classnames";
-import Draggable, { ControlPosition, DraggableBounds } from "react-draggable";
+import type * as React from "react";
+import type { ControlPosition, DraggableBounds } from "react-draggable";
+import Draggable from "react-draggable";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
-
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import CS from "metabase/css/core/index.css";
 import type { VisualizationSettings } from "metabase-types/api";
 
-import { RowToggleIcon } from "./RowToggleIcon";
 import { PivotTableCell, ResizeHandle } from "./PivotTable.styled";
-
-import type { HeaderItem, BodyItem, PivotTableClicked } from "./types";
+import { RowToggleIcon } from "./RowToggleIcon";
 import { LEFT_HEADER_LEFT_SPACING, RESIZE_HANDLE_WIDTH } from "./constants";
+import type { HeaderItem, BodyItem, PivotTableClicked } from "./types";
 
 interface CellProps {
   value: React.ReactNode;
@@ -42,6 +42,7 @@ interface CellProps {
   hasTopBorder?: boolean;
   onClick?: ((e: React.SyntheticEvent) => void) | undefined;
   onResize?: (newWidth: number) => void;
+  showTooltip?: boolean;
 }
 
 export function Cell({
@@ -58,6 +59,7 @@ export function Cell({
   hasTopBorder,
   onClick,
   onResize,
+  showTooltip = true,
 }: CellProps) {
   return (
     <PivotTableCell
@@ -79,9 +81,13 @@ export function Cell({
       onClick={onClick}
     >
       <>
-        <div className={cx("px1 flex align-center", { "justify-end": isBody })}>
-          <Ellipsified>{value}</Ellipsified>
-          {icon && <div className="pl1">{icon}</div>}
+        <div
+          className={cx(CS.px1, CS.flex, CS.alignCenter, {
+            [CS.justifyEnd]: isBody,
+          })}
+        >
+          <Ellipsified showTooltip={showTooltip}>{value}</Ellipsified>
+          {icon && <div className={CS.pl1}>{icon}</div>}
         </div>
         {!!onResize && (
           <Draggable
@@ -195,6 +201,7 @@ interface BodyCellProps {
   isNightMode: boolean;
   getCellClickHandler: CellClickHandler;
   cellWidths: number[];
+  showTooltip?: boolean;
 }
 
 export const BodyCell = ({
@@ -203,9 +210,10 @@ export const BodyCell = ({
   isNightMode,
   getCellClickHandler,
   cellWidths,
+  showTooltip = true,
 }: BodyCellProps) => {
   return (
-    <div style={style} className="flex">
+    <div style={style} className={CS.flex}>
       {rowSection.map(
         ({ value, isSubtotal, clicked, backgroundColor }, index) => (
           <Cell
@@ -217,6 +225,7 @@ export const BodyCell = ({
             value={value}
             isEmphasized={isSubtotal}
             isBold={isSubtotal}
+            showTooltip={showTooltip}
             isBody
             onClick={getCellClickHandler(clicked)}
             backgroundColor={backgroundColor}

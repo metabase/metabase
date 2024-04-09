@@ -1,27 +1,35 @@
-import { ChangeEvent, MouseEvent, useCallback, useMemo, useState } from "react";
+import cx from "classnames";
+import type { ChangeEvent, MouseEvent } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { useAsyncFn } from "react-use";
-import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import * as Urls from "metabase/lib/urls";
-import Tables from "metabase/entities/tables";
-import { Icon } from "metabase/core/components/Icon";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+
 import Tooltip from "metabase/core/components/Tooltip";
-import {
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
+import Tables from "metabase/entities/tables";
+import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
+import * as Urls from "metabase/lib/urls";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { Icon } from "metabase/ui";
+import type Table from "metabase-lib/v1/metadata/Table";
+import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
+import type {
   DatabaseId,
   SchemaId,
   TableId,
   TableVisibilityType,
 } from "metabase-types/api";
-import { Dispatch, State } from "metabase-types/store";
-import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
-import Table from "metabase-lib/metadata/Table";
-import { getSchemaName } from "metabase-lib/metadata/utils/schema";
-import { AdminListItem } from "./MetadataTableList.styled";
+import type { Dispatch, State } from "metabase-types/store";
+
+import {
+  AdminListItem,
+  BackIconContainer,
+  HideIconButton,
+} from "./MetadataTableList.styled";
 
 const RELOAD_INTERVAL = 2000;
 
@@ -99,7 +107,10 @@ const MetadataTableList = ({
   }, [selectedDatabaseId, onSelectDatabase]);
 
   return (
-    <div className="MetadataEditor-table-list AdminList flex-no-shrink">
+    <aside
+      data-testid="admin-metadata-table-list"
+      className={cx(CS.flexNoShrink, AdminS.AdminList)}
+    >
       <TableSearch searchText={searchText} onChangeSearchText={setSearchText} />
       {canGoBack && (
         <TableBreadcrumbs
@@ -107,7 +118,7 @@ const MetadataTableList = ({
           onBack={handleSelectDatabase}
         />
       )}
-      <ul className="AdminList-items">
+      <ul>
         {visibleTables.length > 0 && (
           <TableHeader
             tables={visibleTables}
@@ -144,7 +155,7 @@ const MetadataTableList = ({
           <TableEmptyState />
         )}
       </ul>
-    </div>
+    </aside>
   );
 };
 
@@ -162,10 +173,10 @@ const TableSearch = ({ searchText, onChangeSearchText }: TableSearchProps) => {
   );
 
   return (
-    <div className="AdminList-search">
-      <Icon name="search" size={16} />
+    <div className={AdminS.AdminListSearch}>
+      <Icon className={AdminS.Icon} name="search" size={16} />
       <input
-        className="AdminInput pl4 border-bottom"
+        className={cx(AdminS.AdminInput, CS.pl4, CS.borderBottom)}
         type="text"
         placeholder={t`Find a table`}
         value={searchText}
@@ -182,12 +193,12 @@ interface TableBreadcrumbsProps {
 
 const TableBreadcrumbs = ({ schemaId, onBack }: TableBreadcrumbsProps) => {
   return (
-    <h4 className="p2 border-bottom break-anywhere">
-      <span className="text-brand cursor-pointer" onClick={onBack}>
+    <h4 className={cx(CS.p2, CS.borderBottom, CS.breakAnywhere)}>
+      <BackIconContainer onClick={onBack}>
         <Icon name="chevronleft" size={10} />
         {t`Schemas`}
-      </span>
-      <span className="mx1">-</span>
+      </BackIconContainer>
+      <span className={CS.mx1}>/</span>
       <span>{getSchemaName(schemaId)}</span>
     </h4>
   );
@@ -220,7 +231,14 @@ const TableHeader = ({
       );
 
   return (
-    <div className="AdminList-section flex justify-between align-center">
+    <div
+      className={cx(
+        CS.flex,
+        CS.justifyBetween,
+        CS.alignCenter,
+        AdminS.AdminListSection,
+      )}
+    >
       {title}
       <ToggleVisibilityButton
         tables={tables}
@@ -232,7 +250,7 @@ const TableHeader = ({
 };
 
 const TableEmptyState = () => {
-  return <div className="AdminList-section">{t`0 Tables`}</div>;
+  return <div className={AdminS.AdminListSection}>{t`0 Tables`}</div>;
 };
 
 interface TableRowProps {
@@ -260,18 +278,24 @@ const TableRow = ({
   }, [table, onSelectTable]);
 
   return (
-    <li className="hover-parent hover--visibility">
+    <li className={cx(CS.hoverParent, CS.hoverVisibility)}>
       <AdminListItem
         disabled={!isSyncCompleted(table)}
         onClick={handleSelect}
+        data-testid="admin-metadata-table-list-item"
         className={cx(
-          "AdminList-item flex align-center no-decoration text-wrap justify-between",
-          { selected: isSelected },
+          CS.textWrap,
+          CS.justifyBetween,
+          CS.flex,
+          CS.alignCenter,
+          CS.noDecoration,
+          AdminS.AdminListItem,
+          { [AdminS.selected]: isSelected },
         )}
       >
         {table.displayName()}
         {isSyncCompleted(table) && (
-          <div className="hover-child float-right">
+          <div className={cx(CS.hoverChild, "float-right")}>
             <ToggleVisibilityButton
               tables={tables}
               isHidden={table.visibility_type != null}
@@ -312,17 +336,13 @@ const ToggleVisibilityButton = ({
 
   return (
     <Tooltip tooltip={tooltip}>
-      <IconButtonWrapper
-        className={cx(
-          "float-right",
-          loading ? "cursor-not-allowed" : "text-brand-hover",
-        )}
+      <HideIconButton
         disabled={loading}
         aria-label={tooltip}
         onClick={handleClick}
       >
         <Icon name={isHidden ? "eye" : "eye_crossed_out"} size={18} />
-      </IconButtonWrapper>
+      </HideIconButton>
     </Tooltip>
   );
 };

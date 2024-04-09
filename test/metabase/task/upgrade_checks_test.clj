@@ -10,7 +10,7 @@
   (testing "A unique and stable instance UUID is included in version info requests in prod"
     (with-redefs [config/is-prod? true]
       (http-fake/with-fake-routes-in-isolation
-        {{:address #"http://static.metabase.com/version-info(-ee)?.json.*"
+        {{:address #"https://static.metabase.com/version-info(-ee)?.json.*"
           :query-params {:instance (public-settings/site-uuid-for-version-info-fetching)}}
          (constantly {:status 200 :body "{}"})}
         (is (= {} (@#'upgrade-checks/get-version-info))))))
@@ -18,7 +18,7 @@
   (testing "Instance UUID is not included when not running in prod"
     (with-redefs [config/is-prod? false]
       (http-fake/with-fake-routes-in-isolation
-        {{:address #"http://static.metabase.com/version-info(-ee)?.json.*"
+        {{:address #"https://static.metabase.com/version-info(-ee)?.json.*"
           :query-params {}}
          (constantly {:status 200 :body "{}"})}
         (is (= {} (@#'upgrade-checks/get-version-info)))))))

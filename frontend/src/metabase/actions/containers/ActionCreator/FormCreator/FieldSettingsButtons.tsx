@@ -1,9 +1,8 @@
 import type { FieldSettings } from "metabase-types/api";
 
-import { OptionPopover } from "./OptionEditor";
 import { FieldSettingsPopover } from "./FieldSettingsPopover";
-
 import { FieldSettingsButtonsContainer } from "./FormCreator.styled";
+import { OptionPopover } from "./OptionEditor";
 
 export function FieldSettingsButtons({
   fieldSettings,

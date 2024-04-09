@@ -1,12 +1,15 @@
 (ns metabase.api.table
   "/api/table endpoints."
   (:require
+   [clojure.java.io :as io]
    [compojure.core :refer [GET POST PUT]]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
+   [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -14,35 +17,47 @@
    [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
    [metabase.related :as related]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
-   #_:clj-kondo/ignore
+   #_{:clj-kondo/ignore [:consistent-alias]}
    [metabase.sync.field-values :as sync.field-values]
    [metabase.types :as types]
+   [metabase.upload :as upload]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
-  (apply s/enum (map name table/visibility-types)))
+  (into [:enum] (map name table/visibility-types)))
 
 (def ^:private FieldOrder
   "Schema for a valid table field ordering."
-  (apply s/enum (map name table/field-orderings)))
+  (into [:enum] (map name table/field-orderings)))
+
+(defn- fix-schema [table]
+  (update table :schema str))
 
 (api/defendpoint GET "/"
   "Get all `Tables`."
   []
   (as-> (t2/select Table, :active true, {:order-by [[:name :asc]]}) tables
     (t2/hydrate tables :db)
-    (filterv mi/can-read? tables)))
+    (into [] (comp (filter mi/can-read?)
+                   (map fix-schema))
+          tables)))
+
+(api/defendpoint GET "/uploaded"
+  "Get all `Tables` visible to the current user which were created by uploading a file."
+  []
+  (as-> (t2/select Table, :active true, :is_upload true, {:order-by [[:name :asc]]}) tables
+        (filterv mi/can-read? tables)))
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
@@ -53,7 +68,8 @@
                             api/write-check
                             api/read-check)]
     (-> (api-perm-check-fn Table id)
-        (t2/hydrate :db :pk_field))))
+        (t2/hydrate :db :pk_field)
+        fix-schema)))
 
 (defn- update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
@@ -79,12 +95,15 @@
     (sync.concurrent/submit-task
      (fn []
        (let [database (table/database (first newly-unhidden))]
-         (if (driver.u/can-connect-with-details? (:engine database) (:details database))
+         ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+         ;; purposes of creating a new H2 database.
+         (if (binding [h2/*allow-testing-h2-connections* true]
+               (driver.u/can-connect-with-details? (:engine database) (:details database)))
            (doseq [table newly-unhidden]
-             (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name table))))
+             (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
              (sync/sync-table! table))
-           (log/warn (u/format-color 'red (trs "Cannot connect to database ''{0}'' in order to sync unhidden tables"
-                                               (:name database))))))))))
+           (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
+                                     (:name database)))))))))
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
@@ -97,34 +116,33 @@
       (sync-unhidden-tables newly-unhidden)
       updated-tables)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update `Table` with ID."
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
                    show_in_getting_started field_order], :as body} :body}]
-  {display_name            (s/maybe su/NonBlankString)
-   entity_type             (s/maybe su/EntityTypeKeywordOrString)
-   visibility_type         (s/maybe TableVisibilityType)
-   description             (s/maybe s/Str)
-   caveats                 (s/maybe s/Str)
-   points_of_interest      (s/maybe s/Str)
-   show_in_getting_started (s/maybe s/Bool)
-   field_order             (s/maybe FieldOrder)}
+  {id                      ms/PositiveInt
+   display_name            [:maybe ms/NonBlankString]
+   entity_type             [:maybe ms/EntityTypeKeywordOrString]
+   visibility_type         [:maybe TableVisibilityType]
+   description             [:maybe :string]
+   caveats                 [:maybe :string]
+   points_of_interest      [:maybe :string]
+   show_in_getting_started [:maybe :boolean]
+   field_order             [:maybe FieldOrder]}
   (first (update-tables! [id] body)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/"
+(api/defendpoint PUT "/"
   "Update all `Table` in `ids`."
   [:as {{:keys [ids display_name entity_type visibility_type description caveats points_of_interest
                 show_in_getting_started], :as body} :body}]
-  {ids                     (su/non-empty [su/IntGreaterThanZero])
-   display_name            (s/maybe su/NonBlankString)
-   entity_type             (s/maybe su/EntityTypeKeywordOrString)
-   visibility_type         (s/maybe TableVisibilityType)
-   description             (s/maybe s/Str)
-   caveats                 (s/maybe s/Str)
-   points_of_interest      (s/maybe s/Str)
-   show_in_getting_started (s/maybe s/Bool)}
+  {ids                     [:sequential ms/PositiveInt]
+   display_name            [:maybe ms/NonBlankString]
+   entity_type             [:maybe ms/EntityTypeKeywordOrString]
+   visibility_type         [:maybe TableVisibilityType]
+   description             [:maybe :string]
+   caveats                 [:maybe :string]
+   points_of_interest      [:maybe :string]
+   show_in_getting_started [:maybe :boolean]}
   (update-tables! ids body))
 
 
@@ -317,25 +335,23 @@
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
-  (if (Boolean/parseBoolean include-editable-data-model?)
+  (if include-editable-data-model?
     (api/write-check table)
     (api/read-check table))
-  (let [db                        (t2/select-one Database :id (:db_id table))
-        include-sensitive-fields? (cond-> include-sensitive-fields? (string? include-sensitive-fields?) Boolean/parseBoolean)
-        include-hidden-fields?    (cond-> include-hidden-fields? (string? include-hidden-fields?) Boolean/parseBoolean)]
+  (let [db (t2/select-one Database :id (:db_id table))]
     (-> table
         (t2/hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
         (m/dissoc-in [:db :details])
         (assoc-dimension-options db)
         format-fields-for-response
+        fix-schema
         (update :fields (partial filter (fn [{visibility-type :visibility_type}]
                                           (case (keyword visibility-type)
                                             :hidden    include-hidden-fields?
                                             :sensitive include-sensitive-fields?
                                             true)))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/query_metadata"
+(api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
 
@@ -347,9 +363,10 @@
 
   These options are provided for use in the Admin Edit Metadata page."
   [id include_sensitive_fields include_hidden_fields include_editable_data_model]
-  {include_sensitive_fields (s/maybe su/BooleanString)
-   include_hidden_fields (s/maybe su/BooleanString)
-   include_editable_data_model (s/maybe su/BooleanString)}
+  {id                          ms/PositiveInt
+   include_sensitive_fields    [:maybe ms/BooleanValue]
+   include_hidden_fields       [:maybe ms/BooleanValue]
+   include_editable_data_model [:maybe ms/BooleanValue]}
   (fetch-query-metadata (t2/select-one Table :id id) {:include-sensitive-fields?    include_sensitive_fields
                                                       :include-hidden-fields?       include_hidden_fields
                                                       :include-editable-data-model? include_editable_data_model}))
@@ -415,13 +432,14 @@
                                        (assoc field :semantic_type nil)
                                        field))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/card__:id/query_metadata"
+(api/defendpoint GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [id]
-  (let [{:keys [database_id] :as card} (t2/select-one [Card :id :dataset_query :result_metadata :name :description
-                                                       :collection_id :database_id]
-                                         :id id)
+  {id ms/PositiveInt}
+  (let [{:keys [database_id] :as card} (api/check-404
+                                        (t2/select-one [Card :id :dataset_query :result_metadata :name :description
+                                                        :collection_id :database_id]
+                                                       :id id))
         moderated-status              (->> (mdb.query/query {:select   [:status]
                                                              :from     [:moderation_review]
                                                              :where    [:and
@@ -442,7 +460,8 @@
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
    serves mainly as a placeholder to avoid having to change anything on the frontend."
-  []
+  [id]
+  {id ms/PositiveInt}
   []) ; return empty array
 
 (api/defendpoint GET "/:id/fks"
@@ -465,10 +484,11 @@
   [id]
   {id ms/PositiveInt}
   (let [table (api/write-check (t2/select-one Table :id id))]
-    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
+    ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+    (mw.session/as-admin
       ;; async so as not to block the UI
       (sync.concurrent/submit-task
        (fn []
@@ -497,5 +517,38 @@
   {id ms/PositiveInt
    field_order [:sequential ms/PositiveInt]}
   (-> (t2/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
+
+(mu/defn ^:private update-csv!
+  "This helper function exists to make testing the POST /api/table/:id/append-csv endpoint easier."
+  [options :- [:map
+               [:table-id ms/PositiveInt]
+               [:file (ms/InstanceOfClass java.io.File)]
+               [:action upload/update-action-schema]]]
+  (try
+    (let [model (upload/update-csv! options)]
+      {:status 200
+       :body   (:id model)})
+    (catch Throwable e
+      {:status (or (-> e ex-data :status-code)
+                   500)
+       :body   {:message (or (ex-message e)
+                             (tru "There was an error uploading the file"))}})
+    (finally (io/delete-file (:file options) :silently))))
+
+(api/defendpoint ^:multipart POST "/:id/append-csv"
+  "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by uploading a CSV file."
+  [id :as {raw-params :params}]
+  {id ms/PositiveInt}
+  (update-csv! {:table-id id
+                :file     (get-in raw-params ["file" :tempfile])
+                :action   ::upload/append}))
+
+(api/defendpoint ^:multipart POST "/:id/replace-csv"
+  "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have been created by uploading a CSV file."
+  [id :as {raw-params :params}]
+  {id ms/PositiveInt}
+  (update-csv! {:table-id id
+                :file     (get-in raw-params ["file" :tempfile])
+                :action   ::upload/replace}))
 
 (api/define-routes)

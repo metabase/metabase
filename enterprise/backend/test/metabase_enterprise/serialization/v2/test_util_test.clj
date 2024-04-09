@@ -8,14 +8,14 @@
 
 (deftest mbql-deserialize-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [Database   [{db-id      :id} {:name "Metabase Store"}]
-                       Table      [{crm-id     :id} {:name  "crm_survey_response"
-                                                     :db_id db-id
-                                                     :schema "public"}]
-                       Field      [{created-id :id} {:name "created_at"
-                                                     :table_id crm-id}]
-                       Field      [{nps-id     :id} {:name "nps"
-                                                     :table_id crm-id}]]
+    (ts/with-temp-dpc [Database   {db-id      :id} {:name "Metabase Store"}
+                       Table      {crm-id     :id} {:name  "crm_survey_response"
+                                                    :db_id db-id
+                                                    :schema "public"}
+                       Field      {created-id :id} {:name "created_at"
+                                                    :table_id crm-id}
+                       Field      {nps-id     :id} {:name "nps"
+                                                    :table_id crm-id}]
       (is (= {:database db-id
               :type     "query"
               :query    {:source-table crm-id

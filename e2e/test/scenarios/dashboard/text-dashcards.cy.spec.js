@@ -1,3 +1,4 @@
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   getDashboardCard,
@@ -6,6 +7,7 @@ import {
   addTextBox,
   editDashboard,
   saveDashboard,
+  selectDashboardFilter,
   describeWithSnowplow,
   enableTracking,
   resetSnowplow,
@@ -23,7 +25,7 @@ describe("scenarios > dashboard > text and headings", () => {
 
   describeWithSnowplow("text", () => {
     beforeEach(() => {
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
     });
 
     afterEach(() => {
@@ -144,6 +146,7 @@ describe("scenarios > dashboard > text and headings", () => {
         cy.findByText("Text or Category").click();
         cy.findByText("Is").click();
       });
+      selectDashboardFilter(cy.findAllByTestId("dashcard").first(), "Name");
       cy.findByTestId("edit-bar").findByText("Save").click();
 
       // confirm text box and filter are still there
@@ -156,7 +159,7 @@ describe("scenarios > dashboard > text and headings", () => {
 
   describeWithSnowplow("heading", () => {
     beforeEach(() => {
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
     });
 
     afterEach(() => {

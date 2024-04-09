@@ -128,9 +128,10 @@
          (try
            (with-open [^PreparedStatement stmt (.prepareStatement conn sql)]
              (sql-jdbc.execute/set-parameters! driver stmt params)
-             (let [tbl-nm        ((comp last :components) (into {} table-identifier))
-                   rows-affected (.executeUpdate stmt)]
-               (log/infof "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm)))
+             (let [[_tag _identifier-type components] table-identifier
+                   table-name                         (last components)
+                   rows-affected                      (.executeUpdate stmt)]
+               (log/infof "[%s] Inserted %d rows into %s." driver rows-affected table-name)))
            (catch Throwable e
              (throw (ex-info (format "[%s] Error executing SQL: %s" driver (ex-message e))
                              {:driver driver, :sql sql, :params params}
@@ -161,9 +162,10 @@
 
 (deftest ^:parallel create-table-sql-test
   (testing "Make sure logic to strip out NOT NULL and PRIMARY KEY stuff works as expected"
-    (let [db-def    (tx/get-dataset-definition defs/test-data)
+    (let [db-def    (update (tx/get-dataset-definition defs/test-data)
+                            :table-definitions (partial #'ddl/add-pks-if-needed :presto-jdbc))
           table-def (-> db-def :table-definitions second)]
-      (is (= "CREATE TABLE \"test_data\".\"default\".\"categories\" (\"id\" INTEGER, \"name\" VARCHAR) ;"
+      (is (= "CREATE TABLE \"test_data\".\"default\".\"test_data_categories\" (\"id\" INTEGER, \"name\" VARCHAR) ;"
              (sql.tx/create-table-sql :presto-jdbc db-def table-def))))))
 
 (defmethod ddl.i/format-name :presto-jdbc
@@ -172,5 +174,5 @@
 
 ;; Presto doesn't support FKs, at least not adding them via DDL
 (defmethod sql.tx/add-fk-sql :presto-jdbc
-  [_ _ _ _]
+  [_driver _dbdef _tabledef _fielddef]
   nil)

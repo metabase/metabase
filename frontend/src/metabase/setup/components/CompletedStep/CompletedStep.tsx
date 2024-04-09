@@ -1,8 +1,12 @@
+import cx from "classnames";
 import { t } from "ttag";
+
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useSelector } from "metabase/lib/redux";
-import { COMPLETED_STEP } from "../../constants";
+
 import { getIsStepActive } from "../../selectors";
 import { NewsletterForm } from "../NewsletterForm";
+
 import {
   StepBody,
   StepFooter,
@@ -12,13 +16,13 @@ import {
 
 export const CompletedStep = (): JSX.Element | null => {
   const isStepActive = useSelector(state =>
-    getIsStepActive(state, COMPLETED_STEP),
+    getIsStepActive(state, "completed"),
   );
   if (!isStepActive) {
     return null;
   }
 
-  const baseUrl = (window as any).MetabaseRoot || "/";
+  const baseUrl = window.MetabaseRoot ?? "/";
 
   return (
     <StepRoot>
@@ -27,7 +31,10 @@ export const CompletedStep = (): JSX.Element | null => {
         <NewsletterForm />
       </StepBody>
       <StepFooter>
-        <a className="Button Button--primary" href={baseUrl}>
+        <a
+          className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
+          href={baseUrl}
+        >
           {t`Take me to Metabase`}
         </a>
       </StepFooter>

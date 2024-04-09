@@ -1,13 +1,12 @@
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import {
-  PermissionsSidebarContent,
-  PermissionsSidebarContentProps,
-} from "./PermissionsSidebarContent";
+
 import { SidebarRoot } from "./PermissionsSidebar.styled";
+import type { PermissionsSidebarContentProps } from "./PermissionsSidebarContent";
+import { PermissionsSidebarContent } from "./PermissionsSidebarContent";
 
 interface PermissionsSidebarProps extends PermissionsSidebarContentProps {
   isLoading?: boolean;
-  error: string;
+  error?: string;
 }
 
 export const PermissionsSidebar = ({

@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
@@ -10,8 +11,8 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 ;; ## Static Definitions
@@ -133,22 +134,23 @@
   :schedule_type mi/transform-keyword
   :schedule_frame mi/transform-keyword})
 
-(mi/define-simple-hydration-method recipients
-  :recipients
-  "Return the `PulseChannelRecipients` associated with this `pulse-channel`."
-  [{pulse-channel-id :id, {:keys [emails]} :details}]
-  (concat
-   (for [email emails]
-     {:email email})
-   (t2/select
-    [User :id :email :first_name :last_name]
-    {:select    [:u.id :u.email :u.first_name :u.last_name]
-     :from      [[:core_user :u]]
-     :left-join [[:pulse_channel_recipient :pcr] [:= :u.id :pcr.user_id]]
-     :where     [:and
-                 [:= :pcr.pulse_channel_id pulse-channel-id]
-                 [:= :u.is_active true]]
-     :order-by [[:u.id :asc]]})))
+(methodical/defmethod t2/batched-hydrate [:default :recipients]
+  [_model _k pcs]
+  (when (seq pcs)
+    (let [pcid->recipients (-> (group-by :pulse_channel_id
+                                         (t2/select [:model/User :id :email :first_name :last_name :pcr.pulse_channel_id]
+                                                    {:left-join [[:pulse_channel_recipient :pcr] [:= :core_user.id :pcr.user_id]]
+                                                     :where     [:and
+                                                                 [:in :pcr.pulse_channel_id (map :id pcs)]
+                                                                 [:= :core_user.is_active true]]
+                                                     :order-by [[:core_user.id :asc]]}))
+                               (update-vals #(map (fn [user] (dissoc user :pulse_channel_id)) %)))]
+      (for [pc pcs]
+        (assoc pc :recipients (concat
+                               (for [email (get-in pc [:details :emails] [])]
+                                 {:email email})
+                               (get pcid->recipients (:id pc))))))))
+
 
 (def ^:dynamic *archive-parent-pulse-when-last-channel-is-deleted*
   "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
@@ -166,7 +168,7 @@
 
 ;; we want to load this at the top level so the Setting the namespace defines gets loaded
 (def ^:private ^{:arglists '([email-addresses])} validate-email-domains*
-  (or (u/ignore-exceptions
+  (or (when config/ee-available?
         (classloader/require 'metabase-enterprise.advanced-config.models.pulse-channel)
         (resolve 'metabase-enterprise.advanced-config.models.pulse-channel/validate-email-domains))
       (constantly nil)))
@@ -221,7 +223,7 @@
 
 ;; ## Persistence Functions
 
-(s/defn retrieve-scheduled-channels
+(mu/defn retrieve-scheduled-channels
   "Fetch all `PulseChannels` that are scheduled to run at a given time described by `hour`, `weekday`, `monthday`, and
   `monthweek`.
 
@@ -236,10 +238,10 @@
   *  `daily` scheduled channels are included if the `hour` matches.
   *  `weekly` scheduled channels are included if the `weekday` & `hour` match.
   *  `monthly` scheduled channels are included if the `monthday`, `monthweek`, `weekday`, & `hour` all match."
-  [hour      :- (s/maybe s/Int)
-   weekday   :- (s/maybe (s/pred day-of-week?))
-   monthday  :-  (s/enum :first :last :mid :other)
-   monthweek :- (s/enum :first :last :other)]
+  [hour      :- [:maybe :int]
+   weekday   :- [:maybe [:fn {:error/message "valid day of week"} day-of-week?]]
+   monthday  :- [:enum :first :last :mid :other]
+   monthweek :- [:enum :first :last :other]]
   (let [schedule-frame              (cond
                                       (= :mid monthday)    "mid"
                                       (= :first monthweek) "first"

@@ -1,15 +1,11 @@
-import { IconName, IconProps } from "metabase/core/components/Icon";
-
-import { color } from "metabase/lib/colors";
-
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import {
   isRootCollection,
-  isPersonalCollection,
+  isRootPersonalCollection,
 } from "metabase/collections/utils";
-
+import { color } from "metabase/lib/colors";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-
+import { getUserPersonalCollectionId } from "metabase/selectors/user";
+import type { IconName, IconProps } from "metabase/ui";
 import type { Collection, CollectionContentModel } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -20,7 +16,7 @@ export function normalizedCollection(collection: Collection) {
 }
 
 export function getCollectionIcon(
-  collection: Collection,
+  collection: Partial<Collection>,
   { tooltip = "default" } = {},
 ): {
   name: IconName;
@@ -30,17 +26,17 @@ export function getCollectionIcon(
   if (collection.id === PERSONAL_COLLECTIONS.id) {
     return { name: "group" };
   }
-  if (isPersonalCollection(collection)) {
+  if (isRootPersonalCollection(collection)) {
     return { name: "person" };
   }
-  const authorityLevel =
-    PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level as string];
 
-  return authorityLevel
+  const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
+
+  return type
     ? {
-        name: authorityLevel.icon as unknown as IconName,
-        color: authorityLevel.color ? color(authorityLevel.color) : undefined,
-        tooltip: authorityLevel.tooltips?.[tooltip],
+        name: type.icon as unknown as IconName,
+        color: type.color ? color(type.color) : undefined,
+        tooltip: type.tooltips?.[tooltip],
       }
     : { name: "folder" };
 }

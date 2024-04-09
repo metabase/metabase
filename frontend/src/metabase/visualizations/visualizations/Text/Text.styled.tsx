@@ -1,5 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+
+import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
 import {
   breakpointMinExtraLarge,
@@ -7,7 +9,7 @@ import {
 } from "metabase/styled-components/theme";
 
 const DEFAULT_CONTAINER_PADDING_SIZE = "0.75rem";
-const SMALL_CONTAINER_PADDING_SIZE = "0.4rem";
+const SMALL_CONTAINER_PADDING_SIZE = "0.3rem";
 
 interface TextCardWrapperProps {
   isSingleRow: boolean;
@@ -52,15 +54,18 @@ interface EditModeProps {
   isMobile: boolean;
 }
 export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
-  pointer-events: auto;
   border-radius: 8px;
+  pointer-events: all;
+  * {
+    pointer-events: all;
+  }
 
-  .DashCard:hover &,
-  .DashCard:focus-within & {
+  .${DashboardS.DashCard}:hover &,
+  .${DashboardS.DashCard}:focus-within & {
     border: 1px solid ${color("brand")};
   }
 
-  .DashCard.resizing & {
+  .${DashboardS.DashCard}.resizing & {
     border: 1px solid ${color("brand")};
   }
 
@@ -78,8 +83,8 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
     // to prevent clipping of text cards (https://github.com/metabase/metabase/issues/31613)
     if (isSingleRow && !isMobile) {
       return css`
-        .DashCard:hover &,
-        .DashCard:focus-within & {
+        .${DashboardS.DashCard}:hover &,
+        .${DashboardS.DashCard}:focus-within & {
           ${BORDER_ADJUSTED_SMALL_PADDING}// adjust for border on preview/no entered content
         }
 
@@ -89,8 +94,8 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
         `}
 
         ${breakpointMinExtraLarge} {
-          .DashCard:hover &,
-          .DashCard:focus-within & {
+          .${DashboardS.DashCard}:hover &,
+          .${DashboardS.DashCard}:focus-within & {
             ${BORDER_ADJUSTED_DEFAULT_PADDING}
           }
 
@@ -103,8 +108,8 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
     }
 
     return css`
-      .DashCard:hover &,
-      .DashCard:focus-within & {
+      .${DashboardS.DashCard}:hover &,
+      .${DashboardS.DashCard}:focus-within & {
         ${BORDER_ADJUSTED_DEFAULT_PADDING}
       }
 
@@ -178,7 +183,6 @@ export const ReactMarkdownStyleWrapper = styled.div`
   }
 
   .text-card-markdown h1 {
-    font-weight: 900;
     font-size: 1.831em;
   }
   .text-card-markdown h2 {

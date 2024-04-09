@@ -1,4 +1,4 @@
-import { EmbedOptions, EmbedState } from "metabase-types/store";
+import type { EmbedOptions, EmbedState } from "metabase-types/store";
 
 const createMockEmbedOptions = (opts?: Partial<EmbedOptions>) => ({
   ...opts,

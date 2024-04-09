@@ -1,4 +1,4 @@
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import fillMissingValuesInDatas from "metabase/visualizations/lib/fill_data";
 

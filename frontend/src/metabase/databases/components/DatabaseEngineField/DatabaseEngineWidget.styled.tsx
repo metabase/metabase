@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
+
+import Button from "metabase/core/components/Button";
 import { color, lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
-import Button from "metabase/core/components/Button";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 export const EngineSearchRoot = styled.div`
   display: block;

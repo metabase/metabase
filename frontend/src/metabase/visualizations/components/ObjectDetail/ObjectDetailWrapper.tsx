@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
-import {
-  PaginationFooter,
-  RootModal,
-} from "metabase/visualizations/components/ObjectDetail/ObjectDetail.styled";
-import { ObjectDetailView } from "metabase/visualizations/components/ObjectDetail/ObjectDetail";
+
+import Question from "metabase-lib/v1/Question";
+
+import { ObjectDetailView } from "./ObjectDetailView";
+import { PaginationFooter, RootModal } from "./ObjectDetailWrapper.styled";
+import type { ObjectDetailProps } from "./types";
 
 export function ObjectDetailWrapper({
   question,
@@ -14,12 +14,14 @@ export function ObjectDetailWrapper({
   card,
   dashcard,
   isObjectDetail,
-  ...props
+  ...rest
 }: ObjectDetailProps) {
   const [currentObjectIndex, setCurrentObjectIndex] = useState(0);
 
   // only show modal if this object detail was triggered via an object detail zoom action
   const shouldShowModal = isObjectDetail;
+  const getFallbackQuestion = () =>
+    card && rest.metadata ? new Question(card, rest.metadata) : undefined;
 
   if (shouldShowModal) {
     return (
@@ -30,10 +32,10 @@ export function ObjectDetailWrapper({
         className={""} // need an empty className to override the Modal default width
       >
         <ObjectDetailView
-          {...props}
+          {...rest}
           showHeader
           data={data}
-          question={question}
+          question={question ?? getFallbackQuestion()}
           closeObjectDetail={closeObjectDetail}
         />
       </RootModal>
@@ -45,12 +47,12 @@ export function ObjectDetailWrapper({
   return (
     <>
       <ObjectDetailView
-        {...props}
+        {...rest}
         zoomedRow={data.rows[currentObjectIndex]}
         data={data}
-        question={question}
-        showHeader={props.settings["detail.showHeader"]}
-        showActions={false}
+        question={question ?? getFallbackQuestion()}
+        showHeader={rest.settings["detail.showHeader"]}
+        showControls={false}
         showRelations={false}
         closeObjectDetail={closeObjectDetail}
         isDataApp={isDataApp}

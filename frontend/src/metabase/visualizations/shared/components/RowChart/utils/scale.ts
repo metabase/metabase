@@ -1,20 +1,18 @@
-import {
-  ContinuousDomain,
-  scaleBand,
-  scaleLinear,
-  scaleLog,
-  scalePower,
-} from "@visx/scale";
+import type { ContinuousDomain } from "@visx/scale";
+import { scaleBand, scaleLinear, scaleLog, scalePower } from "@visx/scale";
 import type { ScaleContinuousNumeric } from "d3-scale";
-import { ValueFormatter } from "metabase/visualizations/shared/types/format";
-import { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
-import {
+
+import type { ValueFormatter } from "metabase/visualizations/shared/types/format";
+import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import type {
   ContinuousScaleType,
   Range,
 } from "metabase/visualizations/shared/types/scale";
-import { ChartFont } from "metabase/visualizations/shared/types/style";
+import type { ChartFont } from "metabase/visualizations/shared/types/style";
+
 import { DATA_LABEL_OFFSET } from "../../RowChartView";
-import { SeriesData, StackOffset } from "../types";
+import type { SeriesData, StackOffset } from "../types";
+
 import { createXDomain, createYDomain } from "./domain";
 
 export const createXScale = (

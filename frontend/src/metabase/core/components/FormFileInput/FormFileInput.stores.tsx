@@ -1,6 +1,7 @@
 import type { ComponentStory } from "@storybook/react";
-import Form from "../Form";
-import FormProvider from "../FormProvider";
+
+import { Form, FormProvider } from "metabase/forms";
+
 import FormFileInput from "./FormFileInput";
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

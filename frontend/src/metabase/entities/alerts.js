@@ -1,10 +1,14 @@
 import { t } from "ttag";
+
 import { createEntity, undo } from "metabase/lib/entities";
-import { AlertApi } from "metabase/services";
 import { addUndo } from "metabase/redux/undo";
+import { AlertApi } from "metabase/services";
 
 export const UNSUBSCRIBE = "metabase/entities/alerts/unsubscribe";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Alerts = createEntity({
   name: "alerts",
   nameOne: "alert",

@@ -1,21 +1,9 @@
-import { TickRendererProps } from "@visx/axis";
+import type { TickRendererProps } from "@visx/axis";
 import { getTicks } from "@visx/scale";
+import type { TimeInterval } from "d3-time";
 import { timeWeek, timeMonth } from "d3-time";
 
-import type { TimeInterval } from "d3-time";
-import { formatDate, DateFormatOptions } from "metabase/static-viz/lib/dates";
-import {
-  formatNumber,
-  NumberFormatOptions,
-} from "metabase/static-viz/lib/numbers";
-import {
-  measureTextWidth,
-  measureTextHeight,
-  truncateText,
-} from "metabase/static-viz/lib/text";
 import { MAX_ROTATED_TICK_WIDTH } from "metabase/static-viz/components/XYChart/constants";
-import { getX } from "metabase/static-viz/components/XYChart/utils/series";
-
 import type {
   Series,
   XAxisType,
@@ -23,7 +11,17 @@ import type {
   XScale,
   ChartSettings,
 } from "metabase/static-viz/components/XYChart/types";
-import { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
+import { getX } from "metabase/static-viz/components/XYChart/utils/series";
+import type { DateFormatOptions } from "metabase/static-viz/lib/dates";
+import { formatDate } from "metabase/static-viz/lib/dates";
+import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+import { formatNumber } from "metabase/static-viz/lib/numbers";
+import {
+  measureTextWidth,
+  measureTextHeight,
+  truncateText,
+} from "metabase/static-viz/lib/text";
+import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 
 const getRotatedXTickHeight = (tickWidth: number) => {
   return tickWidth;
@@ -160,6 +158,14 @@ export const getYTickWidths = (
   };
 };
 
+/**
+ * The reason this function exists in the first place is because of
+ * a bug in visx's `getTicks` function. It's supposed to ensure that
+ * the result ticks array has a length less than or equal to `numTicks`,
+ * but sometimes it returns an array with a length greater than `numTicks`.
+ *
+ * If this bug is fixed in visx, this function can be removed.
+ */
 export function fixTimeseriesTicksExceedXTickCount(
   xScaleType: XAxisType,
   xScale: XScale["scale"],
@@ -182,7 +188,13 @@ export function fixTimeseriesTicksExceedXTickCount(
         }
       });
 
-    return minLengthTicks;
+    if (numTicks == null || minLengthTicks.length <= numTicks) {
+      return minLengthTicks;
+    }
+
+    return minLengthTicks.filter(
+      (_, index, ticks) => index % Math.ceil(ticks.length / numTicks) === 0,
+    );
   }
 
   return defaultTicks;

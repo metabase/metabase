@@ -1,28 +1,61 @@
+import { useMemo } from "react";
 import { t } from "ttag";
-import CheckBox from "metabase/core/components/CheckBox";
-import StackedCheckBox from "metabase/components/StackedCheckBox";
+
+import { getColumnIcon } from "metabase/common/utils/columns";
+import { Checkbox, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { ToggleItem, ColumnItem } from "./FieldPicker.styled";
+
+import {
+  ToggleItem,
+  ItemList,
+  Label,
+  ItemTitle,
+  ItemIcon,
+  QueryColumnInfoIcon,
+} from "./FieldPicker.styled";
 
 interface FieldPickerProps {
-  columnsInfo: Lib.ColumnDisplayInfo[];
-  isAll: boolean;
-  isNone: boolean;
-  isDisabledDeselection?: boolean;
-  onToggle: (columnIndex: number, isSelected: boolean) => void;
+  query: Lib.Query;
+  stageIndex: number;
+  columns: Lib.ColumnMetadata[];
+  "data-testid"?: string;
+  isColumnSelected: (
+    column: Lib.ColumnMetadata,
+    columnInfo: Lib.ColumnDisplayInfo,
+  ) => boolean;
+  onToggle: (column: Lib.ColumnMetadata, isSelected: boolean) => void;
   onSelectAll: () => void;
   onSelectNone: () => void;
 }
 
 export const FieldPicker = ({
-  columnsInfo,
-  isAll,
-  isNone,
-  isDisabledDeselection,
+  query,
+  stageIndex,
+  columns,
   onToggle,
   onSelectAll,
   onSelectNone,
+  isColumnSelected,
+  ...props
 }: FieldPickerProps) => {
+  const items = useMemo(
+    () =>
+      columns.map(column => {
+        const columnInfo = Lib.displayInfo(query, stageIndex, column);
+        return {
+          column,
+          columnInfo,
+          isSelected: isColumnSelected(column, columnInfo),
+        };
+      }),
+    [query, stageIndex, columns, isColumnSelected],
+  );
+
+  const isAll = items.every(item => item.isSelected);
+  const isNone = items.every(item => !item.isSelected);
+  const isDisabledDeselection =
+    items.filter(item => item.isSelected).length <= 1;
+
   const handleLabelToggle = () => {
     if (isAll) {
       onSelectNone();
@@ -32,26 +65,43 @@ export const FieldPicker = ({
   };
 
   return (
-    <ul>
+    <ItemList data-testid={props["data-testid"]}>
       <ToggleItem>
-        <StackedCheckBox
-          className=""
-          label={isAll ? t`Select none` : t`Select all`}
-          checked={isAll}
-          indeterminate={!isAll && !isNone}
-          onChange={handleLabelToggle}
-        />
-      </ToggleItem>
-      {columnsInfo.map((columnInfo, columnIndex) => (
-        <ColumnItem key={columnIndex}>
-          <CheckBox
-            checked={columnInfo.selected}
-            label={columnInfo.displayName}
-            disabled={columnInfo.selected && isDisabledDeselection}
-            onChange={event => onToggle(columnIndex, event.target.checked)}
+        <Label as="label">
+          <Checkbox
+            variant="stacked"
+            checked={isAll}
+            indeterminate={!isAll && !isNone}
+            onChange={handleLabelToggle}
           />
-        </ColumnItem>
-      ))}
-    </ul>
+          <ItemTitle>{isAll ? t`Select none` : t`Select all`}</ItemTitle>
+        </Label>
+      </ToggleItem>
+      <DelayGroup>
+        {items.map(item => (
+          <li key={item.columnInfo.longDisplayName}>
+            <Label as="label">
+              <Checkbox
+                checked={isColumnSelected(item.column, item.columnInfo)}
+                disabled={
+                  isColumnSelected(item.column, item.columnInfo) &&
+                  isDisabledDeselection
+                }
+                onChange={event => onToggle(item.column, event.target.checked)}
+              />
+
+              <ItemIcon name={getColumnIcon(item.column)} size={18} />
+              <ItemTitle>{item.columnInfo.displayName}</ItemTitle>
+              <QueryColumnInfoIcon
+                query={query}
+                stageIndex={stageIndex}
+                column={item.column}
+                position="right"
+              />
+            </Label>
+          </li>
+        ))}
+      </DelayGroup>
+    </ItemList>
   );
 };

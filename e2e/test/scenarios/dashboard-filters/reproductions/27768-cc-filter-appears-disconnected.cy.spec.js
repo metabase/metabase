@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
@@ -5,8 +6,8 @@ import {
   editDashboard,
   saveDashboard,
   filterWidget,
+  getDashboardCard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -27,7 +28,7 @@ const filter = {
   sectionId: "string",
 };
 
-describe.skip("issue 27768", () => {
+describe("issue 27768", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -49,8 +50,7 @@ describe.skip("issue 27768", () => {
     editDashboard();
     getFilterOptions(filter.name);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…").click();
+    getDashboardCard().findByText("Select…").click();
     popover().contains("CCategory").click();
     saveDashboard();
 
@@ -64,10 +64,10 @@ describe.skip("issue 27768", () => {
     editDashboard();
     getFilterOptions(filter.name);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Column to filter on").parent().contains("Product.CCategory");
+    getDashboardCard().within(() => {
+      cy.findByText("Select…").should("not.exist");
+      cy.contains("Product.CCategory");
+    });
   });
 });
 

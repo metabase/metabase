@@ -1,26 +1,17 @@
 import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
-import _ from "underscore";
 import { assocIn, updateIn } from "icepick";
 import { t } from "ttag";
+import _ from "underscore";
+
 import { lighten } from "metabase/lib/colors";
-
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
-import {
-  updateDateTimeFilter,
-  updateNumericFilter,
-} from "metabase-lib/queries/utils/actions";
-import { isStructured } from "metabase-lib/queries/utils/card";
-import Question from "metabase-lib/Question";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import { isNative } from "metabase-lib/v1/queries/utils/card";
 
-import {
-  computeSplit,
-  computeMaxDecimalsForValues,
-  getFriendlyName,
-  colorShades,
-} from "./utils";
-
+import lineAndBarOnRender from "./LineAreaBarPostRender";
 import {
   applyChartTimeseriesXAxis,
   applyChartQuantitativeXAxis,
@@ -28,13 +19,11 @@ import {
   applyChartYAxis,
   getYValueFormatter,
 } from "./apply_axis";
-
 import { setupTooltips } from "./apply_tooltips";
-import { getTrendDataPointsFromInsight } from "./trends";
-
 import fillMissingValuesInDatas from "./fill_data";
-import { NULL_DIMENSION_WARNING, unaggregatedDataWarning } from "./warnings";
-
+import { lineAddons } from "./graph/addons";
+import { initBrush } from "./graph/brush";
+import { stack, stackOffsetDiverging } from "./graph/stack";
 import {
   forceSortedGroupsOfGroups,
   initChart, // TODO - probably better named something like `initChartParent`
@@ -60,12 +49,17 @@ import {
   replaceNullValuesForOrdinal,
   shouldSplitYAxis,
 } from "./renderer_utils";
-
-import lineAndBarOnRender from "./LineAreaBarPostRender";
-
-import { lineAddons } from "./graph/addons";
-import { initBrush } from "./graph/brush";
-import { stack, stackOffsetDiverging } from "./graph/stack";
+import {
+  getNormalizedStackedTrendDatas,
+  getTrendDataPointsFromInsight,
+} from "./trends";
+import {
+  computeSplit,
+  computeMaxDecimalsForValues,
+  getFriendlyName,
+  colorShades,
+} from "./utils";
+import { NULL_DIMENSION_WARNING, unaggregatedDataWarning } from "./warnings";
 
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
@@ -74,7 +68,7 @@ const enableBrush = (series, onChangeCardAndRun) =>
   !!(
     onChangeCardAndRun &&
     !isMultiCardSeries(series) &&
-    isStructured(series[0].card) &&
+    !isNative(series[0].card) &&
     !isRemappedToString(series) &&
     !hasClickBehavior(series)
   );
@@ -165,6 +159,7 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
       }
     }
 
+    const { _raw } = props.series;
     props.series = addPercentSignsToDisplayNames(props.series);
 
     const normalizedValues = datas.flatMap(data =>
@@ -175,6 +170,7 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
       maximumSignificantDigits: 2,
     });
     props.series = addDecimalsToPercentColumn(props.series, decimals);
+    props.series._raw = _raw;
   }
 
   datas.map((data, i) =>
@@ -346,7 +342,7 @@ function getYAxisProps(props, yExtents, datas) {
 
 /// make the `onBrushChange()` and `onBrushEnd()` functions we'll use later, as well as an `isBrushing()` function to check
 /// current status.
-function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
+function makeBrushChangeFunctions({ series, onChangeCardAndRun, metadata }) {
   let _isBrushing = false;
 
   const isBrushing = () => _isBrushing;
@@ -357,23 +353,44 @@ function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
 
   function onBrushEnd(range) {
     _isBrushing = false;
+
     if (range) {
       const column = series[0].data.cols[0];
       const card = series[0].card;
-      const query = new Question(card).query();
+      const question = new Question(card, metadata);
+      const query = question.query();
+      const stageIndex = -1;
+
       const [start, end] = range;
+
       if (isDimensionTimeseries(series)) {
+        const nextQuery = Lib.updateTemporalFilter(
+          query,
+          stageIndex,
+          column,
+          new Date(start).toISOString(),
+          new Date(end).toISOString(),
+        );
+        const updatedQuestion = question.setQuery(nextQuery);
+        const nextCard = updatedQuestion.card();
+
         onChangeCardAndRun({
-          nextCard: updateDateTimeFilter(query, column, start, end)
-            .question()
-            .card(),
+          nextCard,
           previousCard: card,
         });
       } else {
+        const nextQuery = Lib.updateNumericFilter(
+          query,
+          stageIndex,
+          column,
+          start,
+          end,
+        );
+        const updatedQuestion = question.setQuery(nextQuery);
+        const nextCard = updatedQuestion.card();
+
         onChangeCardAndRun({
-          nextCard: updateNumericFilter(query, column, start, end)
-            .question()
-            .card(),
+          nextCard,
           previousCard: card,
         });
       }
@@ -670,6 +687,16 @@ function findSeriesIndexForColumnName(series, colName) {
 
 const TREND_LINE_POINT_SPACING = 25;
 
+function getTrendDatasFromInsights(insights, { xDomain, settings, parent }) {
+  const xCount = Math.round(parent.width() / TREND_LINE_POINT_SPACING);
+  const trendDatas = insights.map(insight =>
+    getTrendDataPointsFromInsight(insight, xDomain, xCount),
+  );
+  return !isNormalized(settings)
+    ? trendDatas
+    : getNormalizedStackedTrendDatas(trendDatas);
+}
+
 function addTrendlineChart(
   { series, settings, onHoverChange },
   { xDomain },
@@ -682,23 +709,24 @@ function addTrendlineChart(
   }
 
   const rawSeries = series._raw || series;
-  const insights = rawSeries[0].data.insights || [];
-
-  for (const insight of insights) {
+  const insights = (rawSeries[0].data.insights || []).filter(insight => {
     const index = findSeriesIndexForColumnName(series, insight.col);
-
     const shouldShowSeries = index !== -1;
     const hasTrendLineData = insight.slope != null && insight.offset != null;
+    return shouldShowSeries && hasTrendLineData;
+  });
 
-    if (!shouldShowSeries || !hasTrendLineData) {
-      continue;
-    }
+  const trendDatas = getTrendDatasFromInsights(insights, {
+    xDomain,
+    settings,
+    parent,
+  });
 
+  for (const [insight, trendData] of _.zip(insights, trendDatas)) {
+    const index = findSeriesIndexForColumnName(series, insight.col);
     const seriesSettings = settings.series(series[index]);
     const color = lighten(seriesSettings.color, 0.25);
 
-    const points = Math.round(parent.width() / TREND_LINE_POINT_SPACING);
-    const trendData = getTrendDataPointsFromInsight(insight, xDomain, points);
     const trendDimension = crossfilter(trendData).dimension(d => d[0]);
 
     // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart

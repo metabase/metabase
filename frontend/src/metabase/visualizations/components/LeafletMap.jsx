@@ -1,17 +1,16 @@
-/* eslint-disable react/prop-types */
-import { createRef, Component } from "react";
+/* eslint-disable import/order, react/prop-types */
+import { Component, createRef } from "react";
+import _ from "underscore";
 
 import "leaflet/dist/leaflet.css";
-import "./LeafletMap.css";
+import "./LeafletMap.module.css";
 
 import L from "leaflet";
 import "leaflet-draw";
 
-import _ from "underscore";
-
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import MetabaseSettings from "metabase/lib/settings";
-import { updateLatLonFilter } from "metabase-lib/queries/utils/actions";
-import Question from "metabase-lib/Question";
 
 export default class LeafletMap extends Component {
   constructor(props) {
@@ -147,6 +146,7 @@ export default class LeafletMap extends Component {
       ],
       settings,
       onChangeCardAndRun,
+      metadata,
     } = this.props;
 
     const latitudeColumn = _.findWhere(cols, {
@@ -156,16 +156,28 @@ export default class LeafletMap extends Component {
       name: settings["map.longitude_column"],
     });
 
-    const question = new Question(card);
-    if (question.isStructured()) {
-      const nextCard = updateLatLonFilter(
-        question.query(),
+    const question = new Question(card, metadata);
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+
+    if (!isNative) {
+      const query = question.query();
+      const stageIndex = -1;
+      const filterBounds = {
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        west: bounds.getWest(),
+        east: bounds.getEast(),
+      };
+      const updatedQuery = Lib.updateLatLonFilter(
+        query,
+        stageIndex,
         latitudeColumn,
         longitudeColumn,
-        bounds,
-      )
-        .question()
-        .card();
+        filterBounds,
+      );
+      const updatedQuestion = question.setQuery(updatedQuery);
+      const nextCard = updatedQuestion.card();
+
       onChangeCardAndRun({ nextCard });
     }
 

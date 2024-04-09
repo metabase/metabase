@@ -1,6 +1,5 @@
-import { restore, visitQuestionAdhoc, sidebar } from "e2e/support/helpers";
-
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { restore, visitQuestionAdhoc, sidebar } from "e2e/support/helpers";
 
 const nativeQuery = `
 SELECT "PRODUCTS__via__PRODUCT_ID"."CATEGORY" AS "CATEGORY",
@@ -35,7 +34,7 @@ describe("issue 12439", () => {
   });
 
   it("should allow clicking on a legend in a native question without breaking the UI (metabase#12439)", () => {
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("Gizmo").click();
 
       // Make sure the legends and the graph are still there

@@ -1,25 +1,29 @@
+import cx from "classnames";
+import type * as React from "react";
 import { useState } from "react";
-import * as React from "react";
-import _ from "underscore";
-import { jt, t } from "ttag";
 import { useAsyncFn } from "react-use";
+import { jt, t } from "ttag";
+import _ from "underscore";
 
+import ActionButton from "metabase/components/ActionButton";
+import QuestionLoader from "metabase/containers/QuestionLoader";
 import QuestionPicker from "metabase/containers/QuestionPicker";
 import Button from "metabase/core/components/Button";
-import ActionButton from "metabase/components/ActionButton";
 import Radio from "metabase/core/components/Radio";
-import { Icon, IconName } from "metabase/core/components/Icon";
-import EntityName from "metabase/entities/containers/EntityName";
-
-import QuestionLoader from "metabase/containers/QuestionLoader";
-import { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
-import {
+import CS from "metabase/css/core/index.css";
+import { EntityName } from "metabase/entities/containers/EntityName";
+import { GTAPApi } from "metabase/services";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
+import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
 } from "metabase-enterprise/sandboxes/types";
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
-import { GTAPApi } from "metabase/services";
-import Question from "metabase-lib/Question";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
+
 import AttributeMappingEditor, {
   AttributeOptionsEmptyState,
 } from "../AttributeMappingEditor";
@@ -111,14 +115,14 @@ const EditSandboxingModal = ({
 
   return (
     <div>
-      <h2 className="p3">{t`Grant sandboxed access to this table`}</h2>
+      <h2 className={CS.p3}>{t`Grant sandboxed access to this table`}</h2>
 
       <div>
-        <div className="px3 pb3">
-          <div className="pb3">
+        <div className={cx(CS.px3, CS.pb3)}>
+          <div className={CS.pb3}>
             {t`When users in this group view this table they'll see a version of it that's filtered by their user attributes, or a custom view of it based on a saved question.`}
           </div>
-          <h4 className="pb1">
+          <h4 className={CS.pb1}>
             {t`How do you want to filter this table for users in this group?`}
           </h4>
           <Radio
@@ -137,13 +141,12 @@ const EditSandboxingModal = ({
           />
         </div>
         {shouldUseSavedQuestion && (
-          <div className="px3 pb3">
-            <div className="pb2">
+          <div className={cx(CS.px3, CS.pb3)}>
+            <div className={CS.pb2}>
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
-            {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-            {/* @ts-ignore */}
             <QuestionPicker
+              maxHeight={undefined}
               value={policy.card_id}
               onChange={(card_id: number) => setPolicy({ ...policy, card_id })}
             />
@@ -151,9 +154,9 @@ const EditSandboxingModal = ({
         )}
         {(!shouldUseSavedQuestion || policy.card_id != null) &&
           (hasAttributesOptions || hasValidMappings ? (
-            <div className="p3 border-top border-bottom">
+            <div className={cx(CS.p3, CS.borderTop, CS.borderBottom)}>
               {shouldUseSavedQuestion && (
-                <div className="pb2">
+                <div className={CS.pb2}>
                   {t`You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question.`}
                 </div>
               )}
@@ -168,7 +171,7 @@ const EditSandboxingModal = ({
               />
             </div>
           ) : (
-            <div className="px3">
+            <div className={CS.px3}>
               <AttributeOptionsEmptyState
                 title={
                   shouldUseSavedQuestion
@@ -180,18 +183,18 @@ const EditSandboxingModal = ({
           ))}
       </div>
 
-      <div className="p3">
+      <div className={CS.p3}>
         {isValid && (
-          <div className="pb1">
+          <div className={CS.pb1}>
             <PolicySummary policy={normalizedPolicy} />
           </div>
         )}
 
-        <div className="flex align-center justify-end">
+        <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd)}>
           <Button onClick={onCancel}>{t`Cancel`}</Button>
           <ActionButton
             error={error}
-            className="ml1"
+            className={CS.ml1}
             actionFn={savePolicy}
             primary
             disabled={!canSave}
@@ -200,11 +203,10 @@ const EditSandboxingModal = ({
           </ActionButton>
         </div>
         {error && (
-          <div className="flex align-center my2 text-error">
+          <div className={cx(CS.flex, CS.alignCenter, CS.my2, CS.textError)}>
             {typeof error === "string"
               ? error
-              : // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
+              : // @ts-expect-error provide correct type for error
                 error.data.message ?? ERROR_MESSAGE}
           </div>
         )}
@@ -222,8 +224,8 @@ interface SummaryRowProps {
 }
 
 const SummaryRow = ({ icon, content }: SummaryRowProps) => (
-  <div className="flex align-center">
-    <Icon className="p1" name={icon} />
+  <div className={cx(CS.flex, CS.alignCenter)}>
+    <Icon className={CS.p1} name={icon} />
     <span>{content}</span>
   </div>
 );
@@ -235,7 +237,7 @@ interface PolicySummaryProps {
 const PolicySummary = ({ policy }: PolicySummaryProps) => {
   return (
     <div>
-      <div className="px1 pb2 text-uppercase text-small text-grey-4">
+      <div className={cx(CS.px1, CS.pb2, CS.textUppercase, CS.textSmall)}>
         {t`Summary`}
       </div>
       <SummaryRow
@@ -279,14 +281,14 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
                 ? jt`where ${(
                     <TargetName key="target" policy={policy} target={target} />
                   )} equals ${(
-                    <span key="attr" className="text-code">
+                    <span key="attr" className={CS.textCode}>
                       {attribute}
                     </span>
                   )}`
                 : jt`and ${(
                     <TargetName key="target" policy={policy} target={target} />
                   )} equals ${(
-                    <span key="attr" className="text-code">
+                    <span key="attr" className={CS.textCode}>
                       {attribute}
                     </span>
                   )}`
@@ -318,9 +320,8 @@ const TargetName = ({ policy, target }: TargetNameProps) => {
       const fieldRef = target[1];
 
       return (
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
         <QuestionLoader
+          questionHash={undefined}
           questionId={policy.card_id}
           questionObject={
             policy.card_id == null
@@ -333,10 +334,24 @@ const TargetName = ({ policy, target }: TargetNameProps) => {
               return null;
             }
 
-            const dimension = question.query().parseFieldReference(fieldRef);
+            const query = question.query();
+            const stageIndex = -1;
+            const columns = Lib.visibleColumns(query, stageIndex);
+            const [index] = Lib.findColumnIndexesFromLegacyRefs(
+              query,
+              stageIndex,
+              columns,
+              [fieldRef],
+            );
+            const column = columns[index];
+            if (!column) {
+              return null;
+            }
+
+            const columnInfo = Lib.displayInfo(query, stageIndex, column);
             return (
               <span>
-                <strong>{dimension?.render()}</strong> field
+                <strong>{columnInfo.displayName}</strong> field
               </span>
             );
           }}

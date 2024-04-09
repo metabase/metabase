@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import Question from "metabase-lib/v1/Question";
 import {
   createSampleDatabase,
   createAdHocCard,
@@ -10,6 +11,7 @@ import {
   REVIEWS,
   PRODUCTS,
   PRODUCTS_ID,
+  PEOPLE,
 } from "metabase-types/api/mocks/presets";
 
 import { getParameterMappingOptions } from "./mapping-options";
@@ -47,9 +49,11 @@ describe("parameters/utils/mapping-options", () => {
       let virtualCardTable;
       beforeEach(() => {
         const question = ordersTable.question();
-        dataset = question
-          .setCard({ ...question.card(), id: 123 })
-          .setDataset(true);
+        dataset = question.setCard({
+          ...question.card(),
+          id: 123,
+          type: "model",
+        });
 
         // create a virtual table for the card
         // that contains fields with custom, model-specific metadata
@@ -58,7 +62,7 @@ describe("parameters/utils/mapping-options", () => {
         virtualCardTable.fields = [
           metadata.field(ORDERS.CREATED_AT).clone({
             table_id: `card__123`,
-            uniqueId: `card__123:${ORDERS.CREATED_AT.id}`,
+            uniqueId: `card__123:${ORDERS.CREATED_AT}`,
             display_name: "~*~Created At~*~",
           }),
         ];
@@ -73,7 +77,7 @@ describe("parameters/utils/mapping-options", () => {
 
       it("should return fields from the model question's virtual card table, as though it is already nested", () => {
         const options = getParameterMappingOptions(
-          metadata,
+          new Question(dataset.card(), metadata),
           { type: "date/single" },
           dataset.card(),
         );
@@ -84,7 +88,10 @@ describe("parameters/utils/mapping-options", () => {
             isForeign: false,
             name: "~*~Created At~*~",
             sectionName: "Order",
-            target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
+            target: [
+              "dimension",
+              ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+            ],
           },
         ]);
       });
@@ -92,19 +99,23 @@ describe("parameters/utils/mapping-options", () => {
 
     describe("Structured Query", () => {
       it("should return field-id and fk-> dimensions", () => {
+        const card = structured({
+          "source-table": REVIEWS_ID,
+        });
         const options = getParameterMappingOptions(
-          metadata,
+          new Question(card, metadata),
           { type: "date/single" },
-          structured({
-            "source-table": REVIEWS_ID,
-          }),
+          card,
         );
         expect(options).toEqual([
           {
             sectionName: "Review",
             icon: "calendar",
             name: "Created At",
-            target: ["dimension", ["field", REVIEWS.CREATED_AT, null]],
+            target: [
+              "dimension",
+              ["field", REVIEWS.CREATED_AT, { "base-type": "type/DateTime" }],
+            ],
             isForeign: false,
           },
           {
@@ -116,7 +127,10 @@ describe("parameters/utils/mapping-options", () => {
               [
                 "field",
                 PRODUCTS.CREATED_AT,
-                { "source-field": REVIEWS.PRODUCT_ID },
+                {
+                  "base-type": "type/DateTime",
+                  "source-field": REVIEWS.PRODUCT_ID,
+                },
               ],
             ],
             isForeign: true,
@@ -124,36 +138,40 @@ describe("parameters/utils/mapping-options", () => {
         ]);
       });
       it("should also return fields from explicitly joined tables", () => {
+        const card = structured({
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              alias: "Product",
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+              condition: [
+                "=",
+                [
+                  "field",
+                  ORDERS.PRODUCT_ID,
+                  { "base-type": "type/BigInteger" },
+                ],
+                ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
+              ],
+            },
+          ],
+        });
         const options = getParameterMappingOptions(
-          metadata,
+          new Question(card, metadata),
           { type: "date/single" },
-          structured({
-            "source-table": REVIEWS_ID,
-            joins: [
-              {
-                alias: "Joined Table",
-                "source-table": ORDERS_ID,
-              },
-            ],
-          }),
+          card,
         );
         expect(options).toEqual([
           {
-            sectionName: "Review",
-            name: "Created At",
-            icon: "calendar",
-            target: ["dimension", ["field", REVIEWS.CREATED_AT, null]],
-            isForeign: false,
-          },
-          {
-            sectionName: "Joined Table",
+            sectionName: "Order",
             name: "Created At",
             icon: "calendar",
             target: [
               "dimension",
-              ["field", ORDERS.CREATED_AT, { "join-alias": "Joined Table" }],
+              ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
             ],
-            isForeign: true,
+            isForeign: false,
           },
           {
             sectionName: "Product",
@@ -164,7 +182,41 @@ describe("parameters/utils/mapping-options", () => {
               [
                 "field",
                 PRODUCTS.CREATED_AT,
-                { "source-field": REVIEWS.PRODUCT_ID },
+                { "base-type": "type/DateTime", "join-alias": "Product" },
+              ],
+            ],
+            isForeign: true,
+          },
+          {
+            sectionName: "User",
+            name: "Birth Date",
+            icon: "calendar",
+            target: [
+              "dimension",
+              [
+                "field",
+                PEOPLE.BIRTH_DATE,
+                {
+                  "base-type": "type/Date",
+                  "source-field": ORDERS.USER_ID,
+                },
+              ],
+            ],
+            isForeign: true,
+          },
+          {
+            sectionName: "User",
+            name: "Created At",
+            icon: "calendar",
+            target: [
+              "dimension",
+              [
+                "field",
+                PEOPLE.CREATED_AT,
+                {
+                  "base-type": "type/DateTime",
+                  "source-field": ORDERS.USER_ID,
+                },
               ],
             ],
             isForeign: true,
@@ -172,14 +224,15 @@ describe("parameters/utils/mapping-options", () => {
         ]);
       });
       it("should return fields in nested query", () => {
+        const card = structured({
+          "source-query": {
+            "source-table": PRODUCTS_ID,
+          },
+        });
         const options = getParameterMappingOptions(
-          metadata,
+          new Question(card, metadata),
           { type: "date/single" },
-          structured({
-            "source-query": {
-              "source-table": PRODUCTS_ID,
-            },
-          }),
+          card,
         );
         expect(options).toEqual([
           {
@@ -199,18 +252,19 @@ describe("parameters/utils/mapping-options", () => {
 
     describe("NativeQuery", () => {
       it("should return variables for non-dimension template-tags", () => {
-        const options = getParameterMappingOptions(
-          metadata,
-          { type: "date/single" },
-          native({
-            query: "select * from ORDERS where CREATED_AT = {{created}}",
-            "template-tags": {
-              created: {
-                type: "date",
-                name: "created",
-              },
+        const card = native({
+          query: "select * from ORDERS where CREATED_AT = {{created}}",
+          "template-tags": {
+            created: {
+              type: "date",
+              name: "created",
             },
-          }),
+          },
+        });
+        const options = getParameterMappingOptions(
+          new Question(card, metadata),
+          { type: "date/single" },
+          card,
         );
         expect(options).toEqual([
           {
@@ -223,19 +277,20 @@ describe("parameters/utils/mapping-options", () => {
       });
     });
     it("should return dimensions for dimension template-tags", () => {
-      const options = getParameterMappingOptions(
-        metadata,
-        { type: "date/single" },
-        native({
-          query: "select * from ORDERS where CREATED_AT = {{created}}",
-          "template-tags": {
-            created: {
-              type: "dimension",
-              name: "created",
-              dimension: ["field", ORDERS.CREATED_AT, null],
-            },
+      const card = native({
+        query: "select * from ORDERS where CREATED_AT = {{created}}",
+        "template-tags": {
+          created: {
+            type: "dimension",
+            name: "created",
+            dimension: ["field", ORDERS.CREATED_AT, null],
           },
-        }),
+        },
+      });
+      const options = getParameterMappingOptions(
+        new Question(card, metadata),
+        { type: "date/single" },
+        card,
       );
       expect(options).toEqual([
         {

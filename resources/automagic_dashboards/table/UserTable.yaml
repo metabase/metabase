@@ -46,10 +46,13 @@ filters:
 groups:
 - Overview:
     title: Overview
+    score: 90
 - Geographical:
     title: Where these [[this.short-name]] are
+    score: 80
 - General:
     title: How these [[this.short-name]] are distributed
+    score: 70
 dashboard_filters:
 - JoinDate
 - GenericCategoryMedium

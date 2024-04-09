@@ -3,7 +3,6 @@
    [cheshire.core :as json]
    [medley.core :as m]
    [metabase.models.card :refer [Card]]
-   [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.interface :as mi]
    [metabase.models.query :as query]
    [metabase.models.serialization :as serdes]
@@ -11,7 +10,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;; -------------------------------------------- Entity & Life Cycle ----------------------------------------------
@@ -73,15 +71,16 @@
 (t2/deftransforms :model/HTTPAction
   {:template transform-json-with-nested-parameters})
 
-(mi/define-simple-hydration-method model
-  :model
-  "Return the Card this action uses as a model."
-  [{:keys [model_id]}]
-  (t2/select-one Card :id model_id))
+(methodical/defmethod t2/batched-hydrate [:model/Action :model]
+  [_model k actions]
+  (mi/instances-with-hydrated-data
+   actions k
+   #(t2/select-pk->fn identity :model/Card :id [:in (map :model_id actions)])
+   :model_id))
 
 (defn- check-model-is-not-a-saved-question
   [model-id]
-  (when-not (t2/select-one-fn :dataset Card :id model-id)
+  (when-not (= (t2/select-one-fn :type [Card :type] :id model-id) :model)
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
@@ -94,7 +93,7 @@
   [{archived? :archived, id :id, model-id :model_id, :as changes}]
   (u/prog1 changes
     (if archived?
-      (t2/delete! DashboardCard :action_id id)
+      (t2/delete! :model/DashboardCard :action_id id)
       (check-model-is-not-a-saved-question model-id))))
 
 (defmethod mi/perms-objects-set :model/Action
@@ -307,8 +306,10 @@
 
 (defn select-action
   "Selects an Action and fills in the subtype data and implicit parameters.
-   `options` is passed to `t2/select-one` `& options` arg."
+   `options` is [[apply]]ed to [[t2/select]]."
   [& options]
+  ;; TODO -- it's dumb that we're calling `t2/select` rather than `t2/select-one` above, limiting like this should never
+  ;; be done server-side. I don't have time to fix this right now. -- Cam
   (first (apply select-actions nil options)))
 
 (defn- map-assoc-database-enable-actions
@@ -343,11 +344,17 @@
     (for [dashcard dashcards]
       (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard))))))
 
+(defn dashcard->action
+  "Get the action associated with a dashcard if exists, return `nil` otherwise."
+  [dashcard-or-dashcard-id]
+  (some->> (t2/select-one-fn :action_id :model/DashboardCard :id (u/the-id dashcard-or-dashcard-id))
+           (select-action :id)))
+
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
 (defmethod serdes/extract-query "Action" [_model _opts]
   (eduction (map hydrate-subtype)
-            (db/select-reducible 'Action)))
+            (t2/reducible-select Action)))
 
 (defmethod serdes/hash-fields :model/Action [_action]
   [:name (serdes/hydrated-hash :model) :created_at])
@@ -368,6 +375,9 @@
       (update :type keyword)
       (cond-> (= (:type action) "query")
         (update :database_id serdes/*import-fk-keyed* 'Database :name))))
+
+(defmethod serdes/ingested-model-columns "Action" [_ingested]
+  (into #{} (conj action-columns :database_id :dataset_query :kind :template :response_handle :error_handle :type)))
 
 (defmethod serdes/load-update! "Action" [_model-name ingested local]
   (log/tracef "Upserting Action %d: old %s new %s" (:id local) (pr-str local) (pr-str ingested))

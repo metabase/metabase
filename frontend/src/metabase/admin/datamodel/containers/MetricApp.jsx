@@ -1,14 +1,15 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
+import { useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Metrics from "metabase/entities/metrics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
+import MetricForm from "../components/MetricForm";
 import { updatePreviewSummary } from "../datamodel";
 import { getPreviewSummary } from "../selectors";
-import MetricForm from "../components/MetricForm";
 
 const mapDispatchToProps = {
   updatePreviewSummary,
@@ -21,52 +22,92 @@ const mapStateToProps = (state, props) => ({
   previewSummary: getPreviewSummary(state),
 });
 
-class UpdateMetricFormInner extends Component {
-  onSubmit = async metric => {
-    await this.props.updateMetric(metric);
-    MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
-    this.props.onChangeLocation(`/admin/datamodel/metrics`);
-  };
+const UpdateMetricFormInner = ({
+  route,
+  metric,
+  updateMetric,
+  onChangeLocation,
+  ...props
+}) => {
+  const [isDirty, setIsDirty] = useState(false);
 
-  render() {
-    const { metric, ...props } = this.props;
-    return (
+  const handleSubmit = useCallback(
+    async metric => {
+      setIsDirty(false);
+
+      try {
+        await updateMetric(metric);
+        MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
+        onChangeLocation("/admin/datamodel/metrics");
+      } catch (error) {
+        setIsDirty(isDirty);
+      }
+    },
+    [updateMetric, isDirty, onChangeLocation],
+  );
+
+  return (
+    <>
       <MetricForm
         {...props}
         metric={metric.getPlainObject()}
-        onSubmit={this.onSubmit}
+        onIsDirtyChange={setIsDirty}
+        onSubmit={handleSubmit}
       />
-    );
-  }
-}
+      <LeaveConfirmationModal isEnabled={isDirty} route={route} />
+    </>
+  );
+};
 
 const UpdateMetricForm = Metrics.load({
   id: (state, props) => parseInt(props.params.id),
 })(UpdateMetricFormInner);
 
-class CreateMetricForm extends Component {
-  onSubmit = async metric => {
-    await this.props.createMetric({
-      ...metric,
-      table_id: metric.definition["source-table"],
-    });
-    MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
-    this.props.onChangeLocation(`/admin/datamodel/metrics`);
-  };
+const CreateMetricForm = ({
+  route,
+  createMetric,
+  onChangeLocation,
+  ...props
+}) => {
+  const [isDirty, setIsDirty] = useState(false);
 
-  render() {
-    return <MetricForm {...this.props} onSubmit={this.onSubmit} />;
-  }
-}
+  const handleSubmit = useCallback(
+    async metric => {
+      setIsDirty(false);
 
-class MetricApp extends Component {
-  render() {
-    return this.props.params.id ? (
-      <UpdateMetricForm {...this.props} />
-    ) : (
-      <CreateMetricForm {...this.props} />
-    );
+      try {
+        await createMetric({
+          ...metric,
+          table_id: metric.definition["source-table"],
+        });
+        MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
+        onChangeLocation("/admin/datamodel/metrics");
+      } catch (error) {
+        setIsDirty(isDirty);
+        throw error;
+      }
+    },
+    [createMetric, isDirty, onChangeLocation],
+  );
+
+  return (
+    <>
+      <MetricForm
+        {...props}
+        onIsDirtyChange={setIsDirty}
+        onSubmit={handleSubmit}
+      />
+      <LeaveConfirmationModal isEnabled={isDirty} route={route} />
+    </>
+  );
+};
+
+const MetricApp = props => {
+  if (props.params.id) {
+    return <UpdateMetricForm {...props} />;
   }
-}
+
+  return <CreateMetricForm {...props} />;
+};
 
 export default connect(mapStateToProps, mapDispatchToProps)(MetricApp);

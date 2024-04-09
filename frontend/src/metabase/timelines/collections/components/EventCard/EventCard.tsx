@@ -1,13 +1,15 @@
 import { memo } from "react";
 import { t } from "ttag";
-import Settings from "metabase/lib/settings";
-import * as Urls from "metabase/lib/urls";
-import { parseTimestamp } from "metabase/lib/time";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
-import Link from "metabase/core/components/Link";
+
 import EntityMenu from "metabase/components/EntityMenu";
-import { Timeline, TimelineEvent } from "metabase-types/api";
-import { IconName } from "metabase/core/components/Icon";
+import Link from "metabase/core/components/Link";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import Settings from "metabase/lib/settings";
+import { parseTimestamp } from "metabase/lib/time";
+import * as Urls from "metabase/lib/urls";
+import type { IconName } from "metabase/ui";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
+
 import {
   CardAside,
   CardBody,

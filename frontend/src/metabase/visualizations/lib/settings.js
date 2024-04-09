@@ -1,20 +1,19 @@
 import { getIn } from "icepick";
-
 import _ from "underscore";
-import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput";
-import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup";
-import ChartSettingInputNumeric from "metabase/visualizations/components/settings/ChartSettingInputNumeric";
-import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio";
-import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect";
-import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle";
-import ChartSettingSegmentedControl from "metabase/visualizations/components/settings/ChartSettingSegmentedControl";
-import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
-import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
-import ChartSettingFieldsPartition from "metabase/visualizations/components/settings/ChartSettingFieldsPartition";
-import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker";
-import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { ChartSettingColorPicker } from "metabase/visualizations/components/settings/ChartSettingColorPicker";
+import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
+import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
+import ChartSettingFieldsPartition from "metabase/visualizations/components/settings/ChartSettingFieldsPartition";
+import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
+import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput";
+import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup";
+import { ChartSettingInputNumeric } from "metabase/visualizations/components/settings/ChartSettingInputNumeric";
+import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio";
+import ChartSettingSegmentedControl from "metabase/visualizations/components/settings/ChartSettingSegmentedControl";
+import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect";
+import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle";
 
 const WIDGETS = {
   input: ChartSettingInput,
@@ -123,7 +122,7 @@ function getSettingWidget(
 ) {
   const settingDef = settingDefs[settingId];
   const value = computedSettings[settingId];
-  const onChange = value => {
+  const onChange = (value, question) => {
     const newSettings = { [settingId]: value };
     for (const settingId of settingDef.writeDependencies || []) {
       newSettings[settingId] = computedSettings[settingId];
@@ -131,7 +130,7 @@ function getSettingWidget(
     for (const settingId of settingDef.eraseDependencies || []) {
       newSettings[settingId] = null;
     }
-    onChangeSettings(newSettings);
+    onChangeSettings(newSettings, question);
     settingDef.onUpdate?.(value, extra);
   };
   if (settingDef.useRawSeries && object._raw) {
@@ -243,8 +242,33 @@ export function mergeSettings(first = {}, second = {}) {
       }
     }
   }
+
+  if (first["table.columns"] && second["table.columns"]) {
+    merged["table.columns"] = mergeTableColumns(
+      first["table.columns"],
+      second["table.columns"],
+    );
+  }
+
   return merged;
 }
+
+const mergeTableColumns = (firstTableColumns, secondTableColumns) => {
+  const addedColumns = firstTableColumns.filter(
+    ({ name }) => secondTableColumns.findIndex(col => col.name === name) === -1,
+  );
+  const removedColumns = secondTableColumns
+    .filter(
+      ({ name }) =>
+        firstTableColumns.findIndex(col => col.name === name) === -1,
+    )
+    .map(({ name }) => name);
+
+  return [
+    ...secondTableColumns.filter(({ name }) => !removedColumns.includes(name)),
+    ...addedColumns,
+  ];
+};
 
 export function getClickBehaviorSettings(settings) {
   const newSettings = {};

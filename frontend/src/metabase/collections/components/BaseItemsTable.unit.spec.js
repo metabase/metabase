@@ -1,14 +1,13 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import moment from "moment-timezone";
-import { renderWithProviders, screen, getIcon } from "__support__/ui";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { Route } from "react-router";
 
+import { renderWithProviders, screen, getIcon } from "__support__/ui";
+import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
 } from "metabase/lib/formatting/datetime-utils";
-
-import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
 
 const timestamp = "2021-06-03T19:46:52.128";
 
@@ -65,11 +64,11 @@ describe("Collections BaseItemsTable", () => {
     expect(screen.getByText(lastEditedAt)).toBeInTheDocument();
   });
 
-  it("displays last edit time on hover", () => {
+  it("displays last edit time on hover", async () => {
     setup();
     const lastEditedAt = moment(timestamp).format("MMMM DD, YYYY");
 
-    userEvent.hover(screen.getByText(lastEditedAt));
+    await userEvent.hover(screen.getByText(lastEditedAt));
 
     expect(screen.getByRole("tooltip")).toHaveTextContent(
       moment(timestamp).format(`${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`),
@@ -81,7 +80,7 @@ describe("Collections BaseItemsTable", () => {
     expect(screen.queryByTestId("model-detail-link")).not.toBeInTheDocument();
   });
 
-  it("allows user with write permission to select all items", () => {
+  it("allows user with write permission to select all items", async () => {
     const onSelectAll = jest.fn();
     setup({
       hasUnselected: true,
@@ -89,12 +88,12 @@ describe("Collections BaseItemsTable", () => {
       collection: { can_write: true },
     });
 
-    userEvent.click(screen.getByLabelText("Select all items"));
+    await userEvent.click(screen.getByLabelText("Select all items"));
 
     expect(onSelectAll).toHaveBeenCalled();
   });
 
-  it("allows user with write permission to deselect all items", () => {
+  it("allows user with write permission to deselect all items", async () => {
     const onSelectNone = jest.fn();
     setup({
       hasUnselected: false,
@@ -102,7 +101,7 @@ describe("Collections BaseItemsTable", () => {
       collection: { can_write: true },
     });
 
-    userEvent.click(screen.getByLabelText("Select all items"));
+    await userEvent.click(screen.getByLabelText("Select all items"));
 
     expect(onSelectNone).toHaveBeenCalled();
   });
@@ -117,14 +116,14 @@ describe("Collections BaseItemsTable", () => {
   });
 
   describe("description", () => {
-    it("shows description on hover", () => {
+    it("shows description on hover", async () => {
       const DESCRIPTION = "My collection";
       const ITEM = getCollectionItem({ description: DESCRIPTION });
 
       setup({ items: [ITEM] });
 
       const icon = getIcon("info");
-      userEvent.hover(icon);
+      await userEvent.hover(icon);
 
       const tooltip = screen.getByRole("tooltip");
 
@@ -132,14 +131,14 @@ describe("Collections BaseItemsTable", () => {
       expect(tooltip).toHaveTextContent(DESCRIPTION);
     });
 
-    it("shows markdown in description on hover", () => {
+    it("shows markdown in description on hover", async () => {
       const DESCRIPTION = "**important** text";
       const ITEM = getCollectionItem({ description: DESCRIPTION });
 
       setup({ items: [ITEM] });
 
       const icon = getIcon("info");
-      userEvent.hover(icon);
+      await userEvent.hover(icon);
 
       const tooltip = screen.getByRole("tooltip");
 

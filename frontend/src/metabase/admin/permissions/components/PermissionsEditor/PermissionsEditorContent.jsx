@@ -1,13 +1,14 @@
-import { useState, useMemo } from "react";
 import PropTypes from "prop-types";
+import { useState, useMemo } from "react";
 import { t } from "ttag";
 
+import EmptyState from "metabase/components/EmptyState";
 import Subhead from "metabase/components/type/Subhead";
 import Text from "metabase/components/type/Text";
-import EmptyState from "metabase/components/EmptyState";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import Input from "metabase/core/components/Input";
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+
 import { PermissionsTable } from "../PermissionsTable";
 
 import { PermissionsEditorBreadcrumbs } from "./PermissionsEditorBreadcrumbs";
@@ -61,7 +62,7 @@ export function PermissionsEditorContent({
   const handleFilterChange = e => setFilter(e.target.value);
 
   return (
-    <PermissionEditorContentRoot>
+    <PermissionEditorContentRoot data-testid="permissions-editor">
       <Subhead>
         {title}{" "}
         {breadcrumbs && (

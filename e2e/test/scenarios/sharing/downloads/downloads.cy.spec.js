@@ -1,3 +1,9 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   downloadAndAssert,
@@ -14,8 +20,10 @@ import {
   expectNoBadSnowplowEvents,
   resetSnowplow,
   enableTracking,
+  addOrUpdateDashboardCard,
+  createQuestion,
+  queryBuilderMain,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -48,7 +56,6 @@ describe("scenarios > question > download", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.deleteDownloadsFolder();
   });
 
   testCases.forEach(fileType => {
@@ -70,10 +77,64 @@ describe("scenarios > question > download", () => {
     });
   });
 
+  it("should allow downloading unformatted CSV data", () => {
+    const fieldRef = ["field", ORDERS.TOTAL, null];
+    const columnKey = `["ref",${JSON.stringify(fieldRef)}]`;
+
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          fields: [fieldRef],
+        },
+        visualization_settings: {
+          column_settings: {
+            [columnKey]: {
+              currency: "USD",
+              currency_in_header: false,
+              currency_style: "code",
+              number_style: "currency",
+            },
+          },
+        },
+      },
+      { visitQuestion: true, wrapId: true },
+    );
+
+    queryBuilderMain().findByText("USD 39.72").should("exist");
+
+    cy.get("@questionId").then(questionId => {
+      const opts = { questionId, fileType: "csv" };
+
+      downloadAndAssert(
+        {
+          ...opts,
+          enableFormatting: true,
+        },
+        sheet => {
+          expect(sheet["A1"].v).to.eq("Total");
+          expect(sheet["A2"].v).to.eq("USD 39.72");
+        },
+      );
+
+      downloadAndAssert(
+        {
+          ...opts,
+          enableFormatting: false,
+        },
+        sheet => {
+          expect(sheet["A1"].v).to.eq("Total");
+          expect(sheet["A2"].v).to.eq(39.718145389078366);
+          expect(sheet["A2"].w).to.eq("39.718145389078366");
+        },
+      );
+    });
+  });
+
   describe("from dashboards", () => {
     it("should allow downloading card data", () => {
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByTestId("dashcard").within(() => {
         cy.findByTestId("legend-caption").realHover();
       });
@@ -88,7 +149,7 @@ describe("scenarios > question > download", () => {
         cy.contains("ID").click();
       });
 
-      cy.get(".DashCard").contains("Select…").click();
+      cy.findByTestId("dashcard-container").contains("Select…").click();
       popover().contains("ID").eq(0).click();
 
       saveDashboard();
@@ -107,6 +168,82 @@ describe("scenarios > question > download", () => {
       });
 
       assertOrdersExport(1);
+    });
+
+    it("should allow downloading parameterized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {
+      cy.createQuestion({
+        name: "20868",
+        query: {
+          "source-table": ORDERS_ID,
+        },
+        display: "table",
+      }).then(({ body: { id: questionId } }) => {
+        cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+          cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+            parameters: [
+              {
+                id: "92eb69ea",
+                name: "ID",
+                sectionId: "id",
+                slug: "id",
+                type: "id",
+              },
+            ],
+          });
+
+          addOrUpdateDashboardCard({
+            card_id: questionId,
+            dashboard_id: dashboardId,
+            card: {
+              parameter_mappings: [
+                {
+                  parameter_id: "92eb69ea",
+                  card_id: questionId,
+                  target: ["dimension", ["field", ORDERS.ID, null]],
+                },
+              ],
+              visualization_settings: {
+                click_behavior: {
+                  parameterMapping: {
+                    "92eb69ea": {
+                      id: "92eb69ea",
+                      source: { id: "ID", name: "ID", type: "column" },
+                      target: {
+                        id: "92eb69ea",
+                        type: "parameter",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          }).then(({ body: { id } }) => {
+            cy.signIn("nodata");
+            visitDashboard(dashboardId);
+
+            cy.findByLabelText("ID").click();
+            popover().findByPlaceholderText("Enter an ID").type("1");
+            cy.button("Add filter").click();
+
+            cy.findByTestId("legend-caption").contains("20868").click();
+
+            downloadAndAssert(
+              {
+                fileType: "xlsx",
+                questionId,
+                dashboardId,
+                dashcardId: id,
+              },
+              sheet => {
+                expect(sheet["A1"].v).to.eq("ID");
+                expect(sheet["A2"].v).to.eq(1);
+
+                assertSheetRowsCount(1)(sheet);
+              },
+            );
+          });
+        });
+      });
     });
   });
 
@@ -200,7 +337,7 @@ describeWithSnowplow("scenarios > dashboard > download pdf", () => {
 
   it("should allow you to download a PDF of a dashboard", () => {
     cy.createDashboardWithQuestions({
-      dashboardName: `test dashboard`,
+      dashboardName: "test dashboard",
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
       visitDashboard(dashboard.id);
@@ -220,9 +357,10 @@ function assertOrdersExport(length) {
   downloadAndAssert(
     {
       fileType: "xlsx",
-      questionId: 1,
-      dashcardId: 1,
-      dashboardId: 1,
+      questionId: ORDERS_QUESTION_ID,
+      dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
+      dashboardId: ORDERS_DASHBOARD_ID,
+      isDashboard: true,
     },
     sheet => {
       expect(sheet["A1"].v).to.eq("ID");

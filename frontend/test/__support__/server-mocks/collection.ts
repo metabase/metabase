@@ -1,18 +1,20 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
+
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+  convertSavedQuestionToVirtualTable,
+  getCollectionVirtualSchemaName,
+} from "metabase-lib/v1/metadata/utils/saved-questions";
+import type {
   Card,
   Collection,
   CollectionItem,
   Dashboard,
 } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import {
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
-  convertSavedQuestionToVirtualTable,
-  getCollectionVirtualSchemaName,
-} from "metabase-lib/metadata/utils/saved-questions";
+
 import { PERMISSION_ERROR } from "./constants";
 
 export interface CollectionEndpoints {
@@ -64,7 +66,7 @@ export function setupCollectionVirtualSchemaEndpoints(
 ) {
   const urls = getCollectionVirtualSchemaURLs(collection);
 
-  const [models, questions] = _.partition(cards, card => card.dataset);
+  const [models, questions] = _.partition(cards, card => card.type === "model");
   const modelVirtualTables = models.map(convertSavedQuestionToVirtualTable);
   const questionVirtualTables = questions.map(
     convertSavedQuestionToVirtualTable,
@@ -74,13 +76,18 @@ export function setupCollectionVirtualSchemaEndpoints(
   fetchMock.get(urls.models, modelVirtualTables);
 }
 
-export function setupCollectionItemsEndpoint(
-  collection: Collection,
-  collectionItems: CollectionItem[] = [],
-) {
+export function setupCollectionItemsEndpoint({
+  collection,
+  collectionItems = [],
+  models: modelsParam,
+}: {
+  collection: Collection;
+  collectionItems: CollectionItem[];
+  models?: string[];
+}) {
   fetchMock.get(`path:/api/collection/${collection.id}/items`, uri => {
     const url = new URL(uri);
-    const models = url.searchParams.getAll("models");
+    const models = modelsParam ?? url.searchParams.getAll("models");
     const matchedItems = collectionItems.filter(({ model }) =>
       models.includes(model),
     );
@@ -136,7 +143,7 @@ export function setupCollectionByIdEndpoint({
     return;
   }
 
-  fetchMock.get(/api\/collection\/\d+/, url => {
+  fetchMock.get(/api\/collection\/\d+$/, url => {
     const collectionIdParam = url.split("/")[5];
     const collectionId = Number(collectionIdParam);
 

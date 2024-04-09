@@ -1,5 +1,5 @@
-import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -63,7 +63,5 @@ describe("issue 24994", () => {
 });
 
 function assertFilterValueIsSelected(value) {
-  cy.findByTestId(`${value}-filter-value`).within(() =>
-    cy.get("input").should("be.checked"),
-  );
+  cy.findByRole("checkbox", { name: value }).should("be.checked");
 }

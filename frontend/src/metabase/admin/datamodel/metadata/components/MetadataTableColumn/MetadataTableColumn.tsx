@@ -1,15 +1,25 @@
-import { ReactNode, useCallback } from "react";
+import cx from "classnames";
+import type { ReactNode } from "react";
+import { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { Link } from "react-router";
-import * as Urls from "metabase/lib/urls";
-import Fields from "metabase/entities/fields";
+
 import Button from "metabase/core/components/Button/Button";
-import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
-import Field from "metabase-lib/metadata/Field";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
+import Fields from "metabase/entities/fields";
+import * as Urls from "metabase/lib/urls";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
-import { ColumnInput } from "./MetadataTableColumn.styled";
+
+import {
+  ColumnContainer,
+  ColumnInput,
+  FieldSettingsLink,
+} from "./MetadataTableColumn.styled";
 
 interface OwnProps {
   field: Field;
@@ -62,59 +72,69 @@ const MetadataTableColumn = ({
   );
 
   return (
-    <section
-      className="py2 pl2 pr1 mt1 mb3 flex bordered rounded"
+    <ColumnContainer
       aria-label={field.name}
       data-testid={`column-${field.name}`}
     >
-      <div className="flex flex-column flex-auto">
-        <div className="text-monospace mb1" style={{ fontSize: "12px" }}>
+      <div className={cx(CS.flex, CS.flexColumn, CS.flexAuto)}>
+        <div
+          className={cx(CS.textMonospace, CS.mb1)}
+          style={{ fontSize: "12px" }}
+        >
           {getFieldRawName(field)}
         </div>
-        <div className="flex flex-column">
+        <div className={cx(CS.flex, CS.flexColumn)}>
           <div>
             <ColumnInput
               style={{ minWidth: 420 }}
-              className="float-left inline-block"
+              className={cx(CS.floatLeft, CS.inlineBlock)}
               type="text"
               value={field.displayName()}
               onBlurChange={handleChangeName}
             />
             <div className="clearfix">
-              <div className="flex flex-auto">
-                <div className="pl1 flex-auto">
+              <div className={cx(CS.flex, CS.flexAuto)}>
+                <div className={cx(CS.pl1, CS.flexAuto)}>
                   <FieldVisibilityPicker
-                    className="block"
+                    className={CS.block}
                     field={field}
                     onUpdateField={onUpdateField}
                   />
                 </div>
-                <div className="flex-auto px1">
+                <div className={cx(CS.flexAuto, CS.px1)}>
                   <SemanticTypeAndTargetPicker
-                    className="block"
+                    className={CS.block}
                     field={field}
                     idFields={idFields}
                     onUpdateField={onUpdateField}
                   />
                 </div>
-                <Link
+                <FieldSettingsLink
                   to={Urls.dataModelField(
                     selectedDatabaseId,
                     selectedSchemaId,
                     selectedTableId,
                     Number(field.id),
                   )}
-                  className="text-brand-hover mr1"
                   aria-label={t`Field settings`}
                 >
                   <Button icon="gear" style={{ padding: 10 }} />
-                </Link>
+                </FieldSettingsLink>
               </div>
             </div>
           </div>
-          <div className="MetadataTable-title flex flex-column flex-full mt1 mr1">
+          <div
+            className={cx(
+              CS.bgWhite,
+              CS.flex,
+              CS.flexColumn,
+              CS.flexFull,
+              CS.mt1,
+              CS.mr1,
+            )}
+          >
             <ColumnInput
-              className="TableEditor-field-description rounded"
+              className={cx(AdminS.TableEditorFieldDescription, CS.rounded)}
               type="text"
               value={field.description ?? ""}
               onBlurChange={handleChangeDescription}
@@ -125,7 +145,7 @@ const MetadataTableColumn = ({
         </div>
       </div>
       {dragHandle}
-    </section>
+    </ColumnContainer>
   );
 };
 

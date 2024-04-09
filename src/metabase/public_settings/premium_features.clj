@@ -4,10 +4,10 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
-   #_:clj-kondo/ignore
-   [clojure.spec.alpha :as spec]
+   [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [environ.core :refer [env]]
+   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -15,16 +15,26 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
-   [schema.core :as schema]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.string :as u.str]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ValidToken
+(def ^:private RemoteCheckedToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
   #"^[0-9a-f]{64}$")
+
+(def ^:private AirgapToken
+  "Similar to RemoteCheckedToken, but starts with 'airgap_'."
+  #"airgap_[0-9a-f]*")
+
+(def ^:private TokenStr
+  [:or
+   [:re RemoteCheckedToken]
+   [:re AirgapToken]])
 
 (def token-check-url
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
@@ -51,13 +61,13 @@
 ;; at a time.
 (let [f        (fn []
                  {:post [(integer? %)]}
-                 (log/info (u/colorize :yellow "GETTING ACTIVE USER COUNT!"))
+                 (log/debug (u/colorize :yellow "GETTING ACTIVE USER COUNT!"))
                  (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
                  ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
                  ;; is from a different thread and is invalid by the time we get to use it
                  (let [result (binding [t2.conn/*current-connectable* nil]
-                                (t2/count :core_user :is_active true))]
-                   (log/info (u/colorize :green "=>") result)
+                                (t2/count :model/User :is_active true :type :personal))]
+                   (log/debug (u/colorize :green "=>") result)
                    result))
       memoized (memoize/ttl
                 f
@@ -73,6 +83,7 @@
   (deferred-tru "Cached number of active users. Refresh every 5 minutes.")
   :visibility :admin
   :type       :integer
+  :audit      :never
   :default    0
   :getter     (fn []
                 (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
@@ -85,58 +96,100 @@
 
 (def ^:private ^:const fetch-token-status-timeout-ms (u/seconds->ms 10))
 
-(def ^:private TokenStatus
-  {:valid                               schema/Bool
-   :status                              su/NonBlankString
-   (schema/optional-key :error-details) (schema/maybe su/NonBlankString)
-   (schema/optional-key :features)      [su/NonBlankString]
-   (schema/optional-key :trial)         schema/Bool
-   (schema/optional-key :valid_thru)    su/NonBlankString ; ISO 8601 timestamp
-   ;; don't explode in the future if we add more to the response! lol
-   schema/Any                           schema/Any})
+(def TokenStatus
+  "Schema for a response from the token status API."
+  [:map
+   [:valid                          :boolean]
+   [:status                         [:string {:min 1}]]
+   [:error-details {:optional true} [:maybe [:string {:min 1}]]]
+   [:features      {:optional true} [:sequential [:string {:min 1}]]]
+   [:trial         {:optional true} :boolean]
+   [:valid-thru    {:optional true} [:string {:min 1}]]
+   [:max-users     {:optional true} pos-int?]
+   [:company       {:optional true} [:string {:min 1}]]])
 
-(defn- fetch-token-and-parse-body
-  [token base-url]
+(defn- fetch-token-and-parse-body*
+  [token base-url site-uuid]
   (some-> (token-status-url token base-url)
-          (http/get {:query-params {:users     (cached-active-users-count)
-                                    :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
+          (http/get {:query-params {:users      (cached-active-users-count)
+                                    :site-uuid  site-uuid
+                                    :mb-version (:tag config/mb-version-info)}})
           :body
           (json/parse-string keyword)))
 
-(schema/defn ^:private fetch-token-status* :- TokenStatus
-  "Fetch info about the validity of `token` from the MetaStore."
-  [token :- ValidToken]
-  ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
-  ;; reasonable amount of time throw a timeout exception
-  (log/info (trs "Checking with the MetaStore to see whether {0} is valid..."
-                 ;; ValidToken will ensure the length of token is 64 chars long
-                 (str (subs token 0 4) "..." (subs token 60 64))))
-  (let [fut    (future
-                 (try (fetch-token-and-parse-body token token-check-url)
-                      (catch Exception e1
-                        (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
-                        ;; Try the fallback URL, which was the default URL prior to 45.2
-                        (try (fetch-token-and-parse-body token store-url)
-                             ;; if there was an error fetching the token from both the normal and fallback URLs, log the
-                             ;; first error and return a generic message about the token being invalid. This message
-                             ;; will get displayed in the Settings page in the admin panel so we do not want something
-                             ;; complicated
-                             (catch Exception e2
-                               (log/error e2 (trs "Error fetching token status from {0}:" store-url))
-                               (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
-                                 (or
-                                  body
-                                  {:valid         false
-                                   :status        (tru "Unable to validate token")
-                                   :error-details (.getMessage e1)})))))))
+(defn- fetch-token-and-parse-body
+  [token base-url site-uuid]
+  (let [fut    (future (fetch-token-and-parse-body* token base-url site-uuid))
         result (deref fut fetch-token-status-timeout-ms ::timed-out)]
-    (if (= result ::timed-out)
+    (if (not= result ::timed-out)
+      result
       (do
         (future-cancel fut)
         {:valid         false
          :status        (tru "Unable to validate token")
-         :error-details (tru "Token validation timed out.")})
-      result)))
+         :error-details (tru "Token validation timed out.")}))))
+
+;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
+(declare decode-airgap-token)
+
+(mu/defn ^:private max-users-allowed
+  "Returns the max users value from an airgapped key, or nil indicating there is no limt."
+  [] :- [:or pos-int? :nil]
+  (when-let [token (premium-embedding-token)]
+    (when (str/starts-with? token "airgap_")
+      (let [max-users (:max-users (decode-airgap-token token))]
+        (when (pos? max-users) max-users)))))
+
+(defn airgap-check-user-count
+  "Checks that, when in an airgap context, the allowed user count is acceptable."
+  []
+  (when-let [max-users (max-users-allowed)]
+    (when (> (t2/count :model/User :is_active true, :type :personal) max-users)
+      (throw (Exception. (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users." max-users))))))
+
+(mu/defn ^:private fetch-token-status* :- TokenStatus
+  "Fetch info about the validity of `token` from the MetaStore."
+  [token :- TokenStr]
+  ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.  We
+  ;; will have taken a lock to call through to here, and could create a deadlock with the future's thread.  See
+  ;; https://github.com/metabase/metabase/pull/38029/
+  (cond (mc/validate [:re RemoteCheckedToken] token)
+        ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
+        ;; reasonable amount of time throw a timeout exception
+        (do
+          (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
+          (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
+            (try (fetch-token-and-parse-body token token-check-url site-uuid)
+                 (catch Exception e1
+                   ;; Unwrap exception from inside the future
+                   (let [e1 (ex-cause e1)]
+                     (log/errorf e1 "Error fetching token status from %s:" token-check-url)
+                     ;; Try the fallback URL, which was the default URL prior to 45.2
+                     (try (fetch-token-and-parse-body token store-url site-uuid)
+                          ;; if there was an error fetching the token from both the normal and fallback URLs, log the
+                          ;; first error and return a generic message about the token being invalid. This message
+                          ;; will get displayed in the Settings page in the admin panel so we do not want something
+                          ;; complicated
+                          (catch Exception e2
+                            (log/errorf (ex-cause e2) "Error fetching token status from %s:" store-url)
+                            (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
+                              (or
+                               body
+                               {:valid         false
+                                :status        (tru "Unable to validate token")
+                                :error-details (.getMessage e1)})))))))))
+
+        (mc/validate [:re AirgapToken] token)
+        (do
+          (log/infof "Checking airgapped token '%s'..." (u.str/mask token))
+          (decode-airgap-token token))
+
+        :else
+        (do
+          (log/error (u/format-color 'red "Invalid token format!"))
+          {:valid         false
+           :status        "invalid"
+           :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
 
 (def ^{:arglists '([token])} fetch-token-status
   "TTL-memoized version of `fetch-token-status*`. Caches API responses for 5 minutes. This is important to avoid making
@@ -162,13 +215,21 @@
       (locking lock
         (f token)))))
 
-(schema/defn ^:private valid-token->features* :- #{su/NonBlankString}
-  [token :- ValidToken]
-  (let [{:keys [valid status features error-details]} (fetch-token-status token)]
+(declare token-valid-now?)
+
+(mu/defn ^:private valid-token->features* :- [:set ms/NonBlankString]
+  [token :- TokenStr]
+  (let [{:keys [valid status features error-details] :as token-status} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message
     (when-not valid
       (throw (ex-info status
-                      {:status-code 400, :error-details error-details})))
+                      {:status-code 400,
+                       :error-details error-details})))
+    (when (and (mc/validate [:re AirgapToken] token)
+               (not (token-valid-now? token-status)))
+      (throw (ex-info status
+                      {:status-code 400
+                       :error-details (tru "Airgapped token is no longer valid. Please contact Metabase support.")})))
     ;; otherwise return the features this token supports
     (set features)))
 
@@ -188,6 +249,7 @@
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
   :visibility :admin
   :type       :json
+  :audit      :never
   :setter     :none
   :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
 
@@ -197,19 +259,23 @@
 
 (defsetting premium-embedding-token     ; TODO - rename this to premium-features-token?
   (deferred-tru "Token for premium features. Go to the MetaStore to get yours!")
+  :audit :never
   :setter
   (fn [new-value]
     ;; validate the new value if we're not unsetting it
     (try
       (when (seq new-value)
-        (when (schema/check ValidToken new-value)
+        (when (mc/validate [:re AirgapToken] new-value)
+          (airgap-check-user-count))
+        (when-not (or (mc/validate [:re RemoteCheckedToken] new-value)
+                      (mc/validate [:re AirgapToken] new-value))
           (throw (ex-info (tru "Token format is invalid.")
                           {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
         (valid-token->features new-value)
-        (log/info (trs "Token is valid.")))
+        (log/info "Token is valid."))
       (setting/set-value-of-type! :string :premium-embedding-token new-value)
       (catch Throwable e
-        (log/error e (trs "Error setting premium features token"))
+        (log/error e "Error setting premium features token")
         (throw (ex-info (.getMessage e) (merge
                                          {:message (.getMessage e), :status-code 400}
                                          (ex-data e)))))))) ; merge in error-details if present
@@ -217,11 +283,11 @@
 (let [cached-logger (memoize/ttl
                      ^{::memoize/args-fn (fn [[token _e]] [token])}
                      (fn [_token e]
-                       (log/error (trs "Error validating token") ":" (ex-message e))
-                       (log/debug e (trs "Error validating token")))
+                       (log/error "Error validating token:" (ex-message e))
+                       (log/debug e "Error validating token"))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
-  (schema/defn token-features :- #{su/NonBlankString}
+  (mu/defn ^:dynamic *token-features* :- [:set ms/NonBlankString]
     "Get the features associated with the system's premium features token."
     []
     (try
@@ -231,10 +297,10 @@
         (cached-logger (premium-embedding-token) e)
         #{}))))
 
-(defn- has-any-features?
+(defn has-any-features?
   "True if we have a valid premium features token with ANY features."
   []
-  (boolean (seq (token-features))))
+  (boolean (seq (*token-features*))))
 
 (defn has-feature?
   "Does this instance's premium token have `feature`?
@@ -242,7 +308,31 @@
     (has-feature? :sandboxes)          ; -> true
     (has-feature? :toucan-management)  ; -> false"
   [feature]
-  (contains? (token-features) (name feature)))
+  (contains? (*token-features*) (name feature)))
+
+(defn ee-feature-error
+  "Returns an error that can be used to throw when an enterprise feature check fails."
+  [feature-name]
+  (ex-info (tru "{0} is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+                feature-name)
+           {:status-code 402}))
+
+(mu/defn assert-has-feature
+  "Check if an token with `feature` is present. If not, throw an error with a message using `feature-name`.
+  `feature-name` should be a localized string unless used in a CLI context.
+  (assert-has-feature :sandboxes (tru \"Sandboxing\"))
+  => throws an error with a message using \"Sandboxing\" as the feature name."
+  [feature-flag :- keyword?
+   feature-name :- [:or string? mu/localized-string-schema]]
+  (when-not (has-feature? feature-flag)
+    (throw (ee-feature-error feature-name))))
+
+(mu/defn assert-has-any-features
+  "Check if has at least one of feature in `features`. Throw an error if none of the features are available."
+  [feature-flag :- [:sequential keyword?]
+   feature-name :- [:or string? mu/localized-string-schema]]
+  (when-not (some has-feature? feature-flag)
+    (throw (ee-feature-error feature-name))))
 
 (defn- default-premium-feature-getter [feature]
   (fn []
@@ -260,6 +350,7 @@
   (let [options (merge {:type       :boolean
                         :visibility :public
                         :setter     :none
+                        :audit      :never
                         :getter     `(default-premium-feature-getter ~(some-> feature name))}
                        options)]
     `(do
@@ -272,69 +363,121 @@
   "Logo Removal and Full App Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
    `true` if we have a valid premium embedding token."
   :embedding
+  :export? true
   ;; This specific feature DOES NOT require the EE code to be present in order for it to return truthy, unlike
   ;; everything else.
   :getter #(has-feature? :embedding))
 
 (define-premium-feature enable-whitelabeling?
   "Should we allow full whitelabel embedding (reskinning the entire interface?)"
-  :whitelabel)
+  :whitelabel
+  :export? true)
 
 (define-premium-feature enable-audit-app?
   "Should we enable the Audit Logs interface in the Admin UI?"
   :audit-app)
 
+(define-premium-feature ^{:added "0.41.0"} enable-email-allow-list?
+  "Should we enable restrict email domains for subscription recipients?"
+  :email-allow-list)
+
+(define-premium-feature ^{:added "0.41.0"} enable-cache-granular-controls?
+  "Should we enable granular controls for cache TTL at the database, dashboard, and card level?"
+  :cache-granular-controls)
+
+(define-premium-feature ^{:added "0.41.0"} enable-config-text-file?
+  "Should we enable initialization on launch from a config file?"
+  :config-text-file)
+
 (define-premium-feature enable-sandboxes?
   "Should we enable data sandboxes (row-level permissions)?"
-  :sandboxes)
+  :sandboxes
+  :export? true)
 
-(define-premium-feature enable-sso?
-  "Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?"
-  :sso)
+(define-premium-feature enable-sso-jwt?
+  "Should we enable JWT-based authentication?"
+  :sso-jwt)
+
+(define-premium-feature enable-sso-saml?
+  "Should we enable SAML-based authentication?"
+  :sso-saml)
+
+(define-premium-feature enable-sso-ldap?
+  "Should we enable advanced configuration for LDAP authentication?"
+  :sso-ldap)
+
+(define-premium-feature enable-sso-google?
+  "Should we enable advanced configuration for Google Sign-In authentication?"
+  :sso-google)
+
+(defn enable-any-sso?
+  "Should we enable any SSO-based authentication?"
+  []
+  (or (enable-sso-jwt?)
+      (enable-sso-saml?)
+      (enable-sso-ldap?)
+      (enable-sso-google?)))
+
+(define-premium-feature enable-session-timeout-config?
+  "Should we enable configuring session timeouts?"
+  :session-timeout-config)
 
 (define-premium-feature can-disable-password-login?
-  "Can we password login?"
+  "Can we disable login by password?"
   :disable-password-login)
 
-(define-premium-feature ^{:added "0.41.0"} enable-advanced-config?
-  "Should we enable knobs and levers for more complex orgs (granular caching controls, allow-lists email domains for
-  notifications, more in the future)?"
-  :advanced-config)
+(define-premium-feature ^{:added "0.41.0"} enable-dashboard-subscription-filters?
+  "Should we enable filters for dashboard subscriptions?"
+  :dashboard-subscription-filters)
 
 (define-premium-feature ^{:added "0.41.0"} enable-advanced-permissions?
   "Should we enable extra knobs around permissions (block access, and in the future, moderator roles, feature-level
   permissions, etc.)?"
   :advanced-permissions)
 
-(define-premium-feature ^{:added "0.41.0"} enable-content-management?
-  "Should we enable Question verifications (and more in the future, like workflows, forking, etc.)?"
-  :content-management)
+(define-premium-feature ^{:added "0.41.0"} enable-content-verification?
+  "Should we enable verified content, like verified questions and models (and more in the future, like actions)?"
+  :content-verification)
 
 (define-premium-feature ^{:added "0.41.0"} enable-official-collections?
   "Should we enable Official Collections?"
   :official-collections)
 
 (define-premium-feature ^{:added "0.41.0"} enable-snippet-collections?
-  "Should we enable Snippet collections"
+  "Should we enable SQL snippet folders?"
   :snippet-collections)
 
 (define-premium-feature ^{:added "0.45.0"} enable-serialization?
   "Enable the v2 SerDes functionality"
   :serialization)
 
+(define-premium-feature ^{:added "0.47.0"} enable-email-restrict-recipients?
+  "Enable restrict email recipients?"
+  :email-restrict-recipients)
+
+(define-premium-feature ^{:added "0.50.0"} enable-llm-autodescription?
+  "Enable automatic descriptions of questions and dashboards by LLMs?"
+  :llm-autodescription)
+
 (defsetting is-hosted?
   "Is the Metabase instance running in the cloud?"
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean ((token-features) "hosting")))
+  :audit      :never
+  :getter     (fn [] (boolean ((*token-features*) "hosting")))
   :doc        false)
+
+(defn log-enabled?
+  "Returns true when we should record audit data into the audit log."
+  []
+  (or (is-hosted?) (has-feature? :audit-app)))
 
 ;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the
 ;; future.)
 ;;
-;; By checking whether `(token-features)` is non-empty we can see whether we have a valid EE token. If the token is
+;; By checking whether `(*token-features*)` is non-empty we can see whether we have a valid EE token. If the token is
 ;; valid, we can enable EE enhancements.
 ;;
 ;; DEPRECATED -- it should now be possible to use the new 0.41.0+ features for everything previously covered by
@@ -433,7 +576,7 @@
     `(let [ee-ns#        '~(or ee-ns (ns-name *ns*))
            ee-fn-name#   (symbol (str ee-ns# "/" '~fn-name))
            oss-or-ee-fn# ~(if schema?
-                            `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
+                            `(mu/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
                             `(fn ~(symbol (str fn-name)) ~@fn-tail))]
        (register-mapping! ee-fn-name# (merge ~options {~oss-or-ee oss-or-ee-fn#}))
        (def
@@ -445,24 +588,24 @@
   [conformed-options]
   (into {} (map (comp (juxt :k :v) second) conformed-options)))
 
-(spec/def ::defenterprise-options
-  (spec/&
-   (spec/*
-    (spec/alt
-     :feature  (spec/cat :k #{:feature}  :v keyword?)
-     :fallback (spec/cat :k #{:fallback} :v #(or (#{:oss} %) (symbol? %)))))
-   (spec/conformer options-conformer)))
+(s/def ::defenterprise-options
+  (s/&
+   (s/*
+    (s/alt
+     :feature  (s/cat :k #{:feature}  :v keyword?)
+     :fallback (s/cat :k #{:fallback} :v #(or (#{:oss} %) (symbol? %)))))
+   (s/conformer options-conformer)))
 
-(spec/def ::defenterprise-args
-  (spec/cat :docstr  (spec/? string?)
-            :ee-ns   (spec/? symbol?)
-            :options (spec/? ::defenterprise-options)
-            :fn-tail (spec/* any?)))
+(s/def ::defenterprise-args
+  (s/cat :docstr  (s/? string?)
+         :ee-ns   (s/? symbol?)
+         :options (s/? ::defenterprise-options)
+         :fn-tail (s/* any?)))
 
-(spec/def ::defenterprise-schema-args
-  (spec/cat :return-schema      (spec/? (spec/cat :- #{:-}
-                                                  :schema any?))
-            :defenterprise-args (spec/? ::defenterprise-args)))
+(s/def ::defenterprise-schema-args
+  (s/cat :return-schema      (s/? (s/cat :- #{:-}
+                                             :schema any?))
+         :defenterprise-args (s/? ::defenterprise-args)))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (aka OSS) and
@@ -493,23 +636,23 @@
   (Default: `:oss`)"
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
-  (let [parsed-args (spec/conform ::defenterprise-args defenterprise-args)
-        _           (when (spec/invalid? parsed-args)
+  (let [parsed-args (s/conform ::defenterprise-args defenterprise-args)
+        _           (when (s/invalid? parsed-args)
                       (throw (ex-info "Failed to parse defenterprise args"
-                                      (spec/explain-data ::defenterprise-args parsed-args))))
+                                      (s/explain-data ::defenterprise-args parsed-args))))
         args        (assoc parsed-args :fn-name fn-name)]
     `(defenterprise-impl ~args)))
 
 (defmacro defenterprise-schema
   "A version of defenterprise which allows for schemas to be defined for the args and return value. Schema syntax is
-  the same as when using `schema/defn`. Otherwise identical to `defenterprise`; see the docstring of that macro for
+  the same as when using `mu/defn`. Otherwise identical to `defenterprise`; see the docstring of that macro for
   usage details."
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
-  (let [parsed-args (spec/conform ::defenterprise-schema-args defenterprise-args)
-        _           (when (spec/invalid? parsed-args)
+  (let [parsed-args (s/conform ::defenterprise-schema-args defenterprise-args)
+        _           (when (s/invalid? parsed-args)
                       (throw (ex-info "Failed to parse defenterprise-schema args"
-                                      (spec/explain-data ::defenterprise-schema-args parsed-args))))
+                                      (s/explain-data ::defenterprise-schema-args parsed-args))))
         args        (-> (:defenterprise-args parsed-args)
                         (assoc :schema? true)
                         (assoc :return-schema (-> parsed-args :return-schema :schema))
@@ -550,3 +693,6 @@
   []
   (or (sandboxed-user?)
       (impersonated-user?)))
+
+(defenterprise decode-airgap-token "In OSS, this returns an empty map." metabase-enterprise.airgap [_] {})
+(defenterprise token-valid-now? "In OSS, this returns false." metabase-enterprise.airgap [_] false)

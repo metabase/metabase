@@ -3,21 +3,23 @@ import userEvent from "@testing-library/user-event";
 import {
   setupCollectionsEndpoints,
   setupDashboardCollectionItemsEndpoint,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { isPersonalCollectionOrChild } from "metabase/collections/utils";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import SnippetCollections from "metabase/entities/snippet-collections";
 import {
   createMockCollection,
   createMockDashboard,
   createMockUser,
 } from "metabase-types/api/mocks";
-import SnippetCollections from "metabase/entities/snippet-collections";
 
-import { ROOT_COLLECTION } from "metabase/entities/collections";
 import ItemPicker from "./ItemPicker";
 import {
   getItemPickerHeader,
@@ -92,6 +94,12 @@ const DASHBOARD = {
     model: "dashboard",
     collection_id: COLLECTION.REGULAR.id,
   }),
+  PERSONAL_CHILD: createMockDashboard({
+    id: 3,
+    name: "Personal dashboard",
+    model: "dashboard",
+    collection_id: COLLECTION.PERSONAL.id,
+  }),
 };
 
 async function setup({
@@ -106,6 +114,11 @@ async function setup({
   }
 
   setupCollectionsEndpoints({ collections, rootCollection });
+  setupSearchEndpoints([
+    DASHBOARD.REGULAR,
+    DASHBOARD.REGULAR_CHILD,
+    DASHBOARD.PERSONAL_CHILD,
+  ]);
 
   const onChange = jest.fn();
 
@@ -118,7 +131,7 @@ async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+  await waitForLoaderToBeRemoved();
 
   return { onChange };
 }
@@ -180,7 +193,7 @@ describe("ItemPicker", () => {
     await openCollectionWait(COLLECTION.REGULAR.name);
     let header = within(getItemPickerHeader());
 
-    userEvent.click(header.getByText(/Our analytics/i));
+    await userEvent.click(header.getByText(/Our analytics/i));
 
     header = within(getItemPickerHeader());
     const list = within(getItemPickerList());
@@ -197,7 +210,7 @@ describe("ItemPicker", () => {
   it("calls onChange when selecting an item", async () => {
     const { onChange } = await setup();
 
-    userEvent.click(screen.getByText(DASHBOARD.REGULAR.name));
+    await userEvent.click(screen.getByText(DASHBOARD.REGULAR.name));
 
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining(DASHBOARD.REGULAR),
@@ -207,7 +220,7 @@ describe("ItemPicker", () => {
 
   it("doesn't call onChange if it's not a collection picker", async () => {
     const { onChange } = await setup();
-    userEvent.click(screen.getByText(COLLECTION.REGULAR.name));
+    await userEvent.click(screen.getByText(COLLECTION.REGULAR.name));
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -216,7 +229,7 @@ describe("ItemPicker", () => {
       collections: [...Object.values(COLLECTION), COLLECTION_OTHER_USERS],
     });
 
-    userEvent.click(screen.getByText(/All personal collections/i));
+    await userEvent.click(screen.getByText(/All personal collections/i));
 
     const list = within(getItemPickerList());
     expect(list.getByText(COLLECTION_OTHER_USERS.name)).toBeInTheDocument();
@@ -293,6 +306,44 @@ describe("ItemPicker", () => {
       expect(items[0]).toHaveTextContent(COLLECTION.PERSONAL.name);
       expect(items[1]).toHaveTextContent(COLLECTION.REGULAR_2.name);
       expect(items[2]).toHaveTextContent(COLLECTION.REGULAR.name);
+    });
+
+    it("should filter collections", async () => {
+      await setup({
+        query: "foo",
+        collectionFilter: (collection, _index, allCollections) =>
+          !isPersonalCollectionOrChild(collection, allCollections),
+      });
+
+      expect(screen.queryByText(/personal/i)).not.toBeInTheDocument();
+    });
+
+    it("should show search results", async () => {
+      await setup();
+
+      await userEvent.click(screen.getByRole("img", { name: /search/ }));
+      await userEvent.type(screen.getByPlaceholderText("Search"), "das{enter}");
+
+      expect(
+        await screen.findByText(/^regular dashboard$/i),
+      ).toBeInTheDocument();
+      expect(await screen.findByText(/nested/i)).toBeInTheDocument();
+      expect(await screen.findByText(/personal/i)).toBeInTheDocument();
+    });
+
+    it("should not show items of filtered collections when searching", async () => {
+      await setup({
+        collectionFilter: (collection, _index, allCollections) =>
+          !isPersonalCollectionOrChild(collection, allCollections),
+      });
+
+      await userEvent.click(screen.getByRole("img", { name: /search/ }));
+      await userEvent.type(screen.getByPlaceholderText("Search"), "das{enter}");
+
+      expect(
+        await screen.findByText(/^regular dashboard$/i),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/personal/i)).not.toBeInTheDocument();
     });
   });
 

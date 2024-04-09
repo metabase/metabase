@@ -9,7 +9,8 @@ describe("issue 22730", () => {
       {
         name: "22730",
         native: {
-          query: `select '14:02:13'::time "time", 'before-row' "name" union all select '14:06:13'::time "time", 'after-row' `,
+          query:
+            "select '14:02:13'::time \"time\", 'before-row' \"name\" union all select '14:06:13'::time \"time\", 'after-row' ",
         },
       },
       { visitQuestion: true },
@@ -30,11 +31,7 @@ describe("issue 22730", () => {
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();
-
-      cy.findByTestId("hours-input").clear().type("14").blur();
-
-      cy.findByTestId("minutes-input").clear().type("03").blur();
-
+      cy.findByDisplayValue("00:00").clear().type("14:03");
       cy.button("Add filter").click();
     });
 

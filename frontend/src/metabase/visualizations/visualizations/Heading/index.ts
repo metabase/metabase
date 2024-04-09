@@ -4,6 +4,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+
 import { Heading } from "./Heading";
 
 const HeadingWrapper = Object.assign(Heading, {

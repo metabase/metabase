@@ -2,8 +2,8 @@ import { Fragment } from "react";
 
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 
-import { ITreeNodeItem, TreeNodeComponent } from "./types";
 import { ListRoot } from "./TreeNodeList.styled";
+import type { ITreeNodeItem, TreeNodeComponent } from "./types";
 
 interface TreeNodeListProps {
   items: ITreeNodeItem[];
@@ -55,7 +55,6 @@ function BaseTreeNodeList({
             />
             {isExpanded && (
               <BaseTreeNodeList
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 items={item.children!}
                 expandedIds={expandedIds}
                 selectedId={selectedId}

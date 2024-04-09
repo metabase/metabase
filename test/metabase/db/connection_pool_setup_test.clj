@@ -2,7 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.connection-pool :as connection-pool]
    [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.db.data-source :as mdb.data-source]
@@ -61,7 +61,7 @@
       (let [updated? (promise)]
         (add-watch (var-get #'mdb.connection-pool-setup/latest-activity)
                    ::DbActivityTracker-test
-                   (fn [_ _ _ _nv]
+                   (fn [_key _ref _old-state _new-state]
                      (deliver updated? ::completed)))
         (reset! (var-get #'mdb.connection-pool-setup/latest-activity) nil)
         (simulate-db-activity)

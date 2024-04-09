@@ -1,13 +1,10 @@
 (ns metabase.public-settings
   (:require
-   [cheshire.core :as json]
-   [clj-http.client :as http]
-   [clojure.core.memoize :as memoize]
+   [clojure.java.io :as io]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
@@ -24,13 +21,15 @@
 (set! *warn-on-reflection* true)
 
 ;; These modules register settings but are otherwise unused. They still must be imported.
-(comment metabase.public-settings.premium-features/keep-me)
+(comment premium-features/keep-me)
 
 (defsetting application-name
-  (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
+  (deferred-tru "Replace the word “Metabase” wherever it appears.")
   :visibility :public
+  :export?    true
   :type       :string
-  :enabled?   premium-features/enable-whitelabeling?
+  :audit      :getter
+  :feature    :whitelabel
   :default    "Metabase")
 
 (defn application-name-for-setting-descriptions
@@ -41,7 +40,7 @@
   []
   (if *compile-files*
     "Metabase"
-    (binding [setting/*disable-cache* true]
+    (binding [config/*disable-setting-cache* true]
       (application-name))))
 
 (defn- google-auth-enabled? []
@@ -52,7 +51,7 @@
   ((resolve 'metabase.api.ldap/ldap-enabled)))
 
 (defn- ee-sso-configured? []
-  (u/ignore-exceptions
+  (when config/ee-available?
     (classloader/require 'metabase-enterprise.sso.integrations.sso-settings))
   (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-enabled?)]
     (varr)))
@@ -67,11 +66,13 @@
 (defsetting check-for-updates
   (deferred-tru "Identify when new versions of Metabase are available.")
   :type    :boolean
+  :audit   :getter
   :default true)
 
 (defsetting version-info
   (deferred-tru "Information about available versions of Metabase.")
   :type    :json
+  :audit   :never
   :default {}
   :doc     false)
 
@@ -79,6 +80,7 @@
   (deferred-tru "Indicates when Metabase last checked for new versions.")
   :visibility :public
   :type       :timestamp
+  :audit      :never
   :default    nil
   :doc        false)
 
@@ -86,6 +88,7 @@
   (deferred-tru "The startup time in milliseconds")
   :visibility :public
   :type       :double
+  :audit      :never
   :default    0.0
   :doc        false)
 
@@ -93,43 +96,29 @@
   (deferred-tru "The name used for this instance of {0}."
                 (application-name-for-setting-descriptions))
   :default    "Metabase"
-  :visibility :settings-manager)
+  :audit      :getter
+  :visibility :settings-manager
+  :export?    true)
 
 (defsetting custom-homepage
-  (deferred-tru "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage.")
+  (deferred-tru "Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage.")
   :default    false
   :type       :boolean
+  :audit      :getter
   :visibility :public)
 
 (defsetting custom-homepage-dashboard
   (deferred-tru "ID of dashboard to use as a homepage")
   :type       :integer
-  :visibility :public)
-
-;; `::uuid-nonce` is a Setting that sets a site-wide random UUID value the first time it is fetched.
-(defmethod setting/get-value-of-type ::uuid-nonce
-  [_ setting]
-  (or (setting/get-value-of-type :string setting)
-      (let [value (str (random-uuid))]
-        (setting/set-value-of-type! :string setting value)
-        value)))
-
-(defmethod setting/set-value-of-type! ::uuid-nonce
-  [_ setting new-value]
-  (setting/set-value-of-type! :string setting new-value))
-
-(defmethod setting/default-tag-for-type ::uuid-nonce
-  [_]
-  `String)
+  :visibility :public
+  :audit      :getter)
 
 (defsetting site-uuid
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of {0}. This is set once and only once the first time it is fetched via
   its magic getter. Nice!"
   :visibility :authenticated
-  :setter     :none
-  ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
-  :type       ::uuid-nonce
+  :base       setting/uuid-nonce-base
   :doc        false)
 
 (defsetting site-uuid-for-premium-features-token-checks
@@ -140,23 +129,20 @@
   analytics/stats and if we sent it along with the premium features token check API request it would no longer be
   anonymous.)"
   :visibility :internal
-  :setter     :none
-  :type       ::uuid-nonce
+  :base       setting/uuid-nonce-base
   :doc        false)
 
 (defsetting site-uuid-for-version-info-fetching
   "A *different* site-wide UUID that we use for the version info fetching API calls. Do not use this for any other
   applications. (See [[site-uuid-for-premium-features-token-checks]] for more reasoning.)"
   :visibility :internal
-  :setter     :none
-  :type       ::uuid-nonce)
+  :base       setting/uuid-nonce-base)
 
 (defsetting site-uuid-for-unsubscribing-url
   "UUID that we use for generating urls users to unsubscribe from alerts. The hash is generated by
   hash(secret_uuid + email + subscription_id) = url. Do not use this for any other applications. (See #29955)"
   :visibility :internal
-  :setter     :none
-  :type       ::uuid-nonce)
+  :base       setting/uuid-nonce-base)
 
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
@@ -179,18 +165,19 @@
    (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
         "so changing it could break functionality or get you locked out of this instance."))
   :visibility :public
-  :getter (fn []
-            (try
-              (some-> (setting/get-value-of-type :string :site-url) normalize-site-url)
-              (catch clojure.lang.ExceptionInfo e
-                (log/error e (trs "site-url is invalid; returning nil for now. Will be reset on next request.")))))
-  :setter (fn [new-value]
-            (let [new-value (some-> new-value normalize-site-url)
-                  https?    (some-> new-value (str/starts-with?  "https:"))]
-              ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
-              (when-not https?
-                (redirect-all-requests-to-https! false))
-              (setting/set-value-of-type! :string :site-url new-value))))
+  :audit      :getter
+  :getter     (fn []
+                (try
+                  (some-> (setting/get-value-of-type :string :site-url) normalize-site-url)
+                  (catch clojure.lang.ExceptionInfo e
+                    (log/error e "site-url is invalid; returning nil for now. Will be reset on next request."))))
+  :setter     (fn [new-value]
+                (let [new-value (some-> new-value normalize-site-url)
+                      https?    (some-> new-value (str/starts-with?  "https:"))]
+                  ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
+                  (when-not https?
+                    (redirect-all-requests-to-https! false))
+                  (setting/set-value-of-type! :string :site-url new-value))))
 
 (defsetting site-locale
   (deferred-tru
@@ -199,6 +186,8 @@
     (application-name-for-setting-descriptions))
   :default    "en"
   :visibility :public
+  :export?    true
+  :audit      :getter
   :getter     (fn []
                 (let [value (setting/get-value-of-type :string :site-locale)]
                   (when (i18n/available-locale? value)
@@ -211,14 +200,16 @@
 
 (defsetting admin-email
   (deferred-tru "The email address users should be referred to if they encounter a problem.")
-  :visibility :authenticated)
+  :visibility :authenticated
+  :audit      :getter)
 
 (defsetting anon-tracking-enabled
   (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
                 (application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
-  :visibility :public)
+  :visibility :public
+  :audit      :getter)
 
 (defsetting ga-code
   (deferred-tru "Google Analytics tracking code.")
@@ -232,59 +223,76 @@
   :setter     :none
   :getter     (fn [] (and config/is-prod? (anon-tracking-enabled)))
   :visibility :public
+  :audit      :never
   :doc        false)
 
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
   :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-  :visibility :public)
+  :visibility :public
+  :audit      :getter)
+
+(defn- coerce-to-relative-url
+  "Get the path of a given URL if the URL contains an origin.
+   Otherwise make the landing-page a relative path."
+  [landing-page]
+  (cond
+    (u/url? landing-page) (-> landing-page io/as-url .getPath)
+    (empty? landing-page) ""
+    (not (str/starts-with? landing-page "/")) (str "/" landing-page)
+    :else landing-page))
 
 (defsetting landing-page
-  (deferred-tru "Default page to show people when they log in.")
+  (deferred-tru "Enter a URL of the landing page to show the user. This overrides the custom homepage setting above.")
   :visibility :public
+  :export?    true
   :type       :string
-  :default    "")
+  :default    ""
+  :audit      :getter
+  :setter     (fn [new-landing-page]
+                (when new-landing-page
+                  ;; If the landing page is a valid URL or mailto, sms, or file, then check with if site-url has the same origin.
+                  (when (and (or (re-matches #"^(mailto|sms|file):(.*)" new-landing-page) (u/url? new-landing-page))
+                             (not (str/starts-with? new-landing-page (site-url))))
+                    (throw (ex-info (tru "This field must be a relative URL.") {:status-code 400}))))
+                (setting/set-value-of-type! :string :landing-page (coerce-to-relative-url new-landing-page))))
 
 (defsetting enable-public-sharing
   (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
   :type       :boolean
-  :default    false
-  :visibility :authenticated)
-
-(defsetting enable-embedding
-  (deferred-tru "Allow admins to securely embed questions and dashboards within other applications?")
-  :type       :boolean
-  :default    false
-  :visibility :authenticated)
-
-(defsetting embedding-app-origin
-  (deferred-tru "Allow this origin to embed the full {0} application"
-                (application-name-for-setting-descriptions))
-  :visibility :public)
+  :default    true
+  :visibility :authenticated
+  :audit      :getter)
 
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")
   :type       :boolean
   :default    true
-  :visibility :authenticated)
+  :visibility :authenticated
+  :export?    true
+  :audit      :getter)
 
 (defsetting enable-query-caching
   (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
   :type       :boolean
   :default    false
-  :visibility :authenticated)
+  :visibility :authenticated
+  :audit      :getter)
 
 (defsetting persisted-models-enabled
   (deferred-tru "Allow persisting models into the source database.")
   :type       :boolean
   :default    false
-  :visibility :authenticated)
+  :visibility :public
+  :export?    true
+  :audit      :getter)
 
 (defsetting persisted-model-refresh-cron-schedule
   (deferred-tru "cron syntax string to schedule refreshing persisted models.")
   :type       :string
   :default    "0 0 0/6 * * ? *"
-  :visibility :admin)
+  :visibility :admin
+  :audit      :getter)
 
 (def ^:private ^:const global-max-caching-kb
   "Although depending on the database, we can support much larger cached values (1GB for PG, 2GB for H2 and 4GB for
@@ -300,6 +308,7 @@
   ;; results, and doesn't consider whether the results are compressed, as the `:db` backend does.)
   :type    :integer
   :default 1000
+  :audit   :getter
   :setter  (fn [new-value]
              (when (and new-value
                         (> (cond-> new-value
@@ -316,14 +325,16 @@
 (defsetting query-caching-max-ttl
   (deferred-tru "The absolute maximum time to keep any cached query results, in seconds.")
   :type    :double
-  :default (* 60.0 60.0 24.0 100.0)) ; 100 days
+  :default (* 60.0 60.0 24.0 100.0) ; 100 days
+  :audit   :getter)
 
 ;; TODO -- this isn't really a TTL at all. Consider renaming to something like `-min-duration`
 (defsetting query-caching-min-ttl
   (deferred-tru "{0} will cache all saved questions with an average query execution time longer than this many seconds:"
                  (application-name-for-setting-descriptions))
   :type    :double
-  :default 60.0)
+  :default 60.0
+  :audit   :getter)
 
 (defsetting query-caching-ttl-ratio
   (deferred-tru
@@ -331,53 +342,61 @@
         "execution time and multiply that by whatever you input here. So if a query takes on average 2 minutes to run, "
         "and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
   :type    :integer
-  :default 10)
+  :default 10
+  :audit   :getter)
 
 (defsetting notification-link-base-url
   (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
   :visibility :internal
   :type       :string
-  :enabled?   premium-features/hide-embed-branding?)
+  :feature    :whitelabel
+  :audit      :getter)
 
 (defsetting deprecation-notice-version
   (deferred-tru "Metabase version for which a notice about usage of deprecated features has been shown.")
   :visibility :admin
-  :doc        false)
+  :doc        false
+  :audit      :never)
 
 (defsetting loading-message
-  (deferred-tru "Message to show while a query is running.")
+  (deferred-tru "Choose the message to show while a query is running.")
   :visibility :public
-  :enabled?   premium-features/enable-whitelabeling?
+  :export?    true
+  :feature    :whitelabel
   :type       :keyword
-  :default    :doing-science)
+  :default    :doing-science
+  :audit      :getter)
 
 (defsetting application-colors
-  (deferred-tru
-    (str "These are the primary colors used in charts and throughout {0}. "
-         "You might need to refresh your browser to see your changes take effect.")
-    (application-name-for-setting-descriptions))
+  (deferred-tru "Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You need to refresh your browser to see your changes take effect.")
   :visibility :public
+  :export?    true
   :type       :json
-  :enabled?   premium-features/enable-whitelabeling?
-  :default    {})
+  :feature    :whitelabel
+  :default    {}
+  :audit      :getter)
 
 (defsetting application-font
-  (deferred-tru "This will replace “Lato” as the font family.")
+  (deferred-tru "Replace “Lato” as the font family.")
   :visibility :public
+  :export?    true
   :type       :string
   :default    "Lato"
-  :enabled?   premium-features/enable-whitelabeling?
-  :setter (fn [new-value]
-              (when new-value
-                (when-not (u.fonts/available-font? new-value)
-                  (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
-              (setting/set-value-of-type! :string :application-font new-value)))
+  :feature    :whitelabel
+  :audit      :getter
+  :setter     (fn [new-value]
+                  (when new-value
+                    (when-not (u.fonts/available-font? new-value)
+                      (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
+                  (setting/set-value-of-type! :string :application-font new-value)))
 
 (defsetting application-font-files
   (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
   :visibility :public
+  :export?    true
   :type       :json
-  :enabled?   premium-features/enable-whitelabeling?)
+  :audit      :getter
+  :feature    :whitelabel)
 
 (defn application-color
   "The primary color, a.k.a. brand color"
@@ -390,38 +409,159 @@
   (or (:accent3 (application-colors)) "#EF8C8C"))
 
 (defsetting application-logo-url
-  (deferred-tru "For best results, use an SVG file with a transparent background.")
+  (deferred-tru "Upload a file to replace the Metabase logo on the top bar.")
   :visibility :public
+  :export?    true
   :type       :string
-  :enabled?   premium-features/enable-whitelabeling?
+  :audit      :getter
+  :feature    :whitelabel
   :default    "app/assets/img/logo.svg")
 
 (defsetting application-favicon-url
-  (deferred-tru "The url or image that you want to use as the favicon.")
+  (deferred-tru "Upload a file to use as the favicon.")
   :visibility :public
+  :export?    true
   :type       :string
-  :enabled?   premium-features/enable-whitelabeling?
+  :audit      :getter
+  :feature    :whitelabel
   :default    "app/assets/img/favicon.ico")
 
 (defsetting show-metabot
   (deferred-tru "Enables Metabot character on the home page")
   :visibility :public
+  :export?    true
   :type       :boolean
-  :enabled?   premium-features/enable-whitelabeling?
+  :audit      :getter
+  :feature    :whitelabel
   :default    true)
 
-(defsetting show-lighthouse-illustration
-  (deferred-tru "Display the lighthouse illustration on the home and login pages.")
+(defsetting login-page-illustration
+  (deferred-tru "Options for displaying the illustration on the login page.")
   :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :default    "default")
+
+(defsetting login-page-illustration-custom
+  (deferred-tru "The custom illustration for the login page.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel)
+
+(defsetting landing-page-illustration
+  (deferred-tru "Options for displaying the illustration on the landing page.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :default    "default")
+
+(defsetting landing-page-illustration-custom
+  (deferred-tru "The custom illustration for the landing page.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel)
+
+(defsetting no-data-illustration
+  (deferred-tru "Options for displaying the illustration when there are no results after running a question.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :default    "default")
+
+(defsetting no-data-illustration-custom
+  (deferred-tru "The custom illustration for when there are no results after running a question.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel)
+
+(defsetting no-object-illustration
+  (deferred-tru "Options for displaying the illustration when there are no results after searching.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :default    "default")
+
+(defsetting no-object-illustration-custom
+  (deferred-tru "The custom illustration for when there are no results after searching.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel)
+
+(def ^:private help-link-options
+  #{:metabase :hidden :custom})
+
+(defsetting help-link
+  (deferred-tru
+   (str
+    "Keyword setting to control whitelabeling of the help link. Valid values are `:metabase`, `:hidden`, and "
+    "`:custom`. If `:custom` is set, the help link will use the URL specified in the `help-link-custom-destination`, "
+    "or be hidden if it is not set."))
+  :type       :keyword
+  :audit      :getter
+  :visibility :public
+  :feature    :whitelabel
+  :default    :metabase
+  :setter     (fn [value]
+                (when-not (help-link-options (keyword value))
+                  (throw (ex-info (tru "Invalid help link option")
+                                  {:value value
+                                   :valid-options help-link-options})))
+                (setting/set-value-of-type! :keyword :help-link value)))
+
+(defn- validate-help-url
+  "Checks that the provided URL is either a valid HTTP/HTTPS URL or a `mailto:` link. Returns `nil` if the input is valid;
+  throws an exception if it is not."
+  [url]
+  (let [validation-exception (ex-info (tru "Please make sure this is a valid URL")
+                                      {:url url})]
+   (if-let [matches (re-matches #"^mailto:(.*)" url)]
+     (when-not (u/email? (second matches))
+       (throw validation-exception))
+     (when-not (u/url? url)
+       (throw validation-exception)))))
+
+(defsetting help-link-custom-destination
+  (deferred-tru "Custom URL for the help link.")
+  :visibility :public
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :setter     (fn [new-value]
+                (let [new-value-string (str new-value)]
+                 (validate-help-url new-value-string)
+                 (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
+
+(defsetting show-metabase-links
+  (deferred-tru (str "Whether or not to display Metabase links outside admin settings."))
   :type       :boolean
-  :enabled?   premium-features/enable-whitelabeling?
-  :default    true)
+  :default    true
+  :visibility :public
+  :audit      :getter
+  :feature    :whitelabel)
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
   :visibility :public
   :type       :boolean
   :default    true
+  :feature    :disable-password-login
+  :audit      :raw-value
   :getter     (fn []
                 ;; if `:enable-password-login` has an *explict* (non-default) value, and SSO is configured, use that;
                 ;; otherwise this always returns true.
@@ -435,27 +575,34 @@
   (deferred-tru
     (str "When using the default binning strategy and a number of bins is not provided, "
          "this number will be used as the default."))
-  :type :integer
-  :default 8)
+  :type    :integer
+  :export? true
+  :default 8
+  :audit   :getter)
 
 (defsetting breakout-bin-width
   (deferred-tru
    (str "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), "
         "this number will be used as the default bin width (in degrees)."))
-  :type :double
-  :default 10.0)
+  :type    :double
+  :default 10.0
+  :audit   :getter)
 
 (defsetting custom-formatting
   (deferred-tru "Object keyed by type, containing formatting settings")
   :type       :json
+  :export?    true
   :default    {}
-  :visibility :public)
+  :visibility :public
+  :audit      :getter)
 
 (defsetting enable-xrays
   (deferred-tru "Allow users to explore data using X-rays")
   :type       :boolean
   :default    true
-  :visibility :authenticated)
+  :visibility :authenticated
+  :export?    true
+  :audit      :getter)
 
 (defsetting show-homepage-data
   (deferred-tru
@@ -463,7 +610,9 @@
         "Admins might turn this off in order to direct users to better content than raw data"))
   :type       :boolean
   :default    true
-  :visibility :authenticated)
+  :visibility :authenticated
+  :export?    true
+  :audit      :getter)
 
 (defsetting show-homepage-xrays
   (deferred-tru
@@ -471,7 +620,9 @@
          "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
-  :visibility :authenticated)
+  :visibility :authenticated
+  :export?    true
+  :audit      :getter)
 
 (defsetting show-homepage-pin-message
   (deferred-tru
@@ -480,11 +631,15 @@
   :type       :boolean
   :default    true
   :visibility :authenticated
-  :doc        false)
+  :export?    true
+  :doc        false
+  :audit      :getter)
 
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
   :default "X-Forwarded-For"
+  :export? true
+  :audit   :getter
   :getter  (fn [] (some-> (setting/get-value-of-type :string :source-address-header)
                           u/lower-case-en)))
 
@@ -500,6 +655,7 @@
 (defsetting available-fonts
   "Available fonts"
   :visibility :public
+  :export?    true
   :setter     :none
   :getter     u.fonts/available-fonts
   :doc        false)
@@ -507,6 +663,7 @@
 (defsetting available-locales
   "Available i18n locales"
   :visibility :public
+  :export?    true
   :setter     :none
   :getter     available-locales-with-names
   :doc        false)
@@ -514,6 +671,7 @@
 (defsetting available-timezones
   "Available report timezone options"
   :visibility :public
+  :export?    true
   :setter     :none
   :getter     (comp sort t/available-zone-ids)
   :doc        false)
@@ -522,7 +680,7 @@
   "Whether this instance has a Sample Database database"
   :visibility :authenticated
   :setter     :none
-  :getter     (fn [] (t2/exists? 'Database, :is_sample true))
+  :getter     (fn [] (t2/exists? :model/Database, :is_sample true))
   :doc        false)
 
 (defsetting password-complexity
@@ -535,7 +693,8 @@
   (deferred-tru "When set, enforces the use of session cookies for all users which expire when the browser is closed.")
   :type       :boolean
   :visibility :public
-  :default    nil)
+  :default    nil
+  :audit      :getter)
 
 (defsetting version
   "Metabase's version info"
@@ -548,18 +707,27 @@
   "Features registered for this instance's token"
   :visibility :public
   :setter     :none
-  :getter     (fn [] {:embedding              (premium-features/hide-embed-branding?)
-                      :whitelabel             (premium-features/enable-whitelabeling?)
-                      :audit_app              (premium-features/enable-audit-app?)
-                      :sandboxes              (premium-features/enable-sandboxes?)
-                      :sso                    (premium-features/enable-sso?)
-                      :advanced_config        (premium-features/enable-advanced-config?)
-                      :advanced_permissions   (premium-features/enable-advanced-permissions?)
-                      :content_management     (premium-features/enable-content-management?)
-                      :hosting                (premium-features/is-hosted?)
-                      :official_collections   (premium-features/enable-official-collections?)
-                      :snippet_collections    (premium-features/enable-snippet-collections?)
-                      :disable_password_login (premium-features/can-disable-password-login?)})
+  :getter     (fn [] {:advanced_permissions           (premium-features/enable-advanced-permissions?)
+                      :audit_app                      (premium-features/enable-audit-app?)
+                      :cache_granular_controls        (premium-features/enable-cache-granular-controls?)
+                      :config_text_file               (premium-features/enable-config-text-file?)
+                      :content_verification           (premium-features/enable-content-verification?)
+                      :dashboard_subscription_filters (premium-features/enable-dashboard-subscription-filters?)
+                      :disable_password_login         (premium-features/can-disable-password-login?)
+                      :email_allow_list               (premium-features/enable-email-allow-list?)
+                      :email_restrict_recipients      (premium-features/enable-email-restrict-recipients?)
+                      :embedding                      (premium-features/hide-embed-branding?)
+                      :hosting                        (premium-features/is-hosted?)
+                      :official_collections           (premium-features/enable-official-collections?)
+                      :sandboxes                      (premium-features/enable-sandboxes?)
+                      :session_timeout_config         (premium-features/enable-session-timeout-config?)
+                      :snippet_collections            (premium-features/enable-snippet-collections?)
+                      :sso_google                     (premium-features/enable-sso-google?)
+                      :sso_jwt                        (premium-features/enable-sso-jwt?)
+                      :sso_ldap                       (premium-features/enable-sso-ldap?)
+                      :sso_saml                       (premium-features/enable-sso-saml?)
+                      :whitelabel                     (premium-features/enable-whitelabeling?)
+                      :llm_autodescription            (premium-features/enable-llm-autodescription?)})
   :doc        false)
 
 (defsetting redirect-all-requests-to-https
@@ -567,6 +735,7 @@
   :visibility :public
   :type       :boolean
   :default    false
+  :audit      :getter
   :setter     (fn [new-value]
                 ;; if we're trying to enable this setting, make sure `site-url` is actually an HTTPS URL.
                 (when (if (string? new-value)
@@ -582,8 +751,10 @@
          "It won''t affect most SQL queries, "
          "although it is used to set the WEEK_START session variable in Snowflake."))
   :visibility :public
+  :export?    true
   :type       :keyword
   :default    :sunday
+  :audit      :raw-value
   :getter     (fn []
                 ;; if something invalid is somehow in the DB just fall back to Sunday
                 (when-let [value (setting/get-value-of-type :keyword :start-of-week)]
@@ -596,33 +767,15 @@
                            (trs "Invalid day of week: {0}" (pr-str new-value))))
                  (setting/set-value-of-type! :keyword :start-of-week new-value)))
 
-(defsetting cloud-gateway-ips-url
-  "Store URL for fetching the list of Cloud gateway IP addresses"
-  :visibility :internal
-  :setter     :none
-  :default    (str premium-features/store-url "/static/cloud_gateways.json")
-  :doc        false)
-
-(def ^:private fetch-cloud-gateway-ips-fn
-  (memoize/ttl
-   (fn []
-     (try
-       (-> (http/get (cloud-gateway-ips-url))
-           :body
-           (json/parse-string keyword)
-           :ip_addresses)
-       (catch Exception e
-         (log/error e (trs "Error fetching Metabase Cloud gateway IP addresses:")))))
-   :ttl/threshold (* 1000 60 60 24)))
-
 (defsetting cloud-gateway-ips
   (deferred-tru "Metabase Cloud gateway IP addresses, to configure connections to DBs behind firewalls")
   :visibility :public
-  :type       :json
+  :type       :string
   :setter     :none
-  :getter     (fn []
-                (when (premium-features/is-hosted?)
-                  (fetch-cloud-gateway-ips-fn))))
+  :getter (fn []
+            (when (premium-features/is-hosted?)
+              (some-> (setting/get-value-of-type :string :cloud-gateway-ips)
+                      (str/split #",")))))
 
 (defsetting show-database-syncing-modal
   (deferred-tru
@@ -630,10 +783,11 @@
          "Defaults to false if any non-default database has already finished syncing for this instance."))
   :visibility :admin
   :type       :boolean
+  :audit      :never
   :getter     (fn []
                 (let [v (setting/get-value-of-type :boolean :show-database-syncing-modal)]
                   (if (nil? v)
-                    (not (t2/exists? 'Database
+                    (not (t2/exists? :model/Database
                                      :is_sample false
                                      :is_audit false
                                      :initial_sync_status "complete"))
@@ -643,7 +797,9 @@
 (defsetting uploads-enabled
   (deferred-tru "Whether or not uploads are enabled")
   :visibility :authenticated
+  :export?    true
   :type       :boolean
+  :audit      :getter
   :default    false)
 
 (defn- not-handling-api-request?
@@ -654,22 +810,39 @@
   "Sets the :uploads-database-id setting, with an appropriate permission check."
   [new-id]
   (if (or (not-handling-api-request?)
-          (mi/can-write? Database new-id))
+          (mi/can-write? :model/Database new-id))
     (setting/set-value-of-type! :integer :uploads-database-id new-id)
     (api/throw-403)))
 
 (defsetting uploads-database-id
   (deferred-tru "Database ID for uploads")
   :visibility :authenticated
+  :export?    true
   :type       :integer
+  :audit      :getter
   :setter     set-uploads-database-id!)
 
 (defsetting uploads-schema-name
   (deferred-tru "Schema name for uploads")
-  :visibility   :authenticated
-  :type         :string)
+  :visibility :authenticated
+  :export?    true
+  :type       :string
+  :audit      :getter)
 
 (defsetting uploads-table-prefix
   (deferred-tru "Prefix for upload table names")
-  :visibility   :authenticated
-  :type         :string)
+  :visibility :authenticated
+  :type       :string
+  :audit      :getter)
+
+(defsetting attachment-table-row-limit
+  (deferred-tru "Maximum number of rows to render in an alert or subscription image.")
+  :visibility :internal
+  :type       :positive-integer
+  :default    20
+  :audit      :getter
+  :getter     (fn []
+                (let [value (setting/get-value-of-type :positive-integer :attachment-table-row-limit)]
+                  (if-not (pos-int? value)
+                    20
+                    value))))

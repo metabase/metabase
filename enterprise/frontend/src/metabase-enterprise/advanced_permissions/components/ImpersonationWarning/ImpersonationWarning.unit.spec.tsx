@@ -1,9 +1,11 @@
 import { screen } from "@testing-library/react";
 import { Route } from "react-router";
-import { createMockDatabase } from "metabase-types/api/mocks";
-import { Database as IDatabase } from "metabase-types/api";
+
 import { renderWithProviders } from "__support__/ui";
-import Database from "metabase-lib/metadata/Database";
+import Database from "metabase-lib/v1/metadata/Database";
+import type { Database as IDatabase } from "metabase-types/api";
+import { createMockDatabase } from "metabase-types/api/mocks";
+
 import { ImpersonationWarning } from "./ImpersonationWarning";
 
 const setup = (database: IDatabase) => {
@@ -49,7 +51,7 @@ describe("ImpersonationWarning", () => {
 
     expect(
       screen.getByText(
-        "metabase_user is the database user Metabase is using to connect to My Database. Make sure that metabase_user has access to everything in My Database that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information.",
+        /that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information./i,
       ),
     ).toBeInTheDocument();
 

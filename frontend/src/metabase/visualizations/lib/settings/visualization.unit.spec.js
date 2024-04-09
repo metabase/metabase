@@ -1,13 +1,13 @@
 import icepick from "icepick";
-// NOTE: need to load visualizations first for getSettings to work
-import "metabase/visualizations/index";
 
+import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 import {
   getComputedSettingsForSeries,
   getStoredSettingsForSeries,
 } from "metabase/visualizations/lib/settings/visualization";
+import registerVisualizations from "metabase/visualizations/register";
 
-import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
+registerVisualizations();
 
 describe("visualization_settings", () => {
   describe("getComputedSettingsForSeries", () => {

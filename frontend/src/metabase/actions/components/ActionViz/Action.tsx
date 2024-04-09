@@ -1,9 +1,15 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
 import { connect } from "react-redux";
+import { t } from "ttag";
+
+import { useQuestionQuery } from "metabase/common/hooks";
 import Tooltip from "metabase/core/components/Tooltip";
-import { executeRowAction } from "metabase/dashboard/actions";
+import {
+  executeRowAction,
+  reloadDashboardCards,
+} from "metabase/dashboard/actions";
 import { getEditingDashcardId } from "metabase/dashboard/selectors";
+import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   ActionDashboardCard,
@@ -13,17 +19,16 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
-import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
-import { useQuestionQuery } from "metabase/common/hooks";
+
+import { FullContainer } from "./ActionButton.styled";
+import ActionButtonView from "./ActionButtonView";
+import ActionVizForm from "./ActionVizForm";
 import {
   getDashcardParamValues,
   getMappedActionParameters,
   getNotProvidedActionParameters,
   shouldShowConfirmation,
 } from "./utils";
-import ActionVizForm from "./ActionVizForm";
-import ActionButtonView from "./ActionButtonView";
-import { FullContainer } from "./ActionButton.styled";
 
 interface OwnProps {
   dashcard: ActionDashboardCard;
@@ -94,14 +99,21 @@ const ActionComponent = ({
   const canWrite = model?.canWriteActions();
 
   const onSubmit = useCallback(
-    (parameters: ParametersForActionExecution) =>
-      executeRowAction({
+    async (parameters: ParametersForActionExecution) => {
+      const result = await executeRowAction({
         dashboard,
         dashcard,
         parameters,
         dispatch,
         shouldToast: shouldDisplayButton,
-      }),
+      });
+
+      if (result.success) {
+        dispatch(reloadDashboardCards());
+      }
+
+      return result;
+    },
     [dashboard, dashcard, dispatch, shouldDisplayButton],
   );
 

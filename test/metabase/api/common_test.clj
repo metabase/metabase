@@ -3,12 +3,14 @@
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [metabase.api.common :as api]
-   [metabase.api.common.internal :as api.internal]
+   [metabase.events :as events]
+   [metabase.models.interface :as mi]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.security :as mw.security]
-   [methodical.core :as methodical]
-   [ring.middleware.multipart-params :as mp]))
+   [metabase.test :as mt]
+   [methodical.core :as methodical])
+  (:import (clojure.lang ExceptionInfo)))
 
 ;;; TESTS FOR CHECK (ETC)
 
@@ -17,7 +19,7 @@
   {:status  404
    :body    "Not found."
    :headers {"Cache-Control"                     "max-age=0, no-cache, must-revalidate, proxy-revalidate"
-             "Content-Security-Policy"           (str (-> (@#'mw.security/content-security-policy-header) vals first)
+             "Content-Security-Policy"           (str (-> (@#'mw.security/content-security-policy-header nil) vals first)
                                                       " frame-ancestors 'none';")
              "Content-Type"                      "text/plain"
              "Expires"                           "Tue, 03 Jul 2001 06:00:00 GMT"
@@ -77,73 +79,9 @@
             identity
             (fn [e] (throw e)))))))
 
-(deftest ^:parallel parse-defendpoint-args-test
-  (is (= {:method      'POST
-          :route       ["/:id/dimension" :id "[0-9]+"]
-          :docstr      String
-          :args        '[id :as {{dimension-type :type, dimension-name :name} :body}]
-          :arg->schema '{dimension-type schema.core/Int, dimension-name schema.core/Str}
-          :fn-name     'POST_:id_dimension}
-         (-> (#'api/parse-defendpoint-args
-              '[POST "/:id/dimension"
-                "Sets the dimension for the given object with ID."
-                [id :as {{dimension-type :type, dimension-name :name} :body}]
-                {dimension-type schema.core/Int
-                 dimension-name schema.core/Str}])
-             (update :docstr class)
-             ;; two regex patterns are not equal even if they're the exact same pattern so convert to string so we can
-             ;; compare easily.
-             (update-in [:route 2] str)))))
-
 (methodical/defmethod hawk.approx/=?-diff [java.util.regex.Pattern clojure.lang.Symbol]
   [expected-re sym]
   (hawk.approx/=?-diff expected-re (name sym)))
-
-(deftest ^:parallel defendpoint-test
-  ;; replace regex `#"[0-9]+"` with str `"#[0-9]+" so expectations doesn't barf
-  (binding [api.internal/*auto-parse-types* (update-in api.internal/*auto-parse-types* [:int :route-param-regex] (partial str "#"))]
-    (testing "Standard defendpoint"
-      ;; Can't quasi-quote here since that would fully qualify symbols like GET_:id
-      (is (=? (list
-               'def
-               'GET_:id
-               (list 'compojure.core/make-route
-                     :get
-                     {:source "/:id", :re #"/(#[0-9]+)", :keys [:id], :absolute? false}
-                     (list identity
-                           '(clojure.core/fn
-                              [#"request__\d+__auto__"]
-                              (metabase.api.common/validate-param-values #"request__\d+__auto__" '(id))
-                              (compojure.core/let-request
-                               [[id] #"request__\d+__auto__"]
-                               (metabase.api.common.internal/auto-parse
-                                   [id]
-                                 (metabase.api.common.internal/validate-param 'id id metabase.util.schema/IntGreaterThanZero)
-                                 (metabase.api.common.internal/wrap-response-if-needed (do (select-one Card :id id)))))))))
-              (macroexpand '(metabase.api.common/defendpoint-schema compojure.core/GET "/:id" [id]
-                              {id metabase.util.schema/IntGreaterThanZero}
-                              (select-one Card :id id))))))
-    (testing "Multipart"
-      ;; Can't quasi-quote here since that would fully qualify symbols like GET_:id
-      (is (=? (list
-               'def
-               'GET_:id
-               (list 'compojure.core/make-route
-                     :get
-                     {:source "/:id", :re #"/(#[0-9]+)", :keys [:id], :absolute? false}
-                     (list mp/wrap-multipart-params
-                           '(clojure.core/fn
-                              [#"request__\d+__auto__"]
-                              (metabase.api.common/validate-param-values #"request__\d+__auto__" '(id))
-                              (compojure.core/let-request
-                               [[id] #"request__\d+__auto__"]
-                               (metabase.api.common.internal/auto-parse
-                                   [id]
-                                 (metabase.api.common.internal/validate-param 'id id metabase.util.schema/IntGreaterThanZero)
-                                 (metabase.api.common.internal/wrap-response-if-needed (do (select-one Card :id id)))))))))
-              (macroexpand '(metabase.api.common/defendpoint-schema ^:multipart compojure.core/GET "/:id" [id]
-                              {id metabase.util.schema/IntGreaterThanZero}
-                              (select-one Card :id id))))))))
 
 (deftest parse-multi-values-param-test
   (testing "single value returns a vector with 1 elem"
@@ -151,3 +89,49 @@
 
   (testing "multi values a vector as well"
     (is (= [1 2 3] (api/parse-multi-values-param ["1" "2" "3"] parse-long)))))
+
+;; set up for testing permission failure event publishing
+(def ^:dynamic *events* nil)
+
+(methodical/defmethod events/publish-event! ::permission-failure-event
+  [topic event]
+  (swap! *events* conj [topic event]))
+
+(deftest check-functions-publish-events
+  ;; setup - derive events so they get dispatched to our test method
+  (derive ::permission-failure-event :metabase/event)
+  (derive :event/write-permission-failure ::permission-failure-event)
+  (derive :event/update-permission-failure ::permission-failure-event)
+  (derive :event/create-permission-failure ::permission-failure-event)
+
+  (try
+    (binding [api/*current-user-id* 1]
+      (with-redefs [mi/can-read? (constantly false)
+                    mi/can-write? (constantly false)
+                    mi/can-update? (constantly false)
+                    mi/can-create? (constantly false)]
+        (mt/with-temp [:model/Card card {}]
+          (testing "write-check"
+            (binding [*events* (atom [])]
+              (is (thrown? ExceptionInfo (api/write-check card)))
+              (is (= [[:event/write-permission-failure {:object card
+                                                        :user-id 1}]]
+                     @*events*))))
+          (testing "update-check"
+            (binding [*events* (atom [])]
+              (is (thrown? ExceptionInfo (api/update-check card card)))
+              (is (= [[:event/update-permission-failure {:object card
+                                                         :user-id 1}]]
+                     @*events*))))
+          (testing "create-check"
+            (binding [*events* (atom [])]
+              (is (thrown? ExceptionInfo (api/create-check :model/Collection {})))
+              (is (= [[:event/create-permission-failure {:model :model/Collection
+                                                         :user-id 1}]]
+                     @*events*)))))))
+    (finally
+      ;; teardown - underive events so they aren't dispatched in other tests
+      (underive ::permission-failure-event :metabase/event)
+      (underive :event/write-permission-failure ::permission-failure-event)
+      (underive :event/update-permission-failure ::permission-failure-event)
+      (underive :event/create-permission-failure ::permission-failure-event))))

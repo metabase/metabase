@@ -12,11 +12,7 @@ export const AdminNavItem = ({
   currentPath,
 }: AdminNavItemProps) => (
   <li>
-    <AdminNavLink
-      to={path}
-      data-metabase-event={`NavBar;${name}`}
-      isSelected={currentPath.startsWith(path)}
-    >
+    <AdminNavLink to={path} isSelected={currentPath.startsWith(path)}>
       {name}
     </AdminNavLink>
   </li>

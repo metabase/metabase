@@ -1,3 +1,4 @@
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
@@ -16,7 +17,7 @@ describe("scenarios > dashboard > filters > ID", () => {
     restore();
     cy.signInAsAdmin();
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
     setFilter("ID");
@@ -34,8 +35,9 @@ describe("scenarios > dashboard > filters > ID", () => {
 
       filterWidget().click();
       addWidgetStringFilter("15");
+      cy.findByTestId("loading-spinner").should("not.exist");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("114.42");
       });
     });
@@ -46,8 +48,9 @@ describe("scenarios > dashboard > filters > ID", () => {
       addWidgetStringFilter("15");
 
       saveDashboard();
+      cy.findByTestId("loading-spinner").should("not.exist");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("114.42");
       });
     });
@@ -63,8 +66,9 @@ describe("scenarios > dashboard > filters > ID", () => {
 
       filterWidget().click();
       addWidgetStringFilter("4");
+      cy.findByTestId("loading-spinner").should("not.exist");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("47.68");
       });
 
@@ -77,8 +81,9 @@ describe("scenarios > dashboard > filters > ID", () => {
       addWidgetStringFilter("4");
 
       saveDashboard();
+      cy.findByTestId("loading-spinner").should("not.exist");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("47.68");
       });
 
@@ -89,7 +94,10 @@ describe("scenarios > dashboard > filters > ID", () => {
   describe("should work on the implicit join", () => {
     beforeEach(() => {
       popover().within(() => {
-        cy.findAllByText("ID").last().click();
+        // There are three of these, and the order is fixed:
+        // "own" column first, then implicit join on People and User alphabetically.
+        // We select index 1 to get the Product.ID.
+        cy.findAllByText("ID").eq(1).click();
       });
     });
 
@@ -98,8 +106,9 @@ describe("scenarios > dashboard > filters > ID", () => {
 
       filterWidget().click();
       addWidgetStringFilter("10");
+      cy.findByTestId("loading-spinner").should("not.exist");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("6.75");
       });
     });
@@ -110,8 +119,9 @@ describe("scenarios > dashboard > filters > ID", () => {
       addWidgetStringFilter("10");
 
       saveDashboard();
+      cy.findByTestId("loading-spinner").should("not.exist");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("6.75");
       });
     });

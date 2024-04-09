@@ -1,6 +1,8 @@
 import fetchMock from "fetch-mock";
-import { ParameterValues } from "metabase-types/api";
-import { createMockDataset, MockDatasetOpts } from "metabase-types/api/mocks";
+
+import type { ParameterValues } from "metabase-types/api";
+import type { MockDatasetOpts } from "metabase-types/api/mocks";
+import { createMockDataset } from "metabase-types/api/mocks";
 
 export function setupParameterValuesEndpoints(
   parameterValues: ParameterValues,

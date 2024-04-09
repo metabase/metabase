@@ -1,6 +1,10 @@
+import type { Location } from "history";
 import querystring from "querystring";
-import * as Urls from "metabase/lib/urls";
+
 import { serializeCardForUrl } from "metabase/lib/card";
+import * as Urls from "metabase/lib/urls";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
@@ -26,7 +30,7 @@ export function getPathNameFromQueryBuilderMode({
 export function getCurrentQueryParams() {
   const search =
     window.location.search.charAt(0) === "?"
-      ? window.location.search.slice(0)
+      ? window.location.search.slice(1)
       : window.location.search;
   return querystring.parse(search);
 }
@@ -57,3 +61,75 @@ export function getURLForCardState(
   }
   return Urls.question(card, options);
 }
+
+export const isNavigationAllowed = ({
+  destination,
+  question,
+  isNewQuestion,
+}: {
+  destination: Location | undefined;
+  question: Question | undefined;
+  isNewQuestion: boolean;
+}) => {
+  /**
+   * If there is no "question" there is no reason to prevent navigation.
+   * If there is no "destination" then it's beforeunload event, which is
+   * handled by useBeforeUnload hook - no reason to duplicate its work.
+   */
+  if (!question || !destination) {
+    return true;
+  }
+
+  const { hash, pathname } = destination;
+
+  const { isNative } = Lib.queryDisplayInfo(question.query());
+  const isRunningModel = pathname === "/model" && hash.length > 0;
+
+  const validSlugs = [question.id(), question.slug()]
+    .filter(Boolean)
+    .map(String);
+
+  if (question.type() === "model") {
+    const allowedPathnames = isNewQuestion
+      ? ["/model/query", "/model/metadata"]
+      : validSlugs.flatMap(slug => [
+          `/model/${slug}`,
+          `/model/${slug}/query`,
+          `/model/${slug}/metadata`,
+          `/model/${slug}/notebook`,
+        ]);
+
+    return isRunningModel || allowedPathnames.includes(pathname);
+  }
+
+  if (isNative) {
+    const allowedPathnames = [
+      ...validSlugs.map(slug => `/question/${slug}`),
+      "/question",
+    ];
+    const isRunningQuestion =
+      allowedPathnames.includes(pathname) && hash.length > 0;
+
+    return isRunningQuestion;
+  }
+
+  /**
+   * New structured questions will be handled in
+   * https://github.com/metabase/metabase/issues/34686
+   *
+   */
+  if (!isNewQuestion && !isNative) {
+    const isRunningQuestion =
+      ["/question", "/question/notebook"].includes(pathname) && hash.length > 0;
+    const allowedPathnames = validSlugs.flatMap(slug => [
+      `/question/${slug}`,
+      `/question/${slug}/notebook`,
+    ]);
+
+    return (
+      isRunningModel || isRunningQuestion || allowedPathnames.includes(pathname)
+    );
+  }
+
+  return true;
+};

@@ -1,4 +1,6 @@
-import { forwardRef, HTMLAttributes, ReactNode, Ref, useContext } from "react";
+import type { HTMLAttributes, ReactNode, Ref } from "react";
+import { forwardRef, useContext } from "react";
+
 import { getTabId, getTabPanelId, TabContext } from "../Tab";
 
 export interface TabPanelProps<T> extends HTMLAttributes<HTMLDivElement> {

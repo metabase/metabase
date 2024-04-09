@@ -1,14 +1,16 @@
-import cx from "classnames";
-import {
-  ButtonHTMLAttributes,
-  forwardRef,
-  ReactNode,
-  Ref,
-  ElementType,
-} from "react";
 import styled from "@emotion/styled";
+import cx from "classnames";
+import type { ButtonHTMLAttributes, ReactNode, ElementType, Ref } from "react";
+import { forwardRef } from "react";
 import _ from "underscore";
-import { Icon, IconName } from "metabase/core/components/Icon";
+
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
+import SpacingS from "metabase/css/core/spacing.module.css";
+import { isNotNull } from "metabase/lib/types";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
+
 import {
   ButtonContent,
   ButtonRoot,
@@ -25,12 +27,29 @@ const BUTTON_VARIANTS = [
   "warning",
   "cancel",
   "success",
-  "purple",
   "white",
   "borderless",
   "onlyIcon",
   "fullWidth",
 ] as const;
+
+const VARIANT_TO_CLASS_MAP: {
+  [key: string]: string;
+} = {
+  small: ButtonsS.ButtonSmall,
+  medium: ButtonsS.ButtonMedium,
+  large: ButtonsS.ButtonLarge,
+  round: ButtonsS.ButtonRound,
+  primary: ButtonsS.ButtonPrimary,
+  danger: ButtonsS.ButtonDanger,
+  warning: ButtonsS.ButtonWarning,
+  cancel: ButtonsS.ButtonCancel,
+  success: ButtonsS.ButtonSuccess,
+  white: ButtonsS.ButtonWhite,
+  borderless: ButtonsS.ButtonBorderless,
+  onlyIcon: ButtonsS.ButtonOnlyIcon,
+  fullWidth: ButtonsS.ButtonFullWidth,
+};
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   as?: ElementType;
@@ -44,7 +63,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   iconColor?: string;
   iconRight?: IconName;
   iconVertical?: boolean;
-  labelBreakpoint?: string;
+  labelBreakpoint?: "sm";
   children?: ReactNode;
 
   small?: boolean;
@@ -83,17 +102,17 @@ const BaseButton = forwardRef(function BaseButton(
   }: ButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
-  const variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(
-    variant => "Button--" + variant,
-  );
+  const variantClasses = BUTTON_VARIANTS.filter(variant => props[variant])
+    .map(variant => VARIANT_TO_CLASS_MAP[variant])
+    .filter(isNotNull);
 
   return (
     <ButtonRoot
       ref={ref}
       as={as}
       {..._.omit(props, ...BUTTON_VARIANTS)}
-      className={cx("Button", className, variantClasses, {
-        p1: !children,
+      className={cx(ButtonsS.Button, className, variantClasses, {
+        [SpacingS.p1]: !children,
       })}
       purple={props.purple}
     >
@@ -112,9 +131,9 @@ const BaseButton = forwardRef(function BaseButton(
             hasIcon={!!icon}
             hasRightIcon={!!iconRight}
             iconVertical={iconVertical}
-            className={cx({
-              [`hide ${labelBreakpoint}-show`]: !!labelBreakpoint,
-            })}
+            className={
+              labelBreakpoint === "sm" ? cx(CS.hide, CS.smShow) : undefined
+            }
           >
             {children}
           </ButtonTextContainer>
@@ -131,13 +150,18 @@ const BaseButton = forwardRef(function BaseButton(
   );
 });
 
-const Button = styled(BaseButton)``;
+const StyledButton = styled(BaseButton)``;
 
-Button.displayName = "Button";
+StyledButton.displayName = "Button";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(Button, {
+/**
+ * @deprecated: use Button from "metabase/ui"
+ */
+const Button = Object.assign(StyledButton, {
   Root: ButtonRoot,
   Content: ButtonContent,
   TextContainer: ButtonTextContainer,
 });
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Button;

@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.conversion :as qc]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models.database :refer [Database]]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.task.sync-databases :as task.sync-databases]
@@ -131,13 +131,14 @@
              (t2/insert! Database {:engine :postgres, k "0 * ABCD"}))))))
 
   (testing "Check that you can't UPDATE a DB's schedule to something invalid"
-    (t2.with-temp/with-temp [Database database {:engine :postgres}]
-      (doseq [k [:metadata_sync_schedule :cache_field_values_schedule]]
-        (testing (format "Update %s" k)
-          (is (thrown?
-               Exception
-               (t2/update! Database (u/the-id database)
-                           {k "2 CANS PER DAY"}))))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [Database database {:engine :postgres}]
+        (doseq [k [:metadata_sync_schedule :cache_field_values_schedule]]
+          (testing (format "Update %s" k)
+            (is (thrown?
+                 Exception
+                 (t2/update! Database (u/the-id database)
+                             {k "2 CANS PER DAY"})))))))))
 
 ;; this is a deftype due to an issue with Clojure. The `org.quartz.JobExecutionContext` interface has a put method and
 ;; defrecord emits a put method and things get
@@ -270,8 +271,8 @@
   (let [sync-default (first sync.schedules/default-metadata-sync-schedule-cron-strings)
         fv-default   (first sync.schedules/default-cache-field-values-schedule-cron-strings)]
     (testing "Randomizes databases that have the 'old' style schedule defaults"
-      (mt/with-temp* [Database [db {:metadata_sync_schedule      sync-default
-                                    :cache_field_values_schedule fv-default}]]
+      (mt/with-temp [Database db {:metadata_sync_schedule      sync-default
+                                  :cache_field_values_schedule fv-default}]
         (#'task.sync-databases/randomize-db-schedules-if-needed)
         (let [after (t2/select-one Database :id (u/the-id db))]
           (is (not= sync-default (:metadata_sync_schedule after))
@@ -281,8 +282,8 @@
     (testing "Does not randomize databases that have an already randomized sched"
       (let [custom-sync "0 58 * * * ? *",
             custom-fv   "0 0 16 * * ? *"]
-        (mt/with-temp* [Database [db {:metadata_sync_schedule      custom-sync
-                                      :cache_field_values_schedule custom-fv}]]
+        (mt/with-temp [Database db {:metadata_sync_schedule      custom-sync
+                                    :cache_field_values_schedule custom-fv}]
           (#'task.sync-databases/randomize-db-schedules-if-needed)
           (let [after (t2/select-one Database :id (u/the-id db))]
             (is (= custom-sync (:metadata_sync_schedule after))
@@ -291,8 +292,8 @@
                 "Field values schedule was erroneously randomized")
             (is (= (:updated_at after) (:updated_at db)))))))
     (testing "Does not randomize databases that have default schedules but let users control schedule"
-      (mt/with-temp* [Database [db {:metadata_sync_schedule      sync-default
-                                    :cache_field_values_schedule fv-default}]]
+      (mt/with-temp [Database db {:metadata_sync_schedule      sync-default
+                                  :cache_field_values_schedule fv-default}]
         (t2/update! Database (u/the-id db) {:details (assoc (:details db)
                                                             :let-user-control-scheduling true)})
         (let [before (t2/select-one Database :id (u/the-id db))]

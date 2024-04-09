@@ -1,6 +1,6 @@
-import moment from "moment-timezone";
-import testAcrossTimezones from "__support__/timezones";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
+import testAcrossTimezones from "__support__/timezones";
 import fillMissingValuesInDatas from "metabase/visualizations/lib/fill_data";
 
 // jsdom doesn't support layout methods like getBBox, so we need to mock it.

@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visualize,
@@ -5,7 +6,6 @@ import {
   summarize,
   startNewQuestion,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
   SAMPLE_DATABASE;
@@ -85,15 +85,15 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // Make sure time series footer works as well
-      cy.findAllByTestId("select-button-content").contains("Year").click();
+      cy.findByTestId("timeseries-bucket-button").contains("Year").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Quarter").click();
 
       cy.wait("@dataset");
       cy.get(".axis.x")
-        .should("contain", "Q1 - 1960")
-        .and("contain", "Q1 - 1965")
-        .and("contain", "Q1 - 2000");
+        .should("contain", "Q1 1960")
+        .and("contain", "Q1 1965")
+        .and("contain", "Q1 2000");
     });
 
     it("should work for number", () => {
@@ -109,7 +109,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
     });
 
-    it("should work for longitude", () => {
+    it("should work for longitude", { tags: "@flaky" }, () => {
       changeBinningForDimension({
         name: "People → Longitude",
         fromBinning: "Auto bin",
@@ -154,15 +154,15 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // Make sure time series footer works as well
-      cy.findAllByTestId("select-button-content").contains("Year").click();
+      cy.findByTestId("timeseries-bucket-button").contains("Year").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Quarter").click();
 
       cy.wait("@dataset");
       cy.get(".axis.x")
-        .should("contain", "Q1 - 1960")
-        .and("contain", "Q1 - 1965")
-        .and("contain", "Q1 - 2000");
+        .should("contain", "Q1 1960")
+        .and("contain", "Q1 1965")
+        .and("contain", "Q1 2000");
     });
 
     it("should work for number", () => {
@@ -217,14 +217,14 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       assertOnXYAxisLabels({ xLabel: "People → Birth Date", yLabel: "Count" });
 
       cy.get(".axis.x", { timeout: 1000 })
-        .should("contain", "January, 1960")
-        .and("contain", "January, 1965")
-        .and("contain", "January, 2000");
+        .should("contain", "January 1960")
+        .and("contain", "January 1965")
+        .and("contain", "January 2000");
 
       cy.get("circle");
 
       // Make sure time series footer works as well
-      cy.findAllByTestId("select-button-content").contains("Month").click();
+      cy.findByTestId("timeseries-bucket-button").contains("Month").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Quarter").click();
 
@@ -233,9 +233,9 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.findByText("Count by People → Birth Date: Quarter");
 
       cy.get(".axis.x")
-        .should("contain", "Q1 - 1960")
-        .and("contain", "Q1 - 1965")
-        .and("contain", "Q1 - 2000");
+        .should("contain", "Q1 1960")
+        .and("contain", "Q1 1965")
+        .and("contain", "Q1 2000");
     });
 
     it("should work for number", () => {

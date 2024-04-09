@@ -1,14 +1,15 @@
-import { Component, ReactNode } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
-import {
-  ModalContentActionIcon,
-  ActionsWrapper,
-  HeaderContainer,
-  HeaderText,
-} from "./ModalContent.styled";
+import PropTypes from "prop-types";
+import type { ReactNode } from "react";
+import { Component } from "react";
+
+import CS from "metabase/css/core/index.css";
+
+import { ModalHeader } from "./ModalHeader";
+import type { CommonModalProps } from "./types";
 
 export interface ModalContentProps extends CommonModalProps {
+  "data-testid"?: string;
   id?: string;
   title: string;
   footer?: ReactNode;
@@ -17,24 +18,15 @@ export interface ModalContentProps extends CommonModalProps {
   className?: string;
 }
 
-interface CommonModalProps {
-  // takes over the entire screen
-  fullPageModal?: boolean;
-  // standard modal
-  formModal?: boolean;
-  centeredTitle?: boolean;
-
-  headerActions?: ReactNode;
-  onClose?: () => void;
-}
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class ModalContent extends Component<ModalContentProps> {
   static propTypes = {
+    "data-testid": PropTypes.string,
     id: PropTypes.string,
-    title: PropTypes.string,
+    title: PropTypes.oneOfType([PropTypes.string, PropTypes.element]),
     centeredTitle: PropTypes.bool,
     onClose: PropTypes.func,
+    onBack: PropTypes.func,
     // takes over the entire screen
     fullPageModal: PropTypes.bool,
     // standard modal
@@ -57,10 +49,12 @@ export default class ModalContent extends Component<ModalContentProps> {
 
   render() {
     const {
+      "data-testid": dataTestId,
       title,
       centeredTitle,
       footer,
       onClose,
+      onBack,
       children,
       className,
       fullPageModal,
@@ -72,12 +66,17 @@ export default class ModalContent extends Component<ModalContentProps> {
       <div
         id={this.props.id}
         className={cx(
-          "ModalContent flex-full flex flex-column relative",
+          "ModalContent",
+          CS.flexFull,
+          CS.flex,
+          CS.flexColumn,
+          CS.relative,
           className,
-          { "full-height": fullPageModal && !formModal },
+          { [CS.fullHeight]: fullPageModal && !formModal },
           // add bottom padding if this is a standard "form modal" with no footer
-          { pb4: formModal && !footer },
+          { [CS.pb4]: formModal && !footer },
         )}
+        data-testid={dataTestId}
       >
         {title && (
           <ModalHeader
@@ -86,6 +85,7 @@ export default class ModalContent extends Component<ModalContentProps> {
             formModal={formModal}
             headerActions={headerActions}
             onClose={onClose}
+            onBack={onBack}
           >
             {title}
           </ModalHeader>
@@ -105,46 +105,6 @@ export default class ModalContent extends Component<ModalContentProps> {
 
 const FORM_WIDTH = 500 + 32 * 2; // includes padding
 
-interface ModalHeaderProps extends CommonModalProps {
-  children: ReactNode;
-}
-
-export const ModalHeader = ({
-  children,
-  fullPageModal,
-  centeredTitle,
-  headerActions,
-  onClose,
-}: ModalHeaderProps) => {
-  const hasActions = !!headerActions || !!onClose;
-  const actionIconSize = fullPageModal ? 24 : 16;
-
-  return (
-    <HeaderContainer data-testid="modal-header">
-      <HeaderText
-        className={cx({
-          "text-centered": fullPageModal || centeredTitle,
-        })}
-      >
-        {children}
-      </HeaderText>
-
-      {hasActions && (
-        <ActionsWrapper>
-          {headerActions}
-          {onClose && (
-            <ModalContentActionIcon
-              name="close"
-              size={actionIconSize}
-              onClick={onClose}
-            />
-          )}
-        </ActionsWrapper>
-      )}
-    </HeaderContainer>
-  );
-};
-
 interface ModalBodyProps extends CommonModalProps {
   children: ReactNode;
 }
@@ -156,12 +116,12 @@ export const ModalBody = ({
 }: ModalBodyProps) => (
   <div
     className={cx("ModalBody", {
-      px4: formModal,
-      "flex flex-full flex-basis-auto": !formModal,
+      [CS.px4]: formModal,
+      [cx(CS.flex, CS.flexFull, CS.flexBasisAuto)]: !formModal,
     })}
   >
     <div
-      className="flex-full ml-auto mr-auto flex flex-column"
+      className={cx(CS.flexFull, CS.mlAuto, CS.mrAuto, CS.flex, CS.flexColumn)}
       style={{ maxWidth: formModal && fullPageModal ? FORM_WIDTH : undefined }}
     >
       {children}
@@ -180,17 +140,20 @@ export const ModalFooter = ({
 }: ModalFooterProps) => (
   <div
     className={cx(
-      "ModalFooter flex flex-no-shrink px4",
-      fullPageModal ? "py4" : "py3",
+      "ModalFooter",
+      CS.flex,
+      CS.flexNoShrink,
+      CS.px4,
+      fullPageModal ? CS.py4 : CS.py3,
     )}
   >
     <div
-      className="ml-auto flex align-center"
+      className={cx(CS.mlAuto, CS.flex, CS.alignCenter)}
       style={{ maxWidth: formModal && fullPageModal ? FORM_WIDTH : undefined }}
     >
       {Array.isArray(children)
         ? children.map((child, index) => (
-            <span key={index} className="ml2">
+            <span key={index} className={CS.ml2}>
               {child}
             </span>
           ))

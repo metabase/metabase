@@ -1,10 +1,12 @@
 import { renderHook } from "@testing-library/react-hooks";
+
 import {
   createMockActionParameter,
   createMockFieldSettings,
   createMockImplicitQueryAction,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
+
 import useActionForm from "./use-action-form";
 
 describe("useActionForm", () => {
@@ -132,7 +134,7 @@ describe("useActionForm", () => {
       });
     });
 
-    it("should filter out unchanged values for implicit update actions", () => {
+    it("should filter out unchanged values when prefetching initial values", () => {
       const parameter = createMockActionParameter({
         id: "param1",
         type: "string",
@@ -145,6 +147,7 @@ describe("useActionForm", () => {
         useActionForm({
           action,
           initialValues: { param1: "some value" },
+          prefetchesInitialValues: true,
         }),
       );
       expect(result.current.getCleanValues({ param1: "some value" })).toEqual(

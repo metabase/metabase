@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { alpha } from "metabase/lib/colors";
 
 export type BorderSide = "top" | "right" | "bottom" | "left";
@@ -19,17 +20,23 @@ export const NotebookCell = styled.div<{ color: string; padding?: string }>`
 export const NotebookCellItemContainer = styled.div<{
   color: string;
   inactive?: boolean;
+  readOnly?: boolean;
+  disabled?: boolean;
 }>`
   display: flex;
   align-items: center;
   font-weight: bold;
   color: ${props => (props.inactive ? props.color : "white")};
   border-radius: 6px;
-  margin-right: 4px;
 
   border: 2px solid transparent;
   border-color: ${props =>
     props.inactive ? alpha(props.color, 0.25) : "transparent"};
+
+  cursor: ${props =>
+    (!props.inactive || props.onClick) && !props.readOnly && !props.disabled
+      ? "pointer"
+      : "default"};
 
   &:hover {
     border-color: ${props => props.inactive && alpha(props.color, 0.8)};
@@ -45,6 +52,8 @@ export const NotebookCellItemContainer = styled.div<{
 export const NotebookCellItemContentContainer = styled.div<{
   color: string;
   inactive?: boolean;
+  readOnly?: boolean;
+  disabled?: boolean;
   border?: BorderSide;
   roundedCorners: BorderSide[];
 }>`
@@ -53,8 +62,14 @@ export const NotebookCellItemContentContainer = styled.div<{
   padding: ${CONTAINER_PADDING};
   background-color: ${props => (props.inactive ? "transparent" : props.color)};
 
+  pointer-events: ${props => (props.disabled ? "none" : "auto")};
+
   &:hover {
-    background-color: ${props => !props.inactive && alpha(props.color, 0.8)};
+    background-color: ${props =>
+      !props.inactive &&
+      !props.readOnly &&
+      !props.disabled &&
+      alpha(props.color, 0.8)};
   }
 
   ${props =>

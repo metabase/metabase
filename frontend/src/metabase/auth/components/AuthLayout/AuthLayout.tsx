@@ -1,7 +1,9 @@
-import { ReactNode } from "react";
-import { useSelector } from "metabase/lib/redux";
+import type { ReactNode } from "react";
+
 import LogoIcon from "metabase/components/LogoIcon";
-import { getHasIllustration } from "../../selectors";
+import { useSelector } from "metabase/lib/redux";
+import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
+
 import {
   LayoutBody,
   LayoutCard,
@@ -14,11 +16,17 @@ interface AuthLayoutProps {
 }
 
 export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
-  const hasIllustration = useSelector(getHasIllustration);
+  const loginPageIllustration = useSelector(getLoginPageIllustration);
 
   return (
     <LayoutRoot>
-      {hasIllustration && <LayoutIllustration />}
+      {loginPageIllustration && (
+        <LayoutIllustration
+          data-testid="login-page-illustration"
+          backgroundImageSrc={loginPageIllustration.src}
+          isDefault={loginPageIllustration.isDefault}
+        />
+      )}
       <LayoutBody>
         <LogoIcon height={65} />
         <LayoutCard>{children}</LayoutCard>

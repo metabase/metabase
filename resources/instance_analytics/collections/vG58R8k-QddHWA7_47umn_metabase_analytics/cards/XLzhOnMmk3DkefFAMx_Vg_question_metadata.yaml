@@ -1,0 +1,214 @@
+name: Question metadata
+description: null
+entity_id: XLzhOnMmk3DkefFAMx_Vg
+created_at: '2023-11-01T02:34:12.158577Z'
+creator_id: internal@metabase.com
+display: object
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+dataset: false
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_content
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_type
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - created_at
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - updated_at
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - creator_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - description
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - made_public_by_user
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - is_embedding_enabled
+      - base-type: type/Boolean
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - archived
+      - base-type: type/Boolean
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_type
+      - base-type: type/Text
+    - question
+    source-table: AxSackBiyXVRUzM_TyyQY
+  type: query
+result_metadata: null
+visualization_settings:
+  column_settings:
+    '["ref",["field",["Internal Metabase Database","public","v_audit_log","model_id"],null]]':
+      column_title: Content ID
+    '["ref",["field",["Internal Metabase Database","public","v_audit_log","timestamp"],null]]':
+      column_title: Creation Date
+    '["ref",["field",["Internal Metabase Database","public","v_content","description"],{"join-alias":"Question 35"}]]':
+      column_title: Description
+    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]':
+      column_title: Name
+    '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"join-alias":"Question 1"}]]':
+      column_title: Creator Name
+  table.cell_column: model_id
+  table.columns:
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_id
+    - base-type: type/Integer
+    name: entity_id
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - name
+    - base-type: type/Text
+    name: name
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_type
+    - base-type: type/Text
+    name: entity_type
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - created_at
+    - base-type: type/DateTimeWithLocalTZ
+      temporal-unit: default
+    name: created_at
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - updated_at
+    - base-type: type/DateTimeWithLocalTZ
+      temporal-unit: default
+    name: updated_at
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - creator_id
+    - base-type: type/Integer
+    name: creator_id
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - description
+    - base-type: type/Text
+    name: description
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - made_public_by_user
+    - base-type: type/Integer
+    name: made_public_by_user
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - is_embedding_enabled
+    - base-type: type/Boolean
+    name: is_embedding_enabled
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - archived
+    - base-type: type/Boolean
+    name: archived
+  table.pivot_column: full_name
+serdes/meta:
+- id: XLzhOnMmk3DkefFAMx_Vg
+  label: question_metadata
+  model: Card
+initially_published_at: null
+metabase_version: vUNKNOWN (13e6090)
+type: question

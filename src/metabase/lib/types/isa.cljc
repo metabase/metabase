@@ -1,26 +1,30 @@
 (ns metabase.lib.types.isa
   "Ported from frontend/src/metabase-lib/types/utils/isa.js"
+  (:refer-clojure :exclude [isa? any? boolean? number? string? integer?])
   (:require
    [medley.core :as m]
    [metabase.lib.types.constants :as lib.types.constants]
    [metabase.lib.util :as lib.util]
-   [metabase.types])
-  (:refer-clojure :exclude [isa? any? boolean? number? string? integer?]))
+   [metabase.types]))
 
 (comment metabase.types/keep-me)
 
 (defn ^:export isa?
   "Decide if `_column` is a subtype of the type denoted by the keyword `type-kw`.
   Both effective and semantic types are taken into account."
-  [{:keys [effective-type semantic-type] :as _column} type-kw]
-  (or (clojure.core/isa? effective-type type-kw)
+  [{:keys [effective-type base-type semantic-type] :as _column} type-kw]
+  (or (clojure.core/isa? (or effective-type base-type) type-kw)
       (clojure.core/isa? semantic-type type-kw)))
 
 (defn ^:export field-type?
   "Returns if `column` is of category `category`.
   The possible categories are the keys in [[metabase.lib.types.constants/type-hierarchies]]."
   [category column]
-  (let [type-definition (lib.types.constants/type-hierarchies category)]
+  (let [type-definition (lib.types.constants/type-hierarchies category)
+        column          (cond-> column
+                          (and (map? column)
+                               (not (:effective-type column)))
+                          (assoc :effective-type (:base-type column)))]
     (cond
       (nil? column) false
 
@@ -56,7 +60,7 @@
                  ::lib.types.constants/string_like
                  ::lib.types.constants/number]))
 
-(defn ^:export date?
+(defn ^:export temporal?
   "Is `column` of a temporal type?"
   [column]
   (field-type? ::lib.types.constants/temporal column))
@@ -105,13 +109,13 @@
   "Is `column` a dimension?"
   [column]
   (and column
-       (not= (:lib/source column) :source/aggregation)
+       (not= (:lib/source column) :source/aggregations)
        (not (description? column))))
 
 (defn ^:export metric?
   "Is `column` a metric?"
   [column]
-  (and (not= (:lib/source column) :source/breakout)
+  (and (not= (:lib/source column) :source/breakouts)
        (summable? column)))
 
 (defn ^:export foreign-key?
@@ -129,6 +133,26 @@
   [column]
   (clojure.core/isa? (:semantic-type column) :type/Name))
 
+(defn ^:export title?
+  "Is `column` a title column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/Title))
+
+(defn ^:export json?
+  "Is `column` a serialized JSON column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/SerializedJSON))
+
+(defn ^:export xml?
+  "Is `column` a serialized XML column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/XML))
+
+(defn ^:export structured?
+  "Is `column` serialized structured data? (eg. JSON, XML)"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/Structured))
+
 (defn ^:export any?
   "Is this `_column` whatever (including nil)?"
   [_column]
@@ -143,6 +167,21 @@
   "Is `column` a date without time?"
   [column]
   (clojure.core/isa? (:effective-type column) :type/Date))
+
+(defn ^:export creation-timestamp?
+  "Is `column` a creation timestamp column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/CreationTimestamp))
+
+(defn ^:export creation-date?
+  "Is `column` a creation date column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/CreationDate))
+
+(defn ^:export creation-time?
+  "Is `column` a creation time column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/CreationTime))
 
 ;; ZipCode, ID, etc derive from Number but should not be formatted as numbers
 (defn ^:export number?
@@ -256,3 +295,27 @@
       (if (lib.util/legacy-string-table-id->card-id table-id)
         pk?
         (and pk? (= (:table-id column) table-id))))))
+
+;;; TODO -- This stuff should probably use the constants in [[metabase.lib.types.constants]], however this logic isn't
+;;; supposed to include things with semantic type = Category which the `::string` constant define there includes.
+(defn searchable?
+  "Is this column one that we should show a search widget for (to search its values) in the QB filter UI? If so, we can
+  give it a `has-field-values` value of `:search`."
+  [{:keys [base-type effective-type]}]
+  ;; For the time being we will consider something to be "searchable" if it's a text Field since the `starts-with`
+  ;; filter that powers the search queries (see [[metabase.api.field/search-values]]) doesn't work on anything else
+  (let [column-type (or effective-type base-type)]
+    (or (clojure.core/isa? column-type :type/Text)
+        (clojure.core/isa? column-type :type/TextLike))))
+
+(defn valid-filter-for?
+  "Given two CLJS `:metadata/columns` returns true if `src-column` is a valid source to use for filtering `dst-column`.
+
+  That's the case if both are from the same family (strings, numbers, temporal) or if the `src-column` [[isa?]] subtype
+  of `dst-column`."
+  [src-column dst-column]
+  (or
+    (and (string? src-column)   (string? dst-column))
+    (and (number? src-column)   (number? dst-column))
+    (and (temporal? src-column) (temporal? dst-column))
+    (clojure.core/isa? (:base-type src-column) (:base-type dst-column))))

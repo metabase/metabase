@@ -3,16 +3,18 @@
   (:require
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.common.parameters.operators :as params.ops]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.params :as params]
-   [schema.core :as s]
-   [toucan2.core :as t2]))
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(s/defn ^:private to-numeric :- s/Num
+(mu/defn ^:private to-numeric :- number?
   "Returns either a double or a long. Possible to use the edn reader but we would then have to worry about biginters
   or arbitrary maps/stuff being read. Error messages would be more confusing EOF while reading instead of a more
   sensical number format exception."
@@ -21,20 +23,33 @@
     (Double/parseDouble s)
     (Long/parseLong s)))
 
-(s/defn ^:private parse-param-value-for-type
+(defn- field-type
+  [field-clause]
+  (lib.util.match/match-one field-clause
+    [:field (id :guard integer?) _]  ((some-fn :effective-type :base-type)
+                                      (lib.metadata.protocols/field (qp.store/metadata-provider) id))
+    [:field (_ :guard string?) opts] (:base-type opts)))
+
+(defn- expression-type
+  [query expression-clause]
+  (lib.util.match/match-one expression-clause
+    [:expression (expression-name :guard string?)]
+    (lib/type-of (lib/query (qp.store/metadata-provider) (lib.convert/->pMBQL query))
+                 (lib.convert/->pMBQL &match))))
+
+(mu/defn ^:private parse-param-value-for-type
   "Convert `param-value` to a type appropriate for `param-type`.
   The frontend always passes parameters in as strings, which is what we want in most cases; for numbers, instead
   convert the parameters to integers or floating-point numbers."
-  [param-type param-value field-clause :- mbql.s/field]
+  [query param-type param-value field-clause :- mbql.s/Field]
   (cond
     ;; for `id` or `category` type params look up the base-type of the Field and see if it's a number or not.
     ;; If it *is* a number then recursively call this function and parse the param value as a number as appropriate.
     (and (#{:id :category} param-type)
-         (let [base-type (mbql.u/match-one field-clause
-                           [:field (id :guard integer?) _]  (t2/select-one-fn :base_type Field :id id)
-                           [:field (_ :guard string?) opts] (:base-type opts))]
+         (let [base-type (or (field-type field-clause)
+                             (expression-type query field-clause))]
            (isa? base-type :type/Number)))
-    (recur :number param-value field-clause)
+    (recur query :number param-value field-clause)
 
     ;; no conversion needed if PARAM-TYPE isn't :number or PARAM-VALUE isn't a string
     (or (not= param-type :number)
@@ -44,8 +59,8 @@
     :else
     (to-numeric param-value)))
 
-(s/defn ^:private build-filter-clause :- (s/maybe mbql.s/Filter)
-  [{param-type :type, param-value :value, [_ field :as target] :target, :as param}]
+(mu/defn ^:private build-filter-clause :- [:maybe mbql.s/Filter]
+  [query {param-type :type, param-value :value, [_ field :as target] :target, :as param}]
   (cond
     (params.ops/operator? param-type)
     (params.ops/to-clause param)
@@ -53,12 +68,13 @@
     (sequential? param-value)
     (mbql.u/simplify-compound-filter
      (vec (cons :or (for [value param-value]
-                      (build-filter-clause {:type param-type, :value value, :target target})))))
+                      (build-filter-clause query {:type param-type, :value value, :target target})))))
 
     ;; single value, date range. Generate appropriate MBQL clause based on date string
     (params.dates/date-type? param-type)
-    (params.dates/date-string->filter (parse-param-value-for-type param-type param-value (params/unwrap-field-clause field))
-                                      field)
+    (params.dates/date-string->filter
+     (parse-param-value-for-type query param-type param-value (mbql.u/unwrap-field-or-expression-clause field))
+     field)
 
     ;; TODO - We can't tell the difference between a dashboard parameter (convert to an MBQL filter) and a native
     ;; query template tag parameter without this. There's should be a better, less fragile way to do this. (Not 100%
@@ -69,8 +85,8 @@
     ;; single-value, non-date param. Generate MBQL [= [field <field> nil] <value>] clause
     :else
     [:=
-     (params/wrap-field-id-if-needed field)
-     (parse-param-value-for-type param-type param-value (params/unwrap-field-clause field))]))
+     (mbql.u/wrap-field-id-if-needed field)
+     (parse-param-value-for-type query param-type param-value (mbql.u/unwrap-field-or-expression-clause field))]))
 
 (defn expand
   "Expand parameters for MBQL queries in `query` (replacing Dashboard or Card-supplied params with the appropriate
@@ -86,6 +102,6 @@
       (recur query rest)
 
       :else
-      (let [filter-clause (build-filter-clause (assoc param :value param-value))
+      (let [filter-clause (build-filter-clause query (assoc param :value param-value))
             query         (mbql.u/add-filter-clause query filter-clause)]
         (recur query rest)))))

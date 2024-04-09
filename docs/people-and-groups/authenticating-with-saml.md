@@ -21,8 +21,6 @@ To get started, head over to the Settings section of the Admin Panel, then click
 
 ![SAML form](images/saml-form.png)
 
-At the top, **make sure to click the toggle to enable SAML authentication**, otherwise things won't work even if all of your settings are right.
-
 The form itself is broken up into three parts:
 
 1. [Metabase info that you'll have to input into your identity provider (IdP)](#setting-up-saml-with-your-idp).

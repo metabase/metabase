@@ -1,6 +1,7 @@
-import Question from "metabase-lib/Question";
-import { getLatestModerationReview } from "../../service";
+import type Question from "metabase-lib/v1/Question";
+
 import ModerationReviewIcon from "../../containers/ModerationReviewIcon";
+import { getLatestModerationReview } from "../../service";
 
 export interface QuestionModerationIconProps {
   question: Question;

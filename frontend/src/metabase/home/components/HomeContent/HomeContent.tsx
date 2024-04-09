@@ -1,29 +1,45 @@
-import { useSelector } from "metabase/lib/redux";
-import { isSyncCompleted } from "metabase/lib/syncing";
-import { getUser } from "metabase/selectors/user";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
   useDatabaseListQuery,
   usePopularItemListQuery,
   useRecentItemListQuery,
+  useSetting,
 } from "metabase/common/hooks";
-import { PopularItem, RecentItem, User } from "metabase-types/api";
-import Database from "metabase-lib/metadata/Database";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { useSelector } from "metabase/lib/redux";
+import { isSyncCompleted } from "metabase/lib/syncing";
+import { getUser } from "metabase/selectors/user";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { PopularItem, RecentItem, User } from "metabase-types/api";
+
+import { getIsXrayEnabled } from "../../selectors";
+import { isWithinWeeks } from "../../utils";
+import { EmbedHomepage } from "../EmbedHomepage";
 import { HomePopularSection } from "../HomePopularSection";
 import { HomeRecentSection } from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";
-import { getIsXrayEnabled } from "../../selectors";
-import { isWithinWeeks } from "../../utils";
 
 export const HomeContent = (): JSX.Element | null => {
   const user = useSelector(getUser);
+  const embeddingHomepage = useSetting("embedding-homepage");
   const isXrayEnabled = useSelector(getIsXrayEnabled);
-  const { data: databases } = useDatabaseListQuery();
-  const { data: recentItems } = useRecentItemListQuery({ reload: true });
-  const { data: popularItems } = usePopularItemListQuery({ reload: true });
+  const { data: databases, error: databasesError } = useDatabaseListQuery();
+  const { data: recentItems, error: recentItemsError } = useRecentItemListQuery(
+    { reload: true },
+  );
+  const { data: popularItems, error: popularItemsError } =
+    usePopularItemListQuery({ reload: true });
+  const error = databasesError || recentItemsError || popularItemsError;
+
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
 
   if (!user || isLoading(user, databases, recentItems, popularItems)) {
     return <LoadingAndErrorWrapper loading />;
+  }
+
+  if (embeddingHomepage === "visible" && user.is_superuser) {
+    return <EmbedHomepage />;
   }
 
   if (isPopularSection(user, recentItems, popularItems)) {

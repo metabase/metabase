@@ -1,13 +1,13 @@
+import { assoc, merge } from "icepick";
 import { handleActions } from "redux-actions";
-import { assoc, dissoc, merge } from "icepick";
 import _ from "underscore";
-import Utils from "metabase/lib/utils";
 
-import TimelineEvents from "metabase/entities/timeline-events";
 import {
   EDIT_QUESTION,
   NAVIGATE_TO_NEW_CARD,
 } from "metabase/dashboard/actions";
+import TimelineEvents from "metabase/entities/timeline-events";
+import { copy } from "metabase/lib/utils";
 
 import {
   RESET_QB,
@@ -72,6 +72,7 @@ import {
 
 const DEFAULT_UI_CONTROLS = {
   dataReferenceStack: null,
+  isModifiedFromNotebook: false,
   isShowingDataReference: false,
   isShowingTemplateTagsEditor: false,
   isShowingNewbModal: false,
@@ -398,6 +399,7 @@ export const card = handleActions(
       next: (state, { payload }) => ({
         ...state,
         embedding_params: payload.embedding_params,
+        initially_published_at: payload.initially_published_at,
       }),
     },
   },
@@ -412,20 +414,20 @@ export const originalCard = handleActions(
   {
     [INITIALIZE_QB]: {
       next: (state, { payload }) =>
-        payload.originalCard ? Utils.copy(payload.originalCard) : null,
+        payload.originalCard ? copy(payload.originalCard) : null,
     },
     [RELOAD_CARD]: {
-      next: (state, { payload }) => (payload.id ? Utils.copy(payload) : null),
+      next: (state, { payload }) => (payload.id ? copy(payload) : null),
     },
     [SET_CARD_AND_RUN]: {
       next: (state, { payload }) =>
-        payload.originalCard ? Utils.copy(payload.originalCard) : null,
+        payload.originalCard ? copy(payload.originalCard) : null,
     },
     [API_CREATE_QUESTION]: {
-      next: (state, { payload }) => Utils.copy(payload),
+      next: (state, { payload }) => copy(payload),
     },
     [API_UPDATE_QUESTION]: {
-      next: (state, { payload }) => Utils.copy(payload),
+      next: (state, { payload }) => copy(payload),
     },
   },
   null,
@@ -540,8 +542,7 @@ export const parameterValues = handleActions(
       next: (state, { payload: { parameterValues } }) => parameterValues,
     },
     [SET_PARAMETER_VALUE]: {
-      next: (state, { payload: { id, value } }) =>
-        value == null ? dissoc(state, id) : assoc(state, id, value),
+      next: (state, { payload: { id, value } }) => assoc(state, id, value),
     },
   },
   {},

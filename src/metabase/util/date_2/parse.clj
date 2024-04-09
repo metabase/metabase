@@ -1,11 +1,11 @@
 (ns metabase.util.date-2.parse
   (:require
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.util.date-2.common :as u.date.common]
    [metabase.util.date-2.parse.builder :as b]
    [metabase.util.i18n :refer [tru]]
-   [schema.core :as s])
+   [metabase.util.malli :as mu])
   (:import
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)
@@ -42,9 +42,11 @@
                  :when                    (.isSupported temporal-accessor field)]
              [k (.getLong temporal-accessor field)])))
 
-(s/defn parse-with-formatter :- (s/maybe Temporal)
+(mu/defn parse-with-formatter :- [:maybe [:fn {:error/message "Instance of java.time.temporal.Temporal"}
+                                          (partial instance? Temporal)]]
   "Parse a String with a DateTimeFormatter, returning an appropriate instance of an `java.time` temporal class."
-  [formattr s :- (s/maybe s/Str)]
+  [formattr
+   s :- [:maybe :string]]
   {:pre [((some-fn string? nil?) s)]}
   (when-not (str/blank? s)
     (let [formattr          (t/formatter formattr)
@@ -75,9 +77,9 @@
         [:offset :time]     (OffsetTime/of local-time zone-offset)
         [:local  :time]     local-time
         (throw (ex-info (tru "Don''t know how to parse {0} using format {1}" (pr-str s) (pr-str formattr))
-                 {:s                s
-                  :formatter        formattr
-                  :supported-fields (all-supported-fields temporal-accessor)}))))))
+                        {:s                s
+                         :formatter        formattr
+                         :supported-fields (all-supported-fields temporal-accessor)}))))))
 
 (def ^:private ^DateTimeFormatter date-formatter*
   (b/formatter

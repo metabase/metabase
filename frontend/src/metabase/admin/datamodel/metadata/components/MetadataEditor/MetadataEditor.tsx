@@ -1,11 +1,22 @@
+import cx from "classnames";
 import { t } from "ttag";
+
+import CS from "metabase/css/core/index.css";
+import Databases from "metabase/entities/databases";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import Databases from "metabase/entities/databases";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
+
 import MetadataHeader from "../MetadataHeader";
 import MetadataTable from "../MetadataTable";
 import MetadataTablePicker from "../MetadataTablePicker";
+
+import {
+  MetadataMain,
+  MetadataContent,
+  MetadataWrapper,
+  MetadataSidebar,
+} from "./MetadataEditor.styled";
 
 interface RouteParams {
   databaseId?: string;
@@ -33,40 +44,41 @@ const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
   const hasDatabases = databases.length !== 0;
 
   return (
-    <div className="p4">
+    <MetadataWrapper>
       <MetadataHeader
         selectedDatabaseId={databaseId}
         selectedSchemaId={schemaId}
         selectedTableId={tableId}
       />
-      <div
-        style={{ minHeight: "60vh" }}
-        className="flex flex-row flex-full mt2 full-height"
-      >
+      <MetadataMain>
         {hasDatabaseId && (
-          <MetadataTablePicker
-            selectedDatabaseId={databaseId}
-            selectedSchemaId={schemaId}
-            selectedTableId={tableId}
-          />
+          <MetadataSidebar>
+            <MetadataTablePicker
+              selectedDatabaseId={databaseId}
+              selectedSchemaId={schemaId}
+              selectedTableId={tableId}
+            />
+          </MetadataSidebar>
         )}
-        {hasDatabaseId && hasSchemaId && hasTableId ? (
-          <MetadataTable
-            selectedDatabaseId={databaseId}
-            selectedSchemaId={schemaId}
-            selectedTableId={tableId}
-          />
-        ) : (
-          <div style={{ paddingTop: "10rem" }} className="full text-centered">
-            <h2 className="text-medium">
-              {hasDatabases
-                ? t`Select any table to see its schema and add or edit metadata.`
-                : t`The page you asked for couldn't be found.`}
-            </h2>
-          </div>
-        )}
-      </div>
-    </div>
+        <MetadataContent>
+          {hasDatabaseId && hasSchemaId && hasTableId ? (
+            <MetadataTable
+              selectedDatabaseId={databaseId}
+              selectedSchemaId={schemaId}
+              selectedTableId={tableId}
+            />
+          ) : (
+            <div className={cx(CS.full, CS.textCentered)}>
+              <h2 className="text-medium">
+                {hasDatabases
+                  ? t`Select any table to see its schema and add or edit metadata.`
+                  : t`The page you asked for couldn't be found.`}
+              </h2>
+            </div>
+          )}
+        </MetadataContent>
+      </MetadataMain>
+    </MetadataWrapper>
   );
 };
 

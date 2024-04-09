@@ -1,10 +1,9 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
 import DebouncedFrame from "metabase/components/DebouncedFrame";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-
 import { color } from "metabase/lib/colors";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
 import { ViewTitleHeader } from "./ViewHeader";
@@ -43,10 +42,24 @@ export const QueryBuilderMain = styled.main<{ isSidebarOpen: boolean }>`
   }
 `;
 
+/**
+ * The height of the header for the query builder view.
+ * Currently hard coded based on the observation from the dev tools.
+ * It prevents the header from jumping when the notebook view is toggled.
+ *
+ * If we want to calculate this heaight based on the children of the header,
+ * we have to take into account the size of the buttons being used, as well as
+ * their line-height + font size. We should add the padding and the border to that.
+ *
+ * @link https://github.com/metabase/metabase/issues/40334
+ */
+const headerHeight = "4rem";
+
 export const BorderedViewTitleHeader = styled(ViewTitleHeader)`
   border-bottom: 1px solid ${color("border")};
   padding-top: 8px;
   padding-bottom: 8px;
+  min-height: ${headerHeight};
 `;
 
 export const QueryBuilderViewHeaderContainer = styled.div`

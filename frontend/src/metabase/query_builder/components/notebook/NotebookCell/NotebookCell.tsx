@@ -1,11 +1,13 @@
 import { forwardRef, isValidElement } from "react";
-import { Icon } from "metabase/core/components/Icon";
+
+import { Icon } from "metabase/ui";
+
+import type { BorderSide } from "./NotebookCell.styled";
 import {
   NotebookCell as _NotebookCell,
   NotebookCellItemContainer,
   NotebookCellItemContentContainer,
   CONTAINER_PADDING,
-  BorderSide,
 } from "./NotebookCell.styled";
 
 export const NotebookCell = Object.assign(_NotebookCell, {
@@ -17,6 +19,7 @@ interface NotebookCellItemProps {
   color: string;
   inactive?: boolean;
   readOnly?: boolean;
+  disabled?: boolean;
   right?: React.ReactNode;
   containerStyle?: React.CSSProperties;
   rightContainerStyle?: React.CSSProperties;
@@ -32,6 +35,7 @@ export const NotebookCellItem = forwardRef<
 >(function NotebookCellItem(
   {
     inactive,
+    disabled,
     color,
     containerStyle,
     right,
@@ -50,6 +54,8 @@ export const NotebookCellItem = forwardRef<
   return (
     <NotebookCellItemContainer
       inactive={inactive}
+      readOnly={readOnly}
+      disabled={disabled}
       color={color}
       {...restProps}
       data-testid={restProps["data-testid"] ?? "notebook-cell-item"}
@@ -57,6 +63,8 @@ export const NotebookCellItem = forwardRef<
     >
       <NotebookCellItemContentContainer
         inactive={inactive}
+        disabled={disabled}
+        readOnly={readOnly}
         color={color}
         roundedCorners={mainContentRoundedCorners}
         style={containerStyle}

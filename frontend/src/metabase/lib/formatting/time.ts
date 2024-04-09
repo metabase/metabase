@@ -1,8 +1,10 @@
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { msgid, ngettext } from "ttag";
-import { Moment } from "moment-timezone";
-import { parseTime, parseTimestamp } from "metabase/lib/time";
 
+import type { TimeOnlyOptions } from "metabase/lib/formatting/types";
+import { parseTime, parseTimestamp } from "metabase/lib/time";
 import type { DatetimeUnit } from "metabase-types/api/query";
+
 import {
   DEFAULT_TIME_STYLE,
   getTimeFormatFromStyle,
@@ -25,12 +27,6 @@ export function duration(milliseconds: number) {
   const seconds = Math.round(milliseconds / SECOND);
 
   return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
-}
-
-export function formatTime(time: Moment) {
-  const parsedTime = parseTime(time);
-
-  return parsedTime.isValid() ? parsedTime.format("LT") : String(time);
 }
 
 interface TimeWithUnitType {
@@ -65,4 +61,29 @@ export function formatTimeWithUnit(
     : getTimeFormatFromStyle(timeStyle, unit, timeEnabled as any);
 
   return m.format(timeFormat);
+}
+
+export function formatTime(
+  time: Moment,
+  unit: DatetimeUnit = "default",
+  options: TimeOnlyOptions = {},
+) {
+  const parsedTime = parseTime(time);
+
+  const timeStyle = options.time_style ?? DEFAULT_TIME_STYLE;
+
+  let timeEnabled;
+  if (options.time_enabled) {
+    timeEnabled = options.time_enabled;
+  } else if (hasHour(unit)) {
+    timeEnabled = "minute";
+  } else {
+    timeEnabled = null;
+  }
+
+  const timeFormat =
+    options.time_format ??
+    getTimeFormatFromStyle(timeStyle, unit, timeEnabled as any);
+
+  return parsedTime.isValid() ? parsedTime.format(timeFormat) : String(time);
 }

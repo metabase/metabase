@@ -1,9 +1,9 @@
 import { push } from "react-router-redux";
 import _ from "underscore";
-import { parseSearchOptions, parseHashOptions } from "metabase/lib/browser";
+
+import { isFitViewportMode } from "metabase/hoc/FitViewPort";
 import { isWithinIframe, IFRAMED_IN_SELF } from "metabase/lib/dom";
 import { setOptions } from "metabase/redux/embed";
-import { isFitViewportMode } from "metabase/hoc/FitViewPort";
 
 // detect if this page is embedded in itself, i.e. it's a embed preview
 // will need to do something different if we ever embed metabase in itself for another reason
@@ -41,12 +41,8 @@ export function initializeEmbedding(store) {
         }
       }
     });
-    store.dispatch(
-      setOptions({
-        ...parseSearchOptions(window.location.search),
-        ...parseHashOptions(window.location.hash),
-      }),
-    );
+
+    store.dispatch(setOptions(window.location));
   }
 }
 
@@ -63,8 +59,30 @@ function sendMessage(message) {
 
 function getFrameSpec() {
   if (isFitViewportMode()) {
-    return { mode: "fit", height: document.body.scrollHeight };
+    return { mode: "fit", height: getScrollHeight() };
   } else {
     return { mode: "normal", height: document.body.scrollHeight };
   }
+}
+
+function defaultGetScrollHeight() {
+  return document.body.scrollHeight;
+}
+
+function getScrollHeight() {
+  const appBarHeight =
+    document.getElementById("[data-element-id=app-bar]")?.offsetHeight ?? 0;
+  const dashboardHeaderHeight =
+    document.querySelector("[data-element-id=dashboard-header-container]")
+      ?.offsetHeight ?? 0;
+  const dashboardContentHeight =
+    document.querySelector("[data-element-id=dashboard-parameters-and-cards]")
+      ?.scrollHeight ?? 0;
+  const dashboardHeight = dashboardHeaderHeight + dashboardContentHeight;
+
+  if (dashboardHeight > 0) {
+    return appBarHeight + dashboardHeight;
+  }
+
+  return defaultGetScrollHeight();
 }

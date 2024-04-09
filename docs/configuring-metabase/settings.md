@@ -22,6 +22,8 @@ The site URL is the web address that people use to access your Metabase instance
 
 Admins can pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage.
 
+If you've set a dashboard as your homepage, and want to revert to the default Metabase homepage, simply turn off the **Enabled** toggle to disable the Custom Homepage feature.
+
 ## Redirect to HTTPS
 
 By default, Metabase is served over HTTP.
@@ -35,22 +37,6 @@ For example, say you enable HTTPS redirect for a Metabase instance at the site U
 ## Email address for help requests
 
 This email address will be displayed in various messages throughout Metabase when users encounter a scenario where they need assistance from an admin, such as a password reset request.
-
-## Approved domains for notifications
-
-{% include plans-blockquote.html feature="Approved domains for notifications" %}
-
-Allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/sharing/alerts.md).
-
-Adding approved domains allows you to restrict which email addresses people can send alerts and subscriptions to. This restriction only applies to sending email to people who lack an account with that Metabase. People with accounts in a Metabase who aren't [sandboxed](../permissions/data-sandboxes.md) will be able to email any other person with an account in that same Metabase.
-
-To allow all domains, leave the field empty (allowing all domains is the default).
-
-To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2").
-
-You can also set this property using the environment variable [`MB_SUBSCRIPTION_ALLOWED_DOMAINS`](../configuring-metabase/environment-variables.md#mb_subscription_allowed_domains).
-
-> This setting doesn't affect existing subscriptions and alerts.
 
 ## Anonymous tracking
 

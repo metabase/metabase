@@ -1,13 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
+import Filter from "metabase-lib/v1/queries/structured/Filter";
 import { createMockSegment } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
-  PEOPLE,
-  PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
-import Filter from "metabase-lib/queries/structured/Filter";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -16,11 +14,16 @@ const metadata = createMockMetadata({
 
 const ordersTable = metadata.table(ORDERS_ID);
 
-const query = ordersTable.query();
+const query = ordersTable.legacyQuery({ useStructuredQuery: true });
 
 function filter(mbql) {
   return new Filter(mbql, 0, query);
 }
+
+const dateType = temporalUnit => ({
+  "base-type": "type/DateTime",
+  "temporal-unit": temporalUnit,
+});
 
 describe("Filter", () => {
   describe("displayName", () => {
@@ -32,61 +35,92 @@ describe("Filter", () => {
     it("should return the correct string for a segment filter", () => {
       expect(filter(["segment", 1]).displayName()).toEqual("Expensive Things");
     });
-    describe("betterDateLabel", () => {
-      function createdAtFilter(op, unit, ...args) {
-        return filter([
-          op,
-          [
-            "field",
-            ORDERS.CREATED_AT,
-            {
-              "base-type": "type/DateTime",
-              "temporal-unit": unit,
-            },
-          ],
-          ...args,
-        ]);
-      }
-
+    describe("date labels", () => {
       it("should display is-week filter as a day range", () => {
         expect(
-          createdAtFilter("=", "week", "2026-10-04").displayName(),
+          filter([
+            "=",
+            ["field", ORDERS.CREATED_AT, dateType("week")],
+            "2026-10-04",
+          ]).displayName(),
         ).toEqual("Created At is October 4–10, 2026");
+      });
+      it("should display between dates filter with undefined temporal unit as day range", () => {
+        expect(
+          filter([
+            "between",
+            ["field", ORDERS.CREATED_AT, dateType()],
+            "2026-10-04",
+            "2026-10-11",
+          ]).displayName(),
+        ).toEqual("Created At is October 4–11, 2026");
       });
       it("should display between-weeks filter as day range", () => {
         expect(
-          createdAtFilter(
+          filter([
             "between",
-            "week",
+            ["field", ORDERS.CREATED_AT, dateType("week")],
             "2026-10-04",
             "2026-10-11",
-          ).displayName(),
+          ]).displayName(),
         ).toEqual("Created At is October 4–17, 2026");
+      });
+      it("should display between-minutes filter", () => {
+        expect(
+          filter([
+            "between",
+            ["field", ORDERS.CREATED_AT, dateType("minute")],
+            "2026-10-04T10:20",
+            "2026-10-04T16:30",
+          ]).displayName(),
+        ).toEqual("Created At is October 4, 2026, 10:20 AM – 4:30 PM");
+        expect(
+          filter([
+            "between",
+            ["field", ORDERS.CREATED_AT, dateType("minute")],
+            "2026-10-04T10:20",
+            "2026-10-11T16:30",
+          ]).displayName(),
+        ).toEqual(
+          "Created At is October 4, 10:20 AM – October 11, 2026, 4:30 PM",
+        );
       });
       it("should display slice filters with enough context for understanding them", () => {
         expect(
-          createdAtFilter(
+          filter([
             "=",
-            "minute-of-hour",
-            "2023-07-03T18:31:00-05:00",
-          ).displayName(),
-        ).toEqual("Created At is minute 31");
+            ["field", ORDERS.CREATED_AT, dateType("minute-of-hour")],
+            "2023-07-03T18:31:00",
+          ]).displayName(),
+        ).toEqual("Created At is minute :31");
         expect(
-          createdAtFilter(
+          filter([
             "=",
-            "hour-of-day",
-            "2023-07-03T10:00:00-05:00",
-          ).displayName(),
-        ).toMatch(/^Created At is hour \d+$/); // GitHub CI is in different time zone
+            ["field", ORDERS.CREATED_AT, dateType("hour-of-day")],
+            "2023-07-03T10:00:00",
+          ]).displayName(),
+        ).toEqual("Created At is 10:00–59 AM");
         expect(
-          createdAtFilter("=", "day-of-month", "2016-01-17").displayName(),
-        ).toEqual("Created At is 17th day of month");
+          filter([
+            "=",
+            ["field", ORDERS.CREATED_AT, dateType("day-of-month")],
+            "2016-01-17",
+          ]).displayName(),
+        ).toEqual("Created At is 17th day of the month");
         expect(
-          createdAtFilter("=", "day-of-year", "2016-07-19").displayName(),
-        ).toEqual("Created At is 201st day of year");
+          filter([
+            "=",
+            ["field", ORDERS.CREATED_AT, dateType("day-of-year")],
+            "2016-07-19",
+          ]).displayName(),
+        ).toEqual("Created At is 201st day of the year");
         expect(
-          createdAtFilter("=", "week-of-year", "2023-07-02").displayName(),
-        ).toEqual("Created At is 27th week of year");
+          filter([
+            "=",
+            ["field", ORDERS.CREATED_AT, dateType("week-of-year")],
+            "2023-07-02",
+          ]).displayName(),
+        ).toEqual("Created At is 27th week of the year");
       });
     });
   });
@@ -149,22 +183,6 @@ describe("Filter", () => {
       expect(
         filter(["segment", 1]).setDimension(["field", ORDERS.TOTAL, null]),
       ).toEqual([null, ["field", ORDERS.TOTAL, null]]);
-    });
-    it("should set joined-field for new filter clause", () => {
-      const q = ordersTable.query().join({
-        alias: "foo",
-        "source-table": PEOPLE_ID,
-      });
-      const f = new Filter([], 0, q);
-      expect(
-        f.setDimension(["field", PEOPLE.EMAIL, { "join-alias": "foo" }], {
-          useDefaultOperator: true,
-        }),
-      ).toEqual([
-        "=",
-        ["field", PEOPLE.EMAIL, { "join-alias": "foo" }],
-        undefined,
-      ]);
     });
   });
 

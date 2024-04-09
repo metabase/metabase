@@ -1,12 +1,13 @@
 (ns metabase.driver.druid.client-test
-  (:require [clojure.core.async :as a]
-            [clojure.test :refer :all]
-            [metabase.driver.druid.client :as druid.client]
-            [metabase.driver.util :as driver.u]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.context.default :as default]
-            [metabase.test :as mt]
-            [metabase.timeseries-query-processor-test.util :as tqpt]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.test :refer :all]
+   [metabase.driver.druid.client :as druid.client]
+   [metabase.driver.util :as driver.u]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.test :as mt]
+   [metabase.timeseries-query-processor-test.util :as tqpt]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,11 +24,11 @@
                                                 (Thread/sleep 5000)
                                                 (throw (Exception. "Don't actually run!")))]
 
-            (let [out-chan (qp/process-query-async query)]
-              ;; wait for query to start running, then close `out-chan`
+            (let [futur (future (qp/process-query query))]
+              ;; wait for query to start running, then kill the thread running the query
               (a/go
                 (a/<! running-chan)
-                (a/close! out-chan)))
+                (future-cancel futur)))
             (is (= ::cancel
                    (mt/wait-for-result cancel-chan 2000)))))))))
 
@@ -39,8 +40,8 @@
         (with-redefs [druid.client/do-query-with-cancellation (fn [_chan _details query]
                                                                 (reset! executed-query query)
                                                                 [])]
-          (qp/process-query-sync query)
-          (is (partial= {:context {:timeout default/query-timeout-ms}}
+          (qp/process-query query)
+          (is (partial= {:context {:timeout qp.pipeline/*query-timeout-ms*}}
                         @executed-query)))))))
 
 (deftest ssh-tunnel-test

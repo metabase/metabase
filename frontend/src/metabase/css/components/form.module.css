@@ -1,0 +1,54 @@
+::-webkit-input-placeholder {
+  color: var(--color-text-light);
+}
+
+:-moz-placeholder {
+  color: var(--color-text-light);
+}
+
+:-ms-input-placeholder {
+  color: var(--color-text-light);
+}
+
+.FormField {
+  margin-bottom: 1.5em;
+  color: var(--color-text-medium);
+}
+
+.FormField.FormFieldError {
+  color: var(--color-error);
+}
+
+.FormLabel {
+  display: block;
+  font-weight: 900;
+  font-size: 0.88em;
+  color: inherit;
+  margin-bottom: 0.5em;
+}
+
+.FormInput {
+  font-family: var(--default-font-family);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--color-text-dark);
+  background-color: var(--color-bg-white);
+  padding: 0.75em;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  outline: none;
+}
+
+.FormField.FormFieldError .FormInput {
+  border-color: var(--color-error);
+}
+
+.noFocus:focus {
+  outline: 0;
+}
+
+.FormInput:focus:not(.noFocus),
+.FormField:hover .FormInput:not(.noFocus) {
+  border-color: var(--color-brand);
+  transition: border 300ms ease-in-out;
+}

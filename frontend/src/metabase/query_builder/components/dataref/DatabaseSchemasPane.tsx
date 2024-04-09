@@ -3,9 +3,10 @@ import { ngettext, msgid } from "ttag";
 
 import Search from "metabase/entities/search";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type Database from "metabase-lib/metadata/Database";
+
 import {
   NodeListItemLink,
   NodeListItemName,

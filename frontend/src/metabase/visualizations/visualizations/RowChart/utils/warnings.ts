@@ -1,6 +1,6 @@
-import { RowValues } from "metabase-types/api";
-import { ChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { unaggregatedDataWarning } from "metabase/visualizations/lib/warnings";
+import type { RowValues } from "metabase-types/api";
 
 export const getChartWarnings = (
   chartColumns: ChartColumns,

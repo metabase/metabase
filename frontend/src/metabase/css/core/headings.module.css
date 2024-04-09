@@ -1,0 +1,62 @@
+:root {
+  --default-header-margin: 0;
+}
+
+h1,
+.h1,
+h2,
+.h2,
+h3,
+.h3,
+h4,
+.h4,
+h5,
+.h5,
+h6,
+.h6 {
+  font-weight: 700;
+  margin-top: var(--default-header-margin);
+  margin-bottom: var(--default-header-margin);
+}
+
+/**
+ * Correct the font size on `h1` elements within `section` and
+ * `article` contexts in Chrome, Firefox, and Safari.
+ * https://github.com/necolas/normalize.css/blob/fc091cc/normalize.css#L40
+ */
+h1,
+.h1 {
+  font-size: 2em;
+}
+
+.h2 {
+  font-size: 1.5em;
+}
+
+.h3 {
+  font-size: 1.17em;
+}
+
+.h4 {
+  font-size: 1.12em;
+}
+
+.h5 {
+  font-size: 0.83em;
+}
+
+.h6 {
+  font-size: 0.75em;
+}
+
+@media screen and (--breakpoint-min-sm) {
+  .smH3 {
+    font-size: 1.17em;
+  }
+}
+
+@media screen and (--breakpoint-min-md) {
+  .mdH2 {
+    font-size: 1.5em;
+  }
+}

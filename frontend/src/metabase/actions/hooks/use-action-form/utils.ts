@@ -1,9 +1,10 @@
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
-import { isEmpty } from "metabase/lib/validate";
-
+import type { FieldSettings as LocalFieldSettings } from "metabase/actions/types";
 import { getDefaultFieldSettings } from "metabase/actions/utils";
-
+import { isEmpty } from "metabase/lib/validate";
+import Field from "metabase-lib/v1/metadata/Field";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   FieldSettings,
   FieldSettingsMap,
@@ -12,10 +13,6 @@ import type {
   ParameterId,
   ParametersForActionExecution,
 } from "metabase-types/api";
-import type { FieldSettings as LocalFieldSettings } from "metabase/actions/types";
-
-import Field from "metabase-lib/metadata/Field";
-import { TYPE } from "metabase-lib/types/constants";
 
 export function stripTZInfo(dateOrTimeString: string) {
   // strip everything after a trailing tz (e.g. +08:00)

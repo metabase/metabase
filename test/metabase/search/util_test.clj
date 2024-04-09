@@ -1,23 +1,23 @@
 (ns metabase.search.util-test
   (:require
    [clojure.test :refer :all]
-   [metabase.search.util :as search-util]))
+   [metabase.search.util :as search.util]))
 
 (deftest ^:parallel tokenize-test
   (testing "basic tokenization"
     (is (= ["Rasta" "the" "Toucan's" "search"]
-           (search-util/tokenize "Rasta the Toucan's search")))
+           (search.util/tokenize "Rasta the Toucan's search")))
     (is (= ["Rasta" "the" "Toucan"]
-           (search-util/tokenize "                Rasta\tthe    \tToucan     ")))
+           (search.util/tokenize "                Rasta\tthe    \tToucan     ")))
     (is (= []
-           (search-util/tokenize " \t\n\t ")))
+           (search.util/tokenize " \t\n\t ")))
     (is (= []
-           (search-util/tokenize "")))
+           (search.util/tokenize "")))
     (is (thrown-with-msg? Exception #"should be a string"
-                          (search-util/tokenize nil)))))
+                          (search.util/tokenize nil)))))
 
 (deftest ^:parallel test-largest-common-subseq-length
-  (let [subseq-length (partial search-util/largest-common-subseq-length =)]
+  (let [subseq-length (partial search.util/largest-common-subseq-length =)]
     (testing "greedy choice can't be taken"
       (is (= 3
              (subseq-length ["garden" "path" "this" "is" "not" "a" "garden" "path"]

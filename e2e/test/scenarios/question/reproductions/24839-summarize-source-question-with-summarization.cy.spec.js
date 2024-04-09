@@ -1,6 +1,6 @@
-import { restore, visitQuestionAdhoc, popover } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, visitQuestionAdhoc, popover } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -34,7 +34,7 @@ describe("issue 24839: should be able to summarize a nested question based on th
     });
   });
 
-  it.skip("from the notebook GUI (metabase#24839-1)", () => {
+  it("from the notebook GUI (metabase#24839-1)", () => {
     cy.icon("notebook").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summarize").click();
@@ -50,7 +50,7 @@ describe("issue 24839: should be able to summarize a nested question based on th
 
     popover().contains("Distinct values").click();
 
-    cy.get(".ScalarValue").invoke("text").should("eq", "49");
+    cy.findByTestId("scalar-value").invoke("text").should("eq", "49");
 
     cy.findByTestId("aggregation-item")
       .invoke("text")

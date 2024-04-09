@@ -22,29 +22,126 @@ To format the display of any column in a table, click on the column heading and 
 
 The options you see will differ depending on the type of column you're viewing:
 
-### Dates
+## Text formatting options
 
-- **Date style** gives you a bunch of different choices for how to display the date.
-- **Abbreviate names of days and months**, when turned on, will turn things like `January` to `Jan`, and `Monday` to `Mon`.
-- **Show the time** lets you decide whether or not to display the time, and if so, how. You can include hours and minutes, and additionally seconds and milliseconds.
+### Title
 
-### Numbers
+You can rename the column.
 
-- **Show a mini bar chart** will display a small horizontal bar next to each number in this column to show its size relative to the other values in the column.
-- **Style** lets you choose to display the number as a plain number, a percent, in scientific notation, or as a currency.
-- **Separator style** gives you various options for how commas and periods are used to separate the number.
-- **Minimum number of decimal places** forces the number to be displayed with exactly this many decimal places.
-- **Multiply by a number** multiplies each number in this column by whatever you type here. Just don't type an emoji here; it almost always causes a temporal vortex to manifest.
-- **Add a prefix/suffix** lets you put a symbol, word, or whatever before or after each cell's value.
+### Display as
 
-### Currency
-Currency columns have all the same options as numbers, plus the following:
+You can display the text as is, or you can display the text as a link. If you select link, you can also change the text displayed, and use parameters for both the link text and the link's URL.
 
-- **Unit of Currency** lets you change the unit of currency from whatever the system default is.
-- **Currency label style** allows you to switch between displaying the currency label as a symbol, a code like (USD), or the full name of the currency.
-- **Where to display the unit of currency** lets you toggle between showing the currency label in the column heading or in every cell in the column.
+For example, you could create a dynamic URL using a parameter from another column in the results:
 
-### Conditional table formatting
+```html
+{% raw %}
+https://www.example.com/{{category}}
+{% endraw %}
+```
+
+In the above example, Metabase would take the value for the `category` column for that row  (in this case `widget`), and insert it into the URL:
+
+```
+https://www.example.com/widget
+```
+
+## Date formatting options
+
+Date formatting options include the same options as [Text formatting](#text-formatting-options), as well as:
+
+### Date style
+
+Styles include:
+
+- April 1, 2024
+- 1 April 2024
+- Monday, April 1, 2024
+- 4/1/2024
+- 1/4/2024
+- 2024/4/1
+
+### Abbreviate days and months
+
+If you select a date style that includes words, this toggle will abbreviate them. For example:
+
+- Unabbreviated: Monday, April 1, 2024
+- Abbreviated: Mon, Apr 1, 2024
+
+### Show the time
+
+This option determines whether Metabase includes the time along with the date.
+
+- Off
+- HH:MM
+- HH:MM:SS
+- HH:MM:SS:MS
+
+### Time style
+
+You can choose either 12-hour clock style, or 24-hour clock style.
+
+- 5:24 PM (12-hour clock)
+- 17:24 (24-hour clock)
+
+## Number formatting options
+
+### Show a mini bar chart
+
+This option displays a small horizontal bar next to each number in this column to show its size relative to the other values in the column.
+
+### Style
+
+Number styles include:
+
+- Number
+- Percent
+- Scientific
+- Currency
+
+### Separator style
+
+Gives you various options for how commas and periods are used to separate the number.
+
+- 100,000.00
+- 100 000,00
+- 100.000,00
+- 100000.00
+- 100'000.00
+
+### Minimum number of decimal places
+
+Forces the number to be displayed with exactly this many decimal places.
+
+### Multiply by a number
+
+Multiplies each number in this column by whatever you type here. Just don't type an emoji here; there is a nontrivial chance that it will manifest a temporal vortex.
+
+### Add a prefix/suffix
+
+Lets you put a symbol, word, or whatever before or after each cell's value.
+
+## Currency formatting options
+
+Currency columns have all the same options as [numbers](#number-formatting-options), plus the following:
+
+### Unit of Currency
+
+Lets you change the unit of currency from whatever the system default is.
+
+### Currency label style
+
+ Allows you to switch between displaying the currency label as:
+
+ - a symbol (like $)
+ - a code (like USD)
+ - the full name of the currency (like "US dollars")
+
+### Where to display the unit of currency
+
+Lets you toggle between showing the currency label in the column heading or in every cell in the column.
+
+## Conditional table formatting
 
 Sometimes it's helpful to highlight certain rows or columns in your tables when they meet a specific condition. You can set up conditional formatting rules by going to the visualization settings while looking at any table, then clicking on the **Conditional Formatting** tab.
 
@@ -53,7 +150,7 @@ Sometimes it's helpful to highlight certain rows or columns in your tables when 
 When you add a new rule, you'll first need to pick which column(s) should be affected. Your columns can be formatted in one of two ways:
 
 - **Single color**. Pick single color if you want to highlight cells in the column if they're greater, less than, or equal to a specific number, or if they match or contain a certain word or phrase. You can optionally highlight the whole row of a cell that matches the condition you pick so that it's easier to spot as you scroll down your table.
-- **Color range**. Choose color range if you want to tint all the cells in the column from smallest to largest or vice a versa. This option is only available for numeric columns.
+- **Color range**. Choose color range if you want to tint all the cells in the column from smallest to largest or vice versa. This option is only available for numeric columns.
 
 You can set as many rules on a table as you want. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click on a rule to edit it.
 

@@ -1,10 +1,11 @@
-import { checkNotNull } from "metabase/core/utils/types";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Table } from "metabase-types/api";
-import { createMockField, createMockTable } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import type { Table } from "metabase-types/api";
+import { createMockField, createMockTable } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
+
 import ColumnCount from "./ColumnCount";
 
 interface SetupOpts {

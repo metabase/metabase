@@ -1,10 +1,8 @@
 import { connect } from "react-redux";
 
+import { PublicError } from "metabase/public/components/PublicError";
+import { PublicNotFound } from "metabase/public/components/PublicNotFound";
 import { getErrorPage } from "metabase/selectors/app";
-
-import PublicNotFound from "metabase/public/components/PublicNotFound";
-import PublicError from "metabase/public/components/PublicError";
-
 import type { AppErrorDescriptor, State } from "metabase-types/store";
 
 interface OwnProps {

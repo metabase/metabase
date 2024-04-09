@@ -10,13 +10,16 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -39,10 +42,10 @@
   "Returns true if this is a clause."
   [clause]
   (and (vector? clause)
-       (> (count clause) 1)
        (keyword? (first clause))
-       (map? (second clause))
-       (contains? (second clause) :lib/uuid)))
+       (let [opts (get clause 1)]
+         (and (map? opts)
+              (contains? opts :lib/uuid)))))
 
 (defn clause-of-type?
   "Returns true if this is a clause."
@@ -55,22 +58,58 @@
   [clause]
   (clause-of-type? clause :field))
 
+(defn ref-clause?
+  "Returns true if this is any sort of reference clause"
+  [clause]
+  (and (clause? clause)
+       (lib.hierarchy/isa? (first clause) ::lib.schema.ref/ref)))
+
+(defn original-isa?
+  "Returns whether the type of `expression` isa? `typ`.
+   If the expression has an original-effective-type due to bucketing, check that."
+  [expression typ]
+  (isa?
+    (or (and (clause? expression)
+             (:metabase.lib.field/original-effective-type (second expression)))
+        (lib.schema.expression/type-of expression))
+    typ))
+
 (defn expression-name
   "Returns the :lib/expression-name of `clause`. Returns nil if `clause` is not a clause."
   [clause]
   (when (clause? clause)
-    (get-in clause [1 :lib/expression-name])))
+    (:lib/expression-name (lib.options/options clause))))
 
-(defn named-expression-clause
+(defn top-level-expression-clause
   "Top level expressions must be clauses with :lib/expression-name, so if we get a literal, wrap it in :value."
   [clause a-name]
-  (assoc-in
-    (if (clause? clause)
-      clause
-      [:value {:lib/uuid (str (random-uuid))
-               :effective-type (lib.schema.expression/type-of clause)}
-       clause])
-    [1 :lib/expression-name] a-name))
+  (-> (if (clause? clause)
+        clause
+        [:value {:lib/uuid (str (random-uuid))
+                 :effective-type (lib.schema.expression/type-of clause)}
+         clause])
+      (lib.options/update-options (fn [opts]
+                                    (-> opts
+                                        (assoc :lib/expression-name a-name)
+                                        (dissoc :name :display-name))))))
+
+(defmulti custom-name-method
+  "Implementation for [[custom-name]]."
+  {:arglists '([x])}
+  lib.dispatch/dispatch-value
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defn custom-name
+  "Return the user supplied name of `x`, if any."
+  [x]
+  (custom-name-method x))
+
+(defmethod custom-name-method :default
+  [x]
+  ;; We assume that clauses only get a :display-name option if the user explicitly specifies it.
+  ;; Expressions from the :expressions clause of pMBQL queries have custom names by default.
+  (when (clause? x)
+    ((some-fn :display-name :lib/expression-name) (lib.options/options x))))
 
 (defn replace-clause
   "Replace the `target-clause` in `stage` `location` with `new-clause`.
@@ -79,17 +118,18 @@
   [stage location target-clause new-clause]
   {:pre [((some-fn clause? #(= (:lib/type %) :mbql/join)) target-clause)]}
   (let [new-clause (if (= :expressions (first location))
-                     (named-expression-clause new-clause (expression-name target-clause))
+                     (top-level-expression-clause new-clause (or (custom-name new-clause)
+                                                             (expression-name target-clause)))
                      new-clause)]
     (m/update-existing-in
-      stage
-      location
-      (fn [clause-or-clauses]
-        (->> (for [clause clause-or-clauses]
-               (if (= (lib.options/uuid clause) (lib.options/uuid target-clause))
-                 new-clause
-                 clause))
-             vec)))))
+     stage
+     location
+     (fn [clause-or-clauses]
+       (->> (for [clause clause-or-clauses]
+              (if (= (lib.options/uuid clause) (lib.options/uuid target-clause))
+                new-clause
+                clause))
+            vec)))))
 
 (defn remove-clause
   "Remove the `target-clause` in `stage` `location`.
@@ -97,7 +137,7 @@
    If `location` contains no clause with `target-clause` no removal happens.
    If the the location is empty, dissoc it from stage.
    For the [:fields] location if only expressions remain, dissoc from stage."
-  [stage location target-clause]
+  [stage location target-clause stage-number]
   {:pre [(clause? target-clause)]}
   (if-let [target (get-in stage location)]
     (let [target-uuid (lib.options/uuid target-clause)
@@ -112,7 +152,11 @@
 
         (= [:joins :conditions] [first-loc last-loc])
         (throw (ex-info (i18n/tru "Cannot remove the final join condition")
-                        {:conditions (get-in stage location)}))
+                        {:error ::cannot-remove-final-join-condition
+                         :conditions (get-in stage location)
+                         :join (get-in stage (pop location))
+                         :stage-number stage-number
+                         :stage stage}))
 
         (= [:joins :fields] [first-loc last-loc])
         (update-in stage (pop location) dissoc last-loc)
@@ -258,16 +302,17 @@
   [query stage-number]
   (not (previous-stage-number query stage-number)))
 
-(defn next-stage-number
+(mu/defn next-stage-number :- [:maybe :int]
   "The index of the next stage, if there is one. `nil` if there is no next stage."
-  [{:keys [stages], :as _query} stage-number]
+  [{:keys [stages], :as _query} :- :map
+   stage-number                 :- :int]
   (let [stage-number (if (neg? stage-number)
                        (+ (count stages) stage-number)
                        stage-number)]
     (when (< (inc stage-number) (count stages))
       (inc stage-number))))
 
-(mu/defn query-stage :- ::lib.schema/stage
+(mu/defn query-stage :- [:maybe ::lib.schema/stage]
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
   the query."
   [query        :- LegacyOrPMBQLQuery
@@ -420,6 +465,26 @@
   [query]
   (-> query :stages first :source-card))
 
+(mu/defn first-stage-type :- [:maybe [:enum :mbql.stage/mbql :mbql.stage/native]]
+  "Type of the first query stage."
+  [query :- :map]
+  (:lib/type (query-stage query 0)))
+
+(mu/defn first-stage-is-native? :- :boolean
+  "Whether the first stage of the query is a native query stage."
+  [query :- :map]
+  (= (first-stage-type query) :mbql.stage/native))
+
+(def ^:dynamic ^{:arglists '(^java.lang.String [^java.lang.String s])} *escape-alias-fn*
+  "Function to use for escaping a unique alias when generating `:lib/desired-alias`."
+  identity)
+
+(defn- unique-alias [original suffix]
+  (->> (str original \_ suffix)
+       *escape-alias-fn*
+       ;; truncate alias to 60 characters (actually 51 characters plus a hash).
+       truncate-alias))
+
 (mu/defn unique-name-generator :- [:=>
                                    [:cat ::lib.schema.common/non-blank-string]
                                    ::lib.schema.common/non-blank-string]
@@ -433,10 +498,11 @@
   (comp truncate-alias
         (mbql.u/unique-name-generator
          ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
+         ;;
+         ;; some databases treat aliases as case-insensitive so make sure the generated aliases are unique regardless
+         ;; of case
          :name-key-fn     u/lower-case-en
-         ;; truncate alias to 60 characters (actually 51 characters plus a hash).
-         :unique-alias-fn (fn [original suffix]
-                            (truncate-alias (str original \_ suffix))))))
+         :unique-alias-fn unique-alias)))
 
 (def ^:private strip-id-regex
   #?(:cljs (js/RegExp. " id$" "i")
@@ -479,19 +545,32 @@
           (update :stages (comp #(into [] %) subvec) 0 (inc (canonical-stage-index query stage-number))))
       new-query)))
 
-(defn with-default-effective-type
-  "Adds a default :effective-type property if it does not exist and
-  :base-type is known.
+(defn fresh-uuids
+  "Recursively replace all the :lib/uuids in `x` with fresh ones. Useful if you need to attach something to a query more
+  than once."
+  [x]
+  (cond
+    (sequential? x)
+    (into (empty x) (map fresh-uuids) x)
 
-  This is needed only because we have to convert queries to the Legacy
-  form.
-  The round trip conversion pMBQL -> legacy MBQL -> pMBQL loses the
-  :effective-type property, but it should be present for the frontend
-  to work. It defaults to the :base-type property."
-  [clause]
-  (let [options (lib.options/options clause)
-        default-effective-type (when-not (:effective-type options)
-                                 (:base-type options))]
-    (cond-> clause
-      default-effective-type
-      (lib.options/update-options assoc :effective-type default-effective-type))))
+    (map? x)
+    (into
+     (empty x)
+     (map (fn [[k v]]
+            [k (if (= k :lib/uuid)
+                 (str (random-uuid))
+                 (fresh-uuids v))]))
+     x)
+
+    :else
+    x))
+
+(mu/defn normalized-query-type :- [:maybe [:enum #_MLv2 :mbql/query #_legacy :query :native #_audit :internal]]
+  "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
+  [query :- [:maybe :map]]
+  (when (map? query)
+    (when-let [query-type (keyword (some #(get query %)
+                                         [:lib/type :type "lib/type" "type"]))]
+      (when (#{:mbql/query :query :native :internal} query-type)
+        query-type)))
+)

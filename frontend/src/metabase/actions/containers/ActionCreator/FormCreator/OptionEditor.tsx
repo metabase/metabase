@@ -1,11 +1,10 @@
+import type * as React from "react";
 import { useEffect, useState } from "react";
-import * as React from "react";
 import { t } from "ttag";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Button from "metabase/core/components/Button";
-import { Icon } from "metabase/core/components/Icon";
-
+import { Icon } from "metabase/ui";
 import type { FieldType, FieldValueOptions } from "metabase-types/api";
 
 import {
@@ -16,22 +15,36 @@ import {
 } from "./OptionEditor.styled";
 
 const optionsToText = (options: FieldValueOptions) => options.join("\n");
-const textToOptions = (text: string): FieldValueOptions =>
-  text.split("\n").map(option => option.trim());
+export const textToOptions = (text: string): FieldValueOptions => {
+  const options = text
+    .trim()
+    .split("\n")
+    .map(option => option.trim())
+    .filter(Boolean);
+  const uniqueOptions = [...new Set(options)];
 
-function cleanOptions(options: FieldValueOptions, fieldType: FieldType) {
+  return uniqueOptions;
+};
+
+function transformOptionsIfNeeded(
+  options: FieldValueOptions,
+  fieldType: FieldType,
+) {
   if (fieldType === "number") {
     return options.map(option => Number(option));
   }
+
   return options;
 }
 
 function getValidationError(options: FieldValueOptions, fieldType: FieldType) {
-  if (fieldType === "number") {
-    const isValid = options.every(option => !Number.isNaN(option));
-    return isValid ? undefined : t`Invalid number format`;
+  if (fieldType !== "number") {
+    return;
   }
-  return;
+
+  const isValid = options.every(option => !Number.isNaN(option));
+
+  return isValid ? undefined : t`Invalid number format`;
 }
 
 export interface OptionEditorProps {
@@ -72,8 +85,13 @@ export const OptionPopover = ({
 
   const handleSave = (closePopover: () => void) => {
     setError(null);
-    const nextOptions = cleanOptions(textToOptions(text), fieldType);
+
+    const nextOptions = transformOptionsIfNeeded(
+      textToOptions(text),
+      fieldType,
+    );
     const error = getValidationError(nextOptions, fieldType);
+
     if (error) {
       setError(error);
     } else {

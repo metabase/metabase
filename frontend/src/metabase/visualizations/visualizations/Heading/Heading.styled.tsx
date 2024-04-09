@@ -1,5 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+
+import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
 
 interface InputContainerProps {
@@ -22,12 +24,12 @@ export const InputContainer = styled.div<InputContainerProps>`
     padding-left: calc(0.75rem - 1px); // adjust for border on hover
   }
 
-  .DashCard:hover &,
-  .DashCard:focus-within & {
+  .${DashboardS.DashCard}:hover &,
+  .${DashboardS.DashCard}:focus-within & {
     border: 1px solid ${color("brand")};
   }
 
-  .DashCard.resizing & {
+  .${DashboardS.DashCard}.resizing & {
     border: 1px solid ${color("brand")};
   }
 
@@ -61,7 +63,7 @@ export const TextInput = styled.input`
   width: 100%;
 `;
 
-export const HeadingContainer = styled.div<{ fade?: boolean }>`
+export const HeadingContainer = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -73,7 +75,6 @@ export const HeadingContainer = styled.div<{ fade?: boolean }>`
 
 interface HeadingContentProps {
   isEditing?: boolean;
-  fade?: boolean;
 }
 
 export const HeadingContent = styled.h2<HeadingContentProps>`
@@ -85,7 +86,7 @@ export const HeadingContent = styled.h2<HeadingContentProps>`
   padding: 0;
   margin: 0.25rem 0;
   pointer-events: all;
-  opacity: ${({ fade }) => (fade ? 0.25 : 1)};
+
   ${({ isEditing }) =>
     isEditing &&
     css`

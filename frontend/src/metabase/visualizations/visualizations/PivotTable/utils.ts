@@ -1,11 +1,11 @@
-import _ from "underscore";
 import { getIn } from "icepick";
 import { t } from "ttag";
+import _ from "underscore";
 
+import { sumArray } from "metabase/lib/arrays";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";
-import { sumArray } from "metabase/core/utils/arrays";
-
+import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
   DatasetColumn,
@@ -13,11 +13,6 @@ import type {
   FieldReference,
   VisualizationSettings,
 } from "metabase-types/api";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-
-import type { PivotSetting, HeaderItem, CustomColumnWidth } from "./types";
-
-import { partitions } from "./partitions";
 
 import {
   ROW_TOGGLE_ICON_WIDTH,
@@ -30,6 +25,8 @@ import {
   CELL_HEIGHT,
   DEFAULT_CELL_WIDTH,
 } from "./constants";
+import { partitions } from "./partitions";
+import type { PivotSetting, HeaderItem, CustomColumnWidth } from "./types";
 
 // adds or removes columns from the pivot settings based on the current query
 export function updateValueWithCurrentColumns(
@@ -188,12 +185,20 @@ export function getColumnValues(leftHeaderItems: HeaderItem[]) {
   return columnValues;
 }
 
-export function databaseSupportsPivotTables(query: StructuredQuery) {
-  if (query && query.database && query.database() != null) {
-    // if we don't have metadata, we can't check this
-    return query.database()?.supportsPivots();
+function databaseSupportsPivotTables(query: StructuredQuery) {
+  if (!query) {
+    return true;
   }
-  return true;
+
+  const question = query.question();
+  const database = question.database();
+
+  if (!database) {
+    // if we don't have metadata, we can't check this
+    return true;
+  }
+
+  return database.supportsPivots();
 }
 
 export function isSensible(

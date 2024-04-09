@@ -1,19 +1,23 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
+
+import EntityMenu from "metabase/components/EntityMenu";
+import type { InputProps } from "metabase/core/components/Input";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { parseTimestamp } from "metabase/lib/time";
 import { getTimelineName } from "metabase/lib/timelines";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import * as Urls from "metabase/lib/urls";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import EntityMenu from "metabase/components/EntityMenu";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import { Timeline, TimelineEvent } from "metabase-types/api";
-import { InputProps } from "metabase/core/components/Input";
-import SearchEmptyState from "../SearchEmptyState";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
+
+import type { MenuItem } from "../../types";
 import EventList from "../EventList";
+import SearchEmptyState from "../SearchEmptyState";
 import TimelineEmptyState from "../TimelineEmptyState";
-import { MenuItem } from "../../types";
+
 import {
   ModalBody,
   ModalRoot,
@@ -91,7 +95,7 @@ const TimelineDetailsModal = ({
           />
           {canWrite && !isArchive && (
             <ModalToolbarLink
-              className="Button"
+              className={ButtonsS.Button}
               to={Urls.newEventInCollection(timeline)}
             >{t`Add an event`}</ModalToolbarLink>
           )}

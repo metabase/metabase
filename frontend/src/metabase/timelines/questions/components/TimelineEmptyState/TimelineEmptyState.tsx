@@ -1,5 +1,9 @@
 import { t } from "ttag";
-import { Collection, Timeline } from "metabase-types/api";
+
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import type { Collection, Timeline } from "metabase-types/api";
+
 import {
   EmptyStateButton,
   EmptyStateIcon,
@@ -22,13 +26,14 @@ const TimelineEmptyState = ({
     timelines.some(timeline => timeline.collection?.can_write) ||
     collection.can_write;
 
+  const applicationName = useSelector(getApplicationName);
   return (
     <EmptyStateRoot>
       <EmptyStateIcon name="star" />
       <EmptyStateText>
         {canWrite
-          ? t`Add events to Metabase to show helpful context alongside your data.`
-          : t`Events in Metabase let you see helpful context alongside your data.`}
+          ? t`Add events to ${applicationName} to show helpful context alongside your data.`
+          : t`Events in ${applicationName} let you see helpful context alongside your data.`}
       </EmptyStateText>
       {canWrite && (
         <EmptyStateButton primary onClick={onNewEvent}>

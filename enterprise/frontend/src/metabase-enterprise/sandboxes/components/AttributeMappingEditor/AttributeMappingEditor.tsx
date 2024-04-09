@@ -1,17 +1,17 @@
+import cx from "classnames";
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
+import type { SelectChangeEvent } from "metabase/core/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
 import Tooltip from "metabase/core/components/Tooltip";
-import Select, {
-  Option,
-  SelectChangeEvent,
-} from "metabase/core/components/Select";
-import { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
+import CS from "metabase/css/core/index.css";
+import { Icon } from "metabase/ui";
+import type { GroupTableAccessPolicyDraft } from "metabase-enterprise/sandboxes/types";
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
-import { GroupTableAccessPolicyDraft } from "metabase-enterprise/sandboxes/types";
-import QuestionParameterTargetWidget from "../../containers/QuestionParameterTargetWidget";
+import type { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
 
-import MappingEditor from "../MappingEditor";
+import QuestionParameterTargetWidget from "../../containers/QuestionParameterTargetWidget";
+import { MappingEditor } from "../MappingEditor";
 
 interface AttributeMappingEditorProps {
   value: any;
@@ -34,12 +34,14 @@ const AttributeMappingEditor = ({
     onChange={onChange}
     keyPlaceholder={t`Pick a user attribute`}
     keyHeader={
-      <div className="text-uppercase text-small text-grey-4 flex align-center">
+      <div
+        className={cx(CS.textUppercase, CS.textSmall, CS.flex, CS.alignCenter)}
+      >
         {t`User attribute`}
         <Tooltip
           tooltip={t`We can automatically get your users’ attributes if you’ve set up SSO, or you can add them manually from the "…" menu in the People section of the Admin Panel.`}
         >
-          <Icon className="ml1" name="info_outline" />
+          <Icon className={CS.ml1} name="info_outline" />
         </Tooltip>
       </div>
     }
@@ -54,12 +56,10 @@ const AttributeMappingEditor = ({
       shouldUseSavedQuestion ? t`Pick a parameter` : t`Pick a column`
     }
     valueHeader={
-      <div className="text-uppercase text-small text-grey-4">
+      <div className={cx(CS.textUppercase, CS.textSmall)}>
         {shouldUseSavedQuestion ? t`Parameter or variable` : t`Column`}
       </div>
     }
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     renderValueInput={({ value, onChange }) =>
       !shouldUseSavedQuestion && policy.table_id != null ? (
         <div style={{ minWidth: 200 }}>
@@ -81,7 +81,7 @@ const AttributeMappingEditor = ({
         </div>
       ) : null
     }
-    divider={<span className="px2 text-bold">{t`equals`}</span>}
+    divider={<span className={cx(CS.px2, CS.textBold)}>{t`equals`}</span>}
     addText={t`Add a filter`}
     canAdd={attributesOptions.length > 0}
     canDelete={true}

@@ -1,8 +1,8 @@
 import { Component } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
+
 import { forceRedraw } from "metabase/lib/dom";
-import { KEYCODE_ENTER, KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 
 type Props = {
   value: string | number;
@@ -20,7 +20,7 @@ type State = {
   isFocused: boolean;
 };
 
-class TextWidget extends Component<Props, State> {
+export class TextWidget extends Component<Props, State> {
   static defaultProps = {
     isEditing: false,
     commitImmediately: false,
@@ -35,8 +35,6 @@ class TextWidget extends Component<Props, State> {
       isFocused: false,
     };
   }
-
-  static noPopover = true;
 
   UNSAFE_componentWillMount() {
     this.UNSAFE_componentWillReceiveProps(this.props);
@@ -82,9 +80,9 @@ class TextWidget extends Component<Props, State> {
         }}
         onKeyUp={e => {
           const target = e.target as HTMLInputElement;
-          if (e.keyCode === KEYCODE_ESCAPE) {
+          if (e.key === "Escape") {
             target.blur();
-          } else if (e.keyCode === KEYCODE_ENTER) {
+          } else if (e.key === "Enter") {
             setValue(this.state.value ?? null);
             target.blur();
           }
@@ -94,7 +92,9 @@ class TextWidget extends Component<Props, State> {
         }}
         onBlur={() => {
           changeFocus(false);
-          this.setState({ value: this.props.value });
+          if (this.state.value !== this.props.value) {
+            setValue(this.state.value ?? null);
+          }
         }}
         placeholder={isEditing ? t`Enter a default value…` : defaultPlaceholder}
         disabled={disabled}
@@ -102,6 +102,3 @@ class TextWidget extends Component<Props, State> {
     );
   }
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TextWidget;

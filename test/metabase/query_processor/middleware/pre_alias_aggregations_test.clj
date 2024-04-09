@@ -5,13 +5,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.middleware.pre-alias-aggregations
     :as qp.pre-alias-aggregations]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
 (defn- pre-alias [query]
-  (mt/with-everything-store
+  (qp.store/with-metadata-provider (mt/id)
     (driver/with-driver (or driver/*driver* :h2)
       (qp.pre-alias-aggregations/pre-alias-aggregations query))))
 
@@ -73,32 +74,28 @@
 
 (deftest ^:parallel expressions-test
   (testing "does pre-aliasing work the way we'd expect with expressions?"
-    (is (= {:database 1
-            :type     :query
-            :query    {:source-table 1
-                       :aggregation  [[:aggregation-options [:+ 20 [:sum [:field 2 nil]]] {:name "expression"}]]}}
+    (is (= (mt/mbql-query checkins
+             {:source-table $$venues
+              :aggregation  [[:aggregation-options [:+ 20 [:sum $user_id]] {:name "expression"}]]})
            (pre-alias
-            {:database 1
-             :type     :query
-             :query    {:source-table 1
-                        :aggregation  [[:+ 20 [:sum [:field 2 nil]]]]}})))))
+            (mt/mbql-query checkins
+              {:source-table $$venues
+               :aggregation  [[:+ 20 [:sum $user_id]]]}))))))
 
 (deftest ^:parallel expressions-test-2
-  (is (= {:database 1
-          :type     :query
-          :query    {:source-table 1
-                     :aggregation  [[:aggregation-options
-                                     [:+ 20 [:sum [:field 2 nil]]]
-                                     {:name "expression"}]
-                                    [:aggregation-options
-                                     [:- 20 [:sum [:field 2 nil]]]
-                                     {:name "expression_2"}]]}}
+  (is (= (mt/mbql-query checkins
+           {:source-table $$venues
+            :aggregation  [[:aggregation-options
+                            [:+ 20 [:sum $user_id]]
+                            {:name "expression"}]
+                           [:aggregation-options
+                            [:- 20 [:sum $user_id]]
+                            {:name "expression_2"}]]})
          (pre-alias
-          {:database 1
-           :type     :query
-           :query    {:source-table 1
-                      :aggregation  [[:+ 20 [:sum [:field 2 nil]]]
-                                     [:- 20 [:sum [:field 2 nil]]]]}}))))
+          (mt/mbql-query checkins
+            {:source-table $$venues
+             :aggregation  [[:+ 20 [:sum $user_id]]
+                            [:- 20 [:sum $user_id]]]})))))
 
 (driver/register! ::test-driver, :parent :sql)
 
@@ -114,13 +111,11 @@
           :query    {:source-table 1
                      :aggregation  [[:aggregation-options [:+ 20 [:sum [:field 2 nil]]] {:name "_expression"}]
                                     [:aggregation-options [:count] {:name "_count"}]]}}
-         (let [db (mt/db)]
-           (driver/with-driver ::test-driver
-             (qp.store/with-store
-               (qp.store/store-database! db)
-               (qp.pre-alias-aggregations/pre-alias-aggregations
-                {:database 1
-                 :type     :query
-                 :query    {:source-table 1
-                            :aggregation  [[:+ 20 [:sum [:field 2 nil]]]
-                                           [:count]]}})))))))
+         (driver/with-driver ::test-driver
+           (qp.store/with-metadata-provider meta/metadata-provider
+             (qp.pre-alias-aggregations/pre-alias-aggregations
+              {:database 1
+               :type     :query
+               :query    {:source-table 1
+                          :aggregation  [[:+ 20 [:sum [:field 2 nil]]]
+                                         [:count]]}}))))))

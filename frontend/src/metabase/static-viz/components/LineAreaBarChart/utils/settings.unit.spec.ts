@@ -1,4 +1,5 @@
-import { ChartSettings } from "../../XYChart/types";
+import type { ChartSettings } from "../../XYChart/types";
+
 import { adjustSettings } from "./settings";
 
 const settings: ChartSettings = {

@@ -1,14 +1,10 @@
-import {
-  forwardRef,
-  InputHTMLAttributes,
-  Ref,
-  useCallback,
-  useState,
-} from "react";
-import { Moment } from "moment-timezone";
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { InputHTMLAttributes, Ref } from "react";
+import { forwardRef, useCallback, useState } from "react";
+
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 import DateInput from "metabase/core/components/DateInput";
 import DateSelector from "metabase/core/components/DateSelector";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 export type DateWidgetAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,

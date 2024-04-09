@@ -37,7 +37,7 @@ export function saveQuestionBasedOnModel({ modelId, name }) {
 
   cy.findByText("Save").click();
 
-  modal().within(() => {
+  cy.findByTestId("save-question-modal").within(() => {
     cy.findByText(/Replace original question/i).should("not.exist");
     if (name) {
       cy.findByLabelText("Name").clear().type(name);
@@ -104,8 +104,8 @@ export function selectFromDropdown(option, clickOpts) {
 }
 
 export function startQuestionFromModel(modelName) {
-  cy.findByText("New").click();
-  cy.findByText("Question").should("be.visible").click();
+  cy.findByTestId("app-bar").findByText("New").click();
+  popover().findByText("Question").should("be.visible").click();
   cy.findByText("Models").click();
   cy.findByText(modelName).click();
 }

@@ -7,8 +7,6 @@
    [metabase.integrations.slack :as slack]
    [metabase.models :refer [Card Dashboard]]
    [metabase.models.permissions :as perms]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -44,7 +42,7 @@
                       (mt/user-http-request user :post status "email/test")))))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (set-email-setting! user 403)
             (delete-email-setting! user 403)
             (send-test-email! user 403)
@@ -53,7 +51,7 @@
             (send-test-email! :crowberto 200)))
 
         (testing "if `advanced-permissions` is enabled"
-          (premium-features-test/with-premium-features #{:advanced-permissions}
+          (mt/with-premium-features #{:advanced-permissions}
             (testing "still fail if user's group doesn't have `setting` permission"
               (set-email-setting! user 403)
               (delete-email-setting! user 403)
@@ -88,14 +86,14 @@
                   (mt/user-http-request user :get status "slack/manifest")))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (set-slack-settings! user 403)
             (get-manifest user 403)
             (set-slack-settings! :crowberto 200)
             (get-manifest :crowberto 200)))
 
         (testing "if `advanced-permissions` is enabled"
-          (premium-features-test/with-premium-features #{:advanced-permissions}
+          (mt/with-premium-features #{:advanced-permissions}
             (testing "still fail if user's group doesn't have `setting` permission"
               (set-slack-settings! user 403)
               (get-manifest user 403)
@@ -120,12 +118,12 @@
                                         :url geojson-test/test-geojson-url)))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (get-geojson user 403)
             (get-geojson :crowberto 200)))
 
         (testing "if `advanced-permissions` is enabled"
-          (premium-features-test/with-premium-features #{:advanced-permissions}
+          (mt/with-premium-features #{:advanced-permissions}
             (testing "still fail if user's group doesn't have `setting` permission"
               (get-geojson user 403)
               (get-geojson :crowberto 200))
@@ -145,12 +143,12 @@
                   (mt/user-http-request user :get status "permissions/group")))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (get-permission-groups user 403)
             (get-permission-groups :crowberto 200)))
 
         (testing "if `advanced-permissions` is enabled"
-          (premium-features-test/with-premium-features #{:advanced-permissions}
+          (mt/with-premium-features #{:advanced-permissions}
             (testing "still fail if user's group doesn't have `setting` permission"
               (get-permission-groups user 403)
               (get-permission-groups :crowberto 200))
@@ -183,7 +181,7 @@
                       (mt/user-http-request user :delete status (format "dashboard/%d/public_link" dashboard-id)))))]
 
           (testing "if `advanced-permissions` is disabled, require admins,"
-            (premium-features-test/with-premium-features #{}
+            (mt/with-premium-features #{}
               (get-public-dashboards user 403)
               (get-embeddable-dashboards user 403)
               (delete-public-dashboard! user 403)
@@ -191,7 +189,7 @@
               (delete-public-dashboard! :crowberto 204)))
 
           (testing "if `advanced-permissions` is enabled,"
-            (premium-features-test/with-premium-features #{:advanced-permissions}
+            (mt/with-premium-features #{:advanced-permissions}
               (testing "still fail if user's group doesn't have `setting` permission"
                 (get-public-dashboards user 403)
                 (get-embeddable-dashboards user 403)
@@ -224,13 +222,13 @@
                         (mt/user-http-request user :delete status (format "action/%d/public_link" action-id)))))]
 
             (testing "if `advanced-permissions` is disabled, require admins,"
-              (premium-features-test/with-premium-features #{}
+              (mt/with-premium-features #{}
                 (get-public-actions user 403)
                 (delete-public-action! user 403)
                 (delete-public-action! :crowberto 204)))
 
             (testing "if `advanced-permissions` is enabled,"
-              (premium-features-test/with-premium-features #{:advanced-permissions}
+              (mt/with-premium-features #{:advanced-permissions}
                 (testing "still fail if user's group doesn't have `setting` permission"
                   (get-public-actions user 403)
                   (delete-public-action! user 403)
@@ -265,7 +263,7 @@
                       (mt/user-http-request user :delete status (format "card/%d/public_link" card-id)))))]
 
           (testing "if `advanced-permissions` is disabled, require admins,"
-            (premium-features-test/with-premium-features #{}
+            (mt/with-premium-features #{}
               (get-public-cards user 403)
               (get-embeddable-cards user 403)
               (delete-public-card! user 403)
@@ -274,7 +272,7 @@
               (delete-public-card! :crowberto 204)))
 
           (testing "if `advanced-permissions` is enabled"
-            (premium-features-test/with-premium-features #{:advanced-permissions}
+            (mt/with-premium-features #{:advanced-permissions}
               (testing "still fail if user's group doesn't have `setting` permission,"
                 (get-public-cards user 403)
                 (get-embeddable-cards user 403)
@@ -320,7 +318,7 @@
           (set-interval! :rasta 403))
 
         (testing "if `advanced-permissions` is enabled"
-          (premium-features-test/with-premium-features #{:advanced-permissions}
+          (mt/with-premium-features #{:advanced-permissions}
             (testing "still fail if user's group doesn't have `setting` permission,"
               (enable-persist! :crowberto 204)
               (enable-persist! user 403)

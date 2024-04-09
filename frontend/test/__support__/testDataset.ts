@@ -1,19 +1,21 @@
-import { DatasetColumn, DatasetData } from "metabase-types/api";
+import type { DatasetColumn, DatasetData } from "metabase-types/api";
 import { createMockDatasetData } from "metabase-types/api/mocks";
+import { PRODUCTS_ID, PRODUCTS } from "metabase-types/api/mocks/presets";
 
 const testColumns: DatasetColumn[] = [
   {
     description:
       "The numerical product number. Only used internally. All external communication should use the title or EAN.",
     semantic_type: "type/PK",
-    table_id: 1,
+    table_id: PRODUCTS_ID,
     coercion_strategy: null,
     name: "ID",
     settings: {},
     source: "fields",
-    field_ref: ["field", 8, null],
+    field_ref: ["field", PRODUCTS.TITLE, null],
     effective_type: "type/BigInteger",
-    id: 8,
+
+    id: PRODUCTS.TITLE,
     visibility_type: "normal",
     display_name: "ID",
     fingerprint: null,
@@ -22,15 +24,15 @@ const testColumns: DatasetColumn[] = [
   {
     description:
       "The international article number. A 13 digit number uniquely identifying the product.",
-    table_id: 1,
+    table_id: PRODUCTS_ID,
     coercion_strategy: null,
     name: "EAN",
     settings: {},
     source: "fields",
-    field_ref: ["field", 2, null],
+    field_ref: ["field", PRODUCTS.EAN, null],
     effective_type: "type/Text",
 
-    id: 2,
+    id: PRODUCTS.EAN,
     visibility_type: "normal",
     display_name: "Ean",
     fingerprint: {
@@ -54,15 +56,15 @@ const testColumns: DatasetColumn[] = [
     description:
       "The name of the product as it should be displayed to customers.",
     semantic_type: "type/Title",
-    table_id: 1,
+    table_id: PRODUCTS_ID,
     coercion_strategy: null,
     name: "TITLE",
     settings: {},
     source: "fields",
-    field_ref: ["field", 5, null],
+    field_ref: ["field", PRODUCTS.TITLE, null],
     effective_type: "type/Text",
 
-    id: 5,
+    id: PRODUCTS.TITLE,
     visibility_type: "normal",
     display_name: "Title",
     fingerprint: {
@@ -86,15 +88,15 @@ const testColumns: DatasetColumn[] = [
     description:
       "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
     semantic_type: "type/Category",
-    table_id: 1,
+    table_id: PRODUCTS_ID,
     coercion_strategy: null,
     name: "CATEGORY",
     settings: {},
     source: "fields",
-    field_ref: ["field", 4, null],
+    field_ref: ["field", PRODUCTS.CATEGORY, null],
     effective_type: "type/Text",
 
-    id: 4,
+    id: PRODUCTS.CATEGORY,
     visibility_type: "normal",
     display_name: "Category",
     fingerprint: {
@@ -117,15 +119,15 @@ const testColumns: DatasetColumn[] = [
   {
     description: "The source of the product.",
     semantic_type: "type/Company",
-    table_id: 1,
+    table_id: PRODUCTS_ID,
     coercion_strategy: null,
     name: "VENDOR",
     settings: {},
     source: "fields",
-    field_ref: ["field", 3, null],
+    field_ref: ["field", PRODUCTS.VENDOR, null],
     effective_type: "type/Text",
 
-    id: 3,
+    id: PRODUCTS.VENDOR,
     visibility_type: "normal",
     display_name: "Vendor",
     fingerprint: {
@@ -148,15 +150,15 @@ const testColumns: DatasetColumn[] = [
   {
     description:
       "The list price of the product. Note that this is not always the price the product sold for due to discounts, promotions, etc.",
-    table_id: 1,
+    table_id: PRODUCTS_ID,
     coercion_strategy: null,
     name: "PRICE",
     settings: {},
     source: "fields",
-    field_ref: ["field", 1, null],
+    field_ref: ["field", PRODUCTS.PRICE, null],
     effective_type: "type/Float",
 
-    id: 1,
+    id: PRODUCTS.PRICE,
     visibility_type: "normal",
     display_name: "Price",
     fingerprint: {
@@ -181,15 +183,15 @@ const testColumns: DatasetColumn[] = [
     description:
       "The average rating users have given the product. This ranges from 1 - 5",
     semantic_type: "type/Score",
-    table_id: 1,
+    table_id: PRODUCTS_ID,
     coercion_strategy: null,
     name: "RATING",
     settings: {},
     source: "fields",
-    field_ref: ["field", 6, null],
+    field_ref: ["field", PRODUCTS.RATING, null],
     effective_type: "type/Float",
 
-    id: 6,
+    id: PRODUCTS.RATING,
     visibility_type: "normal",
     display_name: "Rating",
     fingerprint: {
@@ -213,7 +215,7 @@ const testColumns: DatasetColumn[] = [
   {
     description: "The date the product was added to our catalog.",
     semantic_type: "type/CreationTimestamp",
-    table_id: 1,
+    table_id: PRODUCTS_ID,
     coercion_strategy: null,
     unit: "default",
     name: "CREATED_AT",
@@ -221,14 +223,14 @@ const testColumns: DatasetColumn[] = [
     source: "fields",
     field_ref: [
       "field",
-      7,
+      PRODUCTS.CREATED_AT,
       {
         "temporal-unit": "default",
       },
     ],
     effective_type: "type/DateTime",
 
-    id: 7,
+    id: PRODUCTS.CREATED_AT,
     visibility_type: "normal",
     display_name: "Created At",
     fingerprint: {

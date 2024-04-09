@@ -1,24 +1,22 @@
-import _ from "underscore";
-import { Route } from "react-router";
 import { useCallback, useEffect } from "react";
 import { connect } from "react-redux";
+import type { Route } from "react-router";
+import _ from "underscore";
 
+import { ApplicationPermissionsHelp } from "metabase/admin/permissions/components/ApplicationPermissionsHelp";
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
-
-import Groups from "metabase/entities/groups";
-import {
-  getApplicationPermissionEditor,
-  getIsDirty,
-} from "metabase-enterprise/application_permissions/selectors";
-
 import PermissionsPageLayout from "metabase/admin/permissions/components/PermissionsPageLayout";
+import Groups from "metabase/entities/groups";
 import {
   initializeApplicationPermissions,
   saveApplicationPermissions,
   updateApplicationPermission,
 } from "metabase-enterprise/application_permissions/reducer";
-import { ApplicationPermissionsState } from "metabase-enterprise/application_permissions/types/state";
-import { ApplicationPermissionsHelp } from "metabase/admin/permissions/components/ApplicationPermissionsHelp";
+import {
+  getApplicationPermissionEditor,
+  getIsDirty,
+} from "metabase-enterprise/application_permissions/selectors";
+import type { ApplicationPermissionsState } from "metabase-enterprise/application_permissions/types/state";
 
 const mapDispatchToProps = {
   initialize: initializeApplicationPermissions,

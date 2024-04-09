@@ -1,12 +1,13 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visitQuestionAdhoc,
   visitQuestion,
+  popover,
+  undoToast,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -22,6 +23,7 @@ describe("scenarios > admin > localization", () => {
     // filter: created before June 1st, 2022
     // summarize: Count by CreatedAt: Week
 
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.createQuestion({
       name: "Orders created before June 1st 2022",
       query: {
@@ -37,6 +39,8 @@ describe("scenarios > admin > localization", () => {
     cy.visit("/collection/root");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders created before June 1st 2022").click();
+
+    cy.wait("@cardQuery");
 
     cy.log("Assert the dates on the X axis");
     // it's hard and tricky to invoke hover in Cypress, especially in our graphs
@@ -142,8 +146,7 @@ describe("scenarios > admin > localization", () => {
     cy.findByText("US Dollar").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Euro").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved");
+    undoToast().findByText("Changes saved").should("be.visible");
 
     visitQuestionAdhoc({
       display: "scalar",
@@ -176,61 +179,62 @@ describe("scenarios > admin > localization", () => {
 
     cy.visit("/admin/settings/localization");
 
-    // update the date style setting to YYYY/MM/DD
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("January 7, 2018").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2018/1/7").click();
-    cy.wait("@updateFormatting");
-    cy.findAllByTestId("select-button-content").should("contain", "2018/1/7");
+    cy.findByTestId("custom-formatting-setting").within(() => {
+      // update the date style setting to YYYY/MM/DD
+      cy.findByText("January 31, 2018").click();
+    });
 
-    // update the time style setting to 24 hour
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("17:24 (24-hour clock)").click();
+    popover().findByText("2018/1/31").click();
     cy.wait("@updateFormatting");
-    cy.findByDisplayValue("HH:mm").should("be.checked");
+
+    cy.findByTestId("custom-formatting-setting").within(() => {
+      cy.findAllByTestId("select-button-content").should(
+        "contain",
+        "2018/1/31",
+      );
+
+      // update the time style setting to 24 hour
+      cy.findByText("17:24 (24-hour clock)").click();
+      cy.wait("@updateFormatting");
+      cy.findByDisplayValue("HH:mm").should("be.checked");
+    });
 
     visitQuestion(ORDERS_QUESTION_ID);
 
     // create a date filter and set it to the 'On' view to see a specific date
-    cy.findByTextEnsureVisible("Created At").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter by this column").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Specific dates...").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("On").click();
+    cy.findByTestId("TableInteractive-root")
+      .findByTextEnsureVisible("Created At")
+      .click();
 
-    // ensure the date picker is ready
-    cy.findByTextEnsureVisible("Add a time");
-    cy.findByTextEnsureVisible("Add filter");
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Specific dates…").click();
+      cy.findByText("On").click();
 
-    // update the date input in the widget
-    const date = new Date();
-    const dateString = `${date.getFullYear()}/${
-      date.getMonth() + 1
-    }/${date.getDate()}`;
-    cy.findByDisplayValue(dateString).clear().type("2024/5/15").blur();
+      // ensure the date picker is ready
+      cy.findByTextEnsureVisible("Add time");
+      cy.findByTextEnsureVisible("Add filter");
 
-    // add a time to the date
-    const TIME_SELECTOR_DEFAULT_HOUR = 12;
-    const TIME_SELECTOR_DEFAULT_MINUTE = 30;
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add a time").click();
-    cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_HOUR}`).clear().type("19");
-    cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_MINUTE}`).clear().type("56");
+      // update the date input in the widget
+      cy.findByLabelText("Date").clear().type("2024/5/15").blur();
 
-    // apply the date filter
-    cy.button("Add filter").click();
+      // add a time to the date
+      cy.findByText("Add time").click();
+      cy.findByLabelText("Time").clear().type("19:56");
+
+      // apply the date filter
+      cy.button("Add filter").click();
+    });
+
     cy.wait("@dataset");
 
     cy.findByTestId("loading-spinner").should("not.exist");
 
     // verify that the correct row is displayed
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2024/5/15, 19:56");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("127.52");
+    cy.findByTestId("TableInteractive-root").within(() => {
+      cy.findByText("2024/5/15, 19:56");
+      cy.findByText("127.52");
+    });
   });
 });
 

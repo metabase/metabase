@@ -6,7 +6,7 @@
    [metabase.metabot :as metabot]
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.util :as metabot-util]
-   [metabase.models :refer [Card Database]]
+   [metabase.models :refer [Card]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -53,14 +53,14 @@
 
 (deftest infer-sql-test
   (testing "Test the 'plumbing' of the infer-sql function. The actual invocation of the remote bot is dynamically rebound."
-    (mt/with-temp-env-var-value [mb-is-metabot-enabled true]
-      (mt/dataset sample-dataset
+    (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
+      (mt/dataset test-data
         (t2.with-temp/with-temp
           [Card model {:dataset_query
                        {:database (mt/id)
                         :type     :query
                         :query    {:source-table (mt/id :orders)}}
-                       :dataset true}]
+                       :type :model}]
           (let [bot-sql (format "SELECT * FROM %s" (:name model))]
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (test-bot-endpoint-single-message bot-sql)
                           metabot-client/*create-embedding-endpoint*       simple-embedding-stub
@@ -79,29 +79,29 @@
 
 (deftest infer-model-test
   (testing "Test the 'plumbing' of the infer-model function. The actual invocation of the remote bot is dynamically rebound."
-    (mt/with-temp-env-var-value [mb-is-metabot-enabled true]
-      (mt/dataset sample-dataset
+    (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
+      (mt/dataset test-data
         (t2.with-temp/with-temp
           [Card orders-model {:name    "Orders Model"
                               :dataset_query
                               {:database (mt/id)
                                :type     :query
                                :query    {:source-table (mt/id :orders)}}
-                              :dataset true}
+                              :type :model}
            Card _people-model {:name    "People Model"
                                :dataset_query
                                {:database (mt/id)
                                 :type     :query
                                 :query    {:source-table (mt/id :people)}}
-                               :dataset true}
+                               :type :model}
            Card _products-model {:name    "Products Model"
                                  :dataset_query
                                  {:database (mt/id)
                                   :type     :query
                                   :query    {:source-table (mt/id :products)}}
-                                 :dataset true}]
+                                 :type :model}]
           (let [user_prompt        "Show me all of my orders data"
-                db                 (t2/select-one Database :id (mt/id))
+                db                 (t2/select-one :model/Database :id (mt/id))
                 {:keys [models] :as denormalized-db} (metabot-util/denormalize-database db)
                 denormalized-model (first (filter (comp #{"Orders Model"} :name) models))
                 context            {:database    denormalized-db
@@ -127,8 +127,8 @@
 
 (deftest infer-native-sql-test
   (testing "Test the 'plumbing' of the infer-native-sql function. The actual invocation of the remote bot is dynamically rebound."
-    (mt/with-temp-env-var-value [mb-is-metabot-enabled true]
-      (mt/dataset sample-dataset
+    (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
+      (mt/dataset test-data
         (let [user_prompt "Show me all of my reviews data"
               context     {:database    (metabot-util/denormalize-database (mt/db))
                            :user_prompt user_prompt

@@ -1,15 +1,17 @@
-import { MouseEvent, useMemo } from "react";
+import { useMemo } from "react";
 import _ from "underscore";
-import { getEventTarget } from "metabase/lib/dom";
+
 import Tooltip from "metabase/core/components/Tooltip";
-import StackedDataTooltip from "./StackedDataTooltip";
-import KeyValuePairChartTooltip from "./KeyValuePairChartTooltip";
-import TimelineEventTooltip from "./TimelineEventTooltip";
-import {
+import { getEventTarget } from "metabase/lib/dom";
+import type {
   HoveredObject,
   HoveredTimelineEvent,
-  VisualizationSettings,
-} from "./types";
+} from "metabase/visualizations/types";
+import type { VisualizationSettings } from "metabase-types/api";
+
+import KeyValuePairChartTooltip from "./KeyValuePairChartTooltip";
+import StackedDataTooltip from "./StackedDataTooltip";
+import TimelineEventTooltip from "./TimelineEventTooltip";
 
 export interface ChartTooltipProps {
   hovered?: HoveredObject;
@@ -54,7 +56,7 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
   const target = hasTargetElement
     ? hovered?.element
     : hasTargetEvent
-    ? getEventTarget(hovered.event as MouseEvent)
+    ? getEventTarget(hovered.event)
     : null;
 
   return target ? (

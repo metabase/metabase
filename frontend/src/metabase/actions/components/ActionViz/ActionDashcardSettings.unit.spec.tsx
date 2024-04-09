@@ -1,22 +1,22 @@
-import * as React from "react";
 import userEvent from "@testing-library/user-event";
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-  within,
-} from "__support__/ui";
+import type * as React from "react";
 
 import {
   setupActionsEndpoints,
   setupCardsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
+import type { WritebackParameter } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockActionDashboardCard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
   createMockQueryAction,
   createMockCard,
   createMockParameter,
@@ -26,7 +26,6 @@ import {
   createMockImplicitCUDActions,
 } from "metabase-types/api/mocks";
 
-import { WritebackParameter } from "metabase-types/api";
 import { ConnectedActionDashcardSettings } from "./ActionDashcardSettings";
 
 const dashboardParameter = createMockParameter({
@@ -40,8 +39,8 @@ const actionParameter2 = createActionParameter(2);
 const actionParameterRequired = createActionParameter(3, { required: true });
 
 const models = [
-  createMockCard({ id: 1, name: "Model Uno", dataset: true }),
-  createMockCard({ id: 2, name: "Model Deux", dataset: true }),
+  createMockCard({ id: 1, name: "Model Uno", type: "model" }),
+  createMockCard({ id: 2, name: "Model Deux", type: "model" }),
 ];
 
 const actions1 = [
@@ -67,7 +66,7 @@ const actions2 = [
 
 const implicitActions = createMockImplicitCUDActions(models[1].id, 123);
 
-const dashcard = createMockDashboardOrderedCard();
+const dashcard = createMockDashboardCard();
 const actionDashcard = createMockActionDashboardCard({ id: 2 });
 const actionDashcardWithAction = createMockActionDashboardCard({
   id: 3,
@@ -75,7 +74,7 @@ const actionDashcardWithAction = createMockActionDashboardCard({
 });
 
 const dashboard = createMockDashboard({
-  ordered_cards: [dashcard, actionDashcard, actionDashcardWithAction],
+  dashcards: [dashcard, actionDashcard, actionDashcardWithAction],
   parameters: [dashboardParameter],
 });
 
@@ -162,7 +161,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(within(formSection).getByTestId("select-button"));
 
         const popover = await screen.findByRole("grid");
 
@@ -212,7 +211,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(within(formSection).getByTestId("select-button"));
 
         const popover = await screen.findByRole("grid");
 
@@ -271,7 +270,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
         `parameter-form-section-${actionParameter1.id}`,
       );
 
-      userEvent.click(within(formSection).getByTestId("select-button"));
+      await userEvent.click(within(formSection).getByTestId("select-button"));
 
       const popover = await screen.findByRole("grid");
 
@@ -312,7 +311,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(within(formSection).getByTestId("select-button"));
 
         const popover = await screen.findByRole("grid");
 
@@ -348,7 +347,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(within(formSection).getByTestId("select-button"));
 
         const popover = await screen.findByRole("grid");
 
@@ -438,7 +437,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
 
     expect(screen.queryByText("Action Uno")).not.toBeInTheDocument();
 
-    userEvent.click(modelExpander);
+    await userEvent.click(modelExpander);
 
     await screen.findByText("Action Uno");
     expect(screen.getByText("Action Uno")).toBeInTheDocument();
@@ -470,7 +469,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
       dashcard: actionDashcardWithAction,
     });
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
 
     const queryAction = screen.getByTestId(`action-item-${actions2[0].name}`);
     const implicitAction = screen.getByTestId(
@@ -488,10 +487,10 @@ describe("ActionViz > ActionDashcardSettings", () => {
     ).toBeInTheDocument();
   });
 
-  it("can close the modal with the done button", () => {
+  it("can close the modal with the done button", async () => {
     const { closeSpy } = setup();
 
-    userEvent.click(screen.getByRole("button", { name: "Done" }));
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(closeSpy).toHaveBeenCalledTimes(1);
   });
 });

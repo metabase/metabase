@@ -1,5 +1,4 @@
-import { IconProps } from "metabase/core/components/Icon";
-
+import type { IconProps } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 export type PickerModel = "card" | "collection" | "dataset" | "dashboard";
@@ -24,4 +23,7 @@ export type SearchQuery = {
   q?: string;
   collection?: Collection["id"];
   models?: PickerModel[];
+  filter_items_in_personal_collection?: FilterItemsInPersonalCollection;
 };
+
+export type FilterItemsInPersonalCollection = "only" | "exclude";

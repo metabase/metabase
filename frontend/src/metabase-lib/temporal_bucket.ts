@@ -1,6 +1,13 @@
 import * as ML from "cljs/metabase.lib.js";
+
 import { displayInfo } from "./metadata";
-import type { Bucket, ColumnMetadata, Clause, Query } from "./types";
+import type {
+  Bucket,
+  ColumnMetadata,
+  Clause,
+  Query,
+  BucketName,
+} from "./types";
 
 export function temporalBucket(clause: Clause | ColumnMetadata): Bucket | null {
   return ML.temporal_bucket(clause);
@@ -33,10 +40,46 @@ export function withDefaultTemporalBucket(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata,
-) {
+): ColumnMetadata {
   const buckets = availableTemporalBuckets(query, stageIndex, column);
   const defaultBucket = buckets.find(
     bucket => displayInfo(query, stageIndex, bucket).default,
   );
   return defaultBucket ? withTemporalBucket(column, defaultBucket) : column;
+}
+
+type IntervalAmount = number | "current" | "next" | "last";
+
+export function describeTemporalInterval(
+  n: IntervalAmount,
+  unit?: string,
+): string {
+  return ML.describe_temporal_interval(n, unit);
+}
+
+export function describeRelativeDatetime(
+  n: IntervalAmount,
+  unit?: string,
+): string {
+  return ML.describe_relative_datetime(n, unit);
+}
+
+type RelativeDateRangeFormatOpts = {
+  value: number | "current";
+  unit: BucketName;
+  offsetValue?: number;
+  offsetUnit?: BucketName;
+  includeCurrent?: boolean;
+};
+
+export function formatRelativeDateRange({
+  value,
+  unit,
+  offsetValue,
+  offsetUnit,
+  includeCurrent,
+}: RelativeDateRangeFormatOpts): string {
+  return ML.format_relative_date_range(value, unit, offsetValue, offsetUnit, {
+    "include-current": includeCurrent,
+  });
 }

@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
 
 export const ChangeTypeButton = styled.button`
@@ -10,7 +11,6 @@ export const ChangeTypeButton = styled.button`
 
 export const UserTypeCellRoot = styled.td`
   text-transform: capitalize;
-  text-decoration: underline;
   font-size: 14px;
   font-weight: bold;
   color: ${color("text-medium")};

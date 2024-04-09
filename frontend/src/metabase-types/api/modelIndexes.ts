@@ -10,11 +10,11 @@ export type ModelIndex = {
   value_ref: FieldReference;
   pk_ref: FieldReference;
   state: "indexed" | "pending";
-  generation: number;
   creator_id: number;
   error: string | null;
   schedule: string; // cron string
-  state_changed_at: string; // datetime
+  created_at: string; // datetime
+  indexed_at: string; // datetime
 };
 
 export type IndexedEntity = {

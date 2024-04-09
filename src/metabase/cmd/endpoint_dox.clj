@@ -27,16 +27,15 @@
     (str/split endpoint #"metabase-enterprise.")
     (str/split endpoint #"\.")))
 
-(def initialisms "Used to format initialisms/acronyms in generated docs." '["SSO" "SAML" "GTAP" "LDAP" "SQL" "JSON"])
+(def initialisms
+  "Used to format initialisms/acronyms in generated docs."
+  '["SSO" "SAML" "GTAP" "LDAP" "SQL" "JSON" "API" "LLM"])
 
 (defn capitalize-initialisms
   "Converts initialisms to upper case."
   [name initialisms]
-  (let [re (re-pattern (str "(?i)(?:" (str/join "|" initialisms) ")"))
-        matches (re-seq re name)]
-    (if matches
-      (reduce (fn [n m] (str/replace n m (u/upper-case-en m))) name matches)
-      name)))
+  (let [re (re-pattern (str "(?i)(?:" (str/join "|" (map #(str % "\\b") initialisms)) ")"))]
+    (str/replace name re u/upper-case-en)))
 
 (defn- endpoint-ns-name
   "Creates a name for endpoints in a namespace, like all the endpoints for Alerts.
@@ -49,6 +48,7 @@
       last
       u/capitalize-first-char
       (str/replace #"(.api.|-)" " ")
+      (str/replace ".api" "") ; account for `serialization.api` namespace
       (capitalize-initialisms initialisms)
       (str/replace "SSO SSO" "SSO")))
 
@@ -118,13 +118,20 @@
          :endpoint-str (endpoint-str endpoint)
          :ns-name (endpoint-ns-name endpoint)))
 
+(def api-ns
+  "Regular expression to match endpoints. Needs to match namespaces like:
+   - metabase.api.search
+   - metabase-enterprise.serialization.api
+   - metabase.api.api-key"
+  (re-pattern "^metabase(?:-enterprise\\.[\\w-]+)?\\.api(?:\\.[\\w-]+)?$"))
+
 (defn- api-namespaces []
   (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
-        :when   (and (re-find #"^metabase(?:-enterprise\.[\w-]+)?\.api\." (name ns-symb))
+        :when   (and (re-find api-ns (name ns-symb))
                      (not (str/includes? (name ns-symb) "test")))]
     ns-symb))
 
-(defn- collect-endpoints
+(defn collect-endpoints
   "Gets a list of all API endpoints."
   []
   (for [ns-symb     (api-namespaces)
@@ -198,7 +205,9 @@
   (->> (collect-endpoints)
        (map process-endpoint)
        (group-by :ns-name)
-       (into (sorted-map))))
+       (into (sorted-map-by (fn [a b] (compare
+                                       (u/lower-case-en a)
+                                       (u/lower-case-en b)))))))
 
 ;;;; Page generators
 

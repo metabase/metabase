@@ -1,46 +1,41 @@
-import { t } from "ttag";
 import { updateIn } from "icepick";
+import { t } from "ttag";
+
+import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import DatabaseForm from "metabase/databases/containers/DatabaseForm";
-import { DatabaseData } from "metabase-types/api";
-import { InviteInfo } from "metabase-types/store";
+import type { DatabaseData } from "metabase-types/api";
+import type { InviteInfo } from "metabase-types/store";
+
 import {
-  selectStep,
   skipDatabase,
   submitDatabase,
   submitUserInvite,
   updateDatabaseEngine,
 } from "../../actions";
-import { DATABASE_STEP } from "../../constants";
 import {
   getDatabase,
   getDatabaseEngine,
   getInvite,
   getIsEmailConfigured,
-  getIsSetupCompleted,
-  getIsStepActive,
-  getIsStepCompleted,
   getUser,
 } from "../../selectors";
+import { useStep } from "../../useStep";
 import { ActiveStep } from "../ActiveStep";
-import { InactiveStep } from "../InvactiveStep";
+import { InactiveStep } from "../InactiveStep";
 import { InviteUserForm } from "../InviteUserForm";
 import { SetupSection } from "../SetupSection";
+import type { NumberedStepProps } from "../types";
+
 import { StepDescription } from "./DatabaseStep.styled";
 
-export const DatabaseStep = (): JSX.Element => {
+export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
+  const { isStepActive, isStepCompleted } = useStep("db_connection");
   const user = useSelector(getUser);
   const database = useSelector(getDatabase);
   const engine = useSelector(getDatabaseEngine);
   const invite = useSelector(getInvite);
   const isEmailConfigured = useSelector(getIsEmailConfigured);
-  const isStepActive = useSelector(state =>
-    getIsStepActive(state, DATABASE_STEP),
-  );
-  const isStepCompleted = useSelector(state =>
-    getIsStepCompleted(state, DATABASE_STEP),
-  );
-  const isSetupCompleted = useSelector(getIsSetupCompleted);
+
   const dispatch = useDispatch();
 
   const handleEngineChange = (engine?: string) => {
@@ -59,10 +54,6 @@ export const DatabaseStep = (): JSX.Element => {
     dispatch(submitUserInvite(invite));
   };
 
-  const handleStepSelect = () => {
-    dispatch(selectStep(DATABASE_STEP));
-  };
-
   const handleStepCancel = () => {
     dispatch(skipDatabase(engine));
   };
@@ -71,10 +62,8 @@ export const DatabaseStep = (): JSX.Element => {
     return (
       <InactiveStep
         title={getStepTitle(database, invite, isStepCompleted)}
-        label={3}
+        label={stepLabel}
         isStepCompleted={isStepCompleted}
-        isSetupCompleted={isSetupCompleted}
-        onStepSelect={handleStepSelect}
       />
     );
   }
@@ -82,7 +71,7 @@ export const DatabaseStep = (): JSX.Element => {
   return (
     <ActiveStep
       title={getStepTitle(database, invite, isStepCompleted)}
-      label={3}
+      label={stepLabel}
     >
       <StepDescription>
         <div>{t`Are you ready to start exploring your data? Add it below.`}</div>

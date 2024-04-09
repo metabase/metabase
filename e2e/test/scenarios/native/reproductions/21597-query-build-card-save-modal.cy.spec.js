@@ -1,13 +1,11 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
-  modal,
   openNativeEditor,
   addPostgresDatabase,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const databaseName = "Sample Database";
 const databaseCopyName = `${databaseName} copy`;
@@ -35,7 +33,7 @@ describe("issue 21597", { tags: "@external" }, () => {
       parseSpecialCharSequences: false,
     });
 
-    cy.findByTestId("select-button").click();
+    cy.findByTestId("variable-type-select").click();
     popover().within(() => {
       cy.findByText("Field Filter").click();
     });
@@ -46,27 +44,25 @@ describe("issue 21597", { tags: "@external" }, () => {
       cy.findByText("Category").click();
     });
 
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("200");
 
     // Change DB
     // and re-run the native query
-    cy.get(".NativeQueryEditor .GuiBuilder-section")
+    cy.findByTestId("native-query-editor-container")
       .findByText("Sample Database")
       .click();
     popover().within(() => {
       cy.findByText(databaseCopyName).click();
     });
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(
-      `Failed to fetch Field ${PRODUCTS.CATEGORY}: Field does not exist, or belongs to a different Database.`,
-    );
+    cy.contains(`Can\'t find field with ID: ${PRODUCTS.CATEGORY}`);
 
     // Try to save the native query
     cy.findByTestId("qb-header-action-panel").findByText("Save").click();
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(modal => {
       cy.findByPlaceholderText("What is the name of your question?").type("Q");
       cy.findByText("Save").click();
       cy.wait("@saveNativeQuestion");

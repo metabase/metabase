@@ -5,7 +5,6 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (def TimelineEvent
@@ -23,10 +22,27 @@
 
 ;;;; schemas
 
-(def Sources
+(def default-icon
+  "The default icon for Timeline and TimelineEvents."
+  "star")
+
+(def Icon
+  "Schema for Timeline and TimelineEvents `icon`"
+  [:enum default-icon "cake" "mail" "warning" "bell" "cloud"])
+
+(def Source
   "Timeline Event Source Schema. For Snowplow Events, where the Event is created from is important.
   Events are added from one of three sources: `collections`, `questions` (cards in backend code), or directly with an API call. An API call is indicated by having no source key in the `timeline-event` request."
-  (s/enum "collections" "question"))
+  [:enum "collections" "question"])
+
+;;;; transforms
+
+(t2/define-after-select :model/TimelineEvent
+  [timeline-event]
+  ;; We used to have a "balloons" icon but we removed it.
+  ;; Use the default icon instead. (metabase#34586, metabase#35129)
+  (update timeline-event :icon (fn [icon]
+                                 (if (= icon "balloons") default-icon icon))))
 
 ;;;; permissions
 
@@ -38,11 +54,12 @@
 
 ;;;; hydration
 
-(mi/define-simple-hydration-method timeline
-  :timeline
-  "Attach the parent `:timeline` to this [[TimelineEvent]]."
-  [{:keys [timeline_id]}]
-  (t2/select-one 'Timeline :id timeline_id))
+(methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :timeline]
+  [_model k events]
+  (mi/instances-with-hydrated-data
+   events k
+   #(t2/select-pk->fn identity :model/Timeline :id [:in (map :timeline_id events)])
+   :timeline_id))
 
 (defn- fetch-events
   "Fetch events for timelines in `timeline-ids`. Can include optional `start` and `end` dates in the options map, as

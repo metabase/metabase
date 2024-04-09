@@ -1,17 +1,15 @@
+import { USERS } from "e2e/support/cypress_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   setupSMTP,
   visitQuestion,
   getFullName,
 } from "e2e/support/helpers";
-
-import { USERS } from "e2e/support/cypress_data";
-
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_BY_YEAR_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const { normal, admin } = USERS;
 
@@ -48,7 +46,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
     });
 
     it("should let you edit an alert", () => {
-      cy.intercept("PUT", "/api/alert/1").as("updatedAlert");
+      cy.intercept("PUT", "/api/alert/*").as("updatedAlert");
 
       // Change alert
       visitQuestion(ORDERS_QUESTION_ID);

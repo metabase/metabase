@@ -1,13 +1,13 @@
 import type {
   Dashboard,
   DashboardId,
-  DashboardOrderedCard,
   DashCardId,
   DashCardDataMap,
   ParameterId,
   ParameterValueOrArray,
-  DashboardOrderedTab,
+  DashboardTab,
   DashboardTabId,
+  DashboardCard,
 } from "metabase-types/api";
 
 export type DashboardSidebarName =
@@ -18,19 +18,49 @@ export type DashboardSidebarName =
   | "sharing"
   | "info";
 
-export type StoreDashboardTab = DashboardOrderedTab & {
+interface BaseSidebarState {
+  name?: DashboardSidebarName;
+  props: Record<string, unknown> & {
+    dashcardId?: DashCardId;
+  };
+}
+
+type ClickBehaviorSidebarProps = {
+  dashcardId: DashCardId;
+};
+
+export interface ClickBehaviorSidebarState extends BaseSidebarState {
+  name: "clickBehavior";
+  props: ClickBehaviorSidebarProps;
+}
+
+type EditParameterSidebarProps = {
+  dashcardId?: DashCardId;
+  parameterId: ParameterId;
+};
+
+export interface EditParameterSidebarState extends BaseSidebarState {
+  name: "editParameter";
+  props: EditParameterSidebarProps;
+}
+
+export type DashboardSidebarState =
+  | BaseSidebarState
+  | ClickBehaviorSidebarState
+  | EditParameterSidebarState;
+
+export type StoreDashboardTab = DashboardTab & {
   isRemoved?: boolean;
 };
 
-export type StoreDashboard = Omit<
-  Dashboard,
-  "ordered_cards" | "ordered_tabs"
-> & {
-  ordered_cards: DashCardId[];
-  ordered_tabs?: StoreDashboardTab[];
+export type StoreDashboard = Omit<Dashboard, "dashcards" | "tabs"> & {
+  dashcards: DashCardId[];
+  tabs?: StoreDashboardTab[];
+  isDirty?: boolean;
 };
 
-export type StoreDashcard = DashboardOrderedCard & {
+export type StoreDashcard = DashboardCard & {
+  isAdded?: boolean;
   isDirty?: boolean;
   isRemoved?: boolean;
 };
@@ -54,9 +84,9 @@ export interface DashboardState {
   dashcardData: DashCardDataMap;
 
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
+  draftParameterValues: Record<ParameterId, ParameterValueOrArray | null>;
 
   loadingDashCards: {
-    dashcardIds: DashCardId[];
     loadingIds: DashCardId[];
     loadingStatus: "idle" | "running" | "complete";
     startTime: number | null;
@@ -67,16 +97,13 @@ export interface DashboardState {
     showLoadCompleteFavicon?: boolean;
   };
 
-  isEditing: Dashboard | null;
+  editingDashboard: Dashboard | null;
   isAddParameterPopoverOpen: boolean;
   isNavigatingBackToDashboard: boolean;
 
   slowCards: Record<DashCardId, unknown>;
 
-  sidebar: {
-    name?: DashboardSidebarName;
-    props: Record<string, unknown>;
-  };
+  sidebar: DashboardSidebarState;
 
   missingActionParameters: unknown;
 

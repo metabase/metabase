@@ -1,14 +1,16 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
   visitQuestion,
   visitDashboard,
+  assertQueryBuilderRowCount,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const questionDetails = {
   name: "29517",
-  dataset: true,
+  type: "model",
   native: {
     query:
       'Select Orders."ID" AS "ID",\nOrders."CREATED_AT" AS "CREATED_AT"\nFrom Orders',
@@ -32,7 +34,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
       selectModelColumn("CREATED_AT");
       mapModelColumnToDatabase({ table: "Orders", field: "Created At" });
 
-      cy.intercept("PUT", `/api/card/*`).as("updateModel");
+      cy.intercept("PUT", "/api/card/*").as("updateModel");
       cy.button("Save changes").click();
       cy.wait("@updateModel");
 
@@ -61,7 +63,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
             click_behavior: {
               type: "link",
               linkType: "dashboard",
-              targetId: 1, // Orders in a dashboard
+              targetId: ORDERS_DASHBOARD_ID,
               parameterMapping: {},
             },
           },
@@ -74,11 +76,9 @@ describe("issue 29517 - nested question based on native model with remapped valu
   });
 
   it("drill-through should work (metabase#29517-1)", () => {
-    cy.get("@nestedQuestionId").then(id => {
-      visitQuestion(id);
-    });
-
     cy.intercept("POST", "/api/dataset").as("dataset");
+    visitQuestion("@nestedQuestionId");
+
     // We can click on any circle; this index was chosen randomly
     cy.get("circle").eq(25).click({ force: true });
     popover()
@@ -86,23 +86,23 @@ describe("issue 29517 - nested question based on native model with remapped valu
       .click();
     cy.wait("@dataset");
 
-    cy.findByTestId("qb-filters-panel").should(
-      "contain",
-      "Created At is May, 2024",
+    cy.findByTestId("qb-filters-panel").findByText(
+      "Created At is May 1–31, 2024",
     );
-    cy.findByTestId("view-footer").should("contain", "Showing 520 rows");
+
+    assertQueryBuilderRowCount(520);
   });
 
-  it("click behavoir to custom destination should work (metabase#29517-2)", () => {
-    cy.get("@dashboardId").then(id => {
-      visitDashboard(id);
-    });
+  it("click behavior to custom destination should work (metabase#29517-2)", () => {
+    visitDashboard("@dashboardId");
 
-    cy.intercept("GET", "/api/dashboard/1").as("loadTargetDashboard");
-    cy.get("circle").eq(25).click({ force: true });
+    cy
+      .intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`)
+      .as("loadTargetDashboard"),
+      cy.get("circle").eq(25).click({ force: true });
     cy.wait("@loadTargetDashboard");
 
-    cy.location("pathname").should("eq", "/dashboard/1");
+    cy.location("pathname").should("eq", `/dashboard/${ORDERS_DASHBOARD_ID}`);
     cy.get(".cellData").contains("37.65");
   });
 });

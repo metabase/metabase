@@ -1,11 +1,14 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   setupSMTP,
   visitQuestion,
   leftSidebar,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -28,12 +31,12 @@ const multiSeriesQuestionWithGoal = {
   display: "line",
 };
 
-const timeSeriesQuestionId = 3;
+const timeSeriesQuestionId = ORDERS_BY_YEAR_QUESTION_ID;
 
 const rawTestCases = [
   {
     questionType: "raw data question",
-    questionId: 1,
+    questionId: ORDERS_QUESTION_ID,
   },
   {
     questionType: "timeseries question without a goal",
@@ -89,7 +92,9 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       // Save question
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
-      cy.get(".Modal").button("Save").click();
+      cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByText("Save").click();
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save question").should("not.exist");
 

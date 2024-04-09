@@ -1,22 +1,22 @@
-import { createSelector } from "@reduxjs/toolkit";
 import type { Selector } from "@reduxjs/toolkit";
+import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
+import type { ITreeNodeItem } from "metabase/components/tree/types";
+import { isNotNull } from "metabase/lib/types";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { State } from "metabase-types/store";
 
-import { ITreeNodeItem } from "metabase/components/tree/types";
-import { isNotNull } from "metabase/core/utils/types";
-
-import { State } from "metabase-types/store";
-import Database from "metabase-lib/metadata/Database";
-import Metadata from "metabase-lib/metadata/Metadata";
-import { EntityId, RawDataRouteParams } from "../../types";
+import type { EntityId, RawDataRouteParams } from "../../types";
 import {
   getTableEntityId,
   getSchemaEntityId,
   getDatabaseEntityId,
 } from "../../utils/data-entity-id";
 import { getDatabase } from "../../utils/metadata";
+
 import { getIsLoadingDatabaseTables } from "./permission-editor";
 
 type DataTreeNodeItem = {

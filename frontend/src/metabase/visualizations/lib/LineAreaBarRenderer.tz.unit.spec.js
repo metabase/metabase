@@ -1,9 +1,9 @@
 import "__support__/ui-mocks"; // included explicitly whereas with integrated tests it comes with __support__/integrated_tests
 
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";
-import moment from "moment-timezone";
-import testAcrossTimezones from "__support__/timezones";
 
+import testAcrossTimezones from "__support__/timezones";
 import {
   NumberColumn,
   DateTimeColumn,
@@ -11,6 +11,10 @@ import {
   renderLineAreaBar,
   getFormattedTooltips,
 } from "__support__/visualizations";
+import registerVisualizations from "metabase/visualizations/register";
+import { createMockCard } from "metabase-types/api/mocks";
+
+registerVisualizations();
 
 // make WIDTH big enough that ticks aren't skipped
 const WIDTH = 4000;
@@ -100,8 +104,8 @@ describe("LineAreaBarRenderer-bar", () => {
     sharedIntervalTests("hour", "ddd, MMMM D, YYYY, h:mm A");
     sharedIntervalTests("day", "ddd, MMMM D, YYYY");
     // sharedIntervalTests("week", "wo - gggg"); // weeks have differing formats for ticks and tooltips, disable this test for now
-    sharedIntervalTests("month", "MMMM, YYYY");
-    sharedIntervalTests("quarter", "[Q]Q - YYYY");
+    sharedIntervalTests("month", "MMMM YYYY");
+    sharedIntervalTests("quarter", "[Q]Q YYYY");
     sharedIntervalTests("year", "YYYY");
 
     function sharedMonthTests(rows, description) {
@@ -147,7 +151,7 @@ describe("LineAreaBarRenderer-bar", () => {
 
           expect(getTooltipDimensionValueText()).toEqual(
             rows.map(([timestamp]) =>
-              moment.tz(timestamp, reportTz).format("MMMM, YYYY"),
+              moment.tz(timestamp, reportTz).format("MMMM YYYY"),
             ),
           );
         });
@@ -229,10 +233,10 @@ const DEFAULT_SETTINGS = {
 function renderTimeseries(element, unit, timezone, rows, props = {}) {
   const series = [
     {
-      card: {
+      card: createMockCard({
         display: "bar",
         visualization_settings: { ...DEFAULT_SETTINGS },
-      },
+      }),
       data: {
         results_timezone: timezone,
         cols: [
@@ -248,22 +252,22 @@ function renderTimeseries(element, unit, timezone, rows, props = {}) {
 
 // just hard code these to make sure we don't accidentally generate incorrect month labels
 const MONTHS_IN_ORDER = [
-  "October, 2015",
-  "November, 2015",
-  "December, 2015",
-  "January, 2016",
-  "February, 2016",
-  "March, 2016",
-  "April, 2016",
-  "May, 2016",
-  "June, 2016",
-  "July, 2016",
-  "August, 2016",
-  "September, 2016",
-  "October, 2016",
-  "November, 2016",
-  "December, 2016",
-  "January, 2017",
+  "October 2015",
+  "November 2015",
+  "December 2015",
+  "January 2016",
+  "February 2016",
+  "March 2016",
+  "April 2016",
+  "May 2016",
+  "June 2016",
+  "July 2016",
+  "August 2016",
+  "September 2016",
+  "October 2016",
+  "November 2016",
+  "December 2016",
+  "January 2017",
 ];
 
 function assertSequentialMonths(months) {

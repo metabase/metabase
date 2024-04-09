@@ -44,16 +44,20 @@ CREATE USER metabase WITH PASSWORD "your_password";
 -- Give the role to the metabase user.
 GRANT analytics TO metabase;
 
--- Add query privileges to the role (options 1-3):
+-- Add query privileges to the role (options 1-4):
 
--- Option 1: Uncomment the line below to let users with the analytics role query anything in the DATABASE.
--- GRANT pg_read_all_data ON DATABASE "your_database" TO analytics;
+-- Option 1: Uncomment the line below to let users with the analytics role query ALL DATA (In Postgres 14 or higher. See [Predefined Roles](https://www.postgresql.org/docs/current/predefined-roles.html#PREDEFINED-ROLES)).
+-- GRANT pg_read_all_data TO analytics;
 
--- Option 2: Uncomment the line below to let users with the analytics role query anything in a specific SCHEMA.
+-- Option 2: Uncomment the line below to let users with the analytics role query anything in the DATABASE.
+-- GRANT USAGE ON DATABASE "your_schema" TO analytics;
+-- GRANT SELECT ON DATABASE "your_schema"  TO analytics;
+
+-- Option 3: Uncomment the line below to let users with the analytics role query anything in a specific SCHEMA.
 -- GRANT USAGE ON SCHEMA "your_schema" TO analytics;
 -- GRANT SELECT ON ALL TABLES IN SCHEMA "your_schema" TO analytics;
 
--- Option 3: Uncomment the line below to let users with the analytics role query anything in a specific TABLE.
+-- Option 4: Uncomment the line below to let users with the analytics role query anything in a specific TABLE.
 -- GRANT USAGE ON SCHEMA "your_schema" TO analytics;
 -- GRANT SELECT ON "your_table" IN SCHEMA "your_schema" TO analytics;
 ```
@@ -128,6 +132,30 @@ GRANT INSERT, UPDATE, DELETE ON "your_model's_table" IN SCHEMA "your_schema" TO 
 
 -- Grant role to the metabase user.
 GRANT metabase_model_caching TO metabase;
+```
+
+## Privileges to enable uploads
+
+You can [upload CSVs](../databases/uploads.md) to supported databases. Metabase's database user should have write access (`INSERT`, `UPDATE`, `DELETE`) to the schema where you want to store the uploads.
+
+You'll first need to create a schema to store uploads (or use an existing schema) and tell Metabase that you want to [use that schema to store uploads](./uploads.md#select-the-database-and-schema-that-you-want-to-store-the-data-in).
+
+In addition to the [minimum database privileges](#minimum-database-privileges):
+
+- Create a new role called `metabase_uploads`.
+- Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the schema where you want to store uploads.
+- Give the `metabase_uploads` role to the `metabase` user.
+
+```sql
+-- Create a role to bundle database privileges for uploads.
+CREATE ROLE metabase_uploads WITH LOGIN;
+
+-- Grant write privileges to the SCHEMA used for uploads.
+GRANT USAGE ON "your_schema" TO metabase_uploads;
+GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "your_schema" TO metabase_uploads;
+
+-- Grant role to the metabase user.
+GRANT metabase_uploads TO metabase;
 ```
 
 ## Multi-tenant permissions

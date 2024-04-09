@@ -1,14 +1,19 @@
-import styled from "@emotion/styled";
+import isPropValid from "@emotion/is-prop-valid";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 import { Link } from "react-router";
-import { color as metabaseColor } from "metabase/lib/colors";
-import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
+
 import { focusOutlineStyle } from "metabase/core/style/input";
+import { color as metabaseColor } from "metabase/lib/colors";
 
 import type { LinkProps } from "./types";
 
+const isLinkPropValid = (propName: string) => {
+  return isPropValid(propName) || propName === "activeClassName";
+};
+
 export const LinkRoot = styled(Link, {
-  shouldForwardProp: shouldForwardNonTransientProp,
+  shouldForwardProp: isLinkPropValid,
 })<LinkProps>`
   opacity: ${props => (props.disabled ? "0.4" : "")};
   pointer-events: ${props => (props.disabled ? "none" : "")};

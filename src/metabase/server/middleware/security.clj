@@ -3,18 +3,27 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.config :as config]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.embed.settings :as embed.settings]
    [metabase.public-settings :as public-settings]
-   [metabase.server.request.util :as request.u]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.server.request.util :as req.util]
    [ring.util.codec :refer [base64-encode]])
   (:import
-   (java.security MessageDigest)))
+   (java.security MessageDigest SecureRandom)))
 
 (set! *warn-on-reflection* true)
+
+(defn- generate-nonce
+  "Generates a random nonce of 10 characters to add to the `Content-Security-Policy` header so that only scripts and
+   inline style elements with the same nonce will be allowed to run. The server generates a unique nonce value each
+   time it sends a response. For more information see
+   https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/style-src."
+  []
+  (let [chars         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        secure-random (SecureRandom.)]
+    (apply str (repeatedly 10 #(get chars (.nextInt secure-random (count chars)))))))
 
 (defonce ^:private ^:const inline-js-hashes
   (letfn [(file-hash [resource-filename]
@@ -47,13 +56,12 @@
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  []
+  [nonce]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
                                   ["'self'"
-                                   "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
                                    "https://maps.google.com"
                                    "https://accounts.google.com"
                                    (when (public-settings/anon-tracking-enabled)
@@ -65,13 +73,24 @@
                                    ;; https://github.com/facebook/react/issues/17997
                                    (when config/is-dev?
                                      "'unsafe-inline'")]
-                                  (when-not config/is-dev?
-                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
+                                  ;; CLJS REPL
+                                  (when config/is-dev?
+                                    ["'unsafe-eval'"
+                                     "http://localhost:9630"])
+                                 (when-not config/is-dev?
+                                   (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
-                                 ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
-                                 "'unsafe-inline'"
+                                 ;; See [[generate-nonce]]
+                                 (when nonce
+                                   (format "'nonce-%s'" nonce))
+                                 ;; for webpack hot reloading
+                                 (when config/is-dev?
+                                   "http://localhost:8080")
+                                 ;; CLJS REPL
+                                 (when config/is-dev?
+                                   "http://localhost:9630")
                                  "https://accounts.google.com"]
                   :font-src     ["*"]
                   :img-src      ["*"
@@ -89,28 +108,29 @@
                                    (snowplow/snowplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?
-                                   "*:8080 ws://*:8080")]
+                                   "*:8080 ws://*:8080")
+                                 ;; CLJS REPL
+                                 (when config/is-dev?
+                                   "ws://*:9630")]
                   :manifest-src ["'self'"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
 (defn- embedding-app-origin
   []
-  (when (and (public-settings/enable-embedding) (public-settings/embedding-app-origin))
-    (public-settings/embedding-app-origin)))
+  (when (and (embed.settings/enable-embedding) (embed.settings/embedding-app-origin))
+    (embed.settings/embedding-app-origin)))
 
 (defn- content-security-policy-header-with-frame-ancestors
-  [allow-iframes?]
-  (update (content-security-policy-header)
+  [allow-iframes? nonce]
+  (update (content-security-policy-header nonce)
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (if allow-iframes? "*" (or (embedding-app-origin) "'none'")))))
 
-(defsetting ssl-certificate-public-key
-  (deferred-tru
-    (str "Base-64 encoded public key for this site''s SSL certificate. "
-         "Specify this to enable HTTP Public Key Pinning. "
-         "See {0} for more information.")
-    "http://mzl.la/1EnfqBf"))
-;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
+(defn- access-control-headers
+  []
+  {"Access-Control-Allow-Origin"    (embedding-app-origin)
+   "Access-Control-Allow-Headers"   "*"
+   "Access-Control-Expose-Headers"  "X-Metabase-Anti-CSRF-Token"})
 
 (defn- first-embedding-app-origin
   "Return only the first embedding app origin."
@@ -121,14 +141,15 @@
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
-  [& {:keys [allow-iframes? allow-cache?]
+  [& {:keys [nonce allow-iframes? allow-cache?]
       :or   {allow-iframes? false, allow-cache? false}}]
   (merge
    (if allow-cache?
      (cache-far-future-headers)
      (cache-prevention-headers))
    strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors allow-iframes?)
+   (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
+   (when (embedding-app-origin) (access-control-headers))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 (if (embedding-app-origin)
@@ -142,15 +163,18 @@
     "X-Content-Type-Options"            "nosniff"}))
 
 (defn- add-security-headers* [request response]
-  (update response :headers merge (security-headers
-                                   :allow-iframes? ((some-fn request.u/public? request.u/embed?) request)
-                                   :allow-cache?   (request.u/cacheable? request))))
+  ;; merge is other way around so that handler can override headers
+  (update response :headers #(merge %2 %1) (security-headers
+                                            :nonce          (:nonce request)
+                                            :allow-iframes? ((some-fn req.util/public? req.util/embed?) request)
+                                            :allow-cache?   (req.util/cacheable? request))))
 
 (defn add-security-headers
-  "Add HTTP security and cache-busting headers."
+  "Middleware that adds HTTP security and cache-busting headers."
   [handler]
   (fn [request respond raise]
-    (handler
-     request
-     (comp respond (partial add-security-headers* request))
-     raise)))
+    (let [request (assoc request :nonce (generate-nonce))]
+      (handler
+       request
+       (comp respond (partial add-security-headers* request))
+       raise))))

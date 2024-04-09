@@ -1,7 +1,8 @@
-import { useState } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import _ from "underscore";
+
 import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
 import { PivotTable } from "./PivotTable";
@@ -195,7 +196,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
     });
   });
 
-  it("expanding collapsed columns", () => {
+  it("expanding collapsed columns", async () => {
     const hiddenSettings = {
       ...settings,
       "pivot_table.collapsed_rows": {
@@ -220,7 +221,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
       within(toggleButton).getByRole("img", { name: /add/i }),
     ).toBeInTheDocument();
 
-    userEvent.click(toggleButton);
+    await userEvent.click(toggleButton);
 
     //Ensure that collapsed data is now visible
     columnIndexes.forEach(columnIndex => {

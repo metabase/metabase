@@ -1,9 +1,11 @@
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
   setupSMTP,
   visitDashboard,
   sendEmailAndAssert,
+  sidebar,
 } from "e2e/support/helpers";
 
 describe("issue 18009", { tags: "@external" }, () => {
@@ -17,14 +19,13 @@ describe("issue 18009", { tags: "@external" }, () => {
   });
 
   it("nodata user should be able to create and receive an email subscription without errors (metabase#18009)", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
-    cy.icon("subscription").click();
+    cy.findByLabelText("subscriptions").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Email it").click();
-
-    cy.findByPlaceholderText("Enter user names or email addresses").click();
+    sidebar()
+      .findByPlaceholderText("Enter user names or email addresses")
+      .click();
     popover()
       .contains(/^No Data/)
       .click();

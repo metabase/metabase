@@ -1,11 +1,14 @@
 import { render, screen } from "@testing-library/react";
-import type { NumberValue } from "d3-scale";
 import userEvent from "@testing-library/user-event";
-import { measureTextWidth } from "metabase/lib/measure-text";
-import { ChartFont } from "../../types/style";
-import type { RowChartTheme } from "./types";
+import type { NumberValue } from "d3-scale";
 
-import { RowChart, RowChartProps } from "./RowChart";
+import { measureTextWidth } from "metabase/lib/measure-text";
+
+import type { ChartFont } from "../../types/style";
+
+import type { RowChartProps } from "./RowChart";
+import { RowChart } from "./RowChart";
+import type { RowChartTheme } from "./types";
 
 type TestDatum = { y: string; x: number; x1: number };
 
@@ -203,14 +206,14 @@ describe("RowChart", () => {
   });
 
   describe("events", () => {
-    it("should call onClick with the clicked datum info", () => {
+    it("should call onClick with the clicked datum info", async () => {
       const onClick = jest.fn();
 
       const { bars } = setup({ onClick });
-      userEvent.click(bars[0]);
+      await userEvent.click(bars[0]);
 
       expect(onClick).toHaveBeenCalledWith(
-        expect.objectContaining({ currentTarget: expect.anything() }),
+        expect.objectContaining({ target: expect.anything() }),
         expect.objectContaining({
           datum: expect.objectContaining({ x: 100, x1: 200, y: "foo" }),
           series: expect.objectContaining({
@@ -225,10 +228,10 @@ describe("RowChart", () => {
       onClick.mockClear();
 
       // the last bar
-      userEvent.click(bars[5]);
+      await userEvent.click(bars[5]);
 
       expect(onClick).toHaveBeenCalledWith(
-        expect.objectContaining({ currentTarget: expect.anything() }),
+        expect.objectContaining({ target: expect.anything() }),
         expect.objectContaining({
           datum: expect.objectContaining({ x: 300, x1: 600, y: "baz" }),
           series: expect.objectContaining({
@@ -241,14 +244,14 @@ describe("RowChart", () => {
       );
     });
 
-    it("should call onHover with the clicked datum info", () => {
+    it("should call onHover with the clicked datum info", async () => {
       const onHover = jest.fn();
 
       const { bars } = setup({ onHover });
-      userEvent.hover(bars[0]);
+      await userEvent.hover(bars[0]);
 
       expect(onHover).toHaveBeenCalledWith(
-        expect.objectContaining({ currentTarget: expect.anything() }),
+        expect.objectContaining({ target: expect.anything() }),
         expect.objectContaining({
           datum: expect.objectContaining({ x: 100, x1: 200, y: "foo" }),
           series: expect.objectContaining({
@@ -263,10 +266,10 @@ describe("RowChart", () => {
       onHover.mockClear();
 
       // the last bar
-      userEvent.click(bars[5]);
+      await userEvent.click(bars[5]);
 
       expect(onHover).toHaveBeenCalledWith(
-        expect.objectContaining({ currentTarget: expect.anything() }),
+        expect.objectContaining({ target: expect.anything() }),
         expect.objectContaining({
           datum: expect.objectContaining({ x: 300, x1: 600, y: "baz" }),
           series: expect.objectContaining({

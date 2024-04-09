@@ -1,0 +1,244 @@
+name: Release 1 - Build Release Artifact
+run-name: Build ${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Metabase version (e.g. v0.46.3)'
+        type: string
+        required: true
+      commit:
+        description: 'A full-length commit SHA-1 hash'
+        required: true
+
+jobs:
+  start-message:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Send build start message
+        uses: actions/github-script@v6
+        env:
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendReleaseMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            await sendReleaseMessage({
+              stage: 'build-start',
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              version: '${{ inputs.version }}',
+              runId: '${{ github.run_id }}',
+              releaseSha: '${{ inputs.commit }}',
+            }).catch(console.error);
+
+  check-version:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      ee: ${{ fromJson(steps.canonical_version.outputs.result).ee }}
+      oss: ${{ fromJson(steps.canonical_version.outputs.result).oss }}
+    steps:
+    - name: Fail early on the incorrect version format
+      if: ${{ !(startsWith(inputs.version,'v0.') || startsWith(inputs.version,'v1.')) }}
+      run: |
+        echo "The version format is invalid!"
+        echo "It must start with either 'v0.' or 'v1.'."
+        echo "Please, try again."
+        exit 1
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Get Release Version
+      uses: actions/github-script@v7
+      id: canonical_version
+      with:
+        script: | # js
+          const { isValidVersionString, getCanonicalVersion, hasBeenReleased } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          const version = '${{ inputs.version }}';
+
+          if (!isValidVersionString(version)) {
+            throw new Error("The version format is invalid! It must start with either 'v0.' or 'v1.'.");
+          }
+
+          const versions = {
+            ee: getCanonicalVersion(version, 'ee'),
+            oss: getCanonicalVersion(version, 'oss'),
+          };
+
+          const ossReleased = await hasBeenReleased({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version: versions.oss,
+          });
+
+          const eeReleased = await hasBeenReleased({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version: versions.ee,
+          });
+
+          if (ossReleased || eeReleased) {
+            throw new Error("This version has already been released!", version);
+          }
+
+          return versions;
+
+  check-commit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+    - name: Check out the code to verify the release branch
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # IMPORTANT! to get all the branches
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Get Release Branch
+      uses: actions/github-script@v7
+      id: release_branch
+      with:
+        result_encoding: string
+        script: | # js
+          const { getReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const version = '${{ inputs.version }}';
+          const releaseBranch = getReleaseBranch(version);
+          return releaseBranch;
+    - name: Ensure that the specified commit exists in the ${{ steps.release_branch.outputs.result }} release branch
+      run: |
+        RELEASE_BRANCH=${{ steps.release_branch.outputs.result }}
+        git checkout $RELEASE_BRANCH
+        git branch --contains ${{ inputs.commit }} | grep -q $RELEASE_BRANCH \
+          && echo "Commit found in correct release branch" \
+          || (echo "Commit not found in correct release branch" && exit 1)
+
+  get-build-requirements:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
+      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
+      build_process: ${{ fromJson(steps.dependencies.outputs.result).build_process }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Get build dependencies
+      uses: actions/github-script@v7
+      id: dependencies
+      with:
+        script: | # js
+          const { getBuildRequirements, getMajorVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          const version = '${{ inputs.version }}';
+
+          const requirements = getBuildRequirements(version);
+          const build_process = getMajorVersion(version) < 46 ? 'legacy' : 'new';
+          console.log('Build process:', build_process);
+
+          return {
+            java_version: requirements.java,
+            node_version: requirements.node,
+            build_process,
+          };
+
+  build-uberjar-for-release:
+    needs: [check-version, check-commit, get-build-requirements]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 50
+    strategy:
+      matrix:
+        edition: [oss, ee]
+    env:
+      INTERACTIVE: false
+    steps:
+    - name: Get correct version number
+      run: | # bash
+        if [ '${{matrix.edition}}' == 'ee' ]; then
+          version='${{ needs.check-version.outputs.ee }}'
+        else
+          version='${{ needs.check-version.outputs.oss }}'
+        fi
+
+        echo "VERSION=$version" >> $GITHUB_ENV
+    - name: Setup Java ${{ needs.get-build-requirements.outputs.java_version }}
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: ${{ needs.get-build-requirements.outputs.java_version }}
+    - name: Setup Node.js ${{ needs.get-build-requirements.outputs.node_version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ needs.get-build-requirements.outputs.node_version }}.x
+    - name: Check out the code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.inputs.commit }}
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+
+    - name: Build Metabase
+      if: ${{ needs.get-build-requirements.outputs.build_process != 'legacy' }}
+      run: ./bin/build.sh :edition :${{ matrix.edition }} :version $VERSION
+
+    - name: Build Metabase (legacy)
+      if: ${{ needs.get-build-requirements.outputs.build_process == 'legacy' }}
+      run: cd ./bin/build-mb && clojure -X build/build! :edition :${{ matrix.edition }} :version $VERSION
+
+    - name: Store commit's SHA-1 hash
+      run:  echo ${{ inputs.commit }} > COMMIT-ID
+      shell: bash
+    - run: mv ./target/uberjar/metabase.jar ./metabase.jar
+    - name: Calculate SHA256 checksum
+      run: sha256sum ./metabase.jar > SHA256.sum
+      shell: bash
+    - name: Upload JARs as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: metabase-release-${{ matrix.edition }}-${{ inputs.commit }}-uberjar
+        path: |
+          ./metabase.jar
+          ./COMMIT-ID
+          ./SHA256.sum
+
+  trigger-tests:
+    needs: [build-uberjar-for-release]
+    permissions:
+      actions: write
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: trigger pre-release testing
+        uses: actions/github-script@v7
+        with:
+          script: | # js
+            github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'pre-release.yml',
+              ref: '${{ github.ref }}',
+              inputs: {
+                commit: '${{ inputs.commit }}',
+                version: '${{ inputs.version }}',
+              }
+            });

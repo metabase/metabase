@@ -1,39 +1,50 @@
 import type { LocalFieldReference } from "metabase-types/api";
-import { Card } from "./card";
-import { DatabaseId } from "./database";
-import { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
-import { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
-import { DownloadPermission } from "./permissions";
-import { ParameterOptions } from "./parameters";
-import { TableId } from "./table";
+
+import type { Card } from "./card";
+import type { DatabaseId } from "./database";
+import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
+import type { ParameterOptions } from "./parameters";
+import type { DownloadPermission } from "./permissions";
+import type {
+  DatasetQuery,
+  DatetimeUnit,
+  DimensionReference,
+  RelativeDatetimeUnit,
+} from "./query";
+import type { TableId } from "./table";
 
 export type RowValue = string | number | null | boolean;
 export type RowValues = RowValue[];
+
+export type BinningMetadata = {
+  binning_strategy?: "default" | "bin-width" | "num-bins";
+  bin_width?: number;
+  num_bins?: number;
+};
 
 export interface DatasetColumn {
   id?: FieldId;
   name: string;
   display_name: string;
-  description: string | null;
+  description?: string | null;
   source: string;
-  coercion_strategy: string | null;
-  visibility_type: FieldVisibilityType;
-  table_id: TableId;
+  aggregation_index?: number;
+  coercion_strategy?: string | null;
+  visibility_type?: FieldVisibilityType;
+  table_id?: TableId;
   // FIXME: this prop does not come from API
   remapped_to_column?: DatasetColumn;
   unit?: DatetimeUnit;
   field_ref?: DimensionReference;
   expression_name?: any;
   base_type?: string;
-  semantic_type?: string;
+  semantic_type?: string | null;
   remapped_from?: string;
   remapped_to?: string;
   effective_type?: string;
-  binning_info?: {
-    bin_width?: number;
-  };
+  binning_info?: BinningMetadata | null;
   settings?: Record<string, any>;
-  fingerprint: FieldFingerprint | null;
+  fingerprint?: FieldFingerprint | null;
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
@@ -43,14 +54,23 @@ export interface ResultsMetadata {
   columns: DatasetColumn[];
 }
 
+export type Insight = {
+  col: string;
+  unit: RelativeDatetimeUnit;
+};
+
 export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
+  insights?: Insight[];
+  results_metadata: ResultsMetadata;
   rows_truncated: number;
   requested_timezone?: string;
   results_timezone?: string;
   download_perms?: DownloadPermission;
-  results_metadata: ResultsMetadata;
+  native_form: {
+    query: string;
+  };
 }
 
 export type JsonQuery = DatasetQuery & {
@@ -72,23 +92,35 @@ export interface Dataset {
   status?: string;
 }
 
-export interface PublicDatasetData {
+export interface EmbedDatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
   rows_truncated: number;
-  // TODO: Correct this type
-  insights: any;
+  insights?: Insight[];
   requested_timezone?: string;
   results_timezone?: string;
 }
 
-export interface PublicDataset {
-  data: PublicDatasetData;
-  json_query?: JsonQuery;
-  status?: string;
+export type EmbedDataset = SuccessEmbedDataset | ErrorEmbedDataset;
+
+interface SuccessEmbedDataset {
+  data: EmbedDatasetData;
+  json_query: JsonQuery;
+  status: string;
 }
 
+export interface ErrorEmbedDataset {
+  error_type: string;
+  error: string;
+  status: string;
+}
+
+/**
+ * This is the type of the `POST /api/dataset/native` response.
+ * We're mostly ignoring the `params` on the FE. It's added to the type only for completeness.
+ */
 export interface NativeQueryForm {
+  params: unknown;
   query: string;
 }
 
@@ -118,7 +150,7 @@ export interface TemplateTag {
   dimension?: LocalFieldReference;
   "widget-type"?: string;
   required?: boolean;
-  default?: string;
+  default?: string | null;
   options?: ParameterOptions;
 
   // Card template specific
@@ -129,4 +161,4 @@ export interface TemplateTag {
   "snippet-name"?: string;
 }
 
-export type TemplateTags = { [key: TemplateTagName]: TemplateTag };
+export type TemplateTags = Record<TemplateTagName, TemplateTag>;

@@ -1,15 +1,16 @@
 import { useCallback } from "react";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { t } from "ttag";
 
+import { applyDraftParameterValues } from "metabase/dashboard/actions";
 import {
   getHasUnappliedParameterValues,
   getIsAutoApplyFilters,
 } from "metabase/dashboard/selectors";
-import { applyDraftParameterValues } from "metabase/dashboard/actions";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+
 import { ApplyButton } from "./FilterApplyButton.styled";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function FilterApplyButton() {
+export function FilterApplyButton() {
   const isAutoApplyFilters = useSelector(getIsAutoApplyFilters);
   const hasUnappliedParameterValues = useSelector(
     getHasUnappliedParameterValues,
@@ -26,7 +27,7 @@ export default function FilterApplyButton() {
 
   return (
     <ApplyButton primary onClick={handleApplyFilters}>
-      Apply
+      {t`Apply`}
     </ApplyButton>
   );
 }

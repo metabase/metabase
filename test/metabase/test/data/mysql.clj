@@ -1,6 +1,8 @@
 (ns metabase.test.data.mysql
   "Code for creating / destroying a MySQL database from a `DatabaseDefinition`."
   (:require
+   [clojure.string :as str]
+   [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -50,6 +52,7 @@
       {:base_type :type/Decimal}))))
 
 ;; TODO - we might be able to do SQL all at once by setting `allowMultiQueries=true` on the connection string
+;; Tech debt issue: #39343
 (defmethod execute/execute-sql! :mysql
   [& args]
   (apply execute/sequentially-execute-sql! args))
@@ -59,3 +62,20 @@
   (apply load-data/load-data-all-at-once! args))
 
 (defmethod sql.tx/pk-sql-type :mysql [_] "INTEGER NOT NULL AUTO_INCREMENT")
+
+;;; use one single global lock for all datasets. MySQL needs a global lock to do DDL stuff and blows up if other queries
+;;; are running at the same time even if they are in different logical databases
+(defmethod test.data.impl.get-or-create/dataset-lock :mysql
+  [driver _dataset-name]
+  ((get-method test.data.impl.get-or-create/dataset-lock :sql-jdbc) driver ""))
+
+(defmethod sql.tx/create-index-sql :mysql
+  ([driver table-name field-names]
+   (sql.tx/create-index-sql driver table-name field-names {}))
+  ([driver table-name field-names {:keys [unique? method]}]
+   (format "CREATE %sINDEX %s%s ON %s (%s);"
+           (if unique? "UNIQUE " "")
+           (str "idx_" table-name "_" (str/join "_" field-names))
+           (if method (str " USING " method) "")
+           (sql.tx/qualify-and-quote driver table-name)
+           (str/join ", " (map #(sql.tx/format-and-quote-field-name driver %) field-names)))))

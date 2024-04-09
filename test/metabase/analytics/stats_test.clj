@@ -1,6 +1,7 @@
 (ns metabase.analytics.stats-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
@@ -9,11 +10,11 @@
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.query-execution :refer [QueryExecution]]
+   [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -68,28 +69,91 @@
     "10000+"     10001
     "10000+"     100000))
 
-(def DBMSVersionStats
-  {s/Str su/IntGreaterThanOrEqualToZero})
-
 (deftest anonymous-usage-stats-test
   (with-redefs [email/email-configured? (constantly false)
                 slack/slack-configured? (constantly false)]
-    (mt/with-temporary-setting-values [site-name          "Test"
+    (mt/with-temporary-setting-values [site-name          "Metabase"
                                        startup-time-millis 1234.0
-                                       google-auth-enabled false]
-      (let [stats (anonymous-usage-stats)]
-        (is (partial= {:running_on          :unknown
-                       :check_for_updates   true
-                       :startup_time_millis 1234.0
-                       :site_name           true
-                       :friendly_names      false
-                       :email_configured    false
-                       :slack_configured    false
-                       :sso_configured      false
-                       :has_sample_data     false}
-                      stats))
-        (is (schema= DBMSVersionStats
-                     (-> stats :stats :database :dbms_versions)))))))
+                                       google-auth-enabled false
+                                       enable-embedding    false]
+      (t2.with-temp/with-temp [:model/Database _ {:is_sample true}]
+        (let [stats (anonymous-usage-stats)]
+          (is (partial= {:running_on                           :unknown
+                         :check_for_updates                    true
+                         :startup_time_millis                  1234.0
+                         :friendly_names                       false
+                         :email_configured                     false
+                         :slack_configured                     false
+                         :sso_configured                       false
+                         :has_sample_data                      true
+                         :enable_embedding                     false
+                         :embedding_app_origin_set             false
+                         :appearance_site_name                 false
+                         :appearance_help_link                 :metabase
+                         :appearance_logo                      false
+                         :appearance_favicon                   false
+                         :appearance_loading_message           false
+                         :appearance_metabot_greeting          false
+                         :appearance_login_page_illustration   "default"
+                         :appearance_landing_page_illustration "default"
+                         :appearance_no_data_illustration      "default"
+                         :appearance_no_object_illustration    "default"
+                         :appearance_ui_colors                 false
+                         :appearance_chart_colors              false
+                         :appearance_show_mb_links             false}
+                        stats))
+          (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
+                      (-> stats :stats :database :dbms_versions))))))))
+
+
+(deftest anonymous-usage-stats-test-ee-with-values-changed
+  ; some settings are behind the whitelabel feature flag
+  (mt/with-premium-features #{:whitelabel}
+    (with-redefs [email/email-configured? (constantly false)
+                  slack/slack-configured? (constantly false)]
+      (mt/with-temporary-setting-values [site-name                   "My Company Analytics"
+                                         startup-time-millis          1234.0
+                                         google-auth-enabled          false
+                                         enable-embedding             true
+                                         help-link                    :hidden
+                                         application-logo-url         "http://example.com/logo.png"
+                                         application-favicon-url      "http://example.com/favicon.ico"
+                                         loading-message              :running-query
+                                         show-metabot                 false
+                                         login-page-illustration      "default"
+                                         landing-page-illustration    "custom"
+                                         no-data-illustration         "none"
+                                         no-object-illustration       "custom"
+                                         application-colors           {:brand "#123456"}
+                                         show-metabase-links          false]
+        (t2.with-temp/with-temp [:model/Database _ {:is_sample true}]
+          (let [stats (anonymous-usage-stats)]
+            (is (partial= {:running_on                           :unknown
+                           :check_for_updates                    true
+                           :startup_time_millis                  1234.0
+                           :friendly_names                       false
+                           :email_configured                     false
+                           :slack_configured                     false
+                           :sso_configured                       false
+                           :has_sample_data                      true
+                           :enable_embedding                     true
+                           :embedding_app_origin_set             false
+                           :appearance_site_name                 true
+                           :appearance_help_link                 :hidden
+                           :appearance_logo                      true
+                           :appearance_favicon                   true
+                           :appearance_loading_message           true
+                           :appearance_metabot_greeting          true
+                           :appearance_login_page_illustration   "default"
+                           :appearance_landing_page_illustration "custom"
+                           :appearance_no_data_illustration      "none"
+                           :appearance_no_object_illustration    "custom"
+                           :appearance_ui_colors                 true
+                           :appearance_chart_colors              false
+                           :appearance_show_mb_links             true}
+                          stats))
+            (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
+                        (-> stats :stats :database :dbms_versions)))))))))
 
 (deftest ^:parallel conversion-test
   (is (= #{true}
@@ -110,10 +174,23 @@
      :num_by_latency (frequencies (for [{latency :running_time} executions]
                                     (#'stats/bin-large-number (/ latency 1000))))}))
 
-(deftest ^:parallel new-impl-test
-  (is (= (old-execution-metrics)
-         (#'stats/execution-metrics))
-      "the new lazy-seq version of the executions metrics works the same way the old one did"))
+(def query-execution-defaults
+  {:hash         (qp.util/query-hash {})
+   :running_time 1
+   :result_rows  1
+   :native       false
+   :executor_id  nil
+   :card_id      nil
+   :context      :ad-hoc
+   :started_at   (t/offset-date-time)})
+
+(deftest new-impl-test
+  (mt/with-temp [QueryExecution _ (merge query-execution-defaults
+                                         {:error "some error"})
+                 QueryExecution _ query-execution-defaults]
+    (is (= (old-execution-metrics)
+           (#'stats/execution-metrics))
+        "the new lazy-seq version of the executions metrics works the same way the old one did")))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -174,33 +251,36 @@
                            PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
                            PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
                            PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}]
-    (letfn [(>= [n]
-              (s/pred #(clojure.core/>= % n) (format ">= %s" n)))]
-      (is (schema= {:pulses               (>= 3)
-                    :with_table_cards     (>= 2)
-                    :pulse_types          {(s/required-key "slack") (>= 1)
-                                           (s/required-key "email") (>= 2)}
-                    :pulse_schedules      {(s/required-key "daily")  (>= 2)
-                                           (s/required-key "weekly") (>= 1)}
-                    :num_pulses_per_user  {(s/required-key "1-5") (>= 1)
-                                           s/Str                  s/Any}
-                    :num_pulses_per_card  {(s/required-key "6-10") (>= 1)
-                                           s/Str                   s/Any}
-                    :num_cards_per_pulses {(s/required-key "1-5")  (>= 1)
-                                           (s/required-key "6-10") (>= 1)
-                                           s/Str                   s/Any}}
-                   (#'metabase.analytics.stats/pulse-metrics)))
-      (is (schema= {:alerts               (>= 4)
-                    :with_table_cards     (>= 2)
-                    :first_time_only      (>= 1)
-                    :above_goal           (>= 1)
-                    :alert_types          {(s/required-key "slack") (>= 2)
-                                           (s/required-key "email") (>= 2)}
-                    :num_alerts_per_user  {(s/required-key "1-5") (>= 1)
-                                           s/Str                  s/Any}
-                    :num_alerts_per_card  {(s/required-key "11-25") (>= 1)
-                                           s/Str                    s/Any}
-                    :num_cards_per_alerts {(s/required-key "1-5")  (>= 1)
-                                           (s/required-key "6-10") (>= 1)
-                                           s/Str                   s/Any}}
-                   (#'metabase.analytics.stats/alert-metrics))))))
+    (is (malli= [:map
+                 [:pulses               [:int {:min 3}]]
+                 [:with_table_cards     [:int {:min 2}]]
+                 [:pulse_types          [:map
+                                         ["slack" [:int {:min 1}]]
+                                         ["email" [:int {:min 2}]]]]
+                 [:pulse_schedules      [:map
+                                         ["daily"  [:int {:min 2}]]
+                                         ["weekly" [:int {:min 1}]]]]
+                 [:num_pulses_per_user  [:map
+                                         ["1-5" [:int {:min 1}]]]]
+                 [:num_pulses_per_card  [:map
+                                         ["6-10" [:int {:min 1}]]]]
+                 [:num_cards_per_pulses [:map
+                                         ["1-5"  [:int {:min 1}]]
+                                         ["6-10" [:int {:min 1}]]]]]
+                (#'stats/pulse-metrics)))
+    (is (malli= [:map
+                 [:alerts               [:int {:min 4}]]
+                 [:with_table_cards     [:int {:min 2}]]
+                 [:first_time_only      [:int {:min 1}]]
+                 [:above_goal           [:int {:min 1}]]
+                 [:alert_types          [:map
+                                         ["slack" [:int {:min 2}]]
+                                         ["email" [:int {:min 2}]]]]
+                 [:num_alerts_per_user  [:map
+                                         ["1-5" [:int {:min 1}]]]]
+                 [:num_alerts_per_card  [:map
+                                         ["11-25" [:int {:min 1}]]]]
+                 [:num_cards_per_alerts [:map
+                                         ["1-5"  [:int {:min 1}]]
+                                         ["6-10" [:int {:min 1}]]]]]
+                (#'stats/alert-metrics)))))

@@ -1,13 +1,12 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import ReactDOM from "react-dom";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
-
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 // We track this as part of the render loop.
@@ -57,7 +56,7 @@ class CardRenderer extends Component {
   }
 
   renderChart() {
-    const { width, height, isDashboard, isEditing, isSettings } = this.props;
+    const { width, height } = this.props;
     if (width == null || height == null) {
       return;
     }
@@ -75,16 +74,6 @@ class CardRenderer extends Component {
     // create a new container element
     const element = document.createElement("div");
     parent.appendChild(element);
-
-    if (isDashboard && isEditing && !isSettings) {
-      // If this card is a dashboard that's currently being edited, we cover the
-      // content to prevent interaction with the chart. The !isSettings
-      // exception is to handle modals that appear above a dashboard.
-      const mouseBlocker = document.createElement("div");
-      mouseBlocker.classList.add("spread");
-      mouseBlocker.style.setProperty("pointer-events", "all");
-      parent.appendChild(mouseBlocker);
-    }
 
     try {
       const t = startTimer();

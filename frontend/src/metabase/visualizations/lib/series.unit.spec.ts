@@ -1,11 +1,12 @@
 import _ from "underscore";
 
-import { createMockSeries } from "metabase-types/api/mocks/series";
+import type { TransformedSeries } from "metabase-types/api";
 import {
   createMockSeriesOrderSetting,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks/card";
-import { TransformedSeries } from "metabase-types/api";
+import { createMockSeries } from "metabase-types/api/mocks/series";
+
 import { getOrderedSeries } from "./series";
 
 type setupSeriesOpts = { name: string; enabled?: boolean }[];

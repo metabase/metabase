@@ -1,11 +1,16 @@
-import { ReactNode, useState } from "react";
-import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import MetabotWidget from "metabase/metabot/components/MetabotWidget";
+import type { ReactNode } from "react";
+import { useState } from "react";
+import { t } from "ttag";
+
 import Tooltip from "metabase/core/components/Tooltip/Tooltip";
-import { HomeGreeting } from "../HomeGreeting";
-import { getHasIllustration } from "../../selectors";
+import { useSelector } from "metabase/lib/redux";
+import MetabotWidget from "metabase/metabot/components/MetabotWidget";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
+
 import { CustomHomePageModal } from "../CustomHomePageModal";
+import { HomeGreeting } from "../HomeGreeting";
+
 import {
   LayoutBody,
   LayoutEditButton,
@@ -24,20 +29,26 @@ export const HomeLayout = ({
 }: HomeLayoutProps): JSX.Element => {
   const [showModal, setShowModal] = useState(false);
   const isAdmin = useSelector(getUserIsAdmin);
-  const hasIllustration = useSelector(getHasIllustration);
+  const landingPageIllustration = useSelector(getLandingPageIllustration);
 
   return (
-    <LayoutRoot>
-      {hasIllustration && <LayoutIllustration />}
+    <LayoutRoot data-testid="home-page">
+      {landingPageIllustration && (
+        <LayoutIllustration
+          data-testid="landing-page-illustration"
+          backgroundImageSrc={landingPageIllustration.src}
+          isDefault={landingPageIllustration.isDefault}
+        />
+      )}
       {hasMetabot ? <MetabotWidget /> : <HomeGreeting />}
       {isAdmin && (
-        <Tooltip tooltip="Pick a dashboard to serve as the homepage">
+        <Tooltip tooltip={t`Pick a dashboard to serve as the homepage`}>
           <LayoutEditButton
             icon="pencil"
             borderless
             onClick={() => setShowModal(true)}
           >
-            Customize
+            {t`Customize`}
           </LayoutEditButton>
         </Tooltip>
       )}

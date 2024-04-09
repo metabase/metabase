@@ -1,11 +1,14 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import cx from "classnames";
-import ExplicitSize from "metabase/components/ExplicitSize";
-import styles from "./ChartWithLegend.css";
+import { Component } from "react";
 
-import LegendVertical from "./LegendVertical";
+import ExplicitSize from "metabase/components/ExplicitSize";
+import DashboardS from "metabase/css/dashboard.module.css";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+
+import styles from "./ChartWithLegend.module.css";
 import LegendHorizontal from "./LegendHorizontal";
+import LegendVertical from "./LegendVertical";
 
 const GRID_ASPECT_RATIO = 4 / 3;
 const PADDING = 14;
@@ -108,7 +111,9 @@ class ChartWithLegend extends Component {
       <div
         className={cx(
           className,
-          "fullscreen-text-small fullscreen-normal-text fullscreen-night-text",
+          DashboardS.fullscreenNormalText,
+          DashboardS.fullscreenNightText,
+          EmbedFrameS.fullscreenNightText,
           styles.ChartWithLegend,
           styles[type],
           flexChart && styles.flexChart,
@@ -148,5 +153,5 @@ class ChartWithLegend extends Component {
 
 export default ExplicitSize({
   wrapped: true,
-  refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
+  refreshMode: props => (props.isDashboard ? "debounceLeading" : "throttle"),
 })(ChartWithLegend);

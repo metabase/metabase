@@ -2,22 +2,18 @@
   "Method impls for [[metabase.driver.sql-jdbc.actions]] for `:postgres`."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [metabase.actions.error :as actions.error]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [deferred-trun tru]]))
 
 (set! *warn-on-reflection* true)
 
-(defn- maybe-parse-not-null-error [_database error-message]
-  (when-let [[_ _value column]
-             (re-find #"ERROR:\s+(\w+) value in column \"([^\"]+)\" violates not-null constraint" error-message)]
-    [{:message (tru "violates not-null constraint")
-      :column column}]))
-
-  ;; TODO -- we should probably be TTL caching this information. Otherwise parsing 100 errors for a bulk action will
-  ;; result in 100 identical data warehouse queries. It's not like constraint columns are something we would expect to
-  ;; change regularly anyway.
+;; TODO -- we should probably be TTL caching this information. Otherwise parsing 100 errors for a bulk action will
+;; result in 100 identical data warehouse queries. It's not like constraint columns are something we would expect to
+;; change regularly anyway.
 (defn- constraint->column-names
   "Given a constraint with `constraint-name` fetch the column names associated with that constraint."
   [database constraint-name]
@@ -27,38 +23,56 @@
           (map :column_name)
           (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false}))))
 
-(defn- maybe-parse-unique-constraint-error [database error-message]
-  (let [[match? constraint _value]
-        (re-find #"ERROR:\s+duplicate key value violates unique constraint \"([^\"]+)\"" error-message)]
-    (when match?
-      (let [columns (constraint->column-names database constraint)]
-        (mapv
-         (fn [column]
-           {:message (tru "violates unique constraint {0}" constraint)
-            :constraint constraint
-            :column column})
-         columns)))))
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-not-null-constraint]
+  [_driver error-type _database _action-type error-message]
+  (when-let [[_ column]
+             (re-find #"null value in column \"([^\"]+)\".*violates not-null constraint"  error-message)]
+    {:type    error-type
+     :message (tru "{0} must have values." (str/capitalize column))
+     :errors  {column (tru "You must provide a value.")}}))
 
-(defn- maybe-parse-fk-constraint-error [database error-message]
-  (let [[match? table constraint ref-table _columns _value]
-        (re-find #"ERROR:\s+update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"" error-message)]
-    (when match?
-      (let [columns (constraint->column-names database constraint)]
-        (mapv
-         (fn [column]
-           {:message    (tru "violates foreign key constraint {0}" constraint)
-            :table      table
-            :ref-table  ref-table
-            :constraint constraint
-            :column     column})
-         columns)))))
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-unique-constraint]
+  [_driver error-type database _action-type error-message]
+  (when-let [[_match constraint _value]
+             (re-find #"duplicate key value violates unique constraint \"([^\"]+)\"" error-message)]
+    (let [columns (constraint->column-names database constraint)]
+      {:type    error-type
+       :message (tru "{0} already {1}." (u/build-sentence (map str/capitalize columns) :stop? false) (deferred-trun "exists" "exist" (count columns)))
+       :errors  (reduce (fn [acc col]
+                          (assoc acc col (tru "This {0} value already exists." (str/capitalize col))))
+                        {}
+                        columns)})))
 
-(defmethod sql-jdbc.actions/parse-sql-error :postgres
-  [_driver database message]
-  (some #(% database message)
-        [maybe-parse-not-null-error
-         maybe-parse-unique-constraint-error
-         maybe-parse-fk-constraint-error]))
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-foreign-key-constraint]
+  [_driver error-type _database action-type error-message]
+  (or (when-let [[_match _table _constraint _ref-table column _value _ref-table-2]
+                 (re-find #"update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is still referenced from table \"([^\"]+)\"" error-message)]
+        (merge {:type error-type}
+               (case action-type
+                 :row/delete
+                 {:message (tru "Other tables rely on this row so it cannot be deleted.")
+                  :errors  {}}
+
+                 :row/update
+                 {:message (tru "Unable to update the record.")
+                  :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))
+      (when-let [[_match _table _constraint column _value _ref-table]
+                 (re-find #"insert or update on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is not present in table \"([^\"]+)\"" error-message)]
+          {:type    error-type
+           :message (case action-type
+                      :row/create
+                      (tru "Unable to create a new record.")
+
+                      :row/update
+                      (tru "Unable to update the record."))
+           :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/incorrect-value-type]
+  [_driver error-type _database _action-type error-message]
+  (when-let [[_] (re-find #"invalid input syntax for .*" error-message)]
+    {:type    error-type
+     :message (tru "Some of your values aren’t of the correct type for the database.")
+     :errors  {}}))
 
 (defmethod sql-jdbc.actions/base-type->sql-type-map :postgres
   [_driver]

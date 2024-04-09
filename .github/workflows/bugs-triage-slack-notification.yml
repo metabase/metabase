@@ -1,0 +1,53 @@
+name: Bugs Slack Notification
+
+on:
+  issues:
+    types:
+      - opened
+jobs:
+  on-issue-opened:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    if: |
+        contains(github.event.issue.labels.*.name, '.Needs Triage') &&
+        contains(github.event.issue.labels.*.name, 'Type:Bug')
+    steps:
+      - name: Setting title
+        uses: actions/github-script@v7
+        id: vars
+        with:
+          script: |
+            core.setOutput('issue_title', ${{ toJson(github.event.issue.title) }}.replaceAll(/"/g, '\\"'));
+      - name: Check for labels containing team name
+        id: check_labels
+        run: |
+          labels_json=$(sed 's/&/\$/g' <<< '${{ toJson(github.event.issue.labels) }}')
+          echo "has_team_label=false" >> "$GITHUB_OUTPUT"
+          for label in "$labels_json"
+          do
+            if [[ $label == *".Team"* ]]; then
+              echo "Label contains the team name."
+              echo "has_team_label=true" >> "$GITHUB_OUTPUT"
+              break
+            fi
+          done
+      - name: Send the issue ${{ github.event.issue.number }} to Slack
+        id: slack
+        if: steps.check_labels.outputs.has_team_label == 'false'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ steps.vars.outputs.issue_title }}\n${{ github.event.issue.html_url }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_BUG_TRIAGE_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

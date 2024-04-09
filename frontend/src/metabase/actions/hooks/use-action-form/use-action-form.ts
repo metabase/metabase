@@ -2,7 +2,6 @@ import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import { getForm, getFormValidationSchema } from "metabase/actions/utils";
-
 import type {
   ActionFormInitialValues,
   ParametersForActionExecution,
@@ -19,9 +18,16 @@ import {
 type Opts = {
   action: WritebackAction;
   initialValues?: ActionFormInitialValues;
+  prefetchesInitialValues?: boolean;
 };
 
-function useActionForm({ action, initialValues = {} }: Opts) {
+const INITIAL_VALUES = {};
+
+function useActionForm({
+  action,
+  initialValues = INITIAL_VALUES,
+  prefetchesInitialValues,
+}: Opts) {
   const fieldSettings = useMemo(() => {
     return getOrGenerateFieldSettings(
       action.parameters,
@@ -54,17 +60,19 @@ function useActionForm({ action, initialValues = {} }: Opts) {
       const allValues = { ...cleanedInitialValues, ...values };
       const formatted = formatSubmitValues(allValues, fieldSettings);
 
-      const isImplicitUpdate =
-        action.type === "implicit" && action.kind === "row/update";
-
-      // For implicit update actions, we sometimes prefetch selected row values,
-      // and pass them as initial values to prefill the form.
-      // In that case, we want to return only changed values
-      return isImplicitUpdate
+      // For some actions (e.g. implicit update actions), we prefetch
+      // selected row values, and pass them as initial values to prefill
+      // the form. In that case, we want to return only changed values.
+      return prefetchesInitialValues
         ? getChangedValues(formatted, initialValues)
         : formatted;
     },
-    [action, initialValues, cleanedInitialValues, fieldSettings],
+    [
+      initialValues,
+      cleanedInitialValues,
+      fieldSettings,
+      prefetchesInitialValues,
+    ],
   );
 
   return {

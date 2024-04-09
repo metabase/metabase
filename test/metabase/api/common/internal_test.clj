@@ -9,12 +9,15 @@
    [metabase.api.common :as api]
    [metabase.api.common.internal :as internal]
    [metabase.config :as config]
-   [metabase.logger :as mb.logger]
+   [metabase.logger :as logger]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [ring.adapter.jetty9 :as jetty]))
+   [ring.adapter.jetty :as jetty]
+   [ring.middleware.params :refer [wrap-params]])
+  (:import
+   (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
 
@@ -86,6 +89,19 @@
   (let [{:keys [state po-box archipelago]} body]
     (str/join " | " [state po-box archipelago])))
 
+(api/defendpoint GET "/with-query-params/"
+  [:as {params :params}]
+  {params [:and
+           ;; decodes the keyword _keys_
+           [:map-of :keyword any?]
+           ;; ^ if you don't care about the shape you can stop there
+           [:map
+            [:bool-key {:optional true} :boolean]
+            [:string-key {:optional true} :string]
+            [:enum-key [:enum :a :b :c]]
+            [:kw-key :keyword]]]}
+  (pr-str params))
+
 (api/defendpoint POST "/accept-thing/:a" [a] {a [:re #"a.*"]} "hit route for a.")
 (api/defendpoint POST "/accept-thing/:b" [b] {b [:re #"b.*"]} "hit route for b.")
 (api/defendpoint POST "/accept-thing/:c" [c] {c [:re #"c.*"]} "hit route for c.")
@@ -96,18 +112,32 @@
 
 (defn- json-mw [handler]
   (fn [req]
-    (update
-     (handler
-      (update req :body #(-> % slurp (json/parse-string true))))
-     :body json/generate-string)))
+    (-> req
+        (update :body #(-> % slurp (json/parse-string true)))
+        handler
+        (update :body json/generate-string))))
 
 (defn exception-mw [handler]
   (fn [req] (try
               (handler req)
               (catch Exception e (mw.exceptions/api-exception-response e)))))
 
+(deftest defendpoint-query-params-test
+  (let [^Server server (jetty/run-jetty (json-mw
+                                         (exception-mw
+                                          (wrap-params #'routes))) {:port 0 :join? false})
+        port (.. server getURI getPort)
+        get! (fn [route]
+               (http/get (str "http://localhost:" port route)
+                         {:throw-exceptions false
+                          :accept           :json
+                          :as               :json
+                          :coerce           :always}))]
+    (is (= "{:bool-key true, :string-key \"abc\", :enum-key :a, :kw-key :abc}"
+           (:body (get! "/with-query-params/?bool-key=true&string-key=abc&enum-key=a&kw-key=abc"))))))
+
 (deftest defendpoint-test
-  (let [server (jetty/run-jetty (json-mw (exception-mw #'routes)) {:port 0 :join? false})
+  (let [^Server server (jetty/run-jetty (json-mw (exception-mw #'routes)) {:port 0 :join? false})
         port   (.. server getURI getPort)
         post!  (fn [route body]
                  (http/post (str "http://localhost:" port route)
@@ -137,10 +167,10 @@
                                         :lonlat [0.0 0.0]}}))))
         (is (some (fn [{message :msg, :as entry}]
                     (when (str/includes? (str message)
-                                         (str "Unexpected parameters at [:post \"/post/test-address\"]: [:tags :address :id]\n"
+                                         (str "Unexpected parameters at [:post \"/post/test-address\"]: [:tags :id]\n"
                                               "Please add them to the schema or remove them from the API client"))
                       entry))
-                  (mb.logger/messages))))
+                  (logger/messages))))
 
       (is (= {:errors
               {:address
@@ -181,12 +211,12 @@
         (mt/with-mock-i18n-bundles  {"es" {:messages
                                            {"value must be a non-blank string."
                                             "el valor debe ser una cadena que no esté en blanco."}}}
-          (metabase.test/with-temporary-setting-values [site-locale "es"]
-
+          (mt/with-temporary-setting-values [site-locale "es"]
             (is (= {:errors {:address "el valor debe ser una cadena que no esté en blanco."},
                                                                                             ;; TODO remove .'s from ms schemas
                                                                                             ;; TODO translate received (?)
-                    :specific-errors {:address ["el valor debe ser una cadena que no esté en blanco., received: {:address \"\"}"]}}
+                    :specific-errors
+                    {:address ["should be a string, received: {:address \"\"}" "non-blank string, received: {:address \"\"}"]}}
                    (:body (post! "/test-localized-error" {:address ""}))))))))
 
     (testing "auto-coercion"
@@ -254,7 +284,7 @@
   (are [method route expected] (= expected
                                   (internal/route-fn-name method route))
     'GET "/"                    'GET_
-    'GET "/:id/cards"           'GET_:id_cards
+    'GET "/:id/fks"             'GET_:id_fks
     ;; check that internal/route-fn-name can handle routes with regex conditions
     'GET ["/:id" :id #"[0-9]+"] 'GET_:id))
 
@@ -294,17 +324,6 @@
      "/:id/etc/:org" [:id :org]
      "/:card-id"     [:card-id])))
 
-(deftest type-args-test
-  (no-route-regexes
-   (are [args expected] (= expected
-                           (#'internal/typify-args args))
-     []             []
-     [:fish]        []
-     [:fish :fry]   []
-     [:id]          [:id "#[0-9]+"]
-     [:id :fish]    [:id "#[0-9]+"]
-     [:id :card-id] [:id "#[0-9]+" :card-id "#[0-9]+"])))
-
 (deftest add-route-param-schema-test
   (are [route expected] (= expected
                            (let [result (internal/add-route-param-schema
@@ -331,21 +350,6 @@
     "/:uuid/toucans"                       ["/:uuid/toucans" :uuid (str \# u/uuid-regex)]
     "/:id/:card-id"                        ["/:id/:card-id" :id "#[0-9]+" :card-id "#[0-9]+"]
     "/:unlisted/:card-id"                  ["/:unlisted/:card-id" :card-id "#[0-9]+"]))
-
-(deftest add-route-param-regexes-test
-  (no-route-regexes
-   (are [route expected] (= expected
-                            (internal/add-route-param-regexes route))
-     "/"                                    "/"
-     "/:id"                                 ["/:id" :id "#[0-9]+"]
-     "/:id/card"                            ["/:id/card" :id "#[0-9]+"]
-     "/:card-id"                            ["/:card-id" :card-id "#[0-9]+"]
-     "/:fish"                               "/:fish"
-     "/:id/tables/:card-id"                 ["/:id/tables/:card-id" :id "#[0-9]+" :card-id "#[0-9]+"]
-     ;; don't try to typify route that's already typified
-     ["/:id/:crazy-id" :crazy-id "#[0-9]+"] ["/:id/:crazy-id" :crazy-id "#[0-9]+"]
-     ;; Check :uuid args
-     "/:uuid/toucans"                       ["/:uuid/toucans" :uuid (str \# u/uuid-regex)])))
 
 (deftest let-form-for-arg-test
   (are [arg expected] (= expected

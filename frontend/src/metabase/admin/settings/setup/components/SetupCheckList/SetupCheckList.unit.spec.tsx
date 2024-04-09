@@ -1,16 +1,18 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import { SetupCheckListItem } from "metabase-types/api";
-import {
-  createMockSetupCheckListItem,
-  createMockSetupCheckListTask,
-} from "metabase-types/api/mocks";
+import { Route } from "react-router";
+
 import { setupAdminCheckListEndpoint } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import type { SetupCheckListItem } from "metabase-types/api";
+import {
+  createMockSetupCheckListItem,
+  createMockSetupCheckListTask,
+} from "metabase-types/api/mocks";
+
 import SetupCheckList from "./SetupCheckList";
 
 const ADD_DB_TASK = createMockSetupCheckListTask({
@@ -48,7 +50,7 @@ const setup = async ({ items = CHECK_LIST_ITEMS }: SetupOpts = {}) => {
     { withRouter: true },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 
   return { history };
 };
@@ -60,7 +62,7 @@ describe("SetupCheckList", () => {
     const link = screen.getByRole("link", { name: ADD_DB_TASK.title });
     expect(link).not.toHaveAttribute("target");
 
-    userEvent.click(link);
+    await userEvent.click(link);
     expect(history?.getCurrentLocation().pathname).toBe(ADD_DB_TASK.link);
   });
 

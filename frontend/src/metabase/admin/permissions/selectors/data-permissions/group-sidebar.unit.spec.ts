@@ -1,5 +1,7 @@
 import type { State } from "metabase-types/store";
+
 import { state as mockState } from "./data-permissions.unit.spec.fixtures";
+
 import { getGroupsDataPermissionEditor } from ".";
 
 const state = mockState as unknown as State;

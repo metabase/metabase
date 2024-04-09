@@ -1,22 +1,23 @@
+import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import cx from "classnames";
 
-import { color as c } from "metabase/lib/colors";
-import { useToggle } from "metabase/hooks/use-toggle";
-
-import { Icon } from "metabase/core/components/Icon";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import ExpandingContent from "metabase/components/ExpandingContent";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import CS from "metabase/css/core/index.css";
+import { useToggle } from "metabase/hooks/use-toggle";
+import { color as c } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
+import type { Query } from "metabase-lib";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
-import type { Query } from "metabase-lib/types";
-import type Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-
-import { NotebookStep as INotebookStep, NotebookStepAction } from "../types";
 import NotebookStepPreview from "../NotebookStepPreview";
+import type {
+  NotebookStep as INotebookStep,
+  NotebookStepAction,
+} from "../types";
 
-import { STEP_UI } from "./steps";
 import ActionButton from "./ActionButton";
 import {
   StepActionsContainer,
@@ -25,7 +26,9 @@ import {
   StepHeader,
   StepButtonContainer,
   StepRoot,
+  PreviewButton,
 } from "./NotebookStep.styled";
+import { STEP_UI } from "./steps";
 
 function hasLargeButton(action: NotebookStepAction) {
   return !STEP_UI[action.type].compact;
@@ -39,7 +42,7 @@ interface NotebookStepProps {
   reportTimezone: string;
   readOnly?: boolean;
   openStep: (id: string) => void;
-  updateQuery: (query: StructuredQuery | Query) => Promise<void>;
+  updateQuery: (query: Query) => Promise<void>;
 }
 
 function NotebookStep({
@@ -68,11 +71,15 @@ function NotebookStep({
           button: (
             <ActionButton
               key={`actionButton_${stepUi.title}`}
-              className={cx({ "mr2 mt2": isLastStep, mr1: !isLastStep })}
+              className={cx({
+                [cx(CS.mr2, CS.mt2)]: isLastStep,
+                [CS.mr1]: !isLastStep,
+              })}
               color={stepUi.getColor()}
               large={hasLargeActionButtons}
               {...stepUi}
-              onClick={() => action.action({ query: step.query, openStep })}
+              aria-label={stepUi.title}
+              onClick={() => action.action({ openStep })}
             />
           ),
         };
@@ -82,16 +89,15 @@ function NotebookStep({
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
     return actions.map(action => action.button);
-  }, [step.query, step.actions, isLastStep, openStep]);
+  }, [step.actions, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
-    const reverted = step.revert?.(
-      step.query,
-      step.itemIndex,
-      step.topLevelQuery,
-      step.stageIndex,
-    );
-    if (reverted) {
+    if (step.revert) {
+      const reverted = step.revert(
+        step.query,
+        step.stageIndex,
+        step.itemIndex ?? undefined,
+      );
       updateQuery(reverted);
     }
   }, [step, updateQuery]);
@@ -103,21 +109,26 @@ function NotebookStep({
   } = STEP_UI[step.type] || {};
 
   const color = getColor();
-  const canPreview = step?.previewQuery?.isValid?.();
+  const canPreview = Lib.canRun(step.query) && step.active && step.visible;
   const hasPreviewButton = !isPreviewOpen && canPreview;
   const canRevert = typeof step.revert === "function" && !readOnly;
 
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
       <StepRoot
-        className="hover-parent hover--visibility"
+        className={cx(CS.hoverParent, CS.hoverVisibility)}
         data-testid={step.testID}
       >
         <StepHeader color={color}>
           {title}
           {canRevert && (
             <IconButtonWrapper
-              className="ml-auto text-light text-medium-hover hover-child"
+              className={cx(
+                CS.mlAuto,
+                CS.textLight,
+                "text-medium-hover",
+                CS.hoverChild,
+              )}
               onClick={handleClickRevert}
             >
               <Icon
@@ -135,8 +146,8 @@ function NotebookStep({
               <NotebookStepComponent
                 color={color}
                 step={step}
-                topLevelQuery={step.topLevelQuery}
                 query={step.query}
+                stageIndex={step.stageIndex}
                 sourceQuestion={sourceQuestion}
                 updateQuery={updateQuery}
                 isLastOpened={isLastOpened}
@@ -146,15 +157,13 @@ function NotebookStep({
             </StepContent>
             {!readOnly && (
               <StepButtonContainer>
-                <ActionButton
-                  className={cx("ml1", {
-                    "hidden disabled": !hasPreviewButton,
-                    "text-brand-hover": hasPreviewButton,
-                  })}
+                <PreviewButton
+                  as={ActionButton}
                   icon="play"
                   title={t`Preview`}
                   color={c("text-light")}
                   transparent
+                  hasPreviewButton={hasPreviewButton}
                   onClick={openPreview}
                 />
               </StepButtonContainer>

@@ -1,8 +1,11 @@
-import { useState } from "react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+
 import { render, screen, getIcon } from "__support__/ui";
 import type { FieldType, FieldValueOptions } from "metabase-types/api";
-import { OptionPopover, OptionEditorProps } from "./OptionEditor";
+
+import type { OptionEditorProps } from "./OptionEditor";
+import { OptionPopover, textToOptions } from "./OptionEditor";
 
 async function baseSetup({
   fieldType = "string",
@@ -25,7 +28,8 @@ async function baseSetup({
 
   render(<UncontrolledOptionEditor />);
 
-  userEvent.click(getIcon("list"));
+  await userEvent.click(getIcon("list"));
+  await userEvent.unhover(getIcon("list"));
   await screen.findByRole("tooltip");
 
   const input = screen.getByPlaceholderText("Enter one option per line");
@@ -62,8 +66,8 @@ describe("OptionEditor", () => {
     it("should handle changes correctly", async () => {
       const { input, saveButton, onChange } = await setup({ options: [] });
 
-      userEvent.type(input, options.join("\n"));
-      userEvent.click(saveButton);
+      await userEvent.type(input, options.join("\n"));
+      await userEvent.click(saveButton);
 
       expect(input).toHaveValue(options.join("\n"));
       expect(saveButton).toBeDisabled();
@@ -73,8 +77,8 @@ describe("OptionEditor", () => {
     it("should close popover on save", async () => {
       const { input, saveButton } = await setup({ options: [] });
 
-      userEvent.type(input, options.join("\n"));
-      userEvent.click(saveButton);
+      await userEvent.type(input, options.join("\n"));
+      await userEvent.click(saveButton);
 
       expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     });
@@ -86,22 +90,62 @@ describe("OptionEditor", () => {
         fieldType: "number",
       });
 
-      userEvent.type(input, "foo\nbar");
-      userEvent.click(saveButton);
+      await userEvent.type(input, "foo\nbar");
+      await userEvent.click(saveButton);
 
       expect(screen.getByText("Invalid number format")).toBeInTheDocument();
       expect(saveButton).toBeDisabled();
       expect(onChange).not.toHaveBeenCalled();
 
-      userEvent.clear(input);
+      await userEvent.clear(input);
       expect(
         screen.queryByText("Invalid number format"),
       ).not.toBeInTheDocument();
 
-      userEvent.type(input, "1\n2");
-      userEvent.click(saveButton);
+      await userEvent.type(input, "1\n2");
+      await userEvent.click(saveButton);
 
       expect(onChange).toHaveBeenCalledWith([1, 2]);
     });
+
+    it("should omit empty lines and duplicates", async () => {
+      const { input, saveButton, onChange } = await baseSetup({
+        fieldType: "number",
+        options: [],
+      });
+
+      await userEvent.type(input, "1\n2\n\n2\n\n1\n\n");
+      await userEvent.click(saveButton);
+
+      expect(onChange).toHaveBeenCalledWith([1, 2]);
+    });
+
+    describe("given string field type", () => {
+      it("should omit empty lines and duplicates", async () => {
+        const { input, saveButton, onChange } = await baseSetup({
+          fieldType: "string",
+          options: [],
+        });
+
+        await userEvent.type(input, "1\n2\n\n2\n\n1\n\n");
+        await userEvent.click(saveButton);
+
+        expect(onChange).toHaveBeenCalledWith(["1", "2"]);
+      });
+    });
+  });
+});
+
+describe("textToOptions", () => {
+  it("should filter duplicates", () => {
+    const input = "1\n2\n1\n1\n2";
+
+    expect(textToOptions(input)).toEqual(["1", "2"]);
+  });
+
+  it("should filter empty values and trim empty space", () => {
+    const input = " \n  1\n2 \n\n\n  ";
+
+    expect(textToOptions(input)).toEqual(["1", "2"]);
   });
 });

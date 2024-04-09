@@ -2,9 +2,9 @@
   (:require
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (def PulseCard
@@ -34,25 +34,28 @@
       (or 0)))
 
 (def ^:private NewPulseCard
-  {:card_id                      su/IntGreaterThanZero
-   :pulse_id                     su/IntGreaterThanZero
-   :dashboard_card_id            su/IntGreaterThanZero
-   (s/optional-key :position)    (s/maybe su/IntGreaterThanOrEqualToZero)
-   (s/optional-key :include_csv) (s/maybe s/Bool)
-   (s/optional-key :include_xls) (s/maybe s/Bool)})
+ [:map {:closed true}
+  [:card_id                            ms/PositiveInt]
+  [:pulse_id                           ms/PositiveInt]
+  [:dashboard_card_id                  ms/PositiveInt]
+  [:position          {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+  [:include_csv       {:optional true} [:maybe :boolean]]
+  [:include_xls       {:optional true} [:maybe :boolean]]
+  [:format_rows       {:optional true} [:maybe :boolean]]])
 
-(s/defn bulk-create!
+(mu/defn bulk-create!
   "Creates new PulseCards, joining the given card, pulse, and dashboard card and setting appropriate defaults for other
   values if they're not provided."
-  [new-pulse-cards :- [NewPulseCard]]
+  [new-pulse-cards :- [:sequential NewPulseCard]]
   (t2/insert! PulseCard
-    (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls]} new-pulse-cards]
+    (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls format_rows]} new-pulse-cards]
       {:card_id           card_id
        :pulse_id          pulse_id
        :dashboard_card_id dashboard_card_id
        :position          (u/or-with some? position (next-position-for pulse_id))
-       :include_csv       (u/or-with some? include_csv false)
-       :include_xls       (u/or-with some? include_xls false)})))
+       :include_csv       (boolean include_csv)
+       :include_xls       (boolean include_xls)
+       :format_rows       (boolean format_rows)})))
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 

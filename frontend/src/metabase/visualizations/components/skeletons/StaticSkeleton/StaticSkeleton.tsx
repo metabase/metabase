@@ -1,7 +1,7 @@
-import { HTMLAttributes } from "react";
+import type { HTMLAttributes } from "react";
 
-import { IconName } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
+import type { IconName } from "metabase/ui";
 
 import {
   SkeletonDescription,

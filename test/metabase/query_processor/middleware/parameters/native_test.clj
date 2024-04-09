@@ -5,13 +5,12 @@
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli.schema :as ms]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest include-card-parameters-test
   (testing "Expanding a Card reference in a native query should include its parameters (#12236)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query orders
                                                            {:filter      [:between $total 30 60]
                                                             :aggregation [[:aggregation-options
@@ -27,8 +26,8 @@
                                          :type         :card
                                          :card-id      (u/the-id card)}}}]
           (mt/with-driver :h2
-            (mt/with-everything-store
-              (is (schema= {:native   su/NonBlankString
-                            :params   (s/eq ["G%"])
-                            s/Keyword s/Any}
-                           (qp.native/expand-inner query))))))))))
+            (mt/with-metadata-provider (mt/id)
+              (is (malli= [:map
+                           [:native ms/NonBlankString]
+                           [:params [:= ["G%"]]]]
+                          (qp.native/expand-inner query))))))))))

@@ -11,7 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
-   [metabase.search.util :as search]
+   [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -20,26 +20,26 @@
 
 ;;; ------------------------------------------------- source=static-list --------------------------------------------------
 (defn- query-matches
-  "Filter the values according to the `search-term`.
+  "Filters for values that match `query`.
 
   Values could have 2 shapes
-  - [value1, value2]
-  - [[value1, label1], [value2, label2]] - we search using label in this case"
+  - [[value1], [value2]]
+  - [[value2, label2], [value2, label2]] - we search using label in this case"
   [query values]
-  (let [normalized-query (search/normalize query)]
-    (filter #(str/includes? (search/normalize (if (string? %)
-                                                %
-                                                ;; search by label
-                                                (second %)))
-                            normalized-query) values)))
+  (let [normalized-query (search.util/normalize query)]
+    (filter (fn [v] (str/includes? (search.util/normalize (if (= (count v) 1)
+                                                            (first v)
+                                                            (second v)))
+                                   normalized-query)) values)))
 
 (defn- static-list-values
   [{values-source-options :values_source_config :as _param} query]
   (when-let [values (:values values-source-options)]
-    {:values          (if query
-                        (query-matches query values)
-                        values)
-     :has_more_values false}))
+    (let [wrapped-values (map (fn [v] (if-not (sequential? v) [v] v)) values)]
+      {:values          (if query
+                          (query-matches query wrapped-values)
+                          wrapped-values)
+       :has_more_values false})))
 
 ;;; ---------------------------------------------------- source=card ------------------------------------------------------
 
@@ -52,13 +52,16 @@
 
 (defn- values-from-card-query
   [card value-field query]
-  (let [value-base-type (:base_type (qp.util/field->field-info value-field (:result_metadata card)))]
+  (let [value-base-type (:base_type (qp.util/field->field-info value-field (:result_metadata card)))
+        expressions (get-in card [:dataset_query :query :expressions])]
     {:database (:database_id card)
      :type     :query
      :query    (merge
-                 {:source-table (format "card__%d" (:id card))
-                  :breakout     [value-field]
-                  :limit        *max-rows*}
+                 (cond-> {:source-table (format "card__%d" (:id card))
+                          :breakout     [value-field]
+                          :limit        *max-rows*}
+                   expressions
+                   (assoc :expressions expressions))
                  {:filter [:and
                            [(if (isa? value-base-type :type/Text)
                               :not-empty
@@ -81,7 +84,7 @@
   ;;  :filter       [:contains [:lower value-field] \"red\"]
   ;;  :limit        *max-rows*}
   =>
-  {:values          [\"Red Medicine\"]
+  {:values          [[\"Red Medicine\"]]
   :has_more_values false}
   "
   ([card value-field]
@@ -92,8 +95,8 @@
     query           :- [:any]]
    (let [mbql-query   (values-from-card-query card value-field query)
          result       (qp/process-query mbql-query)
-         values       (map first (get-in result [:data :rows]))]
-     {:values          values
+         values       (get-in result [:data :rows])]
+     {:values         values
       ;; if the row_count returned = the limit we specified, then it's probably has more than that
       :has_more_values (= (:row_count result)
                           (get-in mbql-query [:query :limit]))})))
@@ -113,7 +116,7 @@
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 
-(defn parameter->values
+(mu/defn parameter->values :- ms/FieldValuesResult
   "Given a parameter with a custom-values source, return the values.
 
   `default-case-thunk` is a 0-arity function that returns values list when:

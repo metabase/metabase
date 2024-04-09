@@ -1,7 +1,18 @@
-import { t } from "ttag";
-import { normalize } from "normalizr";
 import { assocIn, updateIn } from "icepick";
-import { createEntity, notify } from "metabase/lib/entities";
+import { normalize } from "normalizr";
+import { t } from "ttag";
+
+import { fieldApi } from "metabase/api";
+import {
+  field_visibility_types,
+  field_semantic_types,
+  has_field_values_options,
+} from "metabase/lib/core";
+import {
+  createEntity,
+  entityCompatibleQuery,
+  notify,
+} from "metabase/lib/entities";
 import {
   compose,
   withAction,
@@ -12,24 +23,15 @@ import {
   createThunkAction,
   updateData,
 } from "metabase/lib/redux";
-
 import { FieldSchema } from "metabase/schema";
-import { MetabaseApi } from "metabase/services";
-
 import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-
-import { UPDATE_TABLE_FIELD_ORDER } from "metabase/entities/tables";
-
-import {
-  field_visibility_types,
-  field_semantic_types,
-  has_field_values_options,
-} from "metabase/lib/core";
-import { TYPE } from "metabase-lib/types/constants";
-import { getFieldValues } from "metabase-lib/queries/utils/field";
+import { MetabaseApi } from "metabase/services";
+import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
+import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
+import { TYPE } from "metabase-lib/v1/types/constants";
 
 // ADDITIONAL OBJECT ACTIONS
 
@@ -47,10 +49,24 @@ export const ADD_REMAPPINGS = "metabase/entities/fields/ADD_REMAPPINGS";
 export const ADD_PARAM_VALUES = "metabase/entities/fields/ADD_PARAM_VALUES";
 export const ADD_FIELDS = "metabase/entities/fields/ADD_FIELDS";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Fields = createEntity({
   name: "fields",
   path: "/api/field",
   schema: FieldSchema,
+
+  api: {
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(entityQuery, dispatch, fieldApi.endpoints.getField),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        fieldApi.endpoints.updateField,
+      ),
+  },
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).field(entityId),
@@ -71,21 +87,27 @@ const Fields = createEntity({
     fetchFieldValues: compose(
       withAction(FETCH_FIELD_VALUES),
       withCachedDataAndRequestState(
-        ({ id }) => [...Fields.getObjectStatePath(id)],
-        ({ id }) => [...Fields.getObjectStatePath(id), "values"],
-        entityQuery => Fields.getQueryKey(entityQuery),
+        ({ id, table_id }) => {
+          const uniqueId = getUniqueFieldId({ id, table_id });
+          return [...Fields.getObjectStatePath(uniqueId)];
+        },
+        ({ id, table_id }) => {
+          const uniqueId = getUniqueFieldId({ id, table_id });
+          return [...Fields.getObjectStatePath(uniqueId), "values"];
+        },
+        field => {
+          return Fields.getQueryKey({ id: field.id });
+        },
       ),
       withNormalize(FieldSchema),
-    )(({ id: fieldId, ...params }) => async (dispatch, getState) => {
-      const {
-        field_id: id,
-        values,
-        has_more_values,
-      } = await MetabaseApi.field_values({
-        fieldId,
-        ...params,
+    )(field => async dispatch => {
+      const { field_id, ...data } = await MetabaseApi.field_values({
+        fieldId: field.id,
       });
-      return { id, values, has_more_values };
+      const table_id = field.table_id;
+
+      // table_id is required for uniqueFieldId as it's a way to know if field is virtual
+      return { id: field_id, ...data, ...(table_id && { table_id }) };
     }),
 
     updateField(field, values, opts) {
@@ -100,7 +122,7 @@ const Fields = createEntity({
 
         // field values needs to be fetched again once the field is updated metabase#16322
         await dispatch(
-          Fields.actions.fetchFieldValues({ id: field.id }, { reload: true }),
+          Fields.actions.fetchFieldValues(field, { reload: true }),
         );
 
         return result;
@@ -119,27 +141,35 @@ const Fields = createEntity({
             requestStatePath: ["entities", "fields", id, "dimension"],
             existingStatePath: ["entities", "fields", id],
             putData: () =>
-              MetabaseApi.field_values_update({
-                fieldId: id,
-                values: fieldValuePairs,
-              }),
+              entityCompatibleQuery(
+                {
+                  id,
+                  values: fieldValuePairs,
+                },
+                dispatch,
+                fieldApi.endpoints.updateFieldValues,
+              ),
           }),
     ),
     updateFieldDimension: createThunkAction(
       UPDATE_FIELD_DIMENSION,
       ({ id }, dimension) =>
-        () => {
-          return MetabaseApi.field_dimension_update({
-            fieldId: id,
-            ...dimension,
-          });
-        },
+        dispatch =>
+          entityCompatibleQuery(
+            { id, ...dimension },
+            dispatch,
+            fieldApi.endpoints.createFieldDimension,
+          ),
     ),
     deleteFieldDimension: createThunkAction(
       DELETE_FIELD_DIMENSION,
       ({ id }) =>
-        async () => {
-          await MetabaseApi.field_dimension_delete({ fieldId: id });
+        async dispatch => {
+          await entityCompatibleQuery(
+            id,
+            dispatch,
+            fieldApi.endpoints.deleteFieldDimension,
+          );
           return { id };
         },
     ),
@@ -177,7 +207,11 @@ const Fields = createEntity({
         updateIn(state, [fieldId, "remappings"], (existing = []) =>
           Array.from(new Map(existing.concat(remappings))),
         ),
-      [UPDATE_TABLE_FIELD_ORDER]: (state, { payload: { fieldOrder } }) => {
+      // cannot use `UPDATE_TABLE_FIELD_ORDER` because of the dependency cycle
+      ["metabase/entities/UPDATE_TABLE_FIELD_ORDER"]: (
+        state,
+        { payload: { fieldOrder } },
+      ) => {
         fieldOrder.forEach((fieldId, index) => {
           state = assocIn(state, [fieldId, "position"], index);
         });

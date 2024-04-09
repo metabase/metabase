@@ -1,20 +1,9 @@
 import _ from "underscore";
+
 import { color } from "metabase/lib/colors";
 
 function sumVerticalSpace(layout) {
   return layout.reduce((sum, current) => sum + current.h, 0);
-}
-
-export function sortCardsForMobile(a, b) {
-  const yDiff = a.y - b.y;
-
-  // sort by y position first
-  if (yDiff !== 0) {
-    return yDiff;
-  }
-
-  // for items on the same row, sort by x position
-  return a.x - b.x;
 }
 
 export function generateMobileLayout({
@@ -23,7 +12,7 @@ export function generateMobileLayout({
   heightByDisplayType = {},
 }) {
   const mobile = [];
-  desktopLayout.sort(sortCardsForMobile).forEach(item => {
+  desktopLayout.forEach(item => {
     const card = item.dashcard.card;
     const height = heightByDisplayType[card.display] || defaultCardHeight;
     mobile.push({

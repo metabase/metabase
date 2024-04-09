@@ -1,15 +1,15 @@
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { isEmpty } from "metabase/lib/validate";
+import { Icon } from "metabase/ui";
 
 import {
   EllipsifiedEntityContainer,
   EntityDisplayContainer,
   LeftContainer,
 } from "./EntityDisplay.styled";
-import { WrappedUnrestrictedLinkEntity } from "./types";
+import type { WrappedUnrestrictedLinkEntity } from "./types";
 
 export const EntityDisplay = ({
   entity,

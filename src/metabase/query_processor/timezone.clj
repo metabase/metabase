@@ -1,11 +1,11 @@
 (ns metabase.query-processor.timezone
   "Functions for fetching the timezone for the current query."
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
    (java.time ZonedDateTime)))
@@ -26,7 +26,7 @@
       (t/zone-id timezone-id)
       timezone-id
       (catch Throwable _
-        (log/warn (tru "Invalid timezone ID ''{0}''" timezone-id))
+        (log/warnf "Invalid timezone ID '%s'" timezone-id)
         nil))))
 
 (defn- report-timezone-id* []
@@ -42,7 +42,7 @@
   "Timezone ID for the report timezone, if the current driver and database supports it. (If the current driver supports it, this is
   bound by the `bind-effective-timezone` middleware.)"
   (^String []
-   (report-timezone-id-if-supported driver/*driver* (qp.store/database)))
+   (report-timezone-id-if-supported driver/*driver* (lib.metadata/database (qp.store/metadata-provider))))
 
   (^String [driver database]
    (when (driver/database-supports? driver :set-timezone database)
@@ -56,7 +56,10 @@
   (^String [database]
    (valid-timezone-id
     (or *database-timezone-id-override*
-        (:timezone (if (= database ::db-from-store) (qp.store/database) database))))))
+        (let [database (if (= database ::db-from-store)
+                         (lib.metadata/database (qp.store/metadata-provider))
+                         database)]
+          (:timezone database))))))
 
 (defn system-timezone-id
   "The system timezone of this Metabase instance."

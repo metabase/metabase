@@ -9,26 +9,65 @@
 
   If the model is not exported, add it to the exclusion lists in the tests. Every model should be explicitly listed as
   exported or not, and a test enforces this so serialization isn't forgotten for new models."
+  (:refer-clojure :exclude [descendants])
   (:require
    [cheshire.core :as json]
    [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.db :as mdb]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
+   [metabase.util.connection :as u.conn]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2]
-   [toucan2.model :as t2.model])
-  (:refer-clojure :exclude [descendants]))
+   [toucan2.model :as t2.model]))
 
 (set! *warn-on-reflection* true)
+
+;;; # Serialization Overview
+;;;
+;;; Serialization (or "serdes") is a system for exporting entities (Dashboards, Cards, Collections, etc.) from one
+;;; Metabase instance to disk files, and later importing them into 1 or more separate Metabase instances.
+;;;
+;;; There are two versions of serdes, known as v1 and v2. v2 was built in late 2022 to solve some problems with v1,
+;;; especially: accidentally duplicating entities because of a human change like renaming a collection; and that several
+;;; newly added models (eg. Timelines) were not added to serdes. v1's code is in `metabase-enterprise.serialization.*`;
+;;; v2 is split between infrastructure in `metabase-enterprise.serialization.v2.*` and integration with each model in
+;;; `metabase.models.*`.
+;;;
+;;; There are tests which query the set of Toucan models and ensure that they either support serialization or are
+;;; explicitly listed as exempt. Therefore serdes for new models is not forgotten.
+;;;
+;;; ## More details
+;;; This file is probably best not read top to bottom - it's organized in `def` order, not necessarily a good order for
+;;; understanding. Probably you want to read below on the "Export process" and "Import process" next.
+
+
+;;; # Entity IDs
+;;; Every serializable entity needs the be identified in a way that is:
+;;;
+;;; 1. unique, at least among the serialized entities
+;;; 2. permanent, even if eg. a collection's `:name` changes
+;;; 3. portable between Metabase instances and over time
+;;;
+;;; Database primary keys fail (3); matching based on the value fails (2) and maybe (1). So there's no easy way to solve
+;;; this requirement. We've taken three approaches for different kinds of entities:
+;;;
+;;; 1. Some have unique names already and we can use those: Databases are uniquely named and don't change.
+;;;     - Some are unique within a namespace: Fields are unique in Tables, Tables in Schemas, Schemas in Databases.
+;;; 2. Some are "embedded" as part of a parent entity, and don't need to exist independently, eg. the recipients of a
+;;;    pulse/dashboard subscription are reduced to a list of email addresses.
+;;; 3. For everything else (Dashboards, Cards, etc.)
+;;;    - Add an `entity_id` column to the tables
+;;;    - Populate it `on-insert` with a randomly-generated NanoID like `"V1StGXR8_Z5jdHi6B-myT"`.
+;;;    - For entities that existed before the column was added, have a portable way to rebuild them (see below on
+;;;      hashing).
 
 (defmulti entity-id
   "Given the model name and an entity, returns its entity ID (which might be nil).
@@ -36,12 +75,38 @@
   This abstracts over the exact definition of the \"entity ID\" for a given entity.
   By default this is a column, `:entity_id`.
 
-  Models that have a different portable ID should override this."
+  Models that have a different portable ID (`Database`, `Field`, etc.) should override this."
   {:arglists '([model-name instance])}
   (fn [model-name _instance] model-name))
 
 (defmethod entity-id :default [_ {:keys [entity_id]}]
-  entity_id)
+  (str/trim entity_id))
+
+;;; ## Hashing entities
+;;; In the worst case, an entity is already present in two instances linked by serdes, and it doesn't have `entity_id`
+;;; set because it existed before we added the column. If we write a migration to just generate random `entity_id`s on
+;;; both sides, those entities will get duplicated on the next `import`.
+;;;
+;;; So every entity implements [[hash-fields]], which determines the set of fields whose values are used to generate the
+;;; hash. The 32-bit [[identity-hash]] is then used to seed the PRNG and generate a "random" NanoID. Since this is based
+;;; on properties of the entity, it is reproducible on both `export` and `import` sides, so entities are not duplicated.
+;;;
+;;; Before any `export` or `import`, [[metabase-enterprise.serialization.v2.backfill-ids/backfill-ids]] is called. It
+;;; does `SELECT * FROM SomeModel WHERE entity_id IS NULL` and populates all the blanks with this hash-based NanoID.
+;;;
+;;; <h3>Whoops, two kinds of backfill</h3>
+;;; Braden discovered in Nov 2023 that for more than a year, we've had two inconsistent ways to backfill all the
+;;; `entity_id` fields in an instance.
+;;;
+;;; 1. The one described above, [[metabase-enterprise.serialization.v2.backfill-ids/backfill-ids]] which runs before
+;;;    any export or import.
+;;; 2. A separate JAR command `seed_entity_ids` which is powered by
+;;;    [[metabase-enterprise.serialization.v2.entity-ids/seed-entity-ids!]] and uses the [[identity-hash]] hex strings
+;;;    directly rather than seeding a NanoID with them.
+;;;
+;;; Therefore the import machinery has to look out for both kinds of IDs and use them. This is foolish and should be
+;;; simplified. We should write a Clojure-powered migration that finds any short 8-character `entity_id`s and generates
+;;; NanoIDs from them.
 
 (defn raw-hash
   "Hashes a Clojure value into an 8-character hex string, which is used as the identity hash.
@@ -58,7 +123,13 @@
   mi/dispatch-on-model)
 
 (defn identity-hash
-  "Returns an identity hash string from an entity map."
+  "Returns an identity hash string (8 hex digits) from an `entity` map.
+
+  This string is generated by:
+  - calling [[hash-fields]] for the model
+  - passing the `entity` to each function it returns
+  - calling [[hash]] on that list
+  - converting to an 8-character hex string"
   [entity]
   {:pre [(some? entity)]}
   (-> (for [f (hash-fields entity)]
@@ -72,12 +143,36 @@
 
 (defn hydrated-hash
   "Returns a function which accepts an entity and returns the identity hash of
-   the value of the hydrated property under key k."
+   the value of the hydrated property under key k.
+
+  This is a helper for writing [[hash-fields]] implementations."
   [k]
   (fn [entity]
     (or
      (some-> entity (t2/hydrate k) (get k) identity-hash)
      "<none>")))
+
+;;; # Serdes paths and <tt>:serdes/meta</tt>
+;;; The Clojure maps from extraction and ingestion always include a special key `:serdes/meta` giving some information
+;;; about the serialized entity. The value is always a vector of maps that give a "path" to the entity. This is **not**
+;;; a filesystem path; rather it defines the nesting of some entities inside others.
+;;;
+;;; Most paths are a single layer:
+;;; `[{:model "ModelName" :id "entity ID" :label "Human-readonly name"}]`
+;;; where `:model` and `:id` are required, and `:label` is optional.
+;;;
+;;; But for some entities, it can be deeper. For example, Fields belong to Tables, which are in Schemas, which are in
+;;; Databases. (Schemas don't exist separately in the appdb, but they're used here to keep Table names unique.)
+;;; For example:
+;;; <pre><code>[{:model "Database" :id "my_db"}
+;;;  {:model "Schema"   :id "PUBLIC"}
+;;;  {:model "Table"    :id "Users"}
+;;;  {:model "Field"    :id "email"}]</code></pre>
+;;;
+;;; Many of the serdes multimethods are keyed on the `:model` field of the leaf entry (the last).
+;;;
+;;; ## Two kinds of nesting
+;;; To reiterate, `:serdes/meta` paths are not filesystem paths. When `extract`ed entities are stored to disk.
 
 (defmulti generate-path
   "Given the model name and raw entity from the database, returns a vector giving its *path*.
@@ -114,12 +209,91 @@
   ;; This default works for most models, but needs overriding for nested ones.
   (maybe-labeled model-name entity :name))
 
+;;; # Export Process
+;;; An *export* (writing a Metabase instance's entities to disk) happens in two stages: *extraction* and *storage*.
+;;; These are independent, and deliberately decoupled. The result of extraction is a reducible stream of Clojure maps,
+;;; each with `:serdes/meta` keys on them (see below about these paths). In particular, note that extraction happens
+;;; inside Clojure, and has nothing to do with file formats or anything of the kind.
+;;;
+;;; Storage takes the stream of extracted entities and actually stores it to disk or sends it over the network.
+;;; Traditionally we serialize to a directory of YAML files, and that's the only storage approach currently implemented.
+;;; But since the export process is split into (complicated) extraction and (straightforward) storage, we or a user
+;;; could write a new storage layer fairly easily if we wanted to use JSON, protocol buffers, or any other format.
+;;;
+;;; Both extraction and storage are written as a set of multimethods, with defaults for the common case.
+;;;
+;;; ## Extraction
+;;; Extraction is controlled by a map of options and settings, with details below.
+;;;
+;;; - [[metabase-enterprise.serialization.v2.models/exported-models]] gives the set of models to be exported.
+;;;     - A test enforces that all models are either exported or explicitly excluded, so we can't forget serdes for new
+;;;       models.
+;;; - [[metabase-enterprise.serialization.v2.extract/extract]] is the entry point for extraction.
+;;;     - It can work in a "selective" mode or extract everything; see below on selective serialization.
+;;; - It calls `(extract-all "ModelName" opts)` for each model.
+;;;     - By default this calls `(extract-query "ModelName" opts)`, getting back a reducible stream of entities.
+;;;     - For each entity in that stream, it calls `(extract-one "ModelName" entity)`, which converts the map from the
+;;;       database (with instance-specific FKs in it) to a portable map with `:serdes/meta` on it and all FKs replaced
+;;;       with portable references.
+;;;
+;;; The default [[extract-all]] works for nearly all models. Override [[extract-query]] if you need to control which
+;;; entities get serialized (eg. to exclude `archived` ones). Every model implements [[extract-one]] to make its
+;;; entities portable.
+;;;
+;;; ## Storage
+;;; Storage transforms the reducible stream in some arbitrary way. It returns nothing; storage is expected to have side
+;;; effects like writing files to disk or transmitting them over the network.
+;;;
+;;; Not all storage implementations use directory structure, but for those that do [[storage-path]] should give the path
+;;; for an entity as a list of strings: `["foo" "bar" "some_file"]`. Note the lack of a file extension! That is
+;;; deliberately left off the shared [[storage-path]] code so it can be set by different implementations to `.yaml`,
+;;; `.json`, etc.
+;;;
+;;; By convention, models are named as *plural* and in *lower case*:
+;;; `["collections" "1234ABC_my_collection" "dashboards" "8765def_health_metrics"]`.
+;;;
+;;; As a final remark, note that some entities have their own directories and some do not. For example, a Field is
+;;; simply a file, while a Table has a directory. So a subset of the tree might look something like this:
+;;; <pre><code>my-export/
+;;; ├── collections
+;;; └── databases
+;;;     └── Sample Database
+;;;         ├── Sample Database.yaml
+;;;         └── schemas
+;;;             └── PUBLIC
+;;;                 └── tables
+;;;                     └── ORDERS
+;;;                         ├── ORDERS.yaml
+;;;                         └── fields
+;;;                             ├── CREATED_AT.yaml
+;;;                             ├── DISCOUNT.yaml
+;;;                             ├── ID.yaml
+;;;                             ├── PRODUCT_ID.yaml
+;;;                             ├── QUANTITY.yaml
+;;;                             ├── SUBTOTAL.yaml
+;;;                             ├── TAX.yaml
+;;;                             ├── TOTAL.yaml
+;;;                             └── USER_ID.yaml
+;;; </code></pre>
+;;;
+;;; ## Selective serialization
+;;; It's common to only export certain entities from an instance, rather than everything. We might export a single
+;;; Question, or a Dashboard with all its DashboardCards and their Cards.
+;;;
+;;; There's a relation to be captured here: the *descendants* of an entity are the ones it semantically "contains", or
+;;; those it needs in order to be executed. (As when a question depends on another, or a SQL question references a
+;;; NativeQuerySnippet.
+;;;
+;;; [[descendants]] returns a set of such descendants for a given entity; see there for more details.
+;;;
+;;; *Note:* "descendants" and "dependencies" are quite different things!
+
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
   `(extract-all \"ModelName\" {opts...})`
   Keyed on the model name.
 
-  Returns a reducible stream of extracted maps (ie. vanilla Clojure maps with `:serdes/meta` keys).
+  Returns a **reducible stream** of extracted maps (ie. vanilla Clojure maps with `:serdes/meta` keys).
 
   You probably don't want to implement this directly. The default implementation delegates to [[extract-query]] and
   [[extract-one]], which are usually more convenient to override."
@@ -134,9 +308,9 @@
 
   Keyed on the model name, the first argument.
 
-  Returns a reducible stream of modeled Toucan maps.
+  Returns a **reducible stream** of modeled Toucan maps.
 
-  Defaults to using `(toucan.t2/select model)` for the entire table.
+  Defaults to using `(t2/select model)` for the entire table.
 
   You may want to override this to eg. skip archived entities, or otherwise filter what gets serialized."
   {:arglists '([model-name opts])}
@@ -151,10 +325,9 @@
 
   That suffices for a few simple entities, but most entities will need to override this.
   They should follow the pattern of:
-  - Convert to a vanilla Clojure map, not a [[models/IModel]] instance.
-  - Drop the numeric database primary key
-  - Replace any foreign keys with portable values (eg. entity IDs or `identity-hash`es, owning user's ID with their
-    email, etc.)
+  - Convert to a vanilla Clojure map, not a modeled Toucan 2 entity.
+  - Drop the numeric database primary key (usually `:id`)
+  - Replace any foreign keys with portable values (eg. entity IDs, or a user ID with their email, etc.)
 
   When overriding this, [[extract-one-basics]] is probably a useful starting point.
 
@@ -164,7 +337,7 @@
 
 (defn- log-and-extract-one
   [model opts instance]
-  (log/info (trs "Extracting {0} {1}" model (:id instance)))
+  (log/infof "Extracting %s %s" model (:id instance))
   (extract-one model opts instance))
 
 (defmethod extract-all :default [model opts]
@@ -177,15 +350,15 @@
   [model {:keys [collection-set]}]
   (if collection-set
     ;; If collection-set is defined, select everything in those collections, or with nil :collection_id.
-    (let [in-colls  (db/select-reducible model :collection_id [:in collection-set])]
+    (let [in-colls  (t2/reducible-select model :collection_id [:in collection-set])]
       (if (contains? collection-set nil)
-        (eduction cat [in-colls (db/select-reducible model :collection_id nil)])
+        (eduction cat [in-colls (t2/reducible-select model :collection_id nil)])
         in-colls))
     ;; If collection-set is nil, just select everything.
-    (db/select-reducible model)))
+    (t2/reducible-select model)))
 
 (defmethod extract-query :default [model-name _]
-  (db/select-reducible (symbol model-name)))
+  (t2/reducible-select (symbol model-name)))
 
 (defn extract-one-basics
   "A helper for writing [[extract-one]] implementations. It takes care of the basics:
@@ -199,6 +372,7 @@
   (let [model (t2.model/resolve-model (symbol model-name))
         pk    (first (t2/primary-keys model))]
     (-> (into {} entity)
+        (m/update-existing :entity_id str/trim)
         (assoc :serdes/meta (generate-path model-name entity))
         (dissoc pk :updated_at))))
 
@@ -215,6 +389,68 @@
 
 (defmethod descendants :default [_ _]
   nil)
+
+(defmulti ascendants
+  "Return set of `[model-name database-id]` pairs for all entities containing this entity, required to successfully
+  load this entity in destination db. Notice that ascendants are searched recursively, but their descendants are not
+  analyzed.
+
+  Dispatched on model-name."
+  {:arglists '([model-name db-id])}
+  (fn [model-name _] model-name))
+
+(defmethod ascendants :default [_ _]
+  nil)
+
+;;; # Import Process
+;;; Deserialization is split into two stages, mirroring serialization. They are called *ingestion* and *loading*.
+;;; Ingestion turns whatever serialized form was produced by storage (eg. a tree of YAML files) into Clojure maps with
+;;; `:serdes/meta` maps. Loading imports these entities into the appdb, updating and inserting rows as needed.
+;;;
+;;; ## Ingestion
+;;; Ingestion is intended to be a black box, like storage above.
+;;; [[metabase-enterprise.serialization.v2.ingest/Ingestable]] is defined as a protocol to allow easy [[reify]] usage
+;;; for testing deserialization in memory.
+;;;
+;;; Factory functions consume some details (like a path to the export) and return an `Ingestable` instance, with its
+;;; two methods:
+;;;
+;;; - `(ingest-list ingestable)` returns a reducible stream of `:serdes/meta` paths in any order.
+;;; - `(ingest-one ingestable meta-path)` ingests a single entity into memory, returning it as a map.
+;;;
+;;; This two-stage design avoids needing all the data in memory at once. (Assuming the underlying storage media is
+;;; something like files, and not a network stream that won't wait!)
+;;;
+;;; ## Loading
+;;; Loading tries to find, for each ingested entity, a corresponding entity in the destination appdb, using the entity
+;;; IDs. If it finds a match, that row will be `UPDATE`d, rather than `INSERT`ing a duplicate.
+;;;
+;;; The entry point is [[metabase-enterprise.serialization.v2.load/load-metabase]].
+;;;
+;;; First, `(ingest-list ingestable)` gets the `:serdes/meta` "path" for every exported entity in arbitrary order.
+;;; Then for each ingested entity:
+;;;
+;;; - `(ingest-one serdes-path opts)` is called to read the value into memory, then
+;;; - `(dependencies ingested)` gets a list of other `:serdes/meta` paths need to be loaded first.
+;;;     - See below on depenencies.
+;;; - Dependencies are loaded recursively in postorder; that is an entity is loaded after all its deps.
+;;;     - Circular dependencies will make the load process throw.
+;;; - Once an entity's deps are all loaded, we check for an existing one:
+;;;     - `(load-find-local serdes-path)` returns the corresponding entity, or nil.
+;;; - `(load-one! ingested maybe-local-entity)` is called with the `ingested` map and `nil` or the local match.
+;;;     - `load-one!` is a side-effecting black box to the rest of the deserialization process.
+;;;     - `load-one! returns the primary key of the new or existing entity, which is necessary to resolve foreign keys.
+;;;
+;;; `load-one!` has a default implementation that works for most models:
+;;;
+;;; - Call `(load-xform ingested)` to transform the ingested map as needed.
+;;;     - Override [[load-xform]] to convert any foreign keys from portable entity IDs to the local database FKs.
+;;; - Then call either:
+;;;     - `(load-update! ingested local-entity)` if the local entity exists, or
+;;;     - `(load-insert! ingested)` if it's new.
+;;;
+;;; Both `load-update!` and `load-insert!` have the obvious defaults of updating or inserting with Toucan, but they
+;;; can be overridden if special handling is needed.
 
 (defn- ingested-model
   "The dispatch function for several of the load multimethods: dispatching on the model of the incoming entity."
@@ -233,10 +469,7 @@
   Returns nil, or the local Toucan entity that corresponds to the given path.
   Keyed on the model name at the leaf of the path.
 
-  By default, this tries to look up the entity by its `:entity_id` column, or identity hash, depending on the shape of
-  the incoming key. For the identity hash, this scans the entire table and builds a cache of
-  [[identity-hash]] to primary keys, since the identity hash cannot be queried directly.
-  This cache is cleared at the beginning and end of the deserialization process."
+  By default, this tries to look up the entity by its `:entity_id` column."
   {:arglists '([path])}
   (fn [path]
     (-> path last :model)))
@@ -248,6 +481,20 @@
         model                      (t2.model/resolve-model (symbol model-name))]
     (when model
       (lookup-by-id model id))))
+
+;;; ## Dependencies
+;;; The files of an export are returned in arbitrary order by [[ingest-list]]. But in order to load any entity,
+;;; everything it has a foreign key to must be loaded first. This is the purpose of one of the most complicated parts of
+;;; serdes: [[dependencies]].
+;;;
+;;; This multimethod returns a list (possibly empty) of `:serdes/meta` paths that this entity depends on. A `Card`
+;;; depends on the `Table`s it queries, the `Collection` it belongs to, and possibly much else.
+;;; Collections depend (recursively) on their parent collections.
+;;;
+;;; **Think carefully** about the dependencies of any model. Do they have optional fields that sometimes have FKs?
+;;; Eg. a DashboardCard can contain custom `click_behavior` which might include linking to a different `Card`!
+;;; Missing dependencies will cause flaky deserialization failures, since sometimes the FK target will exist already,
+;;; and sometimes not, depending on the arbitrary order of `ingest-list`.
 
 (defmulti dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
@@ -263,7 +510,7 @@
 
 (defmulti load-xform
   "Given the incoming vanilla map as ingested, transform it so it's suitable for sending to the database (in eg.
-  [[db/insert!]]).
+  [[t2/insert!]]).
   For example, this should convert any foreign keys back from a portable entity ID or identity hash into a numeric
   database ID. This is the mirror of [[extract-one]], in spirit. (They're not strictly inverses - [[extract-one]] drops
   the primary key but this need not put one back, for example.)
@@ -273,15 +520,52 @@
   {:arglists '([ingested])}
   ingested-model)
 
+(def ^:private fields-for-table
+  "Given a table name, returns a map of column_name -> column_type"
+  (mdb/memoize-for-application-db
+   (fn fields-for-table [table-name]
+     (u.conn/app-db-column-types (mdb/app-db) table-name))))
+
+(defn- ->table-name
+  "Returns the table name that a particular ingested entity should finally be inserted into."
+  [ingested]
+  (->> ingested ingested-model (keyword "model") t2/table-name name))
+
+(defmulti ingested-model-columns
+  "Called by `drop-excess-keys` (which is in turn called by `load-xform-basics`) to determine the full set of keys that
+  should be on the map returned by `load-xform-basics`. The default implementation looks in the application DB for the
+  table associated with the ingested model and returns the set of keywordized columns, but for some models (e.g.
+  Actions) there is not a 1:1 relationship between a model and a table, so we need this multimethod to allow the
+  model to override when necessary."
+  ingested-model)
+
+(defmethod ingested-model-columns :default
+  ;; this works for most models - it just returns a set of keywordized column names from the database.
+  [ingested]
+  (->> ingested
+       ->table-name
+       fields-for-table
+       keys
+       (map (comp keyword u/lower-case-en))
+       set))
+
+(defn- drop-excess-keys
+  "Given an ingested entity, removes keys that will not 'fit' into the current schema, because the column no longer
+  exists. This can happen when serialization dumps generated on an earlier version of Metabase are loaded into a
+  later version of Metabase, when a column gets removed. (At the time of writing I am seeing this happen with
+  color on collections)."
+  [ingested]
+  (select-keys ingested (ingested-model-columns ingested)))
+
 (defn load-xform-basics
   "Performs the usual steps for an incoming entity:
-  - Drop :serdes/meta
+  - removes extraneous keys (e.g. `:serdes/meta`)
 
-  You should call this as a first step from any implementation of [[load-xform]].
+  You should call this as part of any implementation of [[load-xform]].
 
   This is a mirror (but not precise inverse) of [[extract-one-basics]]."
   [ingested]
-  (dissoc ingested :serdes/meta))
+  (drop-excess-keys ingested))
 
 (defmethod load-xform :default [ingested]
   (load-xform-basics ingested))
@@ -344,7 +628,9 @@
   (fn [ingested _]
     (ingested-model ingested)))
 
-(defmethod load-one! :default [ingested maybe-local]
+(defn default-load-one!
+  "Default implementation of `load-one!`"
+  [ingested maybe-local]
   (let [model    (ingested-model ingested)
         adjusted (load-xform ingested)]
     (binding [mi/*deserializing?* true]
@@ -352,6 +638,8 @@
         (load-insert! model adjusted)
         (load-update! model adjusted maybe-local)))))
 
+(defmethod load-one! :default [ingested maybe-local]
+  (default-load-one! ingested maybe-local))
 
 (defn entity-id?
   "Checks if the given string is a 21-character NanoID. Useful for telling entity IDs apart from identity hashes."
@@ -360,13 +648,15 @@
                 (string? id-str)
                 (re-matches #"^[A-Za-z0-9_-]{21}$" id-str))))
 
+;; TODO: Clean up this [[identity-hash]] infrastructure once the `seed_entity_ids` issue is fixed. See above on the
+;; details of the two hashing schemes.
 (defn- find-by-identity-hash
   "Given a model and a target identity hash, this scans the appdb for any instance of the model corresponding to the
   hash. Does a complete scan, so this should be called sparingly!"
   ;; TODO This should be able to use a cache of identity-hash values from the start of the deserialization process.
   ;; Note that it needs to include either updates (or worst-case, invalidation) at [[load-one!]] time.
   [model id-hash]
-  (->> (db/select-reducible model)
+  (->> (t2/reducible-select model)
        (into [] (comp (filter #(= id-hash (identity-hash %)))
                       (take 1)))
        first))
@@ -398,7 +688,7 @@
                 (str id "_" (truncate-label label)))))
 
 (defn storage-default-collection-path
-  "Implements the most common structure for [[storage-path]] - `collections/c1/c2/c3/models/entityid_slug.ext`"
+  "Implements the most common structure for [[storage-path]] - `collections/c1/c2/c3/models/entityid_label.ext`"
   [entity {:keys [collections]}]
   (let [{:keys [model id label]} (-> entity path last)]
     (concat ["collections"]
@@ -433,9 +723,12 @@
        (str/join " > ")))
 
 
-;; utils
+;;; # Utilities for implementing serdes
+;;; Note that many of these use `^::cache` to cache their lookups during deserialization. This greatly reduces the
+;;; number of database lookups, since many entities might belong to eg. a single collection.
 
-;; -------------------------------------------- General Foreign Keys -------------------------------------------------
+;;; ## General foreign keys
+
 (defn ^:dynamic ^::cache *export-fk*
   "Given a numeric foreign key and its model (symbol, name or IModel), looks up the entity by ID and gets its entity ID
   or identity hash.
@@ -459,7 +752,7 @@
 
   The identifier can be a single entity ID string, a single identity-hash string, or a vector of entity ID and hash
   strings. If the ID is compound, then the last ID is the one that corresponds to the model. This allows for the
-  compound IDs needed for nested entities like `DashboardCard`s to get their [[serdes/serdes-dependencies]].
+  compound IDs needed for nested entities like `DashboardCard`s to get their [[dependencies]].
 
   Throws if the corresponding entity cannot be found.
 
@@ -474,14 +767,14 @@
           entity     (lookup-by-id model eid)]
       (if entity
         (get entity (first (t2/primary-keys model)))
-        (throw (ex-info "Could not find foreign key target - bad serdes-dependencies or other serialization error"
+        (throw (ex-info "Could not find foreign key target - bad serdes dependencies or other serialization error"
                         {:entity_id eid :model (name model)}))))))
 
 (defn ^:dynamic ^::cache *export-fk-keyed*
   "Given a numeric ID, look up a different identifying field for that entity, and return it as a portable ID.
   Eg. `Database.name`.
   [[import-fk-keyed]] is the inverse.
-  Unusual parameter order lets this be called as, for example, `(update x :creator_id export-fk-keyed 'Database :name)`.
+  Unusual parameter order lets this be called as, for example, `(update x :db_id export-fk-keyed 'Database :name)`.
 
   Note: This assumes the primary key is called `:id`."
   [id model field]
@@ -497,7 +790,7 @@
   [portable model field]
   (t2/select-one-pk model field portable))
 
-;; -------------------------------------------------- Users ----------------------------------------------------------
+;;; ## Users
 (defn ^:dynamic ^::cache *export-user*
   "Exports a user as the email address.
   This just calls [[export-fk-keyed]], but the counterpart [[import-user]] is more involved. This is a unique function
@@ -516,7 +809,8 @@
         ;; Need to break a circular dependency here.
         (:id ((resolve 'metabase.models.user/serdes-synthesize-user!) {:email email})))))
 
-;; -------------------------------------------------- Tables ---------------------------------------------------------
+;;; ## Tables
+
 (defn ^:dynamic ^::cache *export-table-fk*
   "Given a numeric `table_id`, return a portable table reference.
   If the `table_id` is `nil`, return `nil`. This is legal for a native question.
@@ -537,7 +831,7 @@
 
 (defn table->path
   "Given a `table_id` as exported by [[export-table-fk]], turn it into a `[{:model ...}]` path for the Table.
-  This is useful for writing [[metabase.models.serialization.base/serdes-dependencies]] implementations."
+  This is useful for writing [[dependencies]] implementations."
   [[db-name schema table-name]]
   (filterv some? [{:model "Database" :id db-name}
                   (when schema {:model "Schema" :id schema})
@@ -560,7 +854,8 @@
             (when schema ["schemas" schema])
             ["tables" table-name])))
 
-;; -------------------------------------------------- Fields ---------------------------------------------------------
+;;; ## Fields
+
 (defn ^:dynamic ^::cache *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
@@ -580,14 +875,15 @@
 
 (defn field->path
   "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.
-  This is useful for writing [[metabase.models.serialization.base/serdes-dependencies]] implementations."
+  This is useful for writing [[dependencies]] implementations."
   [[db-name schema table-name field-name]]
   (filterv some? [{:model "Database" :id db-name}
                   (when schema {:model "Schema" :id schema})
                   {:model "Table" :id table-name}
                   {:model "Field" :id field-name}]))
 
-;; ---------------------------------------------- MBQL Fields --------------------------------------------------------
+;;; ## MBQL Fields
+
 (defn- mbql-entity-reference?
   "Is given form an MBQL entity reference?"
   [form]
@@ -597,7 +893,7 @@
   [mbql]
   (-> mbql
       mbql.normalize/normalize-tokens
-      (mbql.u/replace
+      (lib.util.match/replace
         ;; `integer?` guard is here to make the operation idempotent
        [:field (id :guard integer?) opts]
        [:field (*export-field-fk* id) (mbql-id->fully-qualified-name opts)]
@@ -623,7 +919,7 @@
        [:dimension (mbql-id->fully-qualified-name dim)]
 
        [:metric (id :guard integer?)]
-       [:metric (*export-fk* id 'Metric)]
+       [:metric (*export-fk* id 'LegacyMetric)]
 
        [:segment (id :guard integer?)]
        [:segment (*export-fk* id 'Segment)])))
@@ -641,36 +937,36 @@
 
 (defn- ids->fully-qualified-names
   [entity]
-  (mbql.u/replace entity
-    mbql-entity-reference?
-    (mbql-id->fully-qualified-name &match)
+  (lib.util.match/replace entity
+                  mbql-entity-reference?
+                  (mbql-id->fully-qualified-name &match)
 
-    sequential?
-    (mapv ids->fully-qualified-names &match)
+                  sequential?
+                  (mapv ids->fully-qualified-names &match)
 
-    map?
-    (as-> &match entity
-      (m/update-existing entity :database (fn [db-id]
-                                            (if (= db-id mbql.s/saved-questions-virtual-database-id)
-                                              "database/__virtual"
-                                              (t2/select-one-fn :name 'Database :id db-id))))
-      (m/update-existing entity :card_id #(*export-fk* % 'Card)) ; attibutes that refer to db fields use _
-      (m/update-existing entity :card-id #(*export-fk* % 'Card)) ; template-tags use dash
-      (m/update-existing entity :source-table export-source-table)
-      (m/update-existing entity :source_table export-source-table)
-      (m/update-existing entity :breakout    (fn [breakout]
-                                               (mapv mbql-id->fully-qualified-name breakout)))
-      (m/update-existing entity :aggregation (fn [aggregation]
-                                               (mapv mbql-id->fully-qualified-name aggregation)))
-      (m/update-existing entity :filter      ids->fully-qualified-names)
-      (m/update-existing entity ::mb.viz/param-mapping-source *export-field-fk*)
-      (m/update-existing entity :segment    *export-fk* 'Segment)
-      (m/update-existing entity :snippet-id *export-fk* 'NativeQuerySnippet)
-      (merge entity
-             (update-vals (dissoc entity
-                                  :database :card_id :card-id :source-table :breakout :aggregation :filter :segment
-                                  ::mb.viz/param-mapping-source :snippet-id)
-                          ids->fully-qualified-names)))))
+                  map?
+                  (as-> &match entity
+                    (m/update-existing entity :database (fn [db-id]
+                                                          (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
+                                                            "database/__virtual"
+                                                            (t2/select-one-fn :name 'Database :id db-id))))
+                    (m/update-existing entity :card_id #(*export-fk* % 'Card)) ; attibutes that refer to db fields use _
+                    (m/update-existing entity :card-id #(*export-fk* % 'Card)) ; template-tags use dash
+                    (m/update-existing entity :source-table export-source-table)
+                    (m/update-existing entity :source_table export-source-table)
+                    (m/update-existing entity :breakout    (fn [breakout]
+                                                             (mapv mbql-id->fully-qualified-name breakout)))
+                    (m/update-existing entity :aggregation (fn [aggregation]
+                                                             (mapv mbql-id->fully-qualified-name aggregation)))
+                    (m/update-existing entity :filter      ids->fully-qualified-names)
+                    (m/update-existing entity ::mb.viz/param-mapping-source *export-field-fk*)
+                    (m/update-existing entity :segment    *export-fk* 'Segment)
+                    (m/update-existing entity :snippet-id *export-fk* 'NativeQuerySnippet)
+                    (merge entity
+                           (m/map-vals ids->fully-qualified-names
+                                       (dissoc entity
+                                               :database :card_id :card-id :source-table :breakout :aggregation :filter :segment
+                                               ::mb.viz/param-mapping-source :snippet-id))))))
 
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
@@ -687,7 +983,7 @@
 
 (defn- mbql-fully-qualified-names->ids*
   [entity]
-  (mbql.u/replace entity
+  (lib.util.match/replace entity
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
     ;; and also *current* expresion forms used in parameter mapping dimensions
     ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
@@ -708,7 +1004,7 @@
                   {:database (fully-qualified-name :guard string?)}
                   (-> &match
                       (assoc :database (if (= fully-qualified-name "database/__virtual")
-                                         mbql.s/saved-questions-virtual-database-id
+                                         lib.schema.id/saved-questions-virtual-database-id
                                          (t2/select-one-pk 'Database :name fully-qualified-name)))
                       mbql-fully-qualified-names->ids*) ; Process other keys
 
@@ -718,7 +1014,7 @@
                       mbql-fully-qualified-names->ids*) ; Process other keys
 
                   [(:or :metric "metric") (fully-qualified-name :guard portable-id?)]
-                  [:metric (*import-fk* fully-qualified-name 'Metric)]
+                  [:metric (*import-fk* fully-qualified-name 'LegacyMetric)]
 
                   [(:or :segment "segment") (fully-qualified-name :guard portable-id?)]
                   [:segment (*import-fk* fully-qualified-name 'Segment)]
@@ -770,8 +1066,8 @@
     ["field"    (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
     [:field-id  (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
     ["field-id" (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
-    [:metric    (field :guard portable-id?)] #{[{:model "Metric" :id field}]}
-    ["metric"   (field :guard portable-id?)] #{[{:model "Metric" :id field}]}
+    [:metric    (field :guard portable-id?)] #{[{:model "LegacyMetric" :id field}]}
+    ["metric"   (field :guard portable-id?)] #{[{:model "LegacyMetric" :id field}]}
     [:segment   (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
     ["segment"  (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
     :else (reduce #(cond
@@ -799,7 +1095,7 @@
 
 (defn mbql-deps
   "Given an MBQL expression as exported, with qualified names like `[\"some-db\" \"schema\" \"table_name\"]` instead of
-  raw IDs, return the corresponding set of serdes-dependencies. The query can't be imported until all the referenced
+  raw IDs, return the corresponding set of serdes dependencies. The query can't be imported until all the referenced
   databases, tables and fields are loaded."
   [entity]
   (cond
@@ -807,11 +1103,16 @@
     (seqable? entity) (mbql-deps-vector entity)
     :else             (mbql-deps-vector [entity])))
 
+;;; ## Dashboard/Question Parameters
+
+(defn- export-parameter-mapping [mapping]
+  (ids->fully-qualified-names mapping))
+
 (defn export-parameter-mappings
   "Given the :parameter_mappings field of a `Card` or `DashboardCard`, as a vector of maps, converts
   it to a portable form with the field IDs replaced with `[db schema table field]` references."
   [mappings]
-  (map ids->fully-qualified-names mappings))
+  (map export-parameter-mapping mappings))
 
 (defn import-parameter-mappings
   "Given the :parameter_mappings field as exported by serialization convert its field references
@@ -847,17 +1148,20 @@
             (set/union #{[{:model "Card" :id (:card_id config)}]}
                        (mbql-deps-vector (:value_field config))))))
 
+;;; ## Viz settings
+
 (def link-card-model->toucan-model
   "A map from model on linkcards to its corresponding toucan model.
 
   Link cards are dashcards that link to internal entities like Database/Dashboard/... or an url.
 
-  It's here instead of [metabase.models.dashboard_card] to avoid cyclic deps."
+  It's here instead of [[metabase.models.dashboard-card]] to avoid cyclic deps."
   {"card"       :model/Card
    "dataset"    :model/Card
    "collection" :model/Collection
    "database"   :model/Database
    "dashboard"  :model/Dashboard
+   "question"   :model/Card
    "table"      :model/Table})
 
 (defn- export-viz-link-card
@@ -872,8 +1176,94 @@
                    "database" (*export-fk-keyed* id 'Database :name)
                    (*export-fk* id (link-card-model->toucan-model model)))}))))
 
+(defn- json-ids->fully-qualified-names
+  "Converts IDs to fully qualified names inside a JSON string.
+  Returns a new JSON string with the IDs converted inside."
+  [json-str]
+  (-> json-str
+      (json/parse-string true)
+      ids->fully-qualified-names
+      json/generate-string))
+
+(defn- json-mbql-fully-qualified-names->ids
+  "Converts fully qualified names to IDs in MBQL embedded inside a JSON string.
+  Returns a new JSON string with teh IDs converted inside."
+  [json-str]
+  (-> json-str
+      (json/parse-string true)
+      mbql-fully-qualified-names->ids
+      json/generate-string))
+
+(defn- export-viz-click-behavior-link
+  [{:keys [linkType type] :as click-behavior}]
+  (cond-> click-behavior
+    (= type "link") (update :targetId *export-fk* (link-card-model->toucan-model linkType))))
+
+(defn- import-viz-click-behavior-link
+  [{:keys [linkType type] :as click-behavior}]
+  (cond-> click-behavior
+    (= type "link") (update :targetId *import-fk* (link-card-model->toucan-model linkType))))
+
+(defn- export-viz-click-behavior-mapping [mapping]
+  (-> mapping
+      (m/update-existing    :id                  json-ids->fully-qualified-names)
+      (m/update-existing-in [:target :id]        json-ids->fully-qualified-names)
+      (m/update-existing-in [:target :dimension] ids->fully-qualified-names)))
+
+(defn- import-viz-click-behavior-mapping [mapping]
+  (-> mapping
+      (m/update-existing    :id                  json-mbql-fully-qualified-names->ids)
+      (m/update-existing-in [:target :id]        json-mbql-fully-qualified-names->ids)
+      (m/update-existing-in [:target :dimension] mbql-fully-qualified-names->ids)))
+
+(defn- export-viz-click-behavior-mappings
+  "The `:parameterMapping` on a `:click_behavior` viz settings is a map of... IDs turned into JSON strings which have
+  been keywordized. Therefore the keys must be converted to strings, parsed, exported, and JSONified. The values are
+  ported by [[export-viz-click-behavior-mapping]]."
+  [mappings]
+  (into {} (for [[kw-key mapping] mappings
+                 ;; Mapping keyword shouldn't been a keyword in the first place, it's just how it's processed after
+                 ;; being selected from db. In an ideal world we'd either have different data layout for
+                 ;; click_behavior or not convert it's keys to a keywords. We need its full content here.
+                 :let [k (u/qualified-name kw-key)]]
+             (if (mb.viz/dimension-param-mapping? mapping)
+               [(json-ids->fully-qualified-names k)
+                (export-viz-click-behavior-mapping mapping)]
+               [k mapping]))))
+
+(defn- import-viz-click-behavior-mappings
+  "The exported form of `:parameterMapping` on a `:click_behavior` viz settings is a map of JSON strings which contain
+  fully qualified names. These must be parsed, imported, JSONified and then turned back into keywords, since that's the
+  form used internally."
+  [mappings]
+  (into {} (for [[json-key mapping] mappings]
+             (if (mb.viz/dimension-param-mapping? mapping)
+               [(keyword (json-mbql-fully-qualified-names->ids json-key))
+                (import-viz-click-behavior-mapping mapping)]
+               [json-key mapping]))))
+
+(defn- export-viz-click-behavior [settings]
+  (some-> settings
+          (m/update-existing    :click_behavior export-viz-click-behavior-link)
+          (m/update-existing-in [:click_behavior :parameterMapping] export-viz-click-behavior-mappings)))
+
+(defn- import-viz-click-behavior [settings]
+  (some-> settings
+          (m/update-existing    :click_behavior import-viz-click-behavior-link)
+          (m/update-existing-in [:click_behavior :parameterMapping] import-viz-click-behavior-mappings)))
+
+(defn- export-pivot-table [settings]
+  (some-> settings
+          (m/update-existing-in [:pivot_table.column_split :rows] ids->fully-qualified-names)
+          (m/update-existing-in [:pivot_table.column_split :columns] ids->fully-qualified-names)))
+
+(defn- import-pivot-table [settings]
+  (some-> settings
+          (m/update-existing-in [:pivot_table.column_split :rows] mbql-fully-qualified-names->ids)
+          (m/update-existing-in [:pivot_table.column_split :columns] mbql-fully-qualified-names->ids)))
+
 (defn- export-visualizations [entity]
-  (mbql.u/replace
+  (lib.util.match/replace
    entity
    ["field-id" (id :guard number?)]
    ["field-id" (*export-field-fk* id)]
@@ -896,7 +1286,7 @@
    [:field (*export-field-fk* id) (export-visualizations tail)]
 
    (_ :guard map?)
-   (update-vals &match export-visualizations)
+   (m/map-vals export-visualizations &match)
 
    (_ :guard vector?)
    (mapv export-visualizations &match)))
@@ -906,7 +1296,9 @@
   This function parses those keys, converts the IDs to portable values, and serializes them back to JSON."
   [settings]
   (when settings
-    (update-keys settings #(-> % json/parse-string export-visualizations json/generate-string))))
+    (-> settings
+        (update-keys #(-> % json/parse-string export-visualizations json/generate-string))
+        (update-vals export-viz-click-behavior))))
 
 (defn export-visualization-settings
   "Given the `:visualization_settings` map, convert all its field-ids to portable `[db schema table field]` form."
@@ -915,6 +1307,8 @@
     (-> settings
         export-visualizations
         export-viz-link-card
+        export-viz-click-behavior
+        export-pivot-table
         (update :column_settings export-column-settings))))
 
 (defn- import-viz-link-card
@@ -930,27 +1324,29 @@
                    (*import-fk* id (link-card-model->toucan-model model)))}))))
 
 (defn- import-visualizations [entity]
-  (mbql.u/replace
-    entity
-    [(:or :field-id "field-id") (fully-qualified-name :guard vector?) tail]
-    [:field-id (*import-field-fk* fully-qualified-name) (import-visualizations tail)]
-    [(:or :field-id "field-id") (fully-qualified-name :guard vector?)]
-    [:field-id (*import-field-fk* fully-qualified-name)]
+  (lib.util.match/replace
+   entity
+   [(:or :field-id "field-id") (fully-qualified-name :guard vector?) tail]
+   [:field-id (*import-field-fk* fully-qualified-name) (import-visualizations tail)]
+   [(:or :field-id "field-id") (fully-qualified-name :guard vector?)]
+   [:field-id (*import-field-fk* fully-qualified-name)]
 
-    [(:or :field "field") (fully-qualified-name :guard vector?) tail]
-    [:field (*import-field-fk* fully-qualified-name) (import-visualizations tail)]
-    [(:or :field "field") (fully-qualified-name :guard vector?)]
-    [:field (*import-field-fk* fully-qualified-name)]
+   [(:or :field "field") (fully-qualified-name :guard vector?) tail]
+   [:field (*import-field-fk* fully-qualified-name) (import-visualizations tail)]
+   [(:or :field "field") (fully-qualified-name :guard vector?)]
+   [:field (*import-field-fk* fully-qualified-name)]
 
-    (_ :guard map?)
-    (update-vals &match import-visualizations)
+   (_ :guard map?)
+   (m/map-vals import-visualizations &match)
 
-    (_ :guard vector?)
-    (mapv import-visualizations &match)))
+   (_ :guard vector?)
+   (mapv import-visualizations &match)))
 
 (defn- import-column-settings [settings]
   (when settings
-    (update-keys settings #(-> % name json/parse-string import-visualizations json/generate-string))))
+    (-> settings
+        (update-keys #(-> % name json/parse-string import-visualizations json/generate-string))
+        (update-vals import-viz-click-behavior))))
 
 (defn import-visualization-settings
   "Given an EDN value as exported by [[export-visualization-settings]], convert its portable `[db schema table field]`
@@ -960,6 +1356,8 @@
     (-> settings
         import-visualizations
         import-viz-link-card
+        import-viz-click-behavior
+        import-pivot-table
         (update :column_settings import-column-settings))))
 
 (defn- viz-link-card-deps
@@ -970,18 +1368,60 @@
         [{:model (name (link-card-model->toucan-model model))
           :id    id}])}))
 
+(defn- viz-click-behavior-deps
+  [settings]
+  (when-let [{:keys [linkType targetId type]} (:click_behavior settings)]
+    (case type
+      "link" (when-let [model (some-> linkType link-card-model->toucan-model name)]
+               #{[{:model model
+                   :id    targetId}]})
+      ;; TODO: We might need to handle the click behavior that updates dashboard filters? I can't figure out how get
+      ;; that to actually attach to a filter to check what it looks like.
+      nil)))
+
 (defn visualization-settings-deps
   "Given the :visualization_settings (possibly nil) for an entity, return any embedded serdes-deps as a set.
   Always returns an empty set even if the input is nil."
   [viz]
-  (let [vis-column-settings (some->> viz
-                                     :column_settings
-                                     keys
-                                     (map (comp mbql-deps json/parse-string name)))
-        link-card-deps      (viz-link-card-deps viz)]
-    (->> (concat vis-column-settings [(mbql-deps viz) link-card-deps])
+  (let [column-settings-keys-deps (some->> viz
+                                           :column_settings
+                                           keys
+                                           (map (comp mbql-deps json/parse-string name)))
+        column-settings-vals-deps (some->> viz
+                                           :column_settings
+                                           vals
+                                           (map viz-click-behavior-deps))
+        link-card-deps            (viz-link-card-deps viz)
+        click-behavior-deps       (viz-click-behavior-deps viz)]
+    (->> (concat column-settings-keys-deps
+                 column-settings-vals-deps
+                 [(mbql-deps viz) link-card-deps click-behavior-deps])
          (filter some?)
-         (reduce set/union))))
+         (reduce set/union #{}))))
+
+(defn- viz-click-behavior-descendants [{:keys [click_behavior]}]
+  (when-let [{:keys [linkType targetId type]} click_behavior]
+    (case type
+      "link" (when-let [model (link-card-model->toucan-model linkType)]
+               #{[(name model) targetId]})
+      ;; TODO: We might need to handle the click behavior that updates dashboard filters? I can't figure out how get
+      ;; that to actually attach to a filter to check what it looks like.
+      nil)))
+
+(defn- viz-column-settings-descendants [{:keys [column_settings]}]
+  (when column_settings
+    (->> (vals column_settings)
+         (mapcat viz-click-behavior-descendants)
+         set)))
+
+(defn visualization-settings-descendants
+  "Given the :visualization_settings (possibly nil) for an entity, return anything that should be considered a
+  descendant. Always returns an empty set even if the input is nil."
+  [viz]
+  (set/union (viz-click-behavior-descendants  viz)
+             (viz-column-settings-descendants viz)))
+
+;;; ## Memoizing appdb lookups
 
 (defmacro with-cache
   "Runs body with all functions marked with ::cache re-bound to memoized versions for performance."

@@ -1,0 +1,1 @@
+export { StaticEmbedSetupPane } from "./StaticEmbedSetupPane";

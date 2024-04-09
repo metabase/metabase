@@ -1,22 +1,16 @@
 import { useEffect, useCallback, useMemo, useState } from "react";
-import { jt, t } from "ttag";
-import _ from "underscore";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-
 import type {
   DraggableProvided,
   DroppableProvided,
   DropResult,
 } from "react-beautiful-dnd";
+import { Droppable, Draggable } from "react-beautiful-dnd";
+import { t } from "ttag";
+import _ from "underscore";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
-
-import MetabaseSettings from "metabase/lib/settings";
-
+import { DragDropContext } from "metabase/core/components/DragDropContext";
+import { Form, FormProvider } from "metabase/forms";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-
 import type {
   ActionFormSettings,
   FieldSettings,
@@ -30,16 +24,16 @@ import {
   getDefaultFormSettings,
 } from "../../../utils";
 import { syncFieldsWithParameters } from "../utils";
-import { reorderFields } from "./utils";
 
+import { Description } from "./Description";
 import { EmptyFormPlaceholder } from "./EmptyFormPlaceholder";
-import FormFieldEditor from "./FormFieldEditor";
 import {
   FormContainer,
   FormFieldEditorDragContainer,
-  InfoText,
   WarningBanner,
 } from "./FormCreator.styled";
+import FormFieldEditor from "./FormFieldEditor";
+import { reorderFields } from "./utils";
 
 // FormEditor's can't be submitted as it serves as a form preview
 const ON_SUBMIT_NOOP = _.noop;
@@ -142,13 +136,6 @@ export function FormCreator({
 
   const fieldSettings = formSettings.fields || {};
 
-  const docsLink = (
-    <ExternalLink
-      key="learn-more"
-      href={MetabaseSettings.docsUrl("actions/custom")}
-    >{t`Learn more`}</ExternalLink>
-  );
-
   const showWarning = form.fields.some(field => {
     const settings = fieldSettings[field.name];
 
@@ -172,9 +159,7 @@ export function FormCreator({
   return (
     <SidebarContent title={t`Action parameters`}>
       <FormContainer>
-        <InfoText>
-          {jt`Configure your parameters' types and properties here. The values for these parameters can come from user input, or from a dashboard filter. ${docsLink}`}
-        </InfoText>
+        <Description />
         {showWarning && (
           <WarningBanner>
             <b>{t`Heads up.`}</b>{" "}

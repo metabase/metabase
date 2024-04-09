@@ -44,8 +44,8 @@ defaultFilterValues.forEach(value => {
         visitQuestion(card_id);
 
         // Connect dashbaord filter to the card
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               card_id,
               id,

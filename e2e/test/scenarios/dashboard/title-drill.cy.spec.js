@@ -1,10 +1,13 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   filterWidget,
   popover,
   visitDashboard,
+  addOrUpdateDashboardCard,
+  getDashboardCard,
+  appBar,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -118,8 +121,8 @@ describe("scenarios > dashboard > title drill", () => {
         dashboardDetails,
       }).then(({ body: { id, card_id, dashboard_id } }) => {
         // Connect filter to the card
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               id,
               card_id,
@@ -302,7 +305,7 @@ describe("scenarios > dashboard > title drill", () => {
         });
 
         // rerun the query with the newly set filter
-        cy.get(".RunButton").first().click();
+        cy.findAllByTestId("run-button").first().click();
         cy.wait("@cardQuery");
 
         // make sure the results reflect the new filter
@@ -324,12 +327,92 @@ describe("scenarios > dashboard > title drill", () => {
         });
 
         // rerun the query with the newly set filter
-        cy.get(".RunButton").first().click();
+        cy.findAllByTestId("run-button").first().click();
         cy.wait("@cardQuery");
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("1");
       });
+    });
+  });
+
+  describe("on a nested simple question with a connected dashboard parameter", () => {
+    const questionDetails = {
+      name: "GUI Question",
+      query: {
+        "source-table": PRODUCTS_ID,
+      },
+    };
+    const baseNestedQuestionDetails = {
+      name: "Nested GUI Question",
+    };
+
+    const idFilter = { name: "ID", slug: "id", id: "f2bf003c", type: "id" };
+
+    const dashboardDetails = {
+      name: "Nested question dashboard",
+      parameters: [idFilter],
+    };
+
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+
+      cy.createQuestion(questionDetails, {
+        wrapId: true,
+        idAlias: "questionId",
+      });
+
+      cy.get("@questionId").then(questionId => {
+        const nestedQuestionDetails = {
+          ...baseNestedQuestionDetails,
+          query: {
+            "source-table": `card__${questionId}`,
+          },
+        };
+        cy.createQuestion(nestedQuestionDetails, {
+          wrapId: true,
+          idAlias: "nestedQuestionId",
+        });
+      });
+
+      cy.createDashboard(dashboardDetails).then(
+        ({ body: { id: dashboardId } }) => {
+          cy.wrap(dashboardId).as("dashboardId");
+        },
+      );
+
+      cy.then(function () {
+        addOrUpdateDashboardCard({
+          card_id: this.nestedQuestionId,
+          dashboard_id: this.dashboardId,
+          card: {
+            parameter_mappings: [
+              {
+                parameter_id: idFilter.id,
+                card_id: this.nestedQuestionId,
+                target: ["dimension", ["field", PRODUCTS.ID, null]],
+              },
+            ],
+          },
+        });
+      });
+    });
+
+    it("should lead you to a table question with filtered ID (metabase#17213)", () => {
+      const productRecordId = 3;
+      visitDashboard("@dashboardId", { params: { id: productRecordId } });
+
+      getDashboardCard().findByText(baseNestedQuestionDetails.name).click();
+
+      appBar()
+        .contains(`Started from ${baseNestedQuestionDetails.name}`)
+        .should("be.visible");
+      cy.findByTestId("question-row-count")
+        .findByText("Showing 1 row")
+        .should("be.visible");
+
+      cy.findByTestId("object-detail").should("not.exist");
     });
   });
 });
@@ -340,5 +423,5 @@ function checkFilterLabelAndValue(label, value) {
 }
 
 function checkScalarResult(result) {
-  cy.get(".ScalarValue").invoke("text").should("eq", result);
+  cy.findByTestId("scalar-value").invoke("text").should("eq", result);
 }

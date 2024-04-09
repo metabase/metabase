@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   editDashboard,
@@ -6,14 +7,14 @@ import {
   getDashboardCard,
   setFilter,
   filterWidget,
-  addTextBox,
+  addTextBoxWhileEditing,
+  addHeadingWhileEditing,
   popover,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
-describe("scenarios > dashboard > parameters in text cards", () => {
+describe("scenarios > dashboard > parameters in text and heading cards", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -22,72 +23,80 @@ describe("scenarios > dashboard > parameters in text cards", () => {
     });
   });
 
-  it("should show instructional text for text cards with no variables", () => {
-    addTextBox("Text card with no variables", {
+  it("should allow dashboard filters to be connected to tags in text cards", () => {
+    editDashboard();
+
+    addTextBoxWhileEditing("Variable: {{foo}}", {
       parseSpecialCharSequences: false,
     });
-    setFilter("Number", "Equal to");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(
-      "You can connect widgets to {{variables}} in text cards.",
-    ).should("exist");
-    cy.icon("info").should("exist");
-  });
+    addHeadingWhileEditing("Variable: {{foo}}", {
+      parseSpecialCharSequences: false,
+    });
 
-  it("should allow dashboard filters to be connected to tags in text cards", () => {
-    addTextBox("Variable: {{foo}}", { parseSpecialCharSequences: false });
     setFilter("Number", "Equal to");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("foo").click();
+    getDashboardCard(0).findByText("Select…").click();
+    popover().findByText("foo").click();
+
+    getDashboardCard(1).findByText("Select…").click();
+    popover().findByText("foo").click();
+
     saveDashboard();
 
     filterWidget().click();
-    cy.findByPlaceholderText("Enter a number").type(`1{enter}`);
+    cy.findByPlaceholderText("Enter a number").type("1{enter}");
     cy.button("Add filter").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Variable: 1").should("exist");
+    getDashboardCard(0).findByText("Variable: 1").should("exist");
+    getDashboardCard(1).findByText("Variable: 1").should("exist");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("1").click();
+    cy.findByTestId("dashboard-parameters-widget-container")
+      .findByText("1")
+      .click();
     popover().within(() => {
       cy.findByRole("textbox").click().type("2{enter}");
       cy.button("Update filter").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Variable: 1 and 2").should("exist");
+    getDashboardCard(0).findByText("Variable: 1 and 2").should("exist");
+    getDashboardCard(1).findByText("Variable: 1 and 2").should("exist");
 
     editDashboard();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Equal to").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("foo").should("exist");
+
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText("Equal to")
+      .click();
+    getDashboardCard(0).findByText("foo").should("exist");
+    getDashboardCard(1).findByText("foo").should("exist");
   });
 
   it("should not transform text variables to plain text (metabase#31626)", () => {
+    editDashboard();
+
     const textContent = "Variable: {{foo}}";
-    addTextBox(textContent, { parseSpecialCharSequences: false });
+    addTextBoxWhileEditing(textContent, { parseSpecialCharSequences: false });
+    addHeadingWhileEditing(textContent, { parseSpecialCharSequences: false });
+
     setFilter("Number", "Equal to");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("foo").click();
+    getDashboardCard(0).findByText("Select…").click();
+    popover().findByText("foo").click();
+
+    getDashboardCard(1).findByText("Select…").click();
+    popover().findByText("foo").click();
+
     saveDashboard();
 
     filterWidget().click();
-    cy.findByPlaceholderText("Enter a number").type(`1{enter}`);
+    cy.findByPlaceholderText("Enter a number").type("1{enter}");
     cy.button("Add filter").click();
 
     // view mode
-    getDashboardCard(0).click().findByText("Variable: 1").should("be.visible");
+    getDashboardCard(0).findByText("Variable: 1").should("be.visible");
+    getDashboardCard(1).findByText("Variable: 1").should("be.visible");
 
     editDashboard();
 
-    // edit mode
-    getDashboardCard(0).click().findByText(textContent).should("be.visible");
+    getDashboardCard(0).findByText(textContent).should("be.visible");
+    getDashboardCard(1).findByText(textContent).should("be.visible");
   });
 
   it("should translate parameter values into the instance language", () => {
@@ -96,16 +105,25 @@ describe("scenarios > dashboard > parameters in text cards", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });
     });
-    cy.request("PUT", `/api/setting/site-locale`, { value: "fr" });
+    cy.request("PUT", "/api/setting/site-locale", { value: "fr" });
     cy.reload();
 
-    addTextBox("Variable: {{foo}}", { parseSpecialCharSequences: false });
+    editDashboard();
+
+    addTextBoxWhileEditing("Variable: {{foo}}", {
+      parseSpecialCharSequences: false,
+    });
+    addHeadingWhileEditing("Variable: {{foo}}", {
+      parseSpecialCharSequences: false,
+    });
     setFilter("Time", "Relative Date");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("foo").click();
+    getDashboardCard(0).findByText("Select…").click();
+    popover().findByText("foo").click();
+
+    getDashboardCard(1).findByText("Select…").click();
+    popover().findByText("foo").click();
+
     saveDashboard();
 
     filterWidget().click();
@@ -113,8 +131,8 @@ describe("scenarios > dashboard > parameters in text cards", () => {
       cy.findByText("Today").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Variable: Aujourd'hui").should("exist");
+    getDashboardCard(0).findByText("Variable: Aujourd'hui").should("exist");
+    getDashboardCard(1).findByText("Variable: Aujourd'hui").should("exist");
 
     // Let's make sure the localization was reset back to the user locale by checking that specific text exists in
     // English on the homepage.
@@ -127,7 +145,7 @@ describe("scenarios > dashboard > parameters in text cards", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });
     });
-    cy.request("PUT", `/api/setting/site-locale`, { value: "fr" });
+    cy.request("PUT", "/api/setting/site-locale", { value: "fr" });
 
     // Create dashboard with a single date parameter, and a single question
     cy.createQuestionAndDashboard({
@@ -151,41 +169,57 @@ describe("scenarios > dashboard > parameters in text cards", () => {
       cy.editDashboardCard(card, updatedSize);
       visitDashboard(dashboard_id);
 
-      // Connect parameter to question
       editDashboard();
-      cy.findByText("Single Date").click();
-      cy.findByText("Select…").click();
-      cy.findByText("Created At").click();
-      cy.findByText("Single Date").click();
 
       // Create text card and connect parameter
-      cy.findByLabelText("Add a heading or text box").click();
-      popover().within(() => {
-        cy.findByText("Text").click();
+      addTextBoxWhileEditing("Variable: {{foo}}", {
+        parseSpecialCharSequences: false,
       });
-      cy.findByPlaceholderText(
-        "You can use Markdown here, and include variables {{like_this}}",
-      ).type("Variable: {{foo}}", { parseSpecialCharSequences: false });
-      cy.findByText("Single Date").click();
-      cy.findByText("Select…").click();
-      cy.findByText("foo").click();
+      addHeadingWhileEditing("Variable: {{foo}}", {
+        parseSpecialCharSequences: false,
+      });
+
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText("Single Date")
+        .click();
+
+      getDashboardCard(0).findByText("Select…").click();
+      popover().findByText("Created At").click();
+
+      getDashboardCard(1).findByText("Select…").click();
+      popover().findByText("foo").click();
+
+      getDashboardCard(2).findByText("Select…").click();
+      popover().findByText("foo").click();
+
       saveDashboard();
 
-      cy.findByText("Single Date").click();
+      cy.findByTestId("dashboard-parameters-widget-container")
+        .findByText("Single Date")
+        .click();
       popover().within(() => {
         cy.findByRole("textbox").click().clear().type("07/19/2023").blur();
-        cy.button("Update filter").click();
+        cy.button("Add filter").click();
       });
 
       // Question should be filtered appropriately
-      cy.findByText("Rustic Paper Wallet").should("exist");
-      cy.findByText("Small Marble Shoes").should("not.exist");
+      getDashboardCard(0).within(() => {
+        cy.findByText("Rustic Paper Wallet").should("exist");
+        cy.findByText("Small Marble Shoes").should("not.exist");
+      });
 
       // Parameter value in widget should use user localization (English)
-      cy.findByText("July 19, 2023").should("exist");
+      cy.findByTestId("dashboard-parameters-widget-container")
+        .findByText("July 19, 2023")
+        .should("exist");
 
       // Parameter value in dashboard should use site localization (French)
-      cy.findByText("Variable: juillet 19, 2023").should("exist");
+      getDashboardCard(1)
+        .findByText("Variable: juillet 19, 2023")
+        .should("exist");
+      getDashboardCard(2)
+        .findByText("Variable: juillet 19, 2023")
+        .should("exist");
     });
   });
 });

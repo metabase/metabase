@@ -1,18 +1,18 @@
 (ns ^:mb/once metabase.sync.analyze-test
   (:require
    [clojure.test :refer :all]
+   [metabase.analyze.classifiers.category :as classifiers.category]
+   [metabase.analyze.classifiers.name :as classifiers.name]
+   [metabase.analyze.classifiers.no-preview-display
+    :as classifiers.no-preview-display]
+   [metabase.analyze.classifiers.text-fingerprint
+    :as classifiers.text-fingerprint]
+   [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
    [metabase.sync.analyze :as analyze]
-   [metabase.sync.analyze.classifiers.category :as classifiers.category]
-   [metabase.sync.analyze.classifiers.name :as classifiers.name]
-   [metabase.sync.analyze.classifiers.no-preview-display
-    :as classifiers.no-preview-display]
-   [metabase.sync.analyze.classifiers.text-fingerprint
-    :as classifiers.text-fingerprint]
-   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -44,25 +44,27 @@
 
 ;; ...but they *SHOULD* get analyzed if they ARE newly created (expcept for PK which we skip)
 (deftest analyze-table-test
-  (t2.with-temp/with-temp [Database db    {:engine "h2", :details (:details (data/db))}
-                           Table    table {:name "VENUES", :db_id (u/the-id db)}]
+  (t2.with-temp/with-temp [Database db         {:engine "h2",       :details (:details (data/db))}
+                           Table    categories {:name "CATEGORIES", :db_id (:id db) :schema "PUBLIC"}
+                           Table    venues     {:name "VENUES",     :db_id (:id db) :schema "PUBLIC"}]
+    (sync-metadata/sync-table-metadata! categories)
     ;; sync the metadata, but DON't do analysis YET
-    (sync-metadata/sync-table-metadata! table)
+    (sync-metadata/sync-table-metadata! venues)
     ;; ok, NOW run the analysis process
-    (analyze/analyze-table! table)
+    (analyze/analyze-table! venues)
     ;; fields *SHOULD* have semantic types now
     (is (= #{{:name "LATITUDE", :semantic_type :type/Latitude, :last_analyzed true}
              {:name "ID", :semantic_type :type/PK, :last_analyzed false}
              {:name "PRICE", :semantic_type :type/Category, :last_analyzed true}
              {:name "LONGITUDE", :semantic_type :type/Longitude, :last_analyzed true}
-             {:name "CATEGORY_ID", :semantic_type :type/Category, :last_analyzed true}
+             {:name "CATEGORY_ID", :semantic_type :type/FK, :last_analyzed true}
              {:name "NAME", :semantic_type :type/Name, :last_analyzed true}}
-           (set (for [field (t2/select [Field :name :semantic_type :last_analyzed] :table_id (u/the-id table))]
+           (set (for [field (t2/select [Field :name :semantic_type :last_analyzed] :table_id (:id venues))]
                   (into {} (update field :last_analyzed boolean))))))))
 
 (deftest mark-fields-as-analyzed-test
   (testing "Make sure that only the correct Fields get marked as recently analyzed"
-    (with-redefs [i/latest-fingerprint-version Short/MAX_VALUE]
+    (with-redefs [i/*latest-fingerprint-version* Short/MAX_VALUE]
       (t2.with-temp/with-temp [Table table {}
                                Field _ {:table_id            (u/the-id table)
                                         :name                "Current fingerprint, not analyzed"
@@ -192,8 +194,8 @@
 (deftest dont-analyze-hidden-tables-test
   (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"
     (letfn [(tests [sync!*]
-              (mt/with-temp* [Table [table (assoc (fake-table) :visibility_type "hidden")]
-                              Field [field (fake-field table)]]
+              (mt/with-temp [Table table (assoc (fake-table) :visibility_type "hidden")
+                             Field field (fake-field table)]
                 (letfn [(set-visibility! [visibility]
                           (set-table-visibility-type-via-api! table visibility)
                           (testing "after updating visibility type"
@@ -224,8 +226,8 @@
 
 (deftest analyze-db!-return-value-test
   (testing "Returns values"
-    (mt/with-temp* [Table [table (fake-table)]
-                    Field [_     (fake-field table)]]
+    (mt/with-temp [Table table (fake-table)
+                   Field _     (fake-field table)]
       (let [results (analyze-table! table)]
         (testing "has the steps performed"
           (is (= ["fingerprint-fields" "classify-fields" "classify-tables"]
@@ -236,8 +238,8 @@
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"
     (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
-      (mt/with-temp* [Table [table (fake-table)]
-                      Field [field (fake-field table)]]
+      (mt/with-temp [Table table (fake-table)
+                     Field field (fake-field table)]
         (set-table-visibility-type-via-api! table "hidden")
         (set-table-visibility-type-via-api! table nil)
         (is (= true
@@ -246,8 +248,8 @@
 (deftest dont-analyze-rehidden-table-test
   (testing "re-hiding a table should not cause it to be analyzed"
     ;; create an initially hidden table
-    (mt/with-temp* [Table [table (fake-table :visibility_type "hidden")]
-                    Field [_     (fake-field table)]]
+    (mt/with-temp [Table table (fake-table :visibility_type "hidden")
+                   Field _     (fake-field table)]
       ;; switch the table to visible (triggering a sync) and get the last sync time
       (let [last-sync-time (do (set-table-visibility-type-via-api! table nil)
                                (latest-sync-time table))]

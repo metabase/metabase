@@ -1,24 +1,24 @@
 import {
-  restore,
-  withDatabase,
-  visitAlias,
-  popover,
-  resetTestTable,
-  startNewQuestion,
-  resyncDatabase,
-} from "e2e/support/helpers";
-import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  restore,
+  withDatabase,
+  visitAlias,
+  popover,
+  resetTestTable,
+  openTable,
+  resyncDatabase,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-// [quarantine] - intermittently failing, possibly due to a "flickering" element (re-rendering)
-describe.skip("scenarios > admin > datamodel > field", () => {
+describe("scenarios > admin > datamodel > field", () => {
   beforeEach(() => {
+    restore();
     cy.signInAsAdmin();
 
     ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach(name => {
@@ -60,6 +60,19 @@ describe.skip("scenarios > admin > datamodel > field", () => {
       cy.reload();
       cy.get("@display_name").should("have.value", "new display_name");
       cy.get("@description").should("have.value", "new description");
+    });
+  });
+
+  describe("Formatting", () => {
+    it("should allow you to change field formatting", () => {
+      visitAlias("@ORDERS_QUANTITY_URL");
+      cy.findByRole("link", { name: "Formatting" }).click();
+      cy.findByLabelText("Style").click();
+      popover().findByText("Percent").click();
+      cy.wait("@fieldUpdate");
+      cy.findByRole("list", { name: "undo-list" })
+        .findByText("Updated Quantity")
+        .should("exist");
     });
   });
 
@@ -120,39 +133,42 @@ describe.skip("scenarios > admin > datamodel > field", () => {
       cy.contains("Title");
     });
 
-    // [quarantined]: flake, blocking 3rd party PR
-    it.skip("allows 'Custom mapping' null values", () => {
+    it("allows 'Custom mapping' null values", () => {
+      const dbId = 2;
+      const remappedNullValue = "nothin";
+
       restore("withSqlite");
       cy.signInAsAdmin();
-      const dbId = 2;
+
       withDatabase(
         dbId,
-        ({ number_with_nulls: { num }, number_with_nulls_ID }) =>
-          cy.visit(
-            `/admin/datamodel/database/${dbId}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${number_with_nulls_ID}/field/${num}/general`,
-          ),
+        ({ NUMBER_WITH_NULLS: { NUM }, NUMBER_WITH_NULLS_ID }) => {
+          cy.request("GET", `/api/database/${dbId}/schemas`).then(
+            ({ body }) => {
+              const [schema] = body;
+
+              cy.visit(
+                `/admin/datamodel/database/${dbId}/schema/${dbId}:${schema}/table/${NUMBER_WITH_NULLS_ID}/field/${NUM}/general`,
+              );
+            },
+          );
+
+          cy.log("Change `null` to custom mapping");
+          cy.findByRole("heading", { name: "Display values" })
+            .closest("section")
+            .findByText("Use original value")
+            .click();
+          popover().findByText("Custom mapping").click();
+
+          cy.findByDisplayValue("null").clear().type(remappedNullValue);
+          cy.button("Save").click();
+          cy.button("Saved!").should("be.visible");
+
+          cy.log("Make sure custom mapping appears in QB");
+          openTable({ database: dbId, table: NUMBER_WITH_NULLS_ID });
+          cy.get(".cellData").should("contain", remappedNullValue);
+        },
       );
-
-      // change to custom mapping
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Use original value").click();
-      popover().findByText("Custom mapping").click();
-
-      // update text for nulls from "null" to "nothin"
-      cy.get("input[value=null]").clear().type("nothin");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved!");
-
-      // check that it appears in QB
-      startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("sqlite").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Number With Nulls").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("nothin");
     });
   });
 });
@@ -167,7 +183,7 @@ function getUnfoldJsonContent() {
 describe("Unfold JSON", () => {
   beforeEach(() => {
     resetTestTable({ type: "postgres", table: "many_data_types" });
-    restore(`postgres-writable`);
+    restore("postgres-writable");
     cy.signInAsAdmin();
     resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
   });

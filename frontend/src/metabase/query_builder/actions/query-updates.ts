@@ -1,9 +1,9 @@
+import type { Limit } from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type { Dispatch, GetState } from "metabase-types/store";
 
-import * as Lib from "metabase-lib";
-import type { Limit } from "metabase-lib/types";
-
 import { getQuestion } from "../selectors";
+
 import { updateQuestion } from "./core";
 
 export const setLimit =
@@ -13,7 +13,7 @@ export const setLimit =
     if (!question) {
       return;
     }
-    const query = question._getMLv2Query();
+    const query = question.query();
     const nextQuery = Lib.limit(query, -1, limit);
     const nextLegacyQuery = Lib.toLegacyQuery(nextQuery);
     const nextQuestion = question.setDatasetQuery(nextLegacyQuery);

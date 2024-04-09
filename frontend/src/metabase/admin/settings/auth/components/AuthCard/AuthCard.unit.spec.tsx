@@ -1,6 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import AuthCard, { AuthSetting, AuthCardProps } from "./AuthCard";
+
+import { createMockSettingDefinition } from "metabase-types/api/mocks";
+
+import type { AuthSetting, AuthCardProps } from "./AuthCard";
+import AuthCard from "./AuthCard";
 
 describe("AuthCard", () => {
   it("should render when not configured", () => {
@@ -14,51 +18,72 @@ describe("AuthCard", () => {
     expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
   });
 
-  it("should pause active authentication", () => {
+  it("should pause active authentication", async () => {
     const props = getProps({
       setting: getSetting({ value: true }),
       isConfigured: true,
     });
 
     render(<AuthCard {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
-    userEvent.click(screen.getByText("Pause"));
+    await userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await screen.findByRole("dialog");
+    await userEvent.click(screen.getByText("Pause"));
 
     expect(props.onChange).toHaveBeenCalledWith(false);
   });
 
-  it("should resume paused authentication", () => {
+  it("should resume paused authentication", async () => {
     const props = getProps({
       setting: getSetting({ value: false }),
       isConfigured: true,
     });
 
     render(<AuthCard {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
-    userEvent.click(screen.getByText("Resume"));
+    await userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await screen.findByRole("dialog");
+    await userEvent.click(screen.getByText("Resume"));
 
     expect(props.onChange).toHaveBeenCalledWith(true);
   });
 
-  it("should deactivate authentication", () => {
+  it("should deactivate authentication", async () => {
     const props = getProps({
       setting: getSetting({ value: false }),
       isConfigured: true,
     });
 
     render(<AuthCard {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
-    userEvent.click(screen.getByText("Deactivate"));
-    userEvent.click(screen.getByRole("button", { name: "Deactivate" }));
+    await userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await screen.findByRole("dialog");
+    await userEvent.click(screen.getByText("Deactivate"));
+    await userEvent.click(screen.getByRole("button", { name: "Deactivate" }));
 
     expect(props.onDeactivate).toHaveBeenCalled();
   });
+
+  it("should handle settings set with env vars", () => {
+    const props = getProps({
+      setting: getSetting({
+        value: null,
+        env_name: "MB_JWT_ENABLED",
+        is_env_setting: true,
+      }),
+      isConfigured: true,
+    });
+
+    render(<AuthCard {...props} />);
+
+    expect(screen.getByRole("link")).toHaveTextContent("$MB_JWT_ENABLED");
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("card-badge")).not.toBeInTheDocument();
+  });
 });
 
-const getSetting = (opts?: Partial<AuthSetting>): AuthSetting => ({
-  value: false,
-  ...opts,
-});
+const getSetting = (opts?: Partial<AuthSetting>): AuthSetting =>
+  createMockSettingDefinition({
+    value: false,
+    ...opts,
+  }) as AuthSetting;
 
 const getProps = (opts?: Partial<AuthCardProps>): AuthCardProps => ({
   setting: getSetting(),

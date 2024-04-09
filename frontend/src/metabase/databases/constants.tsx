@@ -1,14 +1,17 @@
 import { t } from "ttag";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
+
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
+
 import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
 import DatabaseCacheScheduleField from "./components/DatabaseCacheScheduleField";
 import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
 import DatabaseConnectionSectionField from "./components/DatabaseConnectionSectionField";
+import DatabaseHostnameSectionField from "./components/DatabaseHostnameSectionField";
 import DatabaseScheduleToggleField from "./components/DatabaseScheduleToggleField";
 import DatabaseSshDescription from "./components/DatabaseSshDescription";
 import DatabaseSslKeyDescription from "./components/DatabaseSslKeyDescription";
 import DatabaseSyncScheduleField from "./components/DatabaseSyncScheduleField";
-import { EngineFieldOverride } from "./types";
+import type { EngineFieldOverride } from "./types";
 
 export const SAVED_QUESTIONS_DATABASE = {
   id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
@@ -64,7 +67,7 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   },
   "include-user-id-and-hash": {
     title: t`Include User ID and query hash in queries`,
-    description: t`This can be useful for auditing and debugging, but prevents BigQuery from caching results and may increase your costs.`,
+    description: t`This can be useful for auditing and debugging, but prevents  databases from caching results and may increase your costs.`,
   },
   "use-srv": {
     title: t`Connect using DNS SRV`,
@@ -101,6 +104,9 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   },
   "use-conn-uri": {
     type: DatabaseConnectionSectionField,
+  },
+  "use-hostname": {
+    type: DatabaseHostnameSectionField,
   },
   "let-user-control-scheduling": {
     type: DatabaseScheduleToggleField,

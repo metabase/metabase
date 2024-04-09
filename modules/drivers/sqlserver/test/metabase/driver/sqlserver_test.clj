@@ -3,8 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [colorize.core :as colorize]
-   [honeysql.core :as hsql]
-   [java-time :as t]
+   [honey.sql :as sql]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.driver :as driver]
@@ -15,15 +15,21 @@
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.models :refer [Database]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.interface :as qp.i]
-   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
+   [metabase.test.util.timezone :as test.tz]
+   [metabase.util.date-2 :as u.date]
+   [next.jdbc]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
-(deftest fix-order-bys-test
+(deftest ^:parallel fix-order-bys-test
   (testing "Remove order-by from joins"
     (let [original {:joins [{:alias        "C3"
                              :source-query {:source-table 1
@@ -42,28 +48,29 @@
                   (#'sqlserver/fix-order-bys original)))
       (testing "Inside `:source-query`"
         (is (query= {:source-query expected}
-                    (#'sqlserver/fix-order-bys {:source-query original})))))
+                    (#'sqlserver/fix-order-bys {:source-query original})))))))
 
-    (testing "Add limit for :source-query order bys"
-      (mt/$ids nil
-        (let [original {:source-table 1
-                        :order-by     [[:asc 2]]}]
-          (testing "Not in a source query -- don't do anything"
-            (is (query= original
-                        (#'sqlserver/fix-order-bys original))))
-          (testing "In source query -- add `:limit`"
-            (is (query= {:source-query (assoc original :limit qp.i/absolute-max-results)}
-                        (#'sqlserver/fix-order-bys {:source-query original}))))
-          (testing "In source query in source query-- add `:limit` at both levels"
-            (is (query= {:source-query {:source-query (assoc original :limit qp.i/absolute-max-results)
-                                        :order-by     [[:asc [:field 1]]]
-                                        :limit        qp.i/absolute-max-results}}
-                        (#'sqlserver/fix-order-bys {:source-query {:source-query original
-                                                                   :order-by     [[:asc [:field 1]]]}}))))
-          (testing "In source query inside source query for join -- add `:limit`"
-            (is (query= {:joins [{:source-query {:source-query (assoc original :limit qp.i/absolute-max-results)}}]}
-                        (#'sqlserver/fix-order-bys
-                         {:joins [{:source-query {:source-query original}}]})))))))))
+(deftest ^:parallel fix-order-bys-test-2
+  (testing "Add limit for :source-query order bys"
+    (mt/$ids nil
+      (let [original {:source-table 1
+                      :order-by     [[:asc 2]]}]
+        (testing "Not in a source query -- don't do anything"
+          (is (query= original
+                      (#'sqlserver/fix-order-bys original))))
+        (testing "In source query -- add `:limit`"
+          (is (query= {:source-query (assoc original :limit qp.i/absolute-max-results)}
+                      (#'sqlserver/fix-order-bys {:source-query original}))))
+        (testing "In source query in source query-- add `:limit` at both levels"
+          (is (query= {:source-query {:source-query (assoc original :limit qp.i/absolute-max-results)
+                                      :order-by     [[:asc [:field 1]]]
+                                      :limit        qp.i/absolute-max-results}}
+                      (#'sqlserver/fix-order-bys {:source-query {:source-query original
+                                                                 :order-by     [[:asc [:field 1]]]}}))))
+        (testing "In source query inside source query for join -- add `:limit`"
+          (is (query= {:joins [{:source-query {:source-query (assoc original :limit qp.i/absolute-max-results)}}]}
+                      (#'sqlserver/fix-order-bys
+                       {:joins [{:source-query {:source-query original}}]}))))))))
 
 ;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
 
@@ -77,7 +84,7 @@
     [{:field-name "gene", :base-type {:native "VARCHAR(MAX)"}, :effective-type :type/Text}]
     [[(a-gene)]]]])
 
-(deftest clobs-should-come-back-as-text-test
+(deftest ^:parallel clobs-should-come-back-as-text-test
   (mt/test-driver :sqlserver
     (testing "Make sure something long doesn't come back as some weird type like `ClobImpl`"
       (is (= [[1 (-> genetic-data :table-definitions first :rows ffirst)]]
@@ -85,7 +92,7 @@
                  mt/rows
                  mt/obj->json->obj)))))) ; convert to JSON + back so the Clob gets stringified
 
-(deftest connection-spec-test
+(deftest ^:parallel connection-spec-test
   (testing "Test that additional connection string options work (#5296)"
     (is (= {:applicationName    (format
                                  "Metabase %s [%s]"
@@ -109,41 +116,55 @@
               :port               1433
               :additional-options "trustServerCertificate=false"})))))
 
-(deftest add-max-results-limit-test
+(deftest ^:parallel add-max-results-limit-test
   (mt/test-driver :sqlserver
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
                   "equivalent of LIMIT). Make sure we add a max-results LIMIT to the nested query")
-      (is (sql= '{:select [TOP 1048575 source.name AS name]
-                  :from   [{:select   [TOP 1048575 dbo.venues.name AS name]
-                            :from     [dbo.venues]
-                            :order-by [dbo.venues.id ASC]}
-                           source]}
-                (mt/mbql-query venues
-                  {:source-query {:source-table $$venues
-                                  :fields       [$name]
-                                  :order-by     [[:asc $id]]}}))))))
+      (is (= {:query ["SELECT"
+                      "  TOP(1048575) \"source\".\"name\" AS \"name\""
+                      "FROM"
+                      "  ("
+                      "    SELECT"
+                      "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
+                      "    FROM"
+                      "      \"dbo\".\"venues\""
+                      "    ORDER BY"
+                      "      \"dbo\".\"venues\".\"id\" ASC"
+                      "  ) AS \"source\""]
+              :params nil}
+             (-> (mt/mbql-query venues
+                   {:source-query {:source-table $$venues
+                                   :fields       [$name]
+                                   :order-by     [[:asc $id]]}})
+                 qp.compile/compile
+                 (update :query #(str/split-lines (driver/prettify-native-form :sqlserver %)))))))))
 
-(deftest preserve-existing-top-clauses
+(deftest ^:parallel preserve-existing-top-clauses
   (mt/test-driver :sqlserver
     (testing (str "make sure when adding TOP clauses to make ORDER BY work we don't stomp over any explicit TOP "
                   "clauses that may have been set in the query")
-      (is (= {:query  (str "SELECT TOP 10 \"source\".\"name\" AS \"name\" "
-                           "FROM ("
-                           "SELECT TOP 20 "
-                           "\"dbo\".\"venues\".\"name\" AS \"name\" "
-                           "FROM \"dbo\".\"venues\" "
-                           "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
-                           " ) \"source\" ")
+      (is (= {:query  ["SELECT"
+                       "  TOP(10) \"source\".\"name\" AS \"name\""
+                       "FROM"
+                       "  ("
+                       "    SELECT"
+                       "      TOP(20) \"dbo\".\"venues\".\"name\" AS \"name\""
+                       "    FROM"
+                       "      \"dbo\".\"venues\""
+                       "    ORDER BY"
+                       "      \"dbo\".\"venues\".\"id\" ASC"
+                       "  ) AS \"source\""]
               :params nil}
-             (qp/compile
-              (mt/mbql-query venues
-                {:source-query {:source-table $$venues
-                                :fields       [$name]
-                                :order-by     [[:asc $id]]
-                                :limit        20}
-                 :limit        10})))))))
+             (-> (qp.compile/compile
+                  (mt/mbql-query venues
+                    {:source-query {:source-table $$venues
+                                    :fields       [$name]
+                                    :order-by     [[:asc $id]]
+                                    :limit        20}
+                     :limit        10}))
+                 (update :query #(str/split-lines (driver/prettify-native-form :sqlserver %)))))))))
 
-(deftest dont-add-top-clauses-for-top-level-test
+(deftest ^:parallel dont-add-top-clauses-for-top-level-test
   (mt/test-driver :sqlserver
     (testing (str "We don't need to add TOP clauses for top-level order by. Normally we always add one anyway because "
                   "of the max-results stuff, but make sure our impl doesn't add one when it's not in the source MBQL"))
@@ -154,21 +175,28 @@
                                              :fields       [$name]
                                              :order-by     [[:asc $id]]}
                               :order-by     [[:asc $id]]})
-                           qp/preprocess
+                           qp.preprocess/preprocess
                            (m/dissoc-in [:query :limit]))]
-      (mt/with-everything-store
-        (is (= {:query  (str "SELECT \"source\".\"name\" AS \"name\" "
-                             "FROM ("
-                             "SELECT TOP 1048575 "
-                             "\"dbo\".\"venues\".\"name\" AS \"name\" "
-                             "FROM \"dbo\".\"venues\" "
-                             "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
-                             " ) \"source\" "
-                             "ORDER BY \"source\".\"id\" ASC")
+      (mt/with-metadata-provider (mt/id)
+        (is (= {:query  ["SELECT"
+                         "  \"source\".\"name\" AS \"name\""
+                         "FROM"
+                         "  ("
+                         "    SELECT"
+                         "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
+                         "    FROM"
+                         "      \"dbo\".\"venues\""
+                         "    ORDER BY"
+                         "      \"dbo\".\"venues\".\"id\" ASC"
+                         "  ) AS \"source\""
+                         "ORDER BY"
+                         "  \"source\".\"id\" ASC"]
                 :params nil}
-               (driver/mbql->native :sqlserver preprocessed)))))))
+               (-> (driver/mbql->native :sqlserver preprocessed)
+                   (update :query (fn [sql]
+                                    (str/split-lines (driver/prettify-native-form :sqlserver sql)))))))))))
 
-(deftest max-results-should-actually-work-test
+(deftest ^:parallel max-results-should-actually-work-test
   (mt/test-driver :sqlserver
     (testing "ok, generating all that SQL above is nice, but let's make sure our queries actually work!"
       (is (= [["Red Medicine"]
@@ -183,7 +211,7 @@
                                   :limit        5}
                    :limit        3}))))))))
 
-(deftest locale-bucketing-test
+(deftest ^:parallel locale-bucketing-test
   (mt/test-driver :sqlserver
     (testing (str "Make sure datetime bucketing functions work properly with languages that format dates like "
                   "yyyy-dd-MM instead of yyyy-MM-dd (i.e. not American English) (#9057)")
@@ -203,9 +231,9 @@
                                    ["SET LANGUAGE Italian;"]]]
              (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)]
                (.execute stmt)))
-           (let [[sql & params] (hsql/format {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
-                                              :from   [:temp]}
-                                             :quoting :ansi, :allow-dashed-names? true)]
+           (let [[sql & params] (sql/format {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
+                                             :from   [:temp]}
+                                            :dialect :ansi, :allow-dashed-names? true)]
              (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)
                          rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
                (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
@@ -249,9 +277,12 @@
                          (format "SQL %s should return %s" (colorize/blue (pr-str sql)) (colorize/green expected))))))))))))))
 
 (defn- pretty-sql [s]
-  (str/replace s #"\"" ""))
+  (as-> s s
+    (str/replace s #"\"" "")
+    (driver/prettify-native-form :sqlserver s)
+    (str/split-lines s)))
 
-(deftest optimal-filter-clauses-test
+(deftest ^:parallel optimal-filter-clauses-test
   (mt/test-driver :sqlserver
     (testing "Should use efficient functions like year() for date bucketing (#9934)"
       (letfn [(query-with-bucketing [unit]
@@ -261,11 +292,15 @@
         (doseq [[unit {:keys [expected-sql expected-rows]}]
                 {"year"
                  {:expected-sql
-                  (str "SELECT DateFromParts(year(dbo.checkins.date), 1, 1) AS date,"
-                       " count(*) AS count "
-                       "FROM dbo.checkins "
-                       "GROUP BY year(dbo.checkins.date) "
-                       "ORDER BY year(dbo.checkins.date) ASC")
+                  ["SELECT"
+                   "  DATEFROMPARTS(YEAR(dbo.checkins.date), 1, 1) AS date,"
+                   "  COUNT(*) AS count"
+                   "FROM"
+                   "  dbo.checkins"
+                   "GROUP BY"
+                   "  YEAR(dbo.checkins.date)"
+                   "ORDER BY"
+                   "  YEAR(dbo.checkins.date) ASC"]
 
                   :expected-rows
                   [["2013-01-01T00:00:00Z" 235]
@@ -274,11 +309,21 @@
 
                  "month"
                  {:expected-sql
-                  (str "SELECT DateFromParts(year(dbo.checkins.date), month(dbo.checkins.date), 1) AS date,"
-                       " count(*) AS count "
-                       "FROM dbo.checkins "
-                       "GROUP BY year(dbo.checkins.date), month(dbo.checkins.date) "
-                       "ORDER BY year(dbo.checkins.date) ASC, month(dbo.checkins.date) ASC")
+                  ["SELECT"
+                   "  DATEFROMPARTS("
+                   "    YEAR(dbo.checkins.date),"
+                   "    MONTH(dbo.checkins.date),"
+                   "    1"
+                   "  ) AS date,"
+                   "  COUNT(*) AS count"
+                   "FROM"
+                   "  dbo.checkins"
+                   "GROUP BY"
+                   "  YEAR(dbo.checkins.date),"
+                   "  MONTH(dbo.checkins.date)"
+                   "ORDER BY"
+                   "  YEAR(dbo.checkins.date) ASC,"
+                   "  MONTH(dbo.checkins.date) ASC"]
 
                   :expected-rows
                   [["2013-01-01T00:00:00Z" 8]
@@ -289,11 +334,23 @@
 
                  "day"
                  {:expected-sql
-                  (str "SELECT DateFromParts(year(dbo.checkins.date), month(dbo.checkins.date), day(dbo.checkins.date)) AS date,"
-                       " count(*) AS count "
-                       "FROM dbo.checkins "
-                       "GROUP BY year(dbo.checkins.date), month(dbo.checkins.date), day(dbo.checkins.date) "
-                       "ORDER BY year(dbo.checkins.date) ASC, month(dbo.checkins.date) ASC, day(dbo.checkins.date) ASC")
+                  ["SELECT"
+                   "  DATEFROMPARTS("
+                   "    YEAR(dbo.checkins.date),"
+                   "    MONTH(dbo.checkins.date),"
+                   "    DAY(dbo.checkins.date)"
+                   "  ) AS date,"
+                   "  COUNT(*) AS count"
+                   "FROM"
+                   "  dbo.checkins"
+                   "GROUP BY"
+                   "  YEAR(dbo.checkins.date),"
+                   "  MONTH(dbo.checkins.date),"
+                   "  DAY(dbo.checkins.date)"
+                   "ORDER BY"
+                   "  YEAR(dbo.checkins.date) ASC,"
+                   "  MONTH(dbo.checkins.date) ASC,"
+                   "  DAY(dbo.checkins.date) ASC"]
 
                   :expected-rows
                   [["2013-01-03T00:00:00Z" 1]
@@ -304,14 +361,15 @@
           (testing (format "\nUnit = %s\n" unit)
             (testing "Should generate the correct SQL query"
               (is (= expected-sql
-                     (pretty-sql (:query (qp/compile (query-with-bucketing unit)))))))
+                     (pretty-sql (:query (qp.compile/compile (query-with-bucketing unit)))))))
             (testing "Should still return correct results"
               (is (= expected-rows
                      (take 5 (mt/rows
-                               (mt/run-mbql-query checkins
-                                 {:aggregation [[:count]]
-                                  :breakout    [[:field $date {:temporal-unit unit}]]}))))))))))))
-(deftest max-results-bare-rows-test
+                              (mt/run-mbql-query checkins
+                                {:aggregation [[:count]]
+                                 :breakout    [[:field $date {:temporal-unit unit}]]}))))))))))))
+
+(deftest ^:parallel max-results-bare-rows-test
   (mt/test-driver :sqlserver
     (testing "Should support overriding the ROWCOUNT for a specific SQL Server DB (#9940)"
       (t2.with-temp/with-temp [Database db {:name    "SQL Server with ROWCOUNT override"
@@ -349,9 +407,65 @@
                                        "\n"
                                        "SELECT COUNT(1) FROM @TEMP\n")}
                           mt/native-query
-                          ;; add default query constraints to ensure the default limit of 2000 is overridden by the
-                          ;; `:rowcount-override` connection property we defined in the details above
-                          (assoc :constraints (qp.constraints/default-query-constraints))
+                          qp/userland-query
                           qp/process-query
                           mt/rows
                           ffirst))))))))
+
+(deftest filter-by-datetime-fields-test
+  (mt/test-driver :sqlserver
+    (testing "Should match datetime fields even in non-default timezone (#30454)"
+      (mt/dataset attempted-murders
+        (let [limit 10
+              get-query (mt/mbql-query attempts
+                          {:fields [$id $datetime]
+                           :order-by [[:asc $id]]
+                           :limit limit})
+              filter-query (mt/mbql-query attempts
+                             {:fields [$id $datetime]
+                              :filter [:= [:field %attempts.datetime {:base-type :type/DateTime}]]
+                              :order-by [[:asc $id]]
+                              :limit limit})]
+          (doseq [with-tz-setter [#'qp.test-util/do-with-report-timezone-id!
+                                  #'test.tz/do-with-system-timezone-id!
+                                  #'qp.test-util/do-with-database-timezone-id
+                                  #'qp.test-util/do-with-results-timezone-id]
+                  timezone ["UTC" "Pacific/Auckland"]]
+            (testing (str with-tz-setter " " timezone)
+              (with-tz-setter timezone
+                (fn []
+                  (let [expected-result (-> get-query qp/process-query mt/rows)
+                        filter-query (update-in filter-query [:query :filter] into (map second) expected-result)]
+                    (mt/with-native-query-testing-context filter-query
+                      (is (= expected-result
+                             (-> filter-query qp/process-query mt/rows))))))))))))))
+
+(deftest ^:parallel filter-by-datetime-against-localdate-time-test
+  (mt/test-driver :sqlserver
+    (testing "Filtering datetime fields by localdatetime objects should work"
+      (mt/dataset attempted-murders
+        (let [tricky-datetime        "2019-11-02T00:14:14.247"
+              datetime-string        (-> tricky-datetime
+                                         (str/replace #"T" " "))
+              datetime-localdatetime (t/local-date-time (u.date/parse tricky-datetime))
+              base-query             (qp.store/with-metadata-provider (mt/id)
+                                       (first
+                                        (sql.qp/format-honeysql
+                                         :sqlserver
+                                         {:select [:id]
+                                          :from   [:attempts]
+                                          :where  (sql.qp/->honeysql
+                                                   :sqlserver
+                                                   [:=
+                                                    [:field (mt/id :attempts :datetime) nil]
+                                                    (sql.qp/compiled [:raw "?"])])})))]
+          (doseq [param [datetime-string datetime-localdatetime]
+                  :let  [query [base-query param]]]
+            (testing (pr-str query)
+              (is (= [{:id 2}]
+                     (sql-jdbc.execute/do-with-connection-with-options
+                      :sqlserver
+                      (mt/id)
+                      {}
+                      (fn [^java.sql.Connection conn]
+                        (next.jdbc/execute! conn query))))))))))))

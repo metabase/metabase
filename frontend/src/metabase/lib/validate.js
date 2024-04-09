@@ -1,6 +1,7 @@
 import { t } from "ttag";
-import Utils from "metabase/lib/utils";
+
 import Settings from "metabase/lib/settings";
+import { isEmail } from "metabase/lib/utils";
 
 // we need this to allow 0 as a valid form value
 export const isEmpty = value =>
@@ -8,8 +9,7 @@ export const isEmpty = value =>
 
 export const validators = {
   required: () => value => isEmpty(value) && t`required`,
-  email: () => value =>
-    !Utils.isEmail(value) && t`must be a valid email address`,
+  email: () => value => !isEmail(value) && t`must be a valid email address`,
   maxLength: max => value =>
     value && value.length > max && t`must be ${max} characters or less`,
   passwordComplexity: () => value =>

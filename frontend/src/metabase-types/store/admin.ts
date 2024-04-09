@@ -1,4 +1,8 @@
-import { GroupsPermissions, SettingDefinition } from "metabase-types/api";
+import type {
+  CollectionPermissions,
+  GroupsPermissions,
+  SettingDefinition,
+} from "metabase-types/api";
 
 export type AdminPathKey =
   | "data-model"
@@ -8,7 +12,8 @@ export type AdminPathKey =
   | "permissions"
   | "troubleshooting"
   | "audit"
-  | "tools";
+  | "tools"
+  | "performance";
 
 export type AdminPath = {
   key: AdminPathKey;
@@ -21,8 +26,14 @@ export interface AdminState {
   permissions: {
     dataPermissions: GroupsPermissions;
     originalDataPermissions: GroupsPermissions;
+    collectionPermissions: CollectionPermissions;
+    originalCollectionPermissions: CollectionPermissions;
     saveError?: string;
     isHelpReferenceOpen: boolean;
+    hasRevisionChanged: {
+      revision: number | null;
+      hasChanged: boolean;
+    };
   };
   settings: {
     settings: SettingDefinition[];

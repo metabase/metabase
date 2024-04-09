@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.test :as mt]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.date-2 :as u.date]
@@ -15,7 +15,7 @@
 (deftest parse-test
   ;; system timezone should not affect the way strings are parsed
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (test.tz/with-system-timezone-id system-timezone-id
+    (test.tz/with-system-timezone-id! system-timezone-id
       (letfn [(message [expected s default-timezone-id]
                 (if default-timezone-id
                   (format "parsing '%s' with default timezone id '%s' should give you %s" s default-timezone-id (pr-str expected))
@@ -158,7 +158,7 @@
            (u.date/format nil))
         "Passing `nil` should return `nil`")))
 
-(deftest format-human-readable-test
+(deftest ^:parallel format-human-readable-test
   ;; strings are localized slightly differently on different JVMs. For places where there are multiple possible
   ;; correct results, we'll use a set with all the possibilities below and check membership
   (doseq [[t expected] {#t "2021-04-02T14:42:09.524392-07:00[US/Pacific]" ; ZonedDateTime
@@ -197,7 +197,7 @@
           [locale expected] expected]
     (mt/with-user-locale locale
       (testing (format "%s %s" (.getCanonicalName (class t)) (pr-str t))
-        (let [actual (u.date/format-human-readable t)]
+        (let [actual (str/replace (u.date/format-human-readable t) \u202f \space)]
           (if (set? expected)
             (is (contains? expected actual))
             (is (= expected actual))))))))
@@ -224,7 +224,7 @@
       (is (= (t/zoned-date-time "2019-12-08T17:17-08:00[US/Pacific]")
              (t/adjust now (u.date/adjuster :week-of-year 50)))))))
 
-(deftest extract-test
+(deftest ^:parallel extract-test
   (testing "u.date/extract with 2 args"
     ;; everything is at `Sunday October 27th 2019 2:03:40.555 PM` or subset thereof
     (let [temporal-category->sample-values {:dates     [(t/local-date 2019 10 27)]
@@ -267,7 +267,7 @@
           (is (= (get unit->expected unit)
                  (u.date/extract #t "2021-02-23" unit))))))))
 
-(deftest truncate-test
+(deftest ^:parallel truncate-test
   (testing "u.date/truncate with 2 args"
     (let [t->unit->expected
           {(t/local-date 2019 10 27)
@@ -332,7 +332,13 @@
         (is (= expected
                (u.date/truncate #_Tuesday #t "2021-02-23" :week)))))))
 
-(deftest add-test
+(deftest ^:parallel bucket-test
+  (are [unit expected] (= expected
+                          (u.date/bucket #t "2024-01-03" unit))
+    :month         #t "2024-01-01"
+    :month-of-year 1))
+
+(deftest ^:parallel add-test
   (testing "with 2 args (datetime relative to now)"
     (mt/with-clock (t/mock-clock (t/instant "2019-11-18T22:31:00Z"))
       (is (= (t/zoned-date-time "2019-11-20T22:31Z[UTC]")
@@ -351,7 +357,7 @@
                (u.date/add t unit n))
             (format "%s plus %d %ss should be %s" t n unit expected))))))
 
-(deftest range-test
+(deftest ^:parallel range-test
   (testing "with 1 arg (range relative to now)"
     (is (= {:start (t/zoned-date-time "2019-11-17T00:00Z[UTC]")
             :end   (t/zoned-date-time "2019-11-24T00:00Z[UTC]")}
@@ -473,7 +479,7 @@
     (is (= (u.date/period-duration "PT59S")
            (u.date/period-duration (t/instant "2019-12-03T02:30:27Z") (t/offset-date-time "2019-12-03T02:31:26Z"))))))
 
-(deftest older-than-test
+(deftest ^:parallel older-than-test
   (let [now (t/instant "2019-12-04T00:45:00Z")]
     (mt/with-clock (t/mock-clock now (t/zone-id "America/Los_Angeles"))
       (testing (str "now = " now)
@@ -492,7 +498,7 @@
     (mt/with-locale "tr"
       (is (some? (:minute-of-hour (u.date.common/static-instances ChronoField)))))))
 
-(deftest with-time-zone-same-instant-test
+(deftest ^:parallel with-time-zone-same-instant-test
   ;; `t` = original value
   ;; `expected` = the same value when shifted to `zone`
   (doseq [[t expected zone]
@@ -591,7 +597,7 @@
     (is (u.date/with-time-zone-same-instant java.time.OffsetDateTime/MAX (t/zone-id "UTC")))
     (is (u.date/with-time-zone-same-instant java.time.OffsetDateTime/MIN (t/zone-id "UTC")))))
 
-(deftest standard-offset-test
+(deftest ^:parallel standard-offset-test
   (testing "standard-offset works correctly, regardless of system clock timezone"
     (doseq [clk [#t "2021-01-01T00:00-06:00[US/Central]"   ; one in CST
                  #t "2021-07-01T00:00-05:00[US/Central]"]] ; one in CDT

@@ -1,7 +1,16 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   appBar,
   collectionTable,
   createAction,
+  getActionCardDetails,
+  getTextCardDetails,
   getDashboardCard,
   getDashboardCardMenu,
   getDashboardCards,
@@ -20,13 +29,12 @@ import {
   saveDashboard,
   filterWidget,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const PG_DB_ID = 2;
 const PERMISSION_ERROR = "Sorry, you don't have permission to see this card.";
+const MAX_CARDS = 5;
+const MAX_XRAY_WAIT_TIMEOUT = 15000;
 
 describe("scenarios > dashboard > dashboard back navigation", () => {
   beforeEach(() => {
@@ -34,12 +42,12 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.signInAsAdmin();
     setActionsEnabledForDB(SAMPLE_DB_ID);
 
-    cy.intercept("POST", `/api/dataset`).as("dataset");
+    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("GET", "/api/card/*").as("card");
-    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
-    cy.intercept("PUT", `/api/card/*`).as("updateCard");
-    cy.intercept("GET", `/api/dashboard/*`).as("dashboard");
-    cy.intercept("POST", `/api/dashboard/*/dashcard/*/card/*/query`).as(
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+    cy.intercept("GET", "/api/dashboard/*").as("dashboard");
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
     );
   });
@@ -48,7 +56,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     const dashboardName = "Orders in a dashboard";
     const backButtonLabel = `Back to ${dashboardName}`;
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@dashboard");
     cy.findByTestId("dashcard").findByText("Orders").click();
     cy.wait("@cardQuery");
@@ -59,6 +67,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.findByLabelText(backButtonLabel).should("be.visible");
     visualize();
     cy.findByLabelText(backButtonLabel).click();
+    modal().button("Discard changes").click();
     cy.findByTestId("dashboard-header")
       .findByText(dashboardName)
       .should("be.visible");
@@ -78,7 +87,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
 
   it("should expand the native editor when editing a question from a dashboard", () => {
     createDashboardWithNativeCard();
-    cy.get("@dashboardId").then(visitDashboard);
+    visitDashboard("@dashboardId");
     getDashboardCard().realHover();
     getDashboardCardMenu().click();
     popover().findByText("Edit question").click();
@@ -92,51 +101,61 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.findByTestId("native-query-editor").should("not.be.visible");
   });
 
-  it("should display a back to the dashboard button in table x-ray dashboards", () => {
-    const cardTitle = "Sales per state";
-    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
-    cy.wait("@dataset");
+  it(
+    "should display a back to the dashboard button in table x-ray dashboards",
+    { tags: "@slow" },
+    () => {
+      const cardTitle = "Total transactions";
+      cy.visit(`/auto/dashboard/table/${ORDERS_ID}?#show=${MAX_CARDS}`);
+      cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
-    getDashboardCards()
-      .filter(`:contains("${cardTitle}")`)
-      .findByText(cardTitle)
-      .click();
-    cy.wait("@dataset");
+      getDashboardCards()
+        .filter(`:contains("${cardTitle}")`)
+        .findByText(cardTitle)
+        .click();
+      cy.wait("@dataset");
 
-    queryBuilderHeader()
-      .findByLabelText(/Back to .*Orders.*/)
-      .click();
+      queryBuilderHeader()
+        .findByLabelText(/Back to .*Orders.*/)
+        .click();
 
-    getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
-  });
+      getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
+    },
+  );
 
-  it("should display a back to the dashboard button in model x-ray dashboards", () => {
-    const cardTitle = "Orders by Subtotal";
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
-    cy.visit("/auto/dashboard/model/1");
-    cy.wait("@dataset");
+  it(
+    "should display a back to the dashboard button in model x-ray dashboards",
+    { tags: "@slow" },
+    () => {
+      const cardTitle = "Orders by Subtotal";
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+      cy.visit(
+        `/auto/dashboard/model/${ORDERS_QUESTION_ID}?#show=${MAX_CARDS}`,
+      );
+      cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
-    getDashboardCards()
-      .filter(`:contains("${cardTitle}")`)
-      .findByText(cardTitle)
-      .click();
-    cy.wait("@dataset");
+      getDashboardCards()
+        .filter(`:contains("${cardTitle}")`)
+        .findByText(cardTitle)
+        .click();
+      cy.wait("@dataset");
 
-    queryBuilderHeader()
-      .findByLabelText(/Back to .*Orders.*/)
-      .click();
+      queryBuilderHeader()
+        .findByLabelText(/Back to .*Orders.*/)
+        .click();
 
-    getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
-  });
+      getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
+    },
+  );
 
   it("should preserve query results when navigating between the dashboard and the query builder", () => {
     createDashboardWithCards();
-    cy.get("@dashboardId").then(visitDashboard);
+    visitDashboard("@dashboardId");
     cy.wait("@dashboard");
     cy.wait("@dashcardQuery");
 
     getDashboardCard().within(() => {
-      cy.findByText("101.04").should("be.visible"); // table data
+      cy.findByText("110.93").should("be.visible"); // table data
       cy.findByText("Orders").click();
       cy.wait("@cardQuery");
     });
@@ -144,7 +163,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     // cached data
-    getDashboardCard(0).findByText("101.04").should("be.visible");
+    getDashboardCard(0).findByText("110.93").should("be.visible");
     getDashboardCard(1).findByText("Text card").should("be.visible");
     getDashboardCard(2).findByText("Action card").should("be.visible");
 
@@ -162,12 +181,12 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
   });
 
   it("should not preserve query results when the question changes during navigation", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@dashboard");
     cy.wait("@dashcardQuery");
 
     getDashboardCard().within(() => {
-      cy.findByText("101.04").should("be.visible"); // table data
+      cy.findByText("134.91").should("be.visible"); // table data
       cy.findByText("Orders").click();
       cy.wait("@cardQuery");
     });
@@ -186,8 +205,8 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
       cy.findByText("Save").click();
     });
 
-    modal().within(() => {
-      cy.button("Save").click();
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByText("Save").click();
       cy.wait("@updateCard");
     });
 
@@ -206,7 +225,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
   it("should navigate back to a dashboard with permission errors", () => {
     createDashboardWithPermissionError();
     cy.signInAsNormalUser();
-    cy.get("@dashboardId").then(visitDashboard);
+    visitDashboard("@dashboardId");
     cy.wait("@dashboard");
     cy.wait("@dashcardQuery");
 
@@ -224,7 +243,10 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
   });
 
   it("should return to dashboard with specific tab selected", () => {
-    visitDashboardAndCreateTab({ dashboardId: 1, save: false });
+    visitDashboardAndCreateTab({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      save: false,
+    });
 
     // Add card to second tab
     cy.icon("pencil").click();
@@ -256,7 +278,7 @@ describe(
       cy.signInAsAdmin();
       cy.intercept("GET", "/api/dashboard/*").as("dashboard");
       cy.intercept("GET", "/api/card/*").as("card");
-      cy.intercept("POST", `/api/dashboard/*/dashcard/*/card/*/query`).as(
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
         "dashcardQuery",
       );
     });
@@ -274,7 +296,7 @@ describe(
       // initial loading of the dashboard with card
       cy.get("@dashcardQuery.all").should("have.length", 1);
 
-      filterWidget().findByPlaceholderText("sleep").type("1{enter}");
+      filterWidget().findByPlaceholderText("sleep").clear().type("1{enter}");
 
       cy.wait("@dashcardQuery");
 
@@ -347,7 +369,7 @@ const createDashboardWithCards = () => {
   const modelDetails = {
     name: "Orders model",
     query: { "source-table": ORDERS_ID },
-    dataset: true,
+    type: "model",
   };
 
   const actionDetails = {
@@ -375,52 +397,16 @@ const createDashboardWithCards = () => {
     visualization_settings: {},
   };
 
-  const textDashcardDetails = {
-    col: 8,
-    row: 0,
-    size_x: 4,
-    size_y: 8,
-    visualization_settings: {
-      virtual_card: {
-        name: null,
-        display: "text",
-        visualization_settings: {},
-        dataset_query: {},
-        archived: false,
-      },
-      text: "Text card",
-    },
-  };
-
-  const actionDashcardDetails = {
-    row: 8,
-    col: 0,
-    size_x: 4,
-    size_y: 1,
-    series: [],
-    visualization_settings: {
-      actionDisplayType: "button",
-      virtual_card: {
-        name: null,
-        display: "action",
-        visualization_settings: {},
-        dataset_query: {},
-        archived: false,
-      },
-      "button.label": "Action card",
-    },
-  };
-
   cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
     cy.createQuestion(questionDetails).then(({ body: { id: question_id } }) => {
       cy.createQuestion(modelDetails).then(({ body: { id: model_id } }) => {
         createAction({ ...actionDetails, model_id }).then(
           ({ body: { id: action_id } }) => {
-            cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-              cards: [
+            cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+              dashcards: [
                 { id: -1, card_id: question_id, ...questionDashcardDetails },
-                { id: -2, ...textDashcardDetails },
-                { id: -3, ...actionDashcardDetails, action_id },
+                getTextCardDetails({ id: -2, size_y: 1 }),
+                getActionCardDetails({ id: -3, action_id }),
               ],
             });
           },
@@ -469,6 +455,7 @@ const createDashboardWithSlowCard = () => {
     id: "96917420",
     type: "number/=",
     sectionId: "number",
+    default: 0,
   };
 
   const dashboardDetails = {
@@ -492,8 +479,8 @@ const createDashboardWithSlowCard = () => {
     questionDetails,
     dashboardDetails,
   }).then(({ body: { id, card_id, dashboard_id } }) => {
-    cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-      cards: [
+    cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+      dashcards: [
         {
           id,
           card_id,
@@ -516,7 +503,7 @@ const createDashboardWithPermissionError = () => {
   const question2Details = {
     name: "Orders 2",
     query: { "source-table": ORDERS_ID },
-    collection_id: 1,
+    collection_id: ADMIN_PERSONAL_COLLECTION_ID,
   };
 
   const dashboardDetails = {
@@ -541,8 +528,8 @@ const createDashboardWithPermissionError = () => {
     cy.createQuestion(question2Details).then(({ body: { id: card_id_2 } }) => {
       cy.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboard_id } }) => {
-          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-            cards: [
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
               { id: -1, card_id: card_id_1, ...dashcard1Details },
               { id: -2, card_id: card_id_2, ...dashcard2Details },
             ],

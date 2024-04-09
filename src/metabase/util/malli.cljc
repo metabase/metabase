@@ -1,145 +1,48 @@
 (ns metabase.util.malli
-  (:refer-clojure :exclude [defn])
+  (:refer-clojure :exclude [fn defn defmethod])
   (:require
+   #?@(:clj
+       ([metabase.util.i18n]
+        [metabase.util.malli.defn :as mu.defn]
+        [metabase.util.malli.fn :as mu.fn]
+        [net.cgrand.macrovich :as macros]
+        [potemkin :as p]))
    [clojure.core :as core]
    [malli.core :as mc]
    [malli.destructure]
    [malli.error :as me]
-   [malli.generator :as mg]
    [malli.util :as mut]
-   [metabase.shared.util.i18n :refer [tru]]
-   [metabase.util :as u]
-   #?@(:clj  ([clojure.string :as str]
-              [malli.experimental :as mx]
-              [malli.instrument :as minst]
-              [metabase.util.i18n :as i18n]
-              [net.cgrand.macrovich :as macros]
-              [ring.util.codec :as codec])))
+   [metabase.shared.util.i18n :as i18n])
   #?(:cljs (:require-macros [metabase.util.malli])))
 
-(core/defn- encode-uri [fragment]
-  (#?(:clj codec/url-encode :cljs js/encodeURI) fragment))
-
-(core/defn- ->malli-io-link
-  ([schema]
-   (->malli-io-link schema (try
-                             ;; try to make a sample value
-                             (mg/generate schema {:seed 1 :size 1})
-                             ;; not all schemas can generate values
-                             (catch #?(:clj Exception :cljs js/Error) _ ::none))))
-  ([schema value]
-   (when schema
-     (let [url-schema (encode-uri (u/pprint-to-str (mc/form schema)))
-           url-value (if (= ::none value)
-                       ""
-                       (encode-uri (u/pprint-to-str value)))
-           url (str "https://malli.io?schema=" url-schema "&value=" url-value)]
-       (cond
-         ;; functions are not going to work
-         (re-find #"#function" url) nil
-         ;; cant be too long
-         (<= 2000 (count url)) nil
-         :else url)))))
+#?(:clj
+   (p/import-vars
+    [mu.fn fn]
+    [mu.defn defn]))
 
 (core/defn humanize-include-value
   "Pass into mu/humanize to include the value received in the error message."
   [{:keys [value message]}]
   ;; TODO Should this be translated with more complete context? (tru "{0}, received: {1}" message (pr-str value))
-  (str message ", " (tru "received") ": " (pr-str value)))
+  (str message ", " (i18n/tru "received") ": " (pr-str value)))
 
-(def ^:dynamic *enforce*
-  "Bind to false to skip enforcing instrumented function schemas."
-  true)
-
-(core/defn explain-fn-fail!
-  "Used as reporting function to minst/instrument!"
-  [type data]
-  (when *enforce*
-    (let [{:keys [input args output value]} data
-          humanized (cond input  (me/humanize (mc/explain input args) {:wrap humanize-include-value})
-                          output (me/humanize (mc/explain output value) {:wrap humanize-include-value}))
-          link (cond input (->malli-io-link input args)
-                     output (->malli-io-link output value))]
-      (throw (ex-info
-               (pr-str humanized)
-               (cond-> {:type type :data data}
-                 data (assoc :humanized humanized)
-                 (and data link) (assoc :link link))))))
-  data)
-
-#?(:clj
-   (clojure.core/defn instrument!
-     "Instrument a [[metabase.util.malli/defn]]."
-     [id]
-     (with-out-str (minst/instrument! {:filters [(minst/-filter-var #(-> % meta :validate! (= id)))]
-                                       :report  #'explain-fn-fail!})))
-   :cljs
-   (clojure.core/defn instrument!
-     "Instrument a [[metabase.util.malli/defn]]. No-op for ClojureScript. Instrumentation currently only works in
-     Clojure AFAIK. [[malli.instrument]] is a Clj-only namespace."
-     [_id]))
-
-#?(:clj
-   (core/defn- -defn [target schema args]
-     (let [{:keys [name return doc meta arities] :as parsed} (mc/parse schema args)
-           _ (when (= ::mc/invalid parsed) (mc/-fail! ::parse-error {:schema schema, :args args}))
-           parse (fn [{:keys [args] :as parsed}] (merge (malli.destructure/parse args) parsed))
-           ->schema (fn [{:keys [schema]}] [:=> schema (:schema return :any)])
-           single (= :single (key arities))
-           parglists (if single
-                       (->> arities val parse vector)
-                       (->> arities val :arities (map parse)))
-           raw-arglists (map :raw-arglist parglists)
-           schema (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
-           annotated-doc (str/trim
-                           (str "Inputs: " (if single
-                                             (pr-str (first (mapv :raw-arglist parglists)))
-                                             (str "(" (str/join "\n           " (map (comp pr-str :raw-arglist) parglists)) ")"))
-                                "\n  Return: " (str/replace (u/pprint-to-str (:schema return :any))
-                                                            "\n"
-                                                            (str "\n          "))
-                                (when (not-empty doc) (str "\n\n  " doc))))
-           id (str (gensym "id"))
-           inner-defn `(core/defn
-                         ~name
-                         ~@(some-> annotated-doc vector)
-                         ~(assoc meta
-                                 :raw-arglists (list 'quote raw-arglists)
-                                 :schema schema
-                                 :validate! id)
-                         ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
-                         ~@(when-not single (some->> arities val :meta vector)))]
-       (case target
-         :clj  `(let [defn# ~inner-defn]
-                  (mc/=> ~name ~schema)
-                  ;; instrument the defn we just registered, via ~id
-                  (instrument! ~id)
-                  defn#)
-         ;; Vars aren't real in CLJS, so wrapping the inner `defn` in a `let` doesn't work like in does in CLJ.
-         ;; In CLJS `mu/defn` is just `cljs.core/defn` with some extra metadata and augmented docstring;
-         ;; [[mc/=>]] is not called, nor is [[instrument!]].
-         :cljs inner-defn))))
-
-#?(:clj
-   (defmacro defn
-     "Like s/defn, but for malli. Will always validate input and output without the need for calls to instrumentation (they are emitted automatically).
-     Calls to minst/unstrument! can remove this, so use a filter that avoids :validate! if you use that."
-     [& args]
-     ;; [[macros/case]] only works properly in a `defmacro`, not in a helper function called by a `defmacro`.
-     ;; So we use it here and pass :clj or :cljs to [[-defn]].
-     (-defn (macros/case :clj :clj :cljs :cljs)
-            mx/SchematizedParams args)))
+(core/defn explain
+  "Explains a schema failure, and returns the offending value."
+  [schema value]
+  (-> (mc/explain schema value)
+      (me/humanize {:wrap humanize-include-value})))
 
 (def ^:private Schema
   [:and any?
    [:fn {:description "a malli schema"} mc/schema]])
 
-(def ^:private localized-string-schema
+(def localized-string-schema
+  "Schema for localized string."
   #?(:clj  [:fn {:error/message "must be a localized string"}
-            i18n/localized-string?]
+            metabase.util.i18n/localized-string?]
      ;; TODO Is there a way to check if a string is being localized in CLJS, by the `ttag`?
      ;; The compiler seems to just inline the translated strings with no annotation or wrapping.
-     :cljs string?))
+     :cljs :string))
 
 ;; Kondo gets confused by :refer [defn] on this, so it's referenced fully qualified.
 (metabase.util.malli/defn with-api-error-message
@@ -150,6 +53,7 @@
   (with-api-error-message
     [:string {:min 1}]
     (deferred-tru \"Must be a string with at least 1 character representing a User ID.\"))"
+  {:style/indent [:form]}
   ([mschema :- Schema error-message :- localized-string-schema]
    (with-api-error-message mschema error-message error-message))
   ([mschema                :- :any
@@ -159,4 +63,58 @@
                           ;; override generic description in api docs and :errors key in API's response
                           :description description-message
                           ;; override generic description in :specific-errors key in API's response
-                          :error/fn    (fn [_ _] specific-error-message))))
+                          :error/fn    (constantly specific-error-message))))
+
+#?(:clj
+   (defmacro disable-enforcement
+     "Convenience for disabling [[defn]] and [[metabase.util.malli.fn/fn]] input/output schema validation. Since
+  input/output validation is currently disabled for ClojureScript, this is a no-op."
+     {:style/indent 0}
+     [& body]
+     (macros/case
+       :clj
+       `(binding [mu.fn/*enforce* false]
+          ~@body)
+
+       :cljs
+       `(do ~@body))))
+
+#?(:clj
+   (defmacro -defmethod-clj
+     "Impl for [[defmethod]] for regular Clojure."
+     [multifn dispatch-value & fn-tail]
+     (let [dispatch-value-symb (gensym "dispatch-value-")
+           error-context-symb  (gensym "error-context-")]
+       `(let [~dispatch-value-symb ~dispatch-value
+              ~error-context-symb  {:fn-name        '~(or (some-> (resolve multifn) symbol)
+                                                          (symbol multifn))
+                                    :dispatch-value ~dispatch-value-symb}
+              f#                   ~(mu.fn/instrumented-fn-form error-context-symb (mu.fn/parse-fn-tail fn-tail))]
+          (.addMethod ~(vary-meta multifn assoc :tag 'clojure.lang.MultiFn)
+                      ~dispatch-value-symb
+                      f#)))))
+#?(:clj
+   (defmacro -defmethod-cljs
+     "Impl for [[defmethod]] for ClojureScript."
+     [multifn dispatch-value & fn-tail]
+     `(core/defmethod ~multifn ~dispatch-value
+        ~@(mu.fn/deparameterized-fn-tail (mu.fn/parse-fn-tail fn-tail)))))
+
+#?(:clj
+   (defmacro defmethod
+     "Like [[schema.core/defmethod]], but for Malli."
+     [multifn dispatch-value & fn-tail]
+     (macros/case
+       :clj  `(-defmethod-clj ~multifn ~dispatch-value ~@fn-tail)
+       :cljs `(-defmethod-cljs ~multifn ~dispatch-value ~@fn-tail))))
+
+#?(:clj
+   (defn validate-throw
+     "Returns the value if it matches the schema, else throw an exception."
+     [schema-or-validator value]
+     (if-not ((if (fn? schema-or-validator)
+                schema-or-validator
+                (mc/validator schema-or-validator))
+              value)
+       (throw (ex-info "Value does not match schema" {:value value :schema schema-or-validator}))
+       value)))

@@ -2,16 +2,21 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  isSchemaEntityId,
+  isTableEntityId,
+} from "metabase/admin/permissions/utils/data-entity-id";
+import {
   getFieldsPermission,
   getNativePermission,
   getSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Group,
   GroupsPermissions,
   ConcreteTableId,
 } from "metabase-types/api";
-import type Database from "metabase-lib/metadata/Database";
+
 import type { EntityId } from "../types";
 
 export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
@@ -103,8 +108,14 @@ export function getControlledDatabaseWarningModal(
     getSchemasPermission(permissions, groupId, entityId, "data") !==
     "controlled"
   ) {
+    const [entityType, entityTypePlural] = isTableEntityId(entityId)
+      ? [t`table`, t`tables`]
+      : isSchemaEntityId(entityId)
+      ? [t`schema`, t`schemas`]
+      : [t`entity`, t`entities`];
     return {
-      title: t`Change access to this database to limited?`,
+      title: t`Change access to this database to granular?`,
+      message: t`Just letting you know that changing the permission setting on this ${entityType} will also update the database permission setting to “Granular” to reflect that some of the database’s ${entityTypePlural} have different permission settings.`,
       confirmButtonText: t`Change`,
       cancelButtonText: t`Cancel`,
     };

@@ -1,16 +1,18 @@
+import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  ORDERS_QUESTION_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
+  NORMAL_PERSONAL_COLLECTION_ID,
+  FIRST_COLLECTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   navigationSidebar,
   popover,
   getFullName,
 } from "e2e/support/helpers";
-import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import {
-  ORDERS_QUESTION_ID,
-  ADMIN_PERSONAL_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
-
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 const { admin, normal } = USERS;
 
@@ -21,25 +23,25 @@ describe("URLs", () => {
   });
 
   describe("browse databases", () => {
-    it(`should slugify database name when opening it from /browse"`, () => {
-      cy.visit("/browse");
+    it('should slugify database name when opening it from /browse/databases"', () => {
+      cy.visit("/browse/databases");
+      cy.findByRole("tab", { name: "Databases" }).click();
       cy.findByTextEnsureVisible("Sample Database").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sample Database");
       cy.location("pathname").should(
         "eq",
-        `/browse/${SAMPLE_DB_ID}-sample-database`,
+        `/browse/databases/${SAMPLE_DB_ID}-sample-database`,
       );
     });
 
     [
-      `/browse/${SAVED_QUESTIONS_VIRTUAL_DB_ID}`,
-      `/browse/${SAVED_QUESTIONS_VIRTUAL_DB_ID}-saved-questions`,
+      `/browse/databases/${SAVED_QUESTIONS_VIRTUAL_DB_ID}`,
+      `/browse/databases/${SAVED_QUESTIONS_VIRTUAL_DB_ID}-saved-questions`,
     ].forEach(url => {
       it("should open 'Saved Questions' database correctly", () => {
         cy.visit(url);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Saved Questions");
+        cy.findByTestId("browse-app");
         cy.location("pathname").should("eq", url);
       });
     });
@@ -52,7 +54,7 @@ describe("URLs", () => {
       cy.findByText("Orders in a dashboard").click();
       cy.location("pathname").should(
         "eq",
-        "/dashboard/1-orders-in-a-dashboard",
+        `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
       );
     });
   });
@@ -72,9 +74,13 @@ describe("URLs", () => {
   describe("collections", () => {
     it("should slugify collection name", () => {
       cy.visit("/collection/root");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("First collection").click();
-      cy.location("pathname").should("eq", "/collection/10-first-collection");
+      cy.findAllByTestId("collection-entry-name")
+        .contains("First collection")
+        .click();
+      cy.location("pathname").should(
+        "eq",
+        `/collection/${FIRST_COLLECTION_ID}-first-collection`,
+      );
     });
 
     it("should slugify current user's personal collection name correctly", () => {
@@ -100,18 +106,8 @@ describe("URLs", () => {
       cy.location("pathname").should("eq", "/collection/users");
     });
 
-    it("should slugify users' personal collection URLs", () => {
-      cy.visit("/collection/users");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(getFullName(normal)).click();
-      cy.location("pathname").should(
-        "eq",
-        `/collection/9-${getUsersPersonalCollectionSlug(normal)}`,
-      );
-    });
-
     it("should open slugified URLs correctly", () => {
-      cy.visit("/collection/10-first-collection");
+      cy.visit(`/collection/${FIRST_COLLECTION_ID}-first-collection`);
       cy.findByTestId("collection-name-heading").should(
         "have.text",
         "First collection",
@@ -127,7 +123,11 @@ describe("URLs", () => {
         `${getFullName(admin)}'s Personal Collection`,
       );
 
-      cy.visit(`/collection/9-${getUsersPersonalCollectionSlug(normal)}`);
+      cy.visit(
+        `/collection/${NORMAL_PERSONAL_COLLECTION_ID}-${getUsersPersonalCollectionSlug(
+          normal,
+        )}`,
+      );
       cy.findByTestId("collection-name-heading").should(
         "have.text",
         `${getFullName(normal)}'s Personal Collection`,

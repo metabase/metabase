@@ -37,15 +37,19 @@ dashboard_filters:
 groups:
   - Overview:
       title: Overview
+      score: 90
   - Breakdowns:
       title: How the [[this]] is distributed across categories
       comparison_title: How they compare by distribution
+      score: 70
   - Seasonality:
       title: How the [[this]] changes with time
       comparison_title: How they compare across time
+      score: 60
   - Geographical:
       title: How the [[this]] is distributed geographically
       comparison_title: How they compare across location
+      score: 80
 cards:
   - Count:
       title: Count

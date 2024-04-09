@@ -1,6 +1,7 @@
 import {
   restore,
   popover,
+  clearFilterWidget,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -10,6 +11,7 @@ import {
 } from "e2e/support/helpers";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+
 import {
   DASHBOARD_SQL_LOCATION_FILTERS,
   questionDetails,
@@ -17,6 +19,10 @@ import {
 
 describe("scenarios > dashboard > filters > location", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+
     restore();
     cy.signInAsAdmin();
 
@@ -31,7 +37,7 @@ describe("scenarios > dashboard > filters > location", () => {
     editDashboard();
   });
 
-  it(`should work when set through the filter widget`, () => {
+  it("should work when set through the filter widget", () => {
     Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(([filter]) => {
       setFilter("Location", filter);
 
@@ -46,16 +52,17 @@ describe("scenarios > dashboard > filters > location", () => {
         filterWidget().eq(index).click();
         addWidgetStringFilter(value);
 
-        cy.get(".Card").within(() => {
+        cy.findByTestId("dashcard").within(() => {
           cy.contains(representativeResult);
         });
 
-        clearFilter(index);
+        clearFilterWidget(index);
+        cy.wait("@dashcardQuery");
       },
     );
   });
 
-  it(`should work when set as the default filter`, () => {
+  it("should work when set as the default filter", () => {
     setFilter("Location", "Is");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -69,25 +76,20 @@ describe("scenarios > dashboard > filters > location", () => {
 
     saveDashboard();
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.contains("Arnold Adams");
     });
 
-    filterWidget().find(".Icon-close").click();
+    clearFilterWidget();
 
     cy.url().should("not.include", "Rye");
 
     filterWidget().click();
 
-    addWidgetStringFilter("Pittsburg");
+    addWidgetStringFilter("Pittsburg", { buttonLabel: "Update filter" });
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.contains("Aracely Jenkins");
     });
   });
 });
-
-function clearFilter(index) {
-  filterWidget().eq(index).find(".Icon-close").click();
-  cy.wait("@dashcardQuery2");
-}

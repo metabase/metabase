@@ -1,12 +1,14 @@
+import type { LocationDescriptorObject } from "history";
 import { connect } from "react-redux";
 import _ from "underscore";
-import { LocationDescriptorObject } from "history";
-import { checkNotNull } from "metabase/core/utils/types";
-import { extractEntityId } from "metabase/lib/urls";
+
 import Questions from "metabase/entities/questions";
-import { CardId } from "metabase-types/api";
-import { MetabotEntityType, State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
+import { checkNotNull } from "metabase/lib/types";
+import { extractEntityId } from "metabase/lib/urls";
+import type Question from "metabase-lib/v1/Question";
+import type { CardId } from "metabase-types/api";
+import type { MetabotEntityType, State } from "metabase-types/store";
+
 import Metabot from "../../components/Metabot";
 
 interface RouterParams {

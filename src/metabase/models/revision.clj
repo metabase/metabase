@@ -2,15 +2,20 @@
   (:require
    [cheshire.core :as json]
    [clojure.data :as data]
-   [metabase.db.util :as mdb.u]
+   [metabase.config :as config]
    [metabase.models.interface :as mi]
-   [metabase.models.revision.diff :refer [build-sentence diff-strings*]]
-   [metabase.models.user :refer [User]]
+   [metabase.models.revision.diff :refer [diff-strings*]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
+
+(defn toucan-model?
+  "Check if `model` is a toucan model."
+  [model]
+  (isa? model :metabase/model))
 
 (def ^:const max-revisions
   "Maximum number of revisions to keep for each individual object. After this limit is surpassed, the oldest revisions
@@ -31,7 +36,7 @@
 
 (defmethod revert-to-revision! :default
   [model id _user-id serialized-instance]
-  (t2/update! model id, serialized-instance))
+  (t2/update! model id serialized-instance))
 
 (defmulti diff-map
   "Return a map describing the difference between `object-1` and `object-2`."
@@ -73,7 +78,10 @@
 
 (t2/define-before-insert :model/Revision
   [revision]
-  (assoc revision :timestamp :%now))
+  (assoc revision
+         :timestamp :%now
+         :metabase_version config/mb-version-string
+         :most_recent true))
 
 (t2/define-before-update :model/Revision
   [_revision]
@@ -86,9 +94,33 @@
   [{:keys [model] :as revision}]
   ;; in some cases (such as tests) we have 'fake' models that cannot be resolved normally; don't fail entirely in
   ;; those cases
-  (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol model)))]
+  (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol (case model
+                                                                     "Metric" "LegacyMetric"
+                                                                     model))))]
     (cond-> revision
       model (update :object (partial mi/do-after-select model)))))
+
+(defn- delete-old-revisions!
+  "Delete old revisions of `model` with `id` when there are more than `max-revisions` in the DB."
+  [model id]
+  (when-let [old-revisions (seq (drop max-revisions (t2/select-fn-vec :id :model/Revision
+                                                                      :model    (name model)
+                                                                      :model_id id
+                                                                      {:order-by [[:timestamp :desc]
+                                                                                  [:id :desc]]})))]
+    (t2/delete! :model/Revision :id [:in old-revisions])))
+
+(t2/define-after-insert :model/Revision
+  [revision]
+  (u/prog1 revision
+    (let [{:keys [id model model_id]} revision]
+      ;; Note 1: Update the last `most_recent revision` to false (not including the current revision)
+      ;; Note 2: We don't allow updating revision but this is a special case, so we by pass the check by
+      ;; updating directly with the table name
+      (t2/update! (t2/table-name :model/Revision)
+                  {:model model :model_id model_id :most_recent true :id [:not= id]}
+                  {:most_recent false})
+      (delete-old-revisions! model model_id))))
 
 ;;; # Functions
 
@@ -106,7 +138,7 @@
   [model prev-revision revision]
   (let [changes (revision-changes model prev-revision revision)]
     {:description          (if (seq changes)
-                             (build-sentence changes)
+                             (u/build-sentence changes)
                              ;; HACK: before #30285 we record revision even when there is nothing changed,
                              ;; so there are cases when revision can comeback as `nil`.
                              ;; This is a safe guard for us to not display "Crowberto null" as
@@ -127,15 +159,19 @@
       ;; Filter out irrelevant info
       (dissoc :model :model_id :user_id :object)))
 
-(defn revisions
+(mu/defn revisions
   "Get the revisions for `model` with `id` in reverse chronological order."
-  [model id]
-  {:pre [(mdb.u/toucan-model? model) (integer? id)]}
-  (t2/select Revision, :model (name model), :model_id id, {:order-by [[:id :desc]]}))
+  [model :- [:fn toucan-model?]
+   id    :- pos-int?]
+  (let [model-name (case model
+                     :model/LegacyMetric "Metric"
+                     (name model))]
+    (t2/select Revision :model model-name :model_id id {:order-by [[:id :desc]]})))
 
-(defn revisions+details
+(mu/defn revisions+details
   "Fetch `revisions` for `model` with `id` and add details."
-  [model id]
+  [model :- [:fn toucan-model?]
+   id    :- pos-int?]
   (when-let [revisions (revisions model id)]
     (loop [acc [], [r1 r2 & more] revisions]
       (if-not r2
@@ -143,33 +179,23 @@
         (recur (conj acc (add-revision-details model r1 r2))
                (conj more r2))))))
 
-(defn- delete-old-revisions!
-  "Delete old revisions of `model` with `id` when there are more than `max-revisions` in the DB."
-  [model id]
-  {:pre [(mdb.u/toucan-model? model) (integer? id)]}
-  (when-let [old-revisions (seq (drop max-revisions (map :id (t2/select [Revision :id]
-                                                               :model    (name model)
-                                                               :model_id id
-                                                               {:order-by [[:timestamp :desc]
-                                                                           [:id :desc]]}))))]
-    (t2/delete! Revision :id [:in old-revisions])))
-
-(defn push-revision!
+(mu/defn push-revision!
   "Record a new Revision for `entity` with `id` if it's changed compared to the last revision.
   Returns `object` or `nil` if the object does not changed."
-  {:arglists '([& {:keys [object entity id user-id is-creation? message]}])}
-  [& {object :object,
-      :keys [entity id user-id is-creation? message],
-      :or {id (:id object), is-creation? false}}]
-  ;; TODO - rewrite this to use a schema
-  {:pre [(mdb.u/toucan-model? entity)
-         (integer? user-id)
-         (t2/exists? User :id user-id)
-         (integer? id)
-         (t2/exists? entity :id id)
-         (map? object)]}
-  (let [serialized-object (serialize-instance entity id (dissoc object :message))
-        last-object       (t2/select-one-fn :object Revision :model (name entity) :model_id id {:order-by [[:id :desc]]})]
+  [{:keys [id entity user-id object
+           is-creation? message]
+    :or   {is-creation? false}}     :- [:map {:closed true}
+                                        [:id                            pos-int?]
+                                        [:object                        :map]
+                                        [:entity                        [:fn toucan-model?]]
+                                        [:user-id                       pos-int?]
+                                        [:is-creation? {:optional true} [:maybe :boolean]]
+                                        [:message      {:optional true} [:maybe :string]]]]
+  (let [entity-name (case entity
+                      :model/LegacyMetric "Metric"
+                      (name entity))
+        serialized-object (serialize-instance entity id (dissoc object :message))
+        last-object       (t2/select-one-fn :object Revision :model entity-name :model_id id {:order-by [[:id :desc]]})]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
     ;; the last-object could have nested object, e.g: Dashboard can have multiple Card in it,
@@ -178,34 +204,35 @@
     ;; so to be safe, we'll just compare them as string
     (when-not (= (json/generate-string serialized-object)
                  (json/generate-string last-object))
-     (t2/insert! Revision
-                 :model        (name entity)
-                 :model_id     id
-                 :user_id      user-id
-                 :object       serialized-object
-                 :is_creation  is-creation?
-                 :is_reversion false
-                 :message      message)
-     (delete-old-revisions! entity id)
-     object)))
+      (t2/insert! Revision
+                  :model        entity-name
+                  :model_id     id
+                  :user_id      user-id
+                  :object       serialized-object
+                  :is_creation  is-creation?
+                  :is_reversion false
+                  :message      message)
+      object)))
 
-(defn revert!
+(mu/defn revert!
   "Revert `entity` with `id` to a given Revision."
-  [& {:keys [entity id user-id revision-id]}]
-  {:pre [(mdb.u/toucan-model? entity)
-         (integer? id)
-         (t2/exists? entity :id id)
-         (integer? user-id)
-         (t2/exists? User :id user-id)
-         (integer? revision-id)]}
-  (let [serialized-instance (t2/select-one-fn :object Revision, :model (name entity), :model_id id, :id revision-id)]
+  [info :- [:map {:closed true}
+            [:id          pos-int?]
+            [:user-id     pos-int?]
+            [:revision-id pos-int?]
+            [:entity      [:fn toucan-model?]]]]
+  (let [{:keys [id user-id revision-id entity]} info
+        model-name (case entity
+                     :model/LegacyMetric "Metric"
+                     (name entity))
+        serialized-instance (t2/select-one-fn :object Revision :model model-name :model_id id :id revision-id)]
     (t2/with-transaction [_conn]
       ;; Do the reversion of the object
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change
-      (let [last-revision (t2/select-one Revision :model (name entity), :model_id id, {:order-by [[:id :desc]]})
+      (let [last-revision (t2/select-one Revision :model model-name, :model_id id, {:order-by [[:id :desc]]})
             new-revision  (first (t2/insert-returning-instances! Revision
-                                                                 :model        (name entity)
+                                                                 :model        model-name
                                                                  :model_id     id
                                                                  :user_id      user-id
                                                                  :object       serialized-instance

@@ -1,8 +1,10 @@
 import d3 from "d3";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { clipPathReference, moveToFront } from "metabase/lib/dom";
+
 import { adjustYAxisTicksIfNeeded } from "./apply_axis";
 import { onRenderValueLabels } from "./chart_values";
 import { hasEventAxis, renderEvents } from "./timelines";
@@ -74,6 +76,7 @@ function onRenderReorderCharts(chart) {
     }
   }
 }
+
 function onRenderSetDotStyle(chart) {
   for (const elem of chart.svg().selectAll(".dc-tooltip circle.dot")[0]) {
     // set the color of the dots to the fill color so we can use currentColor in CSS rules:
@@ -365,7 +368,7 @@ function onRenderAddExtraClickHandlers(chart) {
     chart
       .svg()
       .select(".x-axis-label")
-      .classed("cursor-pointer", true)
+      .classed(CS.cursorPointer, true)
       .on("click", () => onEditBreakout(d3.event, 0));
   }
 }

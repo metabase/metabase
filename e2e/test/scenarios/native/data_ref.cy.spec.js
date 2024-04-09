@@ -2,6 +2,8 @@ import {
   restore,
   openNativeEditor,
   openQuestionActions,
+  popover,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 describe("scenarios > native question > data reference sidebar", () => {
@@ -46,22 +48,23 @@ describe("scenarios > native question > data reference sidebar", () => {
         name: "Native Products Model",
         description: "A model of the Products table",
         native: { query: "select id as renamed_id from products" },
-        dataset: true,
+        type: "model",
       },
       { visitQuestion: true },
     );
     // Move question to personal collection
     openQuestionActions();
-    cy.findByTestId("move-button").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("My personal collection").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Move").click();
+    popover().findByTestId("move-button").click();
+
+    entityPickerModal().within(() => {
+      cy.findByText("Bobby Tables's Personal Collection").click();
+      cy.button("Move").click();
+    });
 
     openNativeEditor();
     cy.icon("reference").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("1 model");
+    cy.findByText("2 models");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Native Products Model").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

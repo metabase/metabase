@@ -2,29 +2,29 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-
 import _ from "underscore";
-import { setErrorPage } from "metabase/redux/app";
 
+import * as dashboardActions from "metabase/dashboard/actions";
 import {
   getDashboardComplete,
   getCardData,
   getSlowCards,
   getParameters,
   getParameterValues,
-  getisNavigatingBackToDashboard,
+  getIsNavigatingBackToDashboard,
+  getSelectedTabId,
 } from "metabase/dashboard/selectors";
-
-import * as dashboardActions from "metabase/dashboard/actions";
+import { setErrorPage } from "metabase/redux/app";
 
 const mapStateToProps = (state, props) => {
   return {
     dashboard: getDashboardComplete(state, props),
     dashcardData: getCardData(state, props),
+    selectedTabId: getSelectedTabId(state),
     slowCards: getSlowCards(state, props),
     parameters: getParameters(state, props),
     parameterValues: getParameterValues(state, props),
-    isNavigatingBackToDashboard: getisNavigatingBackToDashboard(state),
+    isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   };
 };
 
@@ -37,12 +37,12 @@ const mapDispatchToProps = {
 /**
  * @deprecated HOCs are deprecated
  */
-export default ComposedComponent =>
+export const DashboardData = ComposedComponent =>
   connect(
     mapStateToProps,
     mapDispatchToProps,
   )(
-    class DashboardContainer extends Component {
+    class DashboardDataInner extends Component {
       async load(props) {
         const {
           initialize,
@@ -56,10 +56,20 @@ export default ComposedComponent =>
 
         initialize({ clearCache: !isNavigatingBackToDashboard });
 
-        try {
-          await fetchDashboard(dashboardId, location && location.query, {
+        const result = await fetchDashboard({
+          dashId: dashboardId,
+          queryParams: location && location.query,
+          options: {
             clearCache: !isNavigatingBackToDashboard,
-          });
+          },
+        });
+
+        if (result.error) {
+          setErrorPage(result.payload);
+          return;
+        }
+
+        try {
           await fetchDashboardCardData({
             reload: false,
             clearCache: !isNavigatingBackToDashboard,
@@ -81,13 +91,27 @@ export default ComposedComponent =>
       UNSAFE_componentWillReceiveProps(nextProps) {
         if (nextProps.dashboardId !== this.props.dashboardId) {
           this.load(nextProps);
-        } else if (
+          return;
+        }
+
+        // First time componentWillReceiveProps is called,
+        // parameterValues are an empty object, and nextProps.parameterValues have all value set to null
+        // DashboardsData is only used for x-rays, and we should better switch them to the same logic as other dashboards
+        if (
+          !_.isEmpty(this.props.parameterValues) &&
           !_.isEqual(this.props.parameterValues, nextProps.parameterValues)
         ) {
           this.props.fetchDashboardCardData({
             reload: false,
             clearCache: true,
           });
+          return;
+        }
+
+        if (!_.isEqual(nextProps.selectedTabId, this.props.selectedTabId)) {
+          this.props.fetchDashboardCardData();
+          this.props.fetchDashboardCardMetadata();
+          return;
         }
       }
 

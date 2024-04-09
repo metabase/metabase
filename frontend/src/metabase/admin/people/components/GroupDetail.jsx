@@ -1,32 +1,35 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Fragment, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { t, ngettext, msgid } from "ttag";
 
+import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
+import Alert from "metabase/components/Alert";
+import CS from "metabase/css/core/index.css";
+import { useConfirmation } from "metabase/hooks/use-confirmation";
 import {
   isAdminGroup,
   isDefaultGroup,
   canEditMembership,
   getGroupNameLocalized,
 } from "metabase/lib/groups";
-
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import Alert from "metabase/components/Alert";
-import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 import { getUser } from "metabase/selectors/user";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
-import { getGroupMembersips, getMembershipsByUser } from "../selectors";
+
 import {
   createMembership,
   deleteMembership,
   updateMembership,
   loadMemberships,
 } from "../people";
+import { getGroupMemberships, getMembershipsByUser } from "../selectors";
+
 import GroupMembersTable from "./GroupMembersTable";
 
 const GroupDescription = ({ group }) =>
   isDefaultGroup(group) ? (
-    <div className="px2 text-measure">
+    <div className={cx(CS.px2, CS.textMeasure)}>
       <p>
         {t`All users belong to the ${getGroupNameLocalized(
           group,
@@ -35,7 +38,7 @@ const GroupDescription = ({ group }) =>
       </p>
     </div>
   ) : isAdminGroup(group) ? (
-    <div className="px2 text-measure">
+    <div className={cx(CS.px2, CS.textMeasure)}>
       <p>
         {t`This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the
                 settings in the Admin Panel, including changing permissions! So, add people to this group with care.`}
@@ -47,7 +50,7 @@ const GroupDescription = ({ group }) =>
   ) : null;
 
 const mapStateToProps = (state, props) => ({
-  groupMemberships: getGroupMembersips(state, props),
+  groupMemberships: getGroupMemberships(state, props),
   membershipsByUser: getMembershipsByUser(state),
   currentUser: getUser(state),
 });
@@ -158,11 +161,11 @@ const GroupDetail = ({
       title={
         <Fragment>
           {getGroupNameLocalized(group ?? {})}
-          <span className="text-light ml1">
+          <span className={cx(CS.textLight, CS.ml1)}>
             {ngettext(
-              msgid`${groupMemberships.length} member`,
-              `${groupMemberships.length} members`,
-              groupMemberships.length,
+              msgid`${group.members.length} member`,
+              `${group.members.length} members`,
+              group.members.length,
             )}
           </span>
         </Fragment>

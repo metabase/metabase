@@ -1,19 +1,14 @@
-import { ReactNode, useCallback, useMemo, useState } from "react";
-import { t } from "ttag";
 import type { LocationDescriptor } from "history";
+import type { ReactNode } from "react";
+import { useMemo } from "react";
+import { t } from "ttag";
 
-import Modal from "metabase/components/Modal";
 import EntityMenu from "metabase/components/EntityMenu";
-
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-
-import ActionCreator from "metabase/actions/containers/ActionCreator";
-import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
-import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
-
-import type { CollectionId, WritebackAction } from "metabase-types/api";
-
-type ModalType = "new-action" | "new-dashboard" | "new-collection";
+import { setOpenModal } from "metabase/redux/ui";
+import { getSetting } from "metabase/selectors/settings";
+import type { CollectionId } from "metabase-types/api";
 
 export interface NewItemMenuProps {
   className?: string;
@@ -21,7 +16,6 @@ export interface NewItemMenuProps {
   trigger?: ReactNode;
   triggerIcon?: string;
   triggerTooltip?: string;
-  analyticsContext?: string;
   hasModels: boolean;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
@@ -46,27 +40,17 @@ const NewItemMenu = ({
   trigger,
   triggerIcon,
   triggerTooltip,
-  analyticsContext,
   hasModels,
   hasDataAccess,
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
   hasDatabaseWithActionsEnabled,
   onCloseNavbar,
-  onChangeLocation,
 }: NewItemMenuProps) => {
-  const [modal, setModal] = useState<ModalType>();
+  const dispatch = useDispatch();
 
-  const handleModalClose = useCallback(() => {
-    setModal(undefined);
-  }, []);
-
-  const handleActionCreated = useCallback(
-    (action: WritebackAction) => {
-      const nextLocation = Urls.modelDetail({ id: action.model_id }, "actions");
-      onChangeLocation(nextLocation);
-    },
-    [onChangeLocation],
+  const lastUsedDatabaseId = useSelector(state =>
+    getSetting(state, "last-used-native-database-id"),
   );
 
   const menuItems = useMemo(() => {
@@ -80,8 +64,8 @@ const NewItemMenu = ({
           mode: "notebook",
           creationType: "custom_question",
           collectionId,
+          cardType: "question",
         }),
-        event: `${analyticsContext};New Question Click;`,
         onClose: onCloseNavbar,
       });
     }
@@ -94,8 +78,9 @@ const NewItemMenu = ({
           type: "native",
           creationType: "native_question",
           collectionId,
+          cardType: "question",
+          databaseId: lastUsedDatabaseId || undefined,
         }),
-        event: `${analyticsContext};New SQL Query Click;`,
         onClose: onCloseNavbar,
       });
     }
@@ -104,14 +89,12 @@ const NewItemMenu = ({
       {
         title: t`Dashboard`,
         icon: "dashboard",
-        action: () => setModal("new-dashboard"),
-        event: `${analyticsContext};New Dashboard Click;`,
+        action: () => dispatch(setOpenModal("dashboard")),
       },
       {
         title: t`Collection`,
         icon: "folder",
-        action: () => setModal("new-collection"),
-        event: `${analyticsContext};New Collection Click;`,
+        action: () => dispatch(setOpenModal("collection")),
       },
     );
     if (hasNativeWrite) {
@@ -123,7 +106,6 @@ const NewItemMenu = ({
         title: t`Model`,
         icon: "model",
         link: `/model/new${collectionQuery}`,
-        event: `${analyticsContext};New Model Click;`,
         onClose: onCloseNavbar,
       });
     }
@@ -132,8 +114,7 @@ const NewItemMenu = ({
       items.push({
         title: t`Action`,
         icon: "bolt",
-        action: () => setModal("new-action"),
-        event: `${analyticsContext};New Action Click;`,
+        action: () => dispatch(setOpenModal("action")),
       });
     }
 
@@ -141,55 +122,28 @@ const NewItemMenu = ({
   }, [
     hasDataAccess,
     hasNativeWrite,
-    analyticsContext,
     hasModels,
     hasDatabaseWithActionsEnabled,
     collectionId,
     onCloseNavbar,
     hasDatabaseWithJsonEngine,
+    dispatch,
+    lastUsedDatabaseId,
   ]);
 
   return (
-    <>
-      <EntityMenu
-        className={className}
-        items={menuItems}
-        trigger={trigger}
-        triggerIcon={triggerIcon}
-        tooltip={triggerTooltip}
-      />
-      {modal && (
-        <>
-          {modal === "new-collection" ? (
-            <Modal onClose={handleModalClose}>
-              <CreateCollectionModal
-                collectionId={collectionId}
-                onClose={handleModalClose}
-              />
-            </Modal>
-          ) : modal === "new-dashboard" ? (
-            <Modal onClose={handleModalClose}>
-              <CreateDashboardModal
-                collectionId={collectionId}
-                onClose={handleModalClose}
-              />
-            </Modal>
-          ) : modal === "new-action" ? (
-            <Modal
-              wide
-              enableTransition={false}
-              onClose={handleModalClose}
-              closeOnClickOutside
-            >
-              <ActionCreator
-                onSubmit={handleActionCreated}
-                onClose={handleModalClose}
-              />
-            </Modal>
-          ) : null}
-        </>
-      )}
-    </>
+    <EntityMenu
+      className={className}
+      items={menuItems}
+      trigger={trigger}
+      triggerIcon={triggerIcon}
+      tooltip={triggerTooltip}
+      // I've disabled this transition, since it results in the menu
+      // sometimes not appearing until content finishes loading on complex
+      // dashboards and questions #39303
+      // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
+      transitionDuration={0}
+    />
   );
 };
 

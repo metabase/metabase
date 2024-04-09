@@ -1,6 +1,6 @@
 import Tooltip from "metabase/core/components/Tooltip";
+import type { IconName } from "metabase/ui";
 
-import type { IconName } from "metabase/core/components/Icon";
 import { Root, ShortMessage, StyledIcon } from "./ErrorView.styled";
 
 interface ErrorViewProps {
@@ -10,7 +10,7 @@ interface ErrorViewProps {
   isSmall: boolean;
 }
 
-function ErrorView({
+export function ErrorView({
   error,
   icon = "warning",
   isDashboard,
@@ -25,6 +25,3 @@ function ErrorView({
     </Root>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ErrorView;

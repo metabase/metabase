@@ -1,5 +1,6 @@
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
+
 import { getUserIsAdmin } from "./user";
 
 describe("metabase/selectors/user", () => {

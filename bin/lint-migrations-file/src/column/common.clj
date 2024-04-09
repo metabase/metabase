@@ -7,6 +7,7 @@
 (s/def ::remarks string?)
 
 (s/def :column.common.constraints/onDelete
+  #_{:clj-kondo/ignore [:unused-value]}
   (fn [_]
     "Don't try to use onDelete in constraints! onDelete is only for addForeignKeyConstraints. Use deleteCascade!"
     false))

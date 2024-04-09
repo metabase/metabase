@@ -150,7 +150,7 @@
   "Environment variables and system properties used in this namespace. This is a dynamic version
   of [[environ.core/env]]; it is dynamic for test mocking purposes.
 
-  Yes, [[metabase.test/with-temp-env-var-value]] exists, but it is not allowed inside parallel tests. This is an
+  Yes, [[metabase.test/with-temp-env-var-value!]] exists, but it is not allowed inside parallel tests. This is an
   experiment that I may adapt into a new pattern in the future to allow further test parallelization."
   env/env)
 
@@ -160,11 +160,11 @@
   (let [path* (or (some-> (get *env* :mb-config-file-path) u.files/get-path)
                   (u.files/get-path (System/getProperty "user.dir") "config.yml"))]
     (if (u.files/exists? path*)
-      (log/info (u/colorize :magenta
-                            (trs "Found config file at path {0}; Metabase will be initialized with values from this file"
-                                 (pr-str (str path*))))
+      (log/info (u/format-color :magenta
+                                "Found config file at path %s; Metabase will be initialized with values from this file"
+                                (pr-str (str path*)))
                 (u/emoji "🗄️"))
-      (log/info (u/colorize :yellow (trs "No config file found at path {0}" (pr-str (str path*))))))
+      (log/info (u/format-color :yellow "No config file found at path %s" (pr-str (str path*)))))
     path*))
 
 (def ^:private ^:dynamic *config*
@@ -253,14 +253,14 @@
   ;; enabling that check tho)
   (when-let [m (config)]
     (doseq [[section-name section-config] (sort-by-initialization-order (:config m))]
-      ;; you can only use the config-from-file stuff with an EE/Pro token with the `:advanced-config` feature. Since you
+      ;; you can only use the config-from-file stuff with an EE/Pro token with the `:config-text-file` feature. Since you
       ;; might have to use the `:settings` section to set the token, skip the check for Settings. But check it for the
       ;; other sections.
       (when-not (= section-name :settings)
-        (when-not (premium-features/has-feature? :advanced-config)
-          (throw (ex-info (tru "Metabase config files require a Premium token with the :advanced-config feature.")
+        (when-not (premium-features/enable-config-text-file?)
+          (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
                           {}))))
-      (log/info (u/colorize :magenta (trs "Initializing {0} from config file..." section-name)) (u/emoji "🗄️"))
+      (log/info (u/format-color :magenta "Initializing %s from config file..." section-name) (u/emoji "🗄️"))
       (advanced-config.file.i/initialize-section! section-name section-config))
-    (log/info (u/colorize :magenta (trs "Done initializing from file.")) (u/emoji "🗄️")))
+    (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))
   :ok)

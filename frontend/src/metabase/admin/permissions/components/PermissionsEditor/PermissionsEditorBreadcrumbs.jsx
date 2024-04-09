@@ -1,7 +1,7 @@
-import { Fragment } from "react";
 import PropTypes from "prop-types";
+import { Fragment } from "react";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import {
   BreadcrumbsLink,

@@ -1,9 +1,9 @@
 import styled from "@emotion/styled";
 
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { color, darken } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import { Icon } from "metabase/core/components/Icon";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { Icon } from "metabase/ui";
 
 export const StoreIconRoot = styled(ExternalLink)`
   margin-right: ${space(1)};

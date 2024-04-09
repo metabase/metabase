@@ -3,7 +3,6 @@
   can update this namespace instead of having to update code all over the place."
   (:require
    [potemkin :as p]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (p/import-vars
@@ -18,14 +17,14 @@
   (t2/instance? x))
 
 (defn InstanceOf
-  "Helper for creating a schema to check whether something is an instance of `model`. Use this instead of of using the
-  `<Model>Instance` or calling [[type]] or [[class]] on a model yourself, since that won't work once we switch to
+  "Helper for creating a Malli schema to check whether something is an instance of `model`. Use this instead of of using
+  the `<Model>Instance` or calling [[type]] or [[class]] on a model yourself, since that won't work once we switch to
   Toucan 2.
 
-    (s/defn my-fn :- (mi/InstanceOf User)
+    (mu/defn my-fn :- (mi/InstanceOf User)
       []
       ...)"
   [model]
-  (s/pred (fn [x]
-            (instance-of? model x))
-          (format "instance of a %s" (name model))))
+  [:fn
+   {:error/message (format "instance of a %s" (name model))}
+   (partial instance-of? model)])

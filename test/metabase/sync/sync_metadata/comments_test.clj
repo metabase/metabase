@@ -1,14 +1,17 @@
 (ns ^:mb/once metabase.sync.sync-metadata.comments-test
   "Test for the logic that syncs Table column descriptions with the comments fetched from a DB."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -86,7 +89,7 @@
                                                     :table-comment     comment}]}))
 
 (defn- db->tables [db]
-  (set (map (partial into {}) (t2/select [Table :name :description] :db_id (u/the-id db)))))
+  (set (map (partial into {}) (t2/select [:model/Table :name :description] :db_id (u/the-id db)))))
 
 (deftest table-comments-test
   (testing "test basic comments on table"
@@ -111,10 +114,18 @@
 (deftest sync-existing-table-comment-test
   (testing "test adding a comment to the source table that was initially empty, so we can check that the resync picks it up"
     (mt/test-drivers #{:h2 :postgres}
-      (mt/dataset (basic-table "table_with_comment_after_sync" nil)
-        ;; modify the source DB to add the comment and resync
-        (driver/notify-database-updated driver/*driver* (mt/db))
-        (tx/create-db! driver/*driver* (basic-table "table_with_comment_after_sync" "added comment"))
-        (sync-tables/sync-tables-and-database! (mt/db))
-        (is (= #{{:name (mt/format-name "table_with_comment_after_sync"), :description "added comment"}}
-               (db->tables (mt/db))))))))
+      (let [dbdef (basic-table "table_with_comment_after_sync" nil)]
+       (mt/dataset dbdef
+         ;; modify the source DB to add the comment and resync
+         (driver/notify-database-updated driver/*driver* (mt/db))
+         (tx/create-db! driver/*driver* (basic-table "table_with_comment_after_sync" nil))
+         ;; create the comment
+         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                        [(sql.tx/standalone-table-comment-sql
+                          driver/*driver*
+                          dbdef
+                          (tx/map->TableDefinition {:table-name "table_with_comment_after_sync"
+                                                    :table-comment "added comment"}))])
+         (sync-tables/sync-tables-and-database! (mt/db))
+         (is (= #{{:name (mt/format-name "table_with_comment_after_sync"), :description "added comment"}}
+                (db->tables (mt/db)))))))))

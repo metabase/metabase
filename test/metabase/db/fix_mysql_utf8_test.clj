@@ -1,15 +1,13 @@
 (ns metabase.db.fix-mysql-utf8-test
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.db :as mdb]
    [metabase.db.data-source :as mdb.data-source]
-   [metabase.db.setup :as mdb.setup]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models :refer [Database]]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- create-test-db! []
@@ -29,21 +27,6 @@
   (mdb.data-source/broken-out-details->DataSource
    :mysql
    (mt/dbdef->connection-details :mysql :db {:database-name "utf8_test"})))
-
-(defn- convert-to-charset!
-  "Convert a MySQL/MariaDB database to the `latin1` character set."
-  [jdbc-spec charset collation]
-  (doseq [statement [(format "ALTER DATABASE utf8_test CHARACTER SET = %s COLLATE = %s;" charset collation)
-                     (format "ALTER TABLE metabase_database CONVERT TO CHARACTER SET %s COLLATE %s;" charset collation)]]
-    (jdbc/execute! jdbc-spec [statement])))
-
-(defn- remove-utf8mb4-migrations!
-  "Remove the entries for the migrations that convert a DB to utf8mb4 from the Liquibase migration log so they can be
-  ran again."
-  [jdbc-spec]
-  (jdbc/execute! jdbc-spec [(format "DELETE FROM `DATABASECHANGELOG` WHERE ID IN (%s);"
-                                    (str/join "," (map #(str \' % \')
-                                                       (range 107 161))))]))
 
 (defn- db-charset []
   (t2/query-one
@@ -75,51 +58,18 @@
                   "VALUES ('mysql', ?, current_timestamp, current_timestamp, '{}')")
              test-unicode-str]))
 
-;; The basic idea behind this test is:
-;;
-;; 1. Create a new application DB; convert the DB to `latin1` or `utf8` (effectively rolling back migrations 107-160),
-;;    then verify that utf-8 is now broken. (This simulates the state app DBs are in before this fix)
-;;
-;; 2. Now run the migrations again and verify that things are fixed
 (deftest utf8-test
-  (mt/test-driver :mysql
-    (testing "Migrations 107-160\n"
-      (doseq [{:keys [charset collation]} [{:charset "utf8", :collation "utf8_general_ci"}
-                                           {:charset "latin1", :collation "latin1_swedish_ci"}]]
-        ;; create a new application DB and run migrations.
-        (create-test-db!)
-        (let [data-source (test-data-source)
-              jdbc-spec   {:datasource data-source}]
-          (mdb.setup/migrate! :mysql data-source :up)
-          (testing (format "Migrating %s charset -> utf8mb4\n" charset)
-            ;; Roll back the DB to act as if migrations 107-160 had never been ran
-            (convert-to-charset! jdbc-spec charset collation)
-            (remove-utf8mb4-migrations! jdbc-spec)
-            (t2/with-connection [_conn jdbc-spec]
-              (binding [db/*quoting-style* :mysql]
-                (testing (format "DB without migrations 107-160: UTF-8 shouldn't work when using the '%s' character set" charset)
-                  (let [db-cs  (db-charset)
-                        tb-cs  (table-charset)
-                        col-cs (column-charset)]
-                    (is (every? (cond-> #{charset} (= charset "utf8") (conj "utf8mb3"))
-                                (map :character-set [db-cs tb-cs col-cs]))
-                        (format "Make sure we converted the DB to %s correctly" charset))
-                    (is (every? (cond-> #{collation} (= collation "utf8_general_ci") (conj "utf8mb3_general_ci"))
-                                (map :collation [db-cs tb-cs col-cs]))
-                        (format "Make sure we converted the DB to %s correctly" charset)))
-                  (is (thrown?
-                       Exception
-                       (insert-row!))
-                      "Shouldn't be able to insert UTF-8 values"))
-
-                (testing "If we run the migrations 107-160 then the DB should get converted to utf8mb4"
-                  (mdb.setup/migrate! :mysql data-source :up)
-                  (is (= {:character-set "utf8mb4", :collation "utf8mb4_unicode_ci"}
-                         (db-charset)
-                         (table-charset)
-                         (column-charset))
-                      "DB should be converted back to `utf8mb4` after running migrations")
-                  (testing "We should be able to insert UTF-8 values"
-                    (insert-row!)
-                    (is (= test-unicode-str
-                           (t2/select-one-fn :name Database :name test-unicode-str)))))))))))))
+  (testing "makes sure mysql uses utf-8 charset (#10691)"
+    (mt/test-driver :mysql
+      ;; create a new application DB and run migrations.
+      (create-test-db!)
+      (let [data-source (test-data-source)]
+        (mdb/migrate! data-source :up)
+        (is (= {:character-set "utf8mb4", :collation "utf8mb4_unicode_ci"}
+               (db-charset)
+               (table-charset)
+               (column-charset)))
+        (testing "We should be able to insert UTF-8 values"
+          (insert-row!)
+          (is (= test-unicode-str
+                 (t2/select-one-fn :name Database :name test-unicode-str))))))))

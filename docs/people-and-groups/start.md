@@ -48,6 +48,10 @@ With some paid plans, you have more options to help orchestrate lots of people a
   - [Keycloak][saml-keycloak]
   - [Okta][saml-okta]
 
+## [API keys](./api-keys.md)
+
+Create keys to authenticate API calls.
+
 [azure-ad]: ./saml-azure.md
 [google-sign-in]: ./google-and-ldap.md#enabling-google-sign-in
 [jwt]: ./authenticating-with-jwt.md

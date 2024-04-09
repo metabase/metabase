@@ -56,7 +56,7 @@ export function makeFormObject(formDef) {
   // for getting the initial values object, or getting individual values
   makeFormMethod(form, "initial");
 
-  // for normalizeing the object before submitting, or normalizeing individual values
+  // for normalizing the object before submitting, or normalizeing individual values
   makeFormMethod(form, "normalize", object => object);
   makeFormMethod(form, "hidden");
 

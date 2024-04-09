@@ -96,7 +96,7 @@
            and creation timestamp"
     (with-fake-snowplow-collector
       (snowplow/track-event! ::snowplow/new-instance-created)
-      (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-1-1",
+      (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-1-2",
               :data {:id                           (snowplow/analytics-uuid)
                      :version                      {:tag (:tag (public-settings/version))},
                      :token_features               (public-settings/token-features)
@@ -149,10 +149,11 @@
 
       (snowplow/track-event! ::snowplow/database-connection-successful
                              1
-                             {:database :postgres, :database-id 1, :source :admin})
+                             {:database :postgres, :database-id 1, :source :admin, :dbms_version "14.1"})
       (is (= [{:data    {"database" "postgres"
                          "database_id" 1
                          "event" "database_connection_successful"
+                         "dbms_version" "14.1"
                          "source" "admin"}
                :user-id "1"}]
              (pop-event-data-and-user-id!)))

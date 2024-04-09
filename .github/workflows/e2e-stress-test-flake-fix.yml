@@ -3,10 +3,6 @@ name: E2E Stress Test Flake Fix
 on:
   workflow_dispatch:
     inputs:
-      artifact:
-        description: 'Artifact ID'
-        type: string
-        required: true
       spec:
         description: 'Relative path of the target spec'
         type: string
@@ -15,8 +11,33 @@ on:
         description: 'Number of times to run the test (e.g. 20)'
         type: string
         required: true
+      grep:
+        description: 'Grep and filter tests to run in isolation'
+        type: string
+        required: false
+      mb_edition:
+        description: 'Set MB_EDITION env var to "ee" (enteprise) or "oss" (open-source)'
+        type: string
+        required: false
+        default: "ee"
 
 jobs:
+  workflow-summary:
+    name: Stress test inputs
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Generate workflow summary
+        run: |
+          echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo '- `branch`: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `spec`: ${{ inputs.spec }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `grep`: "${{ inputs.grep }}"' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
+
   stress-test-flake-fix:
     runs-on: ubuntu-22.04
     timeout-minutes: 60
@@ -24,67 +45,40 @@ jobs:
     env:
       DISPLAY: ""
       QA_DB_ENABLED: true
+      CYPRESS_REPLAYIO_ENABLED: 1
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
+      MB_EDITION: ${{ inputs.mb_edition }}
+      TERM: xterm
       TZ: US/Pacific # to make node match the instance tz
-    services:
-      maildev:
-        image: maildev/maildev:2.0.5
-        ports:
-          - "1080:1080"
-          - "1025:1025"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      openldap:
-        image: osixia/openldap:1.5.0
-        ports:
-          - "389:389"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      postgres-sample:
-        image: metabase/qa-databases:postgres-sample-12
-        ports:
-          - "5404:5432"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      mongo-sample:
-        image: metabase/qa-databases:mongo-sample-4.4
-        ports:
-          - 27004:27017
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      mysql-sample:
-        image: metabase/qa-databases:mysql-sample-8
-        ports:
-          - 3304:3306
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v3
-      - name: Download Metabase uberjar from a previously stored artifact
-        run: |
-          curl -L \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://api.github.com/repos/metabase/metabase/actions/artifacts/$ARTIFACT_ID/zip \
-            -o mb.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ARTIFACT_ID: ${{ github.event.inputs.artifact }}
-      - name: Unzip Metabase artifact containing an uberjar
-        run: unzip mb.zip
+      - uses: actions/checkout@v4
+        with:
+          # Important because we need previous commits hashes to find and download the uberjar!
+          fetch-depth: 20
+
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+          openldap: true
+          postgres: true
+          mysql: true
+          mongo: true
+
+      - name: Download Metabase ${{ matrix.edition }} uberjar
+        uses: ./.github/actions/e2e-download-uberjar
+        with:
+          edition: 'ee'
+
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare JDK 11
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: 11
           distribution: "temurin"
@@ -92,20 +86,19 @@ jobs:
         uses: ./.github/actions/prepare-cypress
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
-      - name: Get Metabase version info
-        run: |
-          jar xf target/uberjar/metabase.jar version.properties
-          mv version.properties resources/
+
+      # For all options and fine-grained control, take a look at the documentation
+      # https://github.com/cypress-io/cypress/tree/develop/npm/grep
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         run: |
           yarn run test-cypress-run \
           --spec '${{ github.event.inputs.spec }}' \
-          --env burn=${{ github.event.inputs.burn_in }} \
-          --config-file e2e/support/cypress-stress-test.config.js
-        env:
-          TERM: xterm
+          --env burn=${{ github.event.inputs.burn_in }},grep='${{ github.event.inputs.grep }}' \
+          --config-file e2e/support/cypress-stress-test.config.js \
+          --browser 'replay-chromium'
+
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: cypress-failed-tests-recording

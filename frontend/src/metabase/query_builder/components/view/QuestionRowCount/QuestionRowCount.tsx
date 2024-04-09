@@ -1,28 +1,25 @@
 import { useMemo } from "react";
-import { ngettext, msgid, t } from "ttag";
 import { connect } from "react-redux";
+import { ngettext, msgid, t } from "ttag";
 import _ from "underscore";
 
-import { formatNumber } from "metabase/lib/formatting";
-import Database from "metabase/entities/databases";
-
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-
+import CS from "metabase/css/core/index.css";
+import Database from "metabase/entities/databases";
+import { formatNumber } from "metabase/lib/formatting";
 import { setLimit } from "metabase/query_builder/actions";
+import LimitPopover from "metabase/query_builder/components/LimitPopover";
 import {
   getFirstQueryResult,
   getIsResultDirty,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import LimitPopover from "metabase/query_builder/components/LimitPopover";
-
+import type { Limit } from "metabase-lib";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import type { Dataset } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
-import * as Lib from "metabase-lib";
-import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
-import type { Limit } from "metabase-lib/types";
-import type Question from "metabase-lib/Question";
 
 import { RowCountButton, RowCountStaticLabel } from "./QuestionRowCount.styled";
 
@@ -74,25 +71,23 @@ function QuestionRowCount({
   className,
   onChangeLimit,
 }: QuestionRowCountProps) {
+  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
   const message = useMemo(() => {
-    if (!question.isStructured()) {
+    if (isNative) {
       return isResultDirty ? "" : getRowCountMessage(result);
     }
     return isResultDirty
       ? getLimitMessage(question, result)
       : getRowCountMessage(result);
-  }, [question, result, isResultDirty]);
+  }, [question, result, isResultDirty, isNative]);
 
   const handleLimitChange = (limit: number) => {
     onChangeLimit(limit > 0 ? limit : null);
   };
 
-  const canChangeLimit =
-    question.isStructured() && question.query().isEditable();
+  const canChangeLimit = !isNative && isEditable;
 
-  const limit = canChangeLimit
-    ? Lib.currentLimit(question._getMLv2Query(), -1)
-    : null;
+  const limit = canChangeLimit ? Lib.currentLimit(question.query(), -1) : null;
 
   if (loading) {
     return null;
@@ -116,7 +111,7 @@ function QuestionRowCount({
     >
       {({ onClose }: { onClose: () => void }) => (
         <LimitPopover
-          className="p2"
+          className={CS.p2}
           limit={limit}
           onChangeLimit={handleLimitChange}
           onClose={onClose}
@@ -154,7 +149,7 @@ const formatRowCount = (count: number) => {
 };
 
 function getLimitMessage(question: Question, result: Dataset): string {
-  const limit = Lib.currentLimit(question._getMLv2Query(), -1);
+  const limit = Lib.currentLimit(question.query(), -1);
   const isValidLimit =
     typeof limit === "number" && limit > 0 && limit < HARD_ROW_LIMIT;
 
@@ -184,8 +179,8 @@ function getRowCountMessage(result: Dataset): string {
   return t`Showing ${formatRowCount(result.row_count)}`;
 }
 
-function getDatabaseId(state: State, { question }: OwnProps & StateProps) {
-  return question.query().databaseId();
+function getDatabaseId(_state: State, { question }: OwnProps & StateProps) {
+  return question.databaseId();
 }
 
 const ConnectedQuestionRowCount = _.compose(

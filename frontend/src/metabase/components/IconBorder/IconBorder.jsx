@@ -1,7 +1,9 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { Component } from "react";
+
+import CS from "metabase/css/core/index.css";
 
 /*
    Creates a bordered container for an <Icon /> component
@@ -15,7 +17,7 @@ import cx from "classnames";
 
 export default class IconBorder extends Component {
   static propTypes = {
-    borderWidth: PropTypes.string,
+    borderWidth: PropTypes.oneOf([PropTypes.string, PropTypes.number]),
     borderStyle: PropTypes.string,
     borderColor: PropTypes.string,
     borderRadius: PropTypes.string,
@@ -53,7 +55,7 @@ export default class IconBorder extends Component {
     };
 
     return (
-      <div className={cx("flex layout-centered", className)} style={styles}>
+      <div className={cx(CS.flex, CS.layoutCentered, className)} style={styles}>
         {children}
       </div>
     );

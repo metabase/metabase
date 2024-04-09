@@ -1,7 +1,8 @@
-import { Form, Formik } from "formik";
-import * as Yup from "yup";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Form, Formik } from "formik";
+import * as Yup from "yup";
+
 import FormSelect from "./FormSelect";
 
 const TEST_SCHEMA = Yup.object({
@@ -52,9 +53,9 @@ describe("FormSelect", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormSelect onSubmit={onSubmit} />);
-    userEvent.click(screen.getByText("Choose"));
-    userEvent.click(screen.getByText("Line"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByText("Choose"));
+    await userEvent.click(screen.getByText("Line"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       const values = { value: "line" };
@@ -74,9 +75,9 @@ describe("FormSelect", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormSelect initialValue="line" onSubmit={onSubmit} />);
-    userEvent.click(screen.getByText("Line"));
-    userEvent.click(screen.getByText("Bar"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByText("Line"));
+    await userEvent.click(screen.getByText("Bar"));
+    await userEvent.click(screen.getByText("Submit"));
 
     expect(await screen.findByText(": error")).toBeInTheDocument();
   });

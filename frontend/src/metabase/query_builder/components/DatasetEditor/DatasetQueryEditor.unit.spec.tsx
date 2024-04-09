@@ -8,7 +8,9 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import { Card } from "metabase-types/api";
+import { checkNotNull } from "metabase/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -16,8 +18,6 @@ import {
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import { checkNotNull } from "metabase/core/utils/types";
-import { getMetadata } from "metabase/selectors/metadata";
 
 const { NativeQueryEditor } = jest.requireActual(
   "metabase/query_builder/components/NativeQueryEditor",
@@ -63,8 +63,9 @@ const setup = async ({
   });
   const metadata = getMetadata(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
-  const query = question.query();
+  const query = question.legacyQuery({ useStructuredQuery: true });
   const DatasetQueryEditor = await importDatasetQueryEditor();
+  const onSetDatabaseId = jest.fn();
 
   const { rerender } = renderWithProviders(
     <DatasetQueryEditor
@@ -74,6 +75,7 @@ const setup = async ({
       question={question}
       readOnly={readOnly}
       onResizeStop={_.noop}
+      onSetDatabaseId={onSetDatabaseId}
     />,
   );
 
@@ -147,6 +149,7 @@ describe("DatasetQueryEditor", () => {
       isActive: true,
     });
     const DatasetQueryEditor = await importDatasetQueryEditor();
+    const onSetDatabaseId = jest.fn();
 
     expect(
       screen.getByTestId("native-query-editor-sidebar"),
@@ -160,6 +163,7 @@ describe("DatasetQueryEditor", () => {
         question={question}
         readOnly={false}
         onResizeStop={_.noop}
+        onSetDatabaseId={onSetDatabaseId}
       />,
     );
 

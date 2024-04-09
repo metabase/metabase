@@ -4,7 +4,8 @@
    [metabase.models.database :refer [Database]]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -14,7 +15,7 @@
   (mt/with-temp-scheduler
     (#'task.persist-refresh/job-init!)
     (mt/with-temporary-setting-values [:persisted-models-enabled true]
-      (mt/with-temp* [Database [db {:options {:persist-models-enabled true}}]]
+      (mt/with-temp [Database db {:settings {:persist-models-enabled true}}]
         (task.persist-refresh/schedule-persistence-for-database! db default-cron)
         (f db)))))
 
@@ -43,3 +44,39 @@
         (is (= default-cron
                (get-in (task.persist-refresh/job-info-by-db-id)
                        [(:id db) :schedule])))))))
+
+(deftest persisted-info-by-id-test
+  (with-setup db
+    (mt/with-temp
+      [:model/Card          model {:database_id (u/the-id db), :type :model}
+       :model/PersistedInfo pinfo {:database_id (u/the-id db), :card_id (u/the-id model)}]
+      (testing "Should require a non-negative persisted-info-id"
+        (is (=? {:errors {:persisted-info-id "nullable value must be an integer greater than zero."}}
+                (mt/user-http-request :crowberto :get 400 (format "persist/%d" -1)))))
+      (testing "Should not get info when the persisted-info-id doesn't exist"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 (format "persist/%d" Integer/MAX_VALUE)))))
+      (testing "Should get info when the ID exists"
+        (is (=? {:active  true
+                 :card_id (u/the-id model)
+                 :id      (u/the-id pinfo)
+                 :state   "persisted"}
+                (mt/user-http-request :crowberto :get 200 (format "persist/%d" (u/the-id pinfo)))))))))
+
+(deftest persisted-info-by-card-id-test
+  (with-setup db
+    (mt/with-temp
+      [:model/Card          model {:database_id (u/the-id db), :type :model}
+       :model/PersistedInfo pinfo {:database_id (u/the-id db), :card_id (u/the-id model)}]
+      (testing "Should require a non-negative card-id"
+        (is (=? {:errors {:card-id "nullable value must be an integer greater than zero."}}
+                (mt/user-http-request :crowberto :get 400 (format "persist/card/%d" -1)))))
+      (testing "Should not get info when the card-id doesn't exist"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 (format "persist/card/%d" Integer/MAX_VALUE)))))
+      (testing "Should get info when the ID exists"
+        (is (=? {:active  true
+                 :card_id (u/the-id model)
+                 :id      (u/the-id pinfo)
+                 :state   "persisted"}
+                (mt/user-http-request :crowberto :get 200 (format "persist/card/%d" (u/the-id model)))))))))

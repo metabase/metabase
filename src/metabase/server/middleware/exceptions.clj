@@ -4,7 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.server.middleware.security :as mw.security]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log])
   (:import
    (java.sql SQLException)
@@ -18,9 +18,9 @@
   "Catch any exceptions other than 404 thrown in the request handler body and rethrow a generic 400 exception instead.
   This minimizes information available to bad actors when exceptions occur on public endpoints."
   [handler]
-  (fn [request respond _]
+  (fn [request respond _raise]
     (let [raise (fn [e]
-                  (log/warn e (trs "Exception in API call"))
+                  (log/warn e "Exception in API call")
                   (if (= 404 (:status-code (ex-data e)))
                     (respond {:status 404, :body (deferred-tru "Not found.")})
                     (respond {:status 400, :body (deferred-tru "An error occurred.")})))]
@@ -34,12 +34,13 @@
   the original instead (i.e., don't rethrow the original stacktrace). This reduces the information available to bad
   actors but still provides some information that will prove useful in debugging errors."
   [handler]
-  (fn [request respond _]
+  (fn [request respond _raise]
     (let [raise (fn [^Throwable e]
-                  (respond {:status 400, :body (.getMessage e)}))]
+                  (respond {:status 400, :body (ex-message e)}))]
       (try
         (handler request respond raise)
         (catch Throwable e
+          (log/error e "Exception in API call")
           (raise e))))))
 
 (defmulti api-exception-response
@@ -84,7 +85,7 @@
 
 (defmethod api-exception-response EofException
   [_e]
-  (log/info (trs "Request canceled before finishing."))
+  (log/info "Request canceled before finishing.")
   {:status-code 204, :body nil, :headers (mw.security/security-headers)})
 
 (defn catch-api-exceptions
@@ -96,7 +97,6 @@
      request
      respond
      (comp respond api-exception-response))))
-
 
 (defn catch-uncaught-exceptions
   "Middleware (with `[request respond raise]`) that catches any unexpected Exceptions and reroutes them through `raise`

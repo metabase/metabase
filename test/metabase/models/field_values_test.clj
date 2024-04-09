@@ -5,7 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.database :refer [Database]]
@@ -19,7 +19,8 @@
    [metabase.util :as u]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import (clojure.lang ExceptionInfo)))
 
 (deftest ^:parallel field-should-have-field-values?-test
   (doseq [[group input->expected] {"Text and Category Fields"
@@ -97,23 +98,23 @@
                (#'field-values/field-should-have-field-values? input)))))))
 
 (deftest distinct-values-test
-  (with-redefs [metadata-queries/field-distinct-values (constantly [1 2 3 4])]
-    (is (= {:values          [1 2 3 4]
+  (with-redefs [metadata-queries/field-distinct-values (constantly [[1] [2] [3] [4]])]
+    (is (= {:values          [[1] [2] [3] [4]]
             :has_more_values false}
            (#'field-values/distinct-values {}))))
 
   (testing "(#2332) check that if field values are long we only store a subset of it"
-    (with-redefs [metadata-queries/field-distinct-values (constantly ["AAAA" (str/join (repeat (+ 100 field-values/*total-max-length*) "A"))])]
+    (with-redefs [metadata-queries/field-distinct-values (constantly [["AAAA"] [(str/join (repeat (+ 100 field-values/*total-max-length*) "A"))]])]
       (testing "The total length of stored values must less than our max-length-limit"
-        (is (= {:values          ["AAAA"]
+        (is (= {:values          [["AAAA"]]
                 :has_more_values true}
               (#'field-values/distinct-values {})))))))
 
 (deftest clear-field-values-for-field!-test
-  (mt/with-temp* [Database    [{database-id :id}]
-                  Table       [{table-id :id} {:db_id database-id}]
-                  Field       [{field-id :id} {:table_id table-id}]
-                  FieldValues [_              {:field_id field-id, :values "[1,2,3]"}]]
+  (mt/with-temp [Database    {database-id :id} {}
+                 Table       {table-id :id} {:db_id database-id}
+                 Field       {field-id :id} {:table_id table-id}
+                 FieldValues _              {:field_id field-id :values "[1, 2, 3]"}]
     (is (= [1 2 3]
            (t2/select-one-fn :values FieldValues, :field_id field-id)))
     (field-values/clear-field-values-for-field! field-id)
@@ -127,6 +128,26 @@
 (defn- sync-and-find-values! [db field-values-id]
   (sync/sync-database! db)
   (find-values field-values-id))
+
+(deftest implicit-deduplication-test
+  (let [before (t/zoned-date-time)
+        after  (t/plus before (t/millis 1))
+        later  (t/plus after (t/millis 1))]
+    (mt/with-temp [:model/Database    {database-id :id} {}
+                   :model/Table       {table-id :id}    {:db_id database-id}
+                   :model/Field       {field-id :id}     {:table_id table-id}
+                   :model/FieldValues _                 {:field_id field-id :type :full :values ["a" "b"] :human_readable_values ["A" "B"] :created_at before :updated_at before}
+                   :model/FieldValues _                 {:field_id field-id :type :full :values ["c" "d"] :human_readable_values ["C" "D"] :created_at before :updated_at later}
+                   :model/FieldValues _                 {:field_id field-id :type :full :values ["e" "f"] :human_readable_values ["E" "F"] :created_at after :updated_at after}]
+
+      (testing "When we have multiple FieldValues rows in the database, "
+        (is (= 3 (count (t2/select FieldValues :field_id field-id :type :full :hash_key nil))))
+        (testing "we always return the most recently updated row"
+          (is (= ["C" "D"] (:human_readable_values (field-values/get-latest-full-field-values field-id))))
+          (testing "... and older rows are implicitly deleted"
+            (is (= 1 (count (t2/select FieldValues :field_id field-id :type :full))))
+            ;; double check that we deleted the correct row
+            (is (= ["C" "D"] (:human_readable_values (field-values/get-latest-full-field-values field-id))))))))))
 
 (deftest get-or-create-full-field-values!-test
   (mt/dataset test-data
@@ -234,7 +255,7 @@
 
 (deftest rescanned-human-readable-values-test
   (testing "Make sure FieldValues are calculated and saved correctly when remapping is in place (#13235)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp-copy-of-db
         (letfn [(field-values []
                   (t2/select-one FieldValues :field_id (mt/id :orders :product_id)))]
@@ -256,60 +277,123 @@
 ;;; |                                                 Life Cycle                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest insert-field-values-type-test
-  (testing "fieldvalues type=:full shouldn't have hash_key"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Full FieldValues shouldnt have hash_key"
-         (t2.with-temp/with-temp [FieldValues _ {:field_id (mt/id :venues :id)
-                                                 :type :full
-                                                 :hash_key "random-hash"}]))))
+(deftest insert-field-values-hook-test
+  (testing "The model hooks prevent us inserting invalid type / hash_key combination"
+    (let [field-id (mt/id :venues :id)]
+      (try
+        (is (thrown-with-msg? ExceptionInfo
+                              #"Full FieldValues shouldnt have hash_key"
+                              (t2/insert! :model/FieldValues :field_id field-id :hash_key "12345")))
+        (is (thrown-with-msg? ExceptionInfo
+                              #"Full FieldValues shouldnt have hash_key"
+                              (t2/insert! :model/FieldValues :field_id field-id :type :full :hash_key "12345")))
+        (is (thrown-with-msg? ExceptionInfo
+                              #"Advanced FieldValues require a hash_key"
+                              (t2/insert! :model/FieldValues :field_id field-id :type :sandbox)))
+        (is (thrown-with-msg? ExceptionInfo
+                              #"Advanced FieldValues require a hash_key"
+                              (t2/insert! :model/FieldValues :field_id field-id :type :sandbox :hash_key " ")))
+        (finally
+          ;; Clean up in case there were any failed assertions, and we ended up inserting values
+          (t2/delete! :model/FieldValues :field_id field-id))))))
 
-  (testing "Advanced fieldvalues requires a hash_key"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Advanced FieldValues requires a hash_key"
-         (t2.with-temp/with-temp [FieldValues _ {:field_id (mt/id :venues :id)
-                                                 :type :sandbox}])))))
+(deftest update-field-values-hook-test
+  (t2.with-temp/with-temp [FieldValues {full-id :id}    {:field_id (mt/id :venues :id)
+                                                             :type     :full}
+                           FieldValues {sandbox-id :id} {:field_id (mt/id :venues :id)
+                                                             :type     :sandbox
+                                                             :hash_key "random-hash"}]
+    (testing "The model hooks prevent us changing the intrinsic identity of a field values"
+      (doseq [[id update-map] [[sandbox-id {:field_id 1}]
+                               [sandbox-id {:type :full}]
+                               [sandbox-id {:type nil}]
+                               ;; this one should be ok, but toucan doesn't give the hook enough info to know better
+                               [full-id {:type nil}]
+                               [full-id {:type :sandbox}]
+                               [sandbox-id {:hash_key "another-hash"}]
+                               [sandbox-id {:hash_key nil}]
+                               [full-id {:hash_key "random-hash"}]
+                               ;; not even if it keeps type / hash consistency
+                               [sandbox-id {:type :full, :hash_key nil}]
+                               [full-id {:type :sandbox, :hash_key "random-hash"}]]]
+        (is (thrown-with-msg? ExceptionInfo
+                              #"Cant update field_id, type, or hash_key for a FieldValues."
+                              (t2/update! :model/FieldValues id update-map)))))
+
+    (testing "The model hooks permits mention of the existing values"
+      (doseq [[id update-map] [[full-id {:field_id (mt/id :venues :id)}]
+                               [sandbox-id {:type :sandbox}]
+                               [full-id {:type :full}]
+                               [sandbox-id {:hash_key "random-hash"}]
+                               [full-id {:hash_key nil}]
+                               [full-id {:type :full, :hash_key nil}]
+                               [sandbox-id {:type :sandbox, :hash_key "random-hash"}]]]
+        (is (some? (t2/update! :model/FieldValues id update-map)))))))
 
 (deftest insert-full-field-values-should-remove-all-cached-field-values
-  (mt/with-temp* [FieldValues [sandbox-fv {:field_id (mt/id :venues :id)
+  (doseq [explicitly-full? [false true]]
+    (mt/with-temp [FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                            :type     :sandbox
-                                           :hash_key "random-hash"}]]
-    (t2/insert! FieldValues {:field_id (mt/id :venues :id)
-                             :type     :full})
-    (is (not (t2/exists? FieldValues :id (:id sandbox-fv))))))
+                                           :hash_key "random-hash"}]
+      (t2/insert! FieldValues (cond-> {:field_id (mt/id :venues :id)} explicitly-full? (assoc :type :full)))
+      (is (not (t2/exists? FieldValues :id (:id sandbox-fv)))))))
 
 (deftest update-full-field-values-should-remove-all-cached-field-values
-  (mt/with-temp* [FieldValues [fv         {:field_id (mt/id :venues :id)
-                                           :type     :full}]
-                  FieldValues [sandbox-fv {:field_id (mt/id :venues :id)
-                                           :type     :sandbox
-                                           :hash_key "random-hash"}]]
+  (mt/with-temp [FieldValues fv         {:field_id (mt/id :venues :id)
+                                         :type     :full}
+                 FieldValues sandbox-fv {:field_id (mt/id :venues :id)
+                                         :type     :sandbox
+                                         :hash_key "random-hash"}]
     (t2/update! FieldValues (:id fv) {:values [1 2 3]})
     (is (not (t2/exists? FieldValues :id (:id sandbox-fv))))))
 
-(deftest cant-update-type-or-has-of-a-field-values-test
-  (t2.with-temp/with-temp [FieldValues fv {:field_id (mt/id :venues :id)
-                                           :type     :sandbox
-                                           :hash_key "random-hash"}]
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Cant update type or hash_key for a FieldValues."
-         (t2/update! FieldValues (:id fv) {:type :full})))
-
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Cant update type or hash_key for a FieldValues."
-         (t2/update! FieldValues (:id fv) {:hash_key "new-hash"})))))
-
+(deftest update-full-field-without-values-should-remove-not-all-cached-field-values
+  (mt/with-temp [FieldValues fv         {:field_id (mt/id :venues :id)
+                                         :type     :full}
+                 FieldValues sandbox-fv {:field_id (mt/id :venues :id)
+                                         :type     :sandbox
+                                         :hash_key "random-hash"}]
+    (t2/update! FieldValues (:id fv) {:updated_at (t/zoned-date-time)})
+    (is (t2/exists? FieldValues :id (:id sandbox-fv)))))
 
 (deftest identity-hash-test
   (testing "Field hashes are composed of the name and the table's identity-hash"
-    (mt/with-temp* [Database    [db    {:name "field-db" :engine :h2}]
-                    Table       [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-                    Field       [field {:name "sku" :table_id (:id table)}]
-                    FieldValues [fv    {:field_id (:id field)}]]
+    (mt/with-temp [Database    db    {:name "field-db" :engine :h2}
+                   Table       table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
+                   Field       field {:name "sku" :table_id (:id table)}
+                   FieldValues fv    {:field_id (:id field)}]
       (is (= "6f5bb4ba"
              (serdes/raw-hash [(serdes/identity-hash field)])
              (serdes/identity-hash fv))))))
+
+(deftest select-coherence-test
+  (testing "We cannot perform queries with invalid mixes of type and hash_key, which would return nothing"
+    (t2/select :model/FieldValues :field_id 1)
+    (t2/select :model/FieldValues :field_id 1 :type :full)
+    (is (thrown-with-msg? ExceptionInfo
+                          #"Invalid query - :full FieldValues cannot have a hash_key"
+                          (t2/select :model/FieldValues :field_id 1 :type :full :hash_key "12345")))
+
+    (t2/select :model/FieldValues :field_id 1 :type :sandbox)
+    (t2/select :model/FieldValues :field_id 1 :type :sandbox :hash_key "12345")
+    (is (thrown-with-msg? ExceptionInfo
+                          #"Invalid query - Advanced FieldValues can only specify a non-empty hash_key"
+                          (t2/select :model/FieldValues :field_id 1 :type :sandbox :hash_key nil)))))
+
+(deftest select-safety-filter-test
+  (testing "We do not modify queries that omit type"
+    ;; We could push down a WHERE clause to filter mismatched rows, but for performance reasons we do not.
+    (is (= {} (#'field-values/add-mismatched-hash-filter {})))
+    ;; Is there really a use-case for reading all these values?
+    ;; Perhaps we should require a type/hash combo - we would need to be careful it doesn't break any existing queries.
+    (is (= {:field_id 1} (#'field-values/add-mismatched-hash-filter {:field_id 1}))))
+
+  ;; There's an argument to be made that we should only query on these "identity" fields if the field-id is present,
+  ;; but perhaps there are use cases that I haven't considered.
+  (testing "Queries that fully specify the identity are not mangled"
+    (is (= {:type :full, :hash_key nil} (#'field-values/add-mismatched-hash-filter {:type :full, :hash_key nil})))
+    (is (= {:type :sandbox, :hash_key "random-hash"} (#'field-values/add-mismatched-hash-filter {:type :sandbox, :hash_key "random-hash"}))))
+
+  (testing "Ambiguous queries are upgraded to ensure invalid rows are filtered"
+    (is (= {:type :full, :hash_key nil} (#'field-values/add-mismatched-hash-filter {:type :full})))
+    (is (= {:type :sandbox, :hash_key [:not= nil]} (#'field-values/add-mismatched-hash-filter {:type :sandbox})))))

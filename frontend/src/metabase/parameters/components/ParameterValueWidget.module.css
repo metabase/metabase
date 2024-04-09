@@ -1,0 +1,71 @@
+.parameter {
+  align-items: center;
+  display: flex;
+  font-weight: 600;
+  min-height: 30px;
+  min-width: 150px;
+  color: var(--color-text-medium);
+}
+
+.parameter.selected {
+  font-weight: bold;
+  color: var(--color-brand);
+  border-color: var(--color-brand);
+}
+
+.parameter input {
+  flex-grow: 1;
+  border-radius: 0;
+}
+
+.parameter.noPopover input {
+  width: 100%;
+  font-size: 1em;
+  font-weight: 600;
+  border: none;
+  background: none;
+
+  @media screen and (min-width: 440px) {
+    & {
+      padding: 0;
+    }
+  }
+}
+
+.parameter.noPopover.selected input {
+  font-weight: bold;
+  color: var(--color-brand);
+}
+
+.parameter.noPopover input:focus {
+  outline: none;
+  color: var(--color-text-dark);
+}
+
+.parameter.noPopover input::-webkit-input-placeholder {
+  color: var(--color-text-medium);
+}
+
+.parameter.noPopover input:-moz-placeholder {
+  color: var(--color-text-medium);
+}
+
+.parameter.noPopover input::-moz-placeholder {
+  color: var(--color-text-medium);
+}
+
+.parameter.noPopover input:-ms-input-placeholder {
+  color: var(--color-text-medium);
+}
+
+.DashboardNight .parameter.noPopover input:focus,
+:global(.Theme--night) .parameter.noPopover input:focus {
+  color: var(--color-text-white);
+}
+
+.name {
+  composes: mr1 from "style";
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--color-text-medium);
+}

@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
   editDashboard,
@@ -7,7 +8,6 @@ import {
   setModelMetadata,
   getDashboardCard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -25,7 +25,7 @@ describe("issue 23024", () => {
           query: `select *
                   from products limit 5`,
         },
-        dataset: true,
+        type: "model",
       },
       { wrapId: true, idAlias: "modelId" },
     );

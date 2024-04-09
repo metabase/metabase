@@ -1,20 +1,21 @@
-import { HTMLAttributes } from "react";
+import type { HTMLAttributes } from "react";
+
 import AreaSkeleton from "metabase/visualizations/components/skeletons/AreaSkeleton";
-import FunnelSkeleton from "metabase/visualizations/components/skeletons/FunnelSkeleton";
-import LineSkeleton from "metabase/visualizations/components/skeletons/LineSkeleton";
-import GaugeSkeleton from "metabase/visualizations/components/skeletons/GaugeSkeleton";
-import MapSkeleton from "metabase/visualizations/components/skeletons/MapSkeleton";
 import BarSkeleton from "metabase/visualizations/components/skeletons/BarSkeleton";
-import TableSkeleton from "metabase/visualizations/components/skeletons/TableSkeleton";
+import FunnelSkeleton from "metabase/visualizations/components/skeletons/FunnelSkeleton";
+import GaugeSkeleton from "metabase/visualizations/components/skeletons/GaugeSkeleton";
+import LineSkeleton from "metabase/visualizations/components/skeletons/LineSkeleton";
+import MapSkeleton from "metabase/visualizations/components/skeletons/MapSkeleton";
 import PieSkeleton from "metabase/visualizations/components/skeletons/PieSkeleton";
 import ProgressSkeleton from "metabase/visualizations/components/skeletons/ProgressSkeleton";
 import RowSkeleton from "metabase/visualizations/components/skeletons/RowSkeleton";
-import ScatterSkeleton from "metabase/visualizations/components/skeletons/ScatterSkeleton";
-import WaterfallSkeleton from "metabase/visualizations/components/skeletons/WaterfallSkeleton";
-import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";
-import { VisualizationSkeleton } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
 import ScalarSkeleton from "metabase/visualizations/components/skeletons/ScalarSkeleton/ScalarSkeleton";
-import { CardDisplayType } from "metabase-types/api";
+import ScatterSkeleton from "metabase/visualizations/components/skeletons/ScatterSkeleton";
+import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";
+import TableSkeleton from "metabase/visualizations/components/skeletons/TableSkeleton";
+import { VisualizationSkeleton } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
+import WaterfallSkeleton from "metabase/visualizations/components/skeletons/WaterfallSkeleton";
+import type { CardDisplayType } from "metabase-types/api";
 
 export type ChartSkeletonProps = HTMLAttributes<HTMLDivElement> & {
   display?: CardDisplayType;

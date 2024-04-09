@@ -1,48 +1,37 @@
 import styled from "@emotion/styled";
+
 import {
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
+import { Flex, Stack } from "metabase/ui";
 
-export const SearchRoot = styled.div`
-  margin: 0 0.5rem;
+const SEARCH_BODY_WIDTH = "90rem";
+const SEARCH_SIDEBAR_WIDTH = "18rem";
+
+export const SearchMain = styled(Flex)`
+  width: min(calc(${SEARCH_BODY_WIDTH} + ${SEARCH_SIDEBAR_WIDTH}), 100%);
 
   ${breakpointMinSmall} {
-    margin: 0 1rem;
+    padding: 2rem;
   }
+`;
+
+export const SearchBody = styled(Flex)`
+  ${breakpointMinMedium} {
+    flex-direction: row-reverse;
+    gap: 2.5rem;
+  }
+`;
+
+export const SearchControls = styled(Stack)`
+  overflow: hidden;
 
   ${breakpointMinMedium} {
-    margin: 0 4rem;
+    flex: 0 0 ${SEARCH_SIDEBAR_WIDTH};
   }
 `;
 
-export const SearchHeader = styled.div`
-  display: flex;
-  padding: 1rem 0;
-
-  ${breakpointMinSmall} {
-    padding: 2rem 0;
-  }
-`;
-
-export const SearchEmptyState = styled.div`
-  width: 66.66%;
-`;
-
-export const SearchBody = styled.div`
-  display: flex;
-  align-items: start;
-`;
-
-export const SearchMain = styled.div`
-  width: 66.66%;
-`;
-
-export const SearchControls = styled.div`
-  padding: 1rem 1rem 0 1rem;
-  margin-left: 0.5rem;
-
-  ${breakpointMinSmall} {
-    margin-left: 1rem;
-  }
+export const SearchResultContainer = styled.div`
+  flex: 1;
 `;

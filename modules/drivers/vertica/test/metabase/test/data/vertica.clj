@@ -5,7 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -38,7 +38,8 @@
                               :type/Float          "FLOAT"
                               :type/Integer        "INTEGER"
                               :type/Text           "VARCHAR(1024)"
-                              :type/Time           "TIME"}]
+                              :type/Time           "TIME"
+                              :type/TimeWithTZ     "TIMETZ"}]
   (defmethod sql.tx/field-base-type->sql-type [:vertica base-type] [_ _] sql-type))
 
 (defn- db-name []
@@ -88,27 +89,36 @@
   ;; escape commas
   (str/escape s {\, "\\,"}))
 
-(defmethod value->csv honeysql.types.SqlCall
-  [call]
-  (throw (ex-info "Cannot insert rows containing HoneySQL calls: insert the appropriate raw value instead"
-                  {:call call})))
+(defmethod value->csv clojure.lang.IPersistentVector
+  [xs]
+  (throw (ex-info (if (keyword? (first xs))
+                    "Cannot insert rows containing HoneySQL calls: insert the appropriate raw value instead"
+                    "Don't know how to convert a vector to CSV")
+                  {:value xs})))
 
 (defn- dump-table-rows-to-csv!
   "Dump a sequence of rows (as vectors) to a CSV file."
   [{:keys [field-definitions rows]} ^String filename]
   (try
-    (let [column-names (cons "id" (mapv :field-name field-definitions))
-          rows-with-id (for [[i row] (m/indexed rows)]
-                         (cons (inc i) (for [v row]
-                                         (value->csv v))))
-          csv-rows     (cons column-names rows-with-id)]
-      (try
-        (with-open [writer (java.io.FileWriter. (java.io.File. filename))]
-          (csv/write-csv writer csv-rows :quote? (constantly false)))
-        (catch Throwable e
-          (throw (ex-info "Error writing rows to CSV" {:rows (take 10 csv-rows)} e)))))
-    (catch Throwable e
-      (throw (ex-info "Error dumping rows to CSV" {:filename filename} e)))))
+   (let [has-custom-pk? (when-let [pk (not-empty (sql.tx/fielddefs->pk-field-names field-definitions))]
+                          (not= ["id"] pk))
+         column-names   (cond->> (mapv :field-name field-definitions)
+                          (not has-custom-pk?)
+                          (cons "id"))
+         rows-with-id (for [[i row] (m/indexed rows)]
+                        (cond->> (for [v row]
+                                   (value->csv v))
+                          (not has-custom-pk?)
+                          (cons (inc i))))
+
+         csv-rows     (cons column-names rows-with-id)]
+     (try
+      (with-open [writer (java.io.FileWriter. (java.io.File. filename))]
+        (csv/write-csv writer csv-rows :quote? (constantly false)))
+      (catch Throwable e
+        (throw (ex-info "Error writing rows to CSV" {:rows (take 10 csv-rows)} e)))))
+   (catch Throwable e
+     (throw (ex-info "Error dumping rows to CSV" {:filename filename} e)))))
 
 (deftest dump-row-with-commas-to-csv-test
   (testing "Values with commas in them should get escaped correctly"
@@ -168,11 +178,13 @@
 (defmethod load-data/load-data! :vertica
   [driver dbdef {:keys [rows], :as tabledef}]
   (try
-    (mt/with-temp-file [filename "vertica-rows.csv"]
+    (mt/with-temp-file [filename]
       (dump-table-rows-to-csv! tabledef filename)
       (load-rows-from-csv! driver dbdef tabledef filename))
     (catch Throwable e
-      (throw (ex-info "Error loading rows" {:rows (take 10 rows)} e)))))
+      (throw (ex-info (format "Error loading rows: %s" (ex-message e))
+                      {:rows (take 10 rows)}
+                      e)))))
 
 (defmethod sql.tx/pk-sql-type :vertica [& _] "INTEGER")
 

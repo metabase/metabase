@@ -3,16 +3,23 @@
    [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.models.permissions :as perms]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.transforms.core :as tf]
-   [metabase.transforms.specs :as tf.specs]))
+   [metabase.transforms.specs :as tf.specs]
+   [metabase.util.malli.schema :as ms]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:db-id/:schema/:transform-name"
+(api/defendpoint GET "/:db-id/:schema/:transform-name"
   "Look up a database schema transform"
   [db-id schema transform-name]
-  (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                   (perms/data-perms-path db-id schema)))
+  {db-id          ms/PositiveInt
+   schema         ms/NonBlankString
+   transform-name ms/NonBlankString}
+  (api/check-403
+   (= (data-perms/full-schema-permission-for-user api/*current-user-id*
+                                                  :perms/data-access
+                                                  db-id
+                                                  schema)
+      :unrestricted))
   (->> @tf.specs/transform-specs
        (m/find-first (comp #{transform-name} :name))
        (tf/apply-transform! db-id schema)))

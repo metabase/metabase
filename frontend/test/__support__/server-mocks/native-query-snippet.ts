@@ -1,5 +1,14 @@
 import fetchMock from "fetch-mock";
 
-export function setupNativeQuerySnippetEndpoints() {
-  fetchMock.get("path:/api/native-query-snippet", () => []);
+import type { NativeQuerySnippet } from "metabase-types/api";
+
+const PATH = "path:/api/native-query-snippet";
+
+export function setupNativeQuerySnippetEndpoints(
+  { snippets = [] }: { snippets?: NativeQuerySnippet[] } = { snippets: [] },
+) {
+  fetchMock.get(PATH, () => snippets);
+  snippets.forEach(snippet =>
+    fetchMock.get(`${PATH}/${snippet.id}`, () => snippet),
+  );
 }

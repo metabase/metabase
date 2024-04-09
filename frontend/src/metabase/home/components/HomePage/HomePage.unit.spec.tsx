@@ -1,17 +1,20 @@
 import { Route } from "react-router";
-import { DashboardId } from "metabase-types/api";
+
 import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
-import { createMockUser } from "metabase-types/api/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import {
+  setupDashboardEndpoints,
   setupDatabasesEndpoints,
   setupPopularItemsEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { renderWithProviders, screen } from "__support__/ui";
+import type { DashboardId } from "metabase-types/api";
+import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
+
 import { HomePage } from "./HomePage";
 
 const TEST_USER_NAME = "Testy";
@@ -23,7 +26,7 @@ interface SetupOpts {
   dashboardId?: DashboardId;
 }
 
-const setup = ({ dashboardId }: SetupOpts = {}) => {
+const setup = async ({ dashboardId }: SetupOpts = {}) => {
   const state = createMockState({
     currentUser: createMockUser({
       first_name: TEST_USER_NAME,
@@ -38,6 +41,9 @@ const setup = ({ dashboardId }: SetupOpts = {}) => {
   setupSearchEndpoints([]);
   setupRecentViewsEndpoints([]);
   setupPopularItemsEndpoints([]);
+  if (dashboardId !== undefined) {
+    setupDashboardEndpoints(createMockDashboard({ id: dashboardId }));
+  }
 
   renderWithProviders(
     <>
@@ -57,9 +63,9 @@ describe("HomePage", () => {
     expect(screen.getByText(new RegExp(TEST_USER_NAME))).toBeInTheDocument();
   });
 
-  it("should redirect you to a dashboard when one has been defined to be used as a homepage", () => {
+  it("should redirect you to a dashboard when one has been defined to be used as a homepage", async () => {
     setup({ dashboardId: 1 });
-    expect(screen.getByText(TEST_DASHBOARD_NAME)).toBeInTheDocument();
+    expect(await screen.findByText(TEST_DASHBOARD_NAME)).toBeInTheDocument();
   });
 
   it("should render the homepage when a custom dashboard is not set", () => {

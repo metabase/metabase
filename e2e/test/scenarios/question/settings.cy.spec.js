@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   browse,
   restore,
@@ -5,12 +7,10 @@ import {
   openNavigationSidebar,
   visitQuestionAdhoc,
   popover,
+  modal,
   sidebar,
-  moveColumnDown,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -35,56 +35,92 @@ describe("scenarios > question > settings", () => {
 
       cy.findByTestId("sidebar-content").as("tableOptions");
 
+      cy.findByRole("button", { name: "Add or remove columns" }).click();
+
       // remove Total column
       cy.get("@tableOptions")
-        .contains("Total")
-        .scrollIntoView()
-        .siblings("[data-testid$=hide-button]")
+        .findByLabelText("Total")
+        .should("be.checked")
         .click();
 
       // Add people.category
       cy.get("@tableOptions")
-        .contains("Category")
-        .scrollIntoView()
-        .siblings("[data-testid$=add-button]")
+        .findByLabelText("Category")
+        .should("not.be.checked")
         .click();
 
       // wait a Category value to appear in the table, so we know the query completed
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Widget");
+      cy.findByTestId("visualization-root").contains("Widget");
 
       // Add people.ean
       cy.get("@tableOptions")
-        .contains("Ean")
-        .scrollIntoView()
-        .siblings("[data-testid$=add-button]")
+        .findByLabelText("Ean")
+        .should("not.be.checked")
         .click();
 
       // wait a Ean value to appear in the table, so we know the query completed
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("8833419218504");
+      cy.findByTestId("visualization-root").contains("8833419218504");
 
       // confirm that the table contains the right columns
-      cy.get(".Visualization .TableInteractive").as("table");
+      cy.findByTestId("query-visualization-root")
+        .get(".TableInteractive")
+        .as("table");
       cy.get("@table").contains("Product → Category");
       cy.get("@table").contains("Product → Ean");
       cy.get("@table").contains("Total").should("not.exist");
     });
 
-    it("should allow you to re-order columns even when one has been removed (metabase2#9287)", () => {
+    it("should allow you to re-order columns even when one has been removed (metabase #14238, #29287)", () => {
       cy.viewport(1600, 800);
 
-      openOrdersTable();
+      visitQuestionAdhoc({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                fields: "all",
+                alias: "Products",
+                "source-table": PRODUCTS_ID,
+                strategy: "left-join",
+                condition: [
+                  "=",
+                  ["field", ORDERS.PRODUCT_ID, {}],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+                ],
+              },
+            ],
+          },
+          type: "query",
+        },
+      });
       cy.findByTestId("viz-settings-button").click();
 
       cy.findByTestId("Subtotal-hide-button").click();
       cy.findByTestId("Tax-hide-button").click();
 
-      getSidebarColumns().eq("3").as("total").contains("Total");
+      getSidebarColumns().eq("5").as("total").contains("Total");
 
-      moveColumnDown(cy.get("@total"), -2);
+      moveDnDKitElement(cy.get("@total"), { vertical: -100 });
 
-      getSidebarColumns().eq("1").should("contain.text", "Total");
+      getSidebarColumns().eq("3").should("contain.text", "Total");
+
+      getVisibleSidebarColumns()
+        .eq("11")
+        .as("title")
+        .should("have.text", "Products → Title");
+
+      cy.findByTestId("chartsettings-sidebar").scrollTo("top");
+      cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
+        expect($el.scrollTop).to.eql(0);
+      });
+
+      moveDnDKitElement(cy.get("@title"), { vertical: 15 });
+
+      cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
+        expect($el.scrollTop).to.be.greaterThan(0);
+      });
     });
 
     it("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
@@ -122,27 +158,18 @@ describe("scenarios > question > settings", () => {
         .contains(/Products? → Category/);
 
       // Drag and drop this column between "Tax" and "Discount" (index 5 in @sidebarColumns array)
-      cy.get("@prod-category")
-        .trigger("mousedown", 0, 0, { force: true })
-        .trigger("mousemove", 5, 5, { force: true })
-        .trigger("mousemove", 0, -350, { force: true })
-        .trigger("mouseup", 0, -350, { force: true });
+      moveDnDKitElement(cy.get("@prod-category"), { vertical: -360 });
 
-      reloadResults();
+      refreshResultsInHeader();
 
       findColumnAtIndex("Products → Category", 5);
 
       // Remove "Total"
       hideColumn("Total");
 
-      reloadResults();
-
       cy.findByTestId("query-builder-main")
         .findByText("117.03")
         .should("not.exist");
-
-      // This click doesn't do anything, but simply allows the array to be updated (test gives false positive without this step)
-      cy.findByTestId("sidebar-left").findByText("More columns").click();
 
       findColumnAtIndex("Products → Category", 5);
 
@@ -150,21 +177,19 @@ describe("scenarios > question > settings", () => {
       // https://github.com/metabase/metabase/pull/21338#pullrequestreview-928807257
 
       // Add "Address"
-      addColumn("Address");
+      cy.findByRole("button", { name: "Add or remove columns" }).click();
+      cy.findByLabelText("Address").should("not.be.checked").click();
 
       // The result automatically load when adding new fields but two requests are fired.
       // Please see: https://github.com/metabase/metabase/pull/21338#discussion_r842816687
       cy.wait(["@dataset", "@dataset"]);
 
+      cy.findByRole("button", { name: "Done picking columns" }).click();
+
       findColumnAtIndex("User → Address", -1).as("user-address");
 
       // Move it one place up
-      cy.get("@user-address")
-        .scrollIntoView()
-        .trigger("mousedown", 0, 0, { force: true })
-        .trigger("mousemove", 5, 5, { force: true })
-        .trigger("mousemove", 0, -100, { force: true })
-        .trigger("mouseup", 0, -100, { force: true });
+      moveDnDKitElement(cy.get("@user-address"), { vertical: -100 });
 
       findColumnAtIndex("User → Address", -3);
 
@@ -197,8 +222,9 @@ describe("scenarios > question > settings", () => {
 
       cy.findByTestId("viz-settings-button").click();
 
-      addColumn("City");
-      // cy.findByText("City").siblings("button").find(".Icon-add").click();
+      cy.findByRole("button", { name: "Add or remove columns" }).click();
+      cy.findByLabelText("Name").should("not.be.checked").click();
+      cy.findByRole("button", { name: "Done picking columns" }).click();
 
       // Remove "Product ID"
       hideColumn("Product ID");
@@ -206,10 +232,8 @@ describe("scenarios > question > settings", () => {
       // Remove "Subtotal"
       hideColumn("Subtotal");
 
-      reloadResults();
-
-      // Remove "City"
-      hideColumn("City");
+      // Remove "Name"
+      hideColumn("User → Name");
       cy.findByTestId("query-builder-main").findByText(
         "Every field is hidden right now",
       );
@@ -246,7 +270,7 @@ describe("scenarios > question > settings", () => {
       const questionDetails = {
         dataset_query: {
           database: SAMPLE_DB_ID,
-          query: { "source-table": 2 },
+          query: { "source-table": ORDERS_ID },
           type: "query",
         },
         display: "table",
@@ -297,6 +321,120 @@ describe("scenarios > question > settings", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("₿ 6.10");
     });
+
+    it.skip("should allow hiding and showing aggregated columns with a post-aggregation custom column (metabase#22563)", () => {
+      // products joined to orders with breakouts on 3 product columns followed by a custom column
+      cy.createQuestion(
+        {
+          name: "repro 22563",
+          query: {
+            "source-query": {
+              "source-table": ORDERS_ID,
+              joins: [
+                {
+                  alias: "Products",
+                  condition: [
+                    "=",
+                    ["field", ORDERS.PRODUCT_ID, null],
+                    [
+                      "field",
+                      PRODUCTS.ID,
+                      {
+                        "join-alias": "Products",
+                      },
+                    ],
+                  ],
+                  "source-table": PRODUCTS_ID,
+                },
+              ],
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  {
+                    "base-type": "type/Text",
+                    "join-alias": "Products",
+                  },
+                ],
+                [
+                  "field",
+                  PRODUCTS.TITLE,
+                  {
+                    "base-type": "type/Text",
+                    "join-alias": "Products",
+                  },
+                ],
+                [
+                  "field",
+                  PRODUCTS.VENDOR,
+                  {
+                    "base-type": "type/Text",
+                    "join-alias": "Products",
+                  },
+                ],
+              ],
+            },
+            expressions: {
+              two: ["+", 1, 1],
+            },
+          },
+        },
+        { visitQuestion: true },
+      );
+
+      const columnNames = [
+        "Products → Category",
+        "Products → Title",
+        "Products → Vendor",
+        "Count",
+        "two",
+      ];
+
+      cy.findByTestId("TableInteractive-root").within(() => {
+        columnNames.forEach(text => cy.findByText(text).should("be.visible"));
+      });
+
+      cy.findByTestId("viz-settings-button").click();
+
+      cy.findByTestId("chartsettings-sidebar").within(() => {
+        columnNames.forEach(text => cy.findByText(text).should("be.visible"));
+        cy.findByText("More Columns").should("not.exist");
+
+        cy.icon("eye_outline").first().click();
+
+        cy.findByText("More columns").should("be.visible");
+
+        // disable the first column
+        cy.findByTestId("disabled-columns")
+          .findByText("Products → Category")
+          .should("be.visible");
+        cy.findByTestId("visible-columns")
+          .findByText("Products → Category")
+          .should("not.exist");
+      });
+
+      cy.findByTestId("TableInteractive-root").within(() => {
+        // the query should not have changed
+        cy.icon("play").should("not.exist");
+        cy.findByText("Products → Category").should("not.exist");
+      });
+
+      cy.findByTestId("chartsettings-sidebar").within(() => {
+        cy.icon("add").click();
+        // re-enable the first column
+        cy.findByText("More columns").should("not.exist");
+        cy.findByTestId("visible-columns")
+          .findByText("Products → Category")
+          .should("be.visible");
+      });
+
+      cy.findByTestId("TableInteractive-root").within(() => {
+        // the query should not have changed
+        cy.icon("play").should("not.exist");
+        cy.findByText("Products → Category").should("be.visible");
+      });
+    });
   });
 
   describe("resetting state", () => {
@@ -306,17 +444,19 @@ describe("scenarios > question > settings", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Save").click();
-      cy.get(".ModalContent").contains("button", "Save").click();
+      cy.findByTestId("save-question-modal").contains("button", "Save").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Yes please!").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Orders in a dashboard").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Cancel").click();
+      modal().button("Discard changes").click();
 
       // create a new question to see if the "add to a dashboard" modal is still there
       openNavigationSidebar();
       browse().click();
+      cy.findByRole("tab", { name: "Databases" }).click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -331,23 +471,20 @@ describe("scenarios > question > settings", () => {
   });
 });
 
-function reloadResults() {
-  cy.icon("play").last().click();
+function refreshResultsInHeader() {
+  cy.findByTestId("qb-header").button("Refresh").click();
 }
 
 function getSidebarColumns() {
   return cy
-    .findByText("Columns", { selector: "label" })
+    .findByTestId("chart-settings-table-columns")
     .scrollIntoView()
     .should("be.visible")
-    .parent()
     .findAllByRole("listitem");
 }
 
 function getVisibleSidebarColumns() {
-  return cy
-    .findByRole("group", { name: /visible-columns/ })
-    .findAllByRole("listitem");
+  return cy.findByTestId("visible-columns").findAllByRole("listitem");
 }
 
 function hideColumn(name) {
@@ -355,13 +492,5 @@ function hideColumn(name) {
     .contains(name)
     .parentsUntil("[role=listitem]")
     .icon("eye_outline")
-    .click();
-}
-
-function addColumn(name) {
-  getSidebarColumns()
-    .contains(name)
-    .parentsUntil("[role=listitem]")
-    .icon("add")
     .click();
 }

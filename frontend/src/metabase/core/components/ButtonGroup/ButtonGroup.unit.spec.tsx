@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import Button from "metabase/core/components/Button";
+
 import ButtonGroup from "./ButtonGroup";
 
 describe("ButtonGroup", () => {
@@ -16,7 +18,7 @@ describe("ButtonGroup", () => {
     expect(screen.getByRole("button", { name: "Two" })).toBeInTheDocument();
   });
 
-  it("should receive focus on tab", () => {
+  it("should receive focus on tab", async () => {
     render(
       <ButtonGroup>
         <Button>One</Button>
@@ -24,10 +26,10 @@ describe("ButtonGroup", () => {
       </ButtonGroup>,
     );
 
-    userEvent.tab();
+    await userEvent.tab();
     expect(screen.getByRole("button", { name: "One" })).toHaveFocus();
 
-    userEvent.tab();
+    await userEvent.tab();
     expect(screen.getByRole("button", { name: "Two" })).toHaveFocus();
   });
 });

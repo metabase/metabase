@@ -1,8 +1,12 @@
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import {
+  createMockTokenFeatures,
+  createMockTokenStatus,
+} from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
+
 import { getIsPaidPlan, getUpgradeUrl } from "./settings";
 
 describe("getUpgradeUrl", () => {
@@ -10,25 +14,25 @@ describe("getUpgradeUrl", () => {
     {
       media: "license",
       users: 1,
-      features: { hosting: false, sso: false },
+      features: { hosting: false, sso_jwt: false },
       params: "?utm_media=license&utm_source=oss&utm_users=1",
     },
     {
       media: "permissions_top",
       users: 2,
-      features: { hosting: true, sso: false },
+      features: { hosting: true, sso_jwt: false },
       params: "?utm_media=permissions_top&utm_source=starter&utm_users=2",
     },
     {
       media: "license",
       users: 3,
-      features: { hosting: false, sso: true },
+      features: { hosting: false, sso_jwt: true },
       params: "?utm_media=license&utm_source=pro-self-hosted&utm_users=3",
     },
     {
       media: "license",
       users: undefined,
-      features: { hosting: true, sso: true },
+      features: { hosting: true, sso_jwt: true },
       params: "?utm_media=license&utm_source=pro-cloud",
     },
   ])("should set utm_source", ({ media, features, users, params }) => {
@@ -45,33 +49,33 @@ describe("getUpgradeUrl", () => {
 });
 
 describe("getIsPaidPlan", () => {
-  it.each([
-    {
-      features: { hosting: false, sso: false },
-      isPaidPlan: false,
-    },
-    {
-      features: { hosting: true, sso: false },
-      isPaidPlan: true,
-    },
-    {
-      features: { hosting: false, sso: true },
-      isPaidPlan: true,
-    },
-    {
-      features: { hosting: true, sso: true },
-      isPaidPlan: true,
-    },
-  ])(
-    "should return `$isPaidPlan` if token features have hosting: $features.hosting, and sso: $features.sso",
-    ({ features, isPaidPlan }) => {
-      const state = createMockState({
-        settings: createMockSettingsState({
-          "token-features": createMockTokenFeatures(features),
-        }),
-      });
+  it("should return false if there is no token", () => {
+    const state = createMockState({
+      settings: createMockSettingsState({
+        "token-status": null,
+      }),
+    });
 
-      expect(getIsPaidPlan(state)).toEqual(isPaidPlan);
-    },
-  );
+    expect(getIsPaidPlan(state)).toEqual(false);
+  });
+
+  it("should return false if there is an invalid token", () => {
+    const state = createMockState({
+      settings: createMockSettingsState({
+        "token-status": createMockTokenStatus({ valid: false }),
+      }),
+    });
+
+    expect(getIsPaidPlan(state)).toEqual(false);
+  });
+
+  it("should return true if there is a valid token", () => {
+    const state = createMockState({
+      settings: createMockSettingsState({
+        "token-status": createMockTokenStatus({ valid: true }),
+      }),
+    });
+
+    expect(getIsPaidPlan(state)).toEqual(true);
+  });
 });

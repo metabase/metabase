@@ -21,6 +21,19 @@ If you're looking for date, time, number, or currency formatting, see [Formattin
 
 Click on the gear icon at the bottom of the navigation sidebar and select **Admin settings** > **Settings** > **Appearance**. Here’s what you can do:
 
+## De-Metabasing your Metabase for embedding
+
+When embedding Metabase in your app, in addition to changing colors and fonts, you can show or hide Metabase-branded UI elements and links (like in-app links to Metabase's documentation). If you're embedding Metabase in your app, here are some settings you might want to change:
+
+- [Application name](#application-name)
+- [Logo](#logo)
+- [Favicon](#favicon)
+- [Loading message](#loading-message)
+- [Help link in the settings menu](#help-link-in-the-settings-menu)
+- [Metabot](#metabot)
+- [Lighthouse illustration](#lighthouse-illustration)
+- [Documentation and reference](#documentation-and-references)
+
 ## Application name
 
 You can change every place in the app that says “Metabase” to something like “Acme Analytics,” or whatever you want to call your Metabase app.
@@ -77,6 +90,14 @@ This message is the text Metabase presents when it's loading a query. Options in
 - "Running query..."
 - "Loading results..."
 
+## Help link in the settings menu
+
+The Settings menu (the "gear" menu in the upper right of your Metabase) includes a **Help** option that links to a [Metabase help page](https://www.metabase.com/help/) by default. You can change this menu Help item by selecting one of the following options:
+
+- Link to [Metabase help](https://www.metabase.com/help/) (default)
+- Hide it (the Settings menu won't display the Help option at all).
+- Go to a custom destination. Enter a URL that the Settings menu's Help option should link to. Valid URLs include http, https, and mailto URLs.
+
 ## Metabot
 
 ![Metabot toggle](./images/metabot.png)
@@ -86,6 +107,12 @@ You can decide whether to display our little friend on the home page.
 ## Lighthouse illustration
 
 Show the Metabase lighthouse image on the home and login pages.
+
+## Documentation and references
+
+Control the visibility of links to official Metabase documentation and other references to Metabase in your instance.
+
+This setting affects all links in the product experience that point to Metabase.com URLs (with the exception of links and references in the Admin settings).
 
 ## Further reading
 

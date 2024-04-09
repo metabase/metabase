@@ -2,13 +2,16 @@
   "Various helper functions for testing email functionality."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.email :as email]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
-   [metabase.util :refer [prog1]]
+   [metabase.util :as u :refer [prog1]]
+   [metabase.util.retry :as retry]
+   [metabase.util.retry-test :as rt]
    [postal.message :as message])
   (:import
    (java.io File)
@@ -30,7 +33,7 @@
   "A function that can be used in place of `send-email!`.
    Put all messages into `inbox` instead of actually sending them."
   [_ email]
-  (doseq [recipient (:to email)]
+  (doseq [recipient (concat (:to email) (:bcc email))]
     (swap! inbox assoc recipient (-> (get @inbox recipient [])
                                      (conj email)))))
 
@@ -43,7 +46,7 @@
     ;; sending the message. It will block that thread, counting the number of messages. If it has reached it's goal,
     ;; it will deliver the promise
     (add-watch inbox ::inbox-watcher
-               (fn [_ _ _ new-value]
+               (fn [_key _ref _old-value new-value]
                  (let [num-msgs (count (apply concat (vals new-value)))]
                    (when (<= n num-msgs)
                      (deliver p num-msgs)))))
@@ -101,15 +104,16 @@
 (defn- regex-email-bodies*
   [regexes emails]
   (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]
-    (-> emails
-        (update-vals (fn [emails-for-recipient]
+    (->> emails
+         (m/map-vals (fn [emails-for-recipient]
                        (for [{:keys [body] :as email} emails-for-recipient
                              :let [matches (-> body first email-body->regex-boolean)]
                              :when (some true? (vals matches))]
-                         (-> email
-                             (update :to set)
-                             (assoc :body matches)))))
-        (->> (m/filter-vals seq)))))
+                         (cond-> email
+                             (:to email)  (update :to set)
+                             (:bcc email) (update :bcc set)
+                             true         (assoc :body matches)))))
+         (m/filter-vals seq))))
 
 (defn regex-email-bodies
   "Return messages in the fake inbox whose body matches the regex(es). The body will be replaced by a map with the
@@ -136,7 +140,7 @@
 (deftest regex-email-bodies-test
   (letfn [(email [body] {:to #{"mail"}
                          :body [{:content body}]})
-          (clean [emails] (update-vals emails #(map :body %)))]
+          (clean [emails] (m/map-vals #(map :body %) emails))]
     (testing "marks emails with regex match"
       (let [emails {"bob@metabase.com" [(email "foo bar baz")
                                         (email "other keyword")]
@@ -168,38 +172,55 @@
       MimeType.
       .getBaseType))
 
+(defn- strip-timestamp
+  "Remove the timestamp portion of attachment filenames.
+  This is useful for creating stable filename keys in tests.
+  For example, see `summarize-attachment` below.
+
+  Eg. test_card_2024-03-05T22:30:24.077306Z.csv -> test_card.csv"
+  [fname]
+  (let [ext (last (str/split fname #"\."))
+        name-parts (butlast (str/split fname #"_"))]
+    (format "%s.%s" (str/join "_" name-parts) ext)))
+
 (defn- summarize-attachment [email-attachment]
   (-> email-attachment
       (update :content-type mime-type)
       (update :content class)
-      (update :content-id boolean)))
+      (update :content-id boolean)
+      (u/update-if-exists :file-name strip-timestamp)))
 
 (defn summarize-multipart-email
   "For text/html portions of an email, this is similar to `regex-email-bodies`, but for images in the attachments will
   summarize the contents for comparison in expects"
   [& regexes]
   (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]
-    (update-vals @inbox
-                 (fn [emails-for-recipient]
-                   (for [email emails-for-recipient]
-                     (-> email
-                         (update :to set)
-                         (update :body (fn [email-body-seq]
-                                         (doall
-                                          (for [{email-type :type :as email-part} email-body-seq]
-                                            (if (string? email-type)
-                                              (email-body->regex-boolean email-part)
-                                              (summarize-attachment email-part))))))))))))
+    (m/map-vals (fn [emails-for-recipient]
+                  (for [email emails-for-recipient]
+                    (cond-> email
+                      (:to email)  (update :to set)
+                      (:bcc email) (update :bcc set)
+                      true         (update :body (fn [email-body-seq]
+                                                   (doall
+                                                    (for [{email-type :type :as email-part} email-body-seq]
+                                                      (if (string? email-type)
+                                                        (email-body->regex-boolean email-part)
+                                                        (summarize-attachment email-part)))))))))
+                @inbox)))
 
 (defn email-to
-  "Creates a default email map for `user-kwd` via `test.users/fetch-user`, as would be returned by `with-fake-inbox`"
-  [user-kwd & [email-map]]
-  (let [{:keys [email]} (test.users/fetch-user user-kwd)]
-    {email [(merge {:from (if-let [from-name (email/email-from-name)]
-                            (str from-name " <" (email/email-from-address) ">")
-                            (email/email-from-address))
-                    :to #{email}}
-                   email-map)]}))
+  "Creates a default email map for `user-or-user-kwd`, as would be returned by `with-fake-inbox`."
+  ([user-or-user-kwd & [email-map]]
+   (let [{:keys [email]} (if (keyword? user-or-user-kwd)
+                           (test.users/fetch-user user-or-user-kwd)
+                           user-or-user-kwd)
+         to-type         (if (:bcc? email-map) :bcc :to)
+         email-map       (dissoc email-map :bcc?)]
+     {email [(merge {:from   (if-let [from-name (email/email-from-name)]
+                               (str from-name " <" (email/email-from-address) ">")
+                               (email/email-from-address))
+                     to-type #{email}}
+                    email-map)]})))
 
 (defn temp-csv
   [file-basename content]
@@ -251,15 +272,20 @@
         (is (= 0 (count (filter #{:metabase-email/message-errors} @calls))))))
     (testing "error metrics collection"
       (let [calls (atom nil)]
-        (with-redefs [prometheus/inc #(swap! calls conj %)
+            (let [retry-config (assoc (#'retry/retry-configuration)
+                                  :max-attempts 1
+                                  :initial-interval-millis 1)
+              test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
+        (with-redefs [prometheus/inc    #(swap! calls conj %)
+                      retry/decorate    (rt/test-retry-decorate-fn test-retry)
                       email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
           (email/send-message!
-            :subject      "101 Reasons to use Metabase"
-            :recipients   ["test@test.com"]
-            :message-type :html
-            :message      "101. Metabase will make you a better person"))
+           :subject      "101 Reasons to use Metabase"
+           :recipients   ["test@test.com"]
+           :message-type :html
+           :message      "101. Metabase will make you a better person"))
         (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
-        (is (= 1 (count (filter #{:metabase-email/message-errors} @calls))))))
+        (is (= 1 (count (filter #{:metabase-email/message-errors} @calls)))))))
     (testing "basic sending without email-from-name"
       (tu/with-temporary-setting-values [email-from-name nil]
         (is (=

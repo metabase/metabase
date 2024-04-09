@@ -1,8 +1,11 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
+import BaseExternalLink from "metabase/core/components/ExternalLink";
+import Input from "metabase/core/components/Input";
 import Link from "metabase/core/components/Link";
-import { Icon } from "metabase/core/components/Icon";
-import RecentsList from "metabase/nav/components/RecentsList";
+import { color } from "metabase/lib/colors";
+import { RecentsList } from "metabase/nav/components/search/RecentsList";
+import { Icon } from "metabase/ui";
 
 export const DisplayLinkCardWrapper = styled.div<{ fade?: boolean }>`
   padding: 0 0.5rem;
@@ -26,6 +29,21 @@ export const EditLinkCardWrapper = styled.div<{ fade?: boolean }>`
 `;
 
 export const CardLink = styled(Link)`
+  width: 100%;
+  padding: 0 0.5rem;
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  gap: 0.5rem;
+  align-items: center;
+  font-weight: bold;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
+
+export const ExternalLink = styled(BaseExternalLink)`
   width: 100%;
   padding: 0 0.5rem;
   display: flex;
@@ -68,4 +86,12 @@ export const SearchResultsContainer = styled.div`
 
 export const StyledRecentsList = styled(RecentsList)`
   ${searchResultsStyles}
+`;
+
+export const StyledInput = styled(Input)`
+  pointer-events: all;
+
+  * {
+    pointer-events: all;
+  }
 `;

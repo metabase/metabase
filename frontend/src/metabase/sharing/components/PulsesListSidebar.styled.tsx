@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import Card from "metabase/components/Card";
 import { color } from "metabase/lib/colors";
 

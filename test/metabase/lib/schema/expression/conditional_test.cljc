@@ -56,7 +56,7 @@
 
     ;; Differing types with a common base type that is more specific than `:type/*`
     (case-expr 1 1.1)
-    :type/Number))
+    :type/Float))
 
 (deftest ^:parallel coalesce-test
   (is (mc/validate
@@ -88,7 +88,8 @@
                              {:lib/uuid "8c6e099e-b856-4aeb-a8f6-2266b5d3d1e3"}
                              [[[:>
                                 {:lib/uuid "9c4cc3b0-f3c7-4d34-ab53-640ba6e911e5"}
-                                [:field {:lib/uuid "435b08c8-9404-41a5-8c5a-00b415f14da6"} 25]
+                                [:field {:lib/uuid "435b08c8-9404-41a5-8c5a-00b415f14da6", :effective-type :type/Float}
+                                 25]
                                 0]
                                [:field {:lib/uuid "1c93ba8b-6a39-4ef2-a9e6-e3bcff042800"} 32]]]]
 
@@ -97,7 +98,8 @@
                              {:lib/uuid "8c6e099e-b856-4aeb-a8f6-2266b5d3d1e3"}
                              [[[:>
                                 {:lib/uuid "9c4cc3b0-f3c7-4d34-ab53-640ba6e911e5"}
-                                [:field {:lib/uuid "435b08c8-9404-41a5-8c5a-00b415f14da6"} 25]
+                                [:field {:lib/uuid "435b08c8-9404-41a5-8c5a-00b415f14da6", :effective-type :type/Float}
+                                 25]
                                 0]
                                [:field {:lib/uuid "1c93ba8b-6a39-4ef2-a9e6-e3bcff042800"} 32]]]
                              [:field
@@ -110,7 +112,8 @@
                              {:lib/uuid "66101767-c429-4499-b1b3-512e58267ea4"}
                              [[[:<
                                 {:lib/uuid "580d9de8-8ade-4d64-a512-1e43a31fe869"}
-                                [:field {:lib/uuid "347d5337-5da8-47ff-bc05-b11154e8d19c"} 139657]
+                                [:field {:lib/uuid "347d5337-5da8-47ff-bc05-b11154e8d19c", :effective-type :type/Float}
+                                 139657]
                                 2]
                                [:field {:lib/uuid "a9f83548-d590-4dec-b7dd-ad2bbd0bbe9d"} 139657]]]
                              0]}]

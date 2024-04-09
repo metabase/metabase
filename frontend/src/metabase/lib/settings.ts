@@ -1,13 +1,17 @@
-import _ from "underscore";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t, ngettext, msgid } from "ttag";
-import moment from "moment-timezone";
+import _ from "underscore";
 
 import { parseTimestamp } from "metabase/lib/time";
-import MetabaseUtils from "metabase/lib/utils";
+import { numberToWord, compareVersions } from "metabase/lib/utils";
+import { getDocsUrlForVersion } from "metabase/selectors/settings";
+import type {
+  PasswordComplexity,
+  SettingKey,
+  Settings,
+} from "metabase-types/api";
 
-import { PasswordComplexity, SettingKey, Settings } from "metabase-types/api";
-
-const n2w = (n: number) => MetabaseUtils.numberToWord(n);
+const n2w = (n: number) => numberToWord(n);
 
 const PASSWORD_COMPLEXITY_CLAUSES = {
   total: {
@@ -104,7 +108,6 @@ class MetabaseSettings {
    */
   on(key: SettingKey, callback: SettingListener) {
     this._listeners[key] = this._listeners[key] || [];
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     this._listeners[key]!.push(callback);
   }
 
@@ -204,13 +207,6 @@ class MetabaseSettings {
   }
 
   /**
-   * @deprecated use getSetting(state, "search-typeahead-enabled")
-   */
-  searchTypeaheadEnabled() {
-    return this.get("search-typeahead-enabled");
-  }
-
-  /**
    * @deprecated use getSetting(state, "anon-tracking-enabled")
    */
   trackingEnabled() {
@@ -285,42 +281,18 @@ class MetabaseSettings {
     }
   }
 
+  /**
+   * @deprecated use getDocsUrl
+   */
   docsUrl(page = "", anchor = "") {
-    let { tag } = this.get("version") || {};
-    const matches = tag && tag.match(/v[01]\.(\d+)(?:\.\d+)?(-.*)?/);
-
-    if (matches) {
-      if (
-        matches.length > 2 &&
-        matches[2] &&
-        "-snapshot" === matches[2].toLowerCase()
-      ) {
-        // always point -SNAPSHOT suffixes to "latest", since this is likely a development build off of master
-        tag = "latest";
-      } else {
-        // otherwise, it's a regular OSS or EE version string, just link to the major OSS doc link
-        tag = "v0." + matches[1];
-      }
-    } else {
-      // otherwise, just link to the latest tag
-      tag = "latest";
-    }
-
-    if (page) {
-      page = `${page}.html`;
-    }
-
-    if (anchor) {
-      anchor = `#${anchor}`;
-    }
-
-    return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
+    return getDocsUrlForVersion(this.get("version"), page, anchor);
   }
 
   /**
    * @deprecated use getLearnUrl
    */
   learnUrl(path = "") {
+    // eslint-disable-next-line no-unconditional-metabase-links-render -- This is the implementation of MetabaseSettings.learnUrl()
     return `https://www.metabase.com/learn/${path}`;
   }
 
@@ -336,18 +308,12 @@ class MetabaseSettings {
   }
 
   newVersionAvailable() {
-    const result = MetabaseUtils.compareVersions(
-      this.currentVersion(),
-      this.latestVersion(),
-    );
+    const result = compareVersions(this.currentVersion(), this.latestVersion());
     return result != null && result < 0;
   }
 
   versionIsLatest() {
-    const result = MetabaseUtils.compareVersions(
-      this.currentVersion(),
-      this.latestVersion(),
-    );
+    const result = compareVersions(this.currentVersion(), this.latestVersion());
     return result != null && result >= 0;
   }
 
@@ -372,10 +338,6 @@ class MetabaseSettings {
   latestVersion() {
     const { latest } = this.versionInfo();
     return latest && latest.version;
-  }
-
-  isEnterprise() {
-    return false;
   }
 
   /**
@@ -438,5 +400,7 @@ function makeRegexTest(property: string, regex: RegExp) {
 const initValues =
   typeof window !== "undefined" ? _.clone(window.MetabaseBootstrap) : null;
 
+const settings = new MetabaseSettings(initValues);
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default new MetabaseSettings(initValues);
+export default settings;

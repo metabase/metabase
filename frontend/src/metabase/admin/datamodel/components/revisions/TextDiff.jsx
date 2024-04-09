@@ -1,9 +1,8 @@
 /*eslint-env node */
 
-import { Component } from "react";
-import PropTypes from "prop-types";
-
 import { diffWords } from "diff";
+import PropTypes from "prop-types";
+import { Component } from "react";
 
 export default class TextDiff extends Component {
   static propTypes = {

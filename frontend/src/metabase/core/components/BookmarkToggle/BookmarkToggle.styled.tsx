@@ -1,9 +1,9 @@
-import styled from "@emotion/styled";
 import { keyframes } from "@emotion/react";
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+import styled from "@emotion/styled";
+
 import Button from "metabase/core/components/Button";
-import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
+import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 const expandKeyframes = keyframes`
   50% {
@@ -23,9 +23,7 @@ export interface BookmarkIconProps {
   onAnimationEnd: () => void;
 }
 
-export const BookmarkIcon = styled(Icon, {
-  shouldForwardProp: shouldForwardNonTransientProp,
-})<BookmarkIconProps>`
+export const BookmarkIcon = styled(Icon)<BookmarkIconProps>`
   color: ${props => (props.isBookmarked ? color("brand") : "")};
   animation-name: ${props =>
     props.isBookmarked ? expandKeyframes : shrinkKeyframes};
@@ -44,8 +42,7 @@ export const BookmarkButton = styled(Button)<BookmarkButtonProps>`
   width: 2rem;
 
   &:hover {
-    color: ${({ isBookmarked }) =>
-      isBookmarked ? color("brand") : color("text-dark")};
+    color: ${color("brand")};
     background-color: ${color("bg-medium")};
   }
 
@@ -56,5 +53,5 @@ export const BookmarkButton = styled(Button)<BookmarkButtonProps>`
 
 BookmarkButton.defaultProps = {
   onlyIcon: true,
-  iconSize: 20,
+  iconSize: 16,
 };

@@ -1,10 +1,14 @@
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import { getIcon, render } from "__support__/ui";
+
+import type { ModalContentProps } from "./ModalContent";
+import ModalContent from "./ModalContent";
 import { ModalContentActionIcon } from "./ModalContent.styled";
-import ModalContent, { ModalContentProps } from "./ModalContent";
 
 describe("ModalContent", () => {
-  it("should render header action buttons", () => {
+  it("should render header action buttons", async () => {
     const headerActions = [
       {
         icon: "pencil" as const,
@@ -26,14 +30,26 @@ describe("ModalContent", () => {
 
     setup({ headerActions: headerActionsEl });
 
-    headerActions.forEach(({ icon, onClick }) => {
+    for (const { icon, onClick } of headerActions) {
       const iconEl = getIcon(icon);
       expect(iconEl).toBeInTheDocument();
 
-      userEvent.click(iconEl);
+      await userEvent.click(iconEl);
 
       expect(onClick).toHaveBeenCalledTimes(1);
-    });
+    }
+  });
+
+  it("should render back button if onBack props is passed", async () => {
+    const onBack = jest.fn();
+
+    setup({ onBack });
+
+    const backButton = screen.getByLabelText("chevronleft icon");
+    expect(backButton).toBeInTheDocument();
+
+    await userEvent.click(backButton);
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -43,7 +59,8 @@ function setup({
   centeredTitle = false,
   children = <>Content</>,
   fullPageModal = false,
-  onClose = jest.fn,
+  onClose = jest.fn(),
+  onBack,
   ...extraProps
 }: Partial<ModalContentProps> = {}) {
   const props = {
@@ -53,6 +70,7 @@ function setup({
     children,
     fullPageModal,
     onClose,
+    onBack,
     ...extraProps,
   };
 

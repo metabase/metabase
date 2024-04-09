@@ -1,0 +1,98 @@
+.ChartWithLegend {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  height: 100%;
+}
+
+.ChartWithLegend .Legend {
+  display: flex;
+  justify-content: center;
+  max-width: 100%;
+}
+
+.ChartWithLegend .LegendSpacer,
+.ChartWithLegend .LegendWrapper {
+  flex-basis: auto;
+  flex-grow: 1;
+
+  /* allow legend and spacer to shrink */
+  min-width: 0;
+  min-height: 0;
+}
+
+.ChartWithLegend .LegendSpacer {
+  visibility: hidden;
+  flex-shrink: 10; /* shrink the spacer much faster than the wrapper */
+}
+
+.ChartWithLegend .LegendWrapper {
+  display: flex;
+  justify-content: center;
+  flex-shrink: 1;
+}
+
+.ChartWithLegend .Chart {
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* SMALL */
+.ChartWithLegend.small .Legend {
+  display: none;
+}
+
+.ChartWithLegend.small .Chart {
+  flex: 1;
+}
+
+/* VERTICAL */
+.ChartWithLegend.vertical {
+  flex-direction: column-reverse;
+}
+
+.ChartWithLegend.vertical .Legend {
+  flex-shrink: 1;
+  overflow: hidden;
+}
+
+.ChartWithLegend.vertical .LegendWrapper {
+  flex-direction: column;
+}
+
+.ChartWithLegend.vertical.flexChart .Legend {
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+
+.ChartWithLegend.vertical.flexChart .Chart {
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-height: 75%;
+}
+
+/* HORIZONTAL */
+.ChartWithLegend.horizontal {
+  flex-direction: row;
+}
+
+.ChartWithLegend.horizontal .Legend {
+  flex-grow: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+}
+
+.ChartWithLegend.horizontal .LegendWrapper {
+  flex-direction: row;
+}
+
+.ChartWithLegend.horizontal.flexChart .Legend {
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+
+.ChartWithLegend.horizontal.flexChart .Chart {
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 66%;
+}

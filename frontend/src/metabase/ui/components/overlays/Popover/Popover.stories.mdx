@@ -1,0 +1,92 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import {
+  Box,
+  Button,
+  Flex,
+  Popover,
+  Text,
+  TextInput,
+  Stack,
+} from "metabase/ui";
+
+export const args = {
+  label: "Popover",
+  position: "bottom",
+};
+
+export const argTypes = {
+  position: {
+    options: [
+      "bottom",
+      "left",
+      "right",
+      "top",
+      "bottom-end",
+      "bottom-start",
+      "left-end",
+      "left-start",
+      "right-end",
+      "right-start",
+      "top-end",
+      "top-start",
+    ],
+    control: { type: "select" },
+  },
+};
+
+export const sampleArgs = {
+  simple: <Text>Popover!</Text>,
+  interactive: (
+    <Stack spacing="sm">
+      <TextInput autoFocus placeholder="First name" />
+      <TextInput placeholder="Last name" />
+      <Button>Update</Button>
+    </Stack>
+  ),
+};
+
+<Meta
+  title="Overlays/Popover"
+  component={Popover}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Popover
+
+Our themed wrapper around [Mantine Popover](https://v6.mantine.dev/core/popover/).
+
+## Docs
+
+- [Mantine Popover Docs](https://v6.mantine.dev/core/popover/)
+
+## Examples
+
+export const DefaultTemplate = ({ children, ...args }) => (
+  <Flex justify="center">
+    <Popover {...args}>
+      <Popover.Target>
+        <Button variant="filled">Click to open</Button>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <Box p="md">{children}</Box>
+      </Popover.Dropdown>
+    </Popover>
+  </Flex>
+);
+
+export const Default = DefaultTemplate.bind({});
+Default.args = {
+  children: sampleArgs.simple,
+};
+
+export const Interactive = DefaultTemplate.bind({});
+Interactive.args = {
+  children: sampleArgs.interactive,
+};
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+  <Story name="Interactive content">{Interactive}</Story>
+</Canvas>

@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import CheckBox from "metabase/core/components/CheckBox";
-import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const CardRoot = styled.div`
   &:not(:last-child) {

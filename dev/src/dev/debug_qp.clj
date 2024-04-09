@@ -1,17 +1,17 @@
 (ns dev.debug-qp
   "TODO -- I think this should be moved to something like [[metabase.test.util.debug-qp]]"
   (:require
-   [clojure.pprint :as pprint]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [lambdaisland.deep-diff2 :as ddiff]
    [medley.core :as m]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.db :as mdb]
+   [metabase.driver :as driver]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -117,19 +117,19 @@
                        (symbol (format "#_\"%s.%s\"" field-name table-name)))))
                  (field-id->name-form [field-id]
                    (list 'do (add-name-to-field-id field-id) field-id))]
-           (mbql.u/replace form
-             [:field (id :guard integer?) opts]
+           (lib.util.match/replace form
+             [:field (id :guard pos-int?) opts]
              [:field id (add-name-to-field-id id) (cond-> opts
-                                                    (integer? (:source-field opts))
+                                                    (pos-int? (:source-field opts))
                                                     (update :source-field field-id->name-form))]
 
-             (m :guard (every-pred map? (comp integer? :source-table)))
+             (m :guard (every-pred map? (comp pos-int? :source-table)))
              (add-names* (update m :source-table add-table-id-name))
 
-             (m :guard (every-pred map? (comp integer? :metabase.query-processor.util.add-alias-info/source-table)))
+             (m :guard (every-pred map? (comp pos-int? :metabase.query-processor.util.add-alias-info/source-table)))
              (add-names* (update m :metabase.query-processor.util.add-alias-info/source-table add-table-id-name))
 
-             (m :guard (every-pred map? (comp integer? :fk-field-id)))
+             (m :guard (every-pred map? (comp pos-int? :fk-field-id)))
              (-> m
                  (update :fk-field-id field-id->name-form)
                  add-names*)
@@ -148,8 +148,6 @@
 (def ^:private ^:dynamic *print-full?*     true)
 (def ^:private ^:dynamic *print-metadata?* false)
 (def ^:private ^:dynamic *print-names?*    true)
-(def ^:private ^:dynamic *validate-query?* false)
-
 
 (defn- remove-metadata
   "Replace field metadata in `x` with `...`."
@@ -249,258 +247,6 @@
 
 (def ^:private ^:dynamic *printer* print-formatted-event)
 
-(defn- debug-query-changes [middleware-var middleware]
-  (fn [next-middleware]
-    (fn [query-before rff context]
-      (try
-        ((middleware
-          (fn [query-after rff context]
-            (when-not (= query-before query-after)
-              (*printer* [::transformed-query middleware-var query-before query-after]))
-            (when *validate-query?*
-              (try
-                (mbql.s/validate-query query-after)
-                (catch Throwable e
-                  (when (::our-error? (ex-data e))
-                    (throw e))
-                  (throw (ex-info (format "%s middleware produced invalid query" middleware-var)
-                                  {::our-error? true
-                                   :middleware  middleware-var
-                                   :before      query-before
-                                   :query       query-after}
-                                  e)))))
-            (next-middleware query-after rff context)))
-         query-before rff context)
-        (catch Throwable e
-          (when (::our-error? (ex-data e))
-            (throw e))
-          (*printer* [::pre-process-query-error middleware-var e])
-          (throw (ex-info "Error pre-processing query"
-                          {::our-error? true
-                           :middleware  middleware-var
-                           :query       query-before}
-                          e)))))))
-
-(defn- debug-rffs [middleware-var middleware before-rff-xform after-rff-xform]
-  (fn [next-middleware]
-    (fn [query rff-after context]
-      ((middleware
-        (fn [query rff-before context]
-          (next-middleware query (before-rff-xform rff-before) context)))
-       query (after-rff-xform rff-after) context))))
-
-(defn- debug-metadata-changes [middleware-var middleware]
-  (let [before (atom nil)]
-    (debug-rffs
-     middleware-var
-     middleware
-     (fn before-rff-xform [rff]
-       (fn [metadata-before]
-         (reset! before metadata-before)
-         (try
-           (rff metadata-before)
-           (catch Throwable e
-             (when (::our-error? (ex-data e))
-               (throw e))
-             (*printer* [::post-process-metadata-error middleware-var e])
-             (throw (ex-info "Error post-processing result metadata"
-                             {::our-error? true
-                              :middleware  middleware-var
-                              :metadata    metadata-before}
-                             e))))))
-     (fn after-rff-xform [rff]
-       (fn [metadata-after]
-         (when-not (= @before metadata-after)
-           (*printer* [::transformed-metadata middleware-var @before metadata-after]))
-         (rff metadata-after))))))
-
-(defn- debug-rfs [middleware-var middleware before-xform after-xform]
-  (debug-rffs
-   middleware-var
-   middleware
-   (fn before-rff-xform [rff]
-     (fn [metadata]
-       (let [rf (rff metadata)]
-         (before-xform rf))))
-   (fn after-rff-xform [rff]
-     (fn [metadata]
-       (let [rf (rff metadata)]
-         (after-xform rf))))))
-
-(defn- debug-result-changes [middleware-var middleware]
-  (let [before (atom nil)]
-    (debug-rfs
-     middleware-var
-     middleware
-     (fn before-xform [rf]
-       (fn
-         ([] (rf))
-         ([result]
-          (reset! before result)
-          (try
-            (rf result)
-            (catch Throwable e
-              (when (::our-error? (ex-data e))
-                (throw e))
-              (*printer* [::post-process-result-error middleware-var e])
-              (throw (ex-info "Error post-processing result"
-                              {::our-error? true
-                               :middleware  middleware-var
-                               :result      result}
-                              e)))))
-         ([result row] (rf result row))))
-     (fn after-xform [rf]
-       (fn
-         ([] (rf))
-         ([result]
-          (when-not (= @before result)
-            (*printer* [::transformed-result middleware-var @before result]))
-          (rf result))
-         ([result row] (rf result row)))))))
-
-(defn- debug-row-changes [middleware-var middleware]
-  (let [before (atom nil)]
-    (debug-rfs
-     middleware-var
-     middleware
-     (fn before-xform [rf]
-       (fn
-         ([] (rf))
-         ([result]
-          (rf result))
-         ([result row]
-          (reset! before row)
-          (try
-            (rf result row)
-            (catch Throwable e
-              (when (::our-error? (ex-data e))
-                (throw e))
-              (*printer* [::error-reduce-row middleware-var e])
-              (throw (ex-info "Error reducing row"
-                              {::our-error? true
-                               :middleware  middleware-var
-                               :result      result
-                               :row         row}
-                              e)))))))
-     (fn after-xform [rf]
-       (fn
-         ([] (rf))
-         ([result]
-          (rf result))
-         ([result row]
-          (when-not (= @before row)
-            (*printer* [::transformed-row @before row]))
-          (rf result row)))))))
-
-(defn- default-debug-middleware
-  "The default set of middleware applied to queries ran via [[process-query-debug]].
-  Analogous to [[qp/default-middleware]]."
-  []
-  (into
-   []
-   (comp cat (keep identity))
-   [@#'qp/execution-middleware
-    @#'qp/compile-middleware
-    @#'qp/post-processing-middleware
-    ;; Normally, pre-processing middleware are applied to the query left-to-right, but in debug mode we convert each
-    ;; one into a transducing middleware and compose them, which causes them to be applied right-to-left. So we need
-    ;; to reverse the order here.
-    (reverse @#'qp/pre-processing-middleware)
-    @#'qp/around-middleware]))
-
-(defn- alter-pre-processing-middleware
-  "Takes a pre-processing middleware function, and converts it to a transducing middleware with the signature:
-
-    (f (f query rff context)) -> (f query rff context)"
-  [middleware]
-  (fn [qp-or-query]
-    (if (map? qp-or-query)
-      ;; If we're passed a map, this means the middleware var is still being called on a query directly. This happens
-      ;; if pre-processing middleware calls other pre-processing middleware, such as [[upgrade-field-literals]] which
-      ;; calls [[resolve-fields]]. Fallback to the original middleware function in this case.
-      (middleware qp-or-query)
-      (fn [query rff context]
-        (qp-or-query
-         (middleware query)
-         rff
-         context)))))
-
-(defn- alter-post-processing-middleware
-  "Takes a pre-processing middleware function, and converts it to a transducing middleware with the signature:
-
-    (f (f query rff context)) -> (f query rff context)"
-  [middleware]
-  (fn [qp]
-    (fn [query rff context]
-      (qp query (middleware query rff) context))))
-
-(defn- with-altered-middleware-fn
-  "Implementation function for [[with-altered-middleware]]. Temporarily alters the root bindings for pre- and
-  post-processing middleware vars, changing them to transducing middleware which can individually be wrapped with
-  debug middleware in [[process-query-debug]]."
-  [f]
-  (let [pre-processing-middleware-vars  @#'qp/pre-processing-middleware
-        post-processing-middleware-vars @#'qp/post-processing-middleware
-        pre-processing-original-fns     (zipmap pre-processing-middleware-vars
-                                                (map deref pre-processing-middleware-vars))
-        post-processing-original-fns    (zipmap post-processing-middleware-vars
-                                                (map deref post-processing-middleware-vars))]
-    (try
-      (mapv #(alter-var-root % alter-pre-processing-middleware) pre-processing-middleware-vars)
-      (mapv #(alter-var-root % alter-post-processing-middleware) post-processing-middleware-vars)
-      (f)
-      (finally
-        (mapv (fn [[middleware-var middleware-fn]]
-                (alter-var-root middleware-var (constantly middleware-fn)))
-              (merge pre-processing-original-fns post-processing-original-fns))))))
-
-(defmacro ^:private with-altered-middleware
-  "Temporarily redefines pre-processing and post-processing middleware vars to equivalent transducing middlewares,
-  so that [[process-query-debug]] can print the transformations for each middleware individually."
-  [& body]
-  `(with-altered-middleware-fn (fn [] ~@body)))
-
-(defn process-query-debug
-  "Process a query using a special QP that wraps all of the normal QP middleware and prints any transformations done
-  during pre or post-processing.
-
-  Options:
-
-  * `:print-full?` -- whether to print the entire query/result/etc. after each transformation
-
-  * `:print-metadata?` -- whether to print metadata columns such as `:cols`or `:source-metadata`
-    in the query/results
-
-  * `:print-names?` -- whether to print comments with the names of fields/tables as part of `:field` forms and
-    for `:source-table`
-
-  * `:validate-query?` -- whether to validate the query after each preprocessing step, so you can figure out who's
-    breaking it. (TODO -- `mbql-to-native` middleware currently leaves the old mbql `:query` in place,
-    which cases query to fail at that point -- manually comment that behavior out if needed
-
-  * :printer -- the function to process the debug events, defaults to `print-formatted-event`"
-  [query & {:keys [print-full? print-metadata? print-names? validate-query? printer context]
-            :or   {print-full? true, print-metadata? false, print-names? true, validate-query? false
-                   printer print-formatted-event}}]
-  (binding [*print-full?*               print-full?
-            *print-metadata?*           print-metadata?
-            *print-names?*              print-names?
-            *validate-query?*           validate-query?
-            *printer*                   printer
-            pprint/*print-right-margin* 80]
-    (with-altered-middleware
-      (let [middleware (for [middleware-var (default-debug-middleware)
-                             :when          middleware-var]
-                         (->> middleware-var
-                              (debug-query-changes middleware-var)
-                              (debug-metadata-changes middleware-var)
-                              (debug-result-changes middleware-var)
-                              (debug-row-changes middleware-var)))
-            qp         (qp.reducible/sync-qp (#'qp/base-qp middleware))]
-        (if context
-          (qp query context)
-          (qp query))))))
-
 
 ;;;; [[to-mbql-shorthand]]
 
@@ -510,11 +256,11 @@
         coll))
 
 (defn- can-symbolize? [x]
-  (mbql.u/match-one x
+  (lib.util.match/match-one x
     (_ :guard string?)
     (not (re-find #"\s+" x))
 
-    [:field (id :guard integer?) nil]
+    [:field (id :guard pos-int?) nil]
     (every? can-symbolize? (field-and-table-name id))
 
     [:field (field-name :guard string?) (opts :guard #(= (set (keys %)) #{:base-type}))]
@@ -538,8 +284,8 @@
 
 (defn- expand [form table]
   (try
-    (mbql.u/replace form
-      ([:field (id :guard integer?) nil] :guard can-symbolize?)
+    (lib.util.match/replace form
+      ([:field (id :guard pos-int?) nil] :guard can-symbolize?)
       (let [[table-name field-name] (field-and-table-name id)
             field-name              (some-> field-name u/lower-case-en)
             table-name              (some-> table-name u/lower-case-en)]
@@ -567,19 +313,19 @@
             expansion          (expand without-join-alias table)]
         [::& (:join-alias opts) expansion])
 
-      [:field (id :guard integer?) opts]
+      [:field (id :guard pos-int?) opts]
       (let [without-opts [:field id nil]
             expansion    (expand without-opts table)]
         (if (= expansion without-opts)
           &match
           [:field [::% (strip-$ expansion)] opts]))
 
-      (m :guard (every-pred map? (comp integer? :source-table)))
+      (m :guard (every-pred map? (comp pos-int? :source-table)))
       (-> (update m :source-table (fn [table-id]
                                     [::$$ (some-> (t2/select-one-fn :name Table :id table-id) u/lower-case-en)]))
           (expand table))
 
-      (m :guard (every-pred map? (comp integer? :fk-field-id)))
+      (m :guard (every-pred map? (comp pos-int? :fk-field-id)))
       (-> (update m :fk-field-id (fn [fk-field-id]
                                    (let [[table-name field-name] (field-and-table-name fk-field-id)
                                          field-name              (some-> field-name u/lower-case-en)
@@ -594,10 +340,10 @@
                       e)))))
 
 (defn- no-$ [x]
-  (mbql.u/replace x [::$ & args] (into [::no-$] args)))
+  (lib.util.match/replace x [::$ & args] (into [::no-$] args)))
 
 (defn- symbolize [form]
-  (mbql.u/replace form
+  (lib.util.match/replace form
     [::-> x y]
     (symbol (format "%s->%s" (symbolize x) (str/replace (symbolize y) #"^\$" "")))
 
@@ -613,29 +359,38 @@
     [::$$ table-name]
     (symbol (format "$$%s" table-name))))
 
-(defn- query-table-name [{:keys [source-table source-query]}]
+(defn- query-table-name [{:keys [source-table source-query], :as inner-query}]
   (cond
-    source-table
-    (do
-      (assert (integer? source-table))
-      (u/lower-case-en (t2/select-one-fn :name Table :id source-table)))
+    (pos-int? source-table)
+    (u/lower-case-en (or (t2/select-one-fn :name Table :id source-table)
+                         (throw (ex-info (format "Table %d does not exist!" source-table)
+                                         {:source-table source-table, :inner-query inner-query}))))
 
     source-query
     (recur source-query)))
 
 (defn to-mbql-shorthand
   ([query]
-   (to-mbql-shorthand query (query-table-name (:query query))))
+   (let [query (mbql.normalize/normalize query)]
+     (to-mbql-shorthand query (query-table-name (:query query)))))
 
   ([query table-name]
    (let [symbolized (-> query (expand table-name) symbolize ->sorted-mbql-query-map)
          table-symb (some-> table-name symbol)]
      (if (:query symbolized)
-       (list 'mt/mbql-query table-symb (-> (:query symbolized)
-                                           (dissoc :source-table)))
+       (list 'mt/mbql-query table-symb (cond-> (:query symbolized)
+                                         table-name (dissoc :source-table)))
        (list 'mt/$ids table-symb symbolized)))))
 
 (defn expand-symbolize [x]
   (-> x (expand "orders") symbolize))
 
 ;; tests are in [[dev.debug-qp-test]] (in `./dev/test/dev` dir)
+
+(defn pprint-sql
+  "Pretty print a SQL string."
+  ([sql]
+   (pprint-sql (mdb/db-type) sql))
+  ([driver sql]
+   #_{:clj-kondo/ignore [:discouraged-var]}
+   (println (driver/prettify-native-form driver sql))))

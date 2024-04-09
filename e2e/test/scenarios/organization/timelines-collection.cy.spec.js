@@ -1,3 +1,4 @@
+import { USERS } from "e2e/support/cypress_data";
 import {
   describeWithSnowplow,
   enableTracking,
@@ -8,8 +9,6 @@ import {
   getFullName,
   popover,
 } from "e2e/support/helpers";
-
-import { USERS } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
 
@@ -54,7 +53,7 @@ describe("scenarios > organization > timelines > collection", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Star").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Balloons").click();
+      cy.findByText("Cake").click();
       cy.button("Create").click();
       cy.wait("@createEvent");
 
@@ -62,7 +61,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("RC2").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("May 12, 2027").should("be.visible");
-      cy.icon("balloons").should("be.visible");
+      cy.icon("cake").should("be.visible");
     });
 
     it("should create an event in a personal collection", () => {
@@ -394,7 +393,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.createTimeline({ name: "Releases" });
       cy.createTimeline({ name: "Metrics" });
 
-      cy.visit(`/collection/root/timelines/1`);
+      cy.visit("/collection/root/timelines/1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
 
@@ -408,7 +407,7 @@ describe("scenarios > organization > timelines > collection", () => {
     it("should not allow navigating back when there is only one timeline in a collection", () => {
       cy.createTimeline({ name: "Releases" });
 
-      cy.visit(`/collection/root/timelines/1`);
+      cy.visit("/collection/root/timelines/1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
       cy.icon("chevronleft").should("not.exist");

@@ -1,7 +1,9 @@
 import { assocIn } from "icepick";
-import { VisualizationSettings, Card } from "metabase-types/api/card";
-import { Series, TransformedSeries } from "metabase-types/api/dataset";
-import { isNotNull } from "metabase/core/utils/types";
+
+import { isNotNull } from "metabase/lib/types";
+import type { VisualizationSettings, Card } from "metabase-types/api/card";
+import type { Series, TransformedSeries } from "metabase-types/api/dataset";
+
 import { SETTING_ID, keyForSingleSeries } from "./settings/series";
 
 export const updateSeriesColor = (

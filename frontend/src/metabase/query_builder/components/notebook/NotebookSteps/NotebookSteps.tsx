@@ -1,15 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
 
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
+import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type Question from "metabase-lib/v1/Question";
 
-import type { Query } from "metabase-lib/types";
-import type Question from "metabase-lib/Question";
-
-import type { NotebookStep as INotebookStep, OpenSteps } from "../types";
-import { getQuestionSteps } from "../lib/steps";
 import NotebookStep from "../NotebookStep";
-import { Container } from "./NotebookSteps.styled";
+import { getQuestionSteps } from "../lib/steps";
+import type { NotebookStep as INotebookStep, OpenSteps } from "../types";
 
 interface NotebookStepsProps {
   className?: string;
@@ -21,63 +20,62 @@ interface NotebookStepsProps {
 }
 
 function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
-  const isNew = !readOnly && !question.table();
-  return isNew
-    ? {
-        "0:filter": true,
-        "0:summarize": true,
-      }
-    : {};
+  const query = question.query();
+  const isNew = !readOnly && !Lib.sourceTableOrCardId(query);
+
+  if (isNew) {
+    return {
+      "0:filter": true,
+      "0:summarize": true,
+    };
+  }
+
+  return {};
 }
 
-function NotebookSteps({
-  className,
+export function NotebookSteps({
   question,
   sourceQuestion,
   reportTimezone,
   updateQuestion,
   readOnly = false,
 }: NotebookStepsProps) {
+  const metadata = useSelector(getMetadata);
   const [openSteps, setOpenSteps] = useState<OpenSteps>(
     getInitialOpenSteps(question, readOnly),
   );
-  const [lastOpenedStep, setLastOpenedStep] = useState<string | null>(null);
+  const [lastOpenedStep, setLastOpenedStep] = useState<
+    INotebookStep["id"] | null
+  >(null);
 
   const steps = useMemo(() => {
     if (!question) {
       return [];
     }
-    return getQuestionSteps(question, openSteps);
-  }, [question, openSteps]);
+    return getQuestionSteps(question, metadata, openSteps);
+  }, [metadata, question, openSteps]);
 
-  const handleStepOpen = useCallback((id: string) => {
+  const handleStepOpen = useCallback((id: INotebookStep["id"]) => {
     setOpenSteps(openSteps => ({ ...openSteps, [id]: true }));
     setLastOpenedStep(id);
   }, []);
 
-  const handleStepClose = useCallback((id: string) => {
-    setOpenSteps(openSteps => ({ ...openSteps, [id]: false }));
-    setLastOpenedStep(lastOpenedStep =>
-      lastOpenedStep === id ? null : lastOpenedStep,
-    );
-  }, []);
+  const handleStepClose = useCallback(
+    (id: INotebookStep["id"]) => {
+      if (openSteps[id]) {
+        setOpenSteps(openSteps => ({ ...openSteps, [id]: false }));
+      }
+      setLastOpenedStep(lastOpenedStep =>
+        lastOpenedStep === id ? null : lastOpenedStep,
+      );
+    },
+    [openSteps],
+  );
 
   const handleQueryChange = useCallback(
-    async (step: INotebookStep, query: StructuredQuery | Query) => {
-      // Performs a query update with either metabase-lib v1 or v2
-      // The StructuredQuery block is temporary and will be removed
-      // once all the notebook steps are using metabase-lib v2
-      if (query instanceof StructuredQuery) {
-        const datasetQuery = query.datasetQuery();
-        const updatedQuery = step.update(datasetQuery);
-        await updateQuestion(updatedQuery.question());
-      } else {
-        const updatedLegacyQuery = Lib.toLegacyQuery(query);
-        const updatedQuestion = question.setDatasetQuery(updatedLegacyQuery);
-        const updatedQuery = updatedQuestion.query() as StructuredQuery;
-        const cleanQuestion = updatedQuery.cleanNesting().question();
-        await updateQuestion(cleanQuestion);
-      }
+    async (query: Query, step: INotebookStep) => {
+      const updatedQuestion = question.setQuery(Lib.dropEmptyStages(query));
+      await updateQuestion(updatedQuestion);
 
       // mark the step as "closed" since we can assume
       // it's been added or removed by the updateQuery
@@ -91,12 +89,13 @@ function NotebookSteps({
   }
 
   return (
-    <Container className={className}>
+    <>
       {steps.map((step, index) => {
         const isLast = index === steps.length - 1;
         const isLastOpened = lastOpenedStep === step.id;
-        const onChange = (query: StructuredQuery | Query) =>
-          handleQueryChange(step, query);
+        const onChange = async (query: Query) => {
+          await handleQueryChange(query, step);
+        };
 
         return (
           <NotebookStep
@@ -112,9 +111,6 @@ function NotebookSteps({
           />
         );
       })}
-    </Container>
+    </>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NotebookSteps;

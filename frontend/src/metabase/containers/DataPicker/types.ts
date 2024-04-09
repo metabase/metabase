@@ -1,14 +1,13 @@
+import type { IconName } from "metabase/ui";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Schema from "metabase-lib/v1/metadata/Schema";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type {
   CollectionId,
   DatabaseId,
   SchemaId,
   TableId,
 } from "metabase-types/api";
-
-import type { IconName } from "metabase/core/components/Icon";
-import type Database from "metabase-lib/metadata/Database";
-import type Schema from "metabase-lib/metadata/Schema";
-import type Table from "metabase-lib/metadata/Table";
 
 export type DataPickerDataType = "models" | "raw-data" | "questions";
 

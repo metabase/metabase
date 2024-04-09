@@ -1,12 +1,13 @@
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders, screen } from "__support__/ui";
 import {
-  createMockTokenFeatures,
+  createMockTokenStatus,
   createMockVersion,
   createMockVersionInfo,
   createMockVersionInfoRecord,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import SettingsUpdatesForm from "./SettingsUpdatesForm";
 
 const elements = [
@@ -36,9 +37,7 @@ function setup({
     "is-hosted?": isHosted,
     version,
     "version-info": versionInfo,
-    "token-features": createMockTokenFeatures({
-      sso: isPaid,
-    }),
+    "token-status": createMockTokenStatus({ valid: isPaid }),
   });
 
   const state = createMockState({

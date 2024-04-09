@@ -20,9 +20,9 @@
         (t2/update! Field {:table_id (u/the-id venues-table)}, {:database_type "?"})
         ;; now sync the DB again
         (let [{:keys [step-info task-history]} (sync.util-test/sync-database! "sync-fields" db)]
-          (is (= {:total-fields 16, :updated-fields 6}
+          (is (= {:total-fields 52, :updated-fields 6}
                  (sync.util-test/only-step-keys step-info)))
-          (is (= {:total-fields 16, :updated-fields 6}
+          (is (= {:total-fields 52, :updated-fields 6}
                  (:task_details task-history)))
           (testing "The database_type of these Fields should get set to the correct types. Let's see..."
             (is (= #{{:name "PRICE",       :database_type "INTEGER"}
@@ -43,13 +43,13 @@
         (t2/update! Field {:table_id (u/the-id venues-table)}, {:base_type "type/*"})
         ;; now sync the DB again
         (let [{after-step-info :step-info, after-task-history :task-history} (sync.util-test/sync-database! "sync-fields" db)]
-          (is (= {:updated-fields 16, :total-fields 16}
+          (is (= {:updated-fields 52, :total-fields 52}
                  (sync.util-test/only-step-keys new-step-info)))
-          (is (= {:updated-fields 16, :total-fields 16}
+          (is (= {:updated-fields 52, :total-fields 52}
                  (:task_details new-task-history)))
-          (is (= {:updated-fields 6, :total-fields 16}
+          (is (= {:updated-fields 6, :total-fields 52}
                  (sync.util-test/only-step-keys after-step-info)))
-          (is (= {:updated-fields 6, :total-fields 16}
+          (is (= {:updated-fields 6, :total-fields 52}
                  (:task_details after-task-history)))
           (testing "The database_type of these Fields should get set to the correct types. Let's see..."
             (is (= #{{:name "CATEGORY_ID", :base_type :type/Integer}

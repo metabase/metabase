@@ -1,15 +1,16 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
-import { t } from "ttag";
 import { connect } from "react-redux";
+import { t } from "ttag";
 
+import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
+import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
-
-import AdminPaneLayout from "metabase/components/AdminPaneLayout";
-import { Group, Radio } from "metabase/ui";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { Group, Radio } from "metabase/ui";
 
-import SearchInput from "../components/SearchInput";
 import PeopleList from "../components/PeopleList";
+import SearchInput from "../components/SearchInput";
 import { USER_STATUS } from "../constants";
 import { usePeopleQuery } from "../hooks/use-people-query";
 
@@ -31,9 +32,9 @@ function PeopleListingApp({ children, isAdmin }) {
   };
 
   const headingContent = (
-    <div className="mb2 flex align-center">
+    <div className={cx(CS.mb2, CS.flex, CS.alignCenter)}>
       <SearchInput
-        className="text-small mr2"
+        className={cx(CS.textSmall, CS.mr2)}
         type="text"
         placeholder={t`Find someone`}
         value={searchInputValue}

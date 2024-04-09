@@ -9,19 +9,20 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.middleware.annotate :as annotate]
-   [metabase.query-processor.middleware.resolve-joins
-    :as qp.middleware.resolve-joins]
+   [metabase.query-processor.middleware.resolve-joins :as qp.middleware.resolve-joins]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn- joined-fields [inner-query]
   (m/distinct-by
    add/normalize-clause
-   (mbql.u/match (walk/prewalk (fn [x]
+   (lib.util.match/match (walk/prewalk (fn [x]
                                  (if (map? x)
                                    (dissoc x :source-query :source-metadata)
                                    x))
@@ -33,37 +34,53 @@
   (update field 2 select-keys [::add/source-alias ::add/source-table :join-alias]))
 
 (defn- nfc-root [[_ field-id]]
-  (when-let [field (and (int? field-id) (qp.store/field field-id))]
-    (when-let [nfc-root (first (:nfc_path field))]
-      {:table_id (:table_id field)
+  (when-let [field (and (int? field-id)
+                        (lib.metadata/field (qp.store/metadata-provider) field-id))]
+    (when-let [nfc-root (first (:nfc-path field))]
+      {:table_id (:table-id field)
        :name nfc-root})))
 
 (defn- field-id-props [[_ field-id]]
-  (when-let [field (and (int? field-id) (qp.store/field field-id))]
-    (select-keys field [:table_id :name])))
+  (when-let [field (and (int? field-id)
+                        (lib.metadata/field (qp.store/metadata-provider) field-id))]
+    {:table_id (:table-id field)
+     :name     (:name field)}))
 
 (defn- remove-unused-fields [inner-query source]
-  (let [used-fields (-> #{}
-                        (into (map keep-source+alias-props) (mbql.u/match inner-query :field))
-                        (into (map keep-source+alias-props) (mbql.u/match inner-query :expression)))
+  (let [used-fields (into #{}
+                          (map keep-source+alias-props)
+                          (lib.util.match/match inner-query #{:field :expression}))
         nfc-roots (into #{} (keep nfc-root) used-fields)]
-    (update source :fields (fn [fields]
-                             (filterv #(or (-> % keep-source+alias-props used-fields)
-                                           (-> % field-id-props nfc-roots))
-                                      fields)))))
+    (log/debugf "Used fields:\n%s" (u/pprint-to-str used-fields))
+    (letfn [(used? [[_tag id-or-name {::add/keys [desired-alias], :as opts}, :as field]]
+              (or (contains? used-fields (keep-source+alias-props field))
+                  ;; we should also consider a Field to be used if we're referring to it with a nominal field literal
+                  ;; ref in the next stage -- that's actually how you're supposed to be doing it anyway.
+                  (when (integer? id-or-name)
+                    (let [nominal-ref (keep-source+alias-props [:field desired-alias opts])]
+                      (contains? used-fields nominal-ref)))
+                  (contains? nfc-roots (field-id-props field))))
+            (used?* [field]
+              (u/prog1 (used? field)
+                (if <>
+                  (log/debugf "Keeping used field:\n%s" (u/pprint-to-str field))
+                  (log/debugf "Removing unused field:\n%s" (u/pprint-to-str (keep-source+alias-props field))))))
+            (remove-unused [fields]
+              (filterv used?* fields))]
+      (update source :fields remove-unused))))
 
 (defn- nest-source [inner-query]
-  (classloader/require 'metabase.query-processor)
   (let [filter-clause (:filter inner-query)
-        keep-filter? (nil? (mbql.u/match-one filter-clause :expression))
+        keep-filter? (nil? (lib.util.match/match-one filter-clause :expression))
         source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
                  ;; preprocess this without a current user context so it's not subject to permissions checks. To get
                  ;; here in the first place we already had to do perms checks to make sure the query we're transforming
                  ;; is itself ok, so we don't need to run another check
                  (binding [api/*current-user-id* nil]
-                   ((resolve 'metabase.query-processor/preprocess) {:database (u/the-id (qp.store/database))
-                                                                    :type     :query
-                                                                    :query    source}))
+                   ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
+                    {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
+                     :type     :query
+                     :query    source}))
                  (add/add-alias-info source)
                  (:query source)
                  (dissoc source :limit)
@@ -82,15 +99,19 @@
   [{:keys [source-query], :as query} [_ expression-name opts :as _clause]]
   (let [expression-definition        (mbql.u/expression-with-name query expression-name)
         {base-type :base_type}       (some-> expression-definition annotate/infer-expression-type)
-        {::add/keys [desired-alias]} (mbql.u/match-one source-query
+        {::add/keys [desired-alias]} (lib.util.match/match-one source-query
                                        [:expression (_ :guard (partial = expression-name)) source-opts]
-                                       source-opts)]
+                                       source-opts)
+        source-alias                 (or desired-alias expression-name)]
     [:field
-     (or desired-alias expression-name)
-     (assoc opts :base-type (or base-type :type/*))]))
+     source-alias
+     (-> opts
+         (assoc :base-type          (or base-type :type/*)
+                ::add/source-table  ::add/source
+                ::add/source-alias  source-alias))]))
 
 (defn- rewrite-fields-and-expressions [query]
-  (mbql.u/replace query
+  (lib.util.match/replace query
     ;; don't rewrite anything inside any source queries or source metadata.
     (_ :guard (constantly (some (partial contains? (set &parents))
                                 [:source-query :source-metadata])))
@@ -99,13 +120,13 @@
     :expression
     (raise-source-query-expression-ref query &match)
 
-    ;; mark all Fields at the new top level as `::outer-select` so QP implementations know not to apply coercion or
+    ;; mark all Fields at the new top level as `:qp/ignore-coercion` so QP implementations know not to apply coercion or
     ;; whatever to them a second time.
-    [:field _id-or-name (_opts :guard (every-pred :temporal-unit (complement ::outer-select)))]
-    (recur (mbql.u/update-field-options &match assoc ::outer-select true))
+    [:field _id-or-name (_opts :guard (every-pred :temporal-unit (complement :qp/ignore-coercion)))]
+    (recur (mbql.u/update-field-options &match assoc :qp/ignore-coercion true))
 
     [:field id-or-name (opts :guard :join-alias)]
-    (let [{::add/keys [desired-alias]} (mbql.u/match-one (:source-query query)
+    (let [{::add/keys [desired-alias]} (lib.util.match/match-one (:source-query query)
                                          [:field
                                           (_ :guard (partial = id-or-name))
                                           (matching-opts :guard #(= (:join-alias %) (:join-alias opts)))]

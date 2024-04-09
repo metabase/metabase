@@ -5,7 +5,6 @@
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -19,16 +18,12 @@
                                      (= (:id snippet) (:id a-snippet)))
                                    response))))]
           (testing "\nIf we have a valid EE token, we should only see Snippets in the Root Collection with valid perms"
-            (premium-features-test/with-premium-features #{:enhancements}
-              (is (= false
-                     (can-see-snippet?)))
+            (mt/with-premium-features #{:enhancements}
+              (is (false? (can-see-snippet?)))
               (perms/grant-collection-read-permissions! (perms-group/all-users) (assoc collection/root-collection :namespace "snippets"))
-              (is (= true
-                     (can-see-snippet?)))))
+              (is (true? (can-see-snippet?)))))
           (testing "\nIf we do not have a valid EE token, all Snippets should come back from the graph regardless of our perms"
-            (premium-features-test/with-premium-features #{}
-              (is (= true
-                     (can-see-snippet?)))
+            (mt/with-premium-features #{}
+              (is (true? (can-see-snippet?)))
               (perms/revoke-collection-permissions! (perms-group/all-users) (assoc collection/root-collection :namespace "snippets"))
-              (is (= true
-                     (can-see-snippet?))))))))))
+              (is (true? (can-see-snippet?))))))))))

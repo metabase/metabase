@@ -1,0 +1,66 @@
+name: Build E2E Matrix
+description: Build and output a custom matrix for E2E tests.
+
+outputs:
+  matrix:
+    description: Parameterized matrix in JSON format
+    value: ${{ steps.matrix.outputs.result }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/github-script@v7
+      id: matrix
+      with:
+        script: | # js
+          const java = 11;
+
+          const defaultRunner = "ubuntu-22.04";
+          const beefierRunner = "buildjet-2vcpu-ubuntu-2204";
+
+          const defaultOptions = {
+            "java-version": java,
+            runner: defaultRunner,
+            edition: "ee",
+            context: "folder"
+          };
+
+          const testSets = [
+            ["actions", {} ],
+            ["admin", {} ],
+            ["admin-2", {} ],
+            ["binning", {} ],
+            ["collections", {} ],
+            ["custom-column", {} ],
+            ["dashboard", {} ],
+            ["dashboard-cards", {} ],
+            ["dashboard-filters", {} ],
+            ["embedding", {} ],
+            ["filters", {} ],
+            ["joins", {} ],
+            ["models", {} ],
+            ["native", {} ],
+            ["native-filters", {} ],
+            ["onboarding", {} ],
+            ["organization", {} ],
+            ["permissions", {} ],
+            ["question", {} ],
+            ["sharing", {} ],
+            ["visualizations-charts", {} ],
+            ["visualizations-tabular", {} ],
+            ["oss-subset", { edition: 'oss', context: "special" } ],
+            ["slow", { runner: beefierRunner, context: "special" } ],
+            ["flaky", { runner: beefierRunner, context: "special" } ],
+            ["mongo", { context: "qa-database" } ],
+          ];
+
+          const config = testSets.map(([name, specialOptions]) => {
+            return {
+              ...defaultOptions,
+              ...specialOptions,
+              name,
+            }
+          });
+
+          const matrix = { include: config };
+          return matrix;

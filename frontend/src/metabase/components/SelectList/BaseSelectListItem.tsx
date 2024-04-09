@@ -1,4 +1,9 @@
-import * as React from "react";
+import type {
+  KeyboardEvent,
+  MouseEvent,
+  ReactNode,
+  SyntheticEvent,
+} from "react";
 
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 
@@ -7,8 +12,8 @@ import { BaseItemRoot } from "./SelectListItem.styled";
 export interface BaseSelectListItemProps {
   id: string | number;
   name: string;
-  onSelect: (id: string | number) => void;
-  children: React.ReactNode;
+  onSelect: (id: string | number, event: SyntheticEvent) => void;
+  children: ReactNode;
   isSelected?: boolean;
   size?: "small" | "medium";
   className?: string;
@@ -37,8 +42,10 @@ export function BaseSelectListItem({
       role="menuitem"
       tabIndex={0}
       size={size}
-      onClick={() => onSelect(id)}
-      onKeyDown={(e: KeyboardEvent) => e.key === "Enter" && onSelect(id)}
+      onClick={(event: MouseEvent) => onSelect(id, event)}
+      onKeyDown={(event: KeyboardEvent) =>
+        event.key === "Enter" && onSelect(id, event)
+      }
       className={className}
       {...rest}
     >

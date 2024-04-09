@@ -1,5 +1,9 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createMetric,
+  createSegment,
+} from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID, REVIEWS, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
 
@@ -16,8 +20,14 @@ it("should configure data model settings", () => {
     "updateProductId",
   );
 
-  cy.get(".AdminList").findByText("Orders").click();
-  cy.findByDisplayValue("Product ID").parent().find(".Icon-gear").click();
+  cy.findByTestId("admin-metadata-table-list").findByText("Orders").click();
+
+  cy.findByDisplayValue("Product ID")
+    .parent()
+    .parent()
+    .find(".Icon-gear")
+    .click();
+
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Use original value").click();
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -27,12 +37,13 @@ it("should configure data model settings", () => {
   cy.wait("@updateProductId");
 
   cy.visit(sampleDBDataModelPage);
-  cy.get(".AdminList").findByText("Reviews").click();
+  cy.findByTestId("admin-metadata-table-list").findByText("Reviews").click();
   cy.intercept("POST", `/api/field/${REVIEWS.RATING}/values`).as(
     "remapRatingValues",
   );
 
-  cy.findByDisplayValue("Rating").parent().find(".Icon-gear").click();
+  cy.findByDisplayValue("Rating").parent().parent().find(".Icon-gear").click();
+
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Use original value").click();
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -60,16 +71,24 @@ it("should configure data model settings", () => {
 
   // Hide PRODUCTS.EAN
   cy.visit(sampleDBDataModelPage);
-  cy.get(".AdminList").findByText("Products").click();
+  cy.findByTestId("admin-metadata-table-list").findByText("Products").click();
 
   cy.intercept("PUT", `/api/field/${PRODUCTS.EAN}`).as("hideEan");
-  cy.findByDisplayValue("Ean").parent().contains("Everywhere").click();
+
+  cy.findByDisplayValue("Ean").parent().parent().contains("Everywhere").click();
+
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Do not include").click();
   cy.wait("@hideEan");
 
   cy.intercept("PUT", `/api/field/${PRODUCTS.PRICE}`).as("updatePriceField");
-  cy.findByDisplayValue("Price").parent().contains("No semantic type").click();
+
+  cy.findByDisplayValue("Price")
+    .parent()
+    .parent()
+    .contains("No semantic type")
+    .click();
+
   cy.get(".MB-Select")
     .scrollTo("top")
     .within(() => {
@@ -84,10 +103,16 @@ it("should configure data model settings", () => {
   cy.wait("@updatePriceField");
 
   // Hide PEOPLE.PASSWORD
-  cy.get(".AdminList").findByText("People").click();
+  cy.findByTestId("admin-metadata-table-list").findByText("People").click();
 
   cy.intercept("PUT", `/api/field/${PEOPLE.PASSWORD}`).as("hidePassword");
-  cy.findByDisplayValue("Password").parent().contains("Everywhere").click();
+
+  cy.findByDisplayValue("Password")
+    .parent()
+    .parent()
+    .contains("Everywhere")
+    .click();
+
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Do not include").click();
   cy.wait("@hidePassword");
@@ -112,8 +137,8 @@ it("should configure data model settings", () => {
     },
   };
 
-  cy.request("POST", "/api/metric", metric);
-  cy.request("POST", "/api/segment", segment);
+  createMetric(metric);
+  createSegment(segment);
 
   cy.visit("/admin/datamodel/segments");
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

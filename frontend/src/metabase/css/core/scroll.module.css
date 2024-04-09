@@ -1,0 +1,85 @@
+.scrollY {
+  overflow-y: auto;
+}
+
+.scrollX {
+  overflow-x: auto;
+}
+
+.scrollShow::-webkit-scrollbar {
+  width: 15px;
+  min-height: 10px;
+}
+
+.scrollShowHover::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollShowHover:hover::-webkit-scrollbar {
+  display: inherit;
+}
+
+.scrollShow::-webkit-scrollbar-thumb {
+  border: 4px solid transparent;
+  border-radius: 7px;
+  background-clip: padding-box;
+  background-color: var(--color-bg-medium);
+}
+
+.scrollShow::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.scrollShow::-webkit-scrollbar-corner {
+  background-color: transparent;
+}
+
+.scrollShow:hover::-webkit-scrollbar-thumb {
+  background-color: var(--color-bg-dark);
+}
+
+.scrollShow::-webkit-scrollbar-thumb:horizontal:hover,
+.scrollShow::-webkit-scrollbar-thumb:vertical:hover {
+  background-color: var(--color-bg-dark);
+}
+
+.scrollShow::-webkit-scrollbar-thumb:horizontal:active,
+.scrollShow::-webkit-scrollbar-thumb:vertical:active {
+  background-color: var(--color-bg-dark);
+}
+
+/* scroll light */
+.scrollShow.scrollLight::-webkit-scrollbar-thumb {
+  border-radius: 0;
+  background-color: var(--color-bg-medium);
+}
+
+.scrollShow.scrollLight::-webkit-scrollbar-thumb:horizontal:hover,
+.scrollShow.scrollLight::-webkit-scrollbar-thumb:vertical:hover,
+.scrollShow.scrollLight::-webkit-scrollbar-thumb:horizontal:active,
+.scrollShow.scrollLight::-webkit-scrollbar-thumb:vertical:active {
+  background-color: var(--color-bg-medium);
+}
+
+.scrollHide {
+  -ms-overflow-style: none; /* IE 10+ */
+  overflow: -moz-scrollbars-none; /* Firefox */
+}
+
+.scrollHide::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
+
+.scrollHideAll,
+.scrollHideAll * {
+  -ms-overflow-style: none; /* IE 10+ */
+  overflow: -moz-scrollbars-none; /* Firefox */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollHideAll::-webkit-scrollbar,
+.scrollHideAll *::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}

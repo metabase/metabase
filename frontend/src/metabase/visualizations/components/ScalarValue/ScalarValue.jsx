@@ -2,12 +2,17 @@
  * Shared component for Scalar and SmartScalar to make sure our number presentation stays in sync
  */
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
+import Tooltip from "metabase/core/components/Tooltip";
+import DashboardS from "metabase/css/dashboard.module.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+
 import {
   ScalarRoot,
   ScalarValueWrapper,
@@ -17,7 +22,6 @@ import {
   ScalarDescriptionPlaceholder,
   ScalarTitleContent,
 } from "./ScalarValue.styled";
-
 import { findSize, getMaxFontSize } from "./utils";
 
 export const ScalarWrapper = ({ children }) => (
@@ -39,7 +43,7 @@ const ScalarValue = ({
         targetHeight: height,
         targetWidth: width,
         fontFamily: fontFamily ?? "Lato",
-        fontWeight: 900,
+        fontWeight: 700,
         unit: "rem",
         step: 0.2,
         min: 1,
@@ -50,7 +54,7 @@ const ScalarValue = ({
 
   return (
     <ScalarValueWrapper
-      className="ScalarValue"
+      className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue)}
       fontSize={fontSize}
       data-testid="scalar-value"
     >
@@ -67,7 +71,11 @@ export const ScalarTitle = ({ lines = 2, title, description, onClick }) => (
      */}
     {description && description.length > 0 && <ScalarDescriptionPlaceholder />}
     <ScalarTitleContent
-      className="fullscreen-normal-text fullscreen-night-text"
+      className={cx(
+        DashboardS.fullscreenNormalText,
+        DashboardS.fullscreenNightText,
+        EmbedFrameS.fullscreenNightText,
+      )}
       onClick={onClick}
     >
       <Ellipsified tooltip={title} lines={lines} placement="bottom">
@@ -84,7 +92,7 @@ export const ScalarTitle = ({ lines = 2, title, description, onClick }) => (
           }
           maxWidth="22em"
         >
-          <ScalarDescriptionIcon name="info_outline" />
+          <ScalarDescriptionIcon name="info_filled" />
         </Tooltip>
       </ScalarDescriptionContainer>
     )}

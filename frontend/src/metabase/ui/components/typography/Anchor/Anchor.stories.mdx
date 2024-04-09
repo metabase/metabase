@@ -1,0 +1,92 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Anchor, Grid, Text } from "metabase/ui";
+
+export const args = {
+  size: "md",
+  align: "unset",
+  truncate: false,
+};
+
+export const sampleArgs = {
+  text: "Weniger",
+  href: "https://example.test",
+};
+
+export const argTypes = {
+  size: {
+    options: ["xs", "sm", "md", "lg"],
+    control: { type: "inline-radio" },
+  },
+  align: {
+    options: ["left", "center", "right"],
+    control: { type: "inline-radio" },
+  },
+  truncate: {
+    control: { type: "boolean" },
+  },
+};
+
+<Meta
+  title="Typography/Anchor"
+  component={Anchor}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Anchor
+
+Our themed wrapper around [Mantine Anchor](https://v6.mantine.dev/core/anchor/).
+
+## When to use Anchor
+
+The Anchor component allows users to display links with themed styles, and replaces the usage of `<a href="<url>">text</a>`. This component uses the same props as the `Text` component, so it can handle sizing, line clamps, text decoration, and font weight. For regular text, use the `Text` component, and for code, use the `Code` component.
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/8nuIBDQGSGKLfAPsebbASA/Navigation-%2F-Anchor?type=design&node-id=1-96&mode=design&t=2eUYOsqZZeMc4OGT-0)
+- [Mantine Anchor Docs](https://v6.mantine.dev/core/anchor/)
+
+## Examples
+
+export const DefaultTemplate = args => (
+  <Anchor {...args} href={sampleArgs.href}>
+    {sampleArgs.text}
+  </Anchor>
+);
+
+export const SizeTemplate = args => (
+  <Grid align="center" maw="18rem">
+    {argTypes.size.options.map(size => (
+      <Fragment key={size}>
+        <Grid.Col span={2}>
+          <Text weight="bold">{size}</Text>
+        </Grid.Col>
+        <Grid.Col span={10}>
+          <Anchor {...args} size={size} href={sampleArgs.href}>
+            {sampleArgs.text}
+          </Anchor>
+        </Grid.Col>
+      </Fragment>
+    ))}
+  </Grid>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Sizes
+
+export const Sizes = SizeTemplate.bind({});
+
+<Canvas>
+  <Story name="Sizes">{Sizes}</Story>
+</Canvas>
+
+## Related components
+
+- Anchor
+- Code

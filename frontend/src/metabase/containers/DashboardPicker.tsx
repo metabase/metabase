@@ -1,7 +1,13 @@
-import { CollectionId, DashboardId } from "metabase-types/api";
-import ItemPicker from "./ItemPicker";
+import type { CollectionId, DashboardId } from "metabase-types/api";
 
-export interface DashboardPickerProps {
+import ItemPicker from "./ItemPicker";
+import type { ItemPickerProps } from "./ItemPicker/ItemPicker";
+
+export interface DashboardPickerProps
+  extends Pick<
+    ItemPickerProps<DashboardId>,
+    "filterPersonalCollections" | "onOpenCollectionChange"
+  > {
   value?: DashboardId;
   onChange: (dashboardId: DashboardId) => void;
   collectionId?: CollectionId;

@@ -1,0 +1,26 @@
+:root {
+  --title-color: var(--color-text-medium);
+}
+
+.headerBody {
+  composes: text-dark textBold from "style";
+  flex: 1 0 auto;
+  display: flex;
+  overflow: hidden;
+  align-items: center;
+  border-color: var(--color-border);
+}
+
+.headerTextInput {
+  composes: p1 from "style";
+  font-size: 18px;
+  color: var(--title-color);
+  max-width: 550px;
+}
+
+.headerSchema {
+  composes: text-light from "style";
+  position: absolute;
+  top: -10px;
+  font-size: 12px;
+}

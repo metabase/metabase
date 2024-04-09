@@ -1,11 +1,14 @@
-import { useMemo, MouseEvent } from "react";
-
+import type { MouseEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { isEmpty } from "metabase/lib/validate";
+import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
-  BaseDashboardOrderedCard,
+  Dashboard,
+  QuestionDashboardCard,
+  ParameterValueOrArray,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -18,18 +21,20 @@ import {
 
 interface HeadingProps {
   isEditing: boolean;
-  isEditingParameter: boolean;
   onUpdateVisualizationSettings: ({ text }: { text: string }) => void;
-  dashcard: BaseDashboardOrderedCard;
+  dashcard: QuestionDashboardCard;
   settings: VisualizationSettings;
+  dashboard: Dashboard;
+  parameterValues: { [id: string]: ParameterValueOrArray };
 }
 
 export function Heading({
   settings,
   isEditing,
-  isEditingParameter,
   onUpdateVisualizationSettings,
   dashcard,
+  dashboard,
+  parameterValues,
 }: HeadingProps) {
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
@@ -37,16 +42,30 @@ export function Heading({
     useToggle(justAdded);
   const isPreviewing = !isFocused;
 
-  const handleTextChange = (text: string) =>
-    onUpdateVisualizationSettings({ text });
+  const [textValue, setTextValue] = useState(settings.text);
   const preventDragging = (e: MouseEvent<HTMLInputElement>) =>
     e.stopPropagation();
 
-  const content = settings.text;
-  const hasContent = !isEmpty(content);
+  // handles a case when settings are updated externally
+  useEffect(() => {
+    setTextValue(settings.text);
+  }, [settings.text]);
+
+  const content = useMemo(
+    () =>
+      fillParametersInText({
+        dashcard,
+        dashboard,
+        parameterValues,
+        text: settings.text,
+      }),
+    [dashcard, dashboard, parameterValues, settings.text],
+  );
+
+  const hasContent = !isEmpty(settings.text);
   const placeholder = t`Heading`;
 
-  if (isEditing && !isEditingParameter) {
+  if (isEditing) {
     return (
       <InputContainer
         data-testid="editing-dashboard-heading-container"
@@ -60,18 +79,24 @@ export function Heading({
             isEditing={isEditing}
             onMouseDown={preventDragging}
           >
-            {hasContent ? content : placeholder}
+            {hasContent ? settings.text : placeholder}
           </HeadingContent>
         ) : (
           <TextInput
             name="heading"
             data-testid="editing-dashboard-heading-input"
             placeholder={placeholder}
-            value={content}
+            value={textValue}
             autoFocus={justAdded || isFocused}
-            onChange={e => handleTextChange(e.target.value)}
+            onChange={e => setTextValue(e.target.value)}
             onMouseDown={preventDragging}
-            onBlur={toggleFocusOff}
+            onBlur={() => {
+              toggleFocusOff();
+
+              if (settings.text !== textValue) {
+                onUpdateVisualizationSettings({ text: textValue });
+              }
+            }}
           />
         )}
       </InputContainer>
@@ -80,10 +105,7 @@ export function Heading({
 
   return (
     <HeadingContainer>
-      <HeadingContent
-        data-testid="saved-dashboard-heading-content"
-        fade={isEditingParameter}
-      >
+      <HeadingContent data-testid="saved-dashboard-heading-content">
         {content}
       </HeadingContent>
     </HeadingContainer>

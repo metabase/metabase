@@ -1,7 +1,3 @@
-/* d3 */
 @import "dc/dc.css";
-
-/* z-index utils */
-@import "z-index/z-index.css";
-
+@import "ace-builds/css/ace.css";
 @import "tippy.js/dist/tippy.css";

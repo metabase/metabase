@@ -1,9 +1,12 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { Group, GroupsPermissions } from "metabase-types/api";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
+  getPermissionWarning,
+  getPermissionWarningModal,
+} from "metabase/admin/permissions/selectors/confirmations";
+import type {
   EntityId,
   PermissionSubject,
   SchemaEntityId,
@@ -14,11 +17,8 @@ import {
   getSchemasPermission,
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
-import {
-  getPermissionWarning,
-  getPermissionWarningModal,
-} from "metabase/admin/permissions/selectors/confirmations";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+import type { Group, GroupsPermissions } from "metabase-types/api";
 
 export const UNABLE_TO_DOWNLOAD_RESULTS = t`Groups with Block data access can't download results`;
 

@@ -1,4 +1,5 @@
-import {
+import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
+import type {
   Engine,
   EngineField,
   EngineSource,
@@ -6,6 +7,7 @@ import {
   SettingDefinition,
   Settings,
   TokenFeatures,
+  TokenStatus,
   Version,
   VersionInfo,
   VersionInfoRecord,
@@ -84,36 +86,39 @@ export const createMockVersionInfo = (
   ...opts,
 });
 
-export const createMockTokenStatus = () => ({
+export const createMockTokenStatus = (
+  opts?: Partial<TokenStatus>,
+): TokenStatus => ({
   status: "Token is Valid.",
   valid: true,
   trial: false,
-  features: [
-    "audit-app",
-    "advanced-permissions",
-    "embedding",
-    "whitelabel",
-    "no-upsell",
-    "advanced-config",
-    "content-management",
-    "sso",
-    "sandboxes",
-  ],
   "valid-thru": "2022-12-30T23:00:00Z",
+  ...opts,
 });
 
 export const createMockTokenFeatures = (
   opts?: Partial<TokenFeatures>,
 ): TokenFeatures => ({
-  advanced_config: false,
   advanced_permissions: false,
   audit_app: false,
-  content_management: false,
+  cache_granular_controls: false,
+  disable_password_login: false,
+  content_verification: false,
   embedding: false,
   hosting: false,
+  official_collections: false,
+  llm_autodescription: false,
   sandboxes: false,
-  sso: false,
+  sso_google: false,
+  sso_jwt: false,
+  sso_ldap: false,
+  sso_saml: false,
+  session_timeout_config: false,
   whitelabel: false,
+  dashboard_subscription_filters: false,
+  snippet_collections: false,
+  email_allow_list: false,
+  email_restrict_recipients: false,
   ...opts,
 });
 
@@ -127,20 +132,31 @@ export const createMockSettingDefinition = (
   ...opts,
 });
 
-export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
+export const createMockSettings = (
+  opts?: Partial<Settings | EnterpriseSettings>,
+): EnterpriseSettings => ({
   "admin-email": "admin@metabase.test",
   "anon-tracking-enabled": false,
+  "application-colors": {},
   "application-font": "Lato",
   "application-font-files": [],
+  // eslint-disable-next-line no-literal-metabase-strings -- This is a mock
   "application-name": "Metabase",
   "available-fonts": [],
   "available-locales": null,
+  "bcc-enabled?": true,
   "cloud-gateway-ips": null,
   "custom-formatting": {},
   "custom-homepage": false,
   "custom-homepage-dashboard": null,
+  "help-link": "metabase",
+  "help-link-custom-destination": "",
   "deprecation-notice-version": undefined,
+  "ee-ai-features-enabled": false,
+  "ee-openai-model": "",
+  "ee-openai-api-key": "",
   "email-configured?": false,
+  "embedding-app-origin": "",
   "enable-embedding": false,
   "enable-enhancements?": false,
   "enable-nested-queries": true,
@@ -153,6 +169,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   engines: createMockEngines(),
   "has-user-setup": true,
   "hide-embed-branding?": true,
+  "show-static-embed-terms": true,
   "ga-enabled": false,
   "google-auth-auto-create-accounts-domain": null,
   "google-auth-client-id": null,
@@ -182,12 +199,13 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "search-typeahead-enabled": true,
   "setup-token": null,
   "session-cookies": null,
+  "session-cookie-samesite": "lax",
   "snowplow-enabled": false,
   "show-database-syncing-modal": false,
   "show-homepage-data": false,
   "show-homepage-pin-message": false,
   "show-homepage-xrays": false,
-  "show-lighthouse-illustration": true,
+  "show-metabase-links": true,
   "show-metabot": true,
   "site-locale": "en",
   "site-url": "http://localhost:3000",
@@ -196,10 +214,10 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "slack-files-channel": null,
   "slack-token": null,
   "slack-token-valid?": false,
+  "start-of-week": "sunday",
   "subscription-allowed-domains": null,
   "token-features": createMockTokenFeatures(),
   "token-status": null,
-  "user-locale": null,
   version: createMockVersion(),
   "version-info": createMockVersionInfo(),
   "version-info-last-checked": null,
@@ -207,5 +225,13 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "uploads-database-id": null,
   "uploads-table-prefix": null,
   "uploads-schema-name": null,
+  "user-visibility": null,
+  "last-acknowledged-version": "v1",
+  "last-used-native-database-id": 1,
+  "embedding-homepage": "hidden",
+  "setup-embedding-autoenabled": false,
+  "setup-license-active-at-setup": false,
+  "notebook-native-preview-shown": false,
+  "notebook-native-preview-sidebar-width": null,
   ...opts,
 });

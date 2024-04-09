@@ -1,7 +1,14 @@
-import { restore, popover, visitDashboard } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  visitDashboard,
+  openNewPublicLinkDropdown,
+} from "e2e/support/helpers";
 
 describe("issue 20393", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dashboard/*/public_link").as("publicLink");
+
     restore();
     cy.signInAsAdmin();
   });
@@ -16,7 +23,7 @@ describe("issue 20393", () => {
     popover().contains("All Options").click();
 
     // map the date parameter to the card
-    cy.get(".DashCard").contains("Select").click();
+    cy.findByTestId("dashcard-container").contains("Select").click();
     popover().contains("CREATED_AT").click();
 
     // save the dashboard
@@ -24,18 +31,15 @@ describe("issue 20393", () => {
     cy.findByText("Save").click();
 
     // open the sharing modal and enable sharing
-    cy.icon("share").click();
-    cy.findByRole("switch").click();
+    openNewPublicLinkDropdown("dashboard");
 
     // navigate to the public dashboard link
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Public link")
-      .parent()
-      .within(() => {
-        cy.get("input").then(input => {
-          cy.visit(input.val());
-        });
-      });
+    cy.wait("@publicLink").then(({ response: { body } }) => {
+      const { uuid } = body;
+
+      cy.signOut();
+      cy.visit(`/public/dashboard/${uuid}`);
+    });
 
     // verify that the card is visible on the page
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
