@@ -326,7 +326,7 @@
                                  (when-let [query (some-> dataset-query json/parse-string)]
                                    (if (get query "type")
                                       (mbql.normalize/normalize query)
-                                      (lib/normalize query)))))
+                                      (not-empty (lib/normalize query))))))
         (dissoc
          :collection_id
          :collection_name
