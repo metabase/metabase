@@ -29,8 +29,7 @@
     query
     (fn [_query _path {:keys [source-card filters aggregation expressions breakout order-by] :as stage}]
       (let [source-metadata (some->> source-card (lib.metadata/card query))]
-        (if (and source-metadata
-                 (= (:type source-metadata) :metric))
+        (if (= (:type source-metadata) :metric)
           (let [source-query (expand (lib/query query (:dataset-query source-metadata)))
                 source-aggregations (lib/aggregations source-query)
                 new-aggregations (->> (lib.util.match/replace aggregation
