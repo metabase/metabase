@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [medley.core :as m]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]

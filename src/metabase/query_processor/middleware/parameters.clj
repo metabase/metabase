@@ -3,7 +3,6 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
-   [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
