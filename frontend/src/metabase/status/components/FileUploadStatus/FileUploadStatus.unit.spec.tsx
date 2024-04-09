@@ -196,10 +196,9 @@ describe("FileUploadStatus", () => {
   });
 
   it("Should show a start exploring link on completion", async () => {
+    await setupCollectionContent();
     jest.useFakeTimers({ advanceTimers: true });
     fetchMock.post("path:/api/card/from-csv", "3", { delay: 1000 });
-
-    await setupCollectionContent();
 
     await userEvent.upload(
       screen.getByTestId("upload-input"),
@@ -224,10 +223,9 @@ describe("FileUploadStatus", () => {
   });
 
   it("Should allow new model creation when an appendable model exists", async () => {
+    await setupCollectionContent({ collectionId: secondCollectionId });
     jest.useFakeTimers({ advanceTimers: true });
     fetchMock.post("path:/api/card/from-csv", "3", { delay: 1000 });
-
-    await setupCollectionContent({ collectionId: secondCollectionId });
 
     await userEvent.upload(
       screen.getByTestId("upload-input"),
@@ -258,10 +256,9 @@ describe("FileUploadStatus", () => {
   });
 
   it("Should default to appending to a single selectable model", async () => {
+    await setupCollectionContent({ collectionId: secondCollectionId });
     jest.useFakeTimers({ advanceTimers: true });
     fetchMock.post("path:/api/table/123/append-csv", "3", { delay: 1000 });
-
-    await setupCollectionContent({ collectionId: secondCollectionId });
 
     await userEvent.upload(
       screen.getByTestId("upload-input"),
@@ -299,10 +296,9 @@ describe("FileUploadStatus", () => {
   });
 
   it("Should allow selecting from appendable models", async () => {
+    await setupCollectionContent({ collectionId: thirdCollection.id });
     jest.useFakeTimers({ advanceTimers: true });
     fetchMock.post("path:/api/table/123/append-csv", "3", { delay: 1000 });
-
-    await setupCollectionContent({ collectionId: thirdCollection.id });
 
     await userEvent.upload(
       screen.getByTestId("upload-input"),
@@ -344,6 +340,7 @@ describe("FileUploadStatus", () => {
   });
 
   it("Should show an error message on error", async () => {
+    await setupCollectionContent();
     jest.useFakeTimers({ advanceTimers: true });
     fetchMock.post(
       "path:/api/card/from-csv",
@@ -355,8 +352,6 @@ describe("FileUploadStatus", () => {
       },
       { delay: 1000 },
     );
-
-    await setupCollectionContent();
 
     await userEvent.upload(
       screen.getByTestId("upload-input"),
@@ -388,10 +383,9 @@ describe("FileUploadStatus", () => {
 
   describe("loading state", () => {
     it("should rotate loading messages after 30 seconds", async () => {
+      await setupCollectionContent();
       jest.useFakeTimers({ advanceTimers: true });
       fetchMock.post("path:/api/card/from-csv", "3", { delay: 90 * 1000 });
-
-      await setupCollectionContent();
 
       await userEvent.upload(
         screen.getByTestId("upload-input"),
