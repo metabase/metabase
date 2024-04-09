@@ -182,8 +182,6 @@ To set up model caching:
 1. [Enable model caching in Metabase](#enable-model-caching-in-metabase).
 2. [Create a schema to store cached models](#create-a-schema-to-store-cached-models).
 
-> Model caching doesn't work with [data sandboxing](../configuring-metabase/caching.md#caching-doesnt-work-with-data-sandboxing).
-
 ### Enable model caching in Metabase
 
 Go to **Admin settings** > **Settings** > **Caching** > **Models** to turn the feature on.
