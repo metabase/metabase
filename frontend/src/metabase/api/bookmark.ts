@@ -1,7 +1,11 @@
-import type { Bookmark } from "metabase-types/api";
+import type {
+  Bookmark,
+  CreateBookmarkRequest,
+  DeleteBookmarkRequest,
+} from "metabase-types/api";
 
 import { Api } from "./api";
-import { bookmarkListTags } from "./tags";
+import { bookmarkListTags, idTag, invalidateTags, listTag } from "./tags";
 
 export const bookmarkApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -12,7 +16,43 @@ export const bookmarkApi = Api.injectEndpoints({
       }),
       providesTags: (bookmarks = []) => bookmarkListTags(bookmarks),
     }),
+    createBookmark: builder.mutation<Bookmark, CreateBookmarkRequest>({
+      query: ({ id, type }) => ({
+        method: "POST",
+        url: `/api/bookmark/${type}/${id}`,
+      }),
+      invalidatesTags: (bookmark, error) =>
+        invalidateTags(error, [
+          listTag("bookmark"),
+          ...(bookmark ? [idTag("bookmark", bookmark.id)] : []),
+        ]),
+    }),
+    deleteBookmark: builder.mutation<Bookmark, DeleteBookmarkRequest>({
+      query: ({ id, type }) => ({
+        method: "DELETE",
+        url: `/api/bookmark/${type}/${id}`,
+      }),
+      invalidatesTags: (bookmark, error) =>
+        invalidateTags(error, [
+          listTag("bookmark"),
+          ...(bookmark ? [idTag("bookmark", bookmark.id)] : []),
+        ]),
+    }),
+    updateOrdering: builder.mutation<void, Bookmark[]>({
+      query: bookmarks => ({
+        method: "PUT",
+        url: `/api/bookmark/ordering`,
+        body: { orderings: bookmarks },
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("bookmark")]),
+    }),
   }),
 });
 
-export const { useListBookmarksQuery } = bookmarkApi;
+export const {
+  useListBookmarksQuery,
+  useCreateBookmarkMutation,
+  useDeleteBookmarkMutation,
+  useUpdateOrderingMutation,
+} = bookmarkApi;

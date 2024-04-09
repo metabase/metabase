@@ -26,7 +26,6 @@ import type {
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
-  BOOKMARK_TYPES,
   COLLECTION_ITEM_MODELS,
   SEARCH_MODELS,
 } from "metabase-types/api";
@@ -107,14 +106,14 @@ export function databaseTags(database: Database): TagDescription<TagType>[] {
 export function bookmarkListTags(
   bookmarks: Bookmark[],
 ): TagDescription<TagType>[] {
-  return [
-    ...BOOKMARK_TYPES.map(type => listTag(TAG_TYPE_MAPPING[type])),
-    ...bookmarks.flatMap(bookmarkTags),
-  ];
+  return [listTag("bookmark"), ...bookmarks.flatMap(bookmarkTags)];
 }
 
 export function bookmarkTags(bookmark: Bookmark): TagDescription<TagType>[] {
-  return [idTag(TAG_TYPE_MAPPING[bookmark.type], bookmark.item_id)];
+  return [
+    idTag("bookmark", bookmark.id),
+    idTag(TAG_TYPE_MAPPING[bookmark.type], bookmark.item_id),
+  ];
 }
 
 export function cardListTags(cards: Card[]): TagDescription<TagType>[] {
