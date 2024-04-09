@@ -12,19 +12,19 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.middleware.fetch-source-query-legacy :as fetch-source-query-legacy]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -43,7 +43,7 @@
 (defn- query->all-table-ids [query]
   (let [ids (all-table-ids query)]
     (when (seq ids)
-      (qp.store/bulk-metadata :metadata/table ids)
+      (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/table ids)
       (set ids))))
 
 (defn assert-one-gtap-per-table
@@ -77,7 +77,7 @@
 ;;; |                                                Applying a GTAP                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private target-field->base-type :- [:maybe ms/FieldType]
+(mu/defn ^:private target-field->base-type :- [:maybe ::lib.schema.common/base-type]
   "If the `:target` of a parameter contains a `:field` clause, return the base type corresponding to the Field it
   references. Otherwise returns `nil`."
   [[_ target-field-clause]]
@@ -187,8 +187,8 @@
   "Add `:source-metadata` to a `source-query` if needed. If the source metadata had to be resolved (because Card with
   `card-id`) didn't already have it, save it so we don't have to resolve it again next time around."
   [{:keys [source-metadata], :as source-query} :- [:and [:map-of :keyword :any] [:map [:source-query :any]]]
-   table-id                                    :- ms/PositiveInt
-   card-id                                     :- [:maybe ms/PositiveInt]]
+   table-id                                    :- ::lib.schema.id/table
+   card-id                                     :- [:maybe ::lib.schema.id/card]]
   (let [table-metadata   (original-table-metadata table-id)
         ;; make sure source query has `:source-metadata`; add it if needed
         [metadata save?] (cond
@@ -213,7 +213,7 @@
       (t2/update! Card card-id {:result_metadata metadata}))
     ;; make sure the fetched Fields are present the QP store
     (when-let [field-ids (not-empty (filter some? (map :id metadata)))]
-      (qp.store/bulk-metadata :metadata/column field-ids))
+      (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column field-ids))
     (assoc source-query :source-metadata metadata)))
 
 

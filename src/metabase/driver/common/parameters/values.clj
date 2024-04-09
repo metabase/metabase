@@ -14,6 +14,8 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.query-processor.compile :as qp.compile]
@@ -24,7 +26,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -34,10 +35,10 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private Date                   (ms/InstanceOfClass metabase.driver.common.parameters.Date))
-(def ^:private FieldFilter            (ms/InstanceOfClass metabase.driver.common.parameters.FieldFilter))
-(def ^:private ReferencedQuerySnippet (ms/InstanceOfClass metabase.driver.common.parameters.ReferencedQuerySnippet))
-(def ^:private ReferencedCardQuery    (ms/InstanceOfClass metabase.driver.common.parameters.ReferencedCardQuery))
+(def ^:private Date                   (lib.schema.common/instance-of-class metabase.driver.common.parameters.Date))
+(def ^:private FieldFilter            (lib.schema.common/instance-of-class metabase.driver.common.parameters.FieldFilter))
+(def ^:private ReferencedQuerySnippet (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedQuerySnippet))
+(def ^:private ReferencedCardQuery    (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedCardQuery))
 
 (defmulti ^:private parse-tag
   "Parse a tag by its `:type`, returning an appropriate record type such as
@@ -109,7 +110,7 @@
                 param-display-name)
            {:type qp.error-type/missing-required-parameter}))
 
-(mu/defn ^:private field-filter->field-id :- ms/PositiveInt
+(mu/defn ^:private field-filter->field-id :- ::lib.schema.id/field
   [field-filter]
   (second field-filter))
 
@@ -304,7 +305,7 @@
   to parse it as appropriate based on the base type and semantic type of the Field associated with it). These are
   special cases for handling types that do not have an associated parameter type (such as `date` or `number`), such as
   UUID fields."
-  [effective-type :- ms/FieldType value]
+  [effective-type :- ::lib.schema.common/base-type value]
   (cond
     (isa? effective-type :type/UUID)
     (UUID/fromString value)
@@ -382,7 +383,7 @@
                        :params params}
                       e)))))
 
-(mu/defn query->params-map :- [:map-of ms/NonBlankString ParsedParamValue]
+(mu/defn query->params-map :- [:map-of ::lib.schema.common/non-blank-string ParsedParamValue]
   "Extract parameters info from `query`. Return a map of parameter name -> value.
 
     (query->params-map some-inner-query)

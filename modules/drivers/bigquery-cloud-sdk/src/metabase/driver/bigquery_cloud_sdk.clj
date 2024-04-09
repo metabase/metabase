@@ -24,7 +24,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -109,11 +108,11 @@
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
 
-(mu/defn ^:private get-table :- (ms/InstanceOfClass Table)
+(mu/defn ^:private get-table :- (lib.schema.common/instance-of-class Table)
   (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
    (get-table (database-details->client (:details database)) project-id dataset-id table-id))
 
-  (^Table [^BigQuery client :- (ms/InstanceOfClass BigQuery)
+  (^Table [^BigQuery client :- (lib.schema.common/instance-of-class BigQuery)
            project-id       :- [:maybe ::lib.schema.common/non-blank-string]
            dataset-id       :- ::lib.schema.common/non-blank-string
            table-id         :- ::lib.schema.common/non-blank-string]
@@ -179,7 +178,7 @@
       :type/*)))
 
 (mu/defn ^:private table-schema->metabase-field-info
-  [^Schema schema :- (ms/InstanceOfClass Schema)]
+  [^Schema schema :- (lib.schema.common/instance-of-class Schema)]
   (for [[idx ^Field field] (m/indexed (.getFields schema))]
     (let [type-name (.. field getType name)
           f-mode    (.getMode field)]

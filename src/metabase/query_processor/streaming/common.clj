@@ -174,8 +174,8 @@
   (cond-> viz-settings
     (nil? global-column-settings)
     (assoc ::mb.viz/global-column-settings
-           (m/map-vals mb.viz/db->norm-column-settings-entries
-                       (public-settings/custom-formatting)))))
+           (update-vals (public-settings/custom-formatting)
+                        mb.viz/db->norm-column-settings-entries))))
 
 (defn viz-settings-for-col
   "Get the unified viz settings for a column based on the column's metadata (if any) and user settings (⚙)."
