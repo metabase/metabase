@@ -9,7 +9,14 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, invalidateTags, listTag, tag, timelineTags } from "./tags";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  tag,
+  timelineListTags,
+  timelineTags,
+} from "./tags";
 
 export const timelineApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -19,10 +26,7 @@ export const timelineApi = Api.injectEndpoints({
         url: "/api/timeline",
         body,
       }),
-      providesTags: (timelines = []) => [
-        listTag("timeline"),
-        ...timelines.flatMap(timelineTags),
-      ],
+      providesTags: (timelines = []) => timelineListTags(timelines),
     }),
     listCollectionTimelines: builder.query<
       Timeline[],
@@ -33,10 +37,7 @@ export const timelineApi = Api.injectEndpoints({
         url: `/api/collection/${id}/timelines`,
         body,
       }),
-      providesTags: (timelines = []) => [
-        listTag("timeline"),
-        ...timelines.flatMap(timelineTags),
-      ],
+      providesTags: (timelines = []) => timelineListTags(timelines),
     }),
     getTimeline: builder.query<Timeline, GetTimelineRequest>({
       query: ({ id, ...body }) => ({
