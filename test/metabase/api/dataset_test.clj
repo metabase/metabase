@@ -440,7 +440,7 @@
                         :name            "pivot-grouping"
                         :display_name    "pivot-grouping"
                         :expression_name "pivot-grouping"
-                        :field_ref       ["expression" "pivot-grouping" {:base-type "type/Integer"}]
+                        :field_ref       ["expression" "pivot-grouping"]
                         :source          "breakout"}
                        (nth cols 3))))
               (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
