@@ -237,7 +237,10 @@ export function provideSearchItemListTags(
 export function provideSearchItemTags(
   item: SearchResult,
 ): TagDescription<TagType>[] {
-  return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
+  return [
+    idTag(TAG_TYPE_MAPPING[item.model], item.id),
+    ...(item.collection ? [idTag("collection", item.collection.id)] : []),
+  ];
 }
 
 export function provideSegmentListTags(
