@@ -1,4 +1,4 @@
-(ns metabase.lib.metric
+(ns metabase.lib.legacy-metric
   "A Metric is a saved MBQL query stage snippet with EXACTLY ONE `:aggregation` and optionally a `:filter` (boolean)
   expression. Can be passed into the `:aggregation`s list."
   (:require
@@ -17,7 +17,7 @@
 
 (defn- resolve-metric [query metric-id]
   (when (integer? metric-id)
-    (lib.metadata/metric query metric-id)))
+    (lib.metadata/legacy-metric query metric-id)))
 
 (mu/defn ^:private metric-definition :- [:maybe ::lib.schema/stage.mbql]
   [{:keys [definition], :as _metric-metadata} :- lib.metadata/LegacyMetricMetadata]
@@ -32,7 +32,7 @@
         lib.convert/->pMBQL
         (lib.util/query-stage -1)))))
 
-(defmethod lib.ref/ref-method :metadata/metric
+(defmethod lib.ref/ref-method :metadata/legacy-metric
   [{:keys [id], :as metric-metadata}]
   (let [effective-type (or (:effective-type metric-metadata)
                            (:base-type metric-metadata)
@@ -44,7 +44,7 @@
                   effective-type (assoc :effective-type effective-type))]
     [:metric options id]))
 
-(defmethod lib.metadata.calculation/type-of-method :metadata/metric
+(defmethod lib.metadata.calculation/type-of-method :metadata/legacy-metric
   [query stage-number metric-metadata]
   (or
    (when-let [[aggregation] (not-empty (:aggregation (metric-definition metric-metadata)))]
@@ -60,7 +60,7 @@
 (defn- fallback-display-name []
   (i18n/tru "[Unknown Metric]"))
 
-(defmethod lib.metadata.calculation/display-name-method :metadata/metric
+(defmethod lib.metadata.calculation/display-name-method :metadata/legacy-metric
   [_query _stage-number metric-metadata _style]
   (or ((some-fn :display-name :name) metric-metadata)
       (fallback-display-name)))
@@ -71,7 +71,7 @@
         (lib.metadata.calculation/display-name query stage-number metric-metadata style))
       (fallback-display-name)))
 
-(defmethod lib.metadata.calculation/display-info-method :metadata/metric
+(defmethod lib.metadata.calculation/display-info-method :metadata/legacy-metric
   [query stage-number metric-metadata]
   (merge
    ((get-method lib.metadata.calculation/display-info-method :default) query stage-number metric-metadata)
@@ -91,16 +91,16 @@
         (lib.metadata.calculation/column-name query stage-number metric-metadata))
       "metric"))
 
-(mu/defn available-metrics :- [:maybe [:sequential {:min 1} lib.metadata/LegacyMetricMetadata]]
+(mu/defn available-legacy-metrics :- [:maybe [:sequential {:min 1} lib.metadata/LegacyMetricMetadata]]
   "Get a list of Metrics that you may consider using as aggregations for a query. Only Metrics that have the same
   `table-id` as the `source-table` for this query will be suggested."
   ([query]
-   (available-metrics query -1))
+   (available-legacy-metrics query -1))
   ([query :- ::lib.schema/query
     stage-number :- :int]
    (when (zero? (lib.util/canonical-stage-index query stage-number))
      (when-let [source-table-id (lib.util/source-table-id query)]
-       (let [metrics (lib.metadata.protocols/metrics (lib.metadata/->metadata-provider query) source-table-id)
+       (let [metrics (lib.metadata.protocols/legacy-metrics (lib.metadata/->metadata-provider query) source-table-id)
              metric-aggregations (into {}
                                        (keep-indexed (fn [index aggregation-clause]
                                                        (when (lib.util/clause-of-type? aggregation-clause :metric)

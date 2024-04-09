@@ -16,9 +16,9 @@
    [metabase.models.dimension :as dimension]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values]
+   [metabase.models.legacy-metric :as legacy-metric]
+   [metabase.models.legacy-metric-important-field :as legacy-metric-important-field]
    [metabase.models.login-history :as login-history]
-   [metabase.models.metric :as metric]
-   [metabase.models.metric-important-field :as metric-important-field]
    [metabase.models.model-index :as model-index]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.native-query-snippet :as native-query-snippet]
@@ -56,25 +56,25 @@
    [toucan2.model :as t2.model]))
 
 ;; Fool the linter
-(comment action/keep-me
-         card/keep-me
+(comment a-perm-revision/keep-me
+         action/keep-me
          bookmark/keep-me
-         cache-config/keep-me
-         collection/keep-me
          c-perm-revision/keep-me
-         dashboard/keep-me
-         dashboard-card/keep-me
+         cache-config/keep-me
+         card/keep-me
+         collection/keep-me
          dashboard-card-series/keep-me
+         dashboard-card/keep-me
          dashboard-tab/keep-me
+         dashboard/keep-me
          database/keep-me
          dimension/keep-me
-         field/keep-me
          field-values/keep-me
-         a-perm-revision/keep-me
+         field/keep-me
+         legacy-metric/keep-me
+         legacy-metric-important-field/keep-me
          login-history/keep-me
-         metric/keep-me
          moderation-review/keep-me
-         metric-important-field/keep-me
          native-query-snippet/keep-me
          parameter-card/keep-me
          perms-group-membership/keep-me
@@ -118,11 +118,11 @@
  [dimension Dimension]
  [field Field]
  [field-values FieldValues]
+ [legacy-metric LegacyMetric]
  [login-history LoginHistory]
- [metric LegacyMetric]
  [moderation-review ModerationReview]
  [model-index ModelIndex ModelIndexValue]
- [metric-important-field LegacyMetricImportantField]
+ [legacy-metric-important-field LegacyMetricImportantField]
  [native-query-snippet NativeQuerySnippet]
  [parameter-card ParameterCard]
  [perms Permissions]
