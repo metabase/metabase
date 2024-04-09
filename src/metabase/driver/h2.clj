@@ -588,3 +588,10 @@
   (let [f (get-method driver/add-columns! :sql-jdbc)]
     (doseq [[k v] column-definitions]
       (f driver db-id table-name {k v} settings))))
+
+(defmethod driver/alter-columns! :h2
+  [driver db-id table-name column-definitions]
+  ;; H2 doesn't support altering multiple columns at a time, so we break it up into individual ALTER TABLE statements
+  (let [f (get-method driver/alter-columns! :sql-jdbc)]
+    (doseq [[k v] column-definitions]
+      (f driver db-id table-name {k v}))))
