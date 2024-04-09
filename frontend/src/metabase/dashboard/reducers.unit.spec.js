@@ -1,3 +1,5 @@
+import { createMockDashboard } from "metabase-types/api/mocks";
+
 import {
   INITIALIZE,
   SET_EDITING_DASHBOARD,
@@ -10,6 +12,8 @@ import {
   FETCH_CARD_DATA_PENDING,
 } from "./actions";
 import { dashboardReducers as reducer } from "./reducers";
+
+const TEST_DASHBOARD = createMockDashboard();
 
 describe("dashboard reducers", () => {
   let initState;
@@ -26,7 +30,7 @@ describe("dashboard reducers", () => {
       dashcards: {},
       isAddParameterPopoverOpen: false,
       isNavigatingBackToDashboard: false,
-      isEditing: null,
+      editingDashboard: null,
       loadingDashCards: {
         loadingIds: [],
         startTime: null,
@@ -101,7 +105,7 @@ describe("dashboard reducers", () => {
             type: INITIALIZE,
           },
         ),
-      ).toEqual({ ...initState, isEditing: null });
+      ).toEqual({ ...initState, editingDashboard: null });
     });
 
     it("should return unchanged state if `clearCache: false` passed", () => {
@@ -154,9 +158,13 @@ describe("dashboard reducers", () => {
       expect(
         reducer(state, {
           type: SET_EDITING_DASHBOARD,
-          payload: true,
+          payload: TEST_DASHBOARD,
         }),
-      ).toEqual({ ...state, isEditing: true, sidebar: { props: {} } });
+      ).toEqual({
+        ...state,
+        editingDashboard: TEST_DASHBOARD,
+        sidebar: { props: {} },
+      });
     });
 
     it("should clear sidebar state when leaving edit mode", () => {
@@ -167,9 +175,9 @@ describe("dashboard reducers", () => {
       expect(
         reducer(state, {
           type: SET_EDITING_DASHBOARD,
-          payload: false,
+          payload: null,
         }),
-      ).toEqual({ ...initState, isEditing: null });
+      ).toEqual({ ...initState, editingDashboard: null });
     });
   });
 

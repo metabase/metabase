@@ -5,8 +5,8 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toggle from "metabase/core/components/Toggle";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
-import type Field from "metabase-lib/metadata/Field";
-import type Table from "metabase-lib/metadata/Table";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { FieldId, Parameter, ParameterId } from "metabase-types/api";
 
 import { usableAsLinkedFilter } from "../../utils/linked-filters";

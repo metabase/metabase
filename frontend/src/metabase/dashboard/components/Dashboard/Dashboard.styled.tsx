@@ -4,15 +4,15 @@ import cx from "classnames";
 import type { ComponentPropsWithoutRef } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
+import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
 import { DashCard } from "../DashCard/DashCard";
 
-// Class names are added here because we still use traditional css,
-// see dashboard.css
 export const DashboardLoadingAndErrorWrapper = styled(
   ({
     isFullscreen,
@@ -22,9 +22,10 @@ export const DashboardLoadingAndErrorWrapper = styled(
   }: ComponentPropsWithoutRef<typeof LoadingAndErrorWrapper>) => {
     return (
       <LoadingAndErrorWrapper
-        className={cx(className, "Dashboard", {
-          "Dashboard--fullscreen": isFullscreen,
-          "Dashboard--night": isNightMode,
+        className={cx(className, DashboardS.Dashboard, {
+          [DashboardS.DashboardFullscreen]: isFullscreen,
+          [DashboardS.DashboardNight]: isNightMode,
+          [ParametersS.DashboardNight]: isNightMode,
         })}
         {...props}
       />
@@ -139,6 +140,9 @@ export const ParametersAndCardsContainer = styled.div<{
     overflow-x: clip;
   }
   padding-bottom: 40px;
+  /* Makes sure it doesn't use all the height, so the actual content height could be used in embedding #37437 */
+  align-self: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
+    !shouldMakeDashboardHeaderStickyAfterScrolling && "flex-start"};
 
   &.${SAVING_DOM_IMAGE_CLASS} {
     ${ParametersWidgetContainer} {

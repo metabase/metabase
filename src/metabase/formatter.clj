@@ -11,9 +11,10 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.shared.util.currency :as currency]
    [metabase.types :as types]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.ui-logic :as ui-logic]
-   [potemkin.types :as p.types]
-   [schema.core :as s])
+   [potemkin.types :as p.types])
   (:import
    (java.math RoundingMode)
    (java.net URL)
@@ -26,9 +27,10 @@
 
 (def RenderedPulseCard
   "Schema used for functions that operate on pulse card contents and their attachments"
-  {:attachments                  (s/maybe {s/Str URL})
-   :content                      [s/Any]
-   (s/optional-key :render/text) (s/maybe s/Str)})
+  [:map
+   [:attachments [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
+   [:content     [:sequential :any]]
+   [:render/text {:optional true} [:maybe :string]]])
 
 (p.types/defrecord+ NumericWrapper [^String num-str ^Number num-value]
   hiccup.util/ToString
@@ -150,12 +152,13 @@
                               (when suffix suffix)))}))
         value))))
 
-(s/defn format-number :- NumericWrapper
+(mu/defn format-number :- (ms/InstanceOfClass NumericWrapper)
   "Format a number `n` and return it as a NumericWrapper; this type is used to do special formatting in other
   `pulse.render` namespaces."
-  ([n :- s/Num]
+  ([n :- number?]
    (map->NumericWrapper {:num-str   (cl-format nil (if (integer? n) "~:d" "~,2f") n)
                          :num-value n}))
+
   ([value column viz-settings]
    (let [fmttr (number-formatter column viz-settings)]
      (fmttr value))))
@@ -202,19 +205,20 @@
 
 (defn format-geographic-coordinates
   "Format longitude/latitude values as 0.00000000° N|S|E|W"
-  [lon-or-lat ^double v]
-  (let [dir        (case lon-or-lat
+  [lon-or-lat v]
+  (str (when (number? v)
+         (let [v   (double v)
+               dir (case lon-or-lat
                      :type/Latitude (if (neg? v) "S" "N")
                      :type/Longitude (if (neg? v) "W" "E")
-                     nil)
-        base-value (Math/abs v)]
-    (if dir
-      (format "%.8f° %s" base-value dir)
-      (str v))))
+                     nil)]
+           (if dir
+             (format "%.8f° %s" (Math/abs v) dir)
+             v)))))
 
-(s/defn create-formatter
+(mu/defn create-formatter
   "Create a formatter for a column based on its timezone, column metadata, and visualization-settings"
-  [timezone-id :- (s/maybe s/Str) col visualization-settings]
+  [timezone-id :- [:maybe :string] col visualization-settings]
   (cond
     ;; for numbers, return a format function that has already computed the differences.
     ;; todo: do the same for temporal strings

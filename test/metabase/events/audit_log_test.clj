@@ -9,7 +9,7 @@
    [metabase.events.audit-log :as events.audit-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
-    :refer [Card Dashboard DashboardCard Metric Pulse Segment]]
+    :refer [Card Dashboard DashboardCard LegacyMetric Pulse Segment]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -182,7 +182,7 @@
 
 (deftest metric-create-event-test
   (testing :metric-create
-    (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
+    (t2.with-temp/with-temp [LegacyMetric metric {:table_id (mt/id :venues)}]
       (is (= {:object metric :user-id (mt/user->id :rasta)}
              (events/publish-event! :event/metric-create {:object metric :user-id (mt/user->id :rasta)})))
       (is (= {:topic       :metric-create
@@ -197,7 +197,7 @@
 
 (deftest metric-update-event-test
   (testing :metric-update
-    (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
+    (t2.with-temp/with-temp [LegacyMetric metric {:table_id (mt/id :venues)}]
       (let [event {:object           metric
                    :revision-message "update this mofo"
                    :user-id          (mt/user->id :rasta)}]
@@ -216,7 +216,7 @@
 
 (deftest metric-delete-event-test
   (testing :metric-delete
-    (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
+    (t2.with-temp/with-temp [LegacyMetric metric {:table_id (mt/id :venues)}]
       (let [event {:object           metric
                    :revision-message "deleted"
                    :user-id          (mt/user->id :rasta)}]
@@ -436,7 +436,6 @@
 
 (deftest user-joined-event-test
   (testing :user-joined
-    ;; TODO - what's the difference between `user-login` / `user-joined`?
     (is (= {:user-id (mt/user->id :rasta)}
            (events/publish-event! :event/user-joined {:user-id (mt/user->id :rasta)})))
     (is (= {:topic       :user-joined

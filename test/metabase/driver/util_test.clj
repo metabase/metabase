@@ -7,7 +7,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures])
@@ -145,8 +144,7 @@
                                       :visible-if           {:use-keystore true}}]
                                     true]]]
       (testing (str " with is-hosted? " is-hosted?)
-        ;; TODO: create capability to temporarily override token-features for testing
-        (with-redefs [premium-features/is-hosted? (constantly is-hosted?)]
+        (mt/with-premium-features (if is-hosted? #{:hosting} #{})
           (let [client-conn-props (-> (driver.u/available-drivers-info) ; this calls connection-props-server->client
                                       :secret-test-driver
                                       :details-fields)]

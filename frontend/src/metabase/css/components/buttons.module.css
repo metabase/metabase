@@ -2,7 +2,7 @@
   --default-button-border-radius: 6px;
 }
 
-:global(.Button) {
+.Button {
   display: inline-block;
   box-sizing: border-box;
   text-decoration: none;
@@ -11,13 +11,12 @@
   border: 1px solid color-mod(var(--color-border) blackness(5%));
   color: var(--color-text-dark);
   cursor: pointer;
-  text-decoration: none;
   font-weight: bold;
   font-family: var(--default-font-family), sans-serif;
   border-radius: var(--default-button-border-radius);
 }
 
-:global(.Button:hover) {
+.Button:hover {
   color: var(--color-brand);
   border-color: color-mod(var(--color-border) blackness(12%));
   background: var(--color-bg-light);
@@ -25,94 +24,95 @@
   transition-property: color, border-color, background-color;
 }
 
-:global(.Button:focus) {
+.Button:focus {
   outline: 2px solid var(--color-focus);
 }
 
-:global(.Button:focus:not(:focus-visible)) {
+.Button:focus:not(:focus-visible) {
   outline: none;
 }
 
 @media screen and (--breakpoint-min-lg) {
-  :global(.Button) {
+  .Button {
     padding: 0.75rem 1rem;
   }
 }
 
-:global(.Button--small) {
+.ButtonSmall {
   padding: 0.45rem 1rem;
 }
 
-:global(.Button--medium) {
+.ButtonMedium {
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
 }
 
-:global(.Button--large) {
+.ButtonLarge {
   padding: 0.8rem 1.25rem;
   font-size: 1rem;
 }
 
-:global(.Button-normal) {
+.ButtonNormal {
   font-weight: normal;
 }
 
-:global(.Button--round) {
+.ButtonRound {
   border-radius: 99px;
 }
 
-:global(.Button--primary) {
+.ButtonPrimary {
   color: var(--color-text-white);
   background: var(--color-brand);
   border: 1px solid var(--color-brand);
 }
 
-:global(.Button--primary:hover) {
+.ButtonPrimary:hover {
   color: var(--color-text-white);
   border-color: var(--color-brand);
   background-color: var(--color-brand-alpha-88);
 }
 
-:global(.Button--warning) {
+.ButtonWarning {
   color: var(--color-text-white);
   background: var(--color-error);
   border: 1px solid var(--color-error);
 }
 
-:global(.Button--warning:hover) {
+.ButtonWarning:hover {
   color: var(--color-text-white);
   border-color: var(--color-error);
   background-color: var(--color-error);
 }
 
-:global(.Button--cancel) {
+.ButtonCancel {
   border-radius: 99px;
 }
 
-:global(.Button--white) {
+.ButtonWhite {
   background-color: white;
   color: var(--color-text-dark);
   border-color: var(--color-border);
 }
 
-:global(.Button--borderless) {
+.ButtonBorderless {
   border-color: transparent;
   background: transparent;
   color: var(--color-text-medium);
 }
-:global(.Button--borderless:hover) {
+
+.ButtonBorderless:hover {
   border-color: transparent;
   color: var(--color-text-medium);
 }
 
-:global(.Button--onlyIcon) {
+.ButtonOnlyIcon {
   border: none;
   background: transparent;
   color: var(--color-text-dark);
   padding: 0;
 }
 
-:global(.Button-group) {
+.ButtonGroup {
   display: inline-block;
   border-radius: var(--default-button-border-radius);
   border: 1px solid var(--color-border);
@@ -120,7 +120,7 @@
   clear: both;
 }
 
-:global(.Button-group .Button) {
+.ButtonGroup .Button {
   margin: 0;
   float: left;
   border-top: none;
@@ -130,81 +130,59 @@
   box-shadow: none;
 }
 
-:global(.Button-group .Button--active) {
+.ButtonGroup .ButtonActive {
   background-color: var(--color-success);
   color: var(--color-text-white);
 }
 
-:global(.Button-group .Button:first-child) {
+.ButtonGroup .Button:first-child {
   border-left: none;
 }
 
-:global(.Button-group--blue) {
-  border-color: var(--color-border);
-}
-
-:global(.Button-group--blue .Button) {
-  color: var(--color-text-medium);
-}
-
-:global(.Button-group--blue .Button--active) {
-  background-color: var(--color-bg-medium);
-  color: var(--color-brand);
-}
-
-:global(.Button-group--brand) {
+.ButtonGroupBrand {
   border-color: white;
 }
 
-:global(.Button-group--brand .Button) {
+.ButtonGroupBrand .Button {
   border-color: white;
   color: var(--color-brand);
   background-color: var(--color-bg-medium);
 }
 
-:global(.Button-group--brand .Button--active) {
+.ButtonGroupBrand .ButtonActive {
   background-color: var(--color-brand);
   color: white;
 }
 
-:global(.Button:disabled) {
+.Button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-:global(.Button--selected),
-:global(.Button--selected:hover) {
-  box-shadow: inset 0 1px 1px var(--color-shadow);
-  background-color: var(--color-bg-light);
-}
-
-:global(.Button--danger) {
+.ButtonDanger {
   background-color: var(--color-error);
   border-color: var(--color-error);
   color: var(--color-text-white);
 }
 
-:global(.Button--danger:hover) {
+.ButtonDanger:hover {
   color: white;
   background-color: var(--color-error);
   border-color: var(--color-error);
 }
 
-:global(.Button--success) {
-  background-color: var(--color-success);
-  border-color: var(--color-success);
-  color: var(--color-text-white);
-}
-:global(.Button--success:hover) {
+.ButtonSuccess {
   background-color: var(--color-success);
   border-color: var(--color-success);
   color: var(--color-text-white);
 }
 
-:global(.Button--withIcon) {
-  line-height: 1;
+.ButtonSuccess:hover {
+  background-color: var(--color-success);
+  border-color: var(--color-success);
+  color: var(--color-text-white);
 }
 
-:global(.Button--fullWidth) {
+.ButtonFullWidth {
   width: 100%;
 }

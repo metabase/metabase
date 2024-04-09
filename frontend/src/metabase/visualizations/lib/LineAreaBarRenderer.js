@@ -8,8 +8,8 @@ import _ from "underscore";
 import { lighten } from "metabase/lib/colors";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import { isNative } from "metabase-lib/queries/utils/card";
+import Question from "metabase-lib/v1/Question";
+import { isNative } from "metabase-lib/v1/queries/utils/card";
 
 import lineAndBarOnRender from "./LineAreaBarPostRender";
 import {

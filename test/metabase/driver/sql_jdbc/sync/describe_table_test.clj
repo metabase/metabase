@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -15,6 +16,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.driver.util :as driver.u]
    [metabase.models.table :refer [Table]]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -23,14 +25,25 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(defn- sql-jdbc-drivers-with-default-describe-table-impl
-  "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`. (As far as I know, this is
-  all of them.)"
+(defn- sql-jdbc-drivers-using-default-describe-table-or-fields-impl
+  "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`, or `describe-fields`."
   []
   (set
    (filter
-    #(identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table %))
+    (fn [driver]
+      (let [uses-default-describe-table? (and (identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table driver))
+                                              (not (driver/database-supports? driver :describe-fields nil)))
+            uses-default-describe-fields? (and (identical? (get-method driver/describe-fields :sql-jdbc) (get-method driver/describe-fields driver))
+                                               (driver/database-supports? driver :describe-fields nil))]
+        (or uses-default-describe-table?
+            uses-default-describe-fields?)))
     (descendants driver/hierarchy :sql-jdbc))))
+
+(deftest ^:parallel describe-fields-nested-field-columns-test
+  (testing (str "Drivers that support describe-fields should not support the nested field columns feature."
+                "It is possible to support both in the future but this has not been implemented yet.")
+    (is (empty? (filter #(driver/database-supports? % :describe-fields nil)
+                        (mt/normal-drivers-with-feature :nested-field-columns))))))
 
 (deftest ^:parallel describe-table-test
   (is (= {:name "VENUES",
@@ -79,6 +92,16 @@
              :json-unfolding             false}}}
          (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
 
+(defn- describe-fields-for-table [db table]
+  (let [driver (driver.u/database->driver db)]
+    (sort-by :database-position
+             (if (driver/database-supports? driver :describe-fields db)
+               (vec (sql-jdbc.describe-table/describe-fields driver db
+                                                             :schema-names [(:schema table)]
+                                                             :table-names [(:name table)]))
+               (:fields (sql-jdbc.describe-table/describe-table driver db table))))))
+
+
 (deftest describe-auto-increment-on-non-pk-field-test
   (testing "a non-pk field with auto-increment should be have metabase_field.database_is_auto_increment=true"
     (one-off-dbs/with-blank-db
@@ -126,8 +149,31 @@
            {:fk-column-name "VENUE_ID", :dest-table {:name "VENUES", :schema "PUBLIC"}, :dest-column-name "ID"}}
          (sql-jdbc.describe-table/describe-table-fks :h2 (mt/id) {:name "CHECKINS"}))))
 
+(deftest describe-fields-or-table-test
+  (testing "test `describe-fields` or `describe-table` returns some basic metadata"
+    (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+      (mt/dataset daily-bird-counts
+        (let [table       (t2/select-one :model/Table :id (mt/id :bird-count))
+              format-name #(ddl.i/format-name driver/*driver* %)]
+          (is (=? [{:name              (format-name "id"),
+                    :database-type     string?,
+                    :database-position 0,
+                    :base-type         #(isa? % :type/Number),
+                    :json-unfolding    false}
+                   {:name              (format-name "date"),
+                    :database-type     string?,
+                    :database-position 1,
+                    :base-type         #(isa? % :type/Date),
+                    :json-unfolding    false}
+                   {:name              (format-name "count"),
+                    :database-type     string?,
+                    :database-position 2,
+                    :base-type         #(isa? % :type/Number),
+                    :json-unfolding    false}]
+                  (describe-fields-for-table (mt/db) table))))))))
+
 (deftest database-types-fallback-test
-  (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
+  (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
     (let [org-result-set-seq jdbc/result-set-seq]
       (with-redefs [jdbc/result-set-seq (fn [& args]
                                           (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
@@ -137,8 +183,7 @@
                  {:name "latitude"    :base-type :type/Float}
                  {:name "name"        :base-type :type/Text}
                  {:name "id"          :base-type :type/Integer}}
-               (->> (sql-jdbc.describe-table/describe-table driver/*driver* (mt/id) (t2/select-one Table :id (mt/id :venues)))
-                    :fields
+               (->> (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues)))
                     (map (fn [{:keys [name base-type]}]
                            {:name      (u/lower-case-en name)
                             :base-type (if (or (isa? base-type :type/Integer)
@@ -148,13 +193,12 @@
                     set)))))))
 
 (deftest calculated-semantic-type-test
-  (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
-    (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_ _ column-name]
+  (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+    (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_driver _database-type column-name]
                                                                   (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
-             (->> (sql-jdbc.describe-table/describe-table (or driver/*driver* :h2) (mt/id) (t2/select-one Table :id (mt/id :venues)))
-                  :fields
+             (->> (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues)))
                   (filter :semantic-type)
                   (map (juxt (comp u/lower-case-en :name) :semantic-type))))))))
 

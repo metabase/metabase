@@ -1,6 +1,8 @@
 (ns metabase.driver.sql-jdbc.sync.interface
   (:require
-   [metabase.driver :as driver]))
+   [honey.sql :as sql]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]))
 
 (defmulti active-tables
   "Return a reducible sequence of maps containing information about the active tables/views, collections, or equivalent
@@ -124,3 +126,18 @@
   {:added "0.49.0" :arglists '([driver conn-spec & args])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
+
+(defmulti alter-columns-sql
+  "Generate the query to be used with [[driver/alter-columns!]]."
+  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod alter-columns-sql :sql-jdbc
+  [driver table-name column-definitions]
+  (first (sql/format {:alter-table  (keyword table-name)
+                      :alter-column (map (fn [[column-name type-and-constraints]]
+                                           (vec (cons column-name type-and-constraints)))
+                                         column-definitions)}
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))

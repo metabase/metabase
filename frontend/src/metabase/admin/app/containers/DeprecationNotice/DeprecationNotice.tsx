@@ -2,7 +2,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 
 import Databases from "metabase/entities/databases";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { State } from "metabase-types/store";
 
 import { disableNotice } from "../../actions";

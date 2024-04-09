@@ -29,7 +29,7 @@ const setup = ({ isPaidPlan }: { isPaidPlan: boolean }) => {
   };
 };
 describe("InteractiveEmbeddingCTA", () => {
-  it("renders correctly for paid plan", () => {
+  it("renders correctly for paid plan", async () => {
     const { history } = setup({ isPaidPlan: true });
 
     expect(screen.getByText("Interactive Embedding")).toBeInTheDocument();
@@ -40,7 +40,7 @@ describe("InteractiveEmbeddingCTA", () => {
       ),
     ).toBeInTheDocument();
 
-    userEvent.click(screen.getByTestId("interactive-embedding-cta"));
+    await userEvent.click(screen.getByTestId("interactive-embedding-cta"));
 
     expect(history.getCurrentLocation().pathname).toEqual(
       "/admin/settings/embedding-in-other-applications/full-app",

@@ -83,10 +83,11 @@ export function legacyExpressionForExpressionClause(
   );
 }
 
+export type ExpressionMode = "expression" | "aggregation" | "filter";
 export function diagnoseExpression(
   query: Query,
   stageIndex: number,
-  expressionMode: "expression" | "aggregation" | "filter",
+  expressionMode: ExpressionMode,
   mbql: any,
   expressionPosition?: number,
 ): ErrorWithMessage | null {

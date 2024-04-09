@@ -2,16 +2,15 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt])
   (:import
-   (com.mongodb ServerAddress)
+   (com.mongodb MongoCredential ServerAddress)
    (com.mongodb.client MongoDatabase)))
-
-;;;; TODO: move some tests to db-test?
 
 (set! *warn-on-reflection* true)
 
@@ -39,7 +38,12 @@
                     :use-srv true}]
     (testing "mongo+srv connection string used when :use-srv is thruthy"
       (is (str/includes? (mongo.connection/db-details->connection-string db-details)
-                         "mongodb+srv://test-user:test-pass@test-host.place.com/datadb?authSource=authdb")))
+                         "mongodb+srv://test-host.place.com/datadb"))
+      (let [settings (mongo.connection/db-details->mongo-client-settings db-details)
+            ^MongoCredential credential (.getCredential settings)]
+        (is (= "test-user" (.getUserName credential)))
+        (is (= "test-pass" (str/join "" (.getPassword credential))))
+        (is (= "authdb" (.getSource credential)))))
     (testing "Only fqdn may be used with mongo+srv"
       (is (thrown-with-msg? Throwable
                             #"Using DNS SRV requires a FQDN for host"
@@ -139,3 +143,27 @@
                 (or (when (instance? java.net.ConnectException e)
                       (throw e))
                     (some-> (.getCause e) recur))))))))))
+
+(deftest hard-password-test
+  (mt/test-driver
+   :mongo
+   (testing "Passwords and usernames containing `$ : / ? # [ ] @` are usable (#38697)"
+     (let [s "$ : / ? # [ ] @"
+           settings (mongo.connection/db-details->mongo-client-settings {:user s
+                                                                         :pass s
+                                                                         :host "localhost"
+                                                                         :dbname "justdb"})
+           ^MongoCredential credential (.getCredential settings)]
+       (is (= s (.getUserName credential)))
+       (is (= s (str/join "" (.getPassword credential))))
+       (is (= "admin" (.getSource credential)))))))
+
+(deftest application-name-test
+  (mt/test-driver
+   :mongo
+   (with-redefs [config/mb-app-id-string "$ : / ? # [ ] @"]
+     (let [db-details {:host "test-host.place.com"
+                       :dbname "datadb"}
+           settings (mongo.connection/db-details->mongo-client-settings db-details)]
+       (is (= "$ : / ? # [ ] @"
+              (.getApplicationName settings)))))))

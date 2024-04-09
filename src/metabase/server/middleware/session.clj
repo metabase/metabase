@@ -28,25 +28,25 @@
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.api-key :as api-key]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.setting
     :as setting
     :refer [*user-local-values* defsetting]]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.request.util :as request.u]
+   [metabase.server.request.util :as req.util]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.password :as u.password]
    [ring.util.response :as response]
-   [schema.core :as s]
    [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline])
-  (:import
-   (java.util UUID)))
+   [toucan2.pipeline :as t2.pipeline]))
 
-(def ^:private ^String metabase-session-cookie          "metabase.SESSION")
+(def ^String metabase-session-cookie
+  "Where the session cookie goes."                      "metabase.SESSION")
 (def ^:private ^String metabase-embedded-session-cookie "metabase.EMBEDDED_SESSION")
 (def ^:private ^String metabase-session-timeout-cookie  "metabase.TIMEOUT")
 (def ^:private ^String anti-csrf-token-header           "x-metabase-anti-csrf-token")
@@ -120,18 +120,18 @@
   (merge
    {:same-site (session-cookie-samesite)
     ;; TODO - we should set `site-path` as well. Don't want to enable this yet so we don't end
-    ;; up breaking things
+    ;; up breaking things issue: https://github.com/metabase/metabase/issues/39346
     :path      "/" #_(site-path)}
    ;; If the authentication request request was made over HTTPS (hopefully always except for
    ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
-   (when (request.u/https? request)
+   (when (req.util/https? request)
      {:secure true})))
 
 (defmethod default-session-cookie-attributes :full-app-embed
   [_ request]
   (merge
    {:path "/"}
-   (when (request.u/https? request)
+   (when (req.util/https? request)
      ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
      ;; security is provided via anti-CSRF token. Note that most browsers will only accept
      ;; SameSite=None with secure cookies, thus we are setting it only over HTTPS to prevent
@@ -175,13 +175,15 @@
     ;; Otherwise check whether the user selected "remember me" during login
     (get-in request [:body :remember])))
 
-(s/defn set-session-cookies
+(mu/defn set-session-cookies
   "Add the appropriate cookies to the `response` for the Session."
   [request
    response
    {session-uuid :id
     session-type :type
-    anti-csrf-token :anti_csrf_token} :- {:id (s/cond-pre UUID u/uuid-regex), s/Keyword s/Any}
+    anti-csrf-token :anti_csrf_token} :- [:map [:id [:or
+                                                     uuid?
+                                                     [:re u/uuid-regex]]]]
    request-time]
   (let [cookie-options (merge
                         (default-session-cookie-attributes session-type request)
@@ -193,11 +195,11 @@
                         ;; max-session age-is in minutes; Max-Age= directive should be in seconds
                         (when (use-permanent-cookies? request)
                           {:max-age (* 60 (config/config-int :max-session-age))}))]
-    (when (and (= (session-cookie-samesite) :none) (not (request.u/https? request)))
+    (when (and (= (session-cookie-samesite) :none) (not (req.util/https? request)))
       (log/warn
-       (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
-            " "
-            "https://www.chromestatus.com/feature/5633521622188032")))
+       (str "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection."
+            " Some browsers will reject cookies under these conditions."
+            " https://www.chromestatus.com/feature/5633521622188032")))
     (-> response
         wrap-body-if-needed
         (cond-> (= session-type :full-app-embed)
@@ -413,7 +415,8 @@
                                              (delay (atom (or settings
                                                               (user/user-local-settings metabase-user-id)))))
             *user-local-values-user-id*    metabase-user-id]
-    (thunk)))
+    (data-perms/with-relevant-permissions-for-user metabase-user-id
+      (thunk))))
 
 (defmacro ^:private with-current-user-for-request
   [request & body]
@@ -494,15 +497,15 @@
              (let [value (setting/get-value-of-type :json :session-timeout)]
                (if-let [error-key (check-session-timeout value)]
                  (do (log/warn (case error-key
-                                 :amount-must-be-positive            (trs "Session timeout amount must be positive.")
-                                 :amount-must-be-less-than-100-years (trs "Session timeout must be less than 100 years.")))
+                                 :amount-must-be-positive            "Session timeout amount must be positive."
+                                 :amount-must-be-less-than-100-years "Session timeout must be less than 100 years."))
                      nil)
                  value)))
   :setter  (fn [new-value]
              (when-let [error-key (check-session-timeout new-value)]
                (throw (ex-info (case error-key
-                                 :amount-must-be-positive            (tru "Session timeout amount must be positive.")
-                                 :amount-must-be-less-than-100-years (tru "Session timeout must be less than 100 years."))
+                                 :amount-must-be-positive            "Session timeout amount must be positive."
+                                 :amount-must-be-less-than-100-years "Session timeout must be less than 100 years.")
                                {:status-code 400})))
              (setting/set-value-of-type! :json :session-timeout new-value)))
 

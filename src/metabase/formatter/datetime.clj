@@ -102,7 +102,13 @@
                          (str/replace #"DDD" "D")))]
     (-> conditional-changes
         ;; 'D' formats as Day of year, we want Day of month, which is  'd' (issue #27469)
-        (str/replace #"D" "d"))))
+        (str/replace #"D" "d")
+        ;; 'YYYY' formats as 'week-based-year', we want 'yyyy' which formats by 'year-of-era'
+        ;; aka 'day-based-year'. We likely want that most (all?) of the time.
+        ;; 'week-based-year' can report the wrong year on dates near the start/end of a year based on how
+        ;; ISO-8601 defines what a week is: some days may end up in the 52nd or 1st week of the wrong year:
+        ;; https://stackoverflow.com/a/46395342 provides an explanation.
+        (str/replace #"YYYY" "yyyy"))))
 
 (def ^:private col-type
   "The dispatch function logic for format format-timestring.

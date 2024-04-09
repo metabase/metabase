@@ -6,7 +6,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import { createMockColumn } from "metabase-types/api/mocks";
 import {
   createOrdersCreatedAtDatasetColumn,
@@ -132,14 +132,14 @@ describe("PieChart", () => {
 
     expect(screen.getByTestId("detail-value")).toBeVisible();
     expect(screen.getByTestId("detail-value")).toHaveTextContent("2,000");
-    userEvent.click(screen.getByText("Display"));
-    userEvent.click(screen.getByLabelText("Show total"));
+    await userEvent.click(screen.getByText("Display"));
+    await userEvent.click(screen.getByLabelText("Show total"));
 
     await waitFor(() => {
-      expect(screen.getByTestId("detail-value")).not.toBeVisible();
+      expect(screen.queryByTestId("detail-value")).not.toBeInTheDocument();
     });
 
-    userEvent.click(screen.getByLabelText("Show total"));
+    await userEvent.click(screen.getByLabelText("Show total"));
 
     await waitFor(() => {
       expect(screen.getByTestId("detail-value")).toBeVisible();
@@ -153,14 +153,14 @@ describe("PieChart", () => {
     expect(screen.getByTestId("chart-legend")).toBeVisible();
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("2016");
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("2017");
-    userEvent.click(screen.getByText("Display"));
-    userEvent.click(screen.getByLabelText("Show legend"));
+    await userEvent.click(screen.getByText("Display"));
+    await userEvent.click(screen.getByLabelText("Show legend"));
 
     await waitFor(() => {
       expect(screen.queryByTestId("chart-legend")).not.toBeInTheDocument();
     });
 
-    userEvent.click(screen.getByLabelText("Show legend"));
+    await userEvent.click(screen.getByLabelText("Show legend"));
 
     await waitFor(() => {
       expect(screen.getByTestId("chart-legend")).toBeVisible();
@@ -172,8 +172,8 @@ describe("PieChart", () => {
     expect(screen.getByTestId("chart-legend")).toBeVisible();
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("25%");
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("75%");
-    userEvent.click(screen.getByText("Display"));
-    userEvent.click(screen.getByLabelText("Off"));
+    await userEvent.click(screen.getByText("Display"));
+    await userEvent.click(screen.getByLabelText("Off"));
 
     await waitFor(() => {
       expect(screen.getByTestId("chart-legend")).not.toHaveTextContent("25%");
@@ -189,8 +189,8 @@ describe("PieChart", () => {
     expect(screen.getByTestId("pie-chart")).not.toHaveTextContent("25%");
     expect(screen.getByTestId("pie-chart")).not.toHaveTextContent("75%");
 
-    userEvent.click(screen.getByText("Display"));
-    userEvent.click(screen.getByLabelText("On the chart"));
+    await userEvent.click(screen.getByText("Display"));
+    await userEvent.click(screen.getByLabelText("On the chart"));
 
     await waitFor(() => {
       expect(screen.getByTestId("chart-legend")).not.toHaveTextContent("25%");

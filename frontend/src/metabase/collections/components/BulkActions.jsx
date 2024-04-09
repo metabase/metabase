@@ -1,13 +1,13 @@
 /* eslint-disable react/prop-types */
 import { memo } from "react";
-import { Motion, spring } from "react-motion";
 import { t, msgid, ngettext } from "ttag";
 import _ from "underscore";
 
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 import { canArchiveItem, canMoveItem } from "metabase/collections/utils";
 import Modal from "metabase/components/Modal";
-import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
+import { BulkMoveModal } from "metabase/containers/MoveModal";
+import { Transition } from "metabase/ui";
 
 import {
   BulkActionsToast,
@@ -15,6 +15,13 @@ import {
   CardSide,
   ToastCard,
 } from "./BulkActions.styled";
+
+const slideIn = {
+  in: { opacity: 1, transform: "translate(-50%, 0)" },
+  out: { opacity: 0, transform: "translate(-50%, 100px)" },
+  common: { transformOrigin: "top" },
+  transitionProperty: "transform, opacity",
+};
 
 function BulkActions({
   selected,
@@ -34,19 +41,15 @@ function BulkActions({
 
   return (
     <>
-      <Motion
-        defaultStyle={{
-          opacity: 0,
-          translateY: 100,
-        }}
-        style={{
-          opacity: isVisible ? spring(1) : spring(0),
-          translateY: isVisible ? spring(0) : spring(100),
-        }}
+      <Transition
+        mounted={isVisible}
+        transition={slideIn}
+        duration={400}
+        timingFunction="ease"
       >
-        {({ translateY }) => (
-          <BulkActionsToast translateY={translateY} isNavbarOpen={isNavbarOpen}>
-            <ToastCard dark>
+        {styles => (
+          <BulkActionsToast style={styles} isNavbarOpen={isNavbarOpen}>
+            <ToastCard dark data-testid="toast-card">
               <CardSide>
                 {ngettext(
                   msgid`${selected.length} item selected`,
@@ -71,7 +74,7 @@ function BulkActions({
             </ToastCard>
           </BulkActionsToast>
         )}
-      </Motion>
+      </Transition>
       {!_.isEmpty(selectedItems) && selectedAction === "copy" && (
         <Modal onClose={onCloseModal}>
           <CollectionCopyEntityModal
@@ -85,17 +88,12 @@ function BulkActions({
         </Modal>
       )}
       {!_.isEmpty(selectedItems) && selectedAction === "move" && (
-        <Modal onClose={onCloseModal}>
-          <CollectionMoveModal
-            title={
-              selectedItems.length > 1
-                ? t`Move ${selectedItems.length} items?`
-                : t`Move "${selectedItems[0].getName()}"?`
-            }
-            onClose={onCloseModal}
-            onMove={onMove}
-          />
-        </Modal>
+        <BulkMoveModal
+          selectedItems={selectedItems}
+          onClose={onCloseModal}
+          onMove={onMove}
+          initialCollectionId={collection.id}
+        />
       )}
     </>
   );

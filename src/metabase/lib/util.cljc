@@ -10,6 +10,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -19,7 +20,6 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -465,6 +465,26 @@
   [query]
   (-> query :stages first :source-card))
 
+(mu/defn first-stage-type :- [:maybe [:enum :mbql.stage/mbql :mbql.stage/native]]
+  "Type of the first query stage."
+  [query :- :map]
+  (:lib/type (query-stage query 0)))
+
+(mu/defn first-stage-is-native? :- :boolean
+  "Whether the first stage of the query is a native query stage."
+  [query :- :map]
+  (= (first-stage-type query) :mbql.stage/native))
+
+(def ^:dynamic ^{:arglists '(^java.lang.String [^java.lang.String s])} *escape-alias-fn*
+  "Function to use for escaping a unique alias when generating `:lib/desired-alias`."
+  identity)
+
+(defn- unique-alias [original suffix]
+  (->> (str original \_ suffix)
+       *escape-alias-fn*
+       ;; truncate alias to 60 characters (actually 51 characters plus a hash).
+       truncate-alias))
+
 (mu/defn unique-name-generator :- [:=>
                                    [:cat ::lib.schema.common/non-blank-string]
                                    ::lib.schema.common/non-blank-string]
@@ -478,10 +498,11 @@
   (comp truncate-alias
         (mbql.u/unique-name-generator
          ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
+         ;;
+         ;; some databases treat aliases as case-insensitive so make sure the generated aliases are unique regardless
+         ;; of case
          :name-key-fn     u/lower-case-en
-         ;; truncate alias to 60 characters (actually 51 characters plus a hash).
-         :unique-alias-fn (fn [original suffix]
-                            (truncate-alias (str original \_ suffix))))))
+         :unique-alias-fn unique-alias)))
 
 (def ^:private strip-id-regex
   #?(:cljs (js/RegExp. " id$" "i")
@@ -523,3 +544,33 @@
           ;; subvec holds onto references, so create a new vector
           (update :stages (comp #(into [] %) subvec) 0 (inc (canonical-stage-index query stage-number))))
       new-query)))
+
+(defn fresh-uuids
+  "Recursively replace all the :lib/uuids in `x` with fresh ones. Useful if you need to attach something to a query more
+  than once."
+  [x]
+  (cond
+    (sequential? x)
+    (into (empty x) (map fresh-uuids) x)
+
+    (map? x)
+    (into
+     (empty x)
+     (map (fn [[k v]]
+            [k (if (= k :lib/uuid)
+                 (str (random-uuid))
+                 (fresh-uuids v))]))
+     x)
+
+    :else
+    x))
+
+(mu/defn normalized-query-type :- [:maybe [:enum #_MLv2 :mbql/query #_legacy :query :native #_audit :internal]]
+  "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
+  [query :- [:maybe :map]]
+  (when (map? query)
+    (when-let [query-type (keyword (some #(get query %)
+                                         [:lib/type :type "lib/type" "type"]))]
+      (when (#{:mbql/query :query :native :internal} query-type)
+        query-type)))
+)

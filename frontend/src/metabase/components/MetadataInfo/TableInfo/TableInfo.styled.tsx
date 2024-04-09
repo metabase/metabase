@@ -7,6 +7,7 @@ import {
 
 export const MetadataContainer = styled(Container)`
   font-size: 0.9em;
+  overflow: hidden;
 `;
 
 export const InfoContainer = styled(_InfoContainer)`

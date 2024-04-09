@@ -77,9 +77,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
 
   it("drill-through should work (metabase#29517-1)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.get("@nestedQuestionId").then(id => {
-      visitQuestion(id);
-    });
+    visitQuestion("@nestedQuestionId");
 
     // We can click on any circle; this index was chosen randomly
     cy.get("circle").eq(25).click({ force: true });

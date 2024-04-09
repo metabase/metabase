@@ -17,7 +17,7 @@ import { addUndo, dismissUndo } from "metabase/redux/undo";
 import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
-} from "metabase-lib/parameters/utils/parameter-values";
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   ActionDashboardCard,
   CardId,

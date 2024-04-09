@@ -32,7 +32,3 @@
   font-weight: bold;
   text-transform: uppercase;
 }
-
-.Donut path {
-  transition: opacity 0.3s linear;
-}

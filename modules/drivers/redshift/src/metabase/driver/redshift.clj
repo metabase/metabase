@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -12,10 +13,9 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -23,7 +23,6 @@
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
@@ -34,9 +33,12 @@
 
 (driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:test/jvm-timezone-setting false
-                              :nested-field-columns      false
-                              :connection-impersonation  true}]
+(doseq [[feature supported?] {:connection-impersonation                            true
+                              :describe-fields                                     true
+                              :describe-fks                                        true
+                              :nested-field-columns                                false
+                              :sql/window-functions.order-by-output-column-numbers false
+                              :test/jvm-timezone-setting                           false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -49,6 +51,73 @@
   [& args]
   (apply (get-method driver/describe-table :sql-jdbc) args))
 
+;; don't use the Postgres implementation for `describe-database` as it uses a custom SQL to get the tables.
+;; we should do the same for Redshift tho
+(defmethod driver/describe-database :redshift
+ [& args]
+ (apply (get-method driver/describe-database :sql-jdbc) args))
+
+(defmethod sql-jdbc.sync/describe-fks-sql :redshift
+  [driver & {:keys [schema-names table-names]}]
+  (sql/format {:select (vec
+                        {:fk_ns.nspname       "fk-table-schema"
+                         :fk_table.relname    "fk-table-name"
+                         :fk_column.attname   "fk-column-name"
+                         :pk_ns.nspname       "pk-table-schema"
+                         :pk_table.relname    "pk-table-name"
+                         :pk_column.attname   "pk-column-name"})
+               :from   [[:pg_constraint :c]]
+               :join   [[:pg_class     :fk_table]  [:= :c.conrelid :fk_table.oid]
+                        [:pg_namespace :fk_ns]     [:= :c.connamespace :fk_ns.oid]
+                        [:pg_attribute :fk_column] [:= :c.conrelid :fk_column.attrelid]
+                        [:pg_class     :pk_table]  [:= :c.confrelid :pk_table.oid]
+                        [:pg_namespace :pk_ns]     [:= :pk_table.relnamespace :pk_ns.oid]
+                        [:pg_attribute :pk_column] [:= :c.confrelid :pk_column.attrelid]]
+               :where  [:and
+                        [:raw "fk_ns.nspname !~ '^information_schema|catalog_history|pg_'"]
+                        [:= :c.contype [:raw "'f'::char"]]
+                        [:= :fk_column.attnum [:raw "ANY(c.conkey)"]]
+                        [:= :pk_column.attnum [:raw "ANY(c.confkey)"]]
+                        (when table-names [:in :fk_table.relname table-names])
+                        (when schema-names [:in :fk_ns.nspname schema-names])]
+               :order-by [:fk-table-schema :fk-table-name]}
+              :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc.sync/describe-fields-sql :redshift
+  ;; The implementation is based on `getColumns` in https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java
+  ;; The `database-is-auto-increment` and `database-required` columns are currently missing because they are only
+  ;; needed for actions, which redshift doesn't support yet.
+  [driver & {:keys [schema-names table-names]}]
+  (sql/format {:select [[:c.column_name :name]
+                        [:c.data_type :database-type]
+                        [[:- :c.ordinal_position 1] :database-position]
+                        [:c.schema_name :table-schema]
+                        [:c.table_name :table-name]
+                        [[:not= :pk.column_name nil] :pk?]
+                        [[:case [:not= :c.remarks ""] :c.remarks :else nil] :field-comment]]
+               :from [[:svv_all_columns :c]]
+               :left-join [[{:select [:tc.table_schema
+                                      :tc.table_name
+                                      :kc.column_name]
+                             :from [[:information_schema.table_constraints :tc]]
+                             :join [[:information_schema.key_column_usage :kc]
+                                    [:and
+                                     [:= :tc.constraint_name :kc.constraint_name]
+                                     [:= :tc.table_schema :kc.table_schema]
+                                     [:= :tc.table_name :kc.table_name]]]
+                             :where [:= :tc.constraint_type "PRIMARY KEY"]}
+                            :pk]
+                           [:and
+                            [:= :c.schema_name :pk.table_schema]
+                            [:= :c.table_name :pk.table_name]
+                            [:= :c.column_name :pk.column_name]]]
+               :where [:and
+                       [:raw "c.schema_name !~ '^information_schema|catalog_history|pg_'"]
+                       (when schema-names [:in :c.schema_name schema-names])
+                       (when table-names [:in :c.table_name table-names])]
+               :order-by [:table-schema :table-name :database-position]}
+              :dialect (sql.qp/quote-style driver)))
+
 (defmethod driver/db-start-of-week :redshift
   [_]
   :sunday)
@@ -60,9 +129,15 @@
 ;; custom Redshift type handling
 
 (def ^:private database-type->base-type
-  (sql-jdbc.sync/pattern-based-database-type->base-type
-   [[#"(?i)CHARACTER VARYING" :type/Text]       ; Redshift uses CHARACTER VARYING (N) as a synonym for VARCHAR(N)
-    [#"(?i)NUMERIC"           :type/Decimal]])) ; and also has a NUMERIC(P,S) type, which is the same as DECIMAL(P,S)
+  (some-fn (sql-jdbc.sync/pattern-based-database-type->base-type
+            [[#"(?i)CHARACTER VARYING" :type/Text]       ; Redshift uses CHARACTER VARYING (N) as a synonym for VARCHAR(N)
+             [#"(?i)NUMERIC"           :type/Decimal]])  ; and also has a NUMERIC(P,S) type, which is the same as DECIMAL(P,S)
+           {:super       :type/*    ; (requested support in metabase#36642)
+            :varbyte     :type/*    ; represents variable-length binary strings
+            :geometry    :type/*    ; spatial data
+            :geography   :type/*    ; spatial data
+            :intervaly2m :type/*    ; interval literal
+            :intervald2s :type/*})) ; interval literal
 
 (defmethod sql-jdbc.sync/database-type->base-type :redshift
   [driver column-type]
@@ -107,7 +182,7 @@
        (try
          (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
          (catch Throwable e
-           (log/debug e (trs "Error setting default holdability for connection")))))
+           (log/debug e "Error setting default holdability for connection"))))
      (f conn))))
 
 (defn- prepare-statement ^PreparedStatement [^Connection conn sql]
@@ -281,7 +356,7 @@
                 (if (contains? param :name)
                   [(:name param) (:value param)]
 
-                  (when-let [field-id (mbql.u/match-one param
+                  (when-let [field-id (lib.util.match/match-one param
                                         [:field (field-id :guard integer?) _]
                                         (when (contains? (set &parents) :dimension)
                                           field-id))]
@@ -319,7 +394,7 @@
                           (or has-perm?
                               (log/tracef "Ignoring schema %s because no USAGE privilege on it" table-schema))))
                       (catch Throwable e
-                        (log/error e (trs "Error checking schema permissions"))
+                        (log/error e "Error checking schema permissions")
                         false))))
           reducible))))))
 
@@ -331,18 +406,6 @@
                                                                   metadata
                                                                   schema-inclusion-patterns
                                                                   schema-exclusion-patterns))))
-
-(defmethod sql-jdbc.describe-table/describe-table-fields :redshift
-  [driver conn {schema :schema, table-name :name :as table} db-name-or-nil]
-  (let [parent-method (get-method sql-jdbc.describe-table/describe-table-fields :sql-jdbc)]
-    (try (parent-method driver conn table db-name-or-nil)
-         (catch Exception e
-           (log/error e (trs "Error fetching field metadata for table {0}" table-name))
-           ;; Use the fallback method (a SELECT * query) if the JDBC driver throws an exception (#21215)
-           (into
-            #{}
-            (sql-jdbc.describe-table/describe-table-fields-xf driver table)
-            (sql-jdbc.describe-table/fallback-fields-metadata-from-select-query driver conn db-name-or-nil schema table-name))))))
 
 (defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
   [driver ps i t]
@@ -376,30 +439,33 @@
   ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
   ;; result in an operation not supported error
   (->> (jdbc/query
-         conn-spec
-         (str/join
-           "\n"
-           ["with table_privileges as ("
-            " select"
-            "   NULL as role,"
-            "   t.schemaname as schema,"
-            "   t.objectname as table,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE') as update,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'SELECT') as select,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'INSERT') as insert,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'DELETE') as delete"
-            " from ("
-            "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
-            "   union"
-            "   select schemaname, viewname as objectname from pg_views"
-            " ) t"
-            " where t.schemaname !~ '^pg_'"
-            "   and t.schemaname <> 'information_schema'"
-            "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
-            ")"
-            "select t.*"
-            "from table_privileges t"]))
-         (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
+        conn-spec
+        (str/join
+         "\n"
+         ["with table_privileges as ("
+          " select"
+          "   NULL as role,"
+          "   t.schemaname as schema,"
+          "   t.objectname as table,"
+          ;; if `has_table_privilege` is true `has_any_column_privilege` is false and vice versa, so we have to check both.
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\".\"' || t.objectname || '\"',  'SELECT')"
+          "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'SELECT') as select,"
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE')"
+          "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE') as update,"
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'INSERT') as insert,"
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'DELETE') as delete"
+          " from ("
+          "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
+          "   union"
+          "   select schemaname, viewname as objectname from pg_views"
+          " ) t"
+          " where t.schemaname !~ '^pg_'"
+          "   and t.schemaname <> 'information_schema'"
+          "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
+          ")"
+          "select t.*"
+          "from table_privileges t"]))
+       (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
 
 
 ;;; ----------------------------------------------- Connection Impersonation ------------------------------------------

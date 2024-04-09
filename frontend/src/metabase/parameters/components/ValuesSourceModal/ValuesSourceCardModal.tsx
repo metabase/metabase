@@ -19,12 +19,12 @@ import Input from "metabase/core/components/Input";
 import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import {
   getCollectionVirtualSchemaId,
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
-} from "metabase-lib/metadata/utils/saved-questions";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   CardId,
   Collection,

@@ -1,13 +1,14 @@
 (ns metabase.db.connection
-  "Functions for getting the application database connection type and JDBC spec, or temporarily overriding them.
-   TODO - consider renaming this namespace `metabase.db.config`."
+  "Functions for getting the application database connection type and JDBC spec, or temporarily overriding them."
   (:require
+   [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [metabase.db.connection-pool-setup :as connection-pool-setup]
    [metabase.db.env :as mdb.env]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.connection :as t2.conn]
-   [toucan2.jdbc.connection :as t2.jdbc.conn])
+   [toucan2.jdbc.connection :as t2.jdbc.conn]
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
@@ -126,17 +127,6 @@
   []
   (.id *application-db*))
 
-(defn memoize-for-application-db
-  "Like [[clojure.core/memoize]], but only memoizes for the current application database; memoized values will be
-  ignored if the app DB is dynamically rebound. For TTL memoization with [[clojure.core.memoize]], set
-  `:clojure.core.memoize/args-fn` instead; see [[metabase.driver.util/database->driver*]] for an example of how to do
-  this."
-  [f]
-  (let [f* (memoize (fn [_application-db-id & args]
-                      (apply f args)))]
-    (fn [& args]
-      (apply f* (unique-identifier) args))))
-
 (methodical/defmethod t2.conn/do-with-connection :default
   [_connectable f]
   (t2.conn/do-with-connection *application-db* f))
@@ -197,3 +187,13 @@
    :else
    (binding [*transaction-depth* (inc *transaction-depth*)]
      (do-transaction connection f))))
+
+
+(methodical/defmethod t2.pipeline/transduce-query :before :default
+  "Make sure application database calls are not done inside core.async dispatch pool threads. This is done relatively
+  early in the pipeline so the stacktrace when this fails isn't super enormous."
+  [_rf _query-type₁ _model₂ _parsed-args resolved-query]
+  (when (a.impl.dispatch/in-dispatch-thread?)
+    (throw (ex-info "Application database calls are not allowed inside core.async dispatch pool threads."
+                    {})))
+  resolved-query)

@@ -8,7 +8,7 @@ import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
 import { hasEventAxis } from "metabase/visualizations/lib/timelines";
-import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 
 import { isMultipleOf } from "./numeric";
 import { isHistogram } from "./renderer_utils";

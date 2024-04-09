@@ -8,7 +8,8 @@ import _ from "underscore";
 
 import Label from "metabase/components/type/Label";
 import { DragDropContext } from "metabase/core/components/DragDropContext";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import CS from "metabase/css/core/index.css";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 
 import {
   DroppableContainer,
@@ -111,7 +112,7 @@ class ChartSettingFieldsPartition extends Component {
           const partitionType = this.getPartitionType(partitionName);
           return (
             <div
-              className={cx("py2", { "border-top": index > 0 })}
+              className={cx(CS.py2, { [CS.borderTop]: index > 0 })}
               key={partitionName}
             >
               <Label color="medium">{title}</Label>
@@ -136,7 +137,7 @@ class ChartSettingFieldsPartition extends Component {
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              className="mb1"
+                              className={CS.mb1}
                             >
                               <Column
                                 key={`${partitionName}-${col.display_name}`}

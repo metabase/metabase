@@ -9,12 +9,10 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [schema.utils])
+   [metabase.util.malli.schema :as ms])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.sql SQLException)
-   (schema.utils NamedError ValidationError)))
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -34,55 +32,15 @@
   [^InterruptedException _e]
   {:status :interrupted})
 
-;; TODO - consider moving this into separate middleware as part of a try-catch setup so queries running in a
-;; non-userland context can still have sane Exceptions
-(defn- explain-schema-validation-error
-  "Return a nice error message to explain the Schema validation error."
-  [error]
-  (cond
-    (instance? NamedError error)
-    (let [nested-error (.error ^NamedError error)]
-      ;; recurse until we find the innermost nested named error, which is the reason
-      ;; we actually failed
-      (if (instance? NamedError nested-error)
-        (recur nested-error)
-        (or (when (map? nested-error)
-              (explain-schema-validation-error nested-error))
-            (.name ^NamedError error))))
-
-    (map? error)
-    (first (for [e     (vals error)
-                 :when (or (instance? NamedError e)
-                           (instance? ValidationError e))
-                 :let  [explanation (explain-schema-validation-error e)]
-                 :when explanation]
-             explanation))
-
-    ;; When an exception is thrown, a ValidationError comes back like
-    ;;    (throws? ("foreign-keys is not supported by this driver." 10))
-    ;; Extract the message if applicable
-    (instance? ValidationError error)
-    (let [explanation (schema.utils/validation-error-explain error)]
-      (or (when (list? explanation)
-            (let [[reason [msg]] explanation]
-              (when (= reason 'throws?)
-                msg)))
-          explanation))))
-
 (defmethod format-exception ExceptionInfo
   [e]
-  (let [{error :error, error-type :type, :as data} (ex-data e)]
+  (let [{error-type :type, :as data} (ex-data e)]
     (merge
      ((get-method format-exception Throwable) e)
-     (when (= error-type :schema.core/error)
-       (merge
-        {:error_type qp.error-type/invalid-query}
-        (when-let [error-msg (explain-schema-validation-error error)]
-          {:error error-msg})))
      (when (qp.error-type/known-error-type? error-type)
        {:error_type error-type})
      ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
-     {:ex-data (dissoc data :schema)})))
+     {:ex-data data})))
 
 (defmethod format-exception SQLException
   [^SQLException e]
@@ -171,11 +129,9 @@
           (catch Throwable e
             ;; format the Exception and return it
             (let [formatted-exception (format-exception* query e @extra-info)]
-              (log/error (str (trs "Error processing query: {0}"
-                                   (or (:error formatted-exception)
-                                       ;; log in server locale, respond in user locale
-                                       (trs "Error running query")))
-                              "\n" (u/pprint-to-str formatted-exception)))
+              (log/errorf "Error processing query: %s\n%s"
+                          (or (:error formatted-exception) "Error running query")
+                          (u/pprint-to-str formatted-exception))
               ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
               (let [result (update formatted-exception
                                    :error (fnil identity (trs "Error running query")))]

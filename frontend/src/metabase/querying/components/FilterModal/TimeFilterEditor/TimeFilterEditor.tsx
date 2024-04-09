@@ -4,11 +4,11 @@ import { t } from "ttag";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type { TimeValue } from "metabase/querying/hooks/use-time-filter";
 import { useTimeFilter } from "metabase/querying/hooks/use-time-filter";
-import { Flex, Grid, Text, TimeInput, Icon } from "metabase/ui";
+import { Flex, Grid, Text, TimeInput } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
 
 export function TimeFilterEditor({
@@ -65,33 +65,34 @@ export function TimeFilterEditor({
   };
 
   return (
-    <Grid grow>
-      <Grid.Col span="auto">
-        <Flex h="100%" align="center" gap="sm">
-          <Icon name={columnIcon} />
-          <FilterColumnName
+    <HoverParent>
+      <Grid grow>
+        <Grid.Col span="auto">
+          <FilterTitle
             query={query}
             stageIndex={stageIndex}
             column={column}
+            columnIcon={columnIcon}
             isSearching={isSearching}
+          >
+            <FilterOperatorPicker
+              value={operator}
+              options={availableOptions}
+              onChange={handleOperatorChange}
+            />
+          </FilterTitle>
+        </Grid.Col>
+        <Grid.Col span={4}>
+          <TimeValueInput
+            values={values}
+            valueCount={valueCount}
+            onChange={handleInputChange}
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
           />
-          <FilterOperatorPicker
-            value={operator}
-            options={availableOptions}
-            onChange={handleOperatorChange}
-          />
-        </Flex>
-      </Grid.Col>
-      <Grid.Col span={4}>
-        <TimeValueInput
-          values={values}
-          valueCount={valueCount}
-          onChange={handleInputChange}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
-        />
-      </Grid.Col>
-    </Grid>
+        </Grid.Col>
+      </Grid>
+    </HoverParent>
   );
 }
 

@@ -1,4 +1,4 @@
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 import { Mode } from "../Mode";
 import { DefaultMode } from "../modes/DefaultMode";

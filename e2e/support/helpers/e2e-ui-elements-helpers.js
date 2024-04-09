@@ -1,21 +1,16 @@
 // various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
 export const POPOVER_ELEMENT =
-  ".popover[data-state~='visible'],[data-position]";
+  ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
 export function popover() {
   cy.get(POPOVER_ELEMENT).should("be.visible");
   return cy.get(POPOVER_ELEMENT);
 }
 
-export function mantinePopover() {
-  const MANTINE_POPOVER = "[data-popover=mantine-popover]";
-  return cy.get(MANTINE_POPOVER).should("be.visible");
-}
-
-const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']";
+const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']:visible";
 
 export function hovercard() {
-  cy.get(HOVERCARD_ELEMENT).should("be.visible");
+  cy.get(HOVERCARD_ELEMENT, { timeout: 6000 }).should("be.visible");
   return cy.get(HOVERCARD_ELEMENT);
 }
 
@@ -33,12 +28,20 @@ export function modal() {
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
+export function entityPickerModal() {
+  return cy.findByTestId("entity-picker-modal");
+}
+
+export function collectionOnTheGoModal() {
+  return cy.findByTestId("create-collection-on-the-go");
+}
+
 export function sidebar() {
   return cy.get("main aside");
 }
 
 export function rightSidebar() {
-  return cy.findAllByTestId("sidebar-right");
+  return cy.findByTestId("sidebar-right");
 }
 
 export function leftSidebar() {
@@ -160,6 +163,37 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mouseup", 0, distance * 50, { force: true });
 };
 
+export const moveDnDKitElement = (
+  element,
+  { horizontal = 0, vertical = 0 } = {},
+) => {
+  element
+    .trigger("pointerdown", 0, 0, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointermove", 5, 5, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointermove", horizontal, vertical, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointerup", horizontal, vertical, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200);
+};
+
 export const queryBuilderMain = () => {
   return cy.findByTestId("query-builder-main");
 };
@@ -177,5 +211,5 @@ export const undoToastList = () => {
 };
 
 export function dashboardCards() {
-  return cy.get("#Dashboard-Cards-Container");
+  return cy.get("[data-element-id=dashboard-cards-container]");
 }

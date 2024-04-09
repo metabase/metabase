@@ -4,6 +4,7 @@ import {
   restore,
   setTokenFeatures,
   describeWithSnowplow,
+  describeWithSnowplowEE,
   expectGoodSnowplowEvent,
   resetSnowplow,
   expectNoBadSnowplowEvents,
@@ -86,6 +87,16 @@ describeWithSnowplow("scenarios > browse data", () => {
       "not.exist",
     );
   });
+});
+
+describeWithSnowplowEE("scenarios > browse data (EE)", () => {
+  beforeEach(() => {
+    resetSnowplow();
+    restore();
+    cy.signInAsAdmin();
+    enableTracking();
+  });
+
   it("/browse/models allows models to be filtered, on an enterprise instance", () => {
     const toggle = () =>
       cy.findByRole("switch", { name: /Only show verified models/ });

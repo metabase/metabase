@@ -1,9 +1,12 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { createRef, Component } from "react";
 import { t } from "ttag";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import { capitalize } from "metabase/lib/formatting";
 import { Icon } from "metabase/ui";
 
@@ -16,9 +19,11 @@ export default class ObjectActionsSelect extends Component {
 
     this.retireModal = createRef();
   }
+
   static propTypes = {
     object: PropTypes.object.isRequired,
     objectType: PropTypes.string.isRequired,
+    objectTypeLocalized: PropTypes.string.isRequired,
     onRetire: PropTypes.func.isRequired,
   };
 
@@ -28,7 +33,7 @@ export default class ObjectActionsSelect extends Component {
   }
 
   render() {
-    const { object, objectType } = this.props;
+    const { object, objectType, objectTypeLocalized } = this.props;
     return (
       <div>
         <PopoverWithTrigger
@@ -38,7 +43,7 @@ export default class ObjectActionsSelect extends Component {
             </TriggerIconContainer>
           }
         >
-          <ul className="UserActionsSelect">
+          <ul className={AdminS.UserActionsSelect}>
             <li>
               <ActionLink
                 to={"/admin/datamodel/" + objectType + "/" + object.id}
@@ -59,11 +64,18 @@ export default class ObjectActionsSelect extends Component {
                 {t`Revision History`}
               </ActionLink>
             </li>
-            <li className="mt1 border-top">
+            <li className={cx(CS.mt1, CS.borderTop)}>
               <ModalWithTrigger
                 ref={this.retireModal}
-                triggerElement={"Retire " + capitalize(objectType)}
-                triggerClasses="block p2 bg-error-hover text-error text-white-hover cursor-pointer"
+                triggerElement={t`Retire ${objectTypeLocalized}`}
+                triggerClasses={cx(
+                  CS.block,
+                  CS.p2,
+                  "bg-error-hover",
+                  CS.textError,
+                  "text-white-hover",
+                  CS.cursorPointer,
+                )}
               >
                 <ObjectRetireModal
                   object={object}

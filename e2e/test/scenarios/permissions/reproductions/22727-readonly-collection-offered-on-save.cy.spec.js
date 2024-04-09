@@ -37,7 +37,7 @@ describe("issue 22727", () => {
       cy.findByText(/^Replace original qeustion/).should("not.exist");
 
       // This part is an actual repro for https://github.com/metabase/metabase/issues/22727
-      cy.findByTestId("select-button-content")
+      cy.findByLabelText(/Which collection should this go in/)
         .invoke("text")
         .should("not.eq", "Our analytics");
     });

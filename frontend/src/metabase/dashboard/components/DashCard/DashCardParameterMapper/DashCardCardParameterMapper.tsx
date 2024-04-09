@@ -7,6 +7,7 @@ import { isActionDashCard } from "metabase/actions/utils";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import {
   isNativeDashCard,
   isVirtualDashCard,
@@ -23,9 +24,9 @@ import {
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
-import { isParameterVariableTarget } from "metabase-lib/parameters/utils/targets";
+import type Question from "metabase-lib/v1/Question";
+import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
+import { isParameterVariableTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Card,
   CardId,
@@ -150,17 +151,17 @@ export function DashCardCardParameterMapper({
     }
 
     // virtual or action dashcard
-    if (!question) {
+    if (!isQuestionDashCard(dashcard)) {
       return true;
     }
 
-    if (!card.dataset_query) {
+    if (!question || !card.dataset_query) {
       return false;
     }
 
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     return isEditable;
-  }, [isVirtual, card.dataset_query, question]);
+  }, [isVirtual, dashcard, card.dataset_query, question]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
     useMemo(() => {
@@ -257,7 +258,7 @@ export function DashCardCardParameterMapper({
       {isVirtual && isDisabled ? (
         showVirtualDashCardInfoText(dashcard, isMobile) ? (
           <TextCardDefault>
-            <Icon name="info" size={12} className="pr1" />
+            <Icon name="info" size={12} className={CS.pr1} />
             {mappingInfoText}
           </TextCardDefault>
         ) : (

@@ -9,7 +9,7 @@ import {
   popover,
   modal,
   sidebar,
-  moveColumnDown,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -62,7 +62,9 @@ describe("scenarios > question > settings", () => {
       cy.findByTestId("visualization-root").contains("8833419218504");
 
       // confirm that the table contains the right columns
-      cy.get(".Visualization .TableInteractive").as("table");
+      cy.findByTestId("query-visualization-root")
+        .get(".TableInteractive")
+        .as("table");
       cy.get("@table").contains("Product → Category");
       cy.get("@table").contains("Product → Ean");
       cy.get("@table").contains("Total").should("not.exist");
@@ -100,7 +102,7 @@ describe("scenarios > question > settings", () => {
 
       getSidebarColumns().eq("5").as("total").contains("Total");
 
-      moveColumnDown(cy.get("@total"), -2);
+      moveDnDKitElement(cy.get("@total"), { vertical: -100 });
 
       getSidebarColumns().eq("3").should("contain.text", "Total");
 
@@ -114,12 +116,7 @@ describe("scenarios > question > settings", () => {
         expect($el.scrollTop).to.eql(0);
       });
 
-      cy.get("@title")
-        .trigger("mousedown", 0, 0, { force: true })
-        .trigger("mousemove", 5, 5, { force: true })
-        .trigger("mousemove", 0, 15, { force: true });
-      cy.wait(2000);
-      cy.get("@title").trigger("mouseup", 0, 15, { force: true });
+      moveDnDKitElement(cy.get("@title"), { vertical: 15 });
 
       cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
         expect($el.scrollTop).to.be.greaterThan(0);
@@ -161,11 +158,7 @@ describe("scenarios > question > settings", () => {
         .contains(/Products? → Category/);
 
       // Drag and drop this column between "Tax" and "Discount" (index 5 in @sidebarColumns array)
-      cy.get("@prod-category")
-        .trigger("mousedown", 0, 0, { force: true })
-        .trigger("mousemove", 5, 5, { force: true })
-        .trigger("mousemove", 0, -350, { force: true })
-        .trigger("mouseup", 0, -350, { force: true });
+      moveDnDKitElement(cy.get("@prod-category"), { vertical: -360 });
 
       refreshResultsInHeader();
 
@@ -196,12 +189,7 @@ describe("scenarios > question > settings", () => {
       findColumnAtIndex("User → Address", -1).as("user-address");
 
       // Move it one place up
-      cy.get("@user-address")
-        .scrollIntoView()
-        .trigger("mousedown", 0, 0, { force: true })
-        .trigger("mousemove", 5, 5, { force: true })
-        .trigger("mousemove", 0, -100, { force: true })
-        .trigger("mouseup", 0, -100, { force: true });
+      moveDnDKitElement(cy.get("@user-address"), { vertical: -100 });
 
       findColumnAtIndex("User → Address", -3);
 

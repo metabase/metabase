@@ -3,7 +3,10 @@ import type { Draft } from "@reduxjs/toolkit";
 import { createAction, createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { INITIALIZE } from "metabase/dashboard/actions/core";
+import {
+  CANCEL_EDITING_DASHBOARD,
+  INITIALIZE,
+} from "metabase/dashboard/actions/core";
 import Dashboards from "metabase/entities/dashboards";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { checkNotNull } from "metabase/lib/types";
@@ -542,6 +545,15 @@ export const tabsReducer = createReducer<DashboardState>(
         tab => tab.id === state.selectedTabId,
       );
       state.selectedTabId = (newTabs && newTabs[selectedTabIndex]?.id) ?? null;
+    });
+
+    builder.addCase(CANCEL_EDITING_DASHBOARD, state => {
+      const { editingDashboard, selectedTabId } = state;
+      const tabs = editingDashboard?.tabs ?? [];
+      const hasTab = tabs.some(tab => tab.id === selectedTabId);
+      if (!hasTab) {
+        state.selectedTabId = tabs[0]?.id ?? null;
+      }
     });
 
     builder.addCase<

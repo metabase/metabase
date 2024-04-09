@@ -5,12 +5,12 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
-import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
+import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
-import { isSameField } from "metabase-lib/queries/utils/field-ref";
+import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
 import {
   getIsResultDirty,
@@ -94,6 +94,8 @@ export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
   overrideWithQuestion = null,
+  prevQueryResults = undefined,
+  settingsSyncOptions = undefined,
 } = {}) => {
   return async (dispatch, getState) => {
     dispatch(loadStartUIControls());
@@ -121,7 +123,7 @@ export const runQuestionQuery = ({
 
     const queryTimer = startTimer();
 
-    const runQuestionPromise = apiRunQuestionQuery(question, {
+    apiRunQuestionQuery(question, {
       cancelDeferred: cancelQueryDeferred,
       ignoreCache: ignoreCache,
       isDirty: cardIsDirty,
@@ -135,20 +137,25 @@ export const runQuestionQuery = ({
             duration,
           ),
         );
-        return dispatch(queryCompleted(question, queryResults));
+        return dispatch(
+          queryCompleted(question, queryResults, {
+            prevQueryResults: prevQueryResults ?? getQueryResults(getState()),
+            settingsSyncOptions,
+          }),
+        );
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
 
     dispatch({ type: RUN_QUERY, payload: { cancelQueryDeferred } });
-
-    return runQuestionPromise;
   };
 };
 
 const loadStartUIControls = createThunkAction(
   LOAD_START_UI_CONTROLS,
   () => (dispatch, getState) => {
-    const loadingMessage = getWhiteLabeledLoadingMessage(getState());
+    const getLoadingMessage = getWhiteLabeledLoadingMessageFactory(getState());
+    const loadingMessage = getLoadingMessage();
+
     const title = {
       onceQueryIsRun: loadingMessage,
       ifQueryTakesLong: t`Still Here...`,
@@ -170,10 +177,13 @@ export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
-export const queryCompleted = (question, queryResults) => {
+export const queryCompleted = (
+  question,
+  queryResults,
+  { prevQueryResults, settingsSyncOptions } = {},
+) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
-    const prevQueryResults = getQueryResults(getState());
     const [{ data: prevData }] = prevQueryResults ?? [{}];
     const originalQuestion = getOriginalQuestionWithParameterValues(getState());
     const { isEditable } = Lib.queryDisplayInfo(question.query());
@@ -183,6 +193,7 @@ export const queryCompleted = (question, queryResults) => {
       question = question.syncColumnsAndSettings(
         queryResults[0],
         prevQueryResults?.[0],
+        settingsSyncOptions,
       );
 
       question = question.maybeResetDisplay(

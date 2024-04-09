@@ -3,7 +3,7 @@
  */
 :root {
   --color-admin-navbar: #7172ad;
-  --color-white: #ffffff;
+  --color-white: #fff;
   --color-black: #2e353b;
   --color-success: #84bb4c;
   --color-error: #ed6e6e;
@@ -11,19 +11,20 @@
   --color-text-dark: #4c5773;
   --color-text-medium: #696e7b;
   --color-text-light: #949aab;
-  --color-text-white: #ffffff;
+  --color-text-white: #fff;
   --color-bg-black: #2e353b;
   --color-bg-dark: #93a1ab;
   --color-bg-medium: #edf2f5;
   --color-bg-light: #f9fbfc;
-  --color-bg-white: #ffffff;
+  --color-bg-white: #fff;
   --color-bg-yellow: #fffcf2;
   --color-shadow: rgba(0, 0, 0, 0.13);
   --color-border: #eeecec;
 }
 
 :global(.text-default),
-.text-default {
+.text-default,
+.textDefault {
   color: var(--color-text-dark);
 }
 
@@ -33,7 +34,8 @@
 
 /* brand */
 :global(.text-brand),
-.text-brand {
+.text-brand,
+.textBrand {
   color: var(--color-brand);
 }
 
@@ -47,6 +49,7 @@
 
 :global(.text-error),
 .text-error,
+.textError,
 :global(.text-error-hover:hover) {
   color: var(--color-error);
 }
@@ -54,6 +57,7 @@
 :global(.bg-error-hover:hover) {
   background-color: var(--color-error);
 }
+
 :global(.bg-error-input) {
   background-color: var(--color-bg-white);
 }
@@ -61,24 +65,28 @@
 :global(.text-slate) {
   color: var(--color-text-medium);
 }
+
 :global(.text-slate-light) {
   color: var(--color-text-light);
 }
 
 :global(.text-light),
-.text-light {
+.text-light,
+.textLight {
   color: var(--color-text-light);
 }
 
 :global(.text-medium),
 .text-medium,
+.textMedium,
 :global(.text-medium-hover:hover) {
   color: var(--color-text-medium);
 }
 
 :global(.text-dark),
 .text-dark,
-:global(.text-dark-hover:hover) {
+:global(.text-dark-hover:hover),
+.textDark {
   color: var(--color-text-dark);
 }
 
@@ -94,12 +102,13 @@
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 :global(.text-white),
 .text-white,
+.textWhite,
 :global(.text-white-hover:hover) {
   color: var(--color-text-white);
 }
 
 :global(.bg-white),
-.bg-white {
+.bgWhite {
   background-color: var(--color-bg-white);
 }
 

@@ -13,7 +13,7 @@
    [metabase.models.user :as user :refer [User]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -138,5 +138,5 @@
   [{{:keys [token]} :body, :as _request}]
   (let [token-info-response                    (http/post (format google-auth-token-info-url token))
         {:keys [given_name family_name email]} (google-auth-token-info token-info-response)]
-    (log/info (trs "Successfully authenticated Google Sign-In token for: {0} {1}" given_name family_name))
+    (log/infof "Successfully authenticated Google Sign-In token for: %s %s" given_name family_name)
     (api/check-500 (google-auth-fetch-or-create-user! given_name family_name email))))

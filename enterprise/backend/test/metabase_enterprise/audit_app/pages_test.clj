@@ -7,9 +7,7 @@
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.reader :as tools.reader]
    [metabase-enterprise.audit-app.interface :as audit.i]
-   [metabase-enterprise.audit-app.pages.dashboards]
-   [metabase.models :refer [Card Dashboard DashboardCard Database Table User]]
-   [metabase.models.permissions :as perms]
+   [metabase.models :refer [Card Dashboard DashboardCard Database Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
@@ -19,52 +17,7 @@
    [ring.util.codec :as codec]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(comment metabase-enterprise.audit-app.pages.dashboards/keep-me)
-
 (use-fixtures :once (fixtures/initialize :db :test-users))
-
-(deftest ^:parallel preconditions-test
-  (testing "the method should exist"
-    (is (fn? (get-method audit.i/internal-query :metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed)))))
-
-(deftest preconditions-test-2
-  (testing "test that a query will fail if not ran by an admin"
-    (mt/with-premium-features #{:audit-app}
-      (is (= {:status "failed", :error "You don't have permissions to do that."}
-             (-> (mt/user-http-request :lucky :post 202 "dataset"
-                                       {:type :internal
-                                        :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
-                 (select-keys [:status :error])))))))
-
-(deftest preconditions-test-3
-  (testing "ok, now try to run it. Should fail because we don't have audit-app enabled"
-    (mt/with-premium-features nil
-      (is (= {:status "failed", :error "Audit App queries are not enabled on this instance."}
-             (-> (mt/user-http-request :crowberto :post 202 "dataset"
-                                       {:type :internal
-                                        :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
-                 (select-keys [:status :error])))))))
-
-(deftest preconditions-test-4
-  (testing "non-admin users with monitoring permissions"
-    (mt/with-user-in-groups [group {:name "New Group"}
-                             user  [group]]
-      (perms/grant-application-permissions! group :monitoring)
-      (testing "still fail if advanced-permissions is disabled"
-        (mt/with-premium-features #{:audit-app}
-          (is (= {:status "failed", :error "You don't have permissions to do that."}
-                 (-> (mt/user-http-request user :post 202 "dataset"
-                                           {:type :internal
-                                            :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
-                     (select-keys [:status :error]))))))
-
-      (testing "run successfully if advanced-permissions enabled)"
-        (mt/with-premium-features #{:audit-app :advanced-permissions}
-          (is (= {:status "completed"}
-                 (-> (mt/user-http-request user :post 202 "dataset"
-                                           {:type :internal
-                                            :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"})
-                     (select-keys [:status])))))))))
 
 (defn- all-query-methods
   "Return a set of all audit/internal query types (excluding test/`:default` impls)."
@@ -192,50 +145,3 @@
         (doseq [query-type (all-query-methods)]
           (testing query-type
             (do-tests-for-query-type query-type objects)))))))
-
-(deftest user-full-name-test
-  (testing "User name fallback to email, implemented in `metabase-enterprise.audit-app.pages.common/user-full-name` works in audit queries."
-    (mt/with-test-user :crowberto
-      (mt/test-helpers-set-global-values!
-        (mt/with-premium-features #{:audit-app}
-          (mt/with-temp [User a {:first_name "a" :last_name nil :email "a@metabase.com"}
-                         User b {:first_name nil :last_name "b" :email "b@metabase.com"}
-                         User c {:first_name nil :last_name nil :email "c@metabase.com"}]
-            (is (= #{"a" "b" "c@metabase.com"}
-                   (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
-                                                      {:type :internal
-                                                       :fn   "metabase-enterprise.audit-app.pages.users/table"})
-                                [:data :rows])
-                        (filter #((set (map u/the-id [a b c])) (first %)))
-                        (map second)
-                        set)))))))))
-
-(deftest user-login-method-test
-  (testing "User login method takes into account both the google_auth and sso_source columns"
-    (mt/with-test-user :crowberto
-      (mt/test-helpers-set-global-values!
-        (mt/with-premium-features #{:audit-app}
-          (mt/with-temp [User a {:email "a@metabase.com" :sso_source nil}
-                         User b {:email "b@metabase.com" :sso_source :google}
-                         User c {:email "c@metabase.com" :sso_source :saml}
-                         User d {:email "d@metabase.com" :sso_source :jwt}
-                         User e {:email "e@metabase.com" :sso_source :ldap}]
-            (is (= ["Email" "Google Sign-In" "SAML" "JWT" "LDAP"]
-                   (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
-                                                      {:type :internal
-                                                       :fn   "metabase-enterprise.audit-app.pages.users/table"})
-                                [:data :rows])
-                        (sort-by first)
-                        (filter #((set (map u/the-id [a b c d e])) (first %)))
-                        (map #(nth % 6)))))))))))
-
-(deftest active-and-new-by-time-test
-  (testing "The active-and-new-by-time audit query correctly returns results (#32244)"
-    (mt/with-test-user :crowberto
-      (mt/with-premium-features #{:audit-app}
-        (let [results (mt/user-http-request :crowberto :post 202 "dataset"
-                                            {:type :internal
-                                             :fn   "metabase-enterprise.audit-app.pages.users/active-and-new-by-time"
-                                             :args ["day"]})]
-          (is (=? {:data {:rows (every-pred sequential? seq)}}
-                  results)))))))

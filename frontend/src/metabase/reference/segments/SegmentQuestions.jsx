@@ -1,4 +1,5 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -9,6 +10,7 @@ import List from "metabase/components/List";
 import S from "metabase/components/List/List.module.css";
 import ListItem from "metabase/components/ListItem";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import * as metadataActions from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -51,7 +53,7 @@ export const SegmentQuestions = ({ style, table, segment, metadata }) => {
   });
 
   return (
-    <div style={style} className="full">
+    <div style={style} className={CS.full}>
       <ReferenceHeader
         name={t`Questions about ${segment.name}`}
         type="questions"
@@ -60,7 +62,7 @@ export const SegmentQuestions = ({ style, table, segment, metadata }) => {
       <LoadingAndErrorWrapper loading={!error && isLoading} error={error}>
         {() =>
           data.length > 0 ? (
-            <div className="wrapper wrapper--trim">
+            <div className={cx(CS.wrapper, CS.wrapperTrim)}>
               <List>
                 {data.map(
                   question =>

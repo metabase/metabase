@@ -8,7 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -16,23 +16,26 @@
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database
     :as database
     :refer [Database protected-password]]
    [metabase.models.field :refer [Field readable-fields-only]]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.secret :as secret]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.sample-data :as sample-data]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.schedules :as sync.schedules]
@@ -88,10 +91,15 @@
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
   [dbs :- [:maybe [:sequential :map]]]
   (for [db dbs]
-    (assoc db :native_permissions (if (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                        (perms/adhoc-native-query-path (u/the-id db)))
-                                    :write
-                                    :none))))
+    (assoc db
+           :native_permissions
+           (if (data-perms/user-has-permission-for-database?
+                api/*current-user-id*
+                :perms/native-query-editing
+                :yes
+                (u/the-id db))
+             :write
+             :none))))
 
 (defn- card-database-supports-nested-queries? [{{database-id :database, :as database} :dataset_query, :as _card}]
   (when database-id
@@ -123,7 +131,7 @@
   with those aggregations as source queries. This function determines whether `card` is using one of those queries so
   we can filter it out in Clojure-land."
   [{{{aggregations :aggregation} :query} :dataset_query}]
-  (mbql.u/match aggregations #{:cum-count :cum-sum}))
+  (lib.util.match/match aggregations #{:cum-count :cum-sum}))
 
 (defn card-can-be-used-as-source-query?
   "Does `card`'s query meet the conditions required for it to be used as a source query for another query?"
@@ -138,7 +146,7 @@
                    (when-let [db (t2/select-one Database :id db-id)]
                      (driver/database-supports? (:engine db) :nested-queries db))
                    (catch Throwable e
-                     (log/error e (tru "Error determining whether Database supports nested queries")))))
+                     (log/error e "Error determining whether Database supports nested queries"))))
                (t2/select-pks-set Database))))
 
 (mu/defn ^:private source-query-cards
@@ -331,6 +339,7 @@
                           (cond->> tables
                             ; filter hidden tables
                             true                        (filter (every-pred (complement :visibility_type) mi/can-read?))
+                            true                        (map (fn [table] (update table :schema str)))
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
@@ -448,7 +457,11 @@
   (let [db (-> (if include-editable-data-model?
                  (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
-               (t2/hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
+               (t2/hydrate [:tables [:fields
+                                     :has_field_values
+                                     [:target :has_field_values]]
+                            :segments
+                            :metrics]))
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -529,7 +542,7 @@
                              ;; e.g. search-string = "123"
                              (and (not-empty search-id) (empty? search-name))
                              [:like
-                              (h2x/cast (if (= (mdb.connection/db-type) :mysql) :char :text) :report_card.id)
+                              (h2x/cast (if (= (mdb/db-type) :mysql) :char :text) :report_card.id)
                               (str search-id "%")]
 
                              ;; e.g. search-string = "123-foo"
@@ -642,7 +655,7 @@
                 substring (autocomplete-suggestions id (str "%" substring "%"))
                 prefix    (autocomplete-suggestions id (str prefix "%")))}
     (catch Throwable e
-      (log/warn e (trs "Error with autocomplete: {0}" (ex-message e))))))
+      (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
 
 (api/defendpoint GET "/:id/card_autocomplete_suggestions"
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
@@ -657,7 +670,7 @@
          (filter mi/can-read?)
          (map #(select-keys % [:id :name :type :collection_name])))
     (catch Throwable e
-      (log/warn e (trs "Error with autocomplete: {0}" (ex-message e))))))
+      (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
 
 
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
@@ -678,7 +691,7 @@
        :base_type     base_type
        :semantic_type semantic_type
        :table_name    (:name table)
-       :schema        (:schema table)})))
+       :schema        (:schema table "")})))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
@@ -728,7 +741,7 @@
         {:message (tru "Unable to connect to database.")})
       (catch Throwable e
         (when (and log-exception (not (some->> e ex-cause ex-data ::driver/can-connect-message?)))
-          (log/error e (trs "Cannot connect to Database")))
+          (log/error e "Cannot connect to Database"))
         (if (-> e ex-data :message)
           (ex-data e)
           {:message (.getMessage e)})))))
@@ -768,23 +781,22 @@
 
 (api/defendpoint POST "/"
   "Add a new `Database`."
-  [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl]} :body}]
-  {name             ms/NonBlankString
-   engine           DBEngineString
-   details          ms/Map
-   is_full_sync     [:maybe :boolean]
-   is_on_demand     [:maybe :boolean]
-   schedules        [:maybe sync.schedules/ExpandedSchedulesMap]
-   auto_run_queries [:maybe :boolean]
-   cache_ttl        [:maybe ms/PositiveInt]}
+  [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]} :body}]
+  {name              ms/NonBlankString
+   engine            DBEngineString
+   details           ms/Map
+   is_full_sync      [:maybe {:default true} ms/BooleanValue]
+   is_on_demand      [:maybe ms/BooleanValue]
+   schedules         [:maybe sync.schedules/ExpandedSchedulesMap]
+   auto_run_queries  [:maybe :boolean]
+   cache_ttl         [:maybe ms/PositiveInt]
+   connection_source [:maybe {:default :admin} [:enum :admin :setup]]}
   (api/check-superuser)
   (when cache_ttl
     (api/check (premium-features/enable-cache-granular-controls?)
                [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
                               "cache granular controls feature."))]))
-  (let [is-full-sync?    (or (nil? is_full_sync)
-                             (boolean is_full_sync))
-        details-or-error (test-connection-details engine details)
+  (let [details-or-error (test-connection-details engine details)
         valid?           (not= (:valid details-or-error) false)]
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
@@ -795,7 +807,7 @@
                                        {:name         name
                                         :engine       engine
                                         :details      details-or-error
-                                        :is_full_sync is-full-sync?
+                                        :is_full_sync is_full_sync
                                         :is_on_demand (boolean is_on_demand)
                                         :cache_ttl    cache_ttl
                                         :creator_id   api/*current-user-id*}
@@ -810,13 +822,13 @@
                                api/*current-user-id*
                                {:database     engine
                                 :database-id  (u/the-id <>)
-                                :source       :admin
+                                :source       connection_source
                                 :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
       ;; failed to connect, return error
       (do
         (snowplow/track-event! ::snowplow/database-connection-failed
                                api/*current-user-id*
-                               {:database engine :source :setup})
+                               {:database engine :source connection_source})
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 
@@ -828,8 +840,8 @@
    details :map}
   (api/check-superuser)
   (let [details-or-error (test-connection-details engine details)]
-    {:valid (not (false? (:valid details-or-error)))}))
-
+    ;; details that come back without a `:valid` key at all are... valid!
+    (update details-or-error :valid (comp not false?))))
 
 ;;; --------------------------------------- POST /api/database/sample_database ----------------------------------------
 
@@ -1047,10 +1059,10 @@
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (t2/select-one Database :id id))]
     (events/publish-event! :event/database-manual-scan {:object db :user-id api/*current-user-id*})
-    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+    (mw.session/as-admin
       (if *rescan-values-async*
         (future (field-values/update-field-values! db))
         (field-values/update-field-values! db))))
@@ -1083,15 +1095,22 @@
 
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
 
+(defenterprise current-user-can-read-schema?
+  "OSS implementation. Returns a boolean whether the current user can write the given field."
+  metabase-enterprise.advanced-permissions.common
+  [_db-id _schema-name]
+  (mi/superuser?))
+
 (defn- can-read-schema?
   "Does the current user have permissions to know the schema with `schema-name` exists? (Do they have permissions to see
   at least some of its tables?)"
   [database-id schema-name]
   (or
-   (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
-                                       (perms/data-perms-path database-id schema-name))
-   (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                    (perms/data-model-write-perms-path database-id schema-name))))
+   (= :unrestricted (data-perms/schema-permission-for-user api/*current-user-id*
+                                                           :perms/data-access
+                                                           database-id
+                                                           schema-name))
+   (current-user-can-read-schema? database-id schema-name)))
 
 (api/defendpoint GET "/:id/syncable_schemas"
   "Returns a list of all syncable schemas found for the database `id`."

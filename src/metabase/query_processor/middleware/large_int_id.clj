@@ -2,7 +2,7 @@
   "Middleware for handling conversion of IDs to strings for proper display of large numbers"
   (:require
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]))
 
 (defn- ->string [x]
@@ -28,7 +28,7 @@
       ;; TODO -- we could probably fix the rest of #5816 by adding support for
       ;; `:field` w/ name and removing the PK/FK requirements -- might break
       ;; the FE client tho.
-      (when-let [field (mbql.u/match-one val
+      (when-let [field (lib.util.match/match-one val
                          [:field (field-id :guard integer?) _]
                          ;; TODO -- can't we use the QP store here? Seems like
                          ;; we should be able to, but it doesn't work (not

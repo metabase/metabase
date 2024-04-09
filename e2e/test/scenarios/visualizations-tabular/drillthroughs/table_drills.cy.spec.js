@@ -3,7 +3,7 @@ import { openReviewsTable, popover, restore } from "e2e/support/helpers";
 
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
-describe("scenarios > visualizations > drillthroughs > table_drills", function () {
+describe("scenarios > visualizations > drillthroughs > table_drills", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

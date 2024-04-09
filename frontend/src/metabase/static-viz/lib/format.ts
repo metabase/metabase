@@ -18,15 +18,15 @@ import type {
 } from "metabase/visualizations/shared/types/format";
 import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
 import {
   isCoordinate,
   isDate,
   isNumber,
   isTime,
   isBoolean,
-} from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   RowValue,

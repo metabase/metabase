@@ -16,6 +16,7 @@ import {
 import {
   updateEditingPulse,
   saveEditingPulse,
+  cancelEditingPulse,
   fetchPulseFormInput,
   testPulse,
 } from "metabase/pulse/actions";
@@ -76,6 +77,7 @@ const cardsToPulseCards = (cards, pulseCards) => {
     const pulseCard = pulseCards.find(pc => pc.id === card.id) || card;
     return {
       ...card,
+      format_rows: pulseCard.format_rows,
       include_csv: pulseCard.include_csv,
       include_xls: pulseCard.include_xls,
     };
@@ -110,6 +112,7 @@ const mapStateToProps = (state, props) => ({
 const mapDispatchToProps = {
   updateEditingPulse,
   saveEditingPulse,
+  cancelEditingPulse,
   fetchPulseFormInput,
   setPulseArchived: Pulses.actions.setArchived,
   testPulse,
@@ -134,6 +137,7 @@ class SharingSidebarInner extends Component {
     saveEditingPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func.isRequired,
     updateEditingPulse: PropTypes.func.isRequired,
+    cancelEditingPulse: PropTypes.func.isRequired,
     pulses: PropTypes.array,
     onCancel: PropTypes.func.isRequired,
     setPulseArchived: PropTypes.func.isRequired,
@@ -315,7 +319,7 @@ class SharingSidebarInner extends Component {
   // Because you can navigate down the sidebar, we need to wrap
   // onCancel from props and either call that or reset back a screen
   onCancel = () => {
-    const { onCancel } = this.props;
+    const { cancelEditingPulse, onCancel } = this.props;
     const { returnMode } = this.state;
     if (returnMode.length) {
       // set the current mode back to what it should be
@@ -326,6 +330,7 @@ class SharingSidebarInner extends Component {
     } else {
       onCancel();
     }
+    cancelEditingPulse();
   };
 
   render() {

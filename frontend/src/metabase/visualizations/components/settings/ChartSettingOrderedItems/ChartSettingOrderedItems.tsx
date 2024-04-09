@@ -1,10 +1,8 @@
-import type React from "react";
-import type { SortableElementProps } from "react-sortable-hoc";
+import { useSensor, PointerSensor } from "@dnd-kit/core";
+import { useCallback } from "react";
 
-import {
-  SortableContainer,
-  SortableElement,
-} from "metabase/components/sortable";
+import type { DragEndEvent } from "metabase/core/components/Sortable";
+import { Sortable, SortableList } from "metabase/core/components/Sortable";
 import type { IconProps } from "metabase/ui";
 
 import { ColumnItem } from "../ColumnItem";
@@ -24,102 +22,11 @@ interface SortableColumnFunctions<T> {
   getItemName: (item: T) => string;
   onColorChange?: (item: T, color: string) => void;
 }
-
-interface SortableColumnProps<T> extends SortableColumnFunctions<T> {
-  item: T;
-  isDragDisabled: boolean;
-}
-
-const SortableColumn = SortableElement(function SortableColumn<
-  T extends SortableItem,
->({
-  item,
-  getItemName,
-  onEdit,
-  onRemove,
-  onClick,
-  onAdd,
-  onEnable,
-  onColorChange,
-  isDragDisabled = false,
-}: SortableColumnProps<T>) {
-  return (
-    <ColumnItem
-      title={getItemName(item)}
-      onEdit={
-        onEdit
-          ? (targetElement: HTMLElement) => onEdit(item, targetElement)
-          : undefined
-      }
-      onRemove={onRemove && item.enabled ? () => onRemove(item) : undefined}
-      onClick={onClick ? () => onClick(item) : undefined}
-      onAdd={onAdd ? () => onAdd(item) : undefined}
-      onEnable={onEnable && !item.enabled ? () => onEnable(item) : undefined}
-      onColorChange={
-        onColorChange
-          ? (color: string) => onColorChange(item, color)
-          : undefined
-      }
-      color={item.color}
-      draggable={!isDragDisabled}
-      icon={item.icon}
-      role="listitem"
-    />
-  );
-}) as unknown as <T extends SortableItem>(
-  props: SortableColumnProps<T> & SortableElementProps,
-) => React.ReactElement;
-
-interface SortableColumnListProps<T extends SortableItem>
-  extends SortableColumnFunctions<T> {
-  items: T[];
-}
-
-const SortableColumnList = SortableContainer(function SortableColumnList<
-  T extends SortableItem,
->({
-  items,
-  getItemName,
-  onEdit,
-  onRemove,
-  onEnable,
-  onAdd,
-  onColorChange,
-}: SortableColumnListProps<T>) {
-  const isDragDisabled = items.length === 1;
-
-  return (
-    <div>
-      {items.map((item, index: number) => (
-        <SortableColumn
-          key={`item-${index}`}
-          index={index}
-          item={item}
-          getItemName={getItemName}
-          onEdit={onEdit}
-          onRemove={onRemove}
-          onEnable={onEnable}
-          onAdd={onAdd}
-          onColorChange={onColorChange}
-          disabled={isDragDisabled}
-          isDragDisabled={isDragDisabled}
-        />
-      ))}
-    </div>
-  );
-});
-
 interface ChartSettingOrderedItemsProps<T extends SortableItem>
   extends SortableColumnFunctions<T> {
-  onSortEnd: ({
-    oldIndex,
-    newIndex,
-  }: {
-    oldIndex: number;
-    newIndex: number;
-  }) => void;
+  onSortEnd: ({ id, newIndex }: DragEndEvent) => void;
   items: T[];
-  distance: number;
+  getId: (item: T) => string | number;
 }
 
 export function ChartSettingOrderedItems<T extends SortableItem>({
@@ -132,20 +39,65 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   getItemName,
   items,
   onColorChange,
+  getId,
 }: ChartSettingOrderedItemsProps<T>) {
+  const isDragDisabled = items.length < 1;
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 0 },
+  });
+
+  const renderItem = useCallback(
+    ({ item, id }: { item: T; id: string | number }) => (
+      <Sortable
+        id={id}
+        key={`sortable-${id}`}
+        disabled={isDragDisabled}
+        draggingStyle={{ opacity: 0.5 }}
+      >
+        <ColumnItem
+          title={getItemName(item)}
+          onEdit={
+            onEdit
+              ? (targetElement: HTMLElement) => onEdit(item, targetElement)
+              : undefined
+          }
+          onRemove={onRemove && item.enabled ? () => onRemove(item) : undefined}
+          onClick={onClick ? () => onClick(item) : undefined}
+          onAdd={onAdd ? () => onAdd(item) : undefined}
+          onEnable={
+            onEnable && !item.enabled ? () => onEnable(item) : undefined
+          }
+          onColorChange={
+            onColorChange
+              ? (color: string) => onColorChange(item, color)
+              : undefined
+          }
+          color={item.color}
+          draggable={!isDragDisabled}
+          icon={item.icon}
+          role="listitem"
+        />
+      </Sortable>
+    ),
+    [
+      isDragDisabled,
+      getItemName,
+      onEdit,
+      onRemove,
+      onClick,
+      onAdd,
+      onEnable,
+      onColorChange,
+    ],
+  );
+
   return (
-    <SortableColumnList
-      helperClass="dragging"
+    <SortableList
+      getId={getId}
+      renderItem={renderItem}
       items={items}
-      getItemName={getItemName}
-      onEdit={onEdit}
-      onRemove={onRemove}
-      onAdd={onAdd}
-      onEnable={onEnable}
-      onClick={onClick}
       onSortEnd={onSortEnd}
-      onColorChange={onColorChange}
-      distance={5}
+      sensors={[pointerSensor]}
     />
   );
 }

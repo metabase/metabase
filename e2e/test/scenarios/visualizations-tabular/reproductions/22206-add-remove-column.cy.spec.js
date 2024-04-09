@@ -20,7 +20,7 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
       .click();
 
     // rerun query
-    cy.get(".RunButton").first().click();
+    cy.findAllByTestId("run-button").first().click();
     cy.wait("@dataset");
     cy.findByTestId("loading-spinner").should("not.exist");
 

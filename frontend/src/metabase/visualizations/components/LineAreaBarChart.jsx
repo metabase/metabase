@@ -5,8 +5,8 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import "./LineAreaBarChart.module.css";
-
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
@@ -19,9 +19,10 @@ import {
 } from "metabase/visualizations/lib/settings/validation";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
-import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import CardRenderer from "./CardRenderer";
+import LineAreaBarChartS from "./LineAreaBarChart.module.css";
 import {
   LineAreaBarChartRoot,
   ChartLegendCaption,
@@ -91,12 +92,17 @@ export default class LineAreaBarChart extends Component {
     if (hovered && hovered.index != null) {
       const seriesClasses = _.range(0, MAX_SERIES)
         .filter(n => n !== hovered.index)
-        .map(n => "mute-" + n);
+        .map(n => {
+          if (n === 0) {
+            return LineAreaBarChartS.LineAreaBarChartMute0;
+          }
+          return "mute-" + n;
+        });
       const axisClasses =
         hovered.axisIndex === 0
-          ? "mute-yr"
+          ? LineAreaBarChartS.LineAreaBarChartMuteYr
           : hovered.axisIndex === 1
-          ? "mute-yl"
+          ? LineAreaBarChartS.LineAreaBarChartMuteYl
           : null;
       return seriesClasses.concat(axisClasses);
     } else {
@@ -260,8 +266,10 @@ export default class LineAreaBarChart extends Component {
 
     return (
       <LineAreaBarChartRoot
+        data-element-id="line-area-bar-chart"
         className={cx(
-          "LineAreaBarChart",
+          DashboardS.LineAreaBarChart,
+          LineAreaBarChartS.LineAreaBarChart,
           this.getHoverClasses(),
           this.props.className,
         )}
@@ -295,7 +303,10 @@ export default class LineAreaBarChart extends Component {
             {...this.props}
             series={orderedSeries}
             settings={this.getSettings()}
-            className="renderer flex-full"
+            className={cx(
+              LineAreaBarChartS.LineAreaBarChartRenderer,
+              CS.flexFull,
+            )}
             maxSeries={MAX_SERIES}
             renderer={this.constructor.renderer}
           />

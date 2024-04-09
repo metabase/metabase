@@ -1,3 +1,4 @@
+import { isEEBuild } from "metabase/lib/utils";
 import { getSetting } from "metabase/selectors/settings";
 import type { DatabaseData, LocaleData } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
@@ -81,15 +82,25 @@ export const getIsEmailConfigured = (state: State): boolean => {
 export const getSteps = (state: State) => {
   const usageReason = getUsageReason(state);
   const activeStep = getStep(state);
+  const tokenFeatures = getSetting(state, "token-features");
+
+  const isPaidPlan =
+    tokenFeatures && Object.values(tokenFeatures).some(value => value === true);
+  const hasAddedPaidPlanInPreviousStep = Boolean(state.setup.licenseToken);
+
+  const shouldShowDBConnectionStep = usageReason !== "embedding";
+  const shouldShowLicenseStep =
+    isEEBuild() && (!isPaidPlan || hasAddedPaidPlanInPreviousStep);
 
   const steps: { key: SetupStep; isActiveStep: boolean }[] = [
     { key: "welcome" as const },
     { key: "language" as const },
     { key: "user_info" as const },
     { key: "usage_question" as const },
-    usageReason !== ("embedding" as const) && {
+    shouldShowDBConnectionStep && {
       key: "db_connection" as const,
     },
+    shouldShowLicenseStep && { key: "license_token" as const },
     { key: "data_usage" as const },
     { key: "completed" as const },
   ]

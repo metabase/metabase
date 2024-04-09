@@ -43,6 +43,7 @@ export const MultilineEllipsified = styled(Ellipsified)`
   white-space: pre-line;
   overflow: hidden;
   text-overflow: ellipsis;
+  width: 100%;
 
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -83,7 +84,7 @@ export const CollectionHeaderLink = styled(Link)`
 
 export const BannerCloseButton = styled(IconButtonWrapper)`
   color: ${color("text-light")};
-  margin-left: auto;
+  margin-inline-start: auto;
 `;
 
 export const CollectionCollapse = styled(Collapse)`
@@ -108,13 +109,14 @@ export const CollectionExpandCollapseContainer = styled(Box)<
 
 export const CollectionHeaderToggleContainer = styled.div`
   padding: 0.5rem;
-  padding-right: 0.75rem;
+  padding-inline-end: 0.75rem;
   position: relative;
-  margin-left: -2.25rem;
+  margin-inline-start: -2.25rem;
   margin-top: 0.75rem;
   border: none;
   background-color: transparent;
   overflow: unset;
+  display: flex;
   &:hover {
     background-color: inherit;
     div,
@@ -125,7 +127,7 @@ export const CollectionHeaderToggleContainer = styled.div`
 `;
 
 export const CollectionSummary = styled.div`
-  margin-left: auto;
+  margin-inline-start: auto;
   white-space: nowrap;
   font-size: 0.75rem;
   color: ${color("text-medium")};
@@ -138,7 +140,7 @@ export const FixedSizeIcon = styled(Icon)<{ size?: number }>`
 
 export const BannerModelIcon = styled(FixedSizeIcon)`
   color: ${color("text-dark")};
-  margin-right: 0.5rem;
+  margin-inline-end: 0.5rem;
 `;
 
 export const HoverUnderlineLink = styled(Link)`

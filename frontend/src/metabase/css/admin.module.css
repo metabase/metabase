@@ -1,60 +1,52 @@
 :root {
-  --admin-nav-bg-color: var(--color-bg-dark);
-  --admin-nav-bg-color-tint: var(--color-bg-dark);
-  --admin-nav-item-text-color: color-mod(var(--color-text-white) alpha(-37%));
-  --admin-nav-item-text-active-color: var(--color-text-white);
   --page-header-padding: 2.375rem;
 }
 
-:global(.ContentTable) {
+.ContentTable {
   width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
   text-align: left;
 }
 
-:global(.ContentTable thead) {
+.ContentTable thead {
   border-bottom: 1px solid var(--color-border);
 }
 
-:global(.PageHeader) {
+.PageHeader {
   padding-top: var(--page-header-padding);
   padding-bottom: var(--page-header-padding);
 }
 
-:global(.PageTitle) {
-  margin: 0;
-}
-
-:global(.Table-actions) {
+.TableActions {
   text-align: right;
 }
 
-:global(.ContentTable .Table-actions) {
+.ContentTable .TableActions {
   opacity: 0;
 }
 
-:global(.ContentTable td),
-:global(.ContentTable th) {
+.ContentTable td,
+.ContentTable th {
   padding: 1em;
 }
 
-:global(.ContentTable th) {
+.ContentTable th {
   color: var(--color-text-dark);
   padding: 1em;
 }
 
 /* TODO: remove this and apply AdminHoverItem to content rows */
-:global(.ContentTable tbody tr:hover) {
+.ContentTable tbody tr:hover {
   background-color: var(--color-brand-alpha-04);
 }
 
-:global(.ContentTable tr:hover .Table-actions) {
+.ContentTable tr:hover .TableActions {
   opacity: 1;
   transition: opacity 0.2s linear;
 }
 
-:global(.AdminList) {
+.AdminList {
   background-color: var(--color-bg-light);
   border: var(--border-size) var(--border-style) var(--color-border);
   border-radius: var(--default-border-radius);
@@ -64,14 +56,12 @@
   padding-bottom: 0.75em;
 }
 
-:global(.AdminList-search) {
+.AdminListSearch {
   position: relative;
 }
 
-:global(.AdminList-search .Icon) {
+.AdminListSearch .Icon {
   position: absolute;
-  margin-top: auto;
-  margin-bottom: auto;
   top: 0;
   bottom: 0;
   margin: auto;
@@ -79,7 +69,7 @@
   color: var(--color-text-light);
 }
 
-:global(.AdminList-search .AdminInput) {
+.AdminListSearch .AdminInput {
   padding: 0.5em;
   padding-left: 2em;
   font-size: 18px;
@@ -89,19 +79,19 @@
   border-bottom-color: var(--color-border);
 }
 
-:global(.AdminList-item) {
+.AdminListItem {
   padding: 0.75em 1em 0.75em 1em;
   border: var(--border-size) var(--border-style) transparent;
   border-radius: var(--default-border-radius);
   margin-bottom: 0.25em;
 }
 
-:global(.AdminList-item.selected) {
+.AdminListItem.selected {
   color: var(--color-brand);
 }
 
-:global(.AdminList-item.selected),
-:global(.AdminList-item:hover) {
+.AdminListItem.selected,
+.AdminListItem:hover {
   background-color: white;
   border-color: var(--color-border);
   margin-left: -0.5em;
@@ -111,7 +101,7 @@
   box-shadow: 0 1px 2px var(--color-shadow);
 }
 
-:global(.AdminList-section) {
+.AdminListSection {
   margin-top: 1em;
   padding: 0.5em 1em 0.5em 1em;
   text-transform: uppercase;
@@ -121,148 +111,61 @@
   padding-right: 15px; /* set so that table visibility icons align */
 }
 
-:global(.AdminInput) {
+.AdminInput {
   color: var(--color-text-dark);
   padding: var(--padding-1);
   background-color: var(--color-bg-light);
   border: 1px solid transparent;
 }
-:global(.AdminInput:focus) {
+
+.AdminInput:focus {
   border-color: var(--color-brand);
   box-shadow: none;
   outline: 0;
 }
 
-:global(.AdminSelect) {
-  display: inline-block;
-  padding: 0.6em 0.9em;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-bg-white);
-  border-radius: var(--default-border-radius);
-  font-weight: 700;
-  min-width: 104px;
-}
-
-:global(.AdminSelect:hover) {
-  border-color: color-mod(var(--color-border) blackness(10%));
-}
-
-:global(.AdminSelectBorderless) {
-  display: inline-block;
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 3px;
-}
-
-:global(.AdminSelect--borderless) {
-  border: none !important;
-}
-:global(.AdminSelect--borderless .AdminSelect-content) {
-  margin-left: auto;
-}
-:global(.AdminSelect--borderless .AdminSelect-chevron) {
-  margin-left: 0;
-}
-
-:global(.AdminSelect-chevron) {
-  opacity: 0.75;
-}
-
-:global(.AdminSelect:hover .AdminSelect-chevron) {
-  opacity: 1;
-}
-
-:global(.MetadataTable) {
+.MetadataTable {
   min-width: 800px;
 }
 
-:global(.MetadataTable-title) {
-  background-color: var(--color-bg-white);
-}
-
-:global(.TableEditor-table-name) {
-  font-size: 24px;
-}
-
-:global(.TableEditor-field-name) {
-  font-size: 16px;
-}
-
-:global(.TableEditor-table-description),
-:global(.TableEditor-field-description) {
+.TableEditorFieldDescription {
   font-size: 14px;
 }
 
-:global(.TableEditor-field-visibility) {
-  /*color: var(--color-warning);*/
-}
-
-:global(.TableEditor-field-visibility .ColumnarSelector-row:hover) {
-  background-color: var(--color-brand) !important;
-  color: white !important;
-}
-
-:global(.TableEditor-field-type .ColumnarSelector-row:hover) {
-  background-color: var(--color-brand) !important;
-  color: white !important;
-}
-
-:global(.TableEditor-field-semantic-type),
-:global(.TableEditor-field-target) {
+.TableEditorFieldSemanticType,
+.TableEditorFieldTarget {
   margin-top: 3px;
 }
 
-:global(.TableEditor-field-semantic-type .ColumnarSelector-row:hover),
-:global(.TableEditor-field-target .ColumnarSelector-row:hover) {
-  background-color: var(--color-brand) !important;
-  color: white !important;
-}
-
-:global(.SettingsInput) {
+.SettingsInput {
   width: 400px;
 }
 
-:global(.SettingsPassword) {
+.SettingsPassword {
   width: 200px;
 }
 
-:global(.UserActionsSelect) {
+.UserActionsSelect {
   min-width: 180px;
 }
 
-:global(.AdminTable) {
+.AdminTable {
   border-collapse: collapse;
   border-spacing: 0;
   text-align: left;
 }
 
-:global(.AdminTable th) {
+.AdminTable th {
   text-transform: uppercase;
   color: var(--color-text-medium);
   padding: var(--padding-1);
   font-weight: normal;
 }
 
-:global(.AdminTable thead) {
+.AdminTable thead {
   border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
-:global(.AdminTable tbody tr:first-child td) {
+.AdminTable tbody tr:first-child td {
   padding-top: var(--margin-1);
-}
-
-:global(.AdminLink) {
-  opacity: 0.435;
-}
-
-:global(.AdminLink:hover) {
-  opacity: 1;
-}
-
-:global(.ColumnSortHelper) {
-  box-shadow: 0 7px 20px var(--color-shadow);
-}
-
-:global(#formField-details-password .Form-input) {
-  margin-bottom: 2em;
 }

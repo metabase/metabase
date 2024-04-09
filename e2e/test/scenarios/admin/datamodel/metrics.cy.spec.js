@@ -107,7 +107,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       // `data`, `filtered by` and `view`
       cy.wait(["@dataset", "@dataset", "@dataset"]);
 
-      cy.get(".GuiBuilder").findByText("Count").click();
+      cy.findByTestId("gui-builder").findByText("Count").click();
       popover().contains("Custom Expression").click();
 
       cy.get(".ace_text-input")
@@ -125,10 +125,10 @@ describe("scenarios > admin > datamodel > metrics", () => {
       // verify popover is closed, otherwise its state will reset
       cy.findByRole("grid").should("not.exist");
 
-      cy.get(".GuiBuilder").findByText("Result: 93.8");
+      cy.findByTestId("gui-builder").findByText("Result: 93.8");
 
       // Let's make sure the custom expression is still preserved
-      cy.get(".GuiBuilder").findByText("Foo").click();
+      cy.findByTestId("gui-builder").findByText("Foo").click();
       cy.get(".ace_content").should("contain", customExpression);
     });
   });
@@ -162,9 +162,10 @@ describe("scenarios > admin > datamodel > metrics", () => {
     });
 
     it("should see a newly asked question in its questions list", () => {
-      // Ask a new qustion
+      // Ask a new question
       cy.visit("/reference/metrics/1/questions");
-      cy.get(".full").find(".Button").click();
+
+      cy.button("Ask a question").click();
 
       filter();
       filterField("Total", {
@@ -263,7 +264,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
     it("should save the metric using custom expressions (metabase#13022)", () => {
       createMetric({
         name: "13022_Metric",
-        desription: "desc",
+        description: "desc",
         table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,

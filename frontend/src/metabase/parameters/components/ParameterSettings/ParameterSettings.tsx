@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { Radio, Stack, Text, TextInput } from "metabase/ui";
-import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
-import { parameterHasNoDisplayValue } from "metabase-lib/parameters/utils/parameter-values";
+import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
+import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
   ValuesQueryType,

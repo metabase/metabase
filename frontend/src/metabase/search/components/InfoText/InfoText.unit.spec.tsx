@@ -207,23 +207,6 @@ describe("InfoText", () => {
       );
     });
 
-    it("shows pulse's collection", async () => {
-      await setup({
-        model: "pulse",
-      });
-
-      const collectionLink = screen.getByText("Collection Name");
-      expect(collectionLink).toBeInTheDocument();
-      expect(collectionLink).toHaveAttribute(
-        "href",
-        `/collection/${MOCK_COLLECTION.id}-collection-name`,
-      );
-
-      expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
-        `Updated ${LAST_EDITED_DURATION}`,
-      );
-    });
-
     it("shows dashboard's collection", async () => {
       await setup({
         model: "dashboard",

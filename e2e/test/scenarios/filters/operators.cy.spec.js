@@ -86,7 +86,7 @@ describe("operators in questions", () => {
 
       popover().within(() => {
         cy.findByText("Price").click();
-        cy.findByDisplayValue("Equal to").click();
+        cy.findByDisplayValue("Between").click();
       });
 
       cy.findByRole("listbox").within(() => {

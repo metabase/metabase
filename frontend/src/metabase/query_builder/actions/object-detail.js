@@ -4,7 +4,7 @@ import { createThunkAction } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { MetabaseApi } from "metabase/services";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 
 import {
   getCard,

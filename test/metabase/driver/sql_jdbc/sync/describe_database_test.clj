@@ -45,10 +45,12 @@
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-database`. (As far as I know, this is
   all of them.)"
   []
-  (set
-   (filter
-    #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))
-    (descendants driver/hierarchy :sql-jdbc))))
+  (conj (set
+         (filter
+          #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))
+          (descendants driver/hierarchy :sql-jdbc)))
+        ;; redshift wraps the default implementation, but additionally filters tables according to the database name
+        :redshift))
 
 (deftest fast-active-tables-test
   (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
@@ -208,3 +210,22 @@
                                   driver/*driver* conn schema (str table-name "_should_not_exist"))))
                      (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                                  driver/*driver* conn schema table-name))))))))))))))
+
+(deftest sync-table-with-backslash-test
+  (mt/test-drivers #{:postgres} ;; TODO: fix and change this to test on (mt/sql-jdbc-drivers)
+    (testing "table with backslash in name, PKs, FKS are correctly synced"
+      (mt/with-temp-test-data [["human\\race"
+                                [{:field-name "humanraceid" :base-type :type/Integer :pk? true}
+                                 {:field-name "race" :base-type :type/Text}]
+                                [[1 "homo sapiens"]]]
+                               ["citizen"
+                                [{:field-name "citizen\\id" :base-type :type/Integer :pk? true}
+                                 {:field-name "race\\id" :base-type :type/Integer :fk "human\\race"}]
+                                [[1 1]]]]
+        (let [tables            (t2/select :model/Table :db_id (:id (mt/db)))
+              field-name->field (t2/select-fn->fn :name identity :model/Field :table_id [:in (map :id tables)])]
+          (is (= #{"human\\race" "citizen"} (set (map :name tables))))
+          (is (= #{"humanraceid" "citizen\\id" "race" "race\\id"}
+                 (set (keys field-name->field))))
+          (is (= (get-in field-name->field ["humanraceid" :id])
+                 (get-in field-name->field ["race\\id" :fk_target_field_id]))))))))

@@ -11,7 +11,7 @@
    [clojure.test :refer :all]
    [mb.hawk.init]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.test-util :as driver.tu]
    [metabase.lib.metadata :as lib.metadata]
@@ -63,7 +63,7 @@
                           (every? #(driver/database-supports? driver % db) features)))]
            driver))))
 
-(alter-meta! #'normal-drivers-with-feature assoc :arglists (list (into ['&] (sort driver/driver-features))))
+(alter-meta! #'normal-drivers-with-feature assoc :arglists (list (into ['&] (sort driver/features))))
 
 (defn normal-drivers-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid and Google Analytics) that DO NOT support
@@ -71,7 +71,7 @@
   [feature]
   (set/difference (normal-drivers) (normal-drivers-with-feature feature)))
 
-(alter-meta! #'normal-drivers-without-feature assoc :arglists (list (into ['&] (sort driver/driver-features))))
+(alter-meta! #'normal-drivers-without-feature assoc :arglists (list (into ['&] (sort driver/features))))
 
 (defn normal-drivers-except
   "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."
@@ -201,7 +201,7 @@
 (declare cols)
 
 (def ^:private ^{:arglists '([db-id table-id field-id])} native-query-col*
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn [db-id table-id field-id]
      (first
       (cols
@@ -580,19 +580,19 @@
 
 ;;; ------------------------------------------------- Timezone Stuff -------------------------------------------------
 
-(defn do-with-report-timezone-id
-  "Impl for `with-report-timezone-id`."
+(defn do-with-report-timezone-id!
+  "Impl for `with-report-timezone-id!`."
   [timezone-id thunk]
   {:pre [((some-fn nil? string?) timezone-id)]}
-  (driver.tu/wrap-notify-all-databases-updated
+  (driver.tu/wrap-notify-all-databases-updated!
     (binding [qp.timezone/*report-timezone-id-override* (or timezone-id ::nil)]
       (testing (format "\nreport timezone id = %s" (pr-str timezone-id))
         (thunk)))))
 
-(defmacro with-report-timezone-id
+(defmacro with-report-timezone-id!
   "Override the `report-timezone` Setting and execute `body`. Intended primarily for REPL and test usage."
   [timezone-id & body]
-  `(do-with-report-timezone-id ~timezone-id (fn [] ~@body)))
+  `(do-with-report-timezone-id! ~timezone-id (fn [] ~@body)))
 
 (defn do-with-database-timezone-id
   "Impl for `with-database-timezone-id`."

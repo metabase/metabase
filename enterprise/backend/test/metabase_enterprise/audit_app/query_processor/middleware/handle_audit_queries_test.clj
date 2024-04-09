@@ -30,7 +30,7 @@
                           [3 5]])
    :xform    (map #(update (vec %) 0 inc))})
 
-(deftest transform-results-test
+(deftest ^:parallel transform-results-test
   (testing "Make sure query function result are transformed to QP results correctly"
     (doseq [[format-name {:keys [query-type expected-rows]}] {"legacy"    {:query-type    ::legacy-format-query-fn
                                                                            :expected-rows [[100 2] [3 5]]}

@@ -2,12 +2,12 @@
   display
   hide and show a child element using display
 */
-:global(.hover-parent.hover--display .hover-child),
-:global(.hover-parent:hover.hover--display .hover-child--hidden) {
+.hoverParent.hoverDisplay .hoverChild,
+.hoverParent:hover.hoverDisplay .hoverChildHidden {
   display: none;
 }
 
-:global(.hover-parent:hover.hover--display .hover-child) {
+.hoverParent:hover.hoverDisplay .hoverChild {
   display: block;
 }
 
@@ -15,36 +15,36 @@
   visibility
   hide and show a child element using visibility
 */
-:global(.hover-parent.hover--visibility .hover-child),
-:global(.hover-parent:hover.hover--visibility .hover-child--hidden) {
+.hoverParent.hoverVisibility .hoverChild,
+.hoverParent:hover.hoverVisibility .hoverChildHidden {
   visibility: hidden;
 }
 
-:global(.hover-parent:hover.hover--visibility .hover-child) {
+.hoverParent:hover.hoverVisibility .hoverChild {
   visibility: visible;
 }
 
-:global(.hover-parent:hover.hover--inherit > *),
-:global(.hover-parent:hover.hover--inherit .hover-child) {
+.hoverParent:hover.hoverInherit > *,
+.hoverParent:hover.hoverInherit .hoverChild {
   color: inherit !important;
 }
 
-:global(.hover-child--smooth) {
+.hoverChildSmooth {
   transition: opacity 0.2s ease-in-out;
 }
 
 @media (prefers-reduced-motion) {
-  :global(.hover-child--smooth) {
+  .hoverChildSmooth {
     transition: none;
   }
 }
 
-:global(.hover-parent.hover--display .hover-child--smooth),
-:global(.hover-parent.hover--visibility .hover-child--smooth) {
+.hoverParent.hoverDisplay .hoverChildSmooth,
+.hoverParent.hoverVisibility .hoverChildSmooth {
   opacity: 0;
 }
 
-:global(.hover-parent:hover.hover--display .hover-child--smooth),
-:global(.hover-parent:hover.hover--visibility .hover-child--smooth) {
+.hoverParent:hover.hoverDisplay .hoverChildSmooth,
+.hoverParent:hover.hoverVisibility .hoverChildSmooth {
   opacity: 1;
 }

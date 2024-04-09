@@ -23,33 +23,44 @@ export function FilterStep({
     [query, stageIndex],
   );
 
-  const handleAddFilter = (
-    filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
-  ) => {
-    const nextQuery = Lib.filter(query, stageIndex, filter);
+  const renderFilterName = (filter: Lib.FilterClause) =>
+    Lib.displayInfo(query, stageIndex, filter).longDisplayName;
+
+  const handleAddFilter = (clause: Lib.Filterable) => {
+    const nextQuery = Lib.filter(query, stageIndex, clause);
     updateQuery(nextQuery);
   };
 
   const handleUpdateFilter = (
-    targetFilter: Lib.FilterClause,
-    nextFilter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
+    targetClause: Lib.FilterClause,
+    newClause: Lib.Filterable,
   ) => {
     const nextQuery = Lib.replaceClause(
       query,
       stageIndex,
-      targetFilter,
-      nextFilter,
+      targetClause,
+      newClause,
     );
     updateQuery(nextQuery);
   };
 
-  const handleRemoveFilter = (filter: Lib.FilterClause) => {
-    const nextQuery = Lib.removeClause(query, stageIndex, filter);
+  const handleReorderFilter = (
+    sourceClause: Lib.FilterClause,
+    targetClause: Lib.FilterClause,
+  ) => {
+    const nextQuery = Lib.swapClauses(
+      query,
+      stageIndex,
+      sourceClause,
+      targetClause,
+    );
     updateQuery(nextQuery);
   };
 
-  const renderFilterName = (filter: Lib.FilterClause) =>
-    Lib.displayInfo(query, stageIndex, filter).longDisplayName;
+  const handleRemoveFilter = (clause: Lib.FilterClause) => {
+    const nextQuery = Lib.removeClause(query, stageIndex, clause);
+    updateQuery(nextQuery);
+  };
 
   return (
     <ErrorBoundary>
@@ -71,6 +82,7 @@ export function FilterStep({
             onClose={onClose}
           />
         )}
+        onReorder={handleReorderFilter}
         onRemove={handleRemoveFilter}
       />
     </ErrorBoundary>
@@ -82,12 +94,10 @@ interface FilterPopoverProps {
   stageIndex: number;
   filter?: Lib.FilterClause;
   filterIndex?: number;
-  onAddFilter: (
-    filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
-  ) => void;
+  onAddFilter: (filter: Lib.Filterable) => void;
   onUpdateFilter: (
     targetFilter: Lib.FilterClause,
-    nextFilter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
+    nextFilter: Lib.Filterable,
   ) => void;
   onClose?: () => void;
 }

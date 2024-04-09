@@ -13,10 +13,10 @@
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -37,7 +37,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [schema.core :as s]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
@@ -157,7 +156,7 @@
               :run        (process-query-for-card-with-id-run-fn qp export-format)
               options)))
 
-(s/defn ^:private process-query-for-card-with-public-uuid
+(defn ^:private process-query-for-card-with-public-uuid
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
@@ -176,9 +175,10 @@
 (api/defendpoint GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
   credentials. Public sharing must be enabled."
-  [uuid export-format :as {{:keys [parameters]} :params}]
+  [uuid export-format :as {{:keys [parameters format_rows]} :params}]
   {uuid          ms/UUIDString
    export-format api.dataset/ExportFormat
+   format_rows   [:maybe :boolean]
    parameters    [:maybe ms/JSONString]}
   (process-query-for-card-with-public-uuid
    uuid
@@ -187,7 +187,7 @@
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
-                :format-rows?          false}))
+                :format-rows?          format_rows}))
 
 
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
@@ -374,7 +374,7 @@
 (defn- query->referenced-field-ids
   "Get the IDs of all Fields referenced by an MBQL `query` (not including any parameters)."
   [query]
-  (mbql.u/match (:query query) [:field id _] id))
+  (lib.util.match/match (:query query) [:field id _] id))
 
 (defn- card->referenced-field-ids
   "Return a set of all Field IDs referenced by `card`, in both the MBQL query itself and in its parameters ('template
@@ -408,8 +408,8 @@
        (t2/exists? Dimension :field_id field-id, :human_readable_field_id search-field-id)
        ;; just do a couple small queries to figure this out, we could write a fancy query to join Field against itself
        ;; and do this in one but the extra code complexity isn't worth it IMO
-       (when-let [table-id (t2/select-one-fn :table_id Field :id field-id, :semantic_type (mdb.u/isa :type/PK))]
-         (t2/exists? Field :id search-field-id, :table_id table-id, :semantic_type (mdb.u/isa :type/Name))))))
+       (when-let [table-id (t2/select-one-fn :table_id Field :id field-id, :semantic_type (mdb.query/isa :type/PK))]
+         (t2/exists? Field :id search-field-id, :table_id table-id, :semantic_type (mdb.query/isa :type/Name))))))
 
 (defn- check-field-is-referenced-by-dashboard
   "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a
@@ -615,10 +615,14 @@
      :qp            qp.pivot/run-pivot-query)))
 
 (def ^:private action-execution-throttle
-  "Rate limit at 1 action per second on a per action basis.
+  "Rate limit at 10 actions per 1000 ms on a per action basis.
    The goal of rate limiting should be to prevent very obvious abuse, but it should
    be relatively lax so we don't annoy legitimate users."
-  (throttle/make-throttler :action-uuid :attempts-threshold 1 :initial-delay-ms 1000 :delay-exponent 1))
+  (throttle/make-throttler :action-uuid
+                           :attempts-threshold 10
+                           :initial-delay-ms 1000
+                           :attempt-ttl-ms 1000
+                           :delay-exponent 1))
 
 (api/defendpoint POST "/action/:uuid/execute"
   "Execute the Action.

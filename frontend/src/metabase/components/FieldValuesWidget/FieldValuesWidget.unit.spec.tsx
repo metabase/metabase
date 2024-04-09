@@ -11,7 +11,7 @@ import type { IFieldValuesWidgetProps } from "metabase/components/FieldValuesWid
 import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
 import Fields from "metabase/entities/fields";
 import { checkNotNull, isNotNull } from "metabase/lib/types";
-import type Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/v1/metadata/Field";
 import {
   ORDERS,
   PRODUCTS,
@@ -286,7 +286,7 @@ describe("FieldValuesWidget", () => {
         searchValue,
       });
 
-      userEvent.type(
+      await userEvent.type(
         screen.getByPlaceholderText(`Search by ${displayName}`),
         searchValue,
       );
@@ -308,7 +308,7 @@ describe("FieldValuesWidget", () => {
         searchValue,
       });
 
-      userEvent.type(screen.getByPlaceholderText("Search"), searchValue);
+      await userEvent.type(screen.getByPlaceholderText("Search"), searchValue);
 
       expect(await screen.findByText(`No matching result`)).toBeInTheDocument();
     });

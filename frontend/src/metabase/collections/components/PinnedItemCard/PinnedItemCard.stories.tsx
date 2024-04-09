@@ -14,6 +14,7 @@ const collection = {
   name: "Collection Foo",
   description: null,
   archived: false,
+  location: "/",
 };
 
 const onCopy = action("onCopy");

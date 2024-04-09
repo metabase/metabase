@@ -5,7 +5,7 @@ import Radio from "metabase/core/components/Radio";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { slugify } from "metabase/lib/formatting";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { parameterHasNoDisplayValue } from "metabase-lib/parameters/utils/parameter-values";
+import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
   ParameterId,

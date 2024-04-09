@@ -2,15 +2,15 @@ import type React from "react";
 
 import type { IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import type { ClickActionProps } from "metabase-lib/queries/drills/types";
+import type Question from "metabase-lib/v1/Question";
+import type { ClickActionProps } from "metabase-lib/v1/queries/drills/types";
 import type { Series, VisualizationSettings, Card } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 export type {
   ClickActionProps,
   ClickObject,
-} from "metabase-lib/queries/drills/types";
+} from "metabase-lib/v1/queries/drills/types";
 
 type Dispatcher = (dispatch: Dispatch, getState: GetState) => void;
 
@@ -28,6 +28,8 @@ export type ClickActionSection =
   | "breakout"
   | "breakout-popover"
   | "details"
+  | "extract"
+  | "extract-popover"
   | "filter"
   | "info"
   | "records"
@@ -147,7 +149,7 @@ export type Drill<
   stageIndex: number;
   drill: Lib.DrillThru;
   drillInfo: T;
-  isDashboard: boolean;
+  clicked: Lib.ClickObject;
   applyDrill: (drill: Lib.DrillThru, ...args: any[]) => Question;
 }) => ClickAction[];
 

@@ -183,7 +183,9 @@
              (mt/id :venues :id))))))
 
 (deftest ^:synchronized persisted-info-metadata-test
-  (t2.with-temp/with-temp [:model/Card          {card-id :id} {}
+  (t2.with-temp/with-temp [:model/Card          {card-id :id} {:dataset_query {:database (mt/id)
+                                                                               :type     :query
+                                                                               :query    {:source-table (mt/id :venues)}}}
                            :model/PersistedInfo {}            {:card_id card-id, :database_id (mt/id)}]
     (is (=? {:lib/type           :metadata/card
              :id                 card-id

@@ -43,7 +43,7 @@
                                                                                {:choices [{:message {:content "{}"}}]}))
                           metabot-client/*create-embedding-endpoint*       metabot-test/throw-on-embedding
                           metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [response (mt/user-http-request :rasta :post 200
+              (let [response (mt/user-http-request :crowberto :post 200
                                                    (format "/metabot/model/%s" (:id orders-model))
                                                    {:question q})
                     {:keys [query template-tags]} (get-in response [:card :dataset_query :native])]
@@ -66,7 +66,7 @@
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)
                           metabot-client/*create-embedding-endpoint*       metabot-test/throw-on-embedding
                           metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [response (mt/user-http-request :rasta :post 400
+              (let [response (mt/user-http-request :crowberto :post 400
                                                    (format "/metabot/model/%s" (:id orders-model))
                                                    {:question q})]
                 (is (true? (str/includes? response "didn't produce any SQL")))))))))))
@@ -94,7 +94,7 @@
                                                                                {:choices [{:message {:content "{}"}}]}))
                           metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
                           metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [response (mt/user-http-request :rasta :post 200
+              (let [response (mt/user-http-request :crowberto :post 200
                                                    (format "/metabot/database/%s" (mt/id))
                                                    {:question q})
                     {:keys [query template-tags]} (get-in response [:card :dataset_query :native])]
@@ -117,7 +117,7 @@
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)
                           metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
                           metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [{:keys [message]} (mt/user-http-request :rasta :post 400
+              (let [{:keys [message]} (mt/user-http-request :crowberto :post 400
                                                             (format "/metabot/database/%s" (mt/id))
                                                             {:question q})]
                 (is (true? (str/includes? message (format "Query '%s' didn't find a good match to your data." q))))))))))))
@@ -140,7 +140,7 @@
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)
                           metabot-client/*create-embedding-endpoint*       metabot-test/throw-on-embedding
                           metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [response (mt/user-http-request :rasta :post 400
+              (let [response (mt/user-http-request :crowberto :post 400
                                                    (format "/metabot/database/%s" (mt/id))
                                                    {:question q})]
                 (is (true? (str/includes? response "didn't produce any SQL")))))))))))
@@ -164,7 +164,7 @@
                                                                                     :status  429})))
                         metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
                         metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-            (let [{:keys [message]} (mt/user-http-request :rasta :post 429
+            (let [{:keys [message]} (mt/user-http-request :crowberto :post 429
                                                           (format "/metabot/database/%s" (mt/id))
                                                           {:question "Doesn't matter"})]
               (is (true? (str/includes? message "The bot server is under heavy load"))))))))
@@ -184,7 +184,7 @@
                                                                                     :status  401})))
                         metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
                         metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-            (let [{:keys [message]} (mt/user-http-request :rasta :post 400
+            (let [{:keys [message]} (mt/user-http-request :crowberto :post 400
                                                           (format "/metabot/database/%s" (mt/id))
                                                           {:question "Doesn't matter"})]
               (is (true? (str/includes? message "Bot credentials are incorrect or not set"))))))))
@@ -210,7 +210,7 @@
                                                                                       :status 400})))
                           metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
                           metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [{:keys [message]} (mt/user-http-request :rasta :post 400
+              (let [{:keys [message]} (mt/user-http-request :crowberto :post 400
                                                             (format "/metabot/database/%s" (mt/id))
                                                             {:question "Doesn't matter"})]
                 (is (= error-message message))))))))))
@@ -230,7 +230,7 @@
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)
                           metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
                           metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [response (mt/user-http-request :rasta :post 200
+              (let [response (mt/user-http-request :crowberto :post 200
                                                    (format "/metabot/database/%s/query" (mt/id))
                                                    {:question q})
                     {:keys [sql]} response]

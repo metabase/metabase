@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { ID_OPTION } from "metabase-lib/parameters/constants";
-import { buildTypedOperatorOptions } from "metabase-lib/parameters/utils/operators";
+import { ID_OPTION } from "metabase-lib/v1/parameters/constants";
+import { buildTypedOperatorOptions } from "metabase-lib/v1/parameters/utils/operators";
 
 export function getDashboardParameterSections() {
   return [

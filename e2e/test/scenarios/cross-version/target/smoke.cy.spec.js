@@ -1,4 +1,8 @@
-import { version } from "./helpers/cross-version-target-helpers";
+import {
+  assertTimelineData,
+  dismissOkToPlayWithQuestionsModal,
+} from "e2e/test/scenarios/cross-version/helpers/cross-version-helpers";
+import { version } from "e2e/test/scenarios/cross-version/source/helpers/cross-version-source-helpers.js";
 
 describe(`smoke test the migration to the version ${version}`, () => {
   it("should already be set up", () => {
@@ -20,9 +24,7 @@ describe(`smoke test the migration to the version ${version}`, () => {
     cy.findByText("Quarterly Revenue").click();
     cy.wait("@cardQuery");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("It's okay to play around with saved questions");
-    cy.button("Okay").click();
+    dismissOkToPlayWithQuestionsModal(version);
 
     cy.get("circle");
     cy.get(".line");
@@ -30,11 +32,8 @@ describe(`smoke test the migration to the version ${version}`, () => {
     cy.findByText("Goal");
     cy.get(".x-axis-label").invoke("text").should("eq", "Created At");
     cy.get(".y-axis-label").invoke("text").should("eq", "Revenue");
-    cy.get(".x.axis .tick")
-      .should("contain", "Q1 2023")
-      .and("contain", "Q1 2024")
-      .and("contain", "Q1 2025")
-      .and("contain", "Q1 2026");
+
+    assertTimelineData(version);
 
     cy.get(".y.axis .tick")
       .should("contain", "20,000")

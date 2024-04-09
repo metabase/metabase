@@ -5,7 +5,7 @@
    [metabase.models.session :refer [Session]]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.session :as mw.session]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -49,7 +49,7 @@
 
   (testing "Invalid requests should return unauthed response"
     (testing "when no session ID is sent with request"
-      (is (= mw.util/response-unauthentic
+      (is (= req.util/response-unauthentic
              (auth-enforced-handler
               (ring.mock/request :get "/anyurl")))))
 
@@ -62,7 +62,7 @@
                                :user_id (test.users/user->id :rasta)})
           (t2/update! (t2/table-name Session) {:id session-id}
             {:created_at (t/instant 1000)})
-          (is (= mw.util/response-unauthentic
+          (is (= req.util/response-unauthentic
                  (auth-enforced-handler (request-with-session-id session-id))))
           (finally (t2/delete! Session :id session-id)))))
 
@@ -74,7 +74,7 @@
         (try
           (t2/insert! Session {:id      session-id
                                :user_id (test.users/user->id :trashbird)})
-          (is (= mw.util/response-unauthentic
+          (is (= req.util/response-unauthentic
                  (auth-enforced-handler
                   (request-with-session-id session-id))))
           (finally (t2/delete! Session :id session-id)))))))
@@ -123,7 +123,7 @@
 (deftest enforce-static-api-key-request
   (mt/with-temporary-setting-values [api-key "test-api-key"]
     (testing "no apikey in the request, expect 403"
-      (is (= mw.util/response-forbidden
+      (is (= req.util/response-forbidden
              (api-key-enforced-handler
               (ring.mock/request :get "/anyurl")))))
 
@@ -133,7 +133,7 @@
               (request-with-api-key "test-api-key")))))
 
     (testing "invalid apikey, expect 403"
-      (is (= mw.util/response-forbidden
+      (is (= req.util/response-forbidden
              (api-key-enforced-handler
               (request-with-api-key "foobar"))))))
 

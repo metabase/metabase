@@ -40,6 +40,8 @@ import {
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
   createDashboardWithTabs,
+  entityPickerModal,
+  collectionOnTheGoModal,
 } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
@@ -69,12 +71,20 @@ describe("scenarios > dashboard", () => {
       appBar().findByText("New").click();
       popover().findByText("Dashboard").should("be.visible").click();
 
+      cy.log(
+        "pressing escape should only close the entity picker modal, not the new dashboard modal",
+      );
+      modal().findByTestId("collection-picker-button").click();
+      entityPickerModal().findByText("Select a collection");
+      cy.realPress("Escape");
+      modal().findByText("New dashboard").should("be.visible");
+
       cy.log("Create a new dashboard");
       modal().within(() => {
         // Without waiting for this, the test was constantly flaking locally.
         cy.findByText("Our analytics");
 
-        cy.findByLabelText("Name").type(dashboardName);
+        cy.findByPlaceholderText(/name of your dashboard/i).type(dashboardName);
         cy.findByLabelText("Description").type(dashboardDescription, {
           delay: 0,
         });
@@ -147,25 +157,32 @@ describe("scenarios > dashboard", () => {
         cy.findByTestId("new-dashboard-modal").then(modal => {
           cy.findByRole("heading", { name: "New dashboard" });
           cy.findByLabelText("Name").type(NEW_DASHBOARD).blur();
-          cy.findByTestId("select-button")
+          cy.findByTestId("collection-picker-button")
             .should("have.text", "Our analytics")
             .click();
         });
-        popover().findByText("New collection").click({ force: true });
+        entityPickerModal()
+          .findByText("Create a new collection")
+          .click({ force: true });
         const NEW_COLLECTION = "Bar";
-
-        cy.findByTestId("new-collection-modal").then(modal => {
-          cy.findByRole("heading", { name: "New collection" });
-          cy.findByPlaceholderText("My new fantastic collection")
+        collectionOnTheGoModal().within(() => {
+          cy.findByText("Create a new collection");
+          cy.findByPlaceholderText(/My new collection/)
             .type(NEW_COLLECTION)
             .blur();
-          cy.button("Create").click();
+          cy.findByText("Create").click();
           cy.wait("@createCollection");
         });
-
-        cy.findByTestId("new-dashboard-modal").then(modal => {
+        entityPickerModal().within(() => {
+          cy.findByText(NEW_COLLECTION).click();
+          cy.button("Select").click();
+        });
+        modal().within(() => {
           cy.findByText("New dashboard");
-          cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
+          cy.findByTestId("collection-picker-button").should(
+            "have.text",
+            NEW_COLLECTION,
+          );
           cy.button("Create").click();
         });
 
@@ -295,8 +312,8 @@ describe("scenarios > dashboard", () => {
         cy.findByTestId("edit-bar").button("Cancel").click();
         openDashboardMenu();
         popover().findByText("Move").click();
-        modal().within(() => {
-          cy.findByRole("heading", { name: myPersonalCollection }).click();
+        entityPickerModal().within(() => {
+          cy.findByText("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });
 
@@ -313,8 +330,8 @@ describe("scenarios > dashboard", () => {
         cy.findByTestId("edit-bar").button("Cancel").click();
         openDashboardMenu();
         popover().findByText("Move").click();
-        modal().within(() => {
-          cy.findByRole("heading", { name: "Our analytics" }).click();
+        entityPickerModal().within(() => {
+          cy.findByText("Our analytics").click();
           cy.button("Move").click();
         });
 
@@ -611,7 +628,7 @@ describe("scenarios > dashboard", () => {
       cy.findByText("All Options").click();
     });
     // and connect it to the card
-    selectDashboardFilter(cy.get(".DashCard"), "Created At");
+    selectDashboardFilter(cy.findByTestId("dashcard-container"), "Created At");
 
     // add second filter
     cy.icon("filter").click();
@@ -619,7 +636,7 @@ describe("scenarios > dashboard", () => {
       cy.findByText("ID").click();
     });
     // and connect it to the card
-    selectDashboardFilter(cy.get(".DashCard"), "Product ID");
+    selectDashboardFilter(cy.findByTestId("dashcard-container"), "Product ID");
 
     // add third filter
     cy.icon("filter").click();
@@ -628,7 +645,7 @@ describe("scenarios > dashboard", () => {
       cy.findByText("Starts with").click();
     });
     // and connect it to the card
-    selectDashboardFilter(cy.get(".DashCard"), "Category");
+    selectDashboardFilter(cy.findByTestId("dashcard-container"), "Category");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
@@ -1142,8 +1159,7 @@ function checkOptionsForFilter(filter) {
     .and("not.contain", "Dashboard filters");
 
   // Get rid of the open popover to be able to select another filter
-  // Uses force: true because the popover is covering this text. This happens
-  // after we introduce the database prompt banner.
+  // Uses force: true because the popover is covering this text.
   cy.findByText("Pick one or more filters to update").click({ force: true });
 }
 

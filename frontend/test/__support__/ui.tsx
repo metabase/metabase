@@ -12,6 +12,7 @@ import { Router, useRouterHistory } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
 import _ from "underscore";
 
+import { Api } from "metabase/api";
 import mainReducers from "metabase/reducers-main";
 import publicReducers from "metabase/reducers-public";
 import { ThemeProvider } from "metabase/ui";
@@ -77,10 +78,14 @@ export function renderWithProviders(
     reducers = { ...reducers, ...customReducers };
   }
 
+  const storeMiddleware = _.compact([
+    Api.middleware,
+    history && routerMiddleware(history),
+  ]);
   const store = getStore(
     reducers,
     initialState,
-    history ? [routerMiddleware(history)] : [],
+    storeMiddleware,
   ) as unknown as Store<State>;
 
   const wrapper = (props: any) => (
@@ -208,5 +213,44 @@ export const waitForLoaderToBeRemoved = async () => {
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
   });
 };
+
+/**
+ * jsdom doesn't have getBoundingClientRect, so we need to mock it
+ */
+export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
+  jest
+    .spyOn(window.Element.prototype, "getBoundingClientRect")
+    .mockImplementation(() => {
+      return {
+        height: 200,
+        width: 200,
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+        ...options,
+      };
+    });
+};
+
+/**
+ * jsdom doesn't have scrollBy, so we need to mock it
+ */
+export const mockScrollBy = () => {
+  window.Element.prototype.scrollBy = jest.fn();
+};
+
+/**
+ * jsdom doesn't have DataTransfer
+ */
+export function createMockClipboardData(
+  opts?: Partial<DataTransfer>,
+): DataTransfer {
+  const clipboardData = { ...opts };
+  return clipboardData as unknown as DataTransfer;
+}
 
 export * from "@testing-library/react";

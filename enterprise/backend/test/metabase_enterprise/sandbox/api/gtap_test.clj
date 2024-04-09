@@ -1,12 +1,13 @@
 (ns metabase-enterprise.sandbox.api.gtap-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy
+    :refer [GroupTableAccessPolicy]]
    [metabase.http-client :as client]
    [metabase.models :refer [Card Field PermissionsGroup Table]]
-   [metabase.models.permissions :as perms]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -14,7 +15,7 @@
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"
     (mt/with-premium-features #{:sandboxes}
-      (is (= (get mw.util/response-unauthentic :body)
+      (is (= (get req.util/response-unauthentic :body)
              (client/client :get 401 "mt/gtap")))
 
       (is (= "You don't have permissions to do that."
@@ -236,19 +237,20 @@
       (mt/with-premium-features #{:sandboxes}
         (with-gtap-cleanup
           (testing "Test that we can create a new sandbox using the permission graph API"
-            (let [graph  (-> (perms/data-perms-graph)
+            (let [graph  (-> (data-perms.graph/api-graph)
                              (assoc-in [:groups group-id (mt/id) :data :schemas "PUBLIC" table-id-1 :query] :segmented)
                              (assoc :sandboxes [{:table_id             table-id-1
                                                  :group_id             group-id
                                                  :card_id              card-id-1
                                                  :attribute_remappings {"foo" 1}}]))
                   result (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
+              (def graph graph)
               (is (=? [{:id                   (mt/malli=? :int)
                         :table_id             table-id-1
                         :group_id             group-id
                         :card_id              card-id-1
                         :attribute_remappings {:foo 1}
-                        :permission_id        (mt/malli=? :int)}]
+                        :permission_id        (mt/malli=? [:maybe :int])}]
                       (:sandboxes result)))
               (is (t2/exists? GroupTableAccessPolicy :table_id table-id-1 :group_id group-id))))
 
@@ -256,7 +258,7 @@
             (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
                                                   :table_id table-id-1
                                                   :group_id group-id)
-                  graph      (-> (perms/data-perms-graph)
+                  graph      (-> (data-perms.graph/api-graph)
                                  (assoc :sandboxes [{:id                   sandbox-id
                                                      :card_id              card-id-2
                                                      :attribute_remappings {"foo" 2}}]))
@@ -273,7 +275,7 @@
             (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
                                                   :table_id table-id-1
                                                   :group_id group-id)
-                  graph       (-> (perms/data-perms-graph)
+                  graph       (-> (data-perms.graph/api-graph)
                                   (assoc-in [:groups group-id (mt/id) :data :schemas "PUBLIC" table-id-2 :query] :segmented)
                                   (assoc :sandboxes [{:id                   sandbox-id
                                                       :card_id              card-id-1
@@ -307,4 +309,4 @@
         (mt/with-temporary-setting-values [premium-embedding-token nil]
           (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                  (mt/user-http-request :crowberto :put 402 "permissions/graph"
-                                       (assoc (perms/data-perms-graph) :sandboxes [{:card_id 1}])))))))))
+                                       (assoc (data-perms.graph/api-graph) :sandboxes [{:card_id 1}])))))))))

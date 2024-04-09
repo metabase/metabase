@@ -1,8 +1,12 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
+  createDashboardWithTabs,
   dashboardHeader,
   editDashboard,
   getActionCardDetails,
@@ -26,6 +30,7 @@ import {
   createMockActionParameter,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
+const { PRODUCTS, SAMPLE_DB_ID } = SAMPLE_DATABASE;
 
 const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";
@@ -390,7 +395,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         idAlias: "targetDashboardId",
       };
 
-      createDashboardWithTabs({
+      createDashboardWithTabsLocal({
         dashboard,
         tabs,
         dashcards: [
@@ -458,7 +463,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       };
       const tabs = [FIRST_TAB, SECOND_TAB, THIRD_TAB];
 
-      createDashboardWithTabs({ dashboard: TARGET_DASHBOARD, tabs, options });
+      createDashboardWithTabsLocal({
+        dashboard: TARGET_DASHBOARD,
+        tabs,
+        options,
+      });
 
       const TAB_SLUG_MAP = {};
       tabs.forEach(tab => {
@@ -569,7 +578,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         idAlias: "targetDashboardId",
       };
 
-      createDashboardWithTabs({ dashboard: TARGET_DASHBOARD, tabs, options });
+      createDashboardWithTabsLocal({
+        dashboard: TARGET_DASHBOARD,
+        tabs,
+        options,
+      });
 
       const TAB_SLUG_MAP = {};
       tabs.forEach(tab => {
@@ -1238,7 +1251,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         idAlias: "targetDashboardId",
       };
 
-      createDashboardWithTabs({
+      createDashboardWithTabsLocal({
         dashboard,
         tabs,
         dashcards: [
@@ -1758,6 +1771,331 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       );
     });
   });
+
+  it("should navigate to a different tab on the same dashboard when configured (metabase#39319)", () => {
+    const TAB_1 = {
+      id: 1,
+      name: "first-tab",
+    };
+    const TAB_2 = {
+      id: 2,
+      name: "second-tab",
+    };
+    const tabs = [TAB_1, TAB_2];
+    const FILTER_MAPPING_COLUMN = "User ID";
+    const DASHBOARD_TEXT_FILTER = {
+      id: "1",
+      name: "Text filter",
+      slug: "filter-text",
+      type: "string/contains",
+    };
+
+    createDashboardWithTabs({
+      name: TARGET_DASHBOARD.name,
+      tabs,
+      parameters: [{ ...DASHBOARD_TEXT_FILTER }],
+      dashcards: [
+        createMockDashboardCard({
+          id: -1,
+          card_id: ORDERS_QUESTION_ID,
+          size_x: 12,
+          size_y: 6,
+          dashboard_tab_id: TAB_1.id,
+          parameter_mappings: [
+            createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+          ],
+        }),
+        createMockDashboardCard({
+          id: -2,
+          card_id: ORDERS_BY_YEAR_QUESTION_ID,
+          size_x: 12,
+          size_y: 6,
+          dashboard_tab_id: TAB_2.id,
+          parameter_mappings: [
+            createTextFilterMapping({ card_id: ORDERS_BY_YEAR_QUESTION_ID }),
+          ],
+        }),
+      ],
+    }).then(dashboard => {
+      cy.wrap(dashboard.id).as("targetDashboardId");
+      dashboard.tabs.forEach(tab => {
+        cy.wrap(tab.id).as(`${tab.name}-id`);
+      });
+      visitDashboard(dashboard.id);
+    });
+
+    const TAB_SLUG_MAP = {};
+    tabs.forEach(tab => {
+      cy.get(`@${tab.name}-id`).then(tabId => {
+        TAB_SLUG_MAP[tab.name] = `${tabId}-${tab.name}`;
+      });
+    });
+
+    editDashboard();
+
+    getDashboardCard().realHover().icon("click").click();
+    cy.get("aside").findByText(FILTER_MAPPING_COLUMN).click();
+    addDashboardDestination();
+    cy.get("aside")
+      .findByLabelText("Select a dashboard tab")
+      .should("have.value", TAB_1.name)
+      .click();
+    cy.findByRole("listbox").findByText(TAB_2.name).click();
+    cy.get("aside").findByText(DASHBOARD_TEXT_FILTER.name).click();
+    popover().findByText(FILTER_MAPPING_COLUMN).click();
+
+    cy.get("aside").button("Done").click();
+    saveDashboard({ waitMs: 250 });
+
+    // test click behavior routing to same dashboard, different tab
+    getTableCell(1).click();
+    cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+        expect(search).to.equal(
+          `?tab=${TAB_SLUG_MAP[TAB_2.name]}&${DASHBOARD_FILTER_TEXT.slug}=${1}`,
+        );
+      });
+    });
+  });
+
+  it("should allow click behavior on left/top header rows on a pivot table (metabase#25203)", () => {
+    const QUESTION_NAME = "Cypress Pivot Table";
+    const DASHBOARD_NAME = "Pivot Table Dashboard";
+    const testQuery = {
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            PEOPLE.SOURCE,
+            { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+          ],
+          [
+            "field",
+            PRODUCTS.CATEGORY,
+            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+          ],
+        ],
+      },
+      database: SAMPLE_DB_ID,
+    };
+
+    cy.createQuestionAndDashboard({
+      questionDetails: {
+        name: QUESTION_NAME,
+        query: testQuery.query,
+        display: "pivot",
+      },
+      dashboardDetails: {
+        name: DASHBOARD_NAME,
+      },
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("targetDashboardId");
+      visitDashboard(dashboard_id);
+    });
+
+    editDashboard();
+
+    getDashboardCard().realHover().icon("click").click();
+    addUrlDestination();
+
+    modal().within(() => {
+      const urlInput = cy.findAllByRole("textbox").eq(0);
+
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        urlInput.type(
+          `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}&category={{category}}&count={{count}}`,
+          {
+            parseSpecialCharSequences: false,
+          },
+        );
+      });
+      cy.button("Done").click();
+    });
+
+    cy.get("aside").button("Done").click();
+
+    saveDashboard();
+
+    // test top header row
+    getDashboardCard().findByText("Doohickey").click();
+    cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+        expect(search).to.equal("?category=Doohickey&count=&source=");
+      });
+    });
+
+    // test left header row
+    getDashboardCard().findByText("Affiliate").click();
+    cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+        expect(search).to.equal("?category=&count=&source=Affiliate");
+      });
+    });
+  });
+
+  it("should allow click through on the pivot column of a regular table that has been pivoted (metabase#25203)", () => {
+    const QUESTION_NAME = "Cypress Table Pivoted";
+    const DASHBOARD_NAME = "Table Pivoted Dashboard";
+    const testQuery = {
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            PEOPLE.SOURCE,
+            { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+          ],
+          [
+            "field",
+            PRODUCTS.CATEGORY,
+            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+          ],
+        ],
+      },
+      database: SAMPLE_DB_ID,
+    };
+
+    cy.createQuestionAndDashboard({
+      questionDetails: {
+        name: QUESTION_NAME,
+        query: testQuery.query,
+        display: "table",
+      },
+      dashboardDetails: {
+        name: DASHBOARD_NAME,
+      },
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("targetDashboardId");
+      visitDashboard(dashboard_id);
+    });
+
+    editDashboard();
+
+    getDashboardCard().realHover().icon("click").click();
+    cy.get("aside").findByText("User → Source").click();
+    addUrlDestination();
+
+    modal().within(() => {
+      const urlInput = cy.findAllByRole("textbox").eq(0);
+
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        urlInput.type(
+          `http://localhost:4000/dashboard/${targetDashboardId}?source={{source}}`,
+          {
+            parseSpecialCharSequences: false,
+          },
+        );
+      });
+      cy.button("Done").click();
+    });
+
+    cy.get("aside").button("Done").click();
+
+    saveDashboard();
+
+    // test pivoted column
+    getDashboardCard().findByText("Organic").click();
+    cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+        expect(search).to.equal("?source=Organic");
+      });
+    });
+  });
+
+  it("should not pass through null values to filters in custom url click behavior (metabase#25203)", () => {
+    const DASHBOARD_NAME = "Click Behavior Custom URL Dashboard";
+    const questionDetails = {
+      name: "Orders",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [
+          ["sum", ["field", ORDERS.TOTAL, null]],
+          ["sum", ["field", ORDERS.DISCOUNT, null]],
+        ],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+        filter: ["=", ["field", ORDERS.USER_ID, null], 1],
+      },
+      display: "bar",
+    };
+
+    cy.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails: {
+        name: DASHBOARD_NAME,
+      },
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("targetDashboardId");
+      visitDashboard(dashboard_id);
+    });
+
+    editDashboard();
+
+    getDashboardCard().realHover().icon("click").click();
+    addUrlDestination();
+
+    modal().within(() => {
+      const urlInput = cy.findAllByRole("textbox").eq(0);
+
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        urlInput.type(
+          `http://localhost:4000/dashboard/${targetDashboardId}?discount={{sum_2}}&total={{sum}}`,
+          {
+            parseSpecialCharSequences: false,
+          },
+        );
+      });
+      cy.button("Done").click();
+    });
+
+    cy.get("aside").button("Done").click();
+
+    saveDashboard();
+
+    // test that normal values still work properly
+    getDashboardCard().within(() => {
+      cy.get(".bar").eq(2).click();
+    });
+    cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+        expect(search).to.equal(
+          "?discount=15.070632139056723&total=298.9195210424866",
+        );
+      });
+    });
+
+    // test that null and "empty"s do not get passed through
+    getDashboardCard().within(() => {
+      cy.get(".bar").eq(1).click();
+    });
+    cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+        expect(search).to.equal("?discount=&total=420.3189231596888");
+      });
+    });
+  });
 });
 
 /**
@@ -1963,14 +2301,14 @@ const getCountToDashboardFilterMapping = () => {
   return cy.get("aside").contains(`${COUNT_COLUMN_NAME} updates 1 filter`);
 };
 
-const createDashboardWithTabs = ({
+const createDashboardWithTabsLocal = ({
   dashboard: dashboardDetails,
   tabs,
   dashcards = [],
   options,
 }) => {
   cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
-    if (options.wrapId) {
+    if (options?.wrapId) {
       cy.wrap(dashboard.id).as(options.idAlias ?? "dashboardId");
     }
     cy.request("PUT", `/api/dashboard/${dashboard.id}`, {

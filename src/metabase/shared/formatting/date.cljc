@@ -83,3 +83,13 @@
       (format-range-with-unit value options)
 
       :else ((formatters/options->formatter options) t))))
+
+(defn ^:export date->iso-string
+  "Coerce date and format as big-endian-day string."
+  [d]
+  (formatters/big-endian-day (shared.ut/coerce-to-timestamp d)))
+
+(defn ^:export datetime->iso-string
+  "Coerce datetime and format as iso string."
+  [dt]
+  (formatters/->iso (shared.ut/coerce-to-timestamp dt)))

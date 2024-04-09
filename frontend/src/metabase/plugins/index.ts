@@ -1,6 +1,8 @@
 import type { ComponentType, HTMLAttributes, ReactNode } from "react";
 import { t } from "ttag";
+import type { AnySchema } from "yup";
 
+import noResultsSource from "assets/img/no_results.svg";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import type {
   DataPermission,
@@ -15,8 +17,8 @@ import type {
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type { IconName, IconProps } from "metabase/ui";
-import type Question from "metabase-lib/Question";
-import type Database from "metabase-lib/metadata/Database";
+import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
   Collection,
@@ -42,7 +44,7 @@ import type {
 } from "./types";
 
 // functions called when the application is started
-export const PLUGIN_APP_INIT_FUCTIONS = [];
+export const PLUGIN_APP_INIT_FUNCTIONS = [];
 
 // function to determine the landing page
 export const PLUGIN_LANDING_PAGE = [];
@@ -126,6 +128,28 @@ export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 // authentication providers
 export const PLUGIN_AUTH_PROVIDERS: GetAuthProviders[] = [];
 
+export const PLUGIN_LDAP_FORM_FIELDS = {
+  formFieldAttributes: [] as string[],
+  defaultableFormFieldAttributes: [] as string[],
+  formFieldsSchemas: {} as Record<string, AnySchema>,
+  UserProvisioning: (() => null) as ComponentType<{
+    settings: {
+      [setting: string]: {
+        display_name?: string | undefined;
+        warningMessage?: string | undefined;
+        description?: string | undefined;
+        note?: string | undefined;
+      };
+    };
+    fields: {
+      [field: string]: {
+        name: string;
+        default: boolean;
+      };
+    };
+  }>,
+};
+
 // Only show the password tab in account settings if these functions all return true.
 // Otherwise, the user is logged in via SSO and should hide first name, last name, and email field in profile settings metabase#23298.
 export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
@@ -133,13 +157,36 @@ export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   canWhitelabel: (_state: State) => false,
-  getLoadingMessage: (_state: State) => t`Doing science...`,
+  getLoadingMessageFactory: (_state: State) => (isSlow: boolean) =>
+    isSlow ? t`Waiting for results...` : t`Doing science...`,
   getIsWhiteLabeling: (_state: State) => false,
   // eslint-disable-next-line no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
   getApplicationName: (_state: State) => "Metabase",
   getShowMetabaseLinks: (_state: State) => true,
-  getDashboardOverviewId: (_state: State) => undefined,
+  getLoginPageIllustration: (_state: State): IllustrationValue => {
+    return {
+      src: "app/img/bridge.svg",
+      isDefault: true,
+    };
+  },
+  getLandingPageIllustration: (_state: State): IllustrationValue => {
+    return {
+      src: "app/img/bridge.svg",
+      isDefault: true,
+    };
+  },
+  getNoDataIllustration: (_state: State): string => {
+    return noResultsSource;
+  },
+  getNoObjectIllustration: (_state: State): string => {
+    return noResultsSource;
+  },
 };
+
+export type IllustrationValue = {
+  src: string;
+  isDefault: boolean;
+} | null;
 
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
 
@@ -154,6 +201,7 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
 };
 
 export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
+  isEnabled: () => false,
   LLMSuggestQuestionInfo: PluginPlaceholder,
 };
 
@@ -251,26 +299,28 @@ export const PLUGIN_MODERATION = {
 };
 
 export const PLUGIN_CACHING = {
+  cacheTTLFormField: null as any,
   dashboardCacheTTLFormField: null,
   questionCacheTTLFormField: null,
-  getQuestionsImplicitCacheTTL: (_question?: any) => null,
-  QuestionCacheSection: PluginPlaceholder,
-  DashboardCacheSection: PluginPlaceholder,
-  DatabaseCacheTimeField: PluginPlaceholder,
+  getQuestionsImplicitCacheTTL: (_question?: any) => null as number | null,
+  QuestionCacheSection: PluginPlaceholder as any,
+  DashboardCacheSection: PluginPlaceholder as any,
+  DatabaseCacheTimeField: PluginPlaceholder as any,
+  StrategyFormLauncherPanel: PluginPlaceholder as any,
+  GranularControlsExplanation: PluginPlaceholder as any,
   isEnabled: () => false,
   hasQuestionCacheSection: (_question: Question) => false,
+  canOverrideRootStrategy: false,
 };
 
 export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;
-  auditInfo: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
-  auditInfo: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {

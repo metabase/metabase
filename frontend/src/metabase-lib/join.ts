@@ -23,7 +23,7 @@ import type {
  */
 export type Joinable = TableMetadata | CardMetadata;
 
-type JoinOrJoinable = Join | Joinable;
+export type JoinOrJoinable = Join | Joinable;
 
 type ColumnMetadataOrFieldRef = ColumnMetadata | Clause;
 
@@ -201,8 +201,9 @@ export function suggestedJoinConditions(
   query: Query,
   stageIndex: number,
   joinable: Joinable,
+  joinPositon?: number,
 ): JoinCondition[] {
-  return ML.suggested_join_conditions(query, stageIndex, joinable);
+  return ML.suggested_join_conditions(query, stageIndex, joinable, joinPositon);
 }
 
 export type JoinFields = ColumnMetadata[] | "all" | "none";
@@ -238,7 +239,7 @@ export function joinedThing(query: Query, join: Join): Joinable {
 
 export type PickerInfo = {
   databaseId: number;
-  tableId: number;
+  tableId: string;
   cardId?: number;
   isModel?: boolean;
 };

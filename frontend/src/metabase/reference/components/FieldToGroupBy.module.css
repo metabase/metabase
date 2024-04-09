@@ -1,5 +1,5 @@
 .fieldToGroupByText {
-  composes: flex-full from "style";
+  flex: 1 0 auto;
   font-size: 14px;
   color: var(--color-text-medium);
 }

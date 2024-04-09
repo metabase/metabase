@@ -5,7 +5,7 @@ import {
   columnsAreValid,
   getDefaultDimensionAndMetric,
 } from "metabase/visualizations/lib/utils";
-import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 export function getOptionFromColumn(col) {
   return {

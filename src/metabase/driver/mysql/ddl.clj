@@ -44,7 +44,7 @@
     (when result?
       ;; Can't use a prepared parameter with these statements
       (sql.ddl/execute! conn [(str "kill " pid)])
-      (throw (Exception. (trs "Killed mysql process id {0} due to timeout." pid))))))
+      (throw (Exception. (trs "Killed MySQL process id {0} due to timeout." pid))))))
 
 (defn- execute-with-timeout!
   "Spins up another channel to execute the statement.
@@ -158,18 +158,16 @@
        (loop [[[step stepfn undofn] & remaining] steps
               undo-steps []]
          (let [result (try (stepfn conn)
-                           (log/info (trs "Step {0} was successful for db {1}"
-                                          step (:name database)))
+                           (log/infof "Step %s was successful for db %s" step (:name database))
                            ::valid
                            (catch Exception e
-                             (log/warn (trs "Error in `{0}` while checking for model persistence permissions." step))
-                             (log/warn e)
+                             (log/warnf e "Error in `%s` while checking for model persistence permissions." step)
                              (try
                                (doseq [[undo-step undofn] (reverse undo-steps)]
-                                 (log/warn (trs "Undoing step `{0}` for db {1}" undo-step (:name database)))
+                                 (log/warnf "Undoing step `%s` for db %s" undo-step (:name database))
                                  (undofn conn))
                                (catch Exception _e
-                                 (log/warn (trs "Unable to rollback database check for model persistence"))))
+                                 (log/warn "Unable to rollback database check for model persistence")))
                              step))]
            (cond (and (= result ::valid) remaining)
                  (recur remaining (conj undo-steps [step undofn]))

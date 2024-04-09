@@ -4,24 +4,23 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.driver.common :as driver.common]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.mbql.util.match :as mbql.match]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.humanization :as humanization]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.escape-join-aliases
-    :as escape-join-aliases]
+   [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
-   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -57,8 +56,8 @@
 (defmethod column-info :default
   [{query-type :type, :as query} _]
   (throw (ex-info (tru "Unknown query type {0}" (pr-str query-type))
-           {:type  qp.error-type/invalid-query
-            :query query})))
+                  {:type  qp.error-type/invalid-query
+                   :query query})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Adding :cols info for native queries                                      |
@@ -132,7 +131,7 @@
 (defn- datetime-arithmetics?
   "Helper for [[infer-expression-type]]. Returns true if a given clause returns a :type/DateTime type."
   [clause]
-  (mbql.match/match-one clause
+  (lib.util.match/match-one clause
     #{:datetime-add :datetime-subtract :relative-datetime}
     true
 
@@ -219,19 +218,20 @@
     :field_ref       clause}))
 
 (mu/defn ^:private col-info-for-field-clause*
-  [{:keys [source-metadata source-card-id], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
-  (let [join                      (when (:join-alias opts)
-                                    (join-with-alias inner-query (:join-alias opts)))
-        join-is-at-current-level? (some #(= (:alias %) (:join-alias opts)) (:joins inner-query))
+  [{:keys [source-metadata], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
+  (let [stage-is-from-source-card? (:qp/stage-had-source-card inner-query)
+        join                       (when (:join-alias opts)
+                                     (join-with-alias inner-query (:join-alias opts)))
+        join-is-at-current-level?  (some #(= (:alias %) (:join-alias opts)) (:joins inner-query))
         ;; record additional information that may have been added by middleware. Sometimes pre-processing middleware
         ;; needs to add extra info to track things that it did (e.g. the
         ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds keys to
         ;; track which Fields it adds or needs to remap, and then the post-processing middleware does the actual
         ;; remapping based on that info)
-        namespaced-options        (not-empty (into {}
-                                                   (filter (fn [[k _v]]
-                                                             (and (keyword? k) (namespace k))))
-                                                   opts))]
+        namespaced-options         (not-empty (into {}
+                                                    (filter (fn [[k _v]]
+                                                              (and (keyword? k) (namespace k))))
+                                                    opts))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
     (cond-> {:field_ref (mbql.u/remove-namespaced-options clause)}
@@ -295,7 +295,7 @@
       ;; If the source query is from a saved question, remove the join alias as the caller should not be aware of joins
       ;; happening inside the saved question. The `not join-is-at-current-level?` check is to ensure that we are not
       ;; removing `:join-alias` from fields from the right side of the join.
-      (and source-card-id
+      (and stage-is-from-source-card?
            (not join-is-at-current-level?))
       (update :field_ref mbql.u/update-field-options dissoc :join-alias))))
 
@@ -304,7 +304,7 @@
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"
   [inner-query :- :map
    clause      :- mbql.s/Field]
-  (mbql.u/match-one clause
+  (lib.util.match/match-one clause
     :expression
     (col-info-for-expression inner-query &match)
 
@@ -414,12 +414,12 @@
   [source-metadata-col :- [:maybe :map]
    col                 :- [:maybe :map]]
   (merge
-    {} ;; ensure the type is not FieldInstance
-    (when-let [field-id (:id source-metadata-col)]
-      (-> (lib.metadata/field (qp.store/metadata-provider) field-id)
-          (dissoc :database-type)
-          #_{:clj-kondo/ignore [:deprecated-var]}
-          qp.store/->legacy-metadata))
+   {} ; ensure the type is a plain map rather than a Toucan 2 instance or whatever
+   (when-let [field-id (:id source-metadata-col)]
+     (-> (lib.metadata/field (qp.store/metadata-provider) field-id)
+         (dissoc :database-type)
+         #_{:clj-kondo/ignore [:deprecated-var]}
+         qp.store/->legacy-metadata))
    source-metadata-col
    col
    ;; pass along the unit from the source query metadata if the top-level metadata has unit `:default`. This way the
@@ -475,7 +475,7 @@
       source-query
       (flow-field-metadata (cols-for-source-query inner-query results) cols model?)
 
-      (every? #(mbql.u/match-one % [:field (field-name :guard string?) _] field-name) fields)
+      (every? #(lib.util.match/match-one % [:field (field-name :guard string?) _] field-name) fields)
       (maybe-merge-source-metadata source-metadata cols)
 
       :else
@@ -485,7 +485,7 @@
   [{aggregations :aggregation breakouts :breakout :as inner-query} replaced-indices]
   (let [offset   (count breakouts)
         restored (reduce (fn [aggregations index]
-                           (mbql.u/replace-in aggregations [(- index offset)]
+                           (lib.util.match/replace-in aggregations [(- index offset)]
                              [:count]       [:cum-count]
                              [:count field] [:cum-count field]
                              [:sum field]   [:cum-sum field]))

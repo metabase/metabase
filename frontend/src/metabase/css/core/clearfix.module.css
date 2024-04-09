@@ -1,5 +1,6 @@
 /* Nicolas Gallaghers Clearfix solution
    Ref: http://nicolasgallagher.com/micro-clearfix-hack/ */
+
 /**
  * For modern browsers
  * 1. The space content is one way to avoid an Opera bug when the
@@ -9,13 +10,13 @@
  * 2. The use of `table` rather than `block` is only necessary if using
  *    `:before` to contain the top-margins of child elements.
  */
-:global(.clearfix:before),
-:global(.clearfix:after) {
+:global(.clearfix::before),
+:global(.clearfix::after) {
   content: " "; /* 1 */
   display: table; /* 2 */
 }
 
-:global(.clearfix:after) {
+:global(.clearfix::after) {
   clear: both;
 }
 

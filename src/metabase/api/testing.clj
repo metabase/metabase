@@ -6,8 +6,7 @@
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.db.setup :as mdb.setup]
+   [metabase.db :as mdb]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms])
@@ -32,10 +31,10 @@
 ;;;; SAVE
 
 (defn- save-snapshot! [snapshot-name]
-  (assert-h2 mdb.connection/*application-db*)
+  (assert-h2 (mdb/app-db))
   (let [path (snapshot-path-for-name snapshot-name)]
     (log/infof "Saving snapshot to %s" path)
-    (jdbc/query {:datasource mdb.connection/*application-db*} ["SCRIPT TO ?" path]))
+    (jdbc/query {:datasource (mdb/app-db)} ["SCRIPT TO ?" path]))
   :ok)
 
 (api/defendpoint POST "/snapshot/:name"
@@ -50,7 +49,7 @@
 (defn- reset-app-db-connection-pool!
   "Immediately destroy all open connections in the app DB connection pool."
   []
-  (let [{:keys [data-source]} mdb.connection/*application-db*]
+  (let [data-source (mdb/data-source)]
      (when (instance? PoolBackedDataSource data-source)
        (log/info "Destroying application database connection pool")
        (.hardReset ^PoolBackedDataSource data-source))))
@@ -60,7 +59,7 @@
   [^String snapshot-path]
   (log/infof "Restoring snapshot from %s" snapshot-path)
   (api/check-404 (.exists (java.io.File. snapshot-path)))
-  (with-open [conn (.getConnection mdb.connection/*application-db*)]
+  (with-open [conn (.getConnection (mdb/app-db))]
     (doseq [sql-args [["SET LOCK_TIMEOUT 180000"]
                       ["DROP ALL OBJECTS"]
                       ["RUNSCRIPT FROM ?" snapshot-path]]]
@@ -89,26 +88,19 @@
   ;; a bunch of time initializing Liquibase and checking for unrun migrations for every test when we don't need to. --
   ;; Cam
   (when config/is-dev?
-    (mdb.setup/migrate! (mdb.connection/db-type) mdb.connection/*application-db* :up)))
-
-(defn- increment-app-db-unique-indentifier!
-  "Increment the [[mdb.connection/unique-identifier]] for the Metabase application DB. This effectively flushes all
-  caches using it as a key (including things using [[mdb.connection/memoize-for-application-db]]) such as the Settings
-  cache."
-  []
-  (alter-var-root #'mdb.connection/*application-db* assoc :id (swap! mdb.connection/application-db-counter inc)))
+    (mdb/migrate! (mdb/app-db) :up)))
 
 (defn- restore-snapshot! [snapshot-name]
-  (assert-h2 mdb.connection/*application-db*)
+  (assert-h2 (mdb/app-db))
   (let [path                         (snapshot-path-for-name snapshot-name)
-        ^ReentrantReadWriteLock lock (:lock mdb.connection/*application-db*)]
+        ^ReentrantReadWriteLock lock (:lock (mdb/app-db))]
     ;; acquire the application DB WRITE LOCK which will prevent any other threads from getting any new connections until
     ;; we release it.
     (try
       (.. lock writeLock lock)
       (reset-app-db-connection-pool!)
       (restore-app-db-from-snapshot! path)
-      (increment-app-db-unique-indentifier!)
+      (mdb/increment-app-db-unique-indentifier!)
       (finally
         (.. lock writeLock unlock))))
   :ok)
@@ -121,6 +113,7 @@
   nil)
 
 (api/defendpoint POST "/echo"
+  "Simple echo hander. Fails when you POST {\"fail\": true}."
   [fail :as {:keys [body]}]
   {fail ms/BooleanValue}
   (if fail

@@ -33,6 +33,9 @@ function computeExpression(node, x) {
 const msToDays = ms => ms / (24 * 60 * 60 * 1000);
 
 export function getNormalizedStackedTrendDatas(trendDatas) {
+  if (trendDatas.length === 0) {
+    return [];
+  }
   const count = trendDatas[0].length;
   const sums = _.range(count).map(i =>
     trendDatas.reduce((sum, trendData) => sum + trendData[i][1], 0),

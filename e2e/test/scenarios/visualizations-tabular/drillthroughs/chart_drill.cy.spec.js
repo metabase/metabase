@@ -48,11 +48,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     queryBuilderMain().within(() => {
       cy.findByLabelText("Legend").findByText("Gadget").should("exist");
-      cy.get(".LineAreaBarChart").findByText("January 2023").should("exist");
+      cy.get("[data-element-id=line-area-bar-chart]")
+        .findByText("January 2023")
+        .should("exist");
     });
 
     cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
-    cy.get(".Visualization") // drag across to filter
+    cy.findByTestId("query-visualization-root") // drag across to filter
       .trigger("mousedown", 120, 200)
       .trigger("mousemove", 230, 200)
       .trigger("mouseup", 230, 200);
@@ -65,7 +67,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     );
 
     queryBuilderMain().within(() => {
-      cy.get(".LineAreaBarChart").findByText("June 2022"); // more granular axis labels
+      cy.get("[data-element-id=line-area-bar-chart]").findByText("June 2022"); // more granular axis labels
 
       // confirm that product category is still broken out
       cy.findByLabelText("Legend").within(() => {
@@ -97,7 +99,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
       cy.createQuestion(questionDetails, { visitQuestion: true });
 
-      cy.get(".Visualization")
+      cy.findByTestId("query-visualization-root")
         .trigger("mousedown", 240, 200)
         .trigger("mousemove", 420, 200)
         .trigger("mouseup", 420, 200);
@@ -486,7 +488,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         visitQuestion(QUESTION_ID);
 
         // Initial visualization has rendered and we can now drill-through
-        cy.get(".Visualization .bar").eq(4).click({ force: true });
+        cy.findByTestId("query-visualization-root")
+          .get(".bar")
+          .eq(4)
+          .click({ force: true });
         cy.findByText("See these People").click();
 
         // We should see the resulting dataset of that drill-through
@@ -676,7 +681,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".LineAreaBarChart").get(".dot").first().click({ force: true });
+    cy.get("[data-element-id=line-area-bar-chart]")
+      .get(".dot")
+      .first()
+      .click({ force: true });
     popover().within(() => {
       cy.findByText("See these Orders").should("be.visible");
 
@@ -720,14 +728,20 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".LineAreaBarChart").findAllByTestId("legend-item").first().click();
+    cy.get("[data-element-id=line-area-bar-chart]")
+      .findAllByTestId("legend-item")
+      .first()
+      .click();
 
     popover().within(() => {
       cy.findByText("See these Orders").should("be.visible");
       cy.findByText("Automatic insights…").should("be.visible");
     });
 
-    cy.get(".LineAreaBarChart").get(".bar").first().click({ force: true });
+    cy.get("[data-element-id=line-area-bar-chart]")
+      .get(".bar")
+      .first()
+      .click({ force: true });
     popover().within(() => {
       cy.findByText("See these Orders").should("be.visible");
 
@@ -764,7 +778,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".CardVisualization").get("path.cursor-pointer").first().click();
+    cy.findAllByTestId("choropleth-feature").first().click();
 
     popover().within(() => {
       cy.findByText("See these People").should("be.visible");
@@ -782,5 +796,5 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 });
 
 function hoverLineDot({ index } = {}) {
-  cy.get(".Visualization .dot").eq(index).realHover();
+  cy.findByTestId("query-visualization-root").get(".dot").eq(index).realHover();
 }

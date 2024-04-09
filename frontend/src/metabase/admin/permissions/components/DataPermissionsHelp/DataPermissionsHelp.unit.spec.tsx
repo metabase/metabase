@@ -23,7 +23,7 @@ async function setup({ hasAdvancedPermissions = false } = {}) {
   await waitForLoaderToBeRemoved();
 }
 
-describe("DataPermissionsHelp", function () {
+describe("DataPermissionsHelp", () => {
   it("shows link to the plans page on non-enterprise instances", () => {
     setup({ hasAdvancedPermissions: false });
 

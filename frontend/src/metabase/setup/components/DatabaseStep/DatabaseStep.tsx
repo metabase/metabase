@@ -7,7 +7,6 @@ import type { DatabaseData } from "metabase-types/api";
 import type { InviteInfo } from "metabase-types/store";
 
 import {
-  selectStep,
   skipDatabase,
   submitDatabase,
   submitUserInvite,
@@ -18,11 +17,9 @@ import {
   getDatabaseEngine,
   getInvite,
   getIsEmailConfigured,
-  getIsSetupCompleted,
-  getIsStepActive,
-  getIsStepCompleted,
   getUser,
 } from "../../selectors";
+import { useStep } from "../../useStep";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
 import { InviteUserForm } from "../InviteUserForm";
@@ -32,18 +29,13 @@ import type { NumberedStepProps } from "../types";
 import { StepDescription } from "./DatabaseStep.styled";
 
 export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
+  const { isStepActive, isStepCompleted } = useStep("db_connection");
   const user = useSelector(getUser);
   const database = useSelector(getDatabase);
   const engine = useSelector(getDatabaseEngine);
   const invite = useSelector(getInvite);
   const isEmailConfigured = useSelector(getIsEmailConfigured);
-  const isStepActive = useSelector(state =>
-    getIsStepActive(state, "db_connection"),
-  );
-  const isStepCompleted = useSelector(state =>
-    getIsStepCompleted(state, "db_connection"),
-  );
-  const isSetupCompleted = useSelector(getIsSetupCompleted);
+
   const dispatch = useDispatch();
 
   const handleEngineChange = (engine?: string) => {
@@ -62,10 +54,6 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
     dispatch(submitUserInvite(invite));
   };
 
-  const handleStepSelect = () => {
-    dispatch(selectStep("db_connection"));
-  };
-
   const handleStepCancel = () => {
     dispatch(skipDatabase(engine));
   };
@@ -76,8 +64,6 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
         title={getStepTitle(database, invite, isStepCompleted)}
         label={stepLabel}
         isStepCompleted={isStepCompleted}
-        isSetupCompleted={isSetupCompleted}
-        onStepSelect={handleStepSelect}
       />
     );
   }

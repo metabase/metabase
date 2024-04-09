@@ -15,7 +15,7 @@
 (deftest parse-test
   ;; system timezone should not affect the way strings are parsed
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (test.tz/with-system-timezone-id system-timezone-id
+    (test.tz/with-system-timezone-id! system-timezone-id
       (letfn [(message [expected s default-timezone-id]
                 (if default-timezone-id
                   (format "parsing '%s' with default timezone id '%s' should give you %s" s default-timezone-id (pr-str expected))

@@ -53,6 +53,9 @@ export const FIRST_COLLECTION_ID = _.findWhere(
   { name: "First collection" },
 ).id;
 
+/**
+ * @type number
+ */
 export const SECOND_COLLECTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.collections,
   { name: "Second collection" },

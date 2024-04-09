@@ -2,8 +2,8 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.db :as mdb]
    [metabase.db.data-source :as mdb.data-source]
-   [metabase.db.setup :as mdb.setup]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models :refer [Database]]
@@ -64,7 +64,7 @@
       ;; create a new application DB and run migrations.
       (create-test-db!)
       (let [data-source (test-data-source)]
-        (mdb.setup/migrate! :mysql data-source :up)
+        (mdb/migrate! data-source :up)
         (is (= {:character-set "utf8mb4", :collation "utf8mb4_unicode_ci"}
                (db-charset)
                (table-charset)

@@ -32,11 +32,6 @@
   transition: opacity 0.3s linear;
 }
 
-/* if the column is the one that is being sorted*/
-:global(.TableInteractive-headerCellData--sorted) {
-  color: var(--color-brand);
-}
-
 :global(.TableInteractive-header) {
   box-sizing: border-box;
   border-bottom: 1px solid var(--color-border);
@@ -46,7 +41,6 @@
   overflow: hidden;
   display: flex;
   align-items: center;
-
   border-top: 1px solid transparent;
   border-left: 1px solid transparent;
   border-right: 1px solid transparent;
@@ -140,15 +134,4 @@
 
 :global(.TableInteractive-gutter) {
   background-color: var(--color-bg-white);
-}
-
-:global(.TableInteractive-detailButton) {
-  color: var(--color-brand);
-  transition: opacity 0.2s ease-in-out;
-  margin: 0 4px;
-  opacity: 0;
-}
-
-:global(.show .TableInteractive-detailButton) {
-  opacity: 1;
 }

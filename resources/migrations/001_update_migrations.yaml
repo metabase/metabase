@@ -5530,6 +5530,254 @@ databaseChangeLog:
       rollback: # not needed
 
   - changeSet:
+      id: v49.2024-03-26T10:23:12
+      author: adam-james
+      comment: Add pulse_card.format_rows
+      changes:
+        - addColumn:
+            tableName: pulse_card
+            columns:
+              - column:
+                  name: format_rows
+                  type: ${boolean.type}
+                  defaultValue: true
+                  remarks: Whether or not to apply formatting to the rows of the export
+
+  - changeSet:
+      id: v49.2024-03-26T20:27:58
+      author: noahmoss
+      comment: Added 0.46.0 - Delete the truncate audit log task (renamed to truncate audit tables)
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteTruncateAuditLogTask"
+
+  - changeSet:
+      id: v50.2024-01-04T13:52:51
+      author: noahmoss
+      comment: Data permissions table
+      changes:
+        - createTable:
+            tableName: data_permissions
+            remarks: A table to store database and table permissions
+            columns:
+              - column:
+                  remarks: The ID of the permission
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The ID of the associated permission group
+                  name: group_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
+                    foreignKeyName: fk_data_permissions_ref_permissions_group
+                    deleteCascade: true
+              - column:
+                  remarks: The type of the permission (e.g. "data", "collection", "download"...)
+                  name: perm_type
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: A database ID, for DB and table-level permissions
+                  name: db_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_data_permissions_ref_db_id
+                    deleteCascade: true
+              - column:
+                  remarks: A schema name, for table-level permissions
+                  name: schema_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: A table ID
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_data_permissions_ref_table_id
+                    deleteCascade: true
+              - column:
+                  remarks: The value this permission is set to.
+                  name: perm_value
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-01-09T13:52:21
+      author: noahmoss
+      comment: Index on data_permissions.table_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: data_permissions
+            columns:
+              - column:
+                  name: table_id
+            indexName: idx_data_permissions_table_id
+
+  - changeSet:
+      id: v50.2024-01-09T13:53:50
+      author: noahmoss
+      comment: Index on data_permissions.db_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: data_permissions
+            columns:
+              - column:
+                  name: db_id
+            indexName: idx_data_permissions_db_id
+
+  - changeSet:
+      id: v50.2024-01-09T13:53:54
+      author: noahmoss
+      comment: Index on data_permissions.group_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: data_permissions
+            columns:
+              - column:
+                  name: group_id
+            indexName: idx_data_permissions_group_id
+
+  - changeSet:
+      id: v50.2024-01-10T03:27:29
+      author: noahmoss
+      comment: Drop foreign key constraint on sandboxes.permissions_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: sandboxes
+            constraintName: fk_sandboxes_ref_permissions
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: sandboxes
+            baseColumnNames: permission_id
+            referencedTableName: permissions
+            referencedColumnNames: id
+            constraintName: fk_sandboxes_ref_permissions
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v50.2024-01-10T03:27:30
+      author: noahmoss
+      comment: Migrate data-access permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/data_access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_data_access.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/rollback/data_access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/rollback/mysql_data_access.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-01-10T03:27:31
+      author: noahmoss
+      comment: Migrate native-query-editing permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            path: permissions/native_query_editing.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: permissions/rollback/native_query_editing.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-01-10T03:27:32
+      author: noahmoss
+      comment: Migrate download-results permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/download_results.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_download_results.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/rollback/download_results.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/rollback/mysql_download_results.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-01-10T03:27:33
+      author: noahmoss
+      comment: Migrate manage-data-metadata permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/manage_table_metadata.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_manage_table_metadata.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/rollback/manage_table_metadata.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/rollback/mysql_manage_table_metadata.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-01-10T03:27:34
+      author: noahmoss
+      comment: Migrate manage-database permissions from `permissions` to `data_permissions`
+      changes:
+        - sqlFile:
+            path: permissions/manage_database.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: permissions/rollback/manage_database.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-02-19T21:32:04
+      author: noahmoss
+      comment: Clear data permission paths
+      changes:
+        - sql: >-
+            DELETE FROM permissions WHERE object LIKE '%/db/%';
+      rollback: # not needed; handled by the permission migrations above
+
+  - changeSet:
       id: v50.2024-02-20T19:21:04
       author: camsaul
       comment: Drop v1 version of v_content view since it references report_card.dataset which we are dropping in next migration
@@ -5598,6 +5846,288 @@ databaseChangeLog:
             sql: >-
               DROP VIEW IF EXISTS v_content;
 
+  - changeSet:
+      id: v50.2024-02-29T15:06:43
+      author: tsmacdonald
+      comment: Add the query_field join table
+      changes:
+        - createTable:
+            tableName: query_field
+            remarks: Fields used by a card's query
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  remarks: referenced card
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_field_card_id
+                    deleteCascade: true
+              - column:
+                  name: field_id
+                  remarks: referenced field
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_field_field_id
+                    deleteCascade: true
+
+  - changeSet:
+      id: v50.2024-02-29T15:07:43
+      author: tsmacdonald
+      comment: Index query_field.card_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: query_field
+            columns:
+              - column:
+                  name: card_id
+            indexName: idx_query_field_card_id
+
+  - changeSet:
+      id: v50.2024-02-29T15:08:43
+      author: tsmacdonald
+      comment: Index query_field.field_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: query_field
+            columns:
+              - column:
+                  name: field_id
+            indexName: idx_query_field_field_id
+
+  - changeSet:
+      id: v50.2024-03-12T17:16:38
+      author: noahmoss
+      comment: Drops the `activity` table which is now unused
+      changes:
+        - dropTable:
+            tableName: activity
+      rollback:
+        - createTable:
+            tableName: activity
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: topic
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_activity_ref_user_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: model
+                  type: varchar(16)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: database_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: custom_id
+                  type: varchar(48)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: details
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+        - sql:
+            dbms: mysql
+            sql: >
+              CREATE index idx_activity_entity_qualified_id ON activity (
+                (
+                  CASE
+                    WHEN model = 'Dataset' THEN (concat('card_', model_id))
+                    WHEN model_id IS NULL THEN NULL
+                    ELSE (concat(lower(model), '_', model_id))
+                  END
+                )
+              );
+
+  - changeSet:
+      id: v50.2024-03-18T16:00:00
+      author: piranha
+      comment: 'Effective caching #36847'
+      changes:
+        - createTable:
+            tableName: cache_config
+            remarks: Cache Configuration
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model
+                  remarks: Name of an entity model
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  remarks: ID of the said entity
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: Timestamp when the config was inserted
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: Timestamp when the config was updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: strategy
+                  remarks: caching strategy name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: config
+                  remarks: caching strategy configuration
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: state
+                  remarks: state for strategies needing to keep some data between runs
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: invalidated_at
+                  remarks: indicates when a cache was invalidated last time for schedule-based strategies
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: next_run_at
+                  remarks: keeps next time to run for schedule-based strategies
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-03-18T16:00:01
+      author: piranha
+      comment: 'Effective caching #36847'
+      rollback: # will be removed with the table
+      changes:
+        - addUniqueConstraint:
+            remarks: Unique config for cache_config (model, model_id)
+            tableName: cache_config
+            constraintName: idx_cache_config_unique_model
+            columnNames: model, model_id
+
+  - changeSet:
+      id: v50.2024-03-21T17:41:00
+      author: qnkhuat
+      comment: Add metabase_table.estimated_row_count
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: estimated_row_count
+                  type: bigint
+                  remarks: The estimated row count
+
+  - changeSet:
+      id: v50.2024-03-25T14:53:00
+      author: tsmacdonald
+      comment: Add query_field.direct_reference
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: direct_reference
+                  type: ${boolean.type}
+                  remarks: "Is the Field referenced directly or via a wildcard"
+                  constraints:
+                    nullable: false
+                  defaultValue: true
+
+  - changeSet:
+      id: v50.2024-03-28T16:30:35
+      author: calherries
+      comment: Create internal user
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateInternalUser"
+
+  - changeSet:
+      id: v50.2024-03-29T10:00:00
+      author: piranha
+      comment: 'Granular cache invalidation'
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: cache_invalidated_at
+                  type: ${timestamp_type}
+                  remarks: 'An invalidation time that can supersede cache_config.invalidated_at'
+                  constraints:
+                    nullable: true
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

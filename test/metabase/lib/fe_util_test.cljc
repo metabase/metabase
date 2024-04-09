@@ -4,6 +4,7 @@
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]))
@@ -186,3 +187,23 @@
                        (lib/dependent-metadata query))
         query
         (lib/append-stage query)))))
+
+(deftest ^:parallel maybe-expand-temporal-expression-test
+  (let [update-temporal-unit (fn [expr temporal-type] (update-in expr [2 1] assoc :temporal-unit temporal-type))
+        expr [:=
+              {:lib/uuid "4fcaefe5-5c20-4cbc-98ed-6007b67843a4"}
+              [:field {:lib/uuid "3fcaefe5-5c20-4cbc-98ed-6007b67843a3"} 111]
+              "2024-05-13T16:35"]]
+    (testing "Expandable temporal units"
+      (are [unit start end] (=? [:between map? [:field {:temporal-unit unit} int?] start end]
+                                (#'lib.fe-util/maybe-expand-temporal-expression (update-temporal-unit expr unit)))
+        :hour "2024-05-13T16:00:00" "2024-05-13T16:59:59"
+        :week "2024-05-12" "2024-05-18"
+        :month "2024-05-01" "2024-05-31"
+        :quarter "2024-04-01" "2024-06-30"
+        :year  "2024-01-01" "2024-12-31")
+      (testing "Non-expandable temporal units"
+        (are [unit] (let [expr (update-temporal-unit expr unit)]
+                      (= expr
+                         (#'lib.fe-util/maybe-expand-temporal-expression expr)))
+          :minute :day)))))

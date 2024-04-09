@@ -11,13 +11,13 @@ import { getParentPath } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/lib/redux";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonation } from "metabase-enterprise/advanced_permissions/selectors";
-import { ImpersonationApi } from "metabase-enterprise/advanced_permissions/services";
 import type {
   AdvancedPermissionsStoreState,
   ImpersonationModalParams,
   ImpersonationParams,
 } from "metabase-enterprise/advanced_permissions/types";
 import { getImpersonatedDatabaseId } from "metabase-enterprise/advanced_permissions/utils";
+import { ImpersonationApi } from "metabase-enterprise/services";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
 import type { Impersonation } from "metabase-types/api";

@@ -6,7 +6,16 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getSetting } from "metabase/selectors/settings";
-import { Accordion, Box, Flex, Stack, Text, Title, Icon } from "metabase/ui";
+import {
+  rem,
+  Accordion,
+  Box,
+  Flex,
+  Stack,
+  Text,
+  Title,
+  Icon,
+} from "metabase/ui";
 
 export const DataPermissionsHelp = () => {
   const isAdvancedPermissionsFeatureEnabled = useSelector(
@@ -14,8 +23,8 @@ export const DataPermissionsHelp = () => {
   );
 
   return (
-    <Flex direction="column" py="1.375rem" px="1rem">
-      <Box px="0.75rem">
+    <Flex direction="column" py={rem(22)} px="1rem">
+      <Box px={rem(12)}>
         <Title order={4}>{t`Data permissions`}</Title>
         <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
       </Box>

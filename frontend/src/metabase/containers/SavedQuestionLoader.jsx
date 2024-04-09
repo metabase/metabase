@@ -7,7 +7,7 @@ import Questions from "metabase/entities/questions";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 
 // type annotations
 

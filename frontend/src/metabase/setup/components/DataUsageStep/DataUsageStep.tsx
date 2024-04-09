@@ -1,52 +1,42 @@
 import { getIn } from "icepick";
 import { useState } from "react";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import ActionButton from "metabase/components/ActionButton";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import Settings from "metabase/lib/settings";
 
-import { selectStep, submitSetup, updateTracking } from "../../actions";
-import {
-  getIsSetupCompleted,
-  getIsStepActive,
-  getIsStepCompleted,
-  getIsTrackingAllowed,
-} from "../../selectors";
+import { submitSetup, updateTracking } from "../../actions";
+import { getIsTrackingAllowed } from "../../selectors";
+import { useStep } from "../../useStep";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
 import type { NumberedStepProps } from "../types";
 
 import {
   StepDescription,
+  StepError,
+  StepInfoList,
+  StepToggle,
   StepToggleContainer,
   StepToggleLabel,
-  StepInfoList,
-  StepError,
-  StepToggle,
 } from "./DataUsageStep.styled";
 
 export const DataUsageStep = ({
   stepLabel,
 }: NumberedStepProps): JSX.Element => {
+  const { isStepActive, isStepCompleted } = useStep("data_usage");
   const [errorMessage, setErrorMessage] = useState<string>();
   const isTrackingAllowed = useSelector(getIsTrackingAllowed);
-  const isStepActive = useSelector(state =>
-    getIsStepActive(state, "data_usage"),
-  );
-  const isStepCompleted = useSelector(state =>
-    getIsStepCompleted(state, "data_usage"),
-  );
-  const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
 
-  const handleTrackingChange = (isTrackingAllowed: boolean) => {
-    dispatch(updateTracking(isTrackingAllowed));
-  };
-
-  const handleStepSelect = () => {
-    dispatch(selectStep("data_usage"));
+  const handleTrackingChange = async (isTrackingAllowed: boolean) => {
+    try {
+      await dispatch(updateTracking(isTrackingAllowed)).unwrap();
+    } catch (error) {
+      setErrorMessage(getSubmitError(error));
+    }
   };
 
   const handleStepSubmit = async () => {
@@ -64,8 +54,6 @@ export const DataUsageStep = ({
         title={getStepTitle(isTrackingAllowed, isStepCompleted)}
         label={stepLabel}
         isStepCompleted={isStepCompleted}
-        isSetupCompleted={isSetupCompleted}
-        onStepSelect={handleStepSelect}
       />
     );
   }

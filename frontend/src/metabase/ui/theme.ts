@@ -18,12 +18,14 @@ import {
   getInputOverrides,
   getMenuOverrides,
   getModalOverrides,
+  getNavLinkOverrides,
   getMultiSelectOverrides,
   getRadioOverrides,
   getPaperOverrides,
   getPopoverOverrides,
   getSegmentedControlOverrides,
   getSelectOverrides,
+  getScrollAreaOverrides,
   getSwitchOverrides,
   getTabsOverrides,
   getTextareaOverrides,
@@ -32,10 +34,18 @@ import {
   getTimeInputOverrides,
   getTitleOverrides,
   getTooltipOverrides,
+  getListOverrides,
 } from "./components";
 import { getThemeColors } from "./utils/colors";
 
 export const getThemeOverrides = (): MantineThemeOverride => ({
+  breakpoints: {
+    xs: "23em",
+    sm: "40em",
+    md: "60em",
+    lg: "80em",
+    xl: "120em",
+  },
   colors: getThemeColors(),
   primaryColor: "brand",
   primaryShade: 0,
@@ -109,9 +119,11 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getMenuOverrides(),
     ...getModalOverrides(),
     ...getMultiSelectOverrides(),
+    ...getNavLinkOverrides(),
     ...getRadioOverrides(),
     ...getPaperOverrides(),
     ...getPopoverOverrides(),
+    ...getScrollAreaOverrides(),
     ...getSegmentedControlOverrides(),
     ...getSelectOverrides(),
     ...getSwitchOverrides(),
@@ -123,5 +135,6 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getTitleOverrides(),
     ...getTooltipOverrides(),
     ...getHoverCardOverrides(),
+    ...getListOverrides(),
   },
 });

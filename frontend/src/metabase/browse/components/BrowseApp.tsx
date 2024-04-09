@@ -182,5 +182,5 @@ const LearnAboutDataLink = () => (
 );
 
 const BrowseSection = (props: FlexProps) => (
-  <Flex maw="64rem" m="0 auto" w="100%" {...props} />
+  <Flex h="100%" maw="64rem" m="0 auto" w="100%" {...props} />
 );

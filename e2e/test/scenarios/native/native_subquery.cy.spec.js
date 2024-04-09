@@ -6,6 +6,7 @@ import {
   visitQuestion,
   startNewNativeQuestion,
   runNativeQuery,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
@@ -76,8 +77,10 @@ describe("scenarios > question > native subquery", () => {
         cy.visit(`/question/${questionId2}`);
         openQuestionActions();
         cy.findByTestId("move-button").click();
-        cy.findByText("My personal collection").click();
-        cy.findByText("Move").click();
+        entityPickerModal().within(() => {
+          cy.findByText("Bobby Tables's Personal Collection").click();
+          cy.button("Move").click();
+        });
 
         openNativeEditor();
         cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
@@ -265,15 +268,14 @@ describe("scenarios > question > native subquery", () => {
     cy.signIn("nodata");
 
     // They should be able to access both questions
-    cy.get("@nestedQuestionId").then(nestedQuestionId => {
-      visitQuestion(nestedQuestionId);
-      cy.contains("Showing 41 rows");
-    });
+    visitQuestion("@nestedQuestionId");
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing 41 rows",
+    );
 
-    cy.get("@toplevelQuestionId").then(toplevelQuestionId => {
-      visitQuestion(toplevelQuestionId);
-      cy.contains("41");
-    });
+    visitQuestion("@toplevelQuestionId");
+    cy.get("#main-data-grid .cellData").should("have.text", "41");
   });
 
   it("should be able to reference a nested question (metabase#25988)", () => {
@@ -291,11 +293,8 @@ describe("scenarios > question > native subquery", () => {
         cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
 
         startNewNativeQuestion();
-        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`, {
-          delay: 100,
-        });
+        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
         cy.wait("@loadQuestion");
-
         cy.findByTestId("sidebar-header-title").should(
           "have.text",
           questionDetails.name,

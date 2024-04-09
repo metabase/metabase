@@ -5,6 +5,7 @@ import { Children, Component } from "react";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import CS from "metabase/css/core/index.css";
 
 export default class LoadingAndErrorWrapper extends Component {
   state = {
@@ -41,7 +42,7 @@ export default class LoadingAndErrorWrapper extends Component {
   renderError(contentClassName) {
     if (this.props.renderError) {
       return (
-        <div className="py4">
+        <div className={CS.py4}>
           {this.props.renderError(this.getErrorMessage())}
         </div>
       );
@@ -49,7 +50,7 @@ export default class LoadingAndErrorWrapper extends Component {
 
     return (
       <div className={contentClassName}>
-        <h2 className="text-normal text-light ie-wrap-content-fix">
+        <h2 className={cx(CS.textNormal, CS.textLight, CS.ieWrapContentFix)}>
           {this.getErrorMessage()}
         </h2>
       </div>
@@ -125,8 +126,15 @@ export default class LoadingAndErrorWrapper extends Component {
     const { messageIndex, sceneIndex } = this.state;
 
     const contentClassName = cx(
-      "wrapper py4 text-brand text-centered flex-full flex flex-column layout-centered",
-      { "bg-white": !noBackground },
+      CS.wrapper,
+      CS.py4,
+      CS.textBrand,
+      CS.textCentered,
+      CS.flexFull,
+      CS.flex,
+      CS.flexColumn,
+      CS.layoutCentered,
+      { [CS.bgWhite]: !noBackground },
     );
 
     if (noWrapper && !error && !loading) {
@@ -145,7 +153,7 @@ export default class LoadingAndErrorWrapper extends Component {
           <div className={contentClassName}>
             {loadingScenes && loadingScenes[sceneIndex]}
             {!loadingScenes && showSpinner && <LoadingSpinner />}
-            <h2 className="text-normal text-light mt1">
+            <h2 className={cx(CS.textNormal, CS.textLight, CS.mt1)}>
               {loadingMessages[messageIndex]}
             </h2>
           </div>

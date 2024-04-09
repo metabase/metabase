@@ -37,7 +37,7 @@ describeEE("scenarios > admin > people", () => {
 
   describe("group managers", () => {
     it("can manage groups from the group page", () => {
-      cy.get(".AdminList").within(() => {
+      cy.findByTestId("admin-left-nav-pane").within(() => {
         cy.findByTextEnsureVisible("Groups").click();
       });
 

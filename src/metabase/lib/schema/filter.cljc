@@ -4,6 +4,7 @@
   (:require
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
+   [metabase.lib.schema.id :as id]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
@@ -67,14 +68,12 @@
   (mbql-clause/define-tuple-mbql-clause op :- :type/Boolean
     [:ref ::expression/expression]))
 
-;;; one-arg [:ref ::expression/string] filter clauses
-;;;
-;;; :is-empty is sugar for [:or [:= ... nil] [:= ... ""]]
-;;;
-;;; :not-empty is sugar for [:and [:!= ... nil] [:!= ... ""]]
+;;; :is-empty is sugar for [:or [:= ... nil] [:= ... ""]] for emptyable arguments
+;;; :not-empty is sugar for [:and [:!= ... nil] [:!= ... ""]] for emptyable arguments
+;;; For non emptyable arguments expansion is same with :is-null and :not-null
 (doseq [op [:is-empty :not-empty]]
   (mbql-clause/define-tuple-mbql-clause op :- :type/Boolean
-    [:ref ::expression/emptyable]))
+    [:ref ::expression/expression]))
 
 (def ^:private string-filter-options
   [:map [:case-sensitive {:optional true} :boolean]]) ; default true
@@ -87,7 +86,7 @@
 (doseq [op [:starts-with :ends-with :contains :does-not-contain]]
   (mbql-clause/define-mbql-clause op :- :type/Boolean
     [:tuple
-     [:= op]
+     [:= {:decode/normalize common/normalize-keyword} op]
      [:merge ::common/options string-filter-options]
      #_whole [:ref ::expression/string]
      #_part  [:ref ::expression/string]]))
@@ -103,21 +102,25 @@
   ;;
   ;; using units that don't agree with the expr type
   [:tuple
-   [:= :time-interval]
+   [:= {:decode/normalize common/normalize-keyword} :time-interval]
    [:merge ::common/options time-interval-options]
    #_expr [:ref ::expression/temporal]
-   #_n    [:or
-           [:enum :current :last :next]
+   #_n    [:multi
+           {:dispatch (some-fn keyword? string?)}
+           [true  [:enum {:decode/normalize common/normalize-keyword} :current :last :next]]
            ;; I guess there's no reason you shouldn't be able to do something like 1 + 2 in here
-           [:ref ::expression/integer]]
+           [false [:ref ::expression/integer]]]
    #_unit [:ref ::temporal-bucketing/unit.date-time.interval]])
 
 ;; segments are guaranteed to return valid filter clauses and thus booleans, right?
 (mbql-clause/define-mbql-clause :segment :- :type/Boolean
   [:tuple
-   [:= :segment]
+   [:= {:decode/normalize common/normalize-keyword} :segment]
    ::common/options
-   [:or ::common/positive-int ::common/non-blank-string]])
+   [:multi
+    {:dispatch string?}
+    [true  ::common/non-blank-string]
+    [false ::id/segment]]])
 
 (mr/def ::operator
   [:map

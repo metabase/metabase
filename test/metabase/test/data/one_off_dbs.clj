@@ -4,7 +4,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.db.spec :as mdb.spec]
+   [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.database :refer [Database]]
    [metabase.sync :as sync]
@@ -26,7 +26,7 @@
       (data/with-db db
         (sql-jdbc.execute/do-with-connection-with-options
          :h2
-         (mdb.spec/spec :h2 details)
+         (mdb/spec :h2 details)
          {:write? true}
          (fn [^java.sql.Connection conn]
            (binding [*conn* {:connection conn}]

@@ -17,6 +17,8 @@ In general, there are two basic use cases for an SSH tunnel:
 
 Sometimes when a data warehouse is inside an enterprise environment, direct connections are blocked by security devices such as firewalls and intrusion prevention systems. Bastion hosts offer the option to first connect to a computer on the edge of the protected network, then, from that bastion host computer, establish a second connection to the data warehouse within the internal network, essentially patching these two connections together. Using the SSH tunneling feature, Metabase can automate this process.
 
+> [Metabase Cloud](https://www.metabase.com/cloud/) does not currently support VPN connections to databases. To connect to databases in private networks, you can instead use SSH tunneling.
+
 ## How to use SSH tunneling
 
 When connecting though a bastion host:

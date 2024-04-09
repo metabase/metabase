@@ -5,7 +5,7 @@ import _ from "underscore";
 import Questions from "metabase/entities/questions";
 import { checkNotNull } from "metabase/lib/types";
 import { extractEntityId } from "metabase/lib/urls";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { CardId } from "metabase-types/api";
 import type { MetabotEntityType, State } from "metabase-types/store";
 

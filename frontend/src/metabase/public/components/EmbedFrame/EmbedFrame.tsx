@@ -8,6 +8,7 @@ import { useMount } from "react-use";
 import _ from "underscore";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
+import CS from "metabase/css/core/index.css";
 import {
   FixedWidthContainer,
   ParametersFixedWidthContainer,
@@ -24,8 +25,8 @@ import SyncedParametersList from "metabase/parameters/components/SyncedParameter
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { setOptions } from "metabase/redux/embed";
 import { getSetting } from "metabase/selectors/settings";
-import type Question from "metabase-lib/Question";
-import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
+import type Question from "metabase-lib/v1/Question";
+import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Dashboard,
   Parameter,
@@ -191,7 +192,7 @@ function EmbedFrame({
                   <TitleAndDescription
                     title={finalName}
                     description={description}
-                    className="my2"
+                    className={CS.my2}
                   />
                 </FixedWidthContainer>
               </TitleAndDescriptionContainer>

@@ -205,7 +205,7 @@
     (is (=? {:type  :query
              :query {:source-table 1
                      :aggregation  [[:sum [:field 1 nil]]]
-                     :breakout     [[:aggregation-options [:aggregation 0] {:display-name "Revenue"}]]}}
+                     :breakout     [[:aggregation 0 {:display-name "Revenue"}]]}}
             (let [ag-uuid (str (random-uuid))]
               (lib.convert/->legacy-MBQL
                {:lib/type :mbql/query
@@ -717,3 +717,60 @@
       #?@(:cljs
           [#js ["aggregation" 0]
            #js ["aggregation" 0 #js {}]]))))
+
+(deftest ^:parallel convert-aggregation-reference-test
+  (testing "Don't wrap :aggregation in :aggregation options when converting between legacy and pMBQL"
+    (let [query {:database 2
+                 :type     :query
+                 :query    {:aggregation  [[:aggregation-options
+                                            [:sum [:field 100 {:source-table 12, :source-alias "TOTAL"}]]
+                                            {:name "sum"}]]
+                            :order-by     [[:asc [:aggregation 0 {:desired-alias "sum", :position 1}]]
+                                           [:asc
+                                            [:field 99 {:source-table  12
+                                                        :source-alias  "PRODUCT_ID"
+                                                        :desired-alias "PRODUCT_ID"
+                                                        :position      0}]]]
+                            :source-table 12}}]
+      (is (= query
+             (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))))))
+
+(deftest ^:parallel parameters-dimension-clause-test
+  (testing "Don't convert :template-tag clauses... YET"
+    (let [pmbql (lib.convert/->pMBQL {:database 1
+                                      :type     :native
+                                      :native   {:parameters [{:target [:dimension [:template-tag "x"]]}]}})]
+      (is (=? {:stages [{:parameters [{:target [:dimension [:template-tag "x"]]}]}]}
+              pmbql))
+      (is (=? {:native {:parameters [{:target [:dimension [:template-tag "x"]]}]}}
+              (lib.convert/->legacy-MBQL pmbql))))))
+
+(deftest ^:parallel parameters-field-target-test
+  (testing "Don't convert :field clauses inside :parameters... YET"
+    (let [pmbql (lib.convert/->pMBQL {:database 1
+                                      :type     :native
+                                      :native   {:parameters [{:target [:field 1 nil]}]}})]
+      (is (=? {:stages [{:parameters [{:target [:field 1 nil]}]}]}
+              pmbql))
+      (is (=? {:native {:parameters [{:target [:field 1 nil]}]}}
+              (lib.convert/->legacy-MBQL pmbql))))))
+
+(deftest ^:parallel time-interval-nil-options-test
+  (testing "We should convert :time-interval clauses with nil options correctly"
+    (are [x] (=? [:time-interval
+                  {:lib/uuid string?}
+                  [:field {:lib/uuid string?} 1]
+                  -5
+                  :year]
+                 (lib/->pMBQL x))
+      [:time-interval [:field 1 nil] -5 :year nil]
+      [:time-interval [:field 1 nil] -5 :year {}])))
+
+(deftest ^:parallel convert-arithmetic-expressions-to-legacy-test
+  (testing "Generate correct expression definitions even if expression contains `:name` (#40982)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/breakout (meta/field-metadata :orders :created-at))
+                    (lib/expression "expr" (lib.options/update-options (lib/+ 1 2) assoc :name "my_expr", :base-type :type/Number)))]
+      (is (=? {:type  :query
+               :query {:expressions {"expr" [:+ 1 2]}}}
+              (lib.convert/->legacy-MBQL query))))))

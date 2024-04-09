@@ -10,28 +10,13 @@ The birth, care, and feeding of your Metabase.
 
 Start here.
 
-### [Running the Jar File](running-the-metabase-jar-file.md)
+## [Migrating to a production database](./migrating-from-h2.md)
 
-The simplest and most basic way of running Metabase.
+If you started using Metabase with the default, H2 application database, here's how to migrate your data to a production-ready database.
 
-### [Running on Docker](running-metabase-on-docker.md)
+## [Configuring the Metabase application database](./configuring-application-database.md)
 
-If you prefer to use a Docker container, we've got you covered.
-
-### [Metabase Cloud](https://www.metabase.com/pricing)
-
-Our official hosted version, [Metabase Cloud](https://www.metabase.com/pricing). All you need to do is sign up for a free trial, and you're off to the races.
-
-### Other installation options
-
-We recommend that you deploy Metabase using a service and cloud provider that you're familiar with. Below are some example setups:
-
-- [Running on Azure Web Apps](running-metabase-on-azure.md)
-- [Running on Debian as a service](running-metabase-on-debian.md)
-
-## [Building Metabase from source](../developers-guide/start.md)
-
-To run a development branch of Metabase, check out our [developer's guide](../developers-guide/start.md).
+Use environment variables to set up your application database.
 
 ## [Backing up Metabase application data](./backing-up-metabase-application-data.md)
 
@@ -41,15 +26,11 @@ How to back up your Metabase data: questions, dashboards, and other application 
 
 How to safely upgrade your Metabase.
 
-## [Migrating from H2](./migrating-from-h2.md)
+## [Serialization](./serialization.md)
 
-If you started using Metabase with the default, H2 application database, here's how to migrate your data to a production-ready database.
+Export your questions, dashboards, and more as YAML files that you can check into version control.
 
-## [Creating an RDS database on AWS](./creating-RDS-database-on-AWS.md)
-
-How to use an RDS instance as your application database.
-
-## [Monitoring your metabase](./monitoring-metabase.md)
+## [Monitoring your Metabase](./monitoring-metabase.md)
 
 Monitor your Metabase with JMX.
 
@@ -60,6 +41,14 @@ Export Metabase metrics for viewing with Prometheus.
 ## [Supported browsers](./supported-browsers.md)
 
 Rest in peace, Internet Explorer.
+
+## [About the anonymous usage data we collect](./information-collection.md).
+
+We collect anonymous Metabase usage data to improve the product. We don't collect your data.
+
+## [Command line commands](./commands.md)
+
+Metabase's CLI.
 
 ***
 

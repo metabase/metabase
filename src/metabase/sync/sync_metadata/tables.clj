@@ -8,8 +8,6 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.table :refer [Table]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -131,8 +129,8 @@
   "Create `new-tables` for database, or if they already exist, mark them as active."
   [database :- i/DatabaseInstance
    new-tables :- [:set i/DatabaseMetadataTable]]
-  (log/info "Found new tables:"
-            (for [table new-tables]
+  (doseq [table new-tables]
+    (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [table new-tables]
     (create-or-reactivate-table! database table)))
@@ -158,7 +156,7 @@
   [table-metadata :- i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)]
   (log/infof "Updating table metadata for %s" (sync-util/name-for-logging metabase-table))
-  (let [to-update-keys [:description :database_require_filter]
+  (let [to-update-keys [:description :database_require_filter :estimated_row_count]
         old-table      (select-keys metabase-table to-update-keys)
         new-table      (select-keys (merge
                                      (zipmap to-update-keys (repeat nil))
@@ -195,10 +193,10 @@
         (remove metabase-metadata/is-metabase-metadata-table?)
         (:tables db-metadata)))
 
-(mu/defn ^:private db->our-metadata :- [:set i/DatabaseMetadataTable]
+(mu/defn ^:private db->our-metadata :- [:set (ms/InstanceOf :model/Table)]
   "Return information about what Tables we have for this DB in the Metabase application DB."
   [database :- i/DatabaseInstance]
-  (set (t2/select [:model/Table :id :name :schema :description :database_require_filter]
+  (set (t2/select [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count]
                   :db_id  (u/the-id database)
                   :active true)))
 
@@ -239,12 +237,6 @@
      (sync-util/with-error-handling (format "Error updating table metadata for %s" (sync-util/name-for-logging database))
        ;; we need to fetch the tables again because we might have retired tables in the previous steps
        (update-tables-metadata-if-needed! db-tables (db->our-metadata database)))
-
-     ;; update native download perms for all groups if any tables were added or removed
-     (when (or (seq new-tables) (seq old-tables))
-       (sync-util/with-error-handling (format "Error updating native download perms for %s" (sync-util/name-for-logging database))
-         (doseq [{id :id} (perms-group/non-admin-groups)]
-           (perms/update-native-download-permissions! id (u/the-id database)))))
 
      {:updated-tables (+ (count new-tables) (count old-tables))
       :total-tables   (count our-metadata)})))

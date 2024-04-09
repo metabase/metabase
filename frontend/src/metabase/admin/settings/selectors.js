@@ -1,5 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
@@ -11,15 +11,15 @@ import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_EMBEDDING,
-  PLUGIN_IS_EE_BUILD,
+  PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { PersistedModelsApi, UtilApi } from "metabase/services";
+import { PersistedModelsApi } from "metabase/services";
 
 import {
-  trackTrackingPermissionChanged,
   trackCustomHomepageDashboardEnabled,
+  trackTrackingPermissionChanged,
 } from "./analytics";
 import { BccToggleWidget } from "./components/Email/BccToggleWidget";
 import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
@@ -36,14 +36,13 @@ import FormattingWidget from "./components/widgets/FormattingWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
 import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import {
+  EmbeddedResources,
+  PublicLinksActionListing,
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
-  PublicLinksActionListing,
-  EmbeddedResources,
 } from "./components/widgets/PublicLinksListing";
 import RedirectWidget from "./components/widgets/RedirectWidget";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
-import SectionDivider from "./components/widgets/SectionDivider";
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import { updateSetting } from "./settings";
@@ -115,7 +114,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         postUpdateActions: [
           () =>
             updateSetting({
-              key: "dismissed_custom_dashboard_toast",
+              key: "dismissed-custom-dashboard-toast",
               value: true,
             }),
           refreshCurrentUser,
@@ -448,22 +447,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`Embedding`,
         description: null,
         widget: EmbeddingSwitchWidget,
-        onChanged: async (
-          oldValue,
-          newValue,
-          settingsValues,
-          onChangeSetting,
-        ) => {
-          // Generate a secret key if none already exists
-          if (
-            !oldValue &&
-            newValue &&
-            !settingsValues["embedding-secret-key"]
-          ) {
-            const result = await UtilApi.random_token();
-            await onChangeSetting("embedding-secret-key", result.token);
-          }
-        },
       },
       {
         key: "-static-embedding",
@@ -564,38 +547,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
     order: 120,
     settings: [
       {
-        key: "enable-query-caching",
-        display_name: t`Saved questions`,
-        type: "boolean",
-      },
-      {
-        key: "query-caching-min-ttl",
-        display_name: t`Minimum Query Duration`,
-        type: "number",
-        getHidden: settings => !settings["enable-query-caching"],
-        allowValueCollection: true,
-      },
-      {
-        key: "query-caching-ttl-ratio",
-        display_name: t`Cache Time-To-Live (TTL) multiplier`,
-        type: "number",
-        getHidden: settings => !settings["enable-query-caching"],
-        allowValueCollection: true,
-      },
-      {
-        key: "query-caching-max-kb",
-        display_name: t`Max Cache Entry Size`,
-        type: "number",
-        getHidden: settings => !settings["enable-query-caching"],
-        allowValueCollection: true,
-      },
-      {
-        widget: SectionDivider,
-      },
-      {
         key: "persisted-models-enabled",
         display_name: t`Models`,
-        description: jt`Enabling cache will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. ${(
+        description: jt`Enabling caching will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. ${(
           <ExternalLink
             key="model-caching-link"
             href={MetabaseSettings.docsUrl("data-modeling/models")}
@@ -691,9 +645,15 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   llm: {
     name: t`AI Features`,
-    getHidden: () => !PLUGIN_IS_EE_BUILD.isEEBuild(),
+    getHidden: () => !PLUGIN_LLM_AUTODESCRIPTION.isEnabled(),
     order: 131,
     settings: [
+      {
+        key: "ee-ai-features-enabled",
+        display_name: t`AI features enabled`,
+        note: t`You must supply an API key before AI features can be enabled.`,
+        type: "boolean",
+      },
       {
         key: "ee-openai-api-key",
         display_name: t`EE OpenAI API Key`,
@@ -704,7 +664,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
 };
 
-const getSectionsWithPlugins = _.once(() =>
+export const getSectionsWithPlugins = _.once(() =>
   updateSectionsWithPlugins(ADMIN_SETTINGS_SECTIONS),
 );
 

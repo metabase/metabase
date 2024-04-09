@@ -8,12 +8,11 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.multi-setting :refer [define-multi-setting-impl]]
    [metabase.public-settings :as public-settings]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [saml20-clj.core :as saml]
-   [schema.core :as s]))
+   [saml20-clj.core :as saml]))
 
 (set! *warn-on-reflection* true)
 
@@ -52,13 +51,13 @@ using, this usually looks like https://your-org-name.example.com or https://exam
   :feature :sso-saml
   :audit   :getter)
 
-(s/defn ^:private validate-saml-idp-cert
+(mu/defn ^:private validate-saml-idp-cert
   "Validate that an encoded identity provider certificate is valid, or throw an Exception."
-  [idp-cert-str :- s/Str]
+  [idp-cert-str :- :string]
   (try
     (instance? java.security.cert.X509Certificate (saml/->X509Certificate idp-cert-str))
     (catch Throwable e
-      (log/error e (trs "Error parsing SAML identity provider certificate"))
+      (log/error e "Error parsing SAML identity provider certificate")
       (throw
        (Exception. (tru "Invalid identity provider certificate. Certificate should be a base-64 encoded string."))))))
 

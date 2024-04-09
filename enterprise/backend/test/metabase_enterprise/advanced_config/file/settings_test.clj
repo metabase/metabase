@@ -1,4 +1,4 @@
-(ns metabase-enterprise.advanced-config.file.settings-test
+(ns ^:mb/once metabase-enterprise.advanced-config.file.settings-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
@@ -29,7 +29,7 @@
 
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Input .* does not match schema"
+             #"Invalid input: .*"
              (advanced-config.file/initialize!)))
         (testing "value should not have been updated"
           (is (= "wow"

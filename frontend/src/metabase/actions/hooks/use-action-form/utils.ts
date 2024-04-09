@@ -3,8 +3,8 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import type { FieldSettings as LocalFieldSettings } from "metabase/actions/types";
 import { getDefaultFieldSettings } from "metabase/actions/utils";
 import { isEmpty } from "metabase/lib/validate";
-import Field from "metabase-lib/metadata/Field";
-import { TYPE } from "metabase-lib/types/constants";
+import Field from "metabase-lib/v1/metadata/Field";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   FieldSettings,
   FieldSettingsMap,

@@ -7,11 +7,12 @@
    [medley.core :as m]
    [metabase.api.pivots :as api.pivots]
    [metabase.models :refer [Card Collection]]
-   [metabase.models.permissions :as perms]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.test :as mt]
+   [metabase.test.data :as data]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -127,23 +128,23 @@
                                                    $orders.user_id->people.source
                                                    $orders.product_id->products.category
                                                    [:expression "pivot-grouping"]]
-                                     :expressions {:pivot-grouping [:abs 0]}}}
+                                     :expressions {"pivot-grouping" [:abs 0]}}}
                             {:query {:breakout    [$orders.user_id->people.source
                                                    $orders.product_id->products.category
                                                    [:expression "pivot-grouping"]]
-                                     :expressions {:pivot-grouping [:abs 1]}}}
+                                     :expressions {"pivot-grouping" [:abs 1]}}}
                             {:query {:breakout    [$orders.product_id->products.category
                                                    [:expression "pivot-grouping"]]
-                                     :expressions {:pivot-grouping [:abs 3]}}}
+                                     :expressions {"pivot-grouping" [:abs 3]}}}
                             {:query {:breakout    [$orders.user_id->people.source
                                                    $orders.user_id->people.state
                                                    [:expression "pivot-grouping"]]
-                                     :expressions {:pivot-grouping [:abs 4]}}}
+                                     :expressions {"pivot-grouping" [:abs 4]}}}
                             {:query {:breakout    [$orders.user_id->people.source
                                                    [:expression "pivot-grouping"]]
-                                     :expressions {:pivot-grouping [:abs 5]}}}
+                                     :expressions {"pivot-grouping" [:abs 5]}}}
                             {:query {:breakout    [[:expression "pivot-grouping"]]
-                                     :expressions {:pivot-grouping [:abs 7]}}}])
+                                     :expressions {"pivot-grouping" [:abs 7]}}}])
                 expected (for [expected-val expected]
                            (-> expected-val
                                (assoc :type       :query
@@ -364,56 +365,57 @@
         (let [query (mt/mbql-query orders
                       {:aggregation [[:count]]
                        :breakout    [$product_id->products.category $user_id->people.source]})]
-          (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-          (testing "User without perms shouldn't be able to run the query normally"
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"You do not have permissions to run this query"
-                 (mt/with-test-user :rasta
-                   (qp/process-query query)))))
-          (testing "Should be able to run the query via a Card that All Users has perms for"
-            ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
-            ;; Collection inherits Root Collection perms when created
-            (mt/with-temp [Collection collection {}
-                           Card       card {:collection_id (u/the-id collection), :dataset_query query}]
-              (is (=? {:status "completed"}
-                      (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
-              (testing "... with the pivot-table endpoints"
-                (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))]
-                  (is (=? {:status "completed"}
-                          result))
-                  (is (= [["Doohickey" "Affiliate" 0 783]
-                          ["Doohickey" "Facebook" 0 816]
-                          ["Doohickey" "Google" 0 844]
-                          ["Doohickey" "Organic" 0 738]
-                          ["Doohickey" "Twitter" 0 795]
-                          ["Gadget" "Affiliate" 0 899]
-                          ["Gadget" "Facebook" 0 1041]
-                          ["Gadget" "Google" 0 971]
-                          ["Gadget" "Organic" 0 1038]
-                          ["Gadget" "Twitter" 0 990]
-                          ["Gizmo" "Affiliate" 0 876]
-                          ["Gizmo" "Facebook" 0 994]
-                          ["Gizmo" "Google" 0 956]
-                          ["Gizmo" "Organic" 0 972]
-                          ["Gizmo" "Twitter" 0 986]
-                          ["Widget" "Affiliate" 0 962]
-                          ["Widget" "Facebook" 0 1055]
-                          ["Widget" "Google" 0 1027]
-                          ["Widget" "Organic" 0 1016]
-                          ["Widget" "Twitter" 0 1001]
-                          [nil "Affiliate" 1 3520]
-                          [nil "Facebook" 1 3906]
-                          [nil "Google" 1 3798]
-                          [nil "Organic" 1 3764]
-                          [nil "Twitter" 1 3772]
-                          ["Doohickey" nil 2 3976]
-                          ["Gadget" nil 2 4939]
-                          ["Gizmo" nil 2 4784]
-                          ["Widget" nil 2 5061]
-                          [nil nil 3 18760]]
-                         (mt/rows (qp.pivot/run-pivot-query query))
-                         (mt/rows result))))))))))))
+           (mt/with-no-data-perms-for-all-users!
+             (data-perms/set-table-permission! (perms-group/all-users) (data/id :orders) :perms/data-access :no-self-service)
+             (testing "User without perms shouldn't be able to run the query normally"
+               (is (thrown-with-msg?
+                    clojure.lang.ExceptionInfo
+                    #"You do not have permissions to run this query"
+                    (mt/with-test-user :rasta
+                      (qp/process-query query)))))
+            (testing "Should be able to run the query via a Card that All Users has perms for"
+              ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
+              ;; Collection inherits Root Collection perms when created
+              (mt/with-temp [Collection collection {}
+                             Card       card {:collection_id (u/the-id collection), :dataset_query query}]
+                (is (=? {:status "completed"}
+                        (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
+                (testing "... with the pivot-table endpoints"
+                  (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))]
+                    (is (=? {:status "completed"}
+                            result))
+                    (is (= [["Doohickey" "Affiliate" 0 783]
+                            ["Doohickey" "Facebook" 0 816]
+                            ["Doohickey" "Google" 0 844]
+                            ["Doohickey" "Organic" 0 738]
+                            ["Doohickey" "Twitter" 0 795]
+                            ["Gadget" "Affiliate" 0 899]
+                            ["Gadget" "Facebook" 0 1041]
+                            ["Gadget" "Google" 0 971]
+                            ["Gadget" "Organic" 0 1038]
+                            ["Gadget" "Twitter" 0 990]
+                            ["Gizmo" "Affiliate" 0 876]
+                            ["Gizmo" "Facebook" 0 994]
+                            ["Gizmo" "Google" 0 956]
+                            ["Gizmo" "Organic" 0 972]
+                            ["Gizmo" "Twitter" 0 986]
+                            ["Widget" "Affiliate" 0 962]
+                            ["Widget" "Facebook" 0 1055]
+                            ["Widget" "Google" 0 1027]
+                            ["Widget" "Organic" 0 1016]
+                            ["Widget" "Twitter" 0 1001]
+                            [nil "Affiliate" 1 3520]
+                            [nil "Facebook" 1 3906]
+                            [nil "Google" 1 3798]
+                            [nil "Organic" 1 3764]
+                            [nil "Twitter" 1 3772]
+                            ["Doohickey" nil 2 3976]
+                            ["Gadget" nil 2 4939]
+                            ["Gizmo" nil 2 4784]
+                            ["Widget" nil 2 5061]
+                            [nil nil 3 18760]]
+                           (mt/rows (qp.pivot/run-pivot-query query))
+                           (mt/rows result)))))))))))))
 
 (deftest ^:parallel pivot-with-order-by-test
   (testing "Pivot queries should work if there is an `:order-by` clause (#17198)"

@@ -3,14 +3,9 @@ import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { UserInfo } from "metabase-types/store";
 
-import { selectStep, submitUser } from "../../actions";
-import {
-  getIsHosted,
-  getIsSetupCompleted,
-  getIsStepActive,
-  getIsStepCompleted,
-  getUser,
-} from "../../selectors";
+import { submitUser } from "../../actions";
+import { getIsHosted, getUser } from "../../selectors";
+import { useStep } from "../../useStep";
 import { validatePassword } from "../../utils";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
@@ -20,23 +15,14 @@ import type { NumberedStepProps } from "../types";
 import { StepDescription } from "./UserStep.styled";
 
 export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
+  const { isStepActive, isStepCompleted } = useStep("user_info");
   const user = useSelector(getUser);
   const isHosted = useSelector(getIsHosted);
-  const isStepActive = useSelector(state =>
-    getIsStepActive(state, "user_info"),
-  );
-  const isStepCompleted = useSelector(state =>
-    getIsStepCompleted(state, "user_info"),
-  );
-  const isSetupCompleted = useSelector(getIsSetupCompleted);
+
   const dispatch = useDispatch();
 
-  const handleStepSelect = () => {
-    dispatch(selectStep("user_info"));
-  };
-
-  const handleSubmit = (user: UserInfo) => {
-    dispatch(submitUser(user));
+  const handleSubmit = async (user: UserInfo) => {
+    await dispatch(submitUser(user)).unwrap();
   };
 
   if (!isStepActive) {
@@ -45,8 +31,6 @@ export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
         title={getStepTitle(user, isStepCompleted)}
         label={stepLabel}
         isStepCompleted={isStepCompleted}
-        isSetupCompleted={isSetupCompleted}
-        onStepSelect={handleStepSelect}
       />
     );
   }

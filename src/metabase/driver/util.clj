@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -111,8 +111,6 @@
       (contains? message :message) (update :message str)
       (contains? message :errors)  (update :errors update-vals str))))
 
-(comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
-
 ;; This is normally set via the env var `MB_DB_CONNECTION_TIMEOUT_MS`
 (defsetting db-connection-timeout-ms
   "Consider [[metabase.driver/can-connect?]] / [[can-connect-with-details?]] to have failed if they were not able to
@@ -150,7 +148,7 @@
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e
-        (log/errorf e "Failed to connect to Database")
+        (log/error e "Failed to connect to Database")
         (throw (if-let [humanized-message (some->> (.getMessage e)
                                                    (driver/humanize-connection-error-message driver))]
                  (let [error-data (cond
@@ -167,7 +165,7 @@
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e
-        (log/error e (trs "Failed to connect to database"))
+        (log/error e "Failed to connect to database")
         false))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -181,7 +179,7 @@
          (qp.store/with-metadata-provider db-id
            (:engine (lib.metadata.protocols/database (qp.store/metadata-provider)))))
        (vary-meta assoc ::memoize/args-fn (fn [[db-id]]
-                                            [(mdb.connection/unique-identifier) db-id])))
+                                            [(mdb/unique-identifier) db-id])))
    :ttl/threshold 1000))
 
 (mu/defn database->driver :- :keyword
@@ -211,7 +209,7 @@
 (defn features
   "Return a set of all features supported by `driver` with respect to `database`."
   [driver database]
-  (set (for [feature driver/driver-features
+  (set (for [feature driver/features
              :when (driver/database-supports? driver feature database)]
          feature)))
 
@@ -298,8 +296,7 @@
   (let [content (or placeholder
                     (try (getter)
                          (catch Throwable e
-                           (log/error e (trs "Error invoking getter for connection property {0}"
-                                             (:name conn-prop))))))]
+                           (log/errorf e "Error invoking getter for connection property %s" (:name conn-prop)))))]
     (when (string? content)
       (-> conn-prop
           (assoc :placeholder content)
@@ -505,7 +502,7 @@
                                  (->> (driver/connection-properties driver)
                                       (connection-props-server->client driver))
                                  (catch Throwable e
-                                   (log/error e (trs "Unable to determine connection properties for driver {0}" driver))))]
+                                   (log/errorf e "Unable to determine connection properties for driver %s" driver)))]
                  :when  props]
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
              [driver {:source {:type (driver-source (name driver))

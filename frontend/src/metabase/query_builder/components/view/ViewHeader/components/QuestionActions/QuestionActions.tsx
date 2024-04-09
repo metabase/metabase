@@ -1,7 +1,8 @@
 import type { ChangeEvent } from "react";
-import { useCallback, useRef } from "react";
+import { useCallback, useState, useRef } from "react";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Button from "metabase/core/components/Button";
@@ -19,14 +20,15 @@ import { softReloadCard } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
-import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
-} from "metabase-lib/metadata/utils/models";
+} from "metabase-lib/v1/metadata/utils/models";
+import { UploadMode } from "metabase-types/store/upload";
 
 import { canUploadToQuestion } from "../../../../../selectors";
 import { ViewHeaderIconButtonContainer } from "../../ViewHeader.styled";
@@ -71,10 +73,8 @@ export const QuestionActions = ({
   onInfoClick,
   onModelPersistenceChange,
 }: Props) => {
-  const isMetabotEnabled = useSelector(state =>
-    getSetting(state, "is-metabot-enabled"),
-  );
-
+  const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
+  const isMetabotEnabled = useSetting("is-metabot-enabled");
   const canUpload = useSelector(canUploadToQuestion(question));
 
   const isModerator = useSelector(getUserIsAdmin) && question.canWrite?.();
@@ -189,6 +189,19 @@ export const QuestionActions = ({
       action: () => onOpenModal(MODAL_TYPES.MOVE),
       testId: MOVE_TESTID,
     });
+  }
+
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  if (isEditable) {
+    extraButtons.push({
+      title: t`Duplicate`,
+      icon: "clone",
+      action: () => onOpenModal(MODAL_TYPES.CLONE),
+      testId: CLONE_TESTID,
+    });
+  }
+
+  if (canWrite) {
     if (isQuestion) {
       extraButtons.push({
         title: t`Turn into a model`,
@@ -206,15 +219,7 @@ export const QuestionActions = ({
     }
   }
 
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
-  if (isEditable) {
-    extraButtons.push({
-      title: t`Duplicate`,
-      icon: "clone",
-      action: () => onOpenModal(MODAL_TYPES.CLONE),
-      testId: CLONE_TESTID,
-    });
-  }
+  extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
 
   if (canWrite) {
     extraButtons.push({
@@ -225,12 +230,13 @@ export const QuestionActions = ({
     });
   }
 
-  extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUploadClick = () => {
+  const handleUploadClick = (
+    newUploadMode: UploadMode.append | UploadMode.replace,
+  ) => {
     if (fileInputRef.current) {
+      setUploadMode(newUploadMode);
       fileInputRef.current.click();
     }
   };
@@ -242,6 +248,7 @@ export const QuestionActions = ({
         file,
         tableId: question._card.based_on_upload,
         reloadQuestionData: true,
+        uploadMode,
       })(dispatch);
 
       // reset the file input so that subsequent uploads of the same file trigger the change handler
@@ -277,22 +284,40 @@ export const QuestionActions = ({
         <>
           <input
             type="file"
-            accept="text/csv"
-            id="append-file-input"
+            accept="text/csv,text/tab-separated-values"
+            id="upload-file-input"
             ref={fileInputRef}
             onChange={handleFileUpload}
             style={{ display: "none" }}
           />
           <Tooltip tooltip={t`Upload data to this model`}>
             <ViewHeaderIconButtonContainer>
-              <Button
-                onlyIcon
-                icon="upload"
-                iconSize={HEADER_ICON_SIZE}
-                onClick={handleUploadClick}
-                color={infoButtonColor}
-                data-testid="qb-header-append-button"
-              />
+              <Menu position="bottom-end">
+                <Menu.Target>
+                  <Button
+                    onlyIcon
+                    icon="upload"
+                    iconSize={HEADER_ICON_SIZE}
+                    color={infoButtonColor}
+                    data-testid="qb-header-append-button"
+                  />
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    icon={<Icon name="add" />}
+                    onClick={() => handleUploadClick(UploadMode.append)}
+                  >
+                    {t`Append data to this model`}
+                  </Menu.Item>
+
+                  <Menu.Item
+                    icon={<Icon name="refresh" />}
+                    onClick={() => handleUploadClick(UploadMode.replace)}
+                  >
+                    {t`Replace all data in this model`}
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
             </ViewHeaderIconButtonContainer>
           </Tooltip>
         </>

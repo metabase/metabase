@@ -14,7 +14,7 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -35,7 +35,7 @@
     (try
       (notify-database-updated driver database)
       (catch Throwable e
-        (log/error e (trs "Failed to notify {0} Database {1} updated" driver id))))))
+        (log/errorf e "Failed to notify %s Database %s updated" driver id)))))
 
 (defn- short-timezone-name [timezone-id]
   (let [^java.time.ZoneId zone (if (seq timezone-id)
@@ -115,7 +115,7 @@
 (add-watch
  #'hierarchy
  nil
- (fn [_ _ _ _]
+ (fn [_key _ref _old-state _new-state]
    (when (not= hierarchy driver.impl/hierarchy)
      ;; this is a dev-facing error so no need to i18n it.
      (throw (Exception. (str "Don't alter #'metabase.driver/hierarchy directly, since it is imported from "
@@ -311,11 +311,26 @@
   :hierarchy #'hierarchy)
 
 (defmulti describe-table
-  "Return a map containing information that describes the physical schema of `table` (i.e. the fields contained
-  therein). `database` will be an instance of the `Database` model; and `table`, an instance of the `Table` model. It
-  is expected that this function will be peformant and avoid draining meaningful resources of the database. Results
-  should match the [[metabase.sync.interface/TableMetadata]] schema."
+  "Return a map containing a single field `:fields` that describes the fields in a `table`. `database` will be an
+  instance of the `Database` model; and `table`, an instance of the `Table` model. It is expected that this function
+  will be peformant and avoid draining meaningful resources of the database. The value of `:fields` should be a set of
+  values matching the [[metabase.sync.interface/TableMetadataField]] schema."
   {:added "0.32.0" :arglists '([driver database table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti describe-fields
+  "Returns a reducible collection of maps, each containing information about fields. It includes which keys are
+  primary keys, but not foreign keys. It does not include nested fields (e.g. fields within a JSON column).
+
+  Takes keyword arguments to narrow down the results to a set of
+  `schema-names` or `table-names`.
+
+  Results match [[metabase.sync.interface/FieldMetadataEntry]].
+  Results are optionally filtered by `schema-names` and `table-names` provided.
+  Results are ordered by `table-schema`, `table-name`, and `database-position` in ascending order."
+  {:added    "0.49.1"
+   :arglists '([driver database & {:keys [schema-names table-names]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -332,20 +347,37 @@
   driver has difference escaping rules for table or schema names when used from metadata.
 
   For example, oracle treats slashes differently when querying versus when used with `.getTables` or `.getColumns`"
-  {:arglists '([driver table-name]), :added "0.37.0"}
+  {:arglists '([driver entity-name]), :added "0.37.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmethod escape-entity-name-for-metadata :default [_driver table-name] table-name)
 
 (defmulti describe-table-fks
-  "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys`. Results
-  should match the [[metabase.sync.interface/FKMetadata]] schema."
-  {:added "0.32.0" :arglists '([driver database table])}
+  "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys` but not
+  `:describe-fks`. Results should match the [[metabase.sync.interface/FKMetadata]] schema."
+  {:added "0.32.0" :deprecated "0.49.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod describe-table-fks ::driver [_ _ _]
+  nil)
+
+(defmulti describe-fks
+  "Returns a reducible collection of maps, each containing information about foreign keys.
+  Takes keyword arguments to narrow down the results to a set of `schema-names` or `table-names`.
+
+  Results match [[metabase.sync.interface/FKMetadataEntry]].
+  Results are optionally filtered by `schema-names` and `table-names` provided.
+  Results are ordered by `fk-table-schema` and `fk-table-name` in ascending order.
+
+  Required for drivers that support `:describe-fks`."
+  {:added "0.49.0" :arglists '([driver database & {:keys [schema-names table-names]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod describe-fks ::driver [_ _]
   nil)
 
 ;;; this is no longer used but we can leave it around for not for documentation purposes. Maybe we can actually do
@@ -425,11 +457,9 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-;; TODO -- I think we should rename this to `features` since `driver/driver-features` is a bit redundant.
-(def driver-features
+(def features
   "Set of all features a driver can support."
-  #{
-    ;; Does this database support foreign key relationships?
+  #{;; Does this database support foreign key relationships?
     :foreign-keys
 
     ;; Does this database support nested fields for any and every field except primary key (e.g. Mongo)?
@@ -548,26 +578,21 @@
     :native-requires-specified-collection
 
     ;; Does the driver support column(s) support storing index info
-    :index-info})
+    :index-info
 
+    ;; Does the driver support a faster `sync-fks` step by fetching all FK metadata in a single collection?
+    ;; if so, `metabase.driver/describe-fks` must be implemented instead of `metabase.driver/describe-table-fks`
+    :describe-fks
 
-(defmulti supports?
-  "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
-  [[driver-features]].)
+    ;; Does the driver support a faster `sync-fields` step by fetching all FK metadata in a single collection?
+    ;; if so, `metabase.driver/describe-fields` must be implemented instead of `metabase.driver/describe-table`
+    :describe-fields
 
-    (supports? :postgres :set-timezone) ; -> true
+    ;; Does the driver support fingerprint the fields. Default is true
+    :fingerprint
 
-  DEPRECATED — [[database-supports?]] should be used instead. This function will be removed in Metabase version 0.50.0."
-  {:added "0.32.0", :arglists '([driver feature]), :deprecated "0.47.0"}
-  (fn [driver feature]
-    (when-not (driver-features feature)
-      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
-    [(dispatch-on-initialized-driver driver) feature])
-  :hierarchy #'hierarchy)
-
-(defmethod supports? :default [_ _] false)
-
-(defmethod supports? [::driver :schemas] [_ _] true)
+    ;; Does this driver support window functions like cumulative count and cumulative sum? (default: false)
+    :window-functions})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -587,19 +612,25 @@
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database]), :added "0.41.0"}
   (fn [driver feature _database]
-    (when-not (driver-features feature)
-      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
+    ;; only make sure unqualified keywords are explicitly defined in [[features]].
+    (when (simple-keyword? feature)
+      (when-not (features feature)
+        (throw (ex-info (tru "Invalid driver feature: {0}" feature)
+                        {:feature feature}))))
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 
-(defmethod database-supports? :default [driver feature _] (supports? driver feature))
+(defmethod database-supports?
+  :default [_driver _feature _] false)
 
-(doseq [[feature supported?] {:basic-aggregations                     true
+(doseq [[feature supported?] {:convert-timezone                       false
+                              :basic-aggregations                     true
                               :case-sensitivity-string-filter-options true
                               :date-arithmetics                       true
                               :temporal-extract                       true
-                              :convert-timezone                       false
-                              :test/jvm-timezone-setting              true}]
+                              :schemas                                true
+                              :test/jvm-timezone-setting              true
+                              :fingerprint                            true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 (defmulti ^String escape-alias
@@ -641,7 +672,7 @@
 
 (defmulti mbql->native
   "Transpile an MBQL query into the appropriate native query form. `query` will match the schema for an MBQL query in
-  [[metabase.mbql.schema/Query]]; this function should return a native query that conforms to that schema.
+  [[metabase.legacy-mbql.schema/Query]]; this function should return a native query that conforms to that schema.
 
   If the underlying query language supports remarks or comments, the driver should
   use [[metabase.query-processor.util/query->remark]] to generate an appropriate message and include that in an
@@ -712,10 +743,8 @@
   [_ query]
   query)
 
-;; TODO - we should just have some sort of `core.async` channel to handle DB update notifications instead
-;;
 ;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
-;; effects?
+;; effects? issue: https://github.com/metabase/metabase/issues/39367
 (defmulti notify-database-updated
   "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
   specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
@@ -804,6 +833,7 @@
 (defmethod default-field-order ::driver [_] :database)
 
 ;; TODO -- this can vary based on session variables or connection options
+;; Issue: https://github.com/metabase/metabase/pull/39386
 (defmulti db-start-of-week
   "Return the day that is considered to be the start of week by `driver`. Should return a keyword such as `:sunday`."
   {:added "0.37.0" :arglists '([driver])}
@@ -826,8 +856,8 @@
 ;;;
 ;;; 1. We definitely should not be asking drivers to "update the value for `:details`". Drivers shouldn't touch the
 ;;;    application database.
-;;;
 ;;; 2. Something that is done for side effects like updating the application DB NEEDS TO END IN AN EXCLAMATION MARK!
+;;; Issue: https://github.com/metabase/metabase/issues/39392
 (defmulti normalize-db-details
   "Normalizes db-details for the given driver. This is to handle migrations that are too difficult to perform via
   regular Liquibase queries. This multimethod will be called from a `:post-select` handler within the database model.
@@ -916,6 +946,16 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti truncate!
+  "Delete the current contents of `table-name`.
+  If something like a SQL TRUNCATE statement is supported, we use that, but may otherwise fall back to explicitly
+  deleting rows, or dropping and recreating the table.
+  Depending on the driver, the semantics can vary on whether triggers are fired, AUTO_INCREMENT is reset etc.
+  The application assumes that the implementation can be rolled back if inside a transaction."
+  {:added "0.50.0", :arglists '([driver db-id table-name])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti insert-into!
   "Insert `values` into a table named `table-name`. `values` is a lazy sequence of rows, where each row's order matches
    `column-names`.
@@ -937,6 +977,13 @@
   `args` is an optional map with an optional key `primary-key`. The `primary-key` value is a vector of column names
   that make up the primary key. Currently only a single primary key is supported."
   {:added "0.49.0", :arglists '([driver db-id table-name column-definitions & args])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti alter-columns!
+  "Alter columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.
+  Currently we do not currently support changing the the primary key, or take any guidance on how to coerce values."
+  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

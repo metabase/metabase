@@ -2,14 +2,15 @@
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
   (:require
    [clojure.walk :as walk]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -52,7 +53,7 @@
      ;; `:join-alias` or `:source-field`. Remove binning/temporal bucketing info. The Field should already be getting
      ;; bucketed in the source query; don't need to apply bucketing again in the parent query. Mark the field as
      ;; `qp/ignore-coercion` here so that it doesn't happen again in the parent query.
-     (or (some-> (mbql.u/match-one field-ref :field)
+     (or (some-> (lib.util.match/match-one field-ref :field)
                  (mbql.u/update-field-options dissoc :binning :temporal-unit)
                  (cond-> coercion-strategy (mbql.u/assoc-field-options :qp/ignore-coercion true)))
          ;; otherwise construct a field reference that can be used to refer to this Field.
@@ -81,9 +82,9 @@
              (qp.store/initialized?))
     ;; by 'caching' this result, this log message will only be shown once for a given QP run.
     (qp.store/cached [::should-add-implicit-fields-warning]
-      (log/warn (str (trs "Warning: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`.")
-                     \newline
-                     (trs "Query: {0}" (u/pprint-to-str source-query))))))
+      (log/warn (str "Warning: cannot determine fields for an explicit `source-query` unless you also include"
+                     " `source-metadata`.\n"
+                     (format "Query: %s" (u/pprint-to-str source-query))))))
   ;; Determine whether we can add the implicit `:fields`
   (and (or source-table
            (and source-query (seq source-metadata)))

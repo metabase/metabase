@@ -12,7 +12,6 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
@@ -22,14 +21,6 @@
 
 (lib.hierarchy/derive :mbql.stage/mbql   ::stage)
 (lib.hierarchy/derive :mbql.stage/native ::stage)
-
-(defmethod lib.normalize/normalize :mbql.stage/mbql
-  [stage]
-  (lib.normalize/normalize-map
-   stage
-   keyword
-   {:aggregation (partial mapv lib.normalize/normalize)
-    :filters     (partial mapv lib.normalize/normalize)}))
 
 (defmethod lib.metadata.calculation/metadata-method ::stage
   [_query _stage-number _stage]
@@ -254,9 +245,7 @@
     (->> (concat
            existing-columns
            ;; add implicitly joinable columns if desired
-           (when (and include-implicitly-joinable?
-                      (or (not (:source-card (lib.util/query-stage query stage-number)))
-                          (:include-implicitly-joinable-for-source-card? options)))
+           (when include-implicitly-joinable?
              (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
          vec)))
 
@@ -335,7 +324,7 @@
   (boolean (seq (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table :source-card))))
 
 (mu/defn append-stage :- ::lib.schema/query
-  "Adds a new blank stage to the end of the pipeline"
+  "Adds a new blank stage to the end of the pipeline."
   [query]
   (update query :stages conj {:lib/type :mbql.stage/mbql}))
 

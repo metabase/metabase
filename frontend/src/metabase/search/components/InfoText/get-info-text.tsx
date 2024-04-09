@@ -9,8 +9,6 @@ import type { WrappedResult } from "metabase/search/types";
 import { Box } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
-const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
-
 export type InfoTextData = {
   link?: string | null;
   icon?: JSX.Element | null;
@@ -67,7 +65,10 @@ const getCollectionResult = (result: WrappedResult): InfoTextData => {
     ? {
         icon: collection.authority_level ? (
           <Box ml="-1.5px" display="inherit" pos="relative" top="-0.5px">
-            <CollectionAuthorityLevelIcon size={12} collection={collection} />
+            <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
+              size={12}
+              collection={collection}
+            />
           </Box>
         ) : null,
         link: colUrl,

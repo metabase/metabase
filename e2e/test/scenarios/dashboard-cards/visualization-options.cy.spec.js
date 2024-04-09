@@ -9,6 +9,8 @@ import {
   modal,
   saveDashboard,
   getDashboardCardMenu,
+  getDraggableElements,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
 
 describe("scenarios > dashboard cards > visualization options", () => {
@@ -49,12 +51,9 @@ describe("scenarios > dashboard cards > visualization options", () => {
     getDashboardCard().realHover();
     cy.findByLabelText("Show visualization options").click();
     cy.findByTestId("chartsettings-sidebar").within(() => {
-      cy.findByText("ID")
-        .closest("[data-testid^=draggable-item]")
-        .trigger("mousedown", 0, 0, { force: true })
-        .trigger("mousemove", 5, 5, { force: true })
-        .trigger("mousemove", 0, 100, { force: true })
-        .trigger("mouseup", 0, 100, { force: true });
+      moveDnDKitElement(getDraggableElements().contains("ID"), {
+        vertical: 100,
+      });
 
       /**
        * When this issue gets fixed, it should be safe to uncomment the following assertion.

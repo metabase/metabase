@@ -1,5 +1,7 @@
 .editHeader {
-  composes: text-white flex align-center from "style";
+  composes: text-white from "style";
+  align-items: center;
+  display: flex;
   position: absolute;
   top: 0;
   left: 0;
@@ -9,7 +11,7 @@
 }
 
 .editHeaderButtons {
-  composes: flex-align-right from "style";
+  margin-left: auto;
 }
 
 .editHeaderButton {

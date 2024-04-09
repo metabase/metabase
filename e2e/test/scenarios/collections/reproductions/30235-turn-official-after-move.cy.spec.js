@@ -8,7 +8,7 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-describeEE("issue 30235", function () {
+describeEE("issue 30235", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

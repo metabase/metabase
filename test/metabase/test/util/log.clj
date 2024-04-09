@@ -4,9 +4,10 @@
    [clojure.test :refer :all]
    [mb.hawk.parallel]
    [metabase.logger :as logger]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [net.cgrand.macrovich :as macros]
-   [potemkin :as p]
-   [schema.core :as s])
+   [potemkin :as p])
   (:import
    (org.apache.logging.log4j Level)
    (org.apache.logging.log4j.core Appender LifeCycle LogEvent)
@@ -24,7 +25,7 @@
    :trace Level/TRACE})
 
 (def ^:private LogLevelKeyword
-  (apply s/enum (keys keyword->Level)))
+  (into [:enum] (keys keyword->Level)))
 
 (defn- ->Level
   "Conversion from a keyword log level to the Log4J constance mapped to that log level. Not intended for use outside of
@@ -35,14 +36,14 @@
       (get keyword->Level (keyword k))
       (throw (ex-info "Invalid log level" {:level k}))))
 
-(s/defn ^:private log-level->keyword :- LogLevelKeyword
-  [level :- Level]
+(mu/defn ^:private log-level->keyword :- LogLevelKeyword
+  [level :- (ms/InstanceOfClass Level)]
   (some (fn [[k a-level]]
           (when (= a-level level)
             k))
         keyword->Level))
 
-(s/defn ns-log-level :- LogLevelKeyword
+(mu/defn ns-log-level :- LogLevelKeyword
   "Get the log level currently applied to the namespace named by symbol `a-namespace`. `a-namespace` may be a symbol
   that names an actual namespace, or a prefix such or `metabase` that applies to all 'sub' namespaces that start with
   `metabase.` (unless a more specific logger is defined for them).
@@ -84,7 +85,7 @@
       #_{:clj-kondo/ignore [:discouraged-var]}
       (println "Created a new logger for" (logger/logger-name a-namespace)))))
 
-(s/defn set-ns-log-level!
+(mu/defn set-ns-log-level!
   "Set the log level for the namespace named by `a-namespace`. Intended primarily for REPL usage; for tests,
   with [[with-log-messages-for-level]] instead. `a-namespace` may be a symbol that names an actual namespace, or can
   be a prefix such as `metabase` that applies to all 'sub' namespaces that start with `metabase.` (unless a more
@@ -236,6 +237,7 @@
            (logs#)))))))
 
 ;; TODO -- this macro should probably just take a binding for the `logs` function so you can eval when needed
+;; Tech debt issue: #39335
 (defmacro with-log-messages-for-level [ns+level & body]
   (macros/case
     :clj  `(with-log-messages-for-level-clj ~ns+level ~@body)

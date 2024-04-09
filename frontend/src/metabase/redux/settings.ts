@@ -1,7 +1,9 @@
 import { createAsyncThunk, createReducer } from "@reduxjs/toolkit";
 
+import { createThunkAction } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { SessionApi } from "metabase/services";
+import { SessionApi, SettingsApi } from "metabase/services";
+import type { UserSettings } from "metabase-types/api";
 
 export const REFRESH_SITE_SETTINGS = "metabase/settings/REFRESH_SITE_SETTINGS";
 
@@ -18,7 +20,7 @@ export const refreshSiteSettings = createAsyncThunk(
 );
 
 export const settings = createReducer(
-  { values: window.MetabaseBootstrap, loading: false },
+  { values: window.MetabaseBootstrap || {}, loading: false },
   builder => {
     builder.addCase(refreshSiteSettings.pending, state => {
       state.loading = true;
@@ -30,5 +32,25 @@ export const settings = createReducer(
     builder.addCase(refreshSiteSettings.rejected, state => {
       state.loading = false;
     });
+  },
+);
+
+export const UPDATE_USER_SETTING = "metabase/settings/UPDATE_USER_SETTING";
+export const updateUserSetting = createThunkAction(
+  UPDATE_USER_SETTING,
+  function <K extends keyof UserSettings>(setting: {
+    key: K;
+    value: Exclude<UserSettings[K], undefined>;
+  }) {
+    return async function (dispatch) {
+      try {
+        await SettingsApi.put(setting);
+      } catch (error) {
+        console.error("error updating user setting", setting, error);
+        throw error;
+      } finally {
+        await dispatch(refreshSiteSettings({}));
+      }
+    };
   },
 );

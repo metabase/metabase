@@ -2,16 +2,13 @@ import { useState } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
-import { POST } from "metabase/lib/api";
+import { useSetting } from "metabase/common/hooks";
 import { color } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
 import type { LLMIndicatorProps } from "metabase/plugins/types";
-import { getSetting } from "metabase/selectors/settings";
 import { Button, Icon, Tooltip } from "metabase/ui";
+import { AutoDescribeApi } from "metabase-enterprise/services";
 
 import "./loading.css";
-
-const postSummarizeCard = POST("/api/ee/autodescribe/card/summarize");
 
 export const LLMSuggestQuestionInfo = ({
   question,
@@ -19,15 +16,13 @@ export const LLMSuggestQuestionInfo = ({
 }: LLMIndicatorProps) => {
   const [acceptedSuggestion, setAcceptedSuggestion] = useState(false);
 
-  const isActive = useSelector(
-    state => !!getSetting(state, "ee-openai-api-key"),
-  );
+  const isActive = useSetting("ee-ai-features-enabled");
 
   const { loading, value } = useAsync(async () => {
     if (!isActive) {
       return { name: undefined, description: undefined };
     }
-    const response = await postSummarizeCard(question.card());
+    const response = await AutoDescribeApi.summarizeCard(question.card());
     return {
       name: response?.summary?.title ?? undefined,
       description: response?.summary?.description ?? undefined,

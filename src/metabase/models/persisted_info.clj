@@ -83,13 +83,13 @@
    enabled. A model could still have state=off if the instance previously had the feature flag, then downgraded to not
    have it. In that case models with state=off were previously prunable when the feature flag enabled, but they should be
    refreshable with the feature flag disabled."
-  metabase-enterprise.advanced-config.caching
+  metabase-enterprise.cache.config
   []
-  #{"creating" "persisted" "error" "off"})
+  #{"refreshing" "creating" "persisted" "error" "off"})
 
 (defenterprise prunable-states
   "States of `persisted_info` records which can be pruned."
-  metabase-enterprise.advanced-config.caching
+  metabase-enterprise.cache.config
   []
   #{"deletable"})
 

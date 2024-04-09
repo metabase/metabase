@@ -1,10 +1,12 @@
+import cx from "classnames";
 import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
-import type Field from "metabase-lib/metadata/Field";
-import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
+import type Field from "metabase-lib/v1/metadata/Field";
+import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { StyledSelectButton } from "./MappedFieldPicker.styled";
 
@@ -89,7 +91,13 @@ function MappedFieldPicker({
 
   return (
     <SchemaTableAndFieldDataSelector
-      className="flex flex-full flex-basis-none justify-center align-center"
+      className={cx(
+        CS.flex,
+        CS.flexFull,
+        CS.flexBasisNone,
+        CS.justifyCenter,
+        CS.alignCenter,
+      )}
       selectedDatabaseId={databaseId}
       selectedTableId={selectedTableId}
       selectedSchemaId={fieldObject?.table?.schema?.id}

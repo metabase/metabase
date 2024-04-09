@@ -15,6 +15,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -46,6 +47,14 @@
                                                :schema nil
                                                :id     1}]})
     (driver/mbql->native :googleanalytics (update query :query (partial merge {:source-table 1})))))
+
+(deftest test-fingerprint-skipped-for-ga
+  (testing "Google Analytics doesn't support fingerprinting fields"
+    (let [fake-db (-> (mt/db)
+                      (assoc :engine :googleanalytics))]
+      (with-redefs [sync.fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
+        (is (= (sync.fingerprint/empty-stats-map 0)
+               (sync.fingerprint/fingerprint-fields-for-db! fake-db [(t2/select-one Table :id (mt/id :venues))] (fn [_ _]))))))))
 
 (deftest ^:parallel basic-compilation-test
   (testing "just check that a basic almost-empty MBQL query can be compiled"
@@ -98,7 +107,7 @@
   (mt/with-database-timezone-id nil
     (testing "\nsystem timezone should not affect the queries that get generated"
       (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-        (mt/with-system-timezone-id system-timezone-id
+        (mt/with-system-timezone-id! system-timezone-id
           (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                    (t/local-date "2019-11-18")
                                                    (t/local-time 0)
@@ -229,7 +238,7 @@
 (deftest almost-e2e-test-1
   ;; system timezone ID shouldn't affect generated query
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (mt/with-system-timezone-id system-timezone-id
+    (mt/with-system-timezone-id! system-timezone-id
       (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                (t/local-date "2019-11-18")
                                                (t/local-time 0)
@@ -258,7 +267,7 @@
 
 (deftest almost-e2e-test-2
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (mt/with-system-timezone-id system-timezone-id
+    (mt/with-system-timezone-id! system-timezone-id
       (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                (t/local-date "2019-11-18")
                                                (t/local-time 0)
@@ -273,7 +282,7 @@
 (deftest almost-e2e-test-3
   (testing "system timezone ID shouldn't affect generated query"
     (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-      (mt/with-system-timezone-id system-timezone-id
+      (mt/with-system-timezone-id! system-timezone-id
         (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                  (t/local-date "2019-11-18")
                                                  (t/local-time 0)
@@ -330,7 +339,7 @@
 (deftest almost-e2e-time-interval-test
   (testing "Make sure filtering by the previous 4 months actually filters against the right months (#10701)"
     (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-      (mt/with-system-timezone-id system-timezone-id
+      (mt/with-system-timezone-id! system-timezone-id
         (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                  (t/local-date "2019-11-18")
                                                  (t/local-time 0)

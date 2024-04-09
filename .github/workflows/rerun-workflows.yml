@@ -45,7 +45,7 @@ jobs:
                 repo: context.repo.repo,
                 run_id: ${{ github.event.workflow_run.id }},
               });
-            } else {
+            } else if (!BRANCH.includes('backport-')) {
               // notify slack of repeated failure
               const { WebClient } = require('@slack/web-api');
               const slack = new WebClient('${{ secrets.SLACK_BOT_TOKEN }}');

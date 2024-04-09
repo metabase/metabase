@@ -3,12 +3,13 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.api.geojson :as api.geojson]
+   [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [ring.adapter.jetty9 :as ring-jetty])
+   [ring.adapter.jetty :as ring-jetty])
   (:import
    (org.eclipse.jetty.server Server)))
 
@@ -216,7 +217,7 @@
             expected-value (merge (@#'api.geojson/builtin-geojson) custom-geojson)]
         (mt/with-temporary-setting-values [custom-geojson nil]
           (mt/with-temp-env-var-value! [mb-custom-geojson (json/generate-string custom-geojson)]
-            (binding [setting/*disable-cache* true]
+            (binding [config/*disable-setting-cache* true]
               (testing "Should parse env var custom GeoJSON and merge in"
                 (is (= expected-value
                        (api.geojson/custom-geojson))))

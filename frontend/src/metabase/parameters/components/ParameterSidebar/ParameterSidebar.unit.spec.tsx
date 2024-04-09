@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockUiParameter } from "metabase-lib/parameters/mock";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
 import { ParameterSidebar } from "./ParameterSidebar";
 
@@ -18,7 +18,7 @@ const setup = ({
   nextParameter,
   otherParameters,
 }: SetupOpts): {
-  clickNextParameterButton: () => void;
+  clickNextParameterButton: () => Promise<void>;
 } => {
   const NEXT_PARAMETER_BUTTON_ID = "parameter-sidebar-test-change";
 
@@ -75,13 +75,13 @@ const setup = ({
   };
 };
 
-function fillValue(input: HTMLElement, value: string) {
-  userEvent.clear(input);
-  userEvent.type(input, value);
+async function fillValue(input: HTMLElement, value: string) {
+  await userEvent.clear(input);
+  await userEvent.type(input, value);
 }
 
 describe("ParameterSidebar", () => {
-  it("should not update the label if the slug is duplicated with another parameter", () => {
+  it("should not update the label if the slug is duplicated with another parameter", async () => {
     setup({
       initialParameter: createMockUiParameter({
         id: "id2",
@@ -97,9 +97,9 @@ describe("ParameterSidebar", () => {
       ],
     });
 
-    userEvent.click(screen.getByRole("radio", { name: "Settings" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Settings" }));
     const labelInput = screen.getByLabelText("Label");
-    fillValue(labelInput, "Baz");
+    await fillValue(labelInput, "Baz");
     // expect there to be an error message with the text "This label is already in use"
     const error = /this label is already in use/i;
     expect(screen.getByText(error)).toBeInTheDocument();
@@ -110,12 +110,12 @@ describe("ParameterSidebar", () => {
     expect(screen.queryByText(error)).not.toBeInTheDocument();
 
     // sanity check with another value
-    fillValue(labelInput, "Bar");
+    await fillValue(labelInput, "Bar");
     labelInput.blur();
     expect(labelInput).toHaveValue("Bar");
   });
 
-  it("if the parameter updates, the label should update (metabase#34611)", () => {
+  it("if the parameter updates, the label should update (metabase#34611)", async () => {
     const initialParameter = createMockUiParameter({
       id: "id1",
       name: "Foo",
@@ -134,7 +134,7 @@ describe("ParameterSidebar", () => {
 
     const labelInput = screen.getByLabelText("Label");
     expect(labelInput).toHaveValue("Foo");
-    clickNextParameterButton();
+    await clickNextParameterButton();
     expect(labelInput).toHaveValue("Bar");
   });
 });

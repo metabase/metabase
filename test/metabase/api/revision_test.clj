@@ -310,6 +310,28 @@
              (map #(select-keys % [:description :has_multiple_changes])
                   (mt/user-http-request :crowberto :get 200 "revision" :entity "dashboard" :id dashboard-id)))))))
 
+(deftest dashboard-width-revision-diff-test
+  (testing "The Dashboard's revision history correctly reports dashboard width changes (#38910)"
+    (t2.with-temp/with-temp
+        [Dashboard  {dashboard-id :id :as dash} {:name "A dashboard"}
+         Revision   _ {:model    "Dashboard"
+                       :model_id dashboard-id
+                       :user_id  (mt/user->id :crowberto)
+                       :object   (assoc dash :width nil)}
+         Revision   _ {:model    "Dashboard"
+                       :model_id dashboard-id
+                       :user_id  (mt/user->id :crowberto)
+                       :object   (assoc dash :width "full")}
+         Revision   _ {:model    "Dashboard"
+                       :model_id dashboard-id
+                       :user_id  (mt/user->id :crowberto)
+                       :object   (assoc dash :width "fixed")}]
+        (is (= ["changed the width setting from full to fixed."
+                "changed the width setting."
+                "modified this."]
+               (map :description
+                    (mt/user-http-request :crowberto :get 200 "revision" :entity "dashboard" :id dashboard-id)))))))
+
 (deftest card-revision-description-test
   (testing "revision description for card are generated correctly"
     (t2.with-temp/with-temp

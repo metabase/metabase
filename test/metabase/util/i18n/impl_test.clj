@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase.util.i18n.impl-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
@@ -129,7 +130,7 @@
       (encryption-test/with-secret-key "secret_key__1"
         ;; set `site-locale` to something encrypted with the first encryption key.
         (mt/with-temporary-setting-values [site-locale "en"]
-          (binding [setting/*disable-cache* true]
+          (binding [config/*disable-setting-cache* true]
             (is (= "en"
                    (i18n.impl/site-locale-from-setting)))
             ;; rotate the encryption key, which will trigger an error being logged

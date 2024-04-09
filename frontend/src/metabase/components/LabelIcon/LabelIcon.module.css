@@ -1,13 +1,8 @@
 .colorIcon {
-  composes: inline-block from "style";
+  display: inline-block;
   width: 18px;
   height: 18px;
   border-radius: 3px;
-}
-
-.emojiIcon {
-  composes: text-centered from "style";
-  font-size: 20px;
 }
 
 .icon {

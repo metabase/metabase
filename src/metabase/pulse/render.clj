@@ -9,10 +9,10 @@
    [metabase.pulse.render.png :as png]
    [metabase.pulse.render.style :as style]
    [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.urls :as urls]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]
+   [metabase.util.urls :as urls]))
 
 (def ^:dynamic *include-buttons*
   "Should the rendered pulse include buttons? (default: `false`)"
@@ -30,7 +30,7 @@
   [card]
   (h (urls/card-url (:id card))))
 
-(s/defn ^:private make-title-if-needed :- (s/maybe formatter/RenderedPulseCard)
+(mu/defn ^:private make-title-if-needed :- [:maybe formatter/RenderedPulseCard]
   [render-type card dashcard]
   (when *include-title*
     (let [card-name    (or (-> dashcard :visualization_settings :card.title)
@@ -57,7 +57,7 @@
                                  :width 16
                                  :src   (:image-src image-bundle)}])]]]]})))
 
-(s/defn ^:private make-description-if-needed :- (s/maybe formatter/RenderedPulseCard)
+(mu/defn ^:private make-description-if-needed :- [:maybe formatter/RenderedPulseCard]
   [dashcard card]
   (when *include-description*
     (when-let [description (or (get-in dashcard [:visualization_settings :card.description])
@@ -127,8 +127,12 @@
   [card]
   ((some-fn :include_csv :include_xls) card))
 
-(s/defn ^:private render-pulse-card-body :- formatter/RenderedPulseCard
-  [render-type timezone-id :- (s/maybe s/Str) card dashcard {:keys [data error] :as results}]
+(mu/defn ^:private render-pulse-card-body :- formatter/RenderedPulseCard
+  [render-type
+   timezone-id :- [:maybe :string]
+   card
+   dashcard
+   {:keys [data error] :as results}]
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
@@ -136,26 +140,30 @@
                          (when (is-attached? card)
                            :attached)
                          :unknown)]
-      (log/debug (trs "Rendering pulse card with chart-type {0} and render-type {1}" chart-type render-type))
+      (log/debugf "Rendering pulse card with chart-type %s and render-type %s" chart-type render-type)
       (body/render chart-type render-type timezone-id card dashcard data))
     (catch Throwable e
       (if (:card-error (ex-data e))
         (do
-          (log/error e (trs "Pulse card query error"))
+          (log/error e "Pulse card query error")
           (body/render :card-error nil nil nil nil nil))
         (do
-          (log/error e (trs "Pulse card render error"))
+          (log/error e "Pulse card render error")
           (body/render :render-error nil nil nil nil nil))))))
 
 
-(s/defn render-pulse-card :- formatter/RenderedPulseCard
+(mu/defn render-pulse-card :- formatter/RenderedPulseCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys
 
-- attachments
-- content (a hiccup form suitable for rendering on rich clients or rendering into an image)
-- render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
-  scalar results where text is preferable to an image of a div of a single result."
-  [render-type timezone-id :- (s/maybe s/Str) card dashcard results]
+  - attachments
+  - content (a hiccup form suitable for rendering on rich clients or rendering into an image)
+  - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
+    scalar results where text is preferable to an image of a div of a single result."
+  [render-type
+   timezone-id :- [:maybe :string]
+   card
+   dashcard
+   results]
   (let [{title             :content
          title-attachments :attachments} (make-title-if-needed render-type card dashcard)
         {description :content}           (make-description-if-needed dashcard card)
@@ -195,9 +203,10 @@
   [timezone-id card results]
   (:content (render-pulse-card :inline timezone-id card nil results)))
 
-(s/defn render-pulse-section :- formatter/RenderedPulseCard
+(mu/defn render-pulse-section :- formatter/RenderedPulseCard
   "Render a single Card section of a Pulse to a Hiccup form (representating HTML)."
-  [timezone-id {card :card, dashcard :dashcard, result :result}]
+  [timezone-id
+   {card :card, dashcard :dashcard, result :result}]
   (let [{:keys [attachments content]} (binding [*include-title*       true
                                                 *include-description* true]
                                         (render-pulse-card :attachment timezone-id card dashcard result))]
@@ -206,12 +215,12 @@
                                               :margin-bottom :20px})}
                    content]}))
 
-(s/defn render-pulse-card-to-png :- bytes
+(mu/defn render-pulse-card-to-png :- bytes?
   "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result."
-  [timezone-id :- (s/maybe s/Str) pulse-card result width]
+  ^bytes [timezone-id :- [:maybe :string] pulse-card result width]
   (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result) width))
 
-(s/defn png-from-render-info :- bytes
+(mu/defn png-from-render-info :- bytes?
   "Create a PNG file (as a byte array) from rendering info."
-  [rendered-info :- formatter/RenderedPulseCard width]
+  ^bytes [rendered-info :- formatter/RenderedPulseCard width]
   (png/render-html-to-png rendered-info width))

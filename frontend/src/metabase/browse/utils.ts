@@ -129,6 +129,8 @@ export const sortModels = (
   return nameA.localeCompare(nameB, localeCode);
 };
 
+/** Mapping of filter names to true if the filter is active
+ * or false if it is inactive */
 export type ActualModelFilters = Record<string, boolean>;
 
 export const filterModels = (

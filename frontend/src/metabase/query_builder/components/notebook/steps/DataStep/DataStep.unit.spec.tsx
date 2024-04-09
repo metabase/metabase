@@ -6,12 +6,12 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
 import {
   columnFinder,
   createQuery,
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import {
   createSampleDatabase,
   SAMPLE_DB_ID,
@@ -123,8 +123,8 @@ describe("DataStep", () => {
   it("should change a table", async () => {
     const { getNextTableName } = await setup();
 
-    userEvent.click(screen.getByText("Orders"));
-    userEvent.click(await screen.findByText("Products"));
+    await userEvent.click(screen.getByText("Orders"));
+    await userEvent.click(await screen.findByText("Products"));
 
     expect(getNextTableName()).toBe("Products");
   });
@@ -132,7 +132,7 @@ describe("DataStep", () => {
   describe("fields selection", () => {
     it("should render with all columns selected", async () => {
       await setup();
-      userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select none")).toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
@@ -144,7 +144,7 @@ describe("DataStep", () => {
     it("should render with a single column selected", async () => {
       const query = createQueryWithFields(["ID"]);
       await setup(createMockNotebookStep({ query }));
-      userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
@@ -156,7 +156,7 @@ describe("DataStep", () => {
     it("should render with multiple columns selected", async () => {
       const query = createQueryWithFields(["ID", "TOTAL"]);
       await setup(createMockNotebookStep({ query }));
-      userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
@@ -172,8 +172,8 @@ describe("DataStep", () => {
       const step = createMockNotebookStep({ query });
       const { getNextColumn } = await setup(step);
 
-      userEvent.click(screen.getByLabelText("Pick columns"));
-      userEvent.click(screen.getByLabelText("Tax"));
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Tax"));
 
       expect(getNextColumn("ID").selected).toBeTruthy();
       expect(getNextColumn("TAX").selected).toBeTruthy();
@@ -183,8 +183,8 @@ describe("DataStep", () => {
     it("should allow de-selecting a column", async () => {
       const { getNextColumn } = await setup();
 
-      userEvent.click(screen.getByLabelText("Pick columns"));
-      userEvent.click(screen.getByLabelText("Tax"));
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Tax"));
 
       expect(getNextColumn("ID").selected).toBeTruthy();
       expect(getNextColumn("TAX").selected).toBeFalsy();
@@ -196,8 +196,8 @@ describe("DataStep", () => {
       const step = createMockNotebookStep({ query });
       const { getNextColumn } = await setup(step);
 
-      userEvent.click(screen.getByLabelText("Pick columns"));
-      userEvent.click(screen.getByLabelText("Select all"));
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Select all"));
 
       expect(getNextColumn("ID").selected).toBeTruthy();
       expect(getNextColumn("TAX").selected).toBeTruthy();
@@ -207,8 +207,8 @@ describe("DataStep", () => {
     it("should leave one column when de-selecting all columns", async () => {
       const { getNextQuery } = await setup();
 
-      userEvent.click(screen.getByLabelText("Pick columns"));
-      userEvent.click(screen.getByLabelText("Select none"));
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Select none"));
 
       const nextQuery = getNextQuery();
       expect(Lib.fields(nextQuery, 0)).toHaveLength(1);

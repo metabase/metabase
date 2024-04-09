@@ -8,18 +8,22 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
-import { getIsEditingInDashboard } from "metabase/query_builder/selectors";
+import {
+  getIsEditingInDashboard,
+  getIsNotebookNativePreviewShown,
+  getNotebookNativePreviewSidebarWidth,
+} from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { updateCardTemplateTagNames } from "metabase-lib/queries/NativeQuery";
-import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
-import { normalize } from "metabase-lib/queries/utils/normalize";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
+import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
+import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type { Card, MetricId, SegmentId } from "metabase-types/api";
 import { isSavedCard } from "metabase-types/guards";
 import type {
@@ -106,7 +110,7 @@ function filterBySegmentId(question: Question, segmentId: SegmentId) {
 function aggregateByMetricId(question: Question, metricId: MetricId) {
   const stageIndex = -1;
   const query = question.query();
-  const metricMetadata = Lib.metricMetadata(query, metricId);
+  const metricMetadata = Lib.legacyMetricMetadata(query, metricId);
 
   if (!metricMetadata) {
     return question;
@@ -362,6 +366,12 @@ async function handleQBInit(
   });
 
   const objectId = params?.objectId || queryParams?.objectId;
+
+  uiControls.isShowingNotebookNativePreview = getIsNotebookNativePreviewShown(
+    getState(),
+  );
+  uiControls.notebookNativePreviewSidebarWidth =
+    getNotebookNativePreviewSidebarWidth(getState());
 
   dispatch({
     type: INITIALIZE_QB,

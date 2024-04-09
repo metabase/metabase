@@ -4,19 +4,19 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [Metric]]
+   [metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.query :refer [Query]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor.util :as qp.util]
-   [schema.core :as s]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (def ^:private ^Long max-best-matches        3)
@@ -25,17 +25,20 @@
                                                 max-serendipity-matches))
 
 (def ^:private ContextBearingForm
-  [(s/one (s/constrained (s/cond-pre s/Str s/Keyword)
-                         (comp #{:field :metric :segment}
-                               qp.util/normalize-token))
-          "head")
-   s/Any])
+  [:cat
+   [:and
+    [:or :string :keyword]
+    [:fn
+     {:error/message "field, metric, or segment"}
+     (comp #{:field :metric :segment}
+           qp.util/normalize-token)]]
+   [:* :any]])
 
 (defn- collect-context-bearing-forms
   [form]
   (let [form (mbql.normalize/normalize-fragment [:query :filter] form)]
     (into #{}
-          (comp (remove (s/checker ContextBearingForm))
+          (comp (filter (mr/validator ContextBearingForm))
                 (map #(update % 0 qp.util/normalize-token)))
           (tree-seq sequential? identity form))))
 
@@ -52,7 +55,7 @@
       :query
       ((juxt :breakout :aggregation :expressions :fields))))
 
-(defmethod definition Metric
+(defmethod definition LegacyMetric
   [metric]
   (-> metric :definition ((juxt :aggregation :filter))))
 
@@ -104,7 +107,7 @@
 
 (defn- metrics-for-table
   [table]
-  (filter-visible (t2/select Metric
+  (filter-visible (t2/select LegacyMetric
                     :table_id (:id table)
                     :archived false)))
 
@@ -163,7 +166,7 @@
 
 (defn- canonical-metric
   [card]
-  (->> (t2/select Metric
+  (->> (t2/select LegacyMetric
          :table_id (:table_id card)
          :archived false)
        filter-visible
@@ -238,7 +241,7 @@
   [query]
   (related (mi/instance Card query)))
 
-(defmethod related Metric
+(defmethod related LegacyMetric
   [metric]
   (let [table (t2/select-one Table :id (:table_id metric))]
     {:table    table

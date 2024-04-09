@@ -5,22 +5,30 @@ import type { Route } from "react-router";
 import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
+import type {
+  NewDashCardOpts,
+  SetDashboardAttributesOpts,
+} from "metabase/dashboard/actions";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
+import type {
+  FetchDashboardResult,
+  SuccessfulFetchDashboardResult,
+} from "metabase/dashboard/types";
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import type Database from "metabase-lib/metadata/Database";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Dashboard as IDashboard,
   DashboardId,
   DashCardDataMap,
   DashCardId,
+  Database,
   DatabaseId,
   Parameter,
   ParameterId,
@@ -60,13 +68,6 @@ import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,
 } from "./DashboardEmptyState/DashboardEmptyState";
-
-type SuccessfulFetchDashboardResult = { payload: { dashboard: IDashboard } };
-type FailedFetchDashboardResult = { error: unknown; payload: unknown };
-
-type FetchDashboardResult =
-  | SuccessfulFetchDashboardResult
-  | FailedFetchDashboardResult;
 
 interface DashboardProps {
   dashboardId: DashboardId;
@@ -108,6 +109,8 @@ interface DashboardProps {
   location: Location;
   isNightMode: boolean;
   isFullscreen: boolean;
+  hasNightModeToggle: boolean;
+  refreshPeriod: number | null;
 
   initialize: (opts?: { clearCache?: boolean }) => void;
   fetchDashboard: (opts: {
@@ -130,14 +133,14 @@ interface DashboardProps {
     cardId: CardId;
     tabId: DashboardTabId | null;
   }) => void;
+  addHeadingDashCardToDashboard: (opts: NewDashCardOpts) => void;
+  addMarkdownDashCardToDashboard: (opts: NewDashCardOpts) => void;
+  addLinkDashCardToDashboard: (opts: NewDashCardOpts) => void;
   archiveDashboard: (id: DashboardId) => Promise<void>;
 
   onRefreshPeriodChange: (period: number | null) => void;
-  setEditingDashboard: (dashboard: IDashboard) => void;
-  setDashboardAttributes: (opts: {
-    id: DashboardId;
-    attributes: Partial<IDashboard>;
-  }) => void;
+  setEditingDashboard: (dashboard: IDashboard | null) => void;
+  setDashboardAttributes: (opts: SetDashboardAttributesOpts) => void;
   setSharing: (isSharing: boolean) => void;
   toggleSidebar: (sidebarName: DashboardSidebarName) => void;
   closeSidebar: () => void;
@@ -184,6 +187,15 @@ interface DashboardProps {
   getEmbeddedParameterVisibility: (
     slug: string,
   ) => EmbeddingParameterVisibility | null;
+  updateDashboardAndCards: () => void;
+  onFullscreenChange: (
+    isFullscreen: boolean,
+    browserFullscreen?: boolean,
+  ) => void;
+
+  onNightModeChange: () => void;
+  setSidebar: (opts: { name: DashboardSidebarName }) => void;
+  hideAddParameterPopover: () => void;
 }
 
 function DashboardInner(props: DashboardProps) {
@@ -285,7 +297,7 @@ function DashboardInner(props: DashboardProps) {
   );
 
   const handleSetEditing = useCallback(
-    (dashboard: IDashboard) => {
+    (dashboard: IDashboard | null) => {
       onRefreshPeriodChange(null);
       setEditingDashboard(dashboard);
     },
@@ -521,6 +533,8 @@ function DashboardInner(props: DashboardProps) {
       {() => (
         <DashboardStyled>
           <DashboardHeaderContainer
+            data-element-id="dashboard-header-container"
+            id="Dashboard-Header-Container"
             isFullscreen={isFullscreen}
             isNightMode={shouldRenderAsNightMode}
           >
@@ -541,13 +555,14 @@ function DashboardInner(props: DashboardProps) {
           <DashboardBody isEditingOrSharing={isEditing || isSharing}>
             <ParametersAndCardsContainer
               id={DASHBOARD_PDF_EXPORT_ROOT_ID}
+              data-element-id="dashboard-parameters-and-cards"
               data-testid="dashboard-parameters-and-cards"
               shouldMakeDashboardHeaderStickyAfterScrolling={
                 !isFullscreen && (isEditing || isSharing)
               }
             >
               {renderParameterList()}
-              <CardsContainer id="Dashboard-Cards-Container">
+              <CardsContainer data-element-id="dashboard-cards-container">
                 {renderContent()}
               </CardsContainer>
             </ParametersAndCardsContainer>

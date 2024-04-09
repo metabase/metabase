@@ -36,7 +36,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [ring.util.codec :as codec])
   (:import
@@ -49,11 +49,12 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:datetime-diff                          true
-                              :now                                    true
-                              :convert-timezone                       true
-                              :connection-impersonation               true
-                              :connection-impersonation-requires-role true}]
+(doseq [[feature supported?] {:connection-impersonation                            true
+                              :connection-impersonation-requires-role              true
+                              :convert-timezone                                    true
+                              :datetime-diff                                       true
+                              :now                                                 true
+                              :sql/window-functions.order-by-output-column-numbers false}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
@@ -123,15 +124,21 @@
     (str "\"" (str/replace raw-name "\"" "\"\"") "\"")))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
-  [_ {:keys [account additional-options], :as details}]
+  [_ {:keys [account additional-options host use-hostname], :as details}]
   (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
-    (log/warn (trs "You should not set WEEK_START in Snowflake connection options; this might lead to incorrect results. Set the Start of Week Setting instead.")))
+    (log/warn (str "You should not set WEEK_START in Snowflake connection options; this might lead to incorrect "
+                   "results. Set the Start of Week Setting instead.")))
   (let [upcase-not-nil (fn [s] (when s (u/upper-case-en s)))]
     ;; it appears to be the case that their JDBC driver ignores `db` -- see my bug report at
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
     (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
                 :subprotocol                                "snowflake"
-                :subname                                    (str "//" account ".snowflakecomputing.com/")
+                ;; see https://github.com/metabase/metabase/issues/22133
+                :subname                                    (let [base-url (if (and use-hostname (string? host) (not (str/blank? host)))
+                                                                             (cond-> host
+                                                                               (not= (last host) \/) (str "/"))
+                                                                             (str account ".snowflakecomputing.com/"))]
+                                                              (str "//" base-url))
                 :client_metadata_request_use_connection_ctx true
                 :ssl                                        true
                 ;; keep open connections open indefinitely instead of closing them. See #9674 and
@@ -524,16 +531,15 @@
 (defn- describe-table-fks
   "Stolen from [[sql-jdbc.describe-table]].
   The only change is that it calls the stolen function [[describe-table-fks*]]."
-  [driver db-or-id-or-spec-or-conn table & [db-name-or-nil]]
-  (if (instance? Connection db-or-id-or-spec-or-conn)
-    (describe-table-fks* driver db-or-id-or-spec-or-conn table db-name-or-nil)
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     db-or-id-or-spec-or-conn
-     nil
-     (fn [conn]
-       (describe-table-fks* driver conn table db-name-or-nil)))))
+  [driver db-or-id-or-spec table & [db-name-or-nil]]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db-or-id-or-spec
+   nil
+   (fn [conn]
+     (describe-table-fks* driver conn table db-name-or-nil))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks :snowflake
   [driver database table]
   (describe-table-fks driver database table (db-name database)))
@@ -662,3 +668,10 @@
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]
   (-> database :details :role))
+
+(defmethod driver/incorporate-ssh-tunnel-details :snowflake
+  [_driver {:keys [account host port] :as db-details}]
+  (let [details (cond-> db-details
+                  (not host) (assoc :host (str account ".snowflakecomputing.com"))
+                  (not port) (assoc :port 443))]
+    (driver/incorporate-ssh-tunnel-details :sql-jdbc details)))

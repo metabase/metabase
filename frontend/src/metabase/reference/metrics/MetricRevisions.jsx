@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { getIn } from "icepick";
 import PropTypes from "prop-types";
 import { Component } from "react";
@@ -8,6 +9,7 @@ import Revision from "metabase/admin/datamodel/components/revisions/Revision";
 import EmptyState from "metabase/components/EmptyState";
 import S from "metabase/components/List/List.module.css";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
 import * as metadataActions from "metabase/redux/metadata";
 import R from "metabase/reference/Reference.module.css";
@@ -80,7 +82,7 @@ class MetricRevisions extends Component {
         : {};
 
     return (
-      <div style={style} className="full">
+      <div style={style} className={CS.full}>
         <ReferenceHeader
           name={t`Revision history for ${this.props.metric.name}`}
           headerIcon="ruler"
@@ -91,7 +93,7 @@ class MetricRevisions extends Component {
         >
           {() =>
             Object.keys(revisions).length > 0 && tables[entity.table_id] ? (
-              <div className="wrapper wrapper--trim">
+              <div className={cx(CS.wrapper, CS.wrapperTrim)}>
                 <div className={R.revisionsWrapper}>
                   {Object.values(revisions)
                     .map(revision =>

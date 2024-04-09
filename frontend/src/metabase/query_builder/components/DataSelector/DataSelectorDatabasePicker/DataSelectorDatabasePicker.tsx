@@ -2,8 +2,8 @@ import { useCallback, useMemo } from "react";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import { Icon } from "metabase/ui";
-import type Database from "metabase-lib/metadata/Database";
-import type Schema from "metabase-lib/metadata/Schema";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Schema from "metabase-lib/v1/metadata/Schema";
 
 import { RawDataBackButton } from "../DataSelector.styled";
 import DataSelectorLoading from "../DataSelectorLoading";

@@ -10,6 +10,7 @@ import EmptyState from "metabase/components/EmptyState";
 import List from "metabase/components/List";
 import S from "metabase/components/List/List.module.css";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
 import R from "metabase/reference/Reference.module.css";
 import EditHeader from "metabase/reference/components/EditHeader";
@@ -17,7 +18,7 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import Field from "metabase/reference/components/Field";
 import F from "metabase/reference/components/Field.module.css";
 import * as actions from "metabase/reference/reference";
-import { getIconForField } from "metabase-lib/metadata/utils/fields";
+import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 
 import {
   getError,
@@ -113,7 +114,7 @@ const FieldList = props => {
   return (
     <form
       style={style}
-      className="full"
+      className={CS.full}
       onSubmit={handleSubmit}
       testID={props["data-testid"]}
     >
@@ -138,8 +139,17 @@ const FieldList = props => {
       >
         {() =>
           Object.keys(entities).length > 0 ? (
-            <div className="wrapper">
-              <div className="pl4 pb2 mb4 bg-white rounded bordered">
+            <div className={CS.wrapper}>
+              <div
+                className={cx(
+                  CS.pl4,
+                  CS.pb2,
+                  CS.mb4,
+                  CS.bgWhite,
+                  CS.rounded,
+                  CS.bordered,
+                )}
+              >
                 <div className={S.item}>
                   <div className={R.columnHeader}>
                     <div className={cx(S.itemTitle, F.fieldNameTitle)}>

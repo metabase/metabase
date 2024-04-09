@@ -1,11 +1,13 @@
+import cx from "classnames";
 import { Component } from "react";
-import { Motion, spring } from "react-motion";
 
 import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
 import type { BaseModalProps } from "metabase/components/Modal/utils";
 import { getModalContent } from "metabase/components/Modal/utils";
 import SandboxedPortal from "metabase/components/SandboxedPortal";
+import CS from "metabase/css/core/index.css";
 import { getScrollX, getScrollY } from "metabase/lib/dom";
+import { Transition } from "metabase/ui";
 
 export type FullPageModalProps = BaseModalProps & {
   isOpen: boolean;
@@ -17,6 +19,12 @@ type FullPageModalState = {
   isOpen: boolean;
 };
 
+const slideIn = {
+  in: { opacity: 1, top: 0 },
+  out: { opacity: 0, top: 20 },
+  common: { transformOrigin: "top" },
+  transitionProperty: "top, opacity",
+};
 export class FullPageModal extends Component<
   FullPageModalProps,
   FullPageModalState
@@ -28,7 +36,7 @@ export class FullPageModal extends Component<
   constructor(props: FullPageModalProps) {
     super(props);
     this.state = {
-      isOpen: true,
+      isOpen: false,
     };
 
     this._modalElement = document.createElement("div");
@@ -52,6 +60,9 @@ export class FullPageModal extends Component<
 
   componentDidMount() {
     this.setTopOfModalToBottomOfNav();
+    this.setState({
+      isOpen: true,
+    });
   }
 
   componentDidUpdate() {
@@ -78,15 +89,8 @@ export class FullPageModal extends Component<
   render() {
     const open = this.state.isOpen;
     return (
-      <Motion
-        defaultStyle={{ opacity: 0, top: 20 }}
-        style={
-          open
-            ? { opacity: spring(1), top: spring(0) }
-            : { opacity: spring(0), top: spring(20) }
-        }
-      >
-        {motionStyle => (
+      <Transition mounted={open} transition={slideIn} duration={300}>
+        {styles => (
           <SandboxedPortal container={this._modalElement}>
             <div className="Modal--full">
               {/* Using an OnClickOutsideWrapper is weird since this modal
@@ -98,8 +102,8 @@ export class FullPageModal extends Component<
                 closeOnClickOutside={this.props.closeOnClickOutside}
               >
                 <div
-                  className="full-height relative scroll-y"
-                  style={motionStyle}
+                  className={cx(CS.fullHeight, CS.relative, CS.scrollY)}
+                  style={styles}
                 >
                   {getModalContent({
                     ...this.props,
@@ -112,7 +116,7 @@ export class FullPageModal extends Component<
             </div>
           </SandboxedPortal>
         )}
-      </Motion>
+      </Transition>
     );
   }
 }

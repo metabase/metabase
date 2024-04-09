@@ -1094,11 +1094,15 @@
               cols  (lib/joinable-columns query -1 join)]
           (is (=? [{:name                         "ID"
                     :metabase.lib.join/join-alias "Cat"
+                    :source-alias                 "Cat"
+                    :lib/source                   :source/joins
                     :lib/source-column-alias      "ID"
                     :lib/desired-column-alias     "Cat__ID"
                     :selected?                    id-selected?}
                    {:name                         "NAME"
                     :metabase.lib.join/join-alias "Cat"
+                    :source-alias                 "Cat"
+                    :lib/source                   :source/joins
                     :lib/source-column-alias      "NAME"
                     :lib/desired-column-alias     "Cat__NAME"
                     :selected?                    name-selected?}]
@@ -1344,3 +1348,55 @@
   (testing "Include the names of joined tables in suggested query names (#24703)"
     (is (= "Venues + Categories"
            (lib/suggested-name lib.tu/query-with-join)))))
+
+(deftest ^:parallel suggested-join-conditions-with-position-test
+  (testing "when editing the _i_th join, columns from that and later joins should not be suggested"
+    ;; We want a case where the existing join contains an FK for the new RHS table, but the original table doesn't.
+    ;; Products + Orders works for this: Orders.USER_ID is an FK to People.ID, but Products has no such link.
+    (let [products->orders  (lib/join-clause (meta/table-metadata :orders)
+                                             [(lib/= (meta/field-metadata :products :id)
+                                                     (meta/field-metadata :orders :product-id))])
+          products->reviews (lib/join-clause (meta/table-metadata :reviews)
+                                             [(lib/= (meta/field-metadata :products :id)
+                                                     (meta/field-metadata :reviews :product-id))])]
+      (testing "Products + Orders"
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                        (lib/join products->orders))]
+          (testing "for a new join (no position), Orders.USER_ID is suggested for joining People"
+            (is (=? [[:= {}
+                      [:field {:join-alias "Orders"} (meta/id :orders :user-id)]
+                      [:field {}                     (meta/id :people :id)]]]
+                    (lib/suggested-join-conditions query -1 (meta/table-metadata :people)))))
+          (testing "but when editing that join, Orders.USER_ID is not visible and no condition is suggested"
+            (is (=? nil
+                    (lib/suggested-join-conditions query -1 (meta/table-metadata :people) 0))))))
+      (testing "Products + Reviews + Orders"
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                        (lib/join products->reviews)
+                        (lib/join products->orders))]
+          (testing "for a new join (no position), Orders.USER_ID is suggested for joining People"
+            (is (=? [[:= {}
+                      [:field {:join-alias "Orders"} (meta/id :orders :user-id)]
+                      [:field {}                     (meta/id :people :id)]]]
+                    (lib/suggested-join-conditions query -1 (meta/table-metadata :people)))))
+          (testing "but when editing *either* join, Orders.USER_ID is not visible and no condition is suggested"
+            (doseq [position [0 1]]
+              (is (=? nil
+                      (lib/suggested-join-conditions query -1 (meta/table-metadata :people) position)))))))
+      (testing "Products + Orders + Reviews"
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                        (lib/join products->orders)
+                        (lib/join products->reviews))]
+          (testing "for a new join (no position), Orders.USER_ID is suggested for joining People"
+            (is (=? [[:= {}
+                      [:field {:join-alias "Orders"} (meta/id :orders :user-id)]
+                      [:field {}                     (meta/id :people :id)]]]
+                    (lib/suggested-join-conditions query -1 (meta/table-metadata :people)))))
+          (testing "when editing the second join, the first join's keys are still available"
+            (is (=? [[:= {}
+                      [:field {:join-alias "Orders"} (meta/id :orders :user-id)]
+                      [:field {}                     (meta/id :people :id)]]]
+                    (lib/suggested-join-conditions query -1 (meta/table-metadata :people) 1))))
+          (testing "but when editing the first join, Orders.USER_ID is not visible and no condition is suggested"
+            (is (=? nil
+                    (lib/suggested-join-conditions query -1 (meta/table-metadata :people) 0)))))))))

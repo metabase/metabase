@@ -61,7 +61,7 @@
       (let [updated? (promise)]
         (add-watch (var-get #'mdb.connection-pool-setup/latest-activity)
                    ::DbActivityTracker-test
-                   (fn [_ _ _ _nv]
+                   (fn [_key _ref _old-state _new-state]
                      (deliver updated? ::completed)))
         (reset! (var-get #'mdb.connection-pool-setup/latest-activity) nil)
         (simulate-db-activity)

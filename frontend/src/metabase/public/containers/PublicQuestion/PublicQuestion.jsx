@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 
+import cx from "classnames";
 import { updateIn } from "icepick";
 import { Component } from "react";
 import { connect } from "react-redux";
@@ -7,6 +8,7 @@ import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
@@ -22,11 +24,11 @@ import {
 } from "metabase/services";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Visualization from "metabase/visualizations/components/Visualization";
-import Question from "metabase-lib/Question";
-import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
-import { getParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
-import { applyParameters } from "metabase-lib/queries/utils/card";
+import Question from "metabase-lib/v1/Question";
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
+import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
+import { applyParameters } from "metabase-lib/v1/queries/utils/card";
 
 import EmbedFrame from "../../components/EmbedFrame";
 
@@ -198,7 +200,7 @@ class PublicQuestionInner extends Component {
 
     const actionButtons = result && (
       <QueryDownloadWidget
-        className="m1 text-medium-hover"
+        className={cx(CS.m1, "text-medium-hover")}
         question={question}
         result={result}
         uuid={uuid}
@@ -219,7 +221,7 @@ class PublicQuestionInner extends Component {
         setParameterValueToDefault={this.setParameterValueToDefault}
       >
         <LoadingAndErrorWrapper
-          className="flex-full"
+          className={CS.flexFull}
           loading={!result || !initialized}
           error={typeof result === "string" ? result : null}
           noWrapper
@@ -228,7 +230,7 @@ class PublicQuestionInner extends Component {
             <Visualization
               error={result && result.error}
               rawSeries={[{ card: card, data: result && result.data }]}
-              className="full flex-full z1"
+              className={cx(CS.full, CS.flexFull, CS.z1)}
               onUpdateVisualizationSettings={settings =>
                 this.setState({
                   card: updateIn(

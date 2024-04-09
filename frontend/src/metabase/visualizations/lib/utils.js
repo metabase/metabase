@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
-import { isDimension, isMetric, isDate } from "metabase-lib/types/utils/isa";
+import { isDimension, isMetric, isDate } from "metabase-lib/v1/types/utils/isa";
 
 export const MAX_SERIES = 100;
 

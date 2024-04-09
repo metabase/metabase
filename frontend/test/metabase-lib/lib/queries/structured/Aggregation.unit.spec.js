@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import Aggregation from "metabase-lib/queries/structured/Aggregation";
+import Aggregation from "metabase-lib/v1/queries/structured/Aggregation";
 import { createMockMetric } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,

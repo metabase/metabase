@@ -3,6 +3,8 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import { FieldSet } from "metabase/components/FieldSet";
+import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 
 import { QueryDefinition } from "../QueryDefinition";
 
@@ -18,16 +20,19 @@ export class QueryDefinitionTooltip extends Component {
   render() {
     const { type, object } = this.props;
     return (
-      <div className="p2" style={{ width: 250 }}>
+      <div className={CS.p2} style={{ width: 250 }}>
         <div>
           {type && type === "metric" && object.archived
             ? t`This metric has been retired.  It's no longer available for use.`
             : object.description}
         </div>
         {object.definition && (
-          <div className="mt2">
+          <div className={CS.mt2}>
             <FieldSet legend={t`Definition`} className="border-light">
-              <QueryDefinition className="TooltipFilterList" object={object} />
+              <QueryDefinition
+                className={QueryBuilderS.TooltipFilterList}
+                object={object}
+              />
             </FieldSet>
           </div>
         )}

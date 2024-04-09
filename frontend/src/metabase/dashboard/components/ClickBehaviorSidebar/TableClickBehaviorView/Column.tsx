@@ -5,7 +5,7 @@ import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
-import { getIconForField } from "metabase-lib/metadata/utils/fields";
+import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
   ClickBehavior,
   CustomDestinationClickBehavior,

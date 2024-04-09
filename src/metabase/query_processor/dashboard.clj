@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver.common.parameters.operators :as params.ops]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
@@ -127,7 +127,9 @@
         ;; ignore default values in request params as well. (#20516)
         request-params            (for [param request-params]
                                     (dissoc param :default))
-        dashboard                 (api/check-404 (t2/select-one Dashboard :id dashboard-id))
+        dashboard                 (-> (t2/select-one Dashboard :id dashboard-id)
+                                      (t2/hydrate :resolved-params)
+                                      (api/check-404))
         dashboard-param-id->param (into {}
                                         ;; remove the `:default` values from Dashboard params. We don't ACTUALLY want to
                                         ;; use these values ourselves -- the expectation is that the frontend will pass
@@ -137,7 +139,7 @@
                                         ;; more information.
                                         (map (fn [[param-id param]]
                                                [param-id (dissoc param :default)]))
-                                        (dashboard/dashboard->resolved-params dashboard))
+                                        (:resolved-params dashboard))
         request-param-id->param   (into {} (map (juxt :id identity)) request-params)
         merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)
                                                request-param-id->param))]

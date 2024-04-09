@@ -7,19 +7,23 @@
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql :as driver.sql]
-   [metabase.driver.sql.parameters.substitution
-    :as sql.params.substitution]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.setting :as setting]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -598,7 +602,7 @@
       true                                    (vary-meta assoc ::do-not-qualify? true))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
-  [driver [_field _id-or-name {::add/keys [source-table]} :as field-clause]]
+  [driver [_field _id-or-name {::add/keys [source-table], :as _opts} :as field-clause]]
   (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
     ;; if the Field is from a join or source table, record this fact so that we know never to qualify it with the
     ;; project ID no matter what
@@ -619,9 +623,9 @@
       t (->temporal-type t))))
 
 (defn- datetime-diff-check-args
-  "Validates the types of the datetime args to a `datetime-diff` clause.
-   This is exactly the same as [[sql.qp/datetime-diff-check-args]] except it uses [[temporal-type]]`
-   to get the type of each arg, not [[h2x/database-type]], which is needed for bigquery."
+  "Validates the types of the datetime args to a `datetime-diff` clause. This is exactly the same
+  as [[sql.qp/datetime-diff-check-args]] except it uses [[temporal-type]]` to get the type of each arg,
+  not [[h2x/database-type]], which is needed for bigquery."
   [x y]
   (doseq [arg [x y]
           :let [db-type (some-> (temporal-type arg) name)]
@@ -729,17 +733,31 @@
   [_ t]
   (format "timestamp \"%s %s\"" (u.date/format-sql (t/local-date-time t)) (.getId (t/zone-id t))))
 
+(def ^:private ^:dynamic *compiling-cumulative-aggregation* false)
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :cum-count]
+  [driver expr]
+  (binding [*compiling-cumulative-aggregation* true]
+    ((get-method sql.qp/->honeysql [:sql :cum-count]) driver expr)))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :cum-sum]
+  [driver expr]
+  (binding [*compiling-cumulative-aggregation* true]
+    ((get-method sql.qp/->honeysql [:sql :cum-sum]) driver expr)))
+
 (defmethod sql.qp/apply-top-level-clause [:bigquery-cloud-sdk :breakout]
   [driver top-level-clause honeysql-form query]
-  ;; If stuff in `:fields` still needs to be qualified like `dataset.table.field`, just the stuff in `:group-by` should
-  ;; not. So we'll actually call the parent method twice, once with the fields as is (i.e., qualifiable) and once with
-  ;; them removed. Then we'll splice the unqualified `:group-by` in
-  (let [parent-method (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
-                               driver top-level-clause honeysql-form)
-        qualified     (parent-method query)
-        unqualified   (parent-method (update query :breakout sql.qp/rewrite-fields-to-force-using-column-aliases))]
-    (merge qualified
-           (select-keys unqualified #{:group-by}))))
+  (if *compiling-cumulative-aggregation*
+    ((get-method sql.qp/apply-top-level-clause [:sql :breakout]) driver top-level-clause honeysql-form query)
+    ;; If stuff in `:fields` still needs to be qualified like `dataset.table.field`, just the stuff in `:group-by` should
+    ;; not. So we'll actually call the parent method twice, once with the fields as is (i.e., qualifiable) and once with
+    ;; them removed. Then we'll splice the unqualified `:group-by` in
+    (let [parent-method (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
+                                 driver top-level-clause honeysql-form)
+          qualified     (parent-method query)
+          unqualified   (parent-method (update query :breakout sql.qp/rewrite-fields-to-force-using-column-aliases))]
+      (merge qualified
+             (select-keys unqualified #{:group-by})))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :asc]
   [driver clause]
@@ -939,3 +957,21 @@
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->Time]
   [_driver _semantic_type expr]
   (h2x/->time expr))
+
+(mu/defn ^:private nest-breakouts-in-stages-with-cumulative-aggregation :- mbql.s/MBQLQuery
+  [inner-query :- mbql.s/MBQLQuery]
+  (let [metadata-provider (qp.store/metadata-provider)
+        database-id       (u/the-id (lib.metadata/database (qp.store/metadata-provider)))]
+    (-> (lib.query/query-from-legacy-inner-query metadata-provider database-id inner-query)
+        qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation
+        lib.convert/->legacy-MBQL
+        :query)))
+
+(defmethod sql.qp/preprocess :bigquery-cloud-sdk
+  [driver inner-query]
+  (let [parent-method                (get-method sql.qp/preprocess :sql)
+        has-cumulative-aggregations? (lib.util.match/match (:aggregation inner-query)
+                                       #{:cum-sum :cum-count})
+        inner-query                  (cond-> inner-query
+                                       has-cumulative-aggregations? nest-breakouts-in-stages-with-cumulative-aggregation)]
+    (parent-method driver inner-query)))

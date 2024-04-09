@@ -4,17 +4,19 @@ import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { WithVizSettingsData } from "metabase/dashboard/hoc/WithVizSettingsData";
 import {
   getVirtualCardType,
+  isQuestionCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import type { IconName, IconProps } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Visualization from "metabase/visualizations/components/Visualization";
-import Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Dashboard,
   DashCardId,
@@ -60,6 +62,7 @@ interface DashCardVisualizationProps {
   expectedDuration: number;
   isSlow: CardSlownessStatus;
 
+  isAction: boolean;
   isPreviewing: boolean;
   isEmbed: boolean;
   isClickBehaviorSidebarOpen: boolean;
@@ -106,6 +109,7 @@ export function DashCardVisualization({
   expectedDuration,
   error,
   headerIcon,
+  isAction,
   isSlow,
   isPreviewing,
   isEmbed,
@@ -125,7 +129,9 @@ export function DashCardVisualization({
   onUpdateVisualizationSettings,
 }: DashCardVisualizationProps) {
   const question = useMemo(() => {
-    return new Question(dashcard.card, metadata);
+    return isQuestionCard(dashcard.card)
+      ? new Question(dashcard.card, metadata)
+      : null;
   }, [dashcard.card, metadata]);
 
   const renderVisualizationOverlay = useCallback(() => {
@@ -183,8 +189,11 @@ export function DashCardVisualization({
   ]);
 
   const renderActionButtons = useCallback(() => {
-    const mainSeries = series[0] as unknown as Dataset;
+    if (!question) {
+      return null;
+    }
 
+    const mainSeries = series[0] as unknown as Dataset;
     const shouldShowDashCardMenu = DashCardMenuConnected.shouldRender({
       question,
       result: mainSeries,
@@ -223,7 +232,7 @@ export function DashCardVisualization({
 
   return (
     <WrappedVisualization
-      className={cx("flex-full overflow-hidden", {
+      className={cx(CS.flexFull, CS.overflowHidden, {
         "pointer-events-none": isEditingDashboardLayout,
       })}
       classNameWidgets={cx({
@@ -243,6 +252,7 @@ export function DashCardVisualization({
       error={error?.message}
       errorIcon={error?.icon}
       showTitle
+      isAction={isAction}
       isDashboard
       isSlow={isSlow}
       isFullscreen={isFullscreen}

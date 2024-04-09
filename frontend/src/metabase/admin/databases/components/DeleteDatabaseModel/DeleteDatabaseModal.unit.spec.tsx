@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { render, screen, waitForLoaderToBeRemoved } from "__support__/ui";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 
 import type { DeleteDatabaseModalProps } from "./DeleteDatabaseModal";
 import DeleteDatabaseModal from "./DeleteDatabaseModal";
@@ -55,14 +55,14 @@ describe("DeleteDatabaseModal", () => {
 
     expect(deleteButton).toBeDisabled();
 
-    userEvent.type(
+    await userEvent.type(
       screen.getByTestId("database-name-confirmation-input"),
       "database name",
     );
 
     expect(deleteButton).toBeEnabled();
 
-    userEvent.click(deleteButton);
+    await userEvent.click(deleteButton);
 
     expect(onDelete).toHaveBeenCalledWith(database);
   });
@@ -76,21 +76,21 @@ describe("DeleteDatabaseModal", () => {
 
     expect(deleteButton).toBeDisabled();
 
-    userEvent.click(screen.getByText("Delete 10 saved questions"));
-    userEvent.click(screen.getByText("Delete 20 models"));
-    userEvent.click(screen.getByText("Delete 30 metrics"));
-    userEvent.click(screen.getByText("Delete 40 segments"));
+    await userEvent.click(screen.getByText("Delete 10 saved questions"));
+    await userEvent.click(screen.getByText("Delete 20 models"));
+    await userEvent.click(screen.getByText("Delete 30 metrics"));
+    await userEvent.click(screen.getByText("Delete 40 segments"));
 
     expect(deleteButton).toBeDisabled();
 
-    userEvent.type(
+    await userEvent.type(
       screen.getByTestId("database-name-confirmation-input"),
       "database name",
     );
 
     expect(deleteButton).toBeEnabled();
 
-    userEvent.click(deleteButton);
+    await userEvent.click(deleteButton);
 
     expect(onDelete).toHaveBeenCalledWith(database);
   });
@@ -104,12 +104,12 @@ describe("DeleteDatabaseModal", () => {
     });
 
     const deleteButton = screen.getByRole("button", { name: "Delete" });
-    userEvent.type(
+    await userEvent.type(
       screen.getByTestId("database-name-confirmation-input"),
       "database name",
     );
 
-    userEvent.click(deleteButton);
+    await userEvent.click(deleteButton);
 
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
   });

@@ -31,6 +31,7 @@
 :global(.Modal.Modal--medium) {
   width: 65%;
 }
+
 :global(.Modal.Modal--wide) {
   width: 85%;
 }

@@ -27,14 +27,14 @@
    [java-time.api :as t]
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -343,9 +343,8 @@
   FieldValues. You most likely should not be using this directly in code outside of this namespace, unless it's for a
   very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
   [field]
-  (classloader/require 'metabase.db.metadata-queries)
   (try
-    (let [distinct-values         ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)
+    (let [distinct-values         (metadata-queries/field-distinct-values field)
           limited-distinct-values (take-by-length *total-max-length* distinct-values)]
       {:values          limited-distinct-values
        ;; has_more_values=true means the list of values we return is a subset of all possible values.
@@ -359,9 +358,9 @@
                           ;; So, if the returned `distinct-values` has length equal to that exact limit,
                           ;; we assume the returned values is just a subset of what we have in DB.
                           (= (count distinct-values)
-                             @(resolve 'metabase.db.metadata-queries/absolute-max-distinct-values-limit)))})
+                             metadata-queries/absolute-max-distinct-values-limit))})
     (catch Throwable e
-      (log/error e (trs "Error fetching field values"))
+      (log/error e "Error fetching field values")
       nil)))
 
 (defn- delete-duplicates-and-return-latest!
@@ -416,9 +415,11 @@
            (or has_more_values
                (> (count values) auto-list-cardinality-threshold)))
       (do
-        (log/info (trs "Field {0} was previously automatically set to show a list widget, but now has {1} values."
-                       field-name (count values))
-                  (trs "Switching Field to use a search widget instead."))
+        (log/infof
+         (str "Field %s was previously automatically set to show a list widget, but now has %s values."
+              " Switching Field to use a search widget instead.")
+         field-name
+         (count values))
         (t2/update! 'Field (u/the-id field) {:has_field_values nil})
         (clear-field-values-for-field! field)
         ::fv-deleted)
@@ -426,28 +427,28 @@
       (and (= (:values field-values) values)
            (= (:has_more_values field-values) has_more_values))
       (do
-        (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
+        (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
         ::fv-skipped)
 
       ;; if the FieldValues object already exists then update values in it
       (and field-values unwrapped-values)
       (do
-       (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
-       (t2/update! FieldValues (u/the-id field-values)
-                   (m/remove-vals nil?
-                                  {:has_more_values       has_more_values
-                                   :values                values
-                                   :human_readable_values (fixup-human-readable-values field-values values)}))
-       ::fv-updated)
+        (log/debugf "Storing updated FieldValues for Field %s..." field-name)
+        (t2/update! FieldValues (u/the-id field-values)
+                    (m/remove-vals nil?
+                                   {:has_more_values       has_more_values
+                                    :values                values
+                                    :human_readable_values (fixup-human-readable-values field-values values)}))
+        ::fv-updated)
 
       ;; if FieldValues object doesn't exist create one
       unwrapped-values
       (do
-        (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
-        (mdb.u/select-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
-          (constantly {:has_more_values       has_more_values
-                       :values                values
-                       :human_readable_values human-readable-values}))
+        (log/debugf "Storing FieldValues for Field %s..." field-name)
+        (mdb.query/select-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
+                                     (constantly {:has_more_values       has_more_values
+                                                  :values                values
+                                                  :human_readable_values human-readable-values}))
         ::fv-created)
 
       ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
@@ -506,13 +507,12 @@
                  (filter field-should-have-field-values?
                          (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
                                      :semantic_type :visibility_type :table_id :has_field_values]
-                           :id [:in field-ids])))
+                                    :id [:in field-ids])))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]
     (doseq [{table-id :table_id, :as field} fields]
       (when (table-id->is-on-demand? table-id)
-        (log/debug
-         (trs "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
-                 (u/the-id field) (:name field)))
+        (log/debugf "Field %s '%s' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
+                    (u/the-id field) (:name field))
         (create-or-update-full-field-values! field)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

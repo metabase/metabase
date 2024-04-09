@@ -142,7 +142,7 @@
     ;; Create the database and load its data
     ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
     (u/with-timeout create-database-timeout-ms
-      (test.tz/with-system-timezone-id "UTC"
+      (test.tz/with-system-timezone-id! "UTC"
         (tx/create-db! driver database-definition)))
     ;; Add DB object to Metabase DB
     (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
@@ -156,10 +156,7 @@
     (catch Throwable e
       (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
       (tx/destroy-db! driver database-definition)
-      (throw (ex-info (format "Failed to create %s '%s' test database: %s" driver database-name (ex-message e))
-                      {:driver        driver
-                       :database-name database-name}
-                      e)))))
+      (throw e))))
 
 (defn- create-database-with-bound-settings! [driver dbdef]
   (letfn [(thunk []

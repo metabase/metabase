@@ -7,7 +7,7 @@
    [metabase.actions.error :as actions.error]
    [metabase.config :as config]
    [metabase.core :as mbc]
-   [metabase.db.spec :as mdb.spec]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.h2.actions :as h2.actions]
@@ -167,7 +167,7 @@
 (deftest ^:parallel timestamp-with-timezone-test
   (testing "Make sure TIMESTAMP WITH TIME ZONEs come back as OffsetDateTimes."
     (is (= [{:t #t "2020-05-28T18:06-07:00"}]
-           (jdbc/query (mdb.spec/spec :h2 {:db "mem:test_db"})
+           (jdbc/query (mdb/spec :h2 {:db "mem:test_db"})
                        "SELECT TIMESTAMP WITH TIME ZONE '2020-05-28 18:06:00.000 America/Los_Angeles' AS t")))))
 
 (deftest ^:parallel native-query-parameters-test

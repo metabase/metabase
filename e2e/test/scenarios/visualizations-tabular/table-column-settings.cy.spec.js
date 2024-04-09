@@ -496,8 +496,6 @@ describe("scenarios > visualizations > table column settings", () => {
 
       _hideColumn(testData);
       _showColumn(testData);
-      _removeColumn(testData);
-      _addColumn(testData);
     });
 
     it("should be able to show and hide custom expressions for a table with selected fields", () => {
@@ -515,8 +513,6 @@ describe("scenarios > visualizations > table column settings", () => {
 
       _hideColumn(testData);
       _showColumn(testData);
-      _removeColumn(testData);
-      _addColumn(testData);
     });
 
     it("should be able to show and hide columns from aggregations", () => {

@@ -8,6 +8,7 @@
   Placeholders should use `gettext` format e.g. `{0}`, `{1}`, and so forth.
 
     (tru \"Number of cans: {0}\" 2)"
+  {:style/indent [:form]}
   [format-string & args]
   (macros/case
     :clj
@@ -24,6 +25,7 @@
 
   NOTE: When called from ClojureScript, this function behaves identically to `tru`. The originating JS callsite must
   temporarily override the locale used by ttag using the `withInstanceLocalization` wrapper function."
+  {:style/indent [:form]}
   [format-string & args]
   (macros/case
     :clj
@@ -38,6 +40,7 @@
   "i18n a string with both singular and plural forms, using the current user's locale. The appropriate plural form will
   be returned based on the value of `n`. `n` can be interpolated into the format strings using the `{0}`
   syntax. (Other placeholders are not supported)."
+  {:style/indent [:form]}
   [format-string format-string-pl n]
   (macros/case
     :clj
@@ -50,6 +53,7 @@
   "i18n a string with both singular and plural forms, using the site's locale. The appropriate plural form will be
   returned based on the value of `n`. `n` can be interpolated into the format strings using the `{0}` syntax. (Other
   placeholders are not supported)."
+  {:style/indent [:form]}
   [format-string format-string-pl n]
   (macros/case
     :clj

@@ -17,8 +17,8 @@ import { getDashCardById, getQuestions } from "metabase/dashboard/selectors";
 import { isQuestionDashCard } from "metabase/dashboard/utils";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/Question";
-import { compareMappingOptionTargets } from "metabase-lib/parameters/utils/targets";
+import Question from "metabase-lib/v1/Question";
+import { compareMappingOptionTargets } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   QuestionDashboardCard,
   DashCardId,

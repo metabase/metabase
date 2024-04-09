@@ -7,6 +7,7 @@ import _ from "underscore";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import PersistedModels from "metabase/entities/persisted-models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
@@ -69,7 +70,7 @@ function ModelCacheRefreshJobModal({
       >{t`Retry now`}</Button>,
       <Link
         key="edit"
-        className="Button"
+        className={ButtonsS.Button}
         to={`/model/${persistedModel.card_id}/query`}
       >{t`Edit model`}</Link>,
     ];

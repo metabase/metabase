@@ -90,7 +90,7 @@
                                             t       (t/offset-date-time (t/with-zone-same-instant (u.date/parse s) zone-id))
                                             s       (t/format :iso-offset-date-time t)]
                                         [id s cnt])))]
-                (mt/with-report-timezone-id (->timezone-id timezone)
+                (mt/with-report-timezone-id! (->timezone-id timezone)
                   (mt/dataset sad-toucan-incidents
                     (is (= local-results
                            (mt/formatted-rows [int identity int]
@@ -99,7 +99,7 @@
                                 :order-by [[:asc $id]]
                                 :limit    5}))))))))))))))
 
-(defn- sad-toucan-incidents-with-bucketing
+(defn- sad-toucan-incidents-with-bucketing!
   "Returns 10 sad toucan incidents grouped by `unit`"
   ([unit]
    (->> (mt/dataset sad-toucan-incidents
@@ -112,8 +112,8 @@
 
   ([unit timezone-id]
    (mt/initialize-if-needed! :db)
-   (mt/with-report-timezone-id (->timezone-id timezone-id)
-     (sad-toucan-incidents-with-bucketing unit))))
+   (mt/with-report-timezone-id! (->timezone-id timezone-id)
+     (sad-toucan-incidents-with-bucketing! unit))))
 
 (defn- default-timezone-parse-fn
   "Create a date formatter, interpretting the datestring as being in `tz`"
@@ -222,7 +222,10 @@
                 ["2015-06-02T05:37:00Z" 1]
                 ["2015-06-02T08:20:00Z" 1]
                 ["2015-06-02T11:11:00Z" 1]])
-             (sad-toucan-incidents-with-bucketing :default :pacific))))
+             (sad-toucan-incidents-with-bucketing! :default :pacific))))))
+
+(deftest group-by-default-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing "\nEastern timezone"
       (is (= (cond
                ;; These databases are always in UTC so aren't impacted by changes in report-timezone
@@ -275,7 +278,9 @@
                 ["2015-06-02T05:37:00Z" 1]
                 ["2015-06-02T08:20:00Z" 1]
                 ["2015-06-02T11:11:00Z" 1]])
-             (sad-toucan-incidents-with-bucketing :default :eastern)))))
+             (sad-toucan-incidents-with-bucketing! :default :eastern))))))
+
+(deftest group-by-default-test-3
   ;; Changes the JVM timezone from UTC to Pacific, this test isn't run on H2 as the database stores it's timezones in
   ;; the JVM timezone (UTC on startup). When we change that timezone, it then assumes the data was also stored in that
   ;; timezone. This leads to incorrect results. In this example it applies the pacific offset twice
@@ -299,8 +304,8 @@
 
                :else
                (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :pacific)))
-             (mt/with-system-timezone-id (timezone :pacific)
-               (sad-toucan-incidents-with-bucketing :default :eastern)))))))
+             (mt/with-system-timezone-id! (timezone :pacific)
+               (sad-toucan-incidents-with-bucketing! :default :eastern)))))))
 
 (deftest group-by-minute-test
   (testing "This dataset doesn't have multiple events in a minute, the results are the same as the default grouping"
@@ -317,7 +322,7 @@
 
                :else
                (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :utc)))
-             (sad-toucan-incidents-with-bucketing :minute :pacific))))))
+             (sad-toucan-incidents-with-bucketing! :minute :pacific))))))
 
 (deftest group-by-minute-of-hour-test
   (testing "Grouping by minute of hour is not affected by timezones"
@@ -332,7 +337,7 @@
               [7 1]
               [8 1]
               [9 1]]
-             (sad-toucan-incidents-with-bucketing :minute-of-hour :pacific))))))
+             (sad-toucan-incidents-with-bucketing! :minute-of-hour :pacific))))))
 
 (def ^:private sad-toucan-dates-grouped-by-hour
   "This is the first 10 groupings of sad toucan dates at the same hour when converted from millis since epoch in the UTC
@@ -373,7 +378,7 @@
 
              :else
              (results-by-hour (default-timezone-parse-fn :utc) (format-in-timezone-fn :utc)))
-           (sad-toucan-incidents-with-bucketing :hour :pacific)))))
+           (sad-toucan-incidents-with-bucketing! :hour :pacific)))))
 
 ;; The counts are affected by timezone as the times are shifted back by 7 hours. These count changes can be validated
 ;; by matching the first three results of the pacific results to the last three of the UTC results (i.e. pacific is 7
@@ -385,10 +390,10 @@
                       (qp.test-util/supports-report-timezone? driver/*driver*))
                [[0 8]  [1 9] [2 7] [3 10] [4 10] [5 9]  [6 6]  [7 5] [8 7] [9 7]]
                [[0 13] [1 8] [2 4] [3 7]  [4 5]  [5 13] [6 10] [7 8] [8 9] [9 7]])
-             (sad-toucan-incidents-with-bucketing :hour-of-day :pacific))))
+             (sad-toucan-incidents-with-bucketing! :hour-of-day :pacific))))
     (testing "results in UTC"
       (is (= [[0 13] [1 8] [2 4] [3 7] [4 5] [5 13] [6 10] [7 8] [8 9] [9 7]]
-             (sad-toucan-incidents-with-bucketing :hour-of-day :utc))
+             (sad-toucan-incidents-with-bucketing! :hour-of-day :utc))
           "With all databases in UTC, the results should be the same for all DBs"))))
 
 (defn- find-events-in-range
@@ -453,7 +458,7 @@
       (is (= (if (= :sqlite driver/*driver*)
                (results-by-day u.date/parse date-without-time-format-fn  [6 10 4 9 9 8 8 9 7 9])
                (results-by-day u.date/parse (format-in-timezone-fn :utc) [6 10 4 9 9 8 8 9 7 9]))
-             (sad-toucan-incidents-with-bucketing :day :utc))))
+             (sad-toucan-incidents-with-bucketing! :day :utc))))
     (testing "\nPacific timezone"
       (is (= (cond
                (= :sqlite driver/*driver*)
@@ -503,7 +508,7 @@
                 ["2015-06-08T00:00:00Z" 9]
                 ["2015-06-09T00:00:00Z" 7]
                 ["2015-06-10T00:00:00Z" 9]])
-             (sad-toucan-incidents-with-bucketing :day :pacific))))
+             (sad-toucan-incidents-with-bucketing! :day :pacific))))
     (testing "\nEastern timezone"
       (is (= (cond
                (= :sqlite driver/*driver*)
@@ -523,7 +528,7 @@
                (results-by-day u.date/parse
                                (format-in-timezone-fn :utc)
                                [6 10 4 9 9 8 8 9 7 9]))
-             (sad-toucan-incidents-with-bucketing :day :eastern)))))
+             (sad-toucan-incidents-with-bucketing! :day :eastern)))))
   (testing "\nWith JVM timezone set to Pacific time"
     ;; This tests out the JVM timezone's impact on the results. For databases supporting a report timezone, this should
     ;; have no affect on the results. When no report timezone is used it should convert dates to the JVM's timezone
@@ -555,8 +560,8 @@
                (results-by-day (default-timezone-parse-fn :utc)
                                (format-in-timezone-fn :pacific)
                                [6 10 4 9 9 8 8 9 7 9]))
-             (mt/with-system-timezone-id (timezone :pacific)
-               (sad-toucan-incidents-with-bucketing :day :pacific)))))))
+             (mt/with-system-timezone-id! (timezone :pacific)
+               (sad-toucan-incidents-with-bucketing! :day :pacific)))))))
 
 (deftest group-by-day-of-week-test
   (mt/test-drivers (mt/normal-drivers)
@@ -565,10 +570,10 @@
                       (qp.test-util/supports-report-timezone? driver/*driver*))
                [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]]
                [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]])
-             (sad-toucan-incidents-with-bucketing :day-of-week :pacific))))
+             (sad-toucan-incidents-with-bucketing! :day-of-week :pacific))))
     (testing "\nUTC timezone"
       (is (= [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]]
-             (sad-toucan-incidents-with-bucketing :day-of-week :utc))))))
+             (sad-toucan-incidents-with-bucketing! :day-of-week :utc))))))
 
 (deftest group-by-day-of-month-test
   (mt/test-drivers (mt/normal-drivers)
@@ -577,10 +582,10 @@
                       (qp.test-util/supports-report-timezone? driver/*driver*))
                [[1 8] [2 9] [3 9] [4 4] [5 11] [6 8] [7 6] [8 10] [9 6] [10 10]]
                [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]])
-             (sad-toucan-incidents-with-bucketing :day-of-month :pacific))))
+             (sad-toucan-incidents-with-bucketing! :day-of-month :pacific))))
     (testing "\nUTC timezone"
       (is (= [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]]
-             (sad-toucan-incidents-with-bucketing :day-of-month :utc))))))
+             (sad-toucan-incidents-with-bucketing! :day-of-month :utc))))))
 
 (deftest group-by-day-of-year-test
   (mt/test-drivers (mt/normal-drivers)
@@ -589,10 +594,10 @@
                       (qp.test-util/supports-report-timezone? driver/*driver*))
                [[152 8] [153 9]  [154 9] [155 4] [156 11] [157 8]  [158 6] [159 10] [160 6] [161 10]]
                [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]])
-             (sad-toucan-incidents-with-bucketing :day-of-year :pacific))))
+             (sad-toucan-incidents-with-bucketing! :day-of-year :pacific))))
     (testing "\nUTC timezone"
       (is (= [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]]
-             (sad-toucan-incidents-with-bucketing :day-of-year :utc))))))
+             (sad-toucan-incidents-with-bucketing! :day-of-year :utc))))))
 
 ;; This test helps in debugging why event counts change with a given timezone. It queries only a UTC H2 datatabase to
 ;; find how those counts would change if time was in pacific time. The results of this test are also in the UTC test
@@ -649,7 +654,7 @@
                (results-by-week u.date/parse
                                 (format-in-timezone-fn :utc)
                                 [46 47 40 60 7]))
-             (sad-toucan-incidents-with-bucketing :week :utc))))
+             (sad-toucan-incidents-with-bucketing! :week :utc))))
     (testing "\nPacific timezone"
       (is (= (cond
                (= :sqlite driver/*driver*)
@@ -672,7 +677,7 @@
                                 (format-in-timezone-fn :utc)
                                 [46 47 40 60 7]))
 
-             (sad-toucan-incidents-with-bucketing :week :pacific))))
+             (sad-toucan-incidents-with-bucketing! :week :pacific))))
     ;; Tests eastern timezone grouping by week, UTC databases don't change, databases with reporting timezones need to
     ;; account for the 4-5 hour difference
     (testing "\nEastern timezone"
@@ -698,7 +703,7 @@
                                   (format-in-timezone-fn :utc)
                                   [46 47 40 60 7]))
 
-               (sad-toucan-incidents-with-bucketing :week :eastern))))))
+               (sad-toucan-incidents-with-bucketing! :week :eastern))))))
   ;; Setting database timezone id will change how the datetime results are displayed, unless report timezone is set.
   ;; If so, the report timezone takes precedence and result values are formatted according to that. Overriding
   ;; database timezone id has no impact on beginning/end of week during calculation.
@@ -729,12 +734,12 @@
                                 (format-in-timezone-fn :pacific)
                                 [46 47 40 60 7]))
              (mt/with-database-timezone-id (timezone :pacific)
-               (sad-toucan-incidents-with-bucketing :week :pacific)))))))
+               (sad-toucan-incidents-with-bucketing! :week :pacific)))))))
 
 (deftest group-by-week-of-year-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[22 46] [23 47] [24 40] [25 60] [26 7]]
-           (sad-toucan-incidents-with-bucketing :week-of-year :utc)))))
+           (sad-toucan-incidents-with-bucketing! :week-of-year :utc)))))
 
 
 (defn- fmt-str-or-int
@@ -792,7 +797,7 @@
                  :else
                  "2015-06-01T00:00:00Z")
                200]]
-             (sad-toucan-incidents-with-bucketing :month :pacific))))
+             (sad-toucan-incidents-with-bucketing! :month :pacific))))
     (testing "\nEastern timezone"
       (mt/test-drivers (mt/normal-drivers)
         (is (= [[(cond
@@ -805,12 +810,12 @@
                    :else
                    "2015-06-01T00:00:00Z")
                  200]]
-               (sad-toucan-incidents-with-bucketing :month :eastern)))))))
+               (sad-toucan-incidents-with-bucketing! :month :eastern)))))))
 
 (deftest group-by-month-of-year-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[6 200]]
-           (sad-toucan-incidents-with-bucketing :month-of-year :pacific)))))
+           (sad-toucan-incidents-with-bucketing! :month-of-year :pacific)))))
 
 (deftest group-by-quarter-test
   (mt/test-drivers (mt/normal-drivers)
@@ -824,7 +829,7 @@
                      :else
                      "2015-04-01T00:00:00Z")
                200]]
-             (sad-toucan-incidents-with-bucketing :quarter :pacific))))
+             (sad-toucan-incidents-with-bucketing! :quarter :pacific))))
     (testing "\nEastern timezone"
       (is (= [[(cond (= :sqlite driver/*driver*)
                      "2015-04-01"
@@ -835,12 +840,12 @@
                      :else
                      "2015-04-01T00:00:00Z")
                200]]
-             (sad-toucan-incidents-with-bucketing :quarter :eastern))))))
+             (sad-toucan-incidents-with-bucketing! :quarter :eastern))))))
 
 (deftest group-by-quarter-of-year-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[2 200]]
-           (sad-toucan-incidents-with-bucketing :quarter-of-year :pacific)))
+           (sad-toucan-incidents-with-bucketing! :quarter-of-year :pacific)))
 
     (is (= [[1 200]
             [2 284]
@@ -862,7 +867,7 @@
                :else
                "2015-01-01T00:00:00Z")
              200]]
-           (sad-toucan-incidents-with-bucketing :year :pacific)))
+           (sad-toucan-incidents-with-bucketing! :year :pacific)))
 
     (is (= (if (= :sqlite driver/*driver*)
              [["2013-01-01" 235]
@@ -895,7 +900,7 @@
   [^TimestampDatasetDef this]
   (let [interval-seconds (.intervalSeconds this)]
     (mt/dataset-definition
-     (str "checkins_interval_" interval-seconds)
+     (str "interval_" interval-seconds)
      ["checkins"
       [{:field-name "timestamp"
         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
@@ -1039,11 +1044,11 @@
             timestamp-col (m/find-first (comp #{(mt/id :checkins :timestamp)} :id) (lib/visible-columns query))
             query (-> query
                       (lib/expression "Date" timestamp-col)
-                      (lib/filter (lib/time-interval timestamp-col :current :quarter))
+                      (lib/filter (lib/time-interval timestamp-col :current :week))
                       (as-> $q (lib/filter $q (lib/time-interval
                                                 (m/find-first (comp #{"Date"} :name) (lib/visible-columns $q))
-                                                :current :quarter))))]
-        (is (= 30
+                                                :current :week))))]
+        (is (= 7
                (count (mt/rows (qp/process-query query)))))))))
 
 ;; Make sure that when referencing the same field multiple times with different units we return the one that actually
@@ -1173,37 +1178,47 @@
 (deftest ^:parallel legacy-default-datetime-bucketing-test
   (testing (str ":type/Date or :type/DateTime fields that don't have `:temporal-unit` clauses should get default `:day` "
                 "bucketing for legacy reasons. See #9014")
-    (is (= (str "SELECT COUNT(*) AS \"count\" "
-                "FROM \"PUBLIC\".\"CHECKINS\" "
-                "WHERE ("
-                "\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(NOW() AS date)) "
-                "AND "
-                "(\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(DATEADD('day', CAST(1 AS long), CAST(NOW() AS datetime)) AS date)"
-                ")")
-           (:query
-            (qp.compile/compile
-             (mt/mbql-query checkins
-               {:aggregation [[:count]]
-                :filter      [:= $date [:relative-datetime :current]]})))))))
+    (is (=? {:query ["SELECT"
+                     "  COUNT(*) AS \"count\""
+                     "FROM"
+                     "  \"PUBLIC\".\"CHECKINS\""
+                     "WHERE"
+                     "  \"PUBLIC\".\"CHECKINS\".\"DATE\" = CAST(NOW() AS date)"]}
+            (-> (qp.compile/compile
+                 (mt/mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:= $date [:relative-datetime :current]]}))
+                (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))
 
 (deftest ^:parallel compile-time-interval-test
   (testing "Make sure time-intervals work the way they're supposed to."
     (testing "[:time-interval $date -4 :month] should give us something like Oct 01 2020 - Feb 01 2021 if today is Feb 17 2021"
-      (is (= (str "SELECT CHECKINS.DATE AS DATE "
-                  "FROM CHECKINS "
-                  "WHERE ("
-                  "CHECKINS.DATE >= DATE_TRUNC('month', DATEADD('month', CAST(-4 AS long), CAST(NOW() AS datetime))))"
-                  " AND "
-                  "(CHECKINS.DATE < DATE_TRUNC('month', NOW())) "
-                  "GROUP BY CHECKINS.DATE "
-                  "ORDER BY CHECKINS.DATE ASC "
-                  "LIMIT 1048575")
-             (sql.qp-test-util/pretty-sql
-              (:query
-               (qp.compile/compile
-                (mt/mbql-query checkins
-                  {:filter   [:time-interval $date -4 :month]
-                   :breakout [!day.date]})))))))))
+      (is (= ["SELECT"
+              "  CHECKINS.DATE AS DATE"
+              "FROM"
+              "  CHECKINS"
+              "WHERE"
+              "  ("
+              "    CHECKINS.DATE >= DATE_TRUNC("
+              "      'month',"
+              "      DATEADD('month', CAST(-4 AS long), CAST(NOW() AS datetime))"
+              "    )"
+              "  )"
+              "  AND (CHECKINS.DATE < DATE_TRUNC('month', NOW()))"
+              "GROUP BY"
+              "  CHECKINS.DATE"
+              "ORDER BY"
+              "  CHECKINS.DATE ASC"
+              "LIMIT"
+              "  1048575"]
+             (->> (qp.compile/compile
+                   (mt/mbql-query checkins
+                     {:filter   [:time-interval $date -4 :month]
+                      :breakout [!day.date]}))
+                  :query
+                  sql.qp-test-util/pretty-sql
+                  (driver/prettify-native-form :h2)
+                  str/split-lines))))))
 
 (deftest ^:parallel native-query-datetime-filter-test
   (testing "Field Filters with datetime values should behave like gui questions (#33492)"

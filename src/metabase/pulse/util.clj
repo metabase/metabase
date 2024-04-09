@@ -6,7 +6,6 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -30,9 +29,9 @@
                                   (assoc query :middleware {:skip-results-metadata? true
                                                             :process-viz-settings?  true
                                                             :js-int-to-string?      false})
-                                  (merge (cond-> {:executed-by               pulse-creator-id
-                                                  :context                   :pulse
-                                                  :card-id                   card-id}
+                                  (merge (cond-> {:executed-by pulse-creator-id
+                                                  :context     :pulse
+                                                  :card-id     card-id}
                                            (= card-type :model)
                                            (assoc :metadata/model-metadata metadata))
                                          options)))))
@@ -43,7 +42,7 @@
           {:card   card
            :result result}))
       (catch Throwable e
-        (log/warn e (trs "Error running query for Card {0}" card-id))))))
+        (log/warnf e "Error running query for Card %s" card-id)))))
 
 (defn execute-multi-card
   "Multi series card is composed of multiple cards, all of which need to be executed.

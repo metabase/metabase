@@ -60,11 +60,11 @@
   (is (lib.schema.util/unique-uuids? query-with-no-duplicate-uuids))
   (is (not (lib.schema.util/unique-uuids? query-with-duplicate-uuids))))
 
-(deftest ^:parallel UniqueUUIDs-schema-test
-  (is (not (mc/explain lib.schema.util/UniqueUUIDs query-with-no-duplicate-uuids)))
-  (is (mc/explain lib.schema.util/UniqueUUIDs query-with-duplicate-uuids))
+(deftest ^:parallel unique-uuids-schema-test
+  (is (not (mc/explain ::lib.schema.util/unique-uuids query-with-no-duplicate-uuids)))
+  (is (mc/explain ::lib.schema.util/unique-uuids query-with-duplicate-uuids))
   (is (= ["Duplicate :lib/uuid \"00000000-0000-0000-0000-000000000001\""]
-         (me/humanize (mc/explain lib.schema.util/UniqueUUIDs query-with-duplicate-uuids)))))
+         (me/humanize (mc/explain ::lib.schema.util/unique-uuids query-with-duplicate-uuids)))))
 
 (deftest ^:parallel distinct-refs-test
   (are [refs] (not (lib.schema.util/distinct-refs? refs))

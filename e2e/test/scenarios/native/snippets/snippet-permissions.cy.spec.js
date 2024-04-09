@@ -8,6 +8,7 @@ import {
   rightSidebar,
   setTokenFeatures,
   isOSS,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
@@ -64,7 +65,7 @@ describeEE("scenarios > question > snippets (EE)", () => {
       cy.findByText("{{snippet: one}}");
 
       cy.icon("play").first().click();
-      cy.get(".ScalarValue").contains(1);
+      cy.findByTestId("scalar-value").contains(1);
     });
   });
 
@@ -108,8 +109,10 @@ describeEE("scenarios > question > snippets (EE)", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     modal().within(() => cy.findByText("Top folder").click());
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("my favorite snippets").click());
+    entityPickerModal().within(() => {
+      cy.findByText("my favorite snippets").click();
+      cy.findByText("Select").click();
+    });
     cy.intercept("/api/collection/root/items?namespace=snippets").as(
       "updateList",
     );

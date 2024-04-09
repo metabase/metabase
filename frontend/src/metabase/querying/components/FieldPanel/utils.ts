@@ -24,7 +24,10 @@ function getColumnItems(
       column,
       displayName: columnInfo.displayName,
       isSelected: columnInfo.selected ?? false,
-      isDisabled: columnInfo.isAggregation || columnInfo.isBreakout,
+      isDisabled:
+        columnInfo.isAggregation ||
+        columnInfo.isBreakout ||
+        columnInfo.isCalculated,
     };
   });
 }

@@ -14,9 +14,9 @@ import { BrowseApp } from "metabase/browse/components/BrowseApp";
 import SchemaBrowser from "metabase/browse/components/SchemaBrowser";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
-import MoveCollectionModal from "metabase/collections/containers/MoveCollectionModal";
+import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
-import { Unauthorized } from "metabase/containers/ErrorPages";
+import { Unauthorized } from "metabase/components/ErrorPages";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/containers/Unsubscribe";
 import { UserCollectionList } from "metabase/containers/UserCollectionList";
@@ -145,7 +145,7 @@ export const getRoutes = store => {
           </Route>
 
           <Route path="collection/:slug" component={CollectionLanding}>
-            <ModalRoute path="move" modal={MoveCollectionModal} />
+            <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
             <ModalRoute path="archive" modal={ArchiveCollectionModal} />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
             {getCollectionTimelineRoutes()}
@@ -156,7 +156,11 @@ export const getRoutes = store => {
             title={t`Dashboard`}
             component={DashboardAppConnected}
           >
-            <ModalRoute path="move" modal={DashboardMoveModalConnected} />
+            <ModalRoute
+              path="move"
+              modal={DashboardMoveModalConnected}
+              noWrap
+            />
             <ModalRoute path="copy" modal={DashboardCopyModalConnected} />
             <ModalRoute path="archive" modal={ArchiveDashboardModalConnected} />
           </Route>

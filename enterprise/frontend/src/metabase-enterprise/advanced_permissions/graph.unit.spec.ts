@@ -1,4 +1,4 @@
-import Database from "metabase-lib/metadata/Database";
+import Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseAccessPermissions } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 

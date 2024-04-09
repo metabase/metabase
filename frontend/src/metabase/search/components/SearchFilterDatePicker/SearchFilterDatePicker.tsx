@@ -6,7 +6,7 @@ import type { DateShortcutOptions } from "metabase/admin/datamodel/components/fi
 import { DATE_SHORTCUT_OPTIONS } from "metabase/admin/datamodel/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
 import { filterToUrlEncoded } from "metabase/parameters/utils/date-formatting";
 import { SearchFilterApplyButton } from "metabase/search/components/SearchFilterPopoverWrapper/SearchFilterPopoverWrapper";
-import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
+import { dateParameterValueToMBQL } from "metabase-lib/v1/parameters/utils/mbql";
 
 const CREATED_AT_SHORTCUTS: DateShortcutOptions = {
   ...DATE_SHORTCUT_OPTIONS,

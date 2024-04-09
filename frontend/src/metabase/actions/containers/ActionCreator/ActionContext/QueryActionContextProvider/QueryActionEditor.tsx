@@ -1,7 +1,7 @@
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import { ACE_ELEMENT_ID } from "metabase/query_builder/components/NativeQueryEditor/constants";
-import type Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
 function QueryActionEditor({
   query,

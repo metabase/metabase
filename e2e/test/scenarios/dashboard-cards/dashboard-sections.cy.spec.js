@@ -117,7 +117,7 @@ describeWithSnowplow("scenarios > dashboard cards > sections", () => {
 
 function addSection(name) {
   cy.findByLabelText("Add section").click();
-  menu().findByText(name).click();
+  menu().findByLabelText(name).click();
 }
 
 function selectQuestion(question) {

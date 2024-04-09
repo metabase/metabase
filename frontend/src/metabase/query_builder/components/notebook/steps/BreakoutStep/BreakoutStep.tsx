@@ -37,6 +37,19 @@ function BreakoutStep({
     updateQuery(nextQuery);
   };
 
+  const handleReorderBreakout = (
+    sourceClause: Lib.BreakoutClause,
+    targetClause: Lib.BreakoutClause,
+  ) => {
+    const nextQuery = Lib.swapClauses(
+      query,
+      stageIndex,
+      sourceClause,
+      targetClause,
+    );
+    updateQuery(nextQuery);
+  };
+
   const handleRemoveBreakout = (clause: Lib.BreakoutClause) => {
     const nextQuery = Lib.removeClause(query, stageIndex, clause);
     updateQuery(nextQuery);
@@ -61,6 +74,7 @@ function BreakoutStep({
           onClose={onClose}
         />
       )}
+      onReorder={handleReorderBreakout}
       onRemove={handleRemoveBreakout}
       data-testid="breakout-step"
     />
@@ -109,6 +123,7 @@ const BreakoutPopover = ({
       columnGroups={columnGroups}
       hasBinning
       hasTemporalBucketing
+      withInfoIcons
       color="summarize"
       checkIsColumnSelected={item => checkColumnSelected(item, breakoutIndex)}
       onSelect={(column: Lib.ColumnMetadata) => {

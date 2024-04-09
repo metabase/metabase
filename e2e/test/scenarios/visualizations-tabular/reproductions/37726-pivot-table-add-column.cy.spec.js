@@ -47,7 +47,7 @@ const PIVOT_QUESTION = {
   },
 };
 
-describe("issue 37726", function () {
+describe("issue 37726", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();

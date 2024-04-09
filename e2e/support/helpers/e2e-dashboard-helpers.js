@@ -12,7 +12,7 @@ export function disconnectDashboardFilter(selection) {
 }
 
 export function getDashboardCards() {
-  return cy.get(".DashCard");
+  return cy.findAllByTestId("dashcard-container");
 }
 
 export function getDashboardCard(index = 0) {
@@ -20,7 +20,7 @@ export function getDashboardCard(index = 0) {
 }
 
 export function ensureDashboardCardHasText(text, index = 0) {
-  cy.get(".Card").eq(index).should("contain", text);
+  cy.findAllByTestId("dashcard").eq(index).should("contain", text);
 }
 
 function getDashboardApiUrl(dashId) {

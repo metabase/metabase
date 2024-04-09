@@ -28,8 +28,8 @@ import type {
 import type {
   ClickObject,
   ClickObjectDimension,
-} from "metabase-lib/queries/drills/types";
-import { isMetric } from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/queries/drills/types";
+import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
 const getMetricColumnData = (

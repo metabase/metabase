@@ -10,7 +10,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
-   [metabase.db.spec :as mdb.spec]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql.actions :as mysql.actions]
@@ -31,7 +31,7 @@
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log])
   (:import
    (java.io File)
@@ -53,20 +53,21 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(doseq [[feature supported?] {:persist-models                         true
-                              :convert-timezone                       true
-                              :datetime-diff                          true
-                              :now                                    true
-                              :regex                                  false
-                              :percentile-aggregations                false
-                              :full-join                              false
-                              :uploads                                true
-                              :schemas                                false
-                              ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
-                              ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
-                              ;; users in the UI
-                              :case-sensitivity-string-filter-options false
-                              :index-info                             true}]
+(doseq [[feature supported?] {;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the
+                              ;; server and the columns themselves. Since this isn't something we can really change in
+                              ;; the query itself don't present the option to the users in the UI
+                              :case-sensitivity-string-filter-options              false
+                              :convert-timezone                                    true
+                              :datetime-diff                                       true
+                              :full-join                                           false
+                              :index-info                                          true
+                              :now                                                 true
+                              :percentile-aggregations                             false
+                              :persist-models                                      true
+                              :regex                                               false
+                              :schemas                                             false
+                              :sql/window-functions.order-by-output-column-numbers false
+                              :uploads                                             true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -121,15 +122,15 @@
      (fn [^java.sql.Connection conn]
        (when (unsupported-version? (.getMetaData conn))
          (log/warn
-          (u/format-color 'red
-                          (str
-                           "\n\n********************************************************************************\n"
-                           (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
+          (u/format-color :red
+                          (str "\n\n********************************************************************************\n"
+                               (format
+                                "WARNING: Metabase only officially supports MySQL %s/MariaDB %s and above."
                                 min-supported-mysql-version
                                 min-supported-mariadb-version)
-                           "\n"
-                           (trs "All Metabase features may not work properly when using an unsupported version.")
-                           "\n********************************************************************************\n"))))))))
+                               "\n"
+                               "All Metabase features may not work properly when using an unsupported version."
+                               "\n********************************************************************************\n"))))))))
 
 (defmethod driver/can-connect? :mysql
   [driver details]
@@ -543,7 +544,7 @@
         ssl?          (or ssl? (= "true" (get addl-opts-map "useSSL")))
         ssl-cert?     (and ssl? (some? ssl-cert))]
     (when (and ssl? (not (contains? addl-opts-map "trustServerCertificate")))
-      (log/info (trs "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL.")))
+      (log/info "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL."))
     (merge
      default-connection-args
      ;; newer versions of MySQL will complain if you don't specify this when not using SSL
@@ -551,7 +552,7 @@
      (let [details (-> (if ssl-cert? (set/rename-keys details {:ssl-cert :serverSslCert}) details)
                        (set/rename-keys {:dbname :db})
                        (dissoc :ssl))]
-       (-> (mdb.spec/spec :mysql details)
+       (-> (mdb/spec :mysql details)
            (maybe-add-program-name-option addl-opts-map)
            (sql-jdbc.common/handle-additional-options details))))))
 

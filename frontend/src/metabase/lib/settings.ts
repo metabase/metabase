@@ -207,13 +207,6 @@ class MetabaseSettings {
   }
 
   /**
-   * @deprecated use getSetting(state, "search-typeahead-enabled")
-   */
-  searchTypeaheadEnabled() {
-    return this.get("search-typeahead-enabled");
-  }
-
-  /**
    * @deprecated use getSetting(state, "anon-tracking-enabled")
    */
   trackingEnabled() {

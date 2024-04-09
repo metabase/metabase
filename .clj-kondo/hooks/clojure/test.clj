@@ -1,6 +1,8 @@
 (ns hooks.clojure.test
-  (:require [clj-kondo.hooks-api :as hooks]
-            [clojure.string :as str]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]
+   [clojure.string :as str]
+   [hooks.common]))
 
 (def ^:private disallowed-parallel-forms
   "Things you should not be allowed to use inside parallel tests. Besides these, anything ending in `!` not whitelisted
@@ -8,11 +10,11 @@
   '#{clojure.core/alter-var-root
      clojure.core/with-redefs
      clojure.core/with-redefs-fn
-     metabase-enterprise.sandbox.test-util/with-gtaps
-     metabase-enterprise.sandbox.test-util/with-gtaps-for-user
+     metabase-enterprise.sandbox.test-util/with-gtaps!
+     metabase-enterprise.sandbox.test-util/with-gtaps-for-user!
      metabase-enterprise.sandbox.test-util/with-user-attributes
-     metabase-enterprise.test/with-gtaps
-     metabase-enterprise.test/with-gtaps-for-user
+     metabase-enterprise.test/with-gtaps!
+     metabase-enterprise.test/with-gtaps-for-user!
      metabase-enterprise.test/with-user-attributes
      metabase.actions.test-util/with-actions
      metabase.actions.test-util/with-actions-disabled
@@ -28,7 +30,6 @@
      metabase.test.util.log/with-log-level
      metabase.test.util.log/with-log-messages-for-level
      metabase.test.util.misc/with-single-admin-user
-     metabase.test.util.timezone/with-system-timezone-id
      metabase.test.util/with-all-users-permission
      metabase.test.util/with-column-remappings
      metabase.test.util/with-discarded-collections-perms-changes
@@ -62,7 +63,6 @@
      metabase.test/with-non-admin-groups-no-root-collection-perms
      metabase.test/with-persistence-enabled
      metabase.test/with-single-admin-user
-     metabase.test/with-system-timezone-id
      metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
      metabase.test/with-temporary-raw-setting-values
@@ -108,18 +108,8 @@
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
-     metabase.query-processor.store/store-database!})
-
-(defn- node->qualified-symbol [node]
-  (try
-    (when (hooks/token-node? node)
-      (let [sexpr (hooks/sexpr node)]
-        (when (symbol? sexpr)
-          (when-let [resolved (hooks/resolve {:name sexpr})]
-            (symbol (name (:ns resolved)) (name (:name resolved)))))))
-    ;; some symbols like `*count/Integer` aren't resolvable.
-    (catch Exception _
-      nil)))
+     metabase.query-processor.store/store-database!
+     next.jdbc/execute!})
 
 (defn- warn-about-disallowed-parallel-forms [form]
   (letfn [(error! [form message]
@@ -127,7 +117,7 @@
                                        :message message
                                        :type :metabase/validate-deftest)))
           (f [form]
-            (when-let [qualified-symbol (node->qualified-symbol form)]
+            (when-let [qualified-symbol (hooks.common/node->qualified-symbol form)]
               (cond
                 (disallowed-parallel-forms qualified-symbol)
                 (error! form (format "%s is not allowed inside a ^:parallel test or test fixture" qualified-symbol))

@@ -476,9 +476,9 @@
                       :query    {:source-table (meta/id :venues)
                                  :joins        [{:fields       :all
                                                  :source-table (meta/id :categories)
-                                                 :conditions   [[:=
-                                                                 [:field (meta/id :venues :category-id) nil]
-                                                                 [:field (meta/id :categories :id) {:join-alias "Cat"}]]]
+                                                 :condition    [:=
+                                                                [:field (meta/id :venues :category-id) nil]
+                                                                [:field (meta/id :categories :id) {:join-alias "Cat"}]]
                                                  :alias        "Cat"}]}}
         query        (lib/query meta/metadata-provider legacy-query)]
     (is (=? [{:lib/desired-column-alias "ID"}
@@ -1244,31 +1244,12 @@
     (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                          (lib/aggregate -1 (lib/sum (meta/field-metadata :orders :subtotal)))
                          (lib/breakout -1 (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)))
-          stage      (lib.util/query-stage query -1)
-          columns    (lib/returned-columns query)
-          created-at [:field {} (meta/id :orders :created-at)]
-          sum        [:aggregation {} (-> stage :aggregation first lib.options/uuid)]]
+          columns    (lib/returned-columns query)]
       (testing "removing each field"
-        (is (=? [sum]
-                (-> query
-                    (lib/remove-field -1 (first columns))
-                    fields-of)))
-        (is (=? [created-at]
-                (-> query
-                    (lib/remove-field -1 (second columns))
-                    fields-of))))
-
-      (testing "removing and adding each field"
-        (is (nil? (-> query
-                      (lib/remove-field -1 (first columns))
-                      (lib/add-field    -1 (first columns))
-                      (lib.util/query-stage -1)
-                      :fields)))
-        (is (nil? (-> query
-                      (lib/remove-field -1 (second columns))
-                      (lib/add-field    -1 (second columns))
-                      (lib.util/query-stage -1)
-                      :fields)))))))
+        (is (thrown-with-msg? #?(:cljs :default :clj Exception) #"Only source columns"
+                              (lib/remove-field query -1 (first columns))))
+        (is (thrown-with-msg? #?(:cljs :default :clj Exception) #"Only source columns"
+                              (lib/remove-field query -1 (second columns))))))))
 
 (deftest ^:parallel find-visible-column-for-ref-test
   (testing "precise references"

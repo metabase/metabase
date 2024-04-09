@@ -1,9 +1,11 @@
+import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import type { IconName } from "metabase/ui";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   QuestionDashboardCard,
   ArbitraryCustomDestinationClickBehavior,
@@ -72,7 +74,7 @@ export function LinkOptions({
 
   return (
     <SidebarContent>
-      <p className="text-medium mt3 mb1">{t`Link to`}</p>
+      <p className={cx(CS.textMedium, CS.mt3, CS.mb1)}>{t`Link to`}</p>
       <div>
         {!hasSelectedLinkType ? (
           <LinkTypeOptions onSelect={handleSelectLinkType} />
@@ -85,7 +87,7 @@ export function LinkOptions({
           />
         ) : null}
       </div>
-      <div className="mt1">
+      <div className={CS.mt1}>
         {hasSelectedLinkType && clickBehavior.linkType !== "url" && (
           <div>
             <LinkedEntityPicker

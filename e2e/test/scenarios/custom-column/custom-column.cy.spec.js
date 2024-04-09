@@ -64,7 +64,7 @@ describe("scenarios > question > custom column", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question").should("not.exist");
-    cy.get(".Visualization").contains("Math");
+    cy.findByTestId("query-visualization-root").contains("Math");
   });
 
   it("should not show binning for a numeric custom column", () => {
@@ -191,7 +191,7 @@ describe("scenarios > question > custom column", () => {
 
       visualize();
 
-      cy.get(".Visualization").contains(name);
+      cy.findByTestId("query-visualization-root").contains(name);
     });
   });
 
@@ -238,7 +238,7 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("There was a problem with your question").should("not.exist");
     // This is a pre-save state of the question but the column name should appear
     // both in tabular and graph views (regardless of which one is currently selected)
-    cy.get(".Visualization").contains(columnName);
+    cy.findByTestId("query-visualization-root").contains(columnName);
   });
 
   it("should not return same results for columns with the same name (metabase#12649)", () => {
@@ -284,7 +284,7 @@ describe("scenarios > question > custom column", () => {
             aggregation: [
               [
                 "aggregation-options",
-                ["*", 1, 1],
+                ["*", ["count"], 1],
                 { name: CE_NAME, "display-name": CE_NAME },
               ],
             ],
@@ -336,10 +336,12 @@ describe("scenarios > question > custom column", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(`Sum of ${CC_NAME}`);
-    cy.get(".Visualization .dot").should("have.length.of.at.least", 8);
+    cy.findByTestId("query-visualization-root")
+      .get(".dot")
+      .should("have.length.of.at.least", 8);
   });
 
-  it.skip("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
+  it("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
     cy.createQuestion(
       {
         name: "13634",
@@ -363,7 +365,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Foo Bar");
-    cy.findAllByText("57911");
+    cy.findAllByText("57,911");
   });
 
   it("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
@@ -473,23 +475,6 @@ describe("scenarios > question > custom column", () => {
 
     cy.get(".cellData").should("contain", "37.65");
     cy.findAllByTestId("header-cell").should("not.contain", CE_NAME);
-  });
-
-  // unskip when metabase#38944 is fixed
-  it.skip("should handle using `case()` with boolean expressions (metabase#38944)", () => {
-    const expression = 'case(isempty([Discount]), "true", "false")';
-    openOrdersTable({ mode: "notebook" });
-
-    addCustomColumn();
-
-    popover().within(() => {
-      cy.findByLabelText("Expression").type(expression);
-      cy.findByLabelText("Name").type("Discount is empty");
-
-      cy.findByRole("button", { name: "Done" }).click();
-    });
-
-    getNotebookStep("expression").should("contain", "Discount is empty");
   });
 
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {

@@ -2,12 +2,12 @@ import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { setErrorPage } from "metabase/redux/app";
 import { DashboardApi } from "metabase/services";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import {
   cardIsEquivalent,
   cardParametersAreEquivalent,
-} from "metabase-lib/queries/utils/card";
+} from "metabase-lib/v1/queries/utils/card";
 import type { Card, Parameter } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
@@ -86,7 +86,7 @@ export function getParameterValuesForQuestion({
   metadata: Metadata;
 }) {
   const parameters = getCardUiParameters(card, metadata);
-  return getParameterValuesByIdFromQueryParams(parameters, queryParams);
+  return getParameterValuesByIdFromQueryParams(parameters, queryParams ?? {});
 }
 
 /**

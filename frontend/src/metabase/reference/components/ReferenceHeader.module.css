@@ -3,7 +3,9 @@
 }
 
 .headerBody {
-  composes: flex flex-full text-dark text-bold from "style";
+  composes: text-dark textBold from "style";
+  flex: 1 0 auto;
+  display: flex;
   overflow: hidden;
   align-items: center;
   border-color: var(--color-border);
@@ -16,27 +18,9 @@
   max-width: 550px;
 }
 
-.subheader {
-  composes: mt1 mb2 from "style";
-}
-
-.subheaderBody {
-  composes: text-medium text-bold from "style";
-  font-size: 14px;
-}
-
-.subheaderLink {
-  color: var(--color-brand);
-  text-decoration: none;
-}
-
-.subheaderLink:hover {
-  color: var(--color-brand);
-  transition: color 0.3s linear;
-}
-
 .headerSchema {
-  composes: text-light absolute from "style";
+  composes: text-light from "style";
+  position: absolute;
   top: -10px;
   font-size: 12px;
 }

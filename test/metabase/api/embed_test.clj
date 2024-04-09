@@ -22,8 +22,7 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filer-test]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -539,15 +538,16 @@
               (client/client :get 200 (dashboard-url dash))))))))
 
 (deftest embedding-logs-view-test
-  (with-embedding-enabled-and-new-secret-key
-    (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
-      (testing "Viewing an embedding logs the correct view log event."
-        (client/client :get 200 (dashboard-url dash))
-        (is (partial=
-             {:model      "dashboard"
-              :model_id   (:id dash)
-              :has_access true}
-             (view-log-test/latest-view nil (:id dash))))))))
+  (when (premium-features/log-enabled?)
+    (with-embedding-enabled-and-new-secret-key
+      (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
+        (testing "Viewing an embedding logs the correct view log event."
+          (client/client :get 200 (dashboard-url dash))
+          (is (partial=
+               {:model      "dashboard"
+                :model_id   (:id dash)
+                :has_access true}
+               (view-log-test/latest-view nil (:id dash)))))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key
@@ -733,7 +733,7 @@
                                     :format-rows? false}
                        :viz-settings {}
                        :async? true
-                       :cache-ttl nil)]
+                       :cache-strategy nil)]
             (process-userland-query-test/with-query-execution [qe query]
               (client/client :get 200 (str (dashcard-url dashcard) "/csv"))
               (is (= :embedded-csv-download
@@ -1285,19 +1285,19 @@
 (deftest chain-filter-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
     (mt/with-temp-copy-of-db
-      (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-      (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
-        (t2/update! Dashboard (:id dashboard)
-          {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
-        (testing "Should work if the param we're fetching values for is enabled"
-          (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-            (is (= {:values          [[2] [3] [4] [5] [6]]
-                    :has_more_values false}
-                   (chain-filer-test/take-n-values 5 (mt/user-http-request :rasta :get 200 (values-url))))))
-          (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
-            (is (= {:values          [["Fast Food"] ["Food Truck"] ["Seafood"]]
-                    :has_more_values false}
-                   (chain-filer-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (search-url)))))))))))
+      (mt/with-no-data-perms-for-all-users!
+        (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+          (t2/update! Dashboard (:id dashboard)
+                      {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
+          (testing "Should work if the param we're fetching values for is enabled"
+            (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
+              (is (= {:values          [[2] [3] [4] [5] [6]]
+                      :has_more_values false}
+                     (chain-filer-test/take-n-values 5 (mt/user-http-request :rasta :get 200 (values-url))))))
+            (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
+              (is (= {:values          [["Fast Food"] ["Food Truck"] ["Seafood"]]
+                      :has_more_values false}
+                     (chain-filer-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (search-url))))))))))))
 
 (deftest chain-filter-locked-params-test
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
@@ -1599,3 +1599,28 @@
                                             :embedding_params {:qty_locked "locked"}}]
           (is (= [3443]
                  (mt/first-row (client/client :get 202 (card-query-url card "" {:params {:qty_locked 1}}))))))))))
+
+(deftest format-export-middleware-test
+  (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
+    (let [q             {:database (mt/id)
+                         :type     :native
+                         :native   {:query "SELECT 2000 AS number, '2024-03-26'::DATE AS date;"}}
+          output-helper {:csv  (fn [output] (->> output csv/read-csv last))
+                         :json (fn [output] (->> output (map (juxt :NUMBER :DATE)) last))}]
+      (with-embedding-enabled-and-new-secret-key
+        (t2.with-temp/with-temp [Card {card-id :id} {:display :table :dataset_query q}
+                                 Dashboard {dashboard-id :id} {:enable_embedding true
+                                                               :embedding_params {:name "enabled"}}
+                                 DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                                  :card_id      card-id}]
+          (doseq [[export-format apply-formatting? expected] [[:csv true ["2,000" "March 26, 2024"]]
+                                                              [:csv false ["2000" "2024-03-26"]]
+                                                              [:json true ["2,000" "March 26, 2024"]]
+                                                              [:json false [2000 "2024-03-26"]]]]
+            (testing (format "export_format %s yields expected output for %s exports." apply-formatting? export-format)
+              (is (= expected
+                     (->> (mt/user-http-request
+                           :crowberto :get 200
+                           (format "embed/dashboard/%s/dashcard/%s/card/%s/%s?format_rows=%s"
+                                   (dash-token dashboard-id) dashcard-id card-id (name export-format) apply-formatting?))
+                          ((get output-helper export-format))))))))))))

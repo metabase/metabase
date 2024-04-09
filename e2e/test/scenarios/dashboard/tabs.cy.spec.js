@@ -41,6 +41,9 @@ import {
   filterWidget,
   popover,
   createDashboardWithTabs,
+  dashboardGrid,
+  modal,
+  addHeadingWhileEditing,
 } from "e2e/support/helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
@@ -176,6 +179,31 @@ describe("scenarios > dashboard > tabs", () => {
       [DASHBOARD_NUMBER_FILTER, 20],
       [DASHBOARD_LOCATION_FILTER, undefined],
     ]);
+  });
+
+  it("should handle canceling adding a new tab (#38055, #38278)", () => {
+    visitDashboardAndCreateTab({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      save: false,
+    });
+
+    cy.findByTestId("edit-bar").button("Cancel").click();
+    modal().button("Discard changes").click();
+
+    // Reproduces #38055
+    dashboardGrid().within(() => {
+      cy.findByText(/There's nothing here/).should("not.exist");
+      getDashboardCards().should("have.length", 1);
+    });
+
+    // Reproduces #38278
+    editDashboard();
+    addHeadingWhileEditing("New heading");
+    saveDashboard();
+    dashboardGrid().within(() => {
+      cy.findByText("New heading").should("exist");
+      getDashboardCards().should("have.length", 2);
+    });
   });
 
   it("should allow undoing a tab deletion", () => {
@@ -376,6 +404,7 @@ describe("scenarios > dashboard > tabs", () => {
 
   it("should only fetch cards on the current tab", () => {
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -388,16 +417,22 @@ describe("scenarios > dashboard > tabs", () => {
     sidebar().within(() => {
       cy.findByText("Orders, Count").click();
     });
+
+    cy.wait("@cardQuery");
+
     saveDashboard();
 
     cy.wait("@saveDashboardCards").then(({ response }) => {
       cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
     });
 
+    // it's possible to have two requests firing (but first one is canceled before running second)
     cy.intercept(
       "POST",
       `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/${ORDERS_DASHBOARD_DASHCARD_ID}/card/${ORDERS_QUESTION_ID}/query`,
-      cy.spy().as("firstTabQuery"),
+      req => {
+        req.on("response", cy.spy().as("firstTabQuery"));
+      },
     );
 
     cy.get("@secondTabDashcardId").then(secondTabDashcardId => {
@@ -490,7 +525,7 @@ describe("scenarios > dashboard > tabs", () => {
 
     filterWidget().contains("Relative Date").click();
     popover().within(() => {
-      cy.findByText("Today").click();
+      cy.findByText("Past 7 days").click();
     });
 
     // Loader in the 2nd tab
@@ -561,7 +596,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Ensure the tab name has reverted to the long name after the drag has completed
-    cy.findByRole("button", { name: longName });
+    cy.findByRole("button", { name: longName }).should("be.visible");
 
     saveDashboard();
 

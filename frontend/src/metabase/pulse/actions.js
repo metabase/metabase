@@ -16,6 +16,7 @@ export const SET_EDITING_PULSE = "SET_EDITING_PULSE";
 export const UPDATE_EDITING_PULSE = "UPDATE_EDITING_PULSE";
 export const SAVE_PULSE = "SAVE_PULSE";
 export const SAVE_EDITING_PULSE = "SAVE_EDITING_PULSE";
+export const CANCEL_EDITING_PULSE = "CANCEL_EDITING_PULSE";
 export const TEST_PULSE = "TEST_PULSE";
 
 export const FETCH_PULSE_FORM_INPUT = "FETCH_PULSE_FORM_INPUT";
@@ -56,6 +57,7 @@ export const setEditingPulse = createThunkAction(
 );
 
 export const updateEditingPulse = createAction(UPDATE_EDITING_PULSE);
+export const cancelEditingPulse = createAction(CANCEL_EDITING_PULSE);
 
 export const saveEditingPulse = createThunkAction(
   SAVE_EDITING_PULSE,

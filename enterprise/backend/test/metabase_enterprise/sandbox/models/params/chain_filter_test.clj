@@ -12,7 +12,7 @@
 (deftest chain-filter-sandboxed-field-values-test
   (testing "When chain-filter would normally return cached FieldValues (#13832), make sure sandboxing is respected"
     (mt/with-model-cleanup [FieldValues]
-      (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
+      (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
         (field-values/clear-advanced-field-values-for-field! (mt/id :categories :name))
         (testing "values"
           (is (= {:values          [["African"] ["American"]]

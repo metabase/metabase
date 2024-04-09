@@ -56,7 +56,7 @@ const PERSONAL_COLLECTION = createMockCollection({
 });
 
 const PERSONAL_SUBCOLLECTION = createMockCollection({
-  id: CURRENT_USER.personal_collection_id + 1,
+  id: (CURRENT_USER.personal_collection_id as number) + 1,
   name: "Nested personal collection",
   can_write: true,
   is_personal: true,
@@ -186,7 +186,7 @@ describe("AddCardSideBar", () => {
       });
 
       const typedText = "dashboard";
-      userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
+      await userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
       const baseQuery = {
         models: ["card", "dataset"],
         offset: 0,
@@ -258,7 +258,7 @@ describe("AddCardSideBar", () => {
       });
 
       const typedText = "dashboard";
-      userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
+      await userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
       const baseQuery = {
         models: ["card", "dataset"],
         offset: 0,
@@ -349,7 +349,7 @@ describe("AddCardSideBar", () => {
       });
 
       const typedText = "dashboard";
-      userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
+      await userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
       const baseQuery = {
         models: ["card", "dataset"],
         offset: 0,

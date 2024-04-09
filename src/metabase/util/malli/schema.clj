@@ -6,9 +6,9 @@
   (:require
    [cheshire.core :as json]
    [malli.core :as mc]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -56,7 +56,6 @@
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
-;;; TODO -- this does not actually ensure that the string cannot be BLANK at all!
 (def NonBlankString
   "Schema for a string that cannot be blank."
   (mu/with-api-error-message ::lib.schema.common/non-blank-string (deferred-tru "value must be a non-blank string.")))
@@ -319,7 +318,7 @@
 
 (def Parameter
   "Schema for a valid Parameter.
-  We're not using [metabase.mbql.schema/Parameter] here because this Parameter is meant to be used for
+  We're not using [metabase.legacy-mbql.schema/Parameter] here because this Parameter is meant to be used for
   Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
   ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
   (mu/with-api-error-message
@@ -369,3 +368,15 @@
   (mu/with-api-error-message
    [:re u/uuid-regex]
    (deferred-tru "value must be a valid UUID.")))
+
+(defn CollectionOf
+  "Helper for creating schemas to check whether something is an instance of a collection."
+  [item-schema]
+  [:fn
+   {:error/message (format "Collection of %s" item-schema)}
+   #(and (coll? %) (every? (partial mc/validate item-schema) %))])
+
+(defn QueryVectorOf
+  "Helper for creating a schema that coerces single-value to a vector. Useful for coercing query parameters."
+  [schema]
+  [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} schema])

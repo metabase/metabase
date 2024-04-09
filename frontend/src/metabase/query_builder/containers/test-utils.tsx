@@ -16,6 +16,7 @@ import {
   setupModelIndexEndpoints,
   setupSearchEndpoints,
   setupTimelinesEndpoints,
+  setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -40,6 +41,7 @@ import {
   createMockNativeDatasetQuery,
   createMockNativeQuery,
   createMockResultsMetadata,
+  createMockSettings,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
@@ -231,6 +233,7 @@ export const setup = async ({
   setupDatabasesEndpoints([TEST_DB]);
   setupCardDataset(dataset);
   setupSearchEndpoints([]);
+  setupPropertiesEndpoints(createMockSettings());
   setupCollectionsEndpoints({ collections: [] });
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
@@ -246,7 +249,6 @@ export const setup = async ({
     setupModelIndexEndpoints(card.id, []);
   }
 
-  // this workaround can be removed when metabase#34523 is fixed
   if (card === null) {
     fetchMock.get("path:/api/model-index", [createMockModelIndex()]);
   }
@@ -284,6 +286,8 @@ export const setup = async ({
   );
 
   await waitForLoadingRequests(getState);
+  await waitForLoaderToBeRemoved();
+  await waitForLoadingRequests(getState);
 
   return {
     container,
@@ -312,15 +316,14 @@ const getRequests = (state: State): RequestState[] => {
 };
 
 export const startNewNotebookModel = async () => {
-  userEvent.click(screen.getByText("Use the notebook editor"));
+  await userEvent.click(screen.getByText("Use the notebook editor"));
   await waitForLoaderToBeRemoved();
 
-  userEvent.click(screen.getByText("Pick your starting data"));
+  await userEvent.click(screen.getByText("Pick your starting data"));
   const popover = screen.getByTestId("popover");
-  userEvent.click(within(popover).getByText("Sample Database"));
+  await userEvent.click(within(popover).getByText("Sample Database"));
   await waitForLoaderToBeRemoved();
-  userEvent.click(within(popover).getByText("Orders"));
-  userEvent.click(within(screen.getByTestId("popover")).getByText("Orders"));
+  await userEvent.click(within(popover).getByText("Orders"));
 
   expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();
 };
@@ -332,9 +335,9 @@ export const triggerNativeQueryChange = async () => {
     screen.getByTestId("mock-native-query-editor"),
   ).getByRole("textbox");
 
-  userEvent.click(inputArea);
-  userEvent.type(inputArea, "0");
-  userEvent.tab();
+  await userEvent.click(inputArea);
+  await userEvent.type(inputArea, "0");
+  await userEvent.tab();
 };
 
 export const triggerMetadataChange = async () => {
@@ -344,33 +347,33 @@ export const triggerMetadataChange = async () => {
 
   const columnDisplayName = screen.getByTitle("Display name");
 
-  userEvent.click(columnDisplayName);
-  userEvent.type(columnDisplayName, "X");
-  userEvent.tab();
+  await userEvent.click(columnDisplayName);
+  await userEvent.type(columnDisplayName, "X");
+  await userEvent.tab();
 };
 
 export const triggerVisualizationQueryChange = async () => {
-  userEvent.click(screen.getByText("Filter"));
+  await userEvent.click(screen.getByText("Filter"));
 
   const modal = screen.getByRole("dialog");
   const total = within(modal).getByTestId("filter-column-Total");
   const maxInput = within(total).getByPlaceholderText("Max");
-  userEvent.type(maxInput, "1000");
-  userEvent.tab();
+  await userEvent.type(maxInput, "1000");
+  await userEvent.tab();
 
-  userEvent.click(screen.getByTestId("apply-filters"));
+  await userEvent.click(screen.getByTestId("apply-filters"));
 };
 
 export const triggerNotebookQueryChange = async () => {
-  userEvent.click(screen.getByText("Row limit"));
+  await userEvent.click(screen.getByText("Row limit"));
 
   const rowLimitInput = await within(
     screen.getByTestId("step-limit-0-0"),
   ).findByPlaceholderText("Enter a limit");
 
-  userEvent.click(rowLimitInput);
-  userEvent.type(rowLimitInput, "1");
-  userEvent.tab();
+  await userEvent.click(rowLimitInput);
+  await userEvent.type(rowLimitInput, "1");
+  await userEvent.tab();
 };
 
 /**
@@ -382,9 +385,9 @@ export const revertNotebookQueryChange = async () => {
     "Enter a limit",
   );
 
-  userEvent.click(limitInput);
-  userEvent.type(limitInput, "{backspace}");
-  userEvent.tab();
+  await userEvent.click(limitInput);
+  await userEvent.type(limitInput, "{backspace}");
+  await userEvent.tab();
 };
 
 export const waitForSaveChangesToBeEnabled = async () => {

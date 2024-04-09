@@ -24,8 +24,8 @@ import {
   MetabaseApi,
   maybeUsePivotEndpoint,
 } from "metabase/services";
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
-import { applyParameters } from "metabase-lib/queries/utils/card";
+import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
+import { applyParameters } from "metabase-lib/v1/queries/utils/card";
 
 import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 import {
@@ -45,7 +45,6 @@ import {
   getAllDashboardCards,
   getDashboardType,
   fetchDataOrError,
-  getDatasetQueryParams,
   getCurrentTabDashboardCards,
 } from "../utils";
 
@@ -616,3 +615,16 @@ export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, card => ({
   id: card.id,
   result: true,
 }));
+
+function getDatasetQueryParams(datasetQuery = {}) {
+  const { type, query, native, parameters = [] } = datasetQuery;
+  return {
+    type,
+    query,
+    native,
+    parameters: parameters.map(parameter => ({
+      ...parameter,
+      value: parameter.value ?? null,
+    })),
+  };
+}

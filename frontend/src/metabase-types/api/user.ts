@@ -29,7 +29,8 @@ export interface User extends BaseUser {
   is_installer: boolean;
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
-  personal_collection_id: number;
+  personal_collection_id: CollectionId;
+  sso_source: "saml" | null;
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;
@@ -67,3 +68,14 @@ export type UserListQuery = {
   limit?: number;
   offset?: number;
 };
+
+export type UserLoginHistoryItem = {
+  timestamp: string;
+  device_description: string;
+  ip_address: string;
+  location: string;
+  active: boolean;
+  timezone: string | null;
+};
+
+export type UserLoginHistory = UserLoginHistoryItem[];

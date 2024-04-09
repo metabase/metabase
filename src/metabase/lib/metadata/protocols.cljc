@@ -40,9 +40,9 @@
     match [[metabase.lib.metadata/CardMetadata]. Currently just used for display name purposes if you have a Card as a
     source query.")
 
-  (metric [metadata-provider metric-id]
+  (legacy-metric [metadata-provider metric-id]
     "Return metadata for a particular capital-M Metric, i.e. something from the `metric` table in the application
-    database. Metadata should match [[metabase.lib.metadata/MetricMetadata]].")
+    database. Metadata should match [[metabase.lib.metadata/LegacyMetricMetadata]].")
 
   (segment [metadata-provider segment-id]
     "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
@@ -64,9 +64,9 @@
     "Return a sequence of Fields associated with a Table with the given `table-id`. Fields should satisfy
   the [[metabase.lib.metadata/ColumnMetadata]] schema. If no such Table exists, this should error.")
 
-  (metrics [metadata-provider table-id]
+  (legacy-metrics [metadata-provider table-id]
     "Return a sequence of legacy Metrics associated with a Table with the given `table-id`. Metrics should satisfy
-  the [[metabase.lib.metadata/MetricMetadata]] schema. If no such Table exists, this should error.")
+  the [[metabase.lib.metadata/LegacyMetricMetadata]] schema. If no such Table exists, this should error.")
 
   (segments [metadata-provider table-id]
     "Return a sequence of legacy Segments associated with a Table with the given `table-id`. Segments should satisfy
@@ -80,12 +80,18 @@
   [x]
   (satisfies? MetadataProvider x))
 
+(defn metadata-providerable?
+  "Whether `x` is a [[metadata-provider?]], or has one attached at `:lib/metadata` (i.e., a query)."
+  [x]
+  (or (metadata-provider? x)
+      (some-> x :lib/metadata metadata-providerable?)))
+
 (#?(:clj p/defprotocol+ :cljs defprotocol) CachedMetadataProvider
   "Optional. A protocol for a MetadataProvider that some sort of internal cache. This is mostly useful for
   MetadataProviders that can hit some sort of relatively expensive external service,
   e.g. [[metabase.lib.metadata.jvm/application-database-metadata-provider]]. The main purpose of this is to allow
   pre-warming the cache with stuff that was already fetched elsewhere.
-  See [[metabase.models.metric/warmed-metadata-provider]] for example.
+  See [[metabase.models.legacy-metric/warmed-metadata-provider]] for example.
 
   See [[cached-metadata-provider]] below to wrap for a way to wrap an existing MetadataProvider to add caching on top
   of it."

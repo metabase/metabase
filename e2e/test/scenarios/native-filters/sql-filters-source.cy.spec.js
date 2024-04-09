@@ -97,10 +97,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       cy.findByText("Showing 51 rows").should("exist");
 
       SQLFilter.toggleRequired();
-      FieldFilter.openEntryForm(true);
-      FieldFilter.selectFilterValueFromList("Gadget", {
-        buttonLabel: "Add filter",
-      });
+      cy.findByTestId("sidebar-content")
+        .findByPlaceholderText("Start typing to filter…")
+        .click();
+      popover().findByText("Gadget").click();
     });
 
     it("should be able to use a structured question source without saving the question", () => {
@@ -361,7 +361,7 @@ describeEE("scenarios > filters > sql filters > values source", () => {
   it("should sandbox parameter values in questions", () => {
     cy.updatePermissionsGraph({
       [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "write" } },
+        [SAMPLE_DB_ID]: { data: { schemas: "all" } },
       },
     });
 
@@ -386,15 +386,6 @@ describeEE("scenarios > filters > sql filters > values source", () => {
 
     FieldFilter.openEntryForm();
     cy.wait("@cardParameterValues");
-    checkFilterValueNotInList("Gadget");
-    checkFilterValueNotInList("Doohickey");
-    FieldFilter.selectFilterValueFromList("Gizmo");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Open Editor").click();
-    cy.icon("variable").click();
-    FieldFilter.openEntryForm(true);
-    cy.wait("@parameterValues");
     checkFilterValueNotInList("Gadget");
     checkFilterValueNotInList("Doohickey");
     FieldFilter.selectFilterValueFromList("Gizmo");

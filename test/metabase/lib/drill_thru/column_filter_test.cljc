@@ -263,26 +263,27 @@
       (is (some? (:column colfilter))))))
 
 ;; TODO: Bring back this test. It doesn't work in CLJ due to the inconsistencies noted in #38558.
-#_(deftest ^:parallel leaky-model-ref-test
-  (testing "input `:column-ref` must be used for the drill, in case a model leaks metadata like `:join-alias` (#38034)"
-    (let [query      (lib/query lib.tu/metadata-provider-with-mock-cards (lib.tu/mock-cards :model/products-and-reviews))
-          retcols    (lib/returned-columns query)
-          by-id      (m/index-by :id retcols)
-          reviews-id (by-id (meta/id :reviews :id))
-          _ (is (some? reviews-id))
-          context    {:column reviews-id
-                      :value  nil
-                      :column-ref (-> reviews-id
-                                      lib/ref
-                                      ((fn [r] (prn r) r))
-                                      (lib.options/update-options select-keys [:lib/uuid :base-type]))}
-          drills     (lib/available-drill-thrus query -1 context)]
-      (lib.drill-thru.tu/test-returns-drill
-        {:drill-type   :drill-thru/column-filter
-         :click-type   :header
-         :query-type   :unaggregated
-         :column-name  "ID_2"
-         :custom-query query
-         :expected     {:type       :drill-thru/column-filter
-                        :initial-op {:short :=}
-                        :column     {:lib/type :metadata/column}}}))))
+#_
+(deftest ^:parallel leaky-model-ref-test
+ (testing "input `:column-ref` must be used for the drill, in case a model leaks metadata like `:join-alias` (#38034)"
+   (let [query      (lib/query lib.tu/metadata-provider-with-mock-cards (lib.tu/mock-cards :model/products-and-reviews))
+         retcols    (lib/returned-columns query)
+         by-id      (m/index-by :id retcols)
+         reviews-id (by-id (meta/id :reviews :id))
+         _ (is (some? reviews-id))
+         context    {:column reviews-id
+                     :value  nil
+                     :column-ref (-> reviews-id
+                                     lib/ref
+                                     ((fn [r] (prn r) r))
+                                     (lib.options/update-options select-keys [:lib/uuid :base-type]))}
+         drills     (lib/available-drill-thrus query -1 context)]
+     (lib.drill-thru.tu/test-returns-drill
+       {:drill-type   :drill-thru/column-filter
+        :click-type   :header
+        :query-type   :unaggregated
+        :column-name  "ID_2"
+        :custom-query query
+        :expected     {:type       :drill-thru/column-filter
+                       :initial-op {:short :=}
+                       :column     {:lib/type :metadata/column}}}))))

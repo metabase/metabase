@@ -47,7 +47,7 @@ function runQuery() {
 }
 
 function resultAssertion(res) {
-  cy.get(".ScalarValue").invoke("text").should("eq", res);
+  cy.findByTestId("scalar-value").invoke("text").should("eq", res);
 }
 
 function getInput() {

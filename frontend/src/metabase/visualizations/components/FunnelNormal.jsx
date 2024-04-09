@@ -3,6 +3,7 @@ import cx from "classnames";
 import { Component } from "react";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 import {
@@ -166,7 +167,7 @@ export default class FunnelNormal extends Component {
                 </Ellipsified>
               </Head>
               <GraphSection
-                className={cx({ "cursor-pointer": isClickable })}
+                className={cx({ [CS.cursorPointer]: isClickable })}
                 index={index}
                 info={info}
                 infos={infos}
@@ -201,11 +202,11 @@ const GraphSection = ({
   className,
 }) => {
   return (
-    <div className="relative full-height">
+    <div className={cx(CS.relative, CS.fullHeight)}>
       <svg
         height="100%"
         width="100%"
-        className={cx(className, "absolute")}
+        className={cx(className, CS.absolute)}
         onMouseMove={e => {
           if (onHoverChange && info.hovered) {
             onHoverChange({

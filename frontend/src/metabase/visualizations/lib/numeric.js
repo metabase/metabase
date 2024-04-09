@@ -1,4 +1,4 @@
-import { isNumeric } from "metabase-lib/types/utils/isa";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 export function dimensionIsNumeric({ cols, rows }, i = 0) {
   if (isNumeric(cols[i])) {

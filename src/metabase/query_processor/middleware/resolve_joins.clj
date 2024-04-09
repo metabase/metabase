@@ -4,10 +4,10 @@
   (:refer-clojure :exclude [alias])
   (:require
    [medley.core :as m]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.query-processor.middleware.add-implicit-clauses
-    :as qp.add-implicit-clauses]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
@@ -46,7 +46,7 @@
 
 (mu/defn ^:private resolve-fields! :- :nil
   [joins :- Joins]
-  (qp.store/bulk-metadata :metadata/column (mbql.u/match joins [:field (id :guard integer?) _] id))
+  (qp.store/bulk-metadata :metadata/column (lib.util.match/match joins [:field (id :guard integer?) _] id))
   nil)
 
 (mu/defn ^:private resolve-tables! :- :nil

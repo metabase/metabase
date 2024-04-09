@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
 import {
@@ -5,13 +6,21 @@ import {
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
 import { getColumnIcon } from "metabase/common/utils/columns";
+import {
+  QueryColumnInfoIcon,
+  HoverParent,
+} from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Icon, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
-import { StyledAccordionList } from "./QueryColumnPicker.styled";
+import {
+  StyledAccordionList,
+  NameAndBucketing,
+  ItemName,
+} from "./QueryColumnPicker.styled";
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
@@ -25,6 +34,7 @@ export interface QueryColumnPickerProps {
   hasBinning?: boolean;
   hasTemporalBucketing?: boolean;
   withDefaultBucketing?: boolean;
+  withInfoIcons?: boolean;
   maxHeight?: number;
   color?: ColorName;
   checkIsColumnSelected: (item: ColumnListItem) => boolean;
@@ -47,6 +57,7 @@ export function QueryColumnPicker({
   hasBinning = false,
   hasTemporalBucketing = false,
   withDefaultBucketing = true,
+  withInfoIcons = false,
   color = "brand",
   checkIsColumnSelected,
   onSelect,
@@ -126,20 +137,26 @@ export function QueryColumnPicker({
     ],
   );
 
-  const renderItemExtra = useCallback(
-    (item: ColumnListItem) =>
-      hasBinning || hasTemporalBucketing ? (
-        <BucketPickerPopover
-          query={query}
-          stageIndex={stageIndex}
-          column={item.column}
-          isEditing={checkIsColumnSelected(item)}
-          hasBinning={hasBinning}
-          hasTemporalBucketing={hasTemporalBucketing}
-          color={color}
-          onSelect={handleSelect}
-        />
-      ) : null,
+  const renderItemName = useCallback(
+    (item: ColumnListItem) => (
+      <NameAndBucketing>
+        <ItemName>{item.displayName}</ItemName>
+        {(hasBinning || hasTemporalBucketing) && (
+          <BucketPickerPopover
+            query={query}
+            stageIndex={stageIndex}
+            column={item.column}
+            isEditing={checkIsColumnSelected(item)}
+            hasBinning={hasBinning}
+            hasTemporalBucketing={hasTemporalBucketing}
+            hasDot={withInfoIcons}
+            hasChevronDown={withInfoIcons}
+            color={color}
+            onSelect={handleSelect}
+          />
+        )}
+      </NameAndBucketing>
+    ),
     [
       query,
       stageIndex,
@@ -148,34 +165,55 @@ export function QueryColumnPicker({
       color,
       checkIsColumnSelected,
       handleSelect,
+      withInfoIcons,
     ],
   );
 
+  const renderItemExtra = useCallback(
+    item => (
+      <QueryColumnInfoIcon
+        query={query}
+        stageIndex={stageIndex}
+        column={item.column}
+        position="right"
+      />
+    ),
+    [query, stageIndex],
+  );
+
   return (
-    <StyledAccordionList
-      className={className}
-      sections={sections}
-      alwaysExpanded={false}
-      onChange={handleSelectColumn}
-      itemIsSelected={checkIsColumnSelected}
-      renderItemName={renderItemName}
-      renderItemDescription={omitItemDescription}
-      renderItemIcon={renderItemIcon}
-      renderItemExtra={renderItemExtra}
-      color={color}
-      // disable scrollbars inside the list
-      style={{ overflow: "visible" }}
-      maxHeight={Infinity}
-      data-testid={dataTestId}
-      // Compat with E2E tests around MLv1-based components
-      // Prefer using a11y role selectors
-      itemTestId="dimension-list-item"
-    />
+    <DelayGroup>
+      <StyledAccordionList
+        className={className}
+        sections={sections}
+        alwaysExpanded={false}
+        onChange={handleSelectColumn}
+        itemIsSelected={checkIsColumnSelected}
+        renderItemWrapper={renderItemWrapper}
+        renderItemName={renderItemName}
+        renderItemDescription={omitItemDescription}
+        renderItemIcon={renderItemIcon}
+        renderItemExtra={renderItemExtra}
+        renderItemLabel={renderItemLabel}
+        color={color}
+        maxHeight={Infinity}
+        data-testid={dataTestId}
+        searchProp={["name", "displayName"]}
+        // Compat with E2E tests around MLv1-based components
+        // Prefer using a11y role selectors
+        itemTestId="dimension-list-item"
+        globalSearch
+      />
+    </DelayGroup>
   );
 }
 
-function renderItemName(item: ColumnListItem) {
+function renderItemLabel(item: ColumnListItem) {
   return item.displayName;
+}
+
+function renderItemWrapper(content: ReactNode) {
+  return <HoverParent>{content}</HoverParent>;
 }
 
 function omitItemDescription() {

@@ -1,8 +1,8 @@
 import {
   TYPE_SUPPORTS_LINKED_FILTERS,
   FIELD_FILTER_PARAMETER_TYPES,
-} from "metabase-lib/parameters/constants";
-import { getParameterType } from "metabase-lib/parameters/utils/parameter-type";
+} from "metabase-lib/v1/parameters/constants";
+import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 
 export function canUseLinkedFilters(parameter) {
   const type = getParameterType(parameter);

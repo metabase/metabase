@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { routerActions } from "react-router-redux";
-import { UserAuthWrapper } from "redux-auth-wrapper";
+import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
@@ -23,6 +23,7 @@ import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp"
 import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
 import UserPasswordResetModal from "metabase/admin/people/containers/UserPasswordResetModal";
 import UserSuccessModal from "metabase/admin/people/containers/UserSuccessModal";
+import { PerformanceApp } from "metabase/admin/performance/components/PerformanceApp";
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 import { SettingsEditor } from "metabase/admin/settings/app/components/SettingsEditor";
 import { Help } from "metabase/admin/tasks/components/Help";
@@ -53,10 +54,11 @@ import { getSetting } from "metabase/selectors/settings";
 
 import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
 
-const UserCanAccessTools = UserAuthWrapper({
-  predicate: isEnabled => isEnabled,
-  failureRedirectPath: "/admin",
-  authSelector: state => {
+const UserCanAccessTools = connectedReduxRedirect({
+  wrapperDisplayName: "UserCanAccessTools",
+  redirectPath: "/admin",
+  allowRedirectBack: false,
+  authenticatedSelector: state => {
     if (PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES.length > 0) {
       return true;
     }
@@ -67,8 +69,6 @@ const UserCanAccessTools = UserAuthWrapper({
     const hasLoadedSettings = typeof isModelPersistenceEnabled === "boolean";
     return !hasLoadedSettings || isModelPersistenceEnabled;
   },
-  wrapperDisplayName: "UserCanAccessTools",
-  allowRedirectBack: false,
   redirectAction: routerActions.replace,
 });
 
@@ -79,7 +79,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   >
     <Route title={t`Admin`} component={AdminApp}>
       <IndexRoute component={RedirectToAllowedSettings} />
-
       <Route
         path="databases"
         title={t`Databases`}
@@ -89,7 +88,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         <Route path="create" component={DatabaseEditApp} />
         <Route path=":databaseId" component={DatabaseEditApp} />
       </Route>
-
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
         <Route title={t`Table Metadata`} component={DataModelApp}>
           {getMetadataRoutes()}
@@ -102,7 +100,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />
         </Route>
       </Route>
-
       {/* PEOPLE */}
       <Route path="people" component={createAdminRouteGuard("people")}>
         <Route title={t`People`} component={AdminPeopleApp}>
@@ -129,7 +126,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           </Route>
         </Route>
       </Route>
-
       {/* Troubleshooting */}
       <Route
         path="troubleshooting"
@@ -151,7 +147,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <Route path="logs" component={Logs} />
         </Route>
       </Route>
-
       {/* SETTINGS */}
       <Route path="settings" component={createAdminRouteGuard("settings")}>
         <IndexRoute component={createAdminRedirect("setup", "general")} />
@@ -159,12 +154,17 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <Route path="*" component={SettingsEditor} />
         </Route>
       </Route>
-
       {/* PERMISSIONS */}
       <Route path="permissions" component={IsAdmin}>
         {getAdminPermissionsRoutes(store)}
       </Route>
-
+      {/* PERFORMANCE */}
+      <Route
+        path="performance"
+        component={createAdminRouteGuard("performance")}
+      >
+        <IndexRoute title={t`Performance`} path="" component={PerformanceApp} />
+      </Route>
       <Route
         path="tools"
         component={UserCanAccessTools(createAdminRouteGuard("tools"))}
@@ -181,7 +181,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           {PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES}
         </Route>
       </Route>
-
       {/* PLUGINS */}
       <Fragment>
         {PLUGIN_ADMIN_ROUTES.map(getRoutes => getRoutes(store))}

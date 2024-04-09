@@ -3,17 +3,15 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  useDatabaseCandidateListQuery,
-  useDatabaseListQuery,
-} from "metabase/common/hooks";
+import { skipToken, useListDatabaseCandidatesQuery } from "metabase/api";
+import { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Select from "metabase/core/components/Select";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseCandidate } from "metabase-types/api";
 
 import { HomeCaption } from "../HomeCaption";
@@ -33,10 +31,9 @@ import {
 export const HomeXraySection = () => {
   const databaseListState = useDatabaseListQuery();
   const database = getXrayDatabase(databaseListState.data);
-  const candidateListState = useDatabaseCandidateListQuery({
-    query: database ? { id: database.id } : undefined,
-    enabled: database != null,
-  });
+  const candidateListState = useListDatabaseCandidatesQuery(
+    database?.id ?? skipToken,
+  );
   const isLoading = databaseListState.isLoading || candidateListState.isLoading;
   const error = databaseListState.error ?? candidateListState.error;
 

@@ -1,6 +1,9 @@
+import { arrayMove } from "@dnd-kit/sortable";
 import { updateIn } from "icepick";
+import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { DragEndEvent } from "metabase/core/components/Sortable";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { isEmpty } from "metabase/lib/validate";
 import type { Series } from "metabase-types/api";
@@ -37,41 +40,50 @@ export const ChartSettingOrderedSimple = ({
   hasEditSettings = true,
   onChangeSeriesColor,
 }: ChartSettingOrderedSimpleProps) => {
-  const toggleDisplay = (selectedItem: SortableItem) => {
-    const index = orderedItems.findIndex(item => item.key === selectedItem.key);
-    onChange(updateIn(orderedItems, [index, "enabled"], enabled => !enabled));
-  };
+  const toggleDisplay = useCallback(
+    (selectedItem: SortableItem) => {
+      const index = orderedItems.findIndex(
+        item => item.key === selectedItem.key,
+      );
+      onChange(updateIn(orderedItems, [index, "enabled"], enabled => !enabled));
+    },
+    [orderedItems, onChange],
+  );
 
-  const handleSortEnd = ({
-    oldIndex,
-    newIndex,
-  }: {
-    oldIndex: number;
-    newIndex: number;
-  }) => {
-    const itemsCopy = [...orderedItems];
-    itemsCopy.splice(newIndex, 0, itemsCopy.splice(oldIndex, 1)[0]);
-    onChange(itemsCopy);
-  };
+  const handleSortEnd = useCallback(
+    ({ id, newIndex }: DragEndEvent) => {
+      const oldIndex = orderedItems.findIndex(item => item.key === id);
+      onChange(arrayMove(orderedItems, oldIndex, newIndex));
+    },
+    [orderedItems, onChange],
+  );
 
-  const getItemTitle = (item: SortableItem) => {
+  const getItemTitle = useCallback((item: SortableItem) => {
     return isEmpty(item.name) ? NULL_DISPLAY_VALUE : item.name;
-  };
+  }, []);
 
-  const handleOnEdit = (item: SortableItem, ref: HTMLElement | undefined) => {
-    onShowWidget(
-      {
-        props: {
-          seriesKey: item.key,
+  const handleOnEdit = useCallback(
+    (item: SortableItem, ref: HTMLElement | undefined) => {
+      onShowWidget(
+        {
+          props: {
+            seriesKey: item.key,
+          },
         },
-      },
-      ref,
-    );
-  };
+        ref,
+      );
+    },
+    [onShowWidget],
+  );
 
-  const handleColorChange = (item: SortableItem, color: string) => {
-    onChangeSeriesColor(item.key, color);
-  };
+  const handleColorChange = useCallback(
+    (item: SortableItem, color: string) => {
+      onChangeSeriesColor(item.key, color);
+    },
+    [onChangeSeriesColor],
+  );
+
+  const getId = useCallback(item => item.key, []);
 
   return (
     <ChartSettingOrderedSimpleRoot>
@@ -84,7 +96,7 @@ export const ChartSettingOrderedSimple = ({
           onSortEnd={handleSortEnd}
           onEdit={hasEditSettings ? handleOnEdit : undefined}
           onColorChange={handleColorChange}
-          distance={5}
+          getId={getId}
         />
       ) : (
         <ChartSettingMessage>{t`Nothing to order`}</ChartSettingMessage>

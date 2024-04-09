@@ -1,7 +1,7 @@
 import { dissocIn } from "icepick";
 import _ from "underscore";
 
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { FieldReference, Field } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
 import type { Dispatch } from "metabase-types/store";

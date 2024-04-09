@@ -5,11 +5,8 @@
 }
 
 .list {
-  composes: ml-auto mr-auto from "style";
-}
-
-.list-wrapper {
-  composes: ml-auto mr-auto from "style";
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .list a {
@@ -17,48 +14,50 @@
 }
 
 .header {
-  composes: flex flex-row from "style";
   composes: mt4 mb2 from "style";
+  flex-direction: row;
+  display: flex;
   color: var(--title-color);
   font-size: 24px;
   min-height: 48px;
 }
 
 .headerBody {
-  composes: flex flex-full border-bottom from "style";
+  composes: borderBottom from "style";
+  flex: 1 0 auto;
+  display: flex;
   align-items: center;
   height: 100%;
   border-color: var(--color-brand);
 }
 
-.headerLink {
-  composes: ml2 flex-no-shrink from "style";
-  color: var(--color-brand);
-  font-size: 14px;
-}
-
 .headerButton {
-  composes: flex ml1 align-center from "style";
+  composes: ml1 from "style";
+  align-items: center;
+  display: flex;
   font-size: 14px;
 }
 
 .empty {
-  composes: full flex justify-center from "style";
+  width: 100%;
+  justify-content: center;
+  display: flex;
   padding-top: 75px;
 }
 
 .item {
-  composes: flex align-center from "style";
-  composes: relative from "style";
+  position: relative;
+  align-items: center;
+  display: flex;
 }
 
 .itemBody {
-  composes: flex-full from "style";
   max-width: 100%;
+  flex: 1 0 auto;
 }
 
 .itemTitle {
-  composes: text-bold from "style";
+  composes: textBold from "style";
   max-width: 100%;
   overflow: hidden;
 }
@@ -69,99 +68,40 @@
   font-size: 14px;
 }
 
-.itemSubtitleLight {
-  composes: text-light from "style";
-  font-size: 14px;
-}
-
-.itemSubtitleBold {
-  color: var(--title-color);
-}
-
-.icons {
-  composes: flex flex-row align-center from "style";
-}
 .leftIcons {
-  composes: flex-no-shrink flex align-self-start mr2 from "style";
-  composes: icons;
+  composes: mr2 from "style";
+  align-self: flex-start;
+  flex-shrink: 0;
+  flex-direction: row;
+  align-items: center;
+  display: flex;
 }
-.rightIcons {
-  composes: icons;
-}
+
 .itemIcons {
   composes: leftIcons;
   padding-top: 4px;
 }
 
-.extraIcons {
-  composes: icons;
-  composes: absolute top full-height from "style";
-  right: -40px;
-}
-
-/* hack fix for IE 11 which was hiding the archive icon */
-@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
-  .extraIcons {
-    composes: icons;
-  }
-}
-
 .icon {
-  composes: relative from "style";
+  position: relative;
   color: var(--muted-color);
 }
 
 .item .icon {
   visibility: hidden;
 }
+
 .item:hover .icon {
   visibility: visible;
 }
+
 .icon:hover {
   color: var(--color-brand);
-}
-
-/* ITEM CHECKBOX */
-.itemCheckbox {
-  composes: icon;
-  display: none;
-  visibility: visible !important;
-  margin-left: 10px;
-}
-.item:hover .itemCheckbox,
-.item.selected .itemCheckbox {
-  display: inline;
-}
-.item.selected .itemCheckbox {
-  color: var(--color-brand);
-}
-
-/* ITEM ICON */
-.itemIcon {
-  composes: icon;
-  visibility: visible !important;
-  composes: relative from "style";
-}
-.item:hover .itemIcon,
-.item.selected .itemIcon {
-  display: none;
 }
 
 /* CHART ICON */
 .chartIcon {
   composes: icon;
   visibility: visible !important;
-  composes: relative from "style";
-}
-
-/* ACTION ICONS */
-.tagIcon,
-.favoriteIcon,
-.archiveIcon {
-  composes: icon;
-  composes: mx1 from "style";
-}
-
-.trigger {
-  line-height: 0;
+  position: relative;
 }

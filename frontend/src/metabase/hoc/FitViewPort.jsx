@@ -1,4 +1,7 @@
+import cx from "classnames";
 import { Component } from "react";
+
+import CS from "metabase/css/core/index.css";
 
 /**
  * fitViewport allows you to modify the top level classes on the react root node
@@ -39,14 +42,14 @@ function fitViewport(ComposedComponent) {
     componentDidMount() {
       const root = document.getElementById("root");
       if (root && root.firstChild) {
-        root.firstChild.classList.add("flex", "flex-column");
+        root.firstChild.classList.add(CS.flex, CS.flexColumn);
       }
     }
 
     componentWillUnmount() {
       const root = document.getElementById("root");
       if (root && root.firstChild) {
-        root.firstChild.classList.remove("flex", "flex-column");
+        root.firstChild.classList.remove(CS.flex, CS.flexColumn);
       }
     }
 
@@ -54,7 +57,7 @@ function fitViewport(ComposedComponent) {
       return (
         <ComposedComponent
           {...this.props}
-          fitClassNames="relative flex flex-full"
+          fitClassNames={cx(CS.relative, CS.flex, CS.flexFull)}
         />
       );
     }
@@ -64,7 +67,7 @@ function fitViewport(ComposedComponent) {
 export function isFitViewportMode() {
   const root = document.getElementById("root");
   if (root && root.firstChild) {
-    return root.firstChild.classList.contains("spread");
+    return root.firstChild.classList.contains(CS.spread);
   }
   return false;
 }

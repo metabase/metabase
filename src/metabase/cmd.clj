@@ -20,7 +20,7 @@
    [clojure.tools.cli :as cli]
    [environ.core :as env]
    [metabase.config :as config]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -182,7 +182,7 @@
                :parse-fn     mbql.u/normalize-token
                :validate     [#{:continue :abort} "Must be 'continue' or 'abort'"]]]}
   [path & options]
-  (log/warn (u/colorize :red (trs "''load'' is deprecated and will be removed in a future release. Please migrate to ''import''.")))
+  (log/warn (u/colorize :red "'load' is deprecated and will be removed in a future release. Please migrate to 'import'."))
   (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load! path (get-parsed-options #'load options)))
 
 (defn ^:command import
@@ -198,9 +198,10 @@
                :default      :all
                :default-desc "all"
                :parse-fn     mbql.u/normalize-token
-               :validate     [#{:active :all} "Must be 'active' or 'all'"]]]}
+               :validate     [#{:active :all} "Must be 'active' or 'all'"]]
+              [nil "--include-entity-id"   "Include entity_id property in all dumped entities. Default: false."]]}
   [path & options]
-  (log/warn (u/colorize :red (trs "''dump'' is deprecated and will be removed in a future release. Please migrate to ''export''.")))
+  (log/warn (u/colorize :red "'dump' is deprecated and will be removed in a future release. Please migrate to 'export'."))
   (call-enterprise 'metabase-enterprise.serialization.cmd/v1-dump! path (get-parsed-options #'dump options)))
 
 (defn ^:command export

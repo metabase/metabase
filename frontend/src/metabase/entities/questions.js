@@ -1,19 +1,24 @@
 import { updateIn } from "icepick";
 import { t } from "ttag";
 
+import { cardApi } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import Collections, {
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
 import { color } from "metabase/lib/colors";
-import { createEntity, undo } from "metabase/lib/entities";
+import {
+  createEntity,
+  entityCompatibleQuery,
+  undo,
+} from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
-} from "metabase/query_builder/actions";
+} from "metabase/query_builder/actions/core/types";
 import {
   getMetadata,
   getMetadataUnfiltered,
@@ -21,10 +26,38 @@ import {
 
 import forms from "./questions/forms";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Questions = createEntity({
   name: "questions",
   nameOne: "question",
   path: "/api/card",
+
+  api: {
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(entityQuery, dispatch, cardApi.endpoints.listCards),
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(
+        { ...entityQuery, ignore_error: options?.noEvent },
+        dispatch,
+        cardApi.endpoints.getCard,
+      ),
+    create: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        cardApi.endpoints.createCard,
+      ),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        cardApi.endpoints.updateCard,
+      ),
+    delete: ({ id }, dispatch) =>
+      entityCompatibleQuery(id, dispatch, cardApi.endpoints.deleteCard),
+  },
 
   objectActions: {
     setArchived: (card, archived, opts) =>

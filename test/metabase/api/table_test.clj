@@ -7,12 +7,11 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Card Database Field FieldValues Table]]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.table :as table]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.permissions.test-util :as perms.test-util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.upload-test :as upload-test]
@@ -27,9 +26,9 @@
 ;; authentication test on every single individual endpoint
 
 (deftest unauthenticated-test
-  (is (= (get mw.util/response-unauthentic :body)
+  (is (= (get req.util/response-unauthentic :body)
          (client/client :get 401 "table")))
-  (is (= (get mw.util/response-unauthentic :body)
+  (is (= (get req.util/response-unauthentic :body)
          (client/client :get 401 (format "table/%d" (mt/id :users))))))
 
 (defn- db-details []
@@ -84,7 +83,6 @@
   (-> (field-details field)
       (dissoc :dimension_options :default_dimension_option)))
 
-
 (deftest list-table-test
   (testing "GET /api/table"
     (testing "These should come back in alphabetical order and include relevant metadata"
@@ -123,27 +121,85 @@
              (->> (mt/user-http-request :rasta :get 200 "table")
                   (filter #(= (:db_id %) (mt/id))) ; prevent stray tables from affecting unit test results
                   (map #(select-keys % [:name :display_name :id :entity_type]))
-                  set))))))
+                  set))))
+    (testing "Schema is \"\" rather than nil, if not set"
+      (mt/with-temp [Database {database-id :id} {}
+                     Table    {}                {:db_id        database-id
+                                                 :name         "schemaless_table"
+                                                 :display_name "Schemaless"
+                                                 :entity_type  "entity/GenericTable"
+                                                 :schema       nil}]
+        (is (= [""]
+               (->> (mt/user-http-request :rasta :get 200 "table")
+                    (filter #(= (:db_id %) database-id))
+                    (map :schema))))))))
+
+(defmacro with-tables-as-uploads
+  "Temporarily mark the given tables as uploads, as an alternate to making more expensive or brittle changes to the db."
+  [table-keys & body]
+  `(t2/with-transaction []
+     (let [where-clause# {:id [:in (map mt/id ~table-keys)]}]
+       (try
+         (t2/update! :model/Table where-clause# {:is_upload true})
+         ~@body
+         (finally
+           (t2/update! :model/Table where-clause# {:is_upload false}))))))
+
+(deftest list-uploaded-tables-test
+  (testing "GET /api/table/uploaded"
+    (testing "These should come back in alphabetical order and include relevant metadata"
+      (with-tables-as-uploads [:categories :reviews :venues]
+        (is (= #{{:name         (mt/format-name "categories")
+                  :display_name "Categories"
+                  :id           (mt/id :categories)
+                  :entity_type  "entity/GenericTable"}
+                 {:name         (mt/format-name "reviews")
+                  :display_name "Reviews"
+                  :id           (mt/id :reviews)
+                  :entity_type  "entity/GenericTable"}
+                 {:name         (mt/format-name "venues")
+                  :display_name "Venues"
+                  :id           (mt/id :venues)
+                  :entity_type  "entity/GenericTable"}}
+               (->> (mt/user-http-request :rasta :get 200 "table/uploaded")
+                    (filter #(= (:db_id %) (mt/id)))        ; prevent stray tables from affecting unit test results
+                    (map #(select-keys % [:name :display_name :id :entity_type]))
+                    set)))))))
 
 (deftest get-table-test
   (testing "GET /api/table/:id"
     (is (= (merge
             (dissoc (table-defaults) :segments :field_values :metrics)
-            (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :venues))
+            (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status] :id (mt/id :venues)) :pk_field)
             {:schema       "PUBLIC"
              :name         "VENUES"
              :display_name "Venues"
-             :pk_field     (table/pk-field-id (t2/select-one Table :id (mt/id :venues)))
-             :id           (mt/id :venues)
              :db_id        (mt/id)})
            (mt/user-http-request :rasta :get 200 (format "table/%d" (mt/id :venues)))))
+
+    (testing " returns schema as \"\" not nil"
+      (mt/with-temp [Database {database-id :id} {}
+                     Table    {table-id :id}    {:db_id        database-id
+                                                 :name         "schemaless_table"
+                                                 :display_name "Schemaless"
+                                                 :entity_type  "entity/GenericTable"
+                                                 :schema       nil}]
+        (is (= (merge
+                 (dissoc (table-defaults) :segments :field_values :metrics :db)
+                 (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status] :id table-id) :pk_field)
+                 {:schema       ""
+                  :name         "schemaless_table"
+                  :display_name "Schemaless"
+                  :db_id        database-id})
+               (dissoc (mt/user-http-request :rasta :get 200 (str "table/" table-id))
+                       :db)))))
 
     (testing " should return a 403 for a user that doesn't have read permissions for the table"
       (mt/with-temp [Database {database-id :id} {}
                      Table    {table-id :id}    {:db_id database-id}]
-        (perms/revoke-data-perms! (perms-group/all-users) database-id)
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (str "table/" table-id))))))))
+        (mt/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (str "table/" table-id)))))))))
 
 (defn- default-dimension-options []
   (as-> @#'api.table/dimension-options-for-response options
@@ -156,7 +212,7 @@
                 options)
     (m/map-keys #(Long/parseLong %) options)
     ;; since we're comparing API responses, need to de-keywordize the `:field` clauses
-    (mbql.u/replace options :field (mt/obj->json->obj &match))))
+    (lib.util.match/replace options :field (mt/obj->json->obj &match))))
 
 (defn- query-metadata-defaults []
   (-> (table-defaults)
@@ -298,15 +354,15 @@
                      Field    table-1-id  {:table_id (u/the-id table-1), :name "id", :base_type :type/Integer, :semantic_type :type/PK}
                      Field    _table-2-id {:table_id (u/the-id table-2), :name "id", :base_type :type/Integer, :semantic_type :type/PK}
                      Field    _table-2-fk {:table_id (u/the-id table-2), :name "fk", :base_type :type/Integer, :semantic_type :type/FK, :fk_target_field_id (u/the-id table-1-id)}]
-        ;; grant permissions only to table-2
-        (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
-        (perms/grant-permissions! (perms-group/all-users) (u/the-id db) (:schema table-2) (u/the-id table-2))
-        ;; metadata for table-2 should show all fields for table-2, but the FK target info shouldn't be hydrated
-        (is (= #{{:name "id", :target false}
-                 {:name "fk", :target false}}
-               (set (for [field (:fields (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (u/the-id table-2))))]
-                      (-> (select-keys field [:name :target])
-                          (update :target boolean))))))))))
+        (perms.test-util/with-no-data-perms-for-all-users!
+          ;; grant permissions only to table-2
+          (perms.test-util/with-perm-for-group-and-table! (u/the-id (perms-group/all-users)) (u/the-id table-2) :perms/data-access :unrestricted
+            ;; metadata for table-2 should show all fields for table-2, but the FK target info shouldn't be hydrated
+            (is (= #{{:name "id", :target false}
+                     {:name "fk", :target false}}
+                   (set (for [field (:fields (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (u/the-id table-2))))]
+                          (-> (select-keys field [:name :target])
+                              (update :target boolean))))))))))))
 
 (deftest update-table-test
   (testing "PUT /api/table/:id"
@@ -319,12 +375,12 @@
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
                   (update :db merge (select-keys (mt/db) [:details :settings])))
-              (t2/select-one [Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
+              (t2/hydrate (t2/select-one [Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table)) :pk_field)
               {:description     "What a nice table!"
                :entity_type     nil
+               :schema          ""
                :visibility_type "hidden"
-               :display_name    "Userz"
-               :pk_field        (table/pk-field-id table)})
+               :display_name    "Userz"})
              (dissoc (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table)))
                      :updated_at))))
     (testing "Can update description, caveat, points of interest to be empty (#11097)"
@@ -808,7 +864,7 @@
 
       (testing "time columns"
         (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers))
-          (mt/dataset test-data-with-time
+          (mt/dataset time-test-data
             (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users)))]
               (is (= @#'api.table/time-dimension-indexes
                      (dimension-options-for-field response "last_login_time"))))))))))
@@ -902,7 +958,10 @@
 ;;; |                                          POST /api/table/:id/append-csv                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn append-csv-via-api!
+(defn- append-csv! [options]
+  (@#'api.table/update-csv! (assoc options :action :metabase.upload/append)))
+
+(defn- append-csv-via-api!
   "Upload a small CSV file to the given collection ID. Default args can be overridden"
   []
   (mt/with-current-user (mt/user->id :rasta)
@@ -910,8 +969,8 @@
       (let [file  (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] (mt/random-name))
             table (upload-test/create-upload-table!)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (@#'api.table/append-csv! {:id   (:id table)
-                                     :file file}))))))
+          (append-csv! {:table-id (:id table)
+                        :file     file}))))))
 
 (deftest append-csv-test
   (mt/test-driver :h2
@@ -935,6 +994,50 @@
                 table (upload-test/create-upload-table!)]
             (is (.exists file) "File should exist before append-csv!")
             (mt/with-current-user (mt/user->id :crowberto)
-              (@#'api.table/append-csv! {:id   (:id table)
-                                         :file file}))
+              (append-csv! {:table-id (:id table)
+                            :file     file}))
             (is (not (.exists file)) "File should be deleted after append-csv!")))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          POST /api/table/:id/replace-csv                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- replace-csv! [options]
+  (@#'api.table/update-csv! (assoc options :action :metabase.upload/replace)))
+
+(defn- replace-csv-via-api!
+  "Upload a small CSV file to the given collection ID. Default args can be overridden"
+  []
+  (mt/with-current-user (mt/user->id :rasta)
+                        (mt/with-empty-db
+                         (let [file  (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] (mt/random-name))
+                               table (upload-test/create-upload-table!)]
+                           (mt/with-current-user (mt/user->id :crowberto)
+                             (replace-csv! {:table-id (:id table)
+                                            :file     file}))))))
+
+(deftest replace-csv-test
+  (mt/test-driver :h2
+    (mt/with-empty-db
+     (testing "Happy path"
+       (mt/with-temporary-setting-values [uploads-enabled true]
+         (is (= {:status 200, :body nil}
+                (replace-csv-via-api!)))))
+     (testing "Failure paths return an appropriate status code and a message in the body"
+       (mt/with-temporary-setting-values [uploads-enabled false]
+         (is (= {:status 422, :body {:message "Uploads are not enabled."}}
+                (replace-csv-via-api!))))))))
+
+(deftest replace-csv-deletes-file-test
+  (testing "File gets deleted after replacing"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-empty-db
+         (let [filename (mt/random-name)
+               file     (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] filename)
+               table    (upload-test/create-upload-table!)]
+           (is (.exists file) "File should exist before replace-csv!")
+           (mt/with-current-user (mt/user->id :crowberto)
+             (replace-csv! {:table-id (:id table)
+                            :file     file}))
+           (is (not (.exists file)) "File should be deleted after replace-csv!")))))))

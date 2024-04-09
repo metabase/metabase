@@ -1,8 +1,10 @@
+import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import {
@@ -27,7 +29,7 @@ import type {
 } from "metabase/public/lib/types";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Stack, Tabs } from "metabase/ui";
-import { getParameterValue } from "metabase-lib/parameters/utils/parameter-values";
+import { getParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { AppearanceSettings } from "./AppearanceSettings";
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
@@ -187,7 +189,7 @@ export const StaticEmbedSetupPane = ({
   const getServerEmbedCodePane = (variant: EmbedCodePaneVariant) => {
     return (
       <ServerEmbedCodePane
-        className="flex-full w-full"
+        className={cx(CS.flexFull, CS.wFull)}
         variant={variant}
         initialPreviewParameters={initialPreviewParameters}
         resource={resource}
@@ -316,7 +318,7 @@ export const StaticEmbedSetupPane = ({
                   />
                   <PreviewPane
                     hidden={activePane !== "preview"}
-                    className="flex-full"
+                    className={CS.flexFull}
                     previewUrl={iframeUrl}
                     isTransparent={displayOptions.theme === "transparent"}
                   />
@@ -343,7 +345,7 @@ export const StaticEmbedSetupPane = ({
                   />
                   <PreviewPane
                     hidden={activePane !== "preview"}
-                    className="flex-full"
+                    className={CS.flexFull}
                     previewUrl={iframeUrl}
                     isTransparent={displayOptions.theme === "transparent"}
                   />

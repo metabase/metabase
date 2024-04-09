@@ -1,7 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
-import Question from "metabase-lib/Question";
-import Segment from "metabase-lib/metadata/Segment";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Question from "metabase-lib/v1/Question";
+import Segment from "metabase-lib/v1/metadata/Segment";
+import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import {
   createMockDatabase,
   createMockMetric,

@@ -3,12 +3,17 @@ import type {
   ClickBehavior,
   Collection,
   CollectionAuthorityLevel,
+  CollectionId,
   Parameter,
   ParameterId,
   ParameterTarget,
 } from "metabase-types/api";
 
-import type { ActionDisplayType, WritebackAction } from "./actions";
+import type {
+  ActionDisplayType,
+  WritebackAction,
+  WritebackActionId,
+} from "./actions";
 import type { Card, CardId, CardDisplayType } from "./card";
 import type { Dataset } from "./dataset";
 import type { SearchModelType } from "./search";
@@ -28,7 +33,7 @@ export interface Dashboard {
   created_at: string;
   updated_at: string;
   collection?: Collection | null;
-  collection_id: number | null;
+  collection_id: CollectionId | null;
   name: string;
   description: string | null;
   model?: string;
@@ -65,6 +70,11 @@ export type DashboardCardLayoutAttrs = {
   size_y: number;
 };
 
+export type DashCardVisualizationSettings = {
+  [key: string]: unknown;
+  virtual_card?: VirtualCard;
+};
+
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   id: DashCardId;
   dashboard_id: DashboardId;
@@ -73,10 +83,7 @@ export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   card: Card | VirtualCard;
   collection_authority_level?: CollectionAuthorityLevel;
   entity_id: string;
-  visualization_settings?: {
-    [key: string]: unknown;
-    virtual_card?: VirtualCard;
-  };
+  visualization_settings?: DashCardVisualizationSettings;
   justAdded?: boolean;
   created_at: string;
   updated_at: string;
@@ -102,13 +109,13 @@ export type ActionDashboardCard = Omit<
   BaseDashboardCard,
   "parameter_mappings"
 > & {
+  action_id: WritebackActionId;
   action?: WritebackAction;
   card_id: CardId | null; // model card id for the associated action
   card: Card;
 
   parameter_mappings?: ActionParametersMapping[] | null;
-  visualization_settings: {
-    [key: string]: unknown;
+  visualization_settings: DashCardVisualizationSettings & {
     "button.label"?: string;
     click_behavior?: ClickBehavior;
     actionDisplayType?: ActionDisplayType;

@@ -1,0 +1,130 @@
+import { USERS } from "e2e/support/cypress_data";
+import {
+  restore,
+  openCommandPalette,
+  commandPalette,
+  commandPaletteSearch,
+  closeCommandPalette,
+  visitFullAppEmbeddingUrl,
+} from "e2e/support/helpers";
+
+const { admin } = USERS;
+
+describe("command palette", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should render a searchable command palette", () => {
+    cy.visit("/");
+
+    cy.findByPlaceholderText("Search…").click();
+
+    //Not sure if this is the best way to target this button
+    cy.findByRole("button", { name: / \+ K/ }).should("exist").click();
+
+    cy.findByTestId("search-results-floating-container").should("not.exist");
+    commandPalette().should("exist");
+    closeCommandPalette();
+
+    cy.log("open the command palette with keybinding");
+    openCommandPalette();
+    commandPalette().within(() => {
+      commandPaletteSearch().should("exist");
+
+      cy.log("limit to 5 basic actions");
+      cy.findByText("New question");
+      cy.findByText("New SQL query");
+      cy.findByText("New dashboard");
+      cy.findByText("New collection");
+      cy.findByText("New model");
+
+      cy.log("Should search entities and docs");
+      commandPaletteSearch().type("Orders, Count");
+
+      cy.findByRole("option", { name: "Orders, Count" }).should("exist");
+      cy.findByText('Search documentation for "Orders, Count"').should("exist");
+
+      // Since the command palette list is virtualized, we will search for a few
+      // to ensure they're reachable
+      commandPaletteSearch().clear().type("People");
+      cy.findByRole("option", { name: "People" }).should("exist");
+
+      commandPaletteSearch().clear().type("Uploads");
+      cy.findByRole("option", { name: "Settings - Uploads" }).should("exist");
+    });
+
+    cy.log("We can close the command palette using escape");
+    closeCommandPalette();
+    commandPalette().should("not.exist");
+  });
+
+  it("should render links to site settings in settings pages", () => {
+    cy.visit("/admin");
+    cy.findByRole("heading", { name: "Getting set up" }).should("exist");
+    openCommandPalette();
+
+    commandPalette().within(() => {
+      commandPaletteSearch().type("Nested");
+      cy.findByRole("option", { name: "Enable Nested Queries" }).click();
+    });
+
+    cy.findByTestId("enable-nested-queries-setting").should("be.visible");
+
+    cy.location("pathname").should("contain", "settings/general");
+    cy.location("hash").should("contain", "#enable-nested-queries");
+
+    openCommandPalette();
+
+    commandPalette().within(() => {
+      commandPaletteSearch().clear().type("Week");
+      cy.findByRole("option", { name: "First day of the week" }).click();
+    });
+
+    cy.location("pathname").should("contain", "settings/localization");
+    cy.location("hash").should("contain", "#start-of-week");
+  });
+
+  it("should not be accessible when doing full app embedding", () => {
+    visitFullAppEmbeddingUrl({
+      url: "/",
+      qs: {
+        top_nav: true,
+        search: true,
+      },
+    });
+
+    cy.findByPlaceholderText("Search…").click();
+    cy.findByRole("button", { name: / \+ K/ }).should("not.exist");
+
+    cy.get("body").type("{esc}");
+
+    openCommandPalette();
+    commandPalette().should("not.exist");
+  });
+
+  it("should not be accessible when a user is not logged in", () => {
+    cy.intercept("GET", "/api/search**").as("search");
+    cy.intercept("GET", "/api/database").as("database");
+
+    cy.signOut();
+    cy.visit("/");
+
+    cy.findByRole("heading", { name: "Sign in to Metabase" });
+
+    openCommandPalette();
+    commandPalette().should("not.exist");
+
+    cy.get("@database").should("be.null");
+    cy.get("@search").should("be.null");
+
+    cy.findByLabelText("Email address").type(admin.email);
+    cy.findByLabelText("Password").type(admin.password);
+    cy.button("Sign in").click();
+    cy.findByTestId("greeting-message");
+
+    openCommandPalette();
+    commandPalette().should("exist");
+  });
+});

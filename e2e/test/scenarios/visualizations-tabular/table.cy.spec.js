@@ -1,4 +1,5 @@
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   enterCustomColumnDetails,
   isScrollableHorizontally,
@@ -15,6 +16,9 @@ import {
   visitQuestionAdhoc,
   getTable,
   leftSidebar,
+  sidebar,
+  moveDnDKitElement,
+  selectFilterOperator,
 } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
@@ -212,16 +216,16 @@ describe("scenarios > visualizations > table", () => {
         },
       ],
     ].forEach(([column, test]) => {
-      cy.get(".cellData").contains(column).realHover();
+      cy.get(".cellData").contains(column).trigger("mouseover");
 
       // Add a delay here because there can be two popovers active for a very short time.
-      cy.wait(100);
+      cy.wait(250);
 
-      popover().within(() => {
+      hovercard().within(() => {
         test();
       });
 
-      cy.get(".cellData").contains(column).trigger("mouseleave");
+      cy.get(".cellData").contains(column).trigger("mouseout");
     });
 
     summarize();
@@ -230,17 +234,18 @@ describe("scenarios > visualizations > table", () => {
 
     cy.wait("@dataset");
 
-    cy.get(".cellData").contains("Count").realHover();
+    cy.get(".cellData").contains("Count").trigger("mouseover");
     hovercard().within(() => {
       cy.contains("Quantity");
       cy.findByText("No description");
     });
+    cy.get(".cellData").contains("Count").trigger("mouseout");
 
     // Make sure new table results loaded with Custom column and Count columns
-    cy.get(".cellData").contains(ccName).realHover();
-    cy.wait(100);
+    cy.get(".cellData").contains(ccName).trigger("mouseover");
+    cy.wait(250);
 
-    popover().within(() => {
+    hovercard().within(() => {
       cy.contains("No special type");
       cy.findByText("No description");
     });
@@ -249,11 +254,28 @@ describe("scenarios > visualizations > table", () => {
   it("should show the field metadata popover for a foreign key field (metabase#19577)", () => {
     openOrdersTable({ limit: 2 });
 
-    cy.get(".cellData").contains("Product ID").realHover();
+    cy.get(".cellData").contains("Product ID").trigger("mouseover");
 
     hovercard().within(() => {
       cy.contains("Foreign Key");
       cy.contains("The product ID.");
+    });
+  });
+
+  it("should show field metadata in a hovercard when hovering over a table column in the summarize sidebar", () => {
+    openOrdersTable({ limit: 2 });
+
+    summarize();
+
+    cy.findAllByTestId("dimension-list-item")
+      .contains("ID")
+      .parents("[data-testid='dimension-list-item']")
+      .within(() => {
+        cy.findByLabelText("More info").realHover();
+      });
+
+    hovercard().within(() => {
+      cy.contains("Entity Key");
     });
   });
 
@@ -295,80 +317,196 @@ describe("scenarios > visualizations > table", () => {
     openPeopleTable();
     headerCells().filter(":contains('Password')").click();
 
+    popover().findByText("Filter by this column").click();
+    selectFilterOperator("Is");
     popover().within(() => {
-      cy.findByText("Filter by this column").click();
-      cy.findByPlaceholderText("Search by Password").type("e").blur();
+      cy.findByPlaceholderText("Search by Password").type("e");
       cy.wait("@findSuggestions");
+      cy.findByPlaceholderText("Search by Password").blur();
     });
 
     popover().then($popover => {
       expect(isScrollableHorizontally($popover[0])).to.be.false;
     });
   });
+
+  it("should show the slow loading text when the query is taking too long", () => {
+    openOrdersTable({ mode: "notebook" });
+
+    cy.intercept("POST", "/api/dataset", req => {
+      req.on("response", res => {
+        res.setDelay(10000);
+      });
+    });
+
+    cy.button("Visualize").click();
+
+    cy.clock();
+    cy.tick(1000);
+    cy.findByTestId("query-builder-main").findByText("Doing science...");
+
+    cy.tick(5000);
+    cy.findByTestId("query-builder-main").findByText("Waiting for results...");
+  });
 });
 
 describe("scenarios > visualizations > table > conditional formatting", () => {
-  beforeEach(() => {
-    resetTestTable({ type: "postgres", table: "many_data_types" });
-    restore("postgres-writable");
-    cy.signInAsAdmin();
-    resyncDatabase({
-      dbId: WRITABLE_DB_ID,
-      tableName: "many_data_types",
-    });
-
-    getTable({ name: "many_data_types" }).then(({ id: tableId, fields }) => {
-      const booleanField = fields.find(field => field.name === "boolean");
-      const stringField = fields.find(field => field.name === "string");
-      const idField = fields.find(field => field.name === "id");
+  describe("rules", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
 
       visitQuestionAdhoc({
         dataset_query: {
-          database: WRITABLE_DB_ID,
+          database: SAMPLE_DB_ID,
           query: {
-            "source-table": tableId,
-            fields: [
-              ["field", idField.id, { "base-type": idField["base_type"] }],
-              [
-                "field",
-                stringField.id,
-                { "base-type": stringField["base_type"] },
-              ],
-              [
-                "field",
-                booleanField.id,
-                { "base-type": booleanField["base_type"] },
-              ],
-            ],
+            "source-table": SAMPLE_DATABASE.ORDERS_ID,
           },
           type: "query",
         },
-        display: "table",
+        visualization_settings: {
+          "table.column_formatting": [
+            {
+              id: 0,
+              type: "single",
+              operator: "<",
+              value: 3,
+              color: "#509EE3",
+              highlight_row: false,
+              columns: ["TAX"],
+            },
+            {
+              id: 1,
+              type: "single",
+              operator: "<",
+              value: 6,
+              color: "#88BF4D",
+              highlight_row: false,
+              columns: ["TAX"],
+            },
+            {
+              id: 2,
+              type: "single",
+              operator: "<",
+              value: 10,
+              color: "#EF8C8C",
+              highlight_row: false,
+              columns: ["TAX"],
+            },
+          ],
+        },
       });
+
+      cy.findByTestId("viz-settings-button").click();
+      sidebar().findByText("Conditional Formatting").click();
+    });
+
+    it("should be able to remove, add, and re-order rows", () => {
+      cy.findAllByTestId("formatting-rule-preview")
+        .first()
+        .should("contain.text", "is less than 3");
+      cy.findAllByTestId("formatting-rule-preview")
+        .first()
+        .findByRole("img", { name: /close/ })
+        .click();
+
+      cy.findAllByTestId("formatting-rule-preview")
+        .first()
+        .should("contain.text", "is less than 6");
+
+      cy.findByRole("button", { name: /add a rule/i }).click();
+      cy.findByRole("button", { name: /choose a column/i }).click();
+      popover().findByText("Subtotal").click();
+      cy.realPress("Escape");
+      cy.findByRole("button", { name: /is equal to/i }).click();
+      popover().findByText("is less than").click();
+
+      cy.findByTestId("conditional-formatting-value-input").type("20");
+      cy.findByTestId("conditional-formatting-color-selector").click();
+
+      popover()
+        .findByRole("generic", { name: /#F2A86F/i })
+        .click();
+
+      cy.button("Add rule").click();
+
+      cy.findAllByTestId("formatting-rule-preview")
+        .first()
+        .should("contain.text", "is less than 20");
+
+      moveDnDKitElement(cy.findAllByTestId("formatting-rule-preview").eq(2), {
+        vertical: -300,
+      });
+
+      cy.findAllByTestId("formatting-rule-preview")
+        .first()
+        .should("contain.text", "is less than 10");
     });
   });
 
-  it("should work with boolean columns", { tags: ["@external"] }, () => {
-    cy.findByTestId("viz-settings-button").click();
-    leftSidebar().findByText("Conditional Formatting").click();
-    cy.findByRole("button", { name: /add a rule/i }).click();
+  describe("operators", () => {
+    beforeEach(() => {
+      resetTestTable({ type: "postgres", table: "many_data_types" });
+      restore("postgres-writable");
+      cy.signInAsAdmin();
+      resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: "many_data_types",
+      });
 
-    popover().findByRole("option", { name: "Boolean" }).click();
+      getTable({ name: "many_data_types" }).then(({ id: tableId, fields }) => {
+        const booleanField = fields.find(field => field.name === "boolean");
+        const stringField = fields.find(field => field.name === "string");
+        const idField = fields.find(field => field.name === "id");
 
-    //Dismiss popover
-    leftSidebar().findByText("Which columns should be affected?").click();
+        visitQuestionAdhoc({
+          dataset_query: {
+            database: WRITABLE_DB_ID,
+            query: {
+              "source-table": tableId,
+              fields: [
+                ["field", idField.id, { "base-type": idField["base_type"] }],
+                [
+                  "field",
+                  stringField.id,
+                  { "base-type": stringField["base_type"] },
+                ],
+                [
+                  "field",
+                  booleanField.id,
+                  { "base-type": booleanField["base_type"] },
+                ],
+              ],
+            },
+            type: "query",
+          },
+          display: "table",
+        });
+      });
+    });
 
-    //Check that is-true was applied by default to boolean field rule
-    cy.findByTestId("conditional-formatting-value-operator-button").should(
-      "contain.text",
-      "is true",
-    );
+    it("should work with boolean columns", { tags: ["@external"] }, () => {
+      cy.findByTestId("viz-settings-button").click();
+      leftSidebar().findByText("Conditional Formatting").click();
+      cy.findByRole("button", { name: /add a rule/i }).click();
 
-    cy.findByRole("gridcell", { name: "true" }).should(
-      "have.css",
-      "background-color",
-      "rgba(80, 158, 227, 0.65)",
-    );
+      popover().findByRole("option", { name: "Boolean" }).click();
+
+      //Dismiss popover
+      leftSidebar().findByText("Which columns should be affected?").click();
+
+      //Check that is-true was applied by default to boolean field rule
+      cy.findByTestId("conditional-formatting-value-operator-button").should(
+        "contain.text",
+        "is true",
+      );
+
+      cy.findByRole("gridcell", { name: "true" }).should(
+        "have.css",
+        "background-color",
+        "rgba(80, 158, 227, 0.65)",
+      );
+    });
   });
 });
 
@@ -400,9 +538,7 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
     // Open the formatting menu
     cy.findByTestId("field-info-popover").click();
 
-    cy.findByTestId("drill-through-section").within(() => {
-      cy.icon("gear").click();
-    });
+    popover().icon("gear").click();
 
     cy.findByTestId("column-formatting-settings").within(() => {
       // Set to hours, minutes, seconds, 24-hour clock

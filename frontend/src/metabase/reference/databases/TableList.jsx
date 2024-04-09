@@ -1,4 +1,5 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { connect } from "react-redux";
@@ -10,6 +11,7 @@ import List from "metabase/components/List";
 import S from "metabase/components/List/List.module.css";
 import ListItem from "metabase/components/ListItem";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
 import R from "metabase/reference/Reference.module.css";
 
@@ -101,7 +103,7 @@ class TableList extends Component {
     const tables = Object.values(entities);
 
     return (
-      <div style={style} className="full" data-testid="table-list">
+      <div style={style} className={CS.full} data-testid="table-list">
         <ReferenceHeader
           name={t`Tables in ${database.name}`}
           type="tables"
@@ -113,7 +115,7 @@ class TableList extends Component {
         >
           {() =>
             tables.length > 0 ? (
-              <div className="wrapper wrapper--trim">
+              <div className={cx(CS.wrapper, CS.wrapperTrim)}>
                 <List>
                   {!hasSingleSchema
                     ? separateTablesBySchema(

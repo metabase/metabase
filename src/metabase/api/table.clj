@@ -17,6 +17,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
    [metabase.related :as related]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
    #_{:clj-kondo/ignore [:consistent-alias]}
@@ -24,7 +25,7 @@
    [metabase.types :as types]
    [metabase.upload :as upload]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -40,12 +41,23 @@
   "Schema for a valid table field ordering."
   (into [:enum] (map name table/field-orderings)))
 
+(defn- fix-schema [table]
+  (update table :schema str))
+
 (api/defendpoint GET "/"
   "Get all `Tables`."
   []
   (as-> (t2/select Table, :active true, {:order-by [[:name :asc]]}) tables
     (t2/hydrate tables :db)
-    (filterv mi/can-read? tables)))
+    (into [] (comp (filter mi/can-read?)
+                   (map fix-schema))
+          tables)))
+
+(api/defendpoint GET "/uploaded"
+  "Get all `Tables` visible to the current user which were created by uploading a file."
+  []
+  (as-> (t2/select Table, :active true, :is_upload true, {:order-by [[:name :asc]]}) tables
+        (filterv mi/can-read? tables)))
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
@@ -56,7 +68,8 @@
                             api/write-check
                             api/read-check)]
     (-> (api-perm-check-fn Table id)
-        (t2/hydrate :db :pk_field))))
+        (t2/hydrate :db :pk_field)
+        fix-schema)))
 
 (defn- update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
@@ -87,10 +100,10 @@
          (if (binding [h2/*allow-testing-h2-connections* true]
                (driver.u/can-connect-with-details? (:engine database) (:details database)))
            (doseq [table newly-unhidden]
-             (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name table))))
+             (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
              (sync/sync-table! table))
-           (log/warn (u/format-color 'red (trs "Cannot connect to database ''{0}'' in order to sync unhidden tables"
-                                               (:name database))))))))))
+           (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
+                                     (:name database)))))))))
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
@@ -331,6 +344,7 @@
         (m/dissoc-in [:db :details])
         (assoc-dimension-options db)
         format-fields-for-response
+        fix-schema
         (update :fields (partial filter (fn [{visibility-type :visibility_type}]
                                           (case (keyword visibility-type)
                                             :hidden    include-hidden-fields?
@@ -471,10 +485,10 @@
   {id ms/PositiveInt}
   (let [table (api/write-check (t2/select-one Table :id id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
-    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+    (mw.session/as-admin
       ;; async so as not to block the UI
       (sync.concurrent/submit-task
        (fn []
@@ -504,15 +518,14 @@
    field_order [:sequential ms/PositiveInt]}
   (-> (t2/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
-(mu/defn ^:private append-csv!
+(mu/defn ^:private update-csv!
   "This helper function exists to make testing the POST /api/table/:id/append-csv endpoint easier."
-  [{:keys [id file]}
-   :- [:map
-       [:id ms/PositiveInt]
-       [:file (ms/InstanceOfClass java.io.File)]]]
+  [options :- [:map
+               [:table-id ms/PositiveInt]
+               [:file (ms/InstanceOfClass java.io.File)]
+               [:action upload/update-action-schema]]]
   (try
-    (let [model (upload/append-csv! {:table-id id
-                                     :file     file})]
+    (let [model (upload/update-csv! options)]
       {:status 200
        :body   (:id model)})
     (catch Throwable e
@@ -520,12 +533,22 @@
                    500)
        :body   {:message (or (ex-message e)
                              (tru "There was an error uploading the file"))}})
-    (finally (io/delete-file file :silently))))
+    (finally (io/delete-file (:file options) :silently))))
 
 (api/defendpoint ^:multipart POST "/:id/append-csv"
   "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by uploading a CSV file."
   [id :as {raw-params :params}]
   {id ms/PositiveInt}
-  (append-csv! {:id id, :file (get-in raw-params ["file" :tempfile])}))
+  (update-csv! {:table-id id
+                :file     (get-in raw-params ["file" :tempfile])
+                :action   ::upload/append}))
+
+(api/defendpoint ^:multipart POST "/:id/replace-csv"
+  "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have been created by uploading a CSV file."
+  [id :as {raw-params :params}]
+  {id ms/PositiveInt}
+  (update-csv! {:table-id id
+                :file     (get-in raw-params ["file" :tempfile])
+                :action   ::upload/replace}))
 
 (api/define-routes)

@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.models.permissions :as perms]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features
     :as premium-features
@@ -17,78 +17,41 @@
   [query]
   (some-> query :info :context name (str/includes? "download")))
 
-(defn- table->download-perms-path
-  "Given a table-id referenced by a query, returns the permissions path required to download the results of the query
-  at the level specified by `download-level` (either :full or :limited)."
-  [db-id table-id download-level]
-  (first
-   (query-perms/tables->permissions-path-set
-    db-id
-    #{table-id}
-    {:table-perms-fn (fn [& path-components] (apply perms/feature-perms-path :download download-level path-components))
-     :native-perms-fn (fn [db-id] (perms/native-feature-perms-path :download download-level db-id))})))
-
-(defn- table-id->download-perms-level
-  "Given a table-id referenced by a query, returns the level at which the current user can download the data in the
-  table (:full, :limited or :none)."
-  [db-id table-id]
-  (cond (perms/set-has-full-permissions? @api/*current-user-permissions-set* (table->download-perms-path db-id table-id :full))
-        :full
-
-        (perms/set-has-full-permissions? @api/*current-user-permissions-set* (table->download-perms-path db-id table-id :limited))
-        :limited
-
-        :else
-        :none))
-
 (defmulti ^:private current-user-download-perms-level :type)
 
 (defmethod current-user-download-perms-level :default
   [_]
-  :full)
+  :one-million-rows)
 
 (defmethod current-user-download-perms-level :native
   [{database :database}]
-  (cond
-    (perms/set-has-full-permissions? @api/*current-user-permissions-set* (perms/native-feature-perms-path :download :full database))
-    :full
-
-    (perms/set-has-full-permissions? @api/*current-user-permissions-set* (perms/native-feature-perms-path :download :limited database))
-    :limited
-
-    :else
-    :none))
+  (data-perms/native-download-permission-for-user api/*current-user-id* database))
 
 (defmethod current-user-download-perms-level :query
   [{db-id :database, :as query}]
   ;; Remove the :native key (containing the transpiled MBQL) so that this helper function doesn't think the query is
   ;; a native query. Actual native queries are dispatched to a different method by the :type key.
-  (let [table-ids (query-perms/query->source-table-ids (dissoc query :native))]
+  (let [table-ids   (query-perms/query->source-table-ids (dissoc query :native))
+        table-perms (into #{}
+                          (map (fn [table-id]
+                                 (if (= table-id ::query-perms/native)
+                                   (data-perms/native-download-permission-for-user api/*current-user-id* db-id)
+                                   (data-perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id)))
+                               table-ids))]
     ;; The download perm level for a query should be equal to the lowest perm level of any table referenced by the query.
-    (reduce (fn [lowest-seen-perm-level table-id]
-              (let [table-perm-level (table-id->download-perms-level db-id table-id)]
-                (cond
-                  (= table-perm-level :none)
-                  (reduced :none)
-
-                  (or (= lowest-seen-perm-level :limited)
-                      (= table-perm-level :limited))
-                  :limited
-
-                  :else
-                  :full)))
-            :full
-            table-ids)))
+    (or (table-perms :no)
+        (table-perms :ten-thousand-rows)
+        :one-million-rows)))
 
 (defenterprise apply-download-limit
-  "Pre-processing middleware to apply row limits to MBQL export queries if the user has `limited` download perms. This
-  does not apply to native queries, which are instead limited by the [[limit-download-result-rows]] post-processing
-  middleware."
+  "Pre-processing middleware to apply row limits to MBQL export queries if the user has `ten-thousand-rows` download
+  perms. This does not apply to native queries, which are instead limited by the [[limit-download-result-rows]]
+  post-processing middleware."
   :feature :advanced-permissions
   [{query-type :type, {original-limit :limit} :query, :as query}]
   (if (and (is-download? query)
            (= query-type :query)
-           (= (current-user-download-perms-level query) :limited))
+           (= (current-user-download-perms-level query) :ten-thousand-rows))
     (assoc-in query
               [:query :limit]
               (apply min (filter some? [original-limit max-rows-in-limited-downloads])))
@@ -101,7 +64,7 @@
   :feature :advanced-permissions
   [query rff]
   (if (and (is-download? query)
-           (= (current-user-download-perms-level query) :limited))
+           (= (current-user-download-perms-level query) :ten-thousand-rows))
     (fn limit-download-result-rows* [metadata]
       ((take max-rows-in-limited-downloads) (rff metadata)))
     rff))
@@ -115,14 +78,19 @@
   :feature :advanced-permissions
   [qp]
   (fn [query rff]
-    (let [download-perms-level (if api/*current-user-permissions-set*
+    (let [download-perms-level (if api/*current-user-id*
                                  (current-user-download-perms-level query)
                                  ;; If no user is bound, assume full download permissions (e.g. for public questions)
-                                 :full)]
+                                 :one-million-rows)]
       (when (and (is-download? query)
-                 (= download-perms-level :none))
+                 (= download-perms-level :no))
         (throw (ex-info (tru "You do not have permissions to download the results of this query.")
                         {:type qp.error-type/missing-required-permissions
                          :permissions-error? true})))
       (qp query
-          (fn rff* [metadata] (rff (some-> metadata (assoc :download_perms download-perms-level))))))))
+          (fn rff* [metadata] (rff (some-> metadata
+                                           ;; Convert to API-style value names for the FE, for now
+                                           (assoc :download_perms (case download-perms-level
+                                                                    :no :none
+                                                                    :ten-thousand-rows :limited
+                                                                    :one-million-rows :full)))))))))

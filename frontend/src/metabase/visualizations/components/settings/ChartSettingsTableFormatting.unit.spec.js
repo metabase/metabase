@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { createMockColumn } from "metabase-types/api/mocks";
 
-import ChartSettingsTableFormatting from "./ChartSettingsTableFormatting";
+import { ChartSettingsTableFormatting } from "./ChartSettingsTableFormatting";
 
 const STRING_COLUMN = createMockColumn({
   base_type: "type/Text",
@@ -79,57 +79,61 @@ const setup = props => {
 };
 
 describe("ChartSettingsTableFormatting", () => {
-  it("should allow you to add a rule", () => {
+  it("should allow you to add a rule", async () => {
     setup();
     expect(screen.getByText("Conditional formatting")).toBeInTheDocument();
-    userEvent.click(screen.getByText("Add a rule"));
-    userEvent.click(screen.getByText("String Column"));
+    await userEvent.click(await screen.findByText("Add a rule"));
+    await userEvent.click(await screen.findByText("String Column"));
     //Dismiss Popup
-    userEvent.click(screen.getByText("Which columns should be affected?"));
+    await userEvent.click(
+      await screen.findByText("Which columns should be affected?"),
+    );
 
-    expect(screen.getByText("is equal to")).toBeInTheDocument();
+    expect(await screen.findByText("is equal to")).toBeInTheDocument();
 
-    userEvent.type(
-      screen.getByTestId("conditional-formatting-value-input"),
+    await userEvent.type(
+      await screen.findByTestId("conditional-formatting-value-input"),
       "toucan",
     );
-    userEvent.click(screen.getByText("Add rule"));
+    await userEvent.click(await screen.findByText("Add rule"));
 
-    expect(screen.getByText("String Column")).toBeInTheDocument();
-    expect(screen.getByText(/is equal to toucan/g)).toBeInTheDocument();
+    expect(await screen.findByText("String Column")).toBeInTheDocument();
+    expect(await screen.findByText(/is equal to toucan/g)).toBeInTheDocument();
   });
 
-  it("should only let you choose columns of the same type for a rule", () => {
+  it("should only let you choose columns of the same type for a rule", async () => {
     setup();
     expect(screen.getByText("Conditional formatting")).toBeInTheDocument();
-    userEvent.click(screen.getByText("Add a rule"));
-    userEvent.click(screen.getByText("String Column"));
+    await userEvent.click(await screen.findByText("Add a rule"));
+    await userEvent.click(await screen.findByText("String Column"));
 
     expect(
-      screen.getByRole("option", { name: "Number Column" }),
+      await screen.findByRole("option", { name: "Number Column" }),
     ).toHaveAttribute("aria-disabled", "true");
 
     expect(
-      screen.getByRole("option", { name: "Boolean Column" }),
+      await screen.findByRole("option", { name: "Boolean Column" }),
     ).toHaveAttribute("aria-disabled", "true");
 
     expect(
-      screen.getByRole("option", { name: "String Column 2" }),
+      await screen.findByRole("option", { name: "String Column 2" }),
     ).toHaveAttribute("aria-disabled", "false");
   });
 
   describe("should show appropriate operators based on column selection", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       setup();
-      userEvent.click(screen.getByText("Add a rule"));
+      await userEvent.click(screen.getByText("Add a rule"));
     });
 
-    it("string", () => {
-      userEvent.click(screen.getByText("String Column"));
+    it("string", async () => {
+      await userEvent.click(screen.getByText("String Column"));
       //Dismiss Popup
-      userEvent.click(screen.getByText("Which columns should be affected?"));
+      await userEvent.click(
+        screen.getByText("Which columns should be affected?"),
+      );
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 
@@ -140,12 +144,14 @@ describe("ChartSettingsTableFormatting", () => {
       });
     });
 
-    it("number", () => {
-      userEvent.click(screen.getByText("Number Column"));
+    it("number", async () => {
+      await userEvent.click(screen.getByText("Number Column"));
       //Dismiss Popup
-      userEvent.click(screen.getByText("Which columns should be affected?"));
+      await userEvent.click(
+        screen.getByText("Which columns should be affected?"),
+      );
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 
@@ -165,12 +171,14 @@ describe("ChartSettingsTableFormatting", () => {
       ).not.toBeChecked();
     });
 
-    it("boolean", () => {
-      userEvent.click(screen.getByText("Boolean Column"));
+    it("boolean", async () => {
+      await userEvent.click(screen.getByText("Boolean Column"));
       //Dismiss Popup
-      userEvent.click(screen.getByText("Which columns should be affected?"));
+      await userEvent.click(
+        screen.getByText("Which columns should be affected?"),
+      );
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 

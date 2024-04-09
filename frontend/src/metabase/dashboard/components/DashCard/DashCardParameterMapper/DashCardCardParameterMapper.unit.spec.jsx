@@ -1,7 +1,7 @@
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
   createMockTemplateTag,

@@ -10,9 +10,8 @@ import {
   RefreshWidgetButton,
 } from "./DashboardActions.styled";
 
-export const getDashboardActions = (
-  self,
-  {
+export const getDashboardActions = props => {
+  const {
     dashboard,
     isAdmin,
     canManageSubscriptions,
@@ -29,8 +28,7 @@ export const getDashboardActions = (
     onSharingClick,
     onFullscreenChange,
     hasNightModeToggle,
-  },
-) => {
+  } = props;
   const buttons = [];
 
   const isLoaded = !!dashboard;

@@ -1,26 +1,25 @@
 import { useField } from "formik";
 import type { HTMLAttributes } from "react";
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { t } from "ttag";
 
-import { isValidCollectionId } from "metabase/collections/utils";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import {
+  isValidCollectionId,
+  canonicalCollectionId,
+} from "metabase/collections/utils";
+import {
+  type CollectionPickerOptions,
+  CollectionPickerModal,
+} from "metabase/common/components/CollectionPicker";
 import CollectionName from "metabase/containers/CollectionName";
-import { CreateCollectionOnTheGoButton } from "metabase/containers/CreateCollectionOnTheGo";
 import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
 import FormField from "metabase/core/components/FormField";
-import SelectButton from "metabase/core/components/SelectButton";
 import Collections from "metabase/entities/collections";
-import SnippetCollections from "metabase/entities/snippet-collections";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useSelector } from "metabase/lib/redux";
+import { Button, Icon } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
-
-import {
-  PopoverItemPicker,
-  MIN_POPOVER_WIDTH,
-} from "./FormCollectionPicker.styled";
 
 export interface FormCollectionPickerProps
   extends HTMLAttributes<HTMLDivElement> {
@@ -55,48 +54,15 @@ function FormCollectionPicker({
   title,
   placeholder = t`Select a collection`,
   type = "collections",
-  initialOpenCollectionId,
-  onOpenCollectionChange,
   filterPersonalCollections,
-  zIndex,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
   const formFieldRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(MIN_POPOVER_WIDTH);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  useEffect(() => {
-    const { width: formFieldWidth } =
-      formFieldRef.current?.getBoundingClientRect() || {};
-    if (formFieldWidth) {
-      setWidth(formFieldWidth);
-    }
-  }, []);
+  const [openCollectionId] = useState<CollectionId>("root");
 
-  const renderTrigger = useCallback(
-    ({ onClick: handleShowPopover }) => (
-      <FormField
-        className={className}
-        style={style}
-        title={title}
-        htmlFor={id}
-        error={touched ? error : undefined}
-        ref={formFieldRef}
-      >
-        <SelectButton onClick={handleShowPopover}>
-          {isValidCollectionId(value) ? (
-            <ItemName id={value} type={type} />
-          ) : (
-            placeholder
-          )}
-        </SelectButton>
-      </FormField>
-    ),
-    [id, value, type, title, placeholder, error, touched, className, style],
-  );
-
-  const [openCollectionId, setOpenCollectionId] =
-    useState<CollectionId>("root");
   const openCollection = useSelector(state =>
     Collections.selectors.getObject(state, {
       entityId: openCollectionId,
@@ -108,62 +74,67 @@ function FormCollectionPicker({
     filterPersonalCollections !== "only" ||
     isOpenCollectionInPersonalCollection;
 
-  const renderContent = useCallback(
-    ({ closePopover }) => {
+  const options = useMemo<CollectionPickerOptions>(
+    () => ({
+      showPersonalCollections: filterPersonalCollections !== "exclude",
+      showRootCollection: filterPersonalCollections !== "only",
       // Search API doesn't support collection namespaces yet
-      const hasSearch = type === "collections";
+      showSearch: type === "collections",
+      hasConfirmButtons: true,
+      namespace: type === "snippet-collections" ? "snippets" : undefined,
+      allowCreateNew: showCreateNewCollectionOption,
+    }),
+    [filterPersonalCollections, type, showCreateNewCollectionOption],
+  );
 
-      const entity = type === "collections" ? Collections : SnippetCollections;
-
-      return (
-        <PopoverItemPicker
-          value={{ id: value, model: "collection" }}
-          models={["collection"]}
-          entity={entity}
-          onChange={({ id }) => {
-            setValue(id);
-            closePopover();
-          }}
-          showSearch={hasSearch}
-          width={width}
-          initialOpenCollectionId={initialOpenCollectionId}
-          onOpenCollectionChange={(id: CollectionId) => {
-            onOpenCollectionChange?.(id);
-            setOpenCollectionId(id);
-          }}
-          filterPersonalCollections={filterPersonalCollections}
-        >
-          {showCreateNewCollectionOption && (
-            <CreateCollectionOnTheGoButton
-              filterPersonalCollections={filterPersonalCollections}
-              openCollectionId={openCollectionId}
-            />
-          )}
-        </PopoverItemPicker>
-      );
+  const handleChange = useCallback(
+    ({ id }) => {
+      setValue(canonicalCollectionId(id));
+      setIsPickerOpen(false);
     },
-    [
-      type,
-      value,
-      width,
-      initialOpenCollectionId,
-      filterPersonalCollections,
-      showCreateNewCollectionOption,
-      openCollectionId,
-      setValue,
-      onOpenCollectionChange,
-    ],
+    [setValue],
   );
 
   return (
-    <TippyPopoverWithTrigger
-      sizeToFit
-      placement="bottom-start"
-      renderTrigger={renderTrigger}
-      popoverContent={renderContent}
-      maxWidth={width}
-      zIndex={zIndex}
-    />
+    <>
+      <FormField
+        className={className}
+        style={style}
+        title={title}
+        htmlFor={id}
+        error={touched ? error : undefined}
+        ref={formFieldRef}
+      >
+        <Button
+          data-testid="collection-picker-button"
+          id={id}
+          onClick={() => setIsPickerOpen(true)}
+          fullWidth
+          rightIcon={<Icon name="ellipsis" />}
+          styles={{
+            inner: {
+              justifyContent: "space-between",
+            },
+            root: { "&:active": { transform: "none" } },
+          }}
+        >
+          {isValidCollectionId(value) ? (
+            <ItemName id={value} type={type} />
+          ) : (
+            placeholder
+          )}
+        </Button>
+      </FormField>
+      {isPickerOpen && (
+        <CollectionPickerModal
+          title={t`Select a collection`}
+          value={{ id: value, model: "collection" }}
+          onChange={handleChange}
+          onClose={() => setIsPickerOpen(false)}
+          options={options}
+        />
+      )}
+    </>
   );
 }
 

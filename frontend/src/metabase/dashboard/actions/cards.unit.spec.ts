@@ -7,6 +7,7 @@ import {
   setupCardQueryEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { Api } from "metabase/api";
 import { checkNotNull } from "metabase/lib/types";
 import mainReducers from "metabase/reducers-main";
 import { CardApi } from "metabase/services";
@@ -158,13 +159,14 @@ function setup({
     dashboards: {
       [dashboard.id]: { ...dashboard, dashcards: dashcards.map(dc => dc.id) },
     },
-    isEditing: DASHBOARD,
+    editingDashboard: DASHBOARD,
     dashcards: _.indexBy(dashcards, "id"),
   });
 
   const store = getStore(
-    mainReducers,
+    { ...mainReducers, [Api.reducerPath]: Api.reducer },
     createMockState({ dashboard: dashboardState }),
+    [Api.middleware],
   ) as Store<State>;
 
   return { store };

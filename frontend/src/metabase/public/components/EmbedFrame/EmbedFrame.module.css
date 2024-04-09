@@ -24,7 +24,7 @@ body {
   border-color: var(--color-bg-dark);
 }
 
-:global(.Theme--night.EmbedFrame .fullscreen-night-text) {
+:global(.Theme--night.EmbedFrame) .fullscreenNightText {
   color: color-mod(var(--color-text-white) alpha(-14%));
   transition: color 1s linear;
 }
@@ -34,7 +34,7 @@ body {
   stroke: none !important;
 }
 
-:global(.Theme--night.EmbedFrame .DashCard .Card) {
+:global(.Theme--night.EmbedFrame) .DashCard .Card {
   background-color: var(--color-bg-black);
   border: 1px solid var(--color-bg-dark);
 }
@@ -56,6 +56,6 @@ body {
   background-color: transparent;
 }
 
-:global(.Theme--transparent.EmbedFrame .DashCard .Card) {
+:global(.Theme--transparent.EmbedFrame) .DashCard .Card {
   background-color: transparent;
 }

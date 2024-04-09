@@ -125,6 +125,8 @@ import expand_component from "./expand.svg?component";
 import expand_source from "./expand.svg?source";
 import expand_arrow_component from "./expand_arrow.svg?component";
 import expand_arrow_source from "./expand_arrow.svg?source";
+import extract_component from "./extract.svg?component";
+import extract_source from "./extract.svg?source";
 import eye_component from "./eye.svg?component";
 import eye_source from "./eye.svg?source";
 import eye_crossed_out_component from "./eye_crossed_out.svg?component";
@@ -610,6 +612,10 @@ export const Icons = {
   expand_arrow: {
     component: expand_arrow_component,
     source: expand_arrow_source,
+  },
+  extract: {
+    component: extract_component,
+    source: extract_source,
   },
   eye: {
     component: eye_component,

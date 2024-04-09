@@ -1,3 +1,4 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import ReactDOM from "react-dom";
@@ -5,11 +6,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { Icon, Box } from "metabase/ui";
-import Aggregation from "metabase-lib/queries/structured/Aggregation";
-import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
+import Aggregation from "metabase-lib/v1/queries/structured/Aggregation";
+import * as AGGREGATION from "metabase-lib/v1/queries/utils/aggregation";
 
 import { QueryDefinitionTooltip } from "../QueryDefinitionTooltip";
 
@@ -172,7 +175,7 @@ export class AggregationPopover extends Component {
       content && (
         <Box p="0.5rem">
           <Tooltip tooltip={content}>
-            <span className="QuestionTooltipTarget" />
+            <span className={QueryBuilderS.QuestionTooltipTarget} />
           </Tooltip>
         </Box>
       )
@@ -350,14 +353,23 @@ export class AggregationPopover extends Component {
         <div style={{ minWidth: 300 }}>
           <div
             ref={_ => (this._header = _)}
-            className="text-medium p1 py2 border-bottom flex align-center"
+            className={cx(
+              CS.textMedium,
+              CS.p1,
+              CS.py2,
+              CS.borderBottom,
+              CS.flex,
+              CS.alignCenter,
+            )}
           >
             <a
-              className="cursor-pointer flex align-center"
+              className={cx(CS.cursorPointer, CS.flex, CS.alignCenter)}
               onClick={this.onClearAggregation}
             >
               <Icon name="chevronleft" size={18} />
-              <h3 className="inline-block pl1">{selectedAggregation.name}</h3>
+              <h3 className={cx(CS.inlineBlock, CS.pl1)}>
+                {selectedAggregation.name}
+              </h3>
             </a>
           </div>
           <AggregationFieldList

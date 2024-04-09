@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 
 import { FilterList } from "../FilterList";
 

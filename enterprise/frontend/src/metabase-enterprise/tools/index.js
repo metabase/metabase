@@ -4,8 +4,8 @@ import { Route } from "metabase/hoc/Title";
 import { PLUGIN_ADMIN_TOOLS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import ErrorDetail from "./containers/ErrorDetail";
-import ErrorOverview from "./containers/ErrorOverview";
+import ErrorDetail from "./ErrorDetail";
+import ErrorOverview from "./ErrorOverview";
 
 if (hasPremiumFeature("audit_app")) {
   PLUGIN_ADMIN_TOOLS.INDEX_ROUTE = "errors";

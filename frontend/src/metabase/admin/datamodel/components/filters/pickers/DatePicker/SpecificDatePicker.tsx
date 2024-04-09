@@ -11,7 +11,7 @@ import { getDateStyleFromSettings } from "metabase/lib/time";
 import {
   getTimeComponent,
   setTimeComponent,
-} from "metabase-lib/queries/utils/query-time";
+} from "metabase-lib/v1/queries/utils/query-time";
 
 import HoursMinutesInput from "./HoursMinutesInput";
 import { DateInputContainer } from "./SpecificDatePicker.styled";

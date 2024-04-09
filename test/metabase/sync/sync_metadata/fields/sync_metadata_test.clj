@@ -263,10 +263,10 @@
                     :effective-type :type/Integer}))))
 
     (testing "and sync will re-fingerprint and analyze this field"
-      (mt/with-temp-test-data ["table"
-                               [{:field-name "field"
-                                 :base-type  :type/Text}]
-                               [["ngoc@metabase.com"]]]
+      (mt/with-temp-test-data [["table"
+                                [{:field-name "field"
+                                  :base-type  :type/Text}]
+                                [["ngoc@metabase.com"]]]]
         (try
          (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
          (let [original-field (t2/select-one :model/Field (mt/id :table :field))]

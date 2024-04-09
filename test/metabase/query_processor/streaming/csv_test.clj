@@ -27,14 +27,14 @@
           ["3" "September 15, 2014" "8" "56"]
           ["4" "March 11, 2014" "5" "4"]
           ["5" "May 5, 2013" "3" "49"]]
-         (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
+         (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
                                             (json/generate-string (mt/mbql-query checkins)))]
            (take 5 (parse-and-sort-csv result))))))
 
 (deftest check-an-empty-date-column
   (testing "NULL values should be written correctly"
-    (mt/dataset defs/test-data-with-null-date-checkins
-      (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
+    (mt/dataset defs/test-data-null-date
+      (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
                                          (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
         (is (= [["1" "April 7, 2014" "" "5" "12"]
                 ["2" "September 18, 2014" "" "1" "31"]
@@ -45,7 +45,7 @@
 
 (deftest sqlite-datetime-test
   (mt/test-driver :sqlite
-    (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
+    (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
                                        (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
       (is (= [["1" "April 7, 2014" "5" "12"]
               ["2" "September 18, 2014" "1" "31"]
@@ -55,7 +55,7 @@
              (parse-and-sort-csv result))))))
 
 (deftest datetime-fields-are-untouched-when-exported
-  (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
+  (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
                                      (json/generate-string (mt/mbql-query users {:order-by [[:asc $id]], :limit 5})))]
     (is (= [["1" "Plato Yeshua" "April 1, 2014, 8:30 AM"]
             ["2" "Felipinho Asklepios" "December 5, 2014, 3:15 PM"]

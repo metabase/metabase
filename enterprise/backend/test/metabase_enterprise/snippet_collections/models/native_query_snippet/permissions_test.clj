@@ -13,7 +13,7 @@
 
 (def ^:private root-collection (assoc collection/root-collection :name "Root Collection", :namespace "snippets"))
 
-(defn- test-perms [& {:keys [has-perms-for-obj? has-perms-for-id? grant-collection-perms! revoke-collection-perms!]}]
+(defn- test-perms! [& {:keys [has-perms-for-obj? has-perms-for-id? grant-collection-perms! revoke-collection-perms!]}]
   (letfn [(test-perms* [expected]
             (mt/with-test-user :rasta
               (when has-perms-for-obj?
@@ -44,7 +44,7 @@
             (test-perms* false)
             (grant-collection-perms!))
           (testing "should NOT be allowed if you are sandboxed"
-            (met/with-gtaps {:gtaps {:venues {:query (mt/mbql-query venues)}}}
+            (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)}}}
               (test-perms* false))))
         (with-redefs [snippet.perms/has-any-native-permissions? (constantly false)]
           (testing "should NOT be allowed if you do not have native query perms for at least one DB"
@@ -62,7 +62,7 @@
   (testing "read a Snippet"
     (test-with-root-collection-and-collection
      (fn [coll snippet]
-       (test-perms
+       (test-perms!
         :has-perms-for-obj?       #(mi/can-read? snippet)
         :has-perms-for-id?        #(mi/can-read? NativeQuerySnippet (:id snippet))
         :grant-collection-perms!  #(perms/grant-collection-read-permissions! (perms-group/all-users) coll)
@@ -72,7 +72,7 @@
   (testing "create a Snippet"
     (test-with-root-collection-and-collection
      (fn [coll snippet]
-       (test-perms
+       (test-perms!
         :has-perms-for-obj?       #(mi/can-create? NativeQuerySnippet (dissoc snippet :id))
         :grant-collection-perms!  #(perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
         :revoke-collection-perms! #(perms/revoke-collection-permissions! (perms-group/all-users) coll))))))
@@ -81,7 +81,7 @@
   (testing "update a Snippet"
     (test-with-root-collection-and-collection
      (fn [coll snippet]
-       (test-perms
+       (test-perms!
         :has-perms-for-obj?       #(mi/can-write? snippet)
         :has-perms-for-id?        #(mi/can-write? NativeQuerySnippet (:id snippet))
         :grant-collection-perms!  #(perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)

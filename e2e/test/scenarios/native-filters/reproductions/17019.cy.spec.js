@@ -46,7 +46,7 @@ describe("issue 17019", () => {
     cy.findByPlaceholderText("Filter").type("456{enter}");
 
     // We should see the result as a scalar
-    cy.get(".ScalarValue").contains("456");
+    cy.findByTestId("scalar-value").contains("456");
     // But let's also check that the filter widget has that same value still displayed
     cy.findByDisplayValue("456");
   });

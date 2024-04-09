@@ -1,24 +1,30 @@
-import { resolve } from "metabase-lib/expressions/resolver";
+import { createMockMetadata } from "__support__/metadata";
+import { resolve } from "metabase-lib/v1/expressions/resolver";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-describe("metabase-lib/expressions/resolve", () => {
+describe("metabase-lib/v1/expressions/resolve", () => {
   function collect(expr, startRule = "expression") {
     const dimensions = [];
     const segments = [];
     const metrics = [];
 
-    resolve(expr, startRule, (kind, name) => {
-      switch (kind) {
-        case "dimension":
-          dimensions.push(name);
-          break;
-        case "segment":
-          segments.push(name);
-          break;
-        case "metric":
-          metrics.push(name);
-          break;
-      }
-      return [kind, name];
+    resolve({
+      expression: expr,
+      type: startRule,
+      fn: (kind, name) => {
+        switch (kind) {
+          case "dimension":
+            dimensions.push(name);
+            break;
+          case "segment":
+            segments.push(name);
+            break;
+          case "metric":
+            metrics.push(name);
+            break;
+        }
+        return [kind, name];
+      },
     });
 
     return { dimensions, segments, metrics };
@@ -340,12 +346,42 @@ describe("metabase-lib/expressions/resolve", () => {
 
   it("should not fail on literal 0", () => {
     const opt = { default: 0 };
-    expect(resolve(["case", [[X, 0]]])).toEqual(["case", [[X, 0]]]);
-    expect(resolve(["case", [[X, 0]], opt])).toEqual(["case", [[X, 0]], opt]);
-    expect(resolve(["case", [[X, 2]], opt])).toEqual(["case", [[X, 2]], opt]);
+    expect(resolve({ expression: ["case", [[X, 0]]] })).toEqual([
+      "case",
+      [[X, 0]],
+    ]);
+    expect(resolve({ expression: ["case", [[X, 0]], opt] })).toEqual([
+      "case",
+      [[X, 0]],
+      opt,
+    ]);
+    expect(resolve({ expression: ["case", [[X, 2]], opt] })).toEqual([
+      "case",
+      [[X, 2]],
+      opt,
+    ]);
   });
 
   it("should reject unknown function", () => {
-    expect(() => resolve(["foobar", 42])).toThrow();
+    expect(() => resolve({ expression: ["foobar", 42] })).toThrow();
+  });
+
+  it("should reject unsupported function (metabase#39773)", () => {
+    const database = createMockMetadata({
+      databases: [
+        createSampleDatabase({
+          id: 1,
+          features: ["foreign-keys"],
+        }),
+      ],
+    }).database(1);
+
+    expect(() =>
+      resolve({
+        expression: ["percentile", 1, 2],
+        type: "aggregation",
+        database,
+      }),
+    ).toThrow("Unsupported function percentile");
   });
 });

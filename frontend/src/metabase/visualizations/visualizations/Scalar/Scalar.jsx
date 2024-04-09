@@ -1,8 +1,12 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
@@ -14,7 +18,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { TYPE } from "metabase-lib/types/constants";
+import { TYPE } from "metabase-lib/v1/types/constants";
 
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
 import { TITLE_ICON_SIZE } from "./constants";
@@ -218,11 +222,26 @@ export class Scalar extends Component {
 
     return (
       <ScalarWrapper>
-        <div className="Card-title absolute top right p1 px2">
+        <div
+          className={cx(
+            DashboardS.CardTitle,
+            CS.textDefault,
+            CS.textSmaller,
+            CS.absolute,
+            CS.top,
+            CS.right,
+            CS.p1,
+            CS.px2,
+          )}
+        >
           {actionButtons}
         </div>
         <ScalarContainer
-          className="fullscreen-normal-text fullscreen-night-text"
+          className={cx(
+            DashboardS.fullscreenNormalText,
+            DashboardS.fullscreenNightText,
+            EmbedFrameS.fullscreenNightText,
+          )}
           data-testid="scalar-container"
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}

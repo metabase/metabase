@@ -3,8 +3,11 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import ButtonBar from "metabase/components/ButtonBar";
+import CS from "metabase/css/core/index.css";
 import { EmbedMenu } from "metabase/dashboard/components/EmbedMenu";
+import { ResourceEmbedButton } from "metabase/public/components/ResourceEmbedButton";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
 
 import { ExecutionTime } from "./ExecutionTime";
@@ -43,18 +46,17 @@ const ViewFooter = ({
     return null;
   }
 
-  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
-  const hasDataPermission = isEditable;
-  const hideChartSettings = result.error && !hasDataPermission;
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  const hideChartSettings = result.error && !isEditable;
   const type = question.type();
 
   return (
     <ViewFooterRoot
-      className={cx(className, "text-medium border-top")}
+      className={cx(className, CS.textMedium, CS.borderTop)}
       data-testid="view-footer"
     >
       <ButtonBar
-        className="flex-full"
+        className={CS.flexFull}
         left={[
           !hideChartSettings && (
             <FooterButtonGroup>
@@ -92,7 +94,7 @@ const ViewFooter = ({
           isVisualized && (
             <QuestionDisplayToggle
               key="viz-table-toggle"
-              className="mx1"
+              className={CS.mx1}
               question={question}
               isShowingRawTable={isShowingRawTable}
               onToggleRawTable={isShowingRawTable => {
@@ -106,18 +108,18 @@ const ViewFooter = ({
             result,
             isObjectDetail,
           }) && <QuestionRowCount key="row_count" />,
-          isNative && <ExecutionTime time={result.running_time} />,
+          <ExecutionTime key="execution_time" time={result.running_time} />,
           QuestionLastUpdated.shouldRender({ result }) && (
             <QuestionLastUpdated
               key="last-updated"
-              className="hide sm-show"
+              className={cx(CS.hide, CS.smShow)}
               result={result}
             />
           ),
           QueryDownloadWidget.shouldRender({ result }) && (
             <QueryDownloadWidget
               key="download"
-              className="hide sm-show"
+              className={cx(CS.hide, CS.smShow)}
               question={question}
               result={result}
               visualizationSettings={visualizationSettings}
@@ -131,7 +133,7 @@ const ViewFooter = ({
           }) && (
             <QuestionAlertWidget
               key="alerts"
-              className="hide sm-show"
+              className={cx(CS.hide, CS.smShow)}
               canManageSubscriptions={canManageSubscriptions}
               question={question}
               questionAlerts={questionAlerts}
@@ -142,23 +144,27 @@ const ViewFooter = ({
               }
             />
           ),
-          type === "question" && (
-            <EmbedMenu
-              key="embed"
-              resource={question}
-              resourceType="question"
-              hasPublicLink={!!question.publicUUID()}
-              onModalOpen={() =>
-                question.isSaved()
-                  ? onOpenModal("embed")
-                  : onOpenModal("save-question-before-embed")
-              }
-            />
-          ),
+          type === "question" &&
+            (question.isSaved() ? (
+              <EmbedMenu
+                key="embed"
+                resource={question}
+                resourceType="question"
+                hasPublicLink={!!question.publicUUID()}
+                onModalOpen={() => onOpenModal(MODAL_TYPES.EMBED)}
+              />
+            ) : (
+              <ResourceEmbedButton
+                hasBackground={false}
+                onClick={() =>
+                  onOpenModal(MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED)
+                }
+              />
+            )),
           QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
             <QuestionTimelineWidget
               key="timelines"
-              className="hide sm-show"
+              className={cx(CS.hide, CS.smShow)}
               isShowingTimelineSidebar={isShowingTimelineSidebar}
               onOpenTimelines={onOpenTimelines}
               onCloseTimelines={onCloseTimelines}

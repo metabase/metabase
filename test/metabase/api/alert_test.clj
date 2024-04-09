@@ -12,7 +12,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
    [metabase.models.pulse-test :as pulse-test]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
@@ -34,7 +34,7 @@
       (select-keys [:name :description :display])
       (update :display name)
       (update :collection_id boolean)
-      (assoc :id true, :include_csv false, :include_xls false, :dashboard_card_id false,
+      (assoc :id true, :include_csv false, :include_xls false, :format_rows true, :dashboard_card_id false,
              :dashboard_id false, :parameter_mappings nil)))
 
 (defn- recipient-details [user-kwd]
@@ -134,10 +134,10 @@
 ;; authentication test on every single individual endpoint
 
 (deftest auth-tests
-  (is (= (get mw.util/response-unauthentic :body)
+  (is (= (get req.util/response-unauthentic :body)
          (client/client :get 401 "alert")))
 
-  (is (= (get mw.util/response-unauthentic :body)
+  (is (= (get req.util/response-unauthentic :body)
          (client/client :put 401 "alert/13"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

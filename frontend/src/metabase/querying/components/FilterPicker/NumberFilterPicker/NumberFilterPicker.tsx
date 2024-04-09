@@ -116,7 +116,7 @@ function NumberValueInput({
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
+      <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
         <NumberFilterValuePicker
           query={query}
           stageIndex={stageIndex}

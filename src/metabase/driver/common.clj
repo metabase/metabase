@@ -5,11 +5,9 @@
    [metabase.driver :as driver]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [schema.core :as s])
-  (:import
-   (org.joda.time DateTime)))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,7 +17,7 @@
   "Map of the db host details field, useful for `connection-properties` implementations"
   {:name         "host"
    :display-name (deferred-tru "Host")
-   :helper-text (deferred-tru "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).")
+   :helper-text  (deferred-tru "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).")
    :placeholder  "name.database.com"})
 
 (def default-port-details
@@ -247,11 +245,10 @@
     java.math.BigInteger           :type/BigInteger
     Number                         :type/Number
     String                         :type/Text
-    ;; java.sql types and Joda-Time types should be considered DEPRECATED
+    ;; java.sql types should be considered DEPRECATED
     java.sql.Date                  :type/Date
     java.sql.Timestamp             :type/DateTime
     java.util.Date                 :type/Date
-    DateTime                       :type/DateTime
     java.util.UUID                 :type/UUID
     clojure.lang.IPersistentMap    :type/Dictionary
     clojure.lang.IPersistentVector :type/Array
@@ -271,7 +268,7 @@
     ;; all-NULL columns in DBs like Mongo w/o explicit types
     nil                            :type/*
     (do
-      (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
+      (log/warnf "Don't know how to map class '%s' to a Field base_type, falling back to :type/*." klass)
       :type/*)))
 
 (def ^:private column-info-sample-size
@@ -304,8 +301,7 @@
   More in (defmethod date [:sql :week-of-year-us])."
   nil)
 
-(s/defn start-of-week->int :- (s/pred (fn [n] (and (integer? n) (<= 0 n 6)))
-                                      "Start of week integer")
+(mu/defn start-of-week->int :- [:int {:min 0, :max 6, :error/message "Start of week integer"}]
   "Returns the int value for the current [[metabase.public-settings/start-of-week]] Setting value, which ranges from
   `0` (`:monday`) to `6` (`:sunday`). This is guaranteed to return a value."
   {:added "0.42.0"}
@@ -323,7 +319,7 @@
     (* (Integer/signum delta)
        (- 7 (Math/abs delta)))))
 
-(s/defn start-of-week-offset :- s/Int
+(mu/defn start-of-week-offset :- :int
   "Return the offset needed to adjust a day of the week (in the range 1..7) returned by the `driver`, with `1`
   corresponding to [[driver/db-start-of-week]], so that `1` corresponds to [[metabase.public-settings/start-of-week]] in
   results.

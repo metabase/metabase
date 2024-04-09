@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
-   [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.h2.actions :as h2.actions]
@@ -66,16 +66,16 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:full-join                 false
-                              :regex                     true
-                              :percentile-aggregations   false
-                              :actions                   true
+(doseq [[feature supported?] {:actions                   true
                               :actions/custom            true
                               :datetime-diff             true
+                              :full-join                 false
+                              :index-info                true
                               :now                       true
+                              :percentile-aggregations   false
+                              :regex                     true
                               :test/jvm-timezone-setting false
-                              :uploads                   true
-                              :index-info                true}]
+                              :uploads                   true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -508,8 +508,8 @@
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
   {:pre [(map? details)]}
-  (mdb.spec/spec :h2 (cond-> details
-                       (string? (:db details)) (update :db connection-string-set-safe-options))))
+  (mdb/spec :h2 (cond-> details
+                  (string? (:db details)) (update :db connection-string-set-safe-options))))
 
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]
@@ -557,7 +557,7 @@
       (let [details (ssh/include-ssh-tunnel! db-details)
             db      (:db details)]
         (assoc details :db (str/replace-first db (str (:orig-port details)) (str (:tunnel-entrance-port details)))))
-      (do (log/error (tru "SSH tunnel can only be established for H2 connections using the TCP protocol"))
+      (do (log/error "SSH tunnel can only be established for H2 connections using the TCP protocol")
           db-details))
     db-details))
 
@@ -580,3 +580,11 @@
   [_driver]
   ;; http://www.h2database.com/html/advanced.html#limits_limitations
   256)
+
+(defmethod driver/add-columns! :h2
+  [driver db-id table-name column-definitions & {:as settings}]
+  ;; Workaround for the fact that H2 uses different syntax for adding multiple columns, which is difficult to
+  ;; produce with HoneySQL. As a simpler workaround we instead break it up into single column statements.
+  (let [f (get-method driver/add-columns! :sql-jdbc)]
+    (doseq [[k v] column-definitions]
+      (f driver db-id table-name {k v} settings))))

@@ -8,7 +8,7 @@ import Tables from "metabase/entities/tables";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
-import type Schema from "metabase-lib/metadata/Schema";
+import type Schema from "metabase-lib/v1/metadata/Schema";
 import type {
   DatabaseId,
   Group,

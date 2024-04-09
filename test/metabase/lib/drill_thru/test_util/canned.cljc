@@ -174,7 +174,26 @@
                       "PRODUCT_ID" nil
                       "CREATED_AT" "2024-09-08T22:03:20.239+03:00"}
      :aggregations    0
-     :breakouts       0}}))
+     :breakouts       0}
+
+    :test.query/people
+    {:query          (lib/query metadata-provider (meta/table-metadata :people))
+     :row            {"ID"         "222"
+                      "NAME"       "J. Some Guy"
+                      "EMAIL"      "someguy@isp.com"
+                      "PASSWORD"   "eafc45bf-cf8e-4c96-ab35-ce44d0021597"
+                      "ADDRESS"    "2112 Rush St"
+                      "CITY"       "Portland"
+                      "STATE"      "ME"
+                      "ZIP"        "66223"
+                      "LATITUDE"   43.6307309
+                      "LONGITUDE"  -70.8311294
+                      "SOURCE"     "Facebook"
+                      "BIRTH_DATE" "1987-06-14T00:00:00Z"
+                      "CREATED_AT" "2024-09-08T22:03:20.239-04:00"}
+     :aggregations    0
+     :breakouts       0}
+    }))
 
 (defn returned "Given a test case, a context, and a target drill type (eg. `:drill-thru/quick-filter`), calls
   [[lib/available-drill-thrus]] and looks for the specified drill.
@@ -309,6 +328,37 @@
             (click tc :header "PRODUCT_ID" :basic :fk)
             (click tc :header "CREATED_AT" :basic :datetime)])
 
+         ;; Simple query against People.
+         ;; This one has a :type/Email (EMAIL) for Column Extract drills.
+         (let [tc (test-case metadata-provider :test.query/people)]
+           [(click tc :cell "ID"         :basic :pk)
+            (click tc :cell "ADDRESS"    :basic :string)
+            (click tc :cell "EMAIL"      :basic :string)
+            (click tc :cell "PASSWORD"   :basic :string)
+            (click tc :cell "NAME"       :basic :string)
+            (click tc :cell "CITY"       :basic :string)
+            (click tc :cell "STATE"      :basic :string)
+            (click tc :cell "ZIP"        :basic :string)
+            (click tc :cell "LATITUDE"   :basic :number)
+            (click tc :cell "LONGITUDE"  :basic :number)
+            (click tc :cell "SOURCE"     :basic :string)
+            (click tc :cell "BIRTH_DATE" :basic :datetime)
+            (click tc :cell "CREATED_AT" :basic :datetime)
+
+            (click tc :header "ID"         :basic :pk)
+            (click tc :header "ADDRESS"    :basic :string)
+            (click tc :header "EMAIL"      :basic :string)
+            (click tc :header "PASSWORD"   :basic :string)
+            (click tc :header "NAME"       :basic :string)
+            (click tc :header "CITY"       :basic :string)
+            (click tc :header "STATE"      :basic :string)
+            (click tc :header "ZIP"        :basic :string)
+            (click tc :header "LATITUDE"   :basic :number)
+            (click tc :header "LONGITUDE"  :basic :number)
+            (click tc :header "SOURCE"     :basic :string)
+            (click tc :header "BIRTH_DATE" :basic :datetime)
+            (click tc :header "CREATED_AT" :basic :datetime)])
+
          ;; Simple query against Products, but it lies!
          ;; Claims VENDOR is :type/SerializedJSON (derives from :type/Structured).
          (let [tc (-> metadata-provider
@@ -317,7 +367,17 @@
                                    :semantic-type :type/SerializedJSON}]})
                       (test-case :test.query/products))]
            [(click tc :cell   "VENDOR" :basic :string)
-            (click tc :header "VENDOR" :basic :string)])]
+            (click tc :header "VENDOR" :basic :string)])
+
+         ;; Simple query against People, but it lies!
+         ;; Claims EMAIL is :type/URL (relevant to Column Extract drills).
+         (let [tc (-> metadata-provider
+                      (merged-mock/merged-mock-metadata-provider
+                        {:fields [{:id            (meta/id :people :email)
+                                   :semantic-type :type/URL}]})
+                      (test-case :test.query/people))]
+           [(click tc :cell   "EMAIL" :basic :string)
+            (click tc :header "EMAIL" :basic :string)])]
         (apply concat))))
 
 (defn canned-test

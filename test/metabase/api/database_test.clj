@@ -14,10 +14,10 @@
    [metabase.http-client :as client]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
-    :refer [Card Collection Database Field FieldValues Metric Segment Table]]
+    :refer [Card Collection Database Field FieldValues LegacyMetric Segment Table]]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database :refer [protected-password]]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
@@ -82,7 +82,8 @@
              (select-keys table [:active :created_at :db_id :description :display_name :entity_type
                                  :id :name :rows :schema :updated_at :visibility_type :initial_sync_status]))
       (update :entity_type #(when % (str "entity/" (name %))))
-      (update :visibility_type #(when % (name %)))))
+      (update :visibility_type #(when % (name %)))
+      (update :schema str)))
 
 (defn- expected-tables [db-or-id]
   (map table-details (t2/select Table
@@ -155,7 +156,14 @@
         (is (= {:tables [(table-details t1)
                          (table-details t2)]}
                (select-keys (mt/user-http-request :lucky :get 200 (format "database/%d?include=tables" (:id db)))
-                            [:tables]))))
+                            [:tables])))
+        (testing "Schemas are always empty strings, not nil"
+          (mt/with-temp [Database db  {:name "My DB" :engine ::test-driver}
+                         Table    {}  {:name "Table 1" :db_id (:id db) :schema nil}]
+            (is (= [""]
+                   (->> (mt/user-http-request :lucky :get 200 (format "database/%d?include=tables" (:id db)))
+                        :tables
+                        (map :schema)))))))
       (testing "`?include=tables.fields` -- should be able to include Tables and Fields"
         (letfn [(field-details* [field]
                   (assoc (into {} (t2/hydrate field [:target :has_field_values] :has_field_values))
@@ -204,9 +212,9 @@
                                 :type        :model
                                 :archived    true}
 
-     Metric   _                {:table_id table-id-1}
-     Metric   _                {:table_id table-id-1}
-     Metric   _                {:table_id table-id-2}
+     LegacyMetric   _                {:table_id table-id-1}
+     LegacyMetric   _                {:table_id table-id-1}
+     LegacyMetric   _                {:table_id table-id-2}
      Segment  _                {:table_id table-id-2}]
     (testing "should require admin"
       (is (= "You don't have permissions to do that."
@@ -750,11 +758,11 @@
       (testing "should reject requests for databases for which the user has no perms"
         (mt/with-temp [Database {database-id :id} {}
                        Card     _ (card-with-native-query "Maz Quote Views Per Month" :database_id database-id)] {}
-          (perms/revoke-data-perms! (perms-group/all-users) database-id)
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403
-                                       (format "database/%d/card_autocomplete_suggestions" database-id)
-                                       :query "maz"))))))))
+          (mt/with-no-data-perms-for-all-users!
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403
+                                         (format "database/%d/card_autocomplete_suggestions" database-id)
+                                         :query "maz")))))))))
 
 (driver/register! ::no-nested-query-support
                   :parent :sql-jdbc
@@ -1244,7 +1252,7 @@
              (test-connection-details "h2" (:details (mt/db))))))
 
     (testing "Valid database connection details"
-      (is (= {:valid true}
+      (is (= (merge (:details (mt/db)) {:valid true})
              (api-validate-database {:details {:engine :h2, :details (:details (mt/db))}}))))
 
     (testing "invalid database connection details"
@@ -1255,7 +1263,9 @@
                (test-connection-details "h2" {:db "ABC"}))))
 
       (testing "via the API endpoint"
-        (is (= {:valid false}
+        (is (= {:errors  {:db "check your connection string"}
+                :message "Implicitly relative file paths are not allowed."
+                :valid   false}
                (api-validate-database {:details {:engine :h2, :details {:db "ABC"}}})))))))
 
 (deftest validate-database-test-2
@@ -1372,43 +1382,39 @@
     (mt/with-temp [Database {db-id :id} {}
                    Table    t1 {:db_id db-id :schema "schema1"}
                    Table    t2 {:db_id db-id :schema "schema1"}]
+
       (testing "should work if user has full DB perms..."
         (is (= ["schema1"]
-               (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)))))
-
-      (testing "...or full schema perms..."
-        (perms/revoke-data-perms! (perms-group/all-users) db-id)
-        (perms/grant-permissions!  (perms-group/all-users) db-id "schema1")
-        (is (= ["schema1"]
-               (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)))))
+               (mt/with-full-data-perms-for-all-users!
+                 (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))
 
       (testing "...or just table read perms..."
-        (perms/revoke-data-perms! (perms-group/all-users) db-id)
-        (perms/revoke-data-perms! (perms-group/all-users) db-id "schema1")
-        (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t1)
-        (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t2)
-        (is (= ["schema1"]
-               (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)))))
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-perm-for-group-and-table! (perms-group/all-users) (u/the-id t1) :perms/data-access :unrestricted
+            (mt/with-perm-for-group-and-table! (perms-group/all-users) (u/the-id t2) :perms/data-access :unrestricted
+              (is (= ["schema1"]
+                     (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))))
 
       (testing "should return a 403 for a user that doesn't have read permissions for the database"
-        (perms/revoke-data-perms! (perms-group/all-users) db-id)
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id)))))
+        (mt/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id))))))
 
       (testing "should return a 403 if there are no perms for any schema"
-        (perms/grant-full-data-permissions! (perms-group/all-users) db-id)
-        (perms/revoke-data-perms! (perms-group/all-users) db-id "schema1")
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id))))))
+        (mt/with-full-data-perms-for-all-users!
+          (mt/with-perm-for-group-and-table! (perms-group/all-users) (u/the-id t1) :perms/data-access :no-self-service
+            (mt/with-perm-for-group-and-table! (perms-group/all-users) (u/the-id t2) :perms/data-access :no-self-service
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id)))))))))
 
     (testing "should exclude schemas for which the user has no perms"
       (mt/with-temp [Database {database-id :id} {}
-                     Table    _ {:db_id database-id :schema "schema-with-perms"}
+                     Table    {t1-id :id} {:db_id database-id :schema "schema-with-perms"}
                      Table    _ {:db_id database-id :schema "schema-without-perms"}]
-        (perms/revoke-data-perms! (perms-group/all-users) database-id)
-        (perms/grant-permissions! (perms-group/all-users) database-id "schema-with-perms")
-        (is (= ["schema-with-perms"]
-               (mt/user-http-request :rasta :get 200 (format "database/%s/schemas" database-id))))))))
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-perm-for-group-and-table! (perms-group/all-users) t1-id :perms/data-access :unrestricted
+            (is (= ["schema-with-perms"]
+                   (mt/user-http-request :rasta :get 200 (format "database/%s/schemas" database-id))))))))))
 
 (deftest get-schema-tables-test
   (testing "GET /api/database/:id/schema/:schema"
@@ -1425,10 +1431,10 @@
       (mt/with-temp [Database {database-id :id} {}
                      Table    table-with-perms {:db_id database-id :schema "public" :name "table-with-perms"}
                      Table    _                {:db_id database-id :schema "public" :name "table-without-perms"}]
-        (perms/revoke-data-perms! (perms-group/all-users) database-id)
-        (perms/grant-permissions! (perms-group/all-users) database-id "public" table-with-perms)
-        (is (= ["table-with-perms"]
-               (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-table-permission! (perms-group/all-users) table-with-perms :perms/data-access :unrestricted)
+          (is (= ["table-with-perms"]
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public"))))))))
 
     (testing "should exclude inactive Tables"
       (mt/with-temp [Database {database-id :id} {}
@@ -1559,39 +1565,33 @@
                    Table    _t2 {:db_id db-id :schema "schema2"}
                    Table    t3  {:db_id db-id :schema "schema1" :name "t3"}]
       (testing "if we have full DB perms"
-        (is (= ["t1" "t3"]
-               (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
-
-      (testing "if we have full schema perms"
-        (perms/revoke-data-perms! (perms-group/all-users) db-id)
-        (perms/grant-permissions! (perms-group/all-users) db-id "schema1")
-        (is (= ["t1" "t3"]
-               (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
-
-      (testing "if we have full Table perms"
-        (perms/revoke-data-perms! (perms-group/all-users) db-id)
-        (perms/revoke-data-perms! (perms-group/all-users) db-id "schema1")
-        (perms/grant-permissions! (perms-group/all-users) db-id "schema1" t1)
-        (perms/grant-permissions! (perms-group/all-users) db-id "schema1" t3)
-        (is (= ["t1" "t3"]
+        (mt/with-full-data-perms-for-all-users!
+          (is (= ["t1" "t3"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")))))))
+
+      (testing "if we have Table perms for all tables in the schema"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-perm-for-group-and-table! (perms-group/all-users) t1 :perms/data-access :unrestricted
+            (mt/with-perm-for-group-and-table! (perms-group/all-users) t3 :perms/data-access :unrestricted
+              (is (= ["t1" "t3"]
+                     (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))))))
 
     (testing "should return a 403 for a user that doesn't have read permissions"
       (testing "for the DB"
         (mt/with-temp [Database {database-id :id} {}
                        Table    _ {:db_id database-id :schema "test"}]
-          (perms/revoke-data-perms! (perms-group/all-users) database-id)
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "test"))))))
+          (mt/with-no-data-perms-for-all-users!
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "test")))))))
 
-      (testing "for the schema"
+      (testing "for all tables in the schema"
         (mt/with-temp [Database {database-id :id} {}
-                       Table    _ {:db_id database-id :schema "schema-with-perms"}
+                       Table    {t1-id :id} {:db_id database-id :schema "schema-with-perms"}
                        Table    _ {:db_id database-id :schema "schema-without-perms"}]
-          (perms/revoke-data-perms! (perms-group/all-users) database-id)
-          (perms/grant-permissions! (perms-group/all-users) database-id "schema-with-perms")
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "schema-without-perms")))))))))
+          (mt/with-no-data-perms-for-all-users!
+            (mt/with-perm-for-group-and-table! (perms-group/all-users) t1-id :perms/data-access :unrestricted
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "schema-without-perms")))))))))))
 
 (deftest slashes-in-identifiers-test
   (testing "We should handle Databases with slashes in identifiers correctly (#12450)"

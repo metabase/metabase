@@ -56,7 +56,8 @@ export interface Collection {
   personal_owner_id?: UserId;
   is_personal?: boolean;
 
-  location?: string;
+  location: string | null;
+  effective_location?: string; // location path containing only those collections that the user has permission to access
   effective_ancestors?: Collection[];
 
   here?: CollectionContentModel[];
@@ -71,7 +72,6 @@ export type CollectionItemModel =
   | "card"
   | "dataset"
   | "dashboard"
-  | "pulse"
   | "snippet"
   | "collection"
   | "indexed-entity";
@@ -94,8 +94,12 @@ export interface CollectionItem {
   database_id?: DatabaseId;
   moderated_status?: string;
   type?: string;
+  here?: CollectionItemModel[];
+  below?: CollectionItemModel[];
   can_write?: boolean;
   "last-edit-info"?: LastEditInfo;
+  location?: string;
+  effective_location?: string;
   getIcon: () => { name: IconName };
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;
@@ -108,6 +112,26 @@ export interface CollectionListQuery {
   archived?: boolean;
   "exclude-other-user-collections"?: boolean;
   "exclude-archived"?: boolean;
+  "personal-only"?: boolean;
   namespace?: string;
   tree?: boolean;
+}
+
+export interface ListCollectionItemsRequest {
+  id: CollectionId;
+  models?: CollectionItemModel | CollectionItemModel[];
+  archived?: boolean;
+  pinned_state?: "all" | "is_pinned" | "is_not_pinned";
+  limit?: number;
+  offset?: number;
+  sort_column?: "name" | "last_edited_at" | "last_edited_by" | "model";
+  sort_direction?: "asc" | "desc";
+}
+
+export interface ListCollectionItemsResponse {
+  data: CollectionItem[];
+  models: CollectionItemModel[] | null;
+  limit: number;
+  offset: number;
+  total: number;
 }

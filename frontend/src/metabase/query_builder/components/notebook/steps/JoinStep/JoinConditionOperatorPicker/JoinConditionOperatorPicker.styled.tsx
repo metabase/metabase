@@ -4,9 +4,9 @@ import styled from "@emotion/styled";
 import SelectList from "metabase/components/SelectList";
 import { color, lighten } from "metabase/lib/colors";
 
-const completeConditionStyle = (isOpen = false) => css`
+const completeConditionStyle = (isOpened = false) => css`
   color: ${color("white")};
-  background-color: ${isOpen ? lighten("brand", 0.1) : "transparent"};
+  background-color: ${isOpened ? lighten("brand", 0.1) : "transparent"};
 
   &:hover,
   &:focus {
@@ -14,9 +14,9 @@ const completeConditionStyle = (isOpen = false) => css`
   }
 `;
 
-const incompleteConditionStyle = (isOpen = false) => css`
+const incompleteConditionStyle = (isOpened = false) => css`
   color: ${color("brand")};
-  border: 2px solid ${isOpen ? color("brand") : "transparent"};
+  border: 2px solid ${isOpened ? color("brand") : "transparent"};
 
   &:hover,
   &:focus {
@@ -25,13 +25,13 @@ const incompleteConditionStyle = (isOpen = false) => css`
 `;
 
 export const OperatorPickerButton = styled.button<{
-  isOpen?: boolean;
+  isOpened?: boolean;
   isConditionComplete: boolean;
 }>`
   ${props =>
     props.isConditionComplete
-      ? completeConditionStyle(props.isOpen)
-      : incompleteConditionStyle(props.isOpen)}
+      ? completeConditionStyle(props.isOpened)
+      : incompleteConditionStyle(props.isOpened)}
 
   font-size: 16px;
   padding: 4px 8px;

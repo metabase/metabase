@@ -8,18 +8,23 @@ import {
   filter,
   filterField,
   getNotebookStep,
+  hovercard,
   join,
+  moveDnDKitElement,
   openNotebook,
   openOrdersTable,
   openProductsTable,
   openTable,
   popover,
   restore,
+  selectFilterOperator,
   startNewQuestion,
   summarize,
   visitQuestionAdhoc,
   visualize,
+  createQuestion,
 } from "e2e/support/helpers";
+import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -72,8 +77,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.findByTestId("step-summarize-0-0").within(() => {
       cy.icon("filter").click();
     });
+    popover().icon("int").click();
+    selectFilterOperator("Equal to");
     popover().within(() => {
-      cy.icon("int").click();
       cy.findByPlaceholderText("Enter a number").type("46");
       cy.contains("Add filter").click();
     });
@@ -237,30 +243,49 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.contains("Showing 175 rows");
   });
 
-  // flaky test (#19454)
-  it.skip("should show an info popover for dimensions listened by the custom expression editor", () => {
+  it("should show an info popover for dimensions listened by the custom expression editor", () => {
     // start a custom question with orders
-    startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Sample Database").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders").click();
+    openOrdersTable({ mode: "notebook" });
+    filter({ mode: "notebook" });
 
-    // type a dimension name
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add filters to narrow your answer").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-    enterCustomColumnDetails({ formula: "Total" });
+    popover().contains("Custom Expression").click();
+
+    cy.findByTestId("expression-editor-textfield").within(() => {
+      cy.get(".ace_text-input").focus().type("[");
+    });
 
     // hover over option in the suggestion list
     cy.findByTestId("expression-suggestions-list")
-      .findByText("Total")
-      .trigger("mouseenter");
+      .findByText("Created At")
+      .parents("li")
+      .findByLabelText("More info")
+      .realHover();
 
-    // confirm that the popover is shown
-    popover().contains("The total billed amount.");
-    popover().contains("80.36");
+    hovercard().within(() => {
+      cy.contains("The date and time an order was submitted.");
+      cy.contains("Creation timestamp");
+    });
+  });
+
+  it("should show an info card filter columns in the popover", () => {
+    openOrdersTable({ mode: "notebook" });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Filter").click();
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Add filters to narrow your answer").click();
+
+    cy.findByRole("tree")
+      .findByText("User ID")
+      .parents("[data-testid='dimension-list-item']")
+      .findByLabelText("More info")
+      .realHover();
+
+    hovercard().within(() => {
+      cy.contains("Foreign Key");
+      cy.findByText(/The id of the user/);
+    });
   });
 
   describe.skip("popover rendering issues (metabase#15502)", () => {
@@ -415,6 +440,18 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.findByText("Tax");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID").should("not.exist");
+  });
+
+  it("should render a field info icon in the fields picker", () => {
+    openTable({
+      table: ORDERS_ID,
+      mode: "notebook",
+    });
+
+    cy.findByTestId("fields-picker").click();
+    popover().findAllByLabelText("More info").first().realHover();
+
+    hovercard().contains("This is a unique ID");
   });
 
   it("should treat max/min on a name as a string filter (metabase#21973)", () => {
@@ -597,12 +634,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     it("should support custom columns", () => {
-      // startNewQuestion();
-      // popover().within(() => {
-      //   cy.findByText("QA Postgres12").click();
-      //   cy.findByText("Products").click();
-      // });
-
       addCustomColumn();
       enterCustomColumnDetails({
         formula: "Price * 10",
@@ -635,12 +666,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     it("should support Summarize side panel", () => {
-      // startNewQuestion();
-      // popover().within(() => {
-      //   cy.findByText("QA Postgres12").click();
-      //   cy.findByText("Products").click();
-      // });
-
       visualize();
 
       summarize();
@@ -653,9 +678,27 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it("should properly render previews (metabase#28726), (metabase#29959)", () => {
-    openOrdersTable({ mode: "notebook" });
-    cy.findByTestId("step-data-0-0").within(() => {
+  it("should properly render previews (metabase#28726, metabase#29959, metabase#40608)", () => {
+    startNewQuestion();
+
+    cy.log(
+      "Preview should not be possible without the source data (metabase#40608)",
+    );
+    getNotebookStep("data")
+      .as("dataStep")
+      .within(() => {
+        cy.findByText("Pick your starting data").should("exist");
+        cy.icon("play").should("not.be.visible");
+      });
+
+    popover().findByTextEnsureVisible("Raw Data").click();
+    cy.get("@dataStep").icon("play").should("not.be.visible");
+    popover().findByTextEnsureVisible("Orders").click();
+
+    getNotebookStep("filter").icon("play").should("not.be.visible");
+    getNotebookStep("summarize").icon("play").should("not.be.visible");
+
+    cy.get("@dataStep").within(() => {
       cy.icon("play").click();
       assertTableRowCount(10);
       cy.findByTextEnsureVisible("Subtotal");
@@ -665,16 +708,134 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     cy.button("Row limit").click();
-    cy.findByTestId("step-limit-0-0").within(() => {
-      cy.findByPlaceholderText("Enter a limit").type("5");
+    getNotebookStep("limit").within(() => {
+      cy.findByPlaceholderText("Enter a limit").type("5").realPress("Tab");
 
       cy.icon("play").click();
       assertTableRowCount(5);
 
-      cy.findByDisplayValue("5").type("{selectall}50");
+      cy.findByDisplayValue("5").type("{selectall}50").realPress("Tab");
       cy.button("Refresh").click();
       assertTableRowCount(10);
     });
+  });
+
+  it("should be able to drag-n-drop query clauses", () => {
+    function moveElement({ name, horizontal, vertical, index }) {
+      moveDnDKitElement(cy.findByText(name), {
+        horizontal,
+        vertical,
+      });
+      cy.findAllByTestId("notebook-cell-item")
+        .eq(index)
+        .should("have.text", name);
+    }
+
+    function verifyPopoverDoesNotMoveElement({
+      type,
+      name,
+      index,
+      horizontal,
+      vertical,
+    }) {
+      getNotebookStep(type).findByText(name).click();
+      popover().within(() => {
+        moveDnDKitElement(cy.findByDisplayValue("Is"), {
+          horizontal,
+          vertical,
+        });
+      });
+      getNotebookStep(type)
+        .findAllByTestId("notebook-cell-item")
+        .eq(index)
+        .should("have.text", name);
+    }
+
+    const questionDetails = {
+      query: {
+        "source-table": ORDERS_ID,
+        expressions: {
+          E1: ["+", ["field", ORDERS.ID, null], 1],
+          E2: ["+", ["field", ORDERS.ID, null], 2],
+        },
+        filter: [
+          "and",
+          ["=", ["field", ORDERS.ID, null], 1],
+          ["=", ["field", ORDERS.ID, null], 2],
+          ["=", ["field", ORDERS.ID, null], 3],
+        ],
+        breakout: [
+          ["field", ORDERS.ID, null],
+          ["field", ORDERS.PRODUCT_ID, null],
+        ],
+        aggregation: [
+          ["count"],
+          ["sum", ["field", ORDERS.TAX, null]],
+          ["sum", ["field", ORDERS.SUBTOTAL, null]],
+          ["sum", ["field", ORDERS.TOTAL, null]],
+          ["avg", ["field", ORDERS.TOTAL, null]],
+        ],
+        "order-by": [
+          ["asc", ["aggregation", 0]],
+          ["asc", ["aggregation", 4]],
+        ],
+      },
+    };
+    cy.createQuestion(questionDetails, { visitQuestion: true });
+    openNotebook();
+    getNotebookStep("expression").within(() => {
+      moveElement({ name: "E1", horizontal: 100, index: 1 });
+    });
+    getNotebookStep("filter").within(() => {
+      moveElement({ name: "ID is 2", horizontal: -100, index: 0 });
+    });
+    getNotebookStep("summarize").within(() => {
+      cy.findByTestId("aggregate-step").within(() => {
+        moveElement({ name: "Count", vertical: 100, index: 4 });
+      });
+      cy.findByTestId("breakout-step").within(() => {
+        moveElement({ name: "ID", horizontal: 100, index: 1 });
+      });
+    });
+    getNotebookStep("sort").within(() => {
+      moveElement({ name: "Average of Total", horizontal: -100, index: 0 });
+    });
+    verifyPopoverDoesNotMoveElement({
+      type: "filter",
+      name: "ID is 1",
+      index: 1,
+      horizontal: -100,
+    });
+  });
+
+  it("should not crash notebook when metric is used as an aggregation and breakout is applied (metabase#40553)", () => {
+    createMetric({
+      name: "Revenue",
+      description: "Sum of orders subtotal",
+      table_id: ORDERS_ID,
+      definition: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+      },
+    }).then(({ body }) => {
+      const metricId = body.id;
+
+      const questionDetails = {
+        query: {
+          "source-table": ORDERS_ID,
+          breakout: [["field", ORDERS.CREATED_AT, null]],
+          aggregation: [["metric", metricId]],
+        },
+      };
+
+      createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    openNotebook();
+
+    getNotebookStep("summarize").contains("Revenue").click();
+
+    popover().findByTestId("expression-editor-textfield").contains("[Revenue]");
   });
 });
 

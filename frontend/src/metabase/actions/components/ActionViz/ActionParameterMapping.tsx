@@ -7,7 +7,7 @@ import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select from "metabase/core/components/Select";
 import { setParameterMapping } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type {
   ActionDashboardCard,
   ActionParametersMapping,

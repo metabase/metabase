@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -7,6 +8,8 @@ import AdminHeader from "metabase/components/AdminHeader";
 import PaginationControls from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import Database from "metabase/entities/databases";
 import Task from "metabase/entities/tasks";
 
@@ -60,7 +63,7 @@ class TasksAppInner extends Component {
           </SectionControls>
         </SectionHeader>
 
-        <table className="ContentTable mt2">
+        <table className={cx(AdminS.ContentTable, CS.mt2)}>
           <thead>
             <tr>
               <th>{t`Task`}</th>
@@ -80,7 +83,7 @@ class TasksAppInner extends Component {
               // only want unknown if there is a db on the task and we don't have info
               return (
                 <tr key={task.id}>
-                  <td className="text-bold">{task.task}</td>
+                  <td className={CS.textBold}>{task.task}</td>
                   <td>{task.db_id ? name || t`Unknown name` : null}</td>
                   <td>{task.db_id ? engine || t`Unknown engine` : null}</td>
                   <td>{task.started_at}</td>
@@ -88,7 +91,7 @@ class TasksAppInner extends Component {
                   <td>{task.duration}</td>
                   <td>
                     <Link
-                      className="link text-bold"
+                      className={cx(CS.link, CS.textBold)}
                       to={`/admin/troubleshooting/tasks/${task.id}`}
                     >{t`View`}</Link>
                   </td>

@@ -8,6 +8,7 @@ import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+import DashboardS from "metabase/css/dashboard.module.css";
 import {
   isQuestionDashCard,
   getVisibleCardIds,
@@ -23,14 +24,16 @@ import {
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { addUndo } from "metabase/redux/undo";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import LegendS from "metabase/visualizations/components/Legend.module.css";
 import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
-import type Metadata from "metabase-lib/metadata/Metadata";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   BaseDashboardCard,
   Card,
@@ -369,7 +372,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       !!addSeriesModalDashCard && isQuestionDashCard(addSeriesModalDashCard);
     return (
       <Modal
-        className="Modal AddSeriesModal"
+        className={cx("Modal", DashboardS.AddSeriesModal)}
         data-testid="add-series-modal"
         isOpen={isOpen}
       >
@@ -565,9 +568,15 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     return (
       <DashboardCardContainer
         key={String(dc.id)}
-        className={cx("DashCard", {
-          BrandColorResizeHandle: shouldChangeResizeHandle,
-        })}
+        data-testid="dashcard-container"
+        className={cx(
+          DashboardS.DashCard,
+          EmbedFrameS.DashCard,
+          LegendS.DashCard,
+          {
+            [DashboardS.BrandColorResizeHandle]: shouldChangeResizeHandle,
+          },
+        )}
         isAnimationDisabled={this.state.isAnimationPaused}
       >
         {this.renderDashCard(dc, {
@@ -585,9 +594,9 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     const rowHeight = this.getRowHeight();
     return (
       <GridLayout
-        className={cx("DashboardGrid", {
-          "Dash--editing": this.isEditingLayout,
-          "Dash--dragging": this.state.isDragging,
+        className={cx({
+          [DashboardS.DashEditing]: this.isEditingLayout,
+          [DashboardS.DashDragging]: this.state.isDragging,
         })}
         layouts={layouts}
         breakpoints={GRID_BREAKPOINTS}

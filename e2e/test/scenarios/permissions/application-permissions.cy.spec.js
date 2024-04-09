@@ -1,4 +1,3 @@
-import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
@@ -9,7 +8,6 @@ import {
   modal,
   describeEE,
   modifyPermission,
-  getFullName,
   visitQuestion,
   visitDashboard,
   setTokenFeatures,
@@ -26,7 +24,6 @@ const MONITORING_INDEX = 1;
 const SUBSCRIPTIONS_INDEX = 2;
 
 const NORMAL_USER_ID = 2;
-const { admin } = USERS;
 
 describeEE("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
@@ -134,7 +131,7 @@ describeEE("scenarios > admin > permissions > application", () => {
         cy.signInAsNormalUser();
       });
 
-      it("allows accessing tools, audit, and troubleshooting for non-admins", () => {
+      it("allows accessing tools and troubleshooting for non-admins", () => {
         cy.visit("/");
         cy.icon("gear").click();
 
@@ -146,20 +143,6 @@ describeEE("scenarios > admin > permissions > application", () => {
           name: "Questions that errored when last run",
         });
         cy.findAllByRole("cell").should("contain", "broken_question");
-
-        cy.log("Audit smoke test");
-        cy.findByRole("navigation")
-          .findByRole("link", { name: "Audit" })
-          .click();
-        cy.location("pathname").should("eq", "/admin/audit/members/overview");
-        cy.findByRole("heading", {
-          name: "Team members",
-        });
-        cy.findByRole("radiogroup").contains("Audit log").click();
-        cy.location("pathname").should("eq", "/admin/audit/members/log");
-        cy.findAllByRole("cell")
-          .should("contain", "broken_question")
-          .and("contain", getFullName(admin));
 
         cy.log("Troubleshooting smoke test");
         cy.findByRole("navigation")
@@ -173,7 +156,7 @@ describeEE("scenarios > admin > permissions > application", () => {
     });
 
     describe("revoked", () => {
-      it("does not allow accessing tools, audit, and troubleshooting for non-admins", () => {
+      it("does not allow accessing tools, and troubleshooting for non-admins", () => {
         cy.signInAsNormalUser();
         cy.visit("/");
         cy.icon("gear").click();

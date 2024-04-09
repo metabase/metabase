@@ -97,7 +97,7 @@ export interface DashboardState {
     showLoadCompleteFavicon?: boolean;
   };
 
-  isEditing: Dashboard | null;
+  editingDashboard: Dashboard | null;
   isAddParameterPopoverOpen: boolean;
   isNavigatingBackToDashboard: boolean;
 

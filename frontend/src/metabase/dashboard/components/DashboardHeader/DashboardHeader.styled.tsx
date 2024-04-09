@@ -2,8 +2,9 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
+import { color, darken } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
+import { Menu } from "metabase/ui";
 
 export const DashboardHeaderActionDivider = styled.div`
   height: 1.25rem;
@@ -57,3 +58,11 @@ DashboardHeaderButton.defaultProps = {
   visibleOnSmallScreen: true,
   hasBackground: true,
 };
+
+export const SectionMenuItem = styled(Menu.Item)`
+  background-color: ${darken(color("bg-medium"), 0.1)};
+
+  &:hover {
+    background-color: ${color("brand")};
+  }
+`;

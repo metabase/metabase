@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import MetabaseSettings from "metabase/lib/settings";
 import { Select } from "metabase/ui";
 import type { TemplateTag } from "metabase-types/api";
@@ -41,6 +42,8 @@ export function FilterWidgetTypeSelect({
     <InputContainer>
       <ContainerLabel>
         {t`Filter widget type`}
+        {/* TODO this might be incorrect, because we allow running the query (see sql-field-filter e2e test)
+            but show "required" here despite it's None */}
         {hasNoWidgetType && <ErrorSpan>({t`required`})</ErrorSpan>}
       </ContainerLabel>
 
@@ -50,6 +53,7 @@ export function FilterWidgetTypeSelect({
         placeholder={t`Select…`}
         data={optionsOrDefault}
         data-testid="filter-widget-type-select"
+        disabled={optionsOrDefault.length === 1}
       />
 
       {!hasOptions && (
@@ -62,7 +66,7 @@ export function FilterWidgetTypeSelect({
               "the-field-filter-variable-type",
             )}
             target="_blank"
-            className="link"
+            className={CS.link}
           >
             {t`Learn more`}
           </Link>

@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import type {
   SearchResult,
-  SearchResults,
+  SearchResponse,
   SearchScore,
 } from "metabase-types/api";
 
@@ -23,6 +23,7 @@ export const createMockSearchResult = (
     archived: null,
     collection,
     collection_position: null,
+    can_write: null,
     table_id: 1,
     table_name: null,
     bookmark: null,
@@ -62,8 +63,8 @@ export const createMockSearchResults = ({
   options = {},
 }: {
   items?: SearchResult[];
-  options?: Partial<SearchResults>;
-} = {}): SearchResults => {
+  options?: Partial<SearchResponse>;
+} = {}): SearchResponse => {
   const uniqueModels = _.uniq(items.map(item => item.model));
 
   return {

@@ -22,5 +22,6 @@
                      :database-id   (or (when (pos-int? database-id)
                                           database-id)
                                         (u/the-id (lib.metadata/database parent-metadata-provider)))
+                     :table-id      (lib.util/source-table-id query)
                      :dataset-query query}))
                  queries)}))
