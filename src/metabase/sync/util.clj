@@ -184,15 +184,12 @@
   ([f]
    (do-with-error-handling "Error running sync step" f))
 
-  ([message f]
+  ([_message f]
    (try
      (f)
      (catch Throwable e
-       (if *log-exceptions-and-continue?*
-         (do
-           (log/warn e message)
-           e)
-         (throw e))))))
+       (do (log/error e)
+           (throw e))))))
 
 (defmacro with-error-handling
   "Execute `body` in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so. Pass a
@@ -213,10 +210,7 @@
    f         :- fn?]
   ((with-duplicate-ops-prevented operation database
      (with-sync-events operation database
-       (with-start-and-finish-logging message
-         (with-db-logging-disabled
-           (sync-in-context database
-             (partial do-with-error-handling (format "Error in sync step %s" message) f))))))))
+       (partial do-with-error-handling (format "Error in sync step %s" message) f)))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things
