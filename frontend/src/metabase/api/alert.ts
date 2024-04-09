@@ -52,7 +52,7 @@ export const alertApi = Api.injectEndpoints({
     }),
     updateAlert: builder.mutation<Alert, UpdateAlertRequest>({
       query: ({ id, ...body }) => ({
-        method: "POST",
+        method: "PUT",
         url: `/api/alert/${id}`,
         body,
       }),
