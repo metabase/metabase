@@ -4,7 +4,7 @@ import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import type {
   CollectionId,
   SearchRequest,
-  SearchModelType,
+  SearchModel,
 } from "metabase-types/api";
 
 import type { PickerState } from "../EntityPicker";
@@ -56,7 +56,7 @@ export const getStateFromIdPath = ({
 }: {
   idPath: CollectionId[];
   namespace?: "snippets";
-  models?: SearchModelType[];
+  models?: SearchModel[];
 }): PickerState<QuestionPickerItem, SearchRequest> => {
   const statePath: PickerState<QuestionPickerItem, SearchRequest> = [
     {
@@ -90,10 +90,7 @@ export const getStateFromIdPath = ({
   return statePath;
 };
 
-export const isFolder = (
-  item: QuestionPickerItem,
-  models: SearchModelType[],
-) => {
+export const isFolder = (item: QuestionPickerItem, models: SearchModel[]) => {
   return (
     item?.model === "collection" &&
     _.intersection([...(item?.below ?? []), ...(item?.here ?? [])], models)

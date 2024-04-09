@@ -7,7 +7,7 @@ import { useCollectionQuery, useQuestionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { SearchRequest, SearchModelType } from "metabase-types/api";
+import type { SearchRequest, SearchModel } from "metabase-types/api";
 
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
@@ -33,7 +33,7 @@ interface QuestionPickerProps {
   onItemSelect: (item: QuestionPickerItem) => void;
   initialValue?: Pick<QuestionPickerItem, "model" | "id">;
   options: QuestionPickerOptions;
-  models?: SearchModelType[];
+  models?: SearchModel[];
 }
 
 const useGetInitialCollection = (
