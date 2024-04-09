@@ -19,9 +19,12 @@ const Alerts = createEntity({
   path: "/api/alert",
 
   api: {
-    list: () => {
-      throw new TypeError("TimelineEvents.api.list is not supported");
-    },
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        alertApi.endpoints.listAlerts,
+      ),
     get: (entityQuery, options, dispatch) =>
       entityCompatibleQuery(
         entityQuery.id,
