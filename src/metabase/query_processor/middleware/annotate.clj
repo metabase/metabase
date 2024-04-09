@@ -34,7 +34,7 @@
    [:name         :string]
    [:display_name :string]
    ;; type of the Field. For Native queries we look at the values in the first 100 rows to make an educated guess
-   [:base_type    ::lib.schema.common/field-type]
+   [:base_type    ::lib.schema.common/base-type]
    ;; effective_type, coercion, etc don't go here. probably best to rename base_type to effective type in the return
    ;; from the metadata but that's for another day
    ;; where this column came from in the original query.

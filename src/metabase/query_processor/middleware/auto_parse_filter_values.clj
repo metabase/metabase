@@ -16,7 +16,7 @@
 
 (mu/defn ^:private parse-value-for-base-type
   [v         :- :string
-   base-type :- ::lib.schema.common/field-type]
+   base-type :- ::lib.schema.common/base-type]
   {:pre [(string? v)]}
   (try
     (condp #(isa? %2 %1) base-type
