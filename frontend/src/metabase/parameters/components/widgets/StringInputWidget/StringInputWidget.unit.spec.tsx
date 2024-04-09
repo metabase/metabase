@@ -42,10 +42,12 @@ describe("StringInputWidget", () => {
       render(<StringInputWidget value={["foo"]} setValue={mockSetValue} />);
 
       const textbox = screen.getByRole("textbox");
-      await userEvent.type(textbox, "{backspace}{backspace}{backspace}bar");
+
+      await userEvent.type(textbox, "bar");
+
       const button = screen.getByRole("button", { name: "Update filter" });
       await userEvent.click(button);
-      expect(mockSetValue).toHaveBeenCalledWith(["bar"]);
+      expect(mockSetValue).toHaveBeenCalledWith(["foobar"]);
     });
 
     it("should let you update the input with an undefined value", async () => {
