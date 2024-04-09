@@ -26,12 +26,7 @@
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
-   (java.sql
-    Connection
-    PreparedStatement
-    ResultSet
-    ResultSetMetaData
-    Types)
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)
    (java.time OffsetTime)))
 
 (set! *warn-on-reflection* true)
