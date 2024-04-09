@@ -1,8 +1,7 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { Component } from "react";
 import { t } from "ttag";
+import { Component, type MouseEventHandler } from "react";
 import _ from "underscore";
 
 import { HoverParent } from "metabase/components/MetadataInfo/InfoIcon";
@@ -10,7 +9,9 @@ import { Popover } from "metabase/components/MetadataInfo/Popover";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isObscured } from "metabase/lib/dom";
-import { DelayGroup, Icon } from "metabase/ui";
+import { DelayGroup, Icon, type IconName } from "metabase/ui";
+import type * as Lib from "metabase-lib";
+import type { Suggestion } from "metabase-lib/v1/expressions/suggest";
 
 import { ExpressionEditorHelpTextContent } from "./ExpressionEditorHelpText";
 import {
@@ -24,26 +25,7 @@ import {
   PopoverHoverTarget,
 } from "./ExpressionEditorSuggestions.styled";
 
-const SuggestionSpan = ({ suggestion, isHighlighted }) => {
-  return !isHighlighted && suggestion.range ? (
-    <SuggestionSpanRoot>
-      {suggestion.name.slice(0, suggestion.range[0])}
-      <SuggestionSpanContent isHighlighted={isHighlighted}>
-        {suggestion.name.slice(suggestion.range[0], suggestion.range[1])}
-      </SuggestionSpanContent>
-      {suggestion.name.slice(suggestion.range[1])}
-    </SuggestionSpanRoot>
-  ) : (
-    suggestion.name
-  );
-};
-
-SuggestionSpan.propTypes = {
-  suggestion: PropTypes.object,
-  isHighlighted: PropTypes.bool,
-};
-
-function colorForIcon(icon) {
+function colorForIcon(icon: string | undefined | null) {
   switch (icon) {
     case "segment":
       return { normal: color("accent2"), highlighted: color("brand-white") };
@@ -58,6 +40,8 @@ function colorForIcon(icon) {
       };
   }
 }
+
+// eslint-disable-next-line import/no-default-export
 export default class ExpressionEditorSuggestions extends Component {
   static propTypes = {
     query: PropTypes.object.isRequired,
@@ -68,7 +52,7 @@ export default class ExpressionEditorSuggestions extends Component {
     target: PropTypes.instanceOf(Element),
   };
 
-  componentDidUpdate(prevProps, prevState) {
+  componentDidUpdate(prevProps) {
     if (
       (prevProps && prevProps.highlightedIndex) !== this.props.highlightedIndex
     ) {
@@ -115,7 +99,7 @@ export default class ExpressionEditorSuggestions extends Component {
               data-testid="expression-suggestions-list"
               className={CS.pb1}
             >
-              {suggestions.map((suggestion, i) => (
+              {suggestions.map((suggestion: Suggestion, i: number) => (
                 <ExpressionEditorSuggestionsListItem
                   key={`suggestion-${i}`}
                   query={query}
@@ -139,6 +123,12 @@ function ExpressionEditorSuggestionsListItem({
   suggestion,
   isHighlighted,
   onMouseDown,
+}: {
+  query: Lib.Query;
+  stageIndex: number;
+  suggestion: Suggestion;
+  isHighlighted: boolean;
+  onMouseDown: MouseEventHandler;
 }) {
   const { icon, helpText } = suggestion;
   const { normal, highlighted } = colorForIcon(icon);
@@ -152,12 +142,14 @@ function ExpressionEditorSuggestionsListItem({
         data-ignore-outside-clicks
         data-testid="expression-suggestions-list-item"
       >
-        <Icon
-          name={icon}
-          color={isHighlighted ? highlighted : normal}
-          className={CS.mr1}
-          data-ignore-outside-clicks
-        />
+        {icon && (
+          <Icon
+            name={icon as IconName}
+            color={isHighlighted ? highlighted : normal}
+            className={CS.mr1}
+            data-ignore-outside-clicks
+          />
+        )}
         <SuggestionTitle data-ignore-outside-clicks>
           <SuggestionSpan
             suggestion={suggestion}
@@ -178,7 +170,7 @@ function ExpressionEditorSuggestionsListItem({
             />
           </Popover>
         )}
-        {!helpText && (
+        {!helpText && suggestion.column && (
           <QueryColumnInfoIcon
             query={query}
             stageIndex={stageIndex}
@@ -188,5 +180,25 @@ function ExpressionEditorSuggestionsListItem({
         )}
       </ExpressionListItem>
     </HoverParent>
+  );
+}
+
+function SuggestionSpan({
+  suggestion,
+  isHighlighted,
+}: {
+  suggestion: Suggestion;
+  isHighlighted: boolean;
+}) {
+  return !isHighlighted && suggestion.range ? (
+    <SuggestionSpanRoot>
+      {suggestion.name.slice(0, suggestion.range[0])}
+      <SuggestionSpanContent isHighlighted={isHighlighted}>
+        {suggestion.name.slice(suggestion.range[0], suggestion.range[1])}
+      </SuggestionSpanContent>
+      {suggestion.name.slice(suggestion.range[1])}
+    </SuggestionSpanRoot>
+  ) : (
+    <>{suggestion.name}</>
   );
 }
