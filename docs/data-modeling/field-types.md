@@ -51,23 +51,26 @@ See [Currency formatting options](../questions/sharing/visualizations/table.md#c
 
 ## Numeric
 
-Metabase will treat numeric field types as numbers, either as integers or floating point numbers.
+Metabase will treat numeric field types as [numbers]((../questions/sharing/visualizations/table.md#number-formatting-options).
+).
 
 - **Percentage**: Displays the number as a percentage by default.
-- **Quantity** Displays the number as normal by default.
-- **Score**.
+- **Quantity**: Displays the number as normal by default.
+- **Score**: Displays the number as normal by default.
 - **Share**. The same as percentage, so prefer "Percentage".
+
+See [Number formatting options](../questions/sharing/visualizations/table.md#number-formatting-options).
 
 ## Profile
 
 Fields that deal with people.
 
-- **Birthday**. Everyone has a birthday, but birthdays only happen once a year.
-- **Company**.
-- **Email**.
-- **Owner**
-- **Subscription**
-- **User**
+- **Birthday**: Everyone has a birthday, but birthdays only happen once a year.
+- **Company**: Text field.
+- **Email**: Displays as a [mailto](https://en.wikipedia.org/wiki/Mailto) link.
+- **Owner**: Text field.
+- **Subscription**: Text field.
+- **User**: Text field.
 
 ## Date and Time
 
@@ -93,6 +96,8 @@ If your database stores datetimes as a number or string, you can [cast that colu
 - **UNIX Timestamp (Milliseconds)**
 - **UNIX Timestamp (Seconds)**
 
+See [Date formatting options](../questions/sharing/visualizations/table.md#date-formatting-options).
+
 ## Categorical
 
 - **Enum** - An abbreviation for “enumerated type,” the value of an enum draws on a predefined list of options. An example of an enum would be a field for the months of the year. This list of twelve options is defined in makeup of the column, and no options outside this list would be valid.
@@ -116,7 +121,7 @@ Metabase can display fields with URLs as images or links.
 
 ### Set column types in models to enable people to explore results with the query builder
 
-You can set field types for models, which helps Metabase understand how to work with data in models built using SQL. If you set each column type in a SQL model, people will be able to explore that model using the query builder and drill-through menus.
+You can set field types for [models](./models.md), which helps Metabase understand how to work with data in models built using SQL. If you set each column type in a SQL model, people will be able to explore that model using the query builder and drill-through menus.
 
 With records that include integer entity keys, you can also configure text fields in models to [surface individual records in search](./models.md#surface-individual-records-in-search-by-matching-against-this-column).
 
