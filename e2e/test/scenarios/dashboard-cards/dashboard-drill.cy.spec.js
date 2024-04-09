@@ -750,7 +750,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         // Edit "Visualization options"
         showDashboardCardActions();
         cy.icon("palette").click();
-        cy.get(".Modal").within(() => {
+        modal().within(() => {
           cy.findByText("Reset to defaults").click();
           cy.button("Done").click();
         });
