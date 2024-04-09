@@ -235,6 +235,7 @@ export default class LineAreaBarChart extends Component {
 
   render() {
     const {
+      card,
       series,
       hovered,
       headerIcon,
@@ -246,6 +247,7 @@ export default class LineAreaBarChart extends Component {
       settings,
       canRemoveSeries,
       width,
+      getNewCardUrl,
     } = this.props;
 
     // Note (EmmadUsmani): Stacked charts should be reversed so series are stacked
@@ -281,6 +283,11 @@ export default class LineAreaBarChart extends Component {
             description={description}
             icon={headerIcon}
             actionButtons={actionButtons}
+            href={
+              canSelectTitle && getNewCardUrl
+                ? getNewCardUrl({ nextCard: card, seriesIndex: 0 })
+                : undefined
+            }
             onSelectTitle={canSelectTitle ? this.handleSelectTitle : undefined}
             width={width}
           />
@@ -325,6 +332,7 @@ LineAreaBarChart.propTypes = {
   isDashboard: PropTypes.bool,
   headerIcon: PropTypes.object,
   width: PropTypes.number,
+  getNewCardUrl: PropTypes.func,
 };
 
 function transformSingleSeries(s, series, seriesIndex) {

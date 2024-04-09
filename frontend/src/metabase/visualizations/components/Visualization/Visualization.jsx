@@ -300,18 +300,22 @@ class Visualization extends PureComponent {
     objectId,
     settingsSyncOptions,
   }) => {
+    const previousCard = this.getPreviousCard(seriesIndex);
+
     this.props.onChangeCardAndRun({
       nextCard,
-      previousCard: this.getPreviousCard(seriesIndex),
+      previousCard,
       objectId,
       settingsSyncOptions,
     });
   };
 
   getNewCardUrl = ({ nextCard, seriesIndex, objectId }) => {
+    const previousCard = this.getPreviousCard(seriesIndex);
+
     return this.props.getNewCardUrl({
       nextCard,
-      previousCard: this.getPreviousCard(seriesIndex),
+      previousCard,
       objectId,
     });
   };
@@ -546,6 +550,9 @@ class Visualization extends PureComponent {
                 onRender={this.onRender}
                 onActionDismissal={this.hideActions}
                 gridSize={gridSize}
+                getNewCardUrl={
+                  this.props.getNewCardUrl ? this.getNewCardUrl : null
+                }
                 onChangeCardAndRun={
                   this.props.onChangeCardAndRun
                     ? this.handleOnChangeCardAndRun
