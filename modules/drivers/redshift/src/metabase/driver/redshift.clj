@@ -52,7 +52,12 @@
   (apply (get-method driver/describe-table :sql-jdbc) args))
 
 (def ^:private get-tables-sql
-  ;; Ref: https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java#L1794
+  ;; Cal 2024-04-09
+  ;; This query uses tables that the JDBC redshift driver currently uses.
+  ;; It does not return tables from datashares, which is a relatively new feature of redshift.
+  ;; See https://github.com/dbt-labs/dbt-redshift/issues/742 for an implementation for DBT's integration with redshift
+  ;; for inspiration, and the JDBC driver itself:
+  ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java#L1794
   [(str/join
     "\n"
     ["select"
@@ -81,9 +86,11 @@
      "  tablename as name,"
      "  schemaname as schema,"
      "  'EXTERNAL TABLE' as type,"
+     ;; external tables don't have descriptions
      "  null as description"
      "from svv_external_tables t"
      "where schemaname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
+     ;; for external tables, USAGE privileges on a schema is sufficient to select
      "  and pg_catalog.has_schema_privilege(t.schemaname, 'USAGE')"])])
 
 (defn- describe-database-tables
@@ -140,6 +147,7 @@
                         [:c.table_name :table-name]
                         [[:not= :pk.column_name nil] :pk?]
                         [[:case [:not= :c.remarks [:inline ""]] :c.remarks :else nil] :field-comment]]
+               ;; svv_columns excludes columns from datashares, unlike svv_all_columns with includes them
                :from [[:svv_columns :c]]
                :left-join [[{:select [:tc.table_schema
                                       :tc.table_name
