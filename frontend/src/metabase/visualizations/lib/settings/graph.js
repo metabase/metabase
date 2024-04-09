@@ -35,6 +35,8 @@ import {
   isStackingValueValid,
   isXAxisScaleValid,
   getDefaultLegendIsReversed,
+  getDefaultShowDataLabels,
+  getDefaultDataLabelsFrequency,
   STACKABLE_DISPLAY_TYPES,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
@@ -368,7 +370,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     widget: "toggle",
     getHidden: (series, vizSettings) =>
       vizSettings["stackable.stack_type"] === "normalized",
-    default: false,
+    getDefault: getDefaultShowDataLabels,
     inline: true,
     marginBottom: "1rem",
   },
@@ -385,7 +387,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
         { name: t`All`, value: "all" },
       ],
     },
-    default: "fit",
+    getDefault: getDefaultDataLabelsFrequency,
     readDependencies: ["graph.show_values"],
   },
   "graph.label_value_formatting": {
