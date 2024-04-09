@@ -402,12 +402,12 @@
 (defn rollback-major-version
   "Roll back migrations later than given Metabase major version"
   ;; default rollback to previous version
-  ([db-type conn liquibase]
+  ([conn liquibase]
    ;; get current major version of Metabase we are running
-   (rollback-major-version db-type conn liquibase (dec (config/current-major-version))))
+   (rollback-major-version conn liquibase (dec (config/current-major-version))))
 
   ;; with explicit target version
-  ([_db-type conn ^Liquibase liquibase target-version]
+  ([conn ^Liquibase liquibase target-version]
    (when (or (not (integer? target-version)) (< target-version 44))
      (throw (IllegalArgumentException.
              (format "target version must be a number between 44 and the previous major version (%d), inclusive"

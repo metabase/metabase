@@ -879,3 +879,28 @@
                                              ::add/desired-alias "CREATED_AT_2"
                                              ::add/position      1}]]]}}
                   (add/add-alias-info (qp.preprocess/preprocess query)))))))))
+
+(deftest ^:parallel preserve-field-options-name-test
+  (qp.store/with-metadata-provider meta/metadata-provider
+    (driver/with-driver :h2
+      (is (=? {:source-query {:source-table (meta/id :orders)
+                              :breakout     [[:field (meta/id :orders :id) {}]]
+                              :aggregation  [[:aggregation-options
+                                              [:cum-sum [:field (meta/id :orders :id) {}]]
+                                              {:name "sum"}]]}
+               :breakout     [[:field "id" {:base-type :type/Integer, ::add/desired-alias "id"}]
+                              [:field "sum" {:base-type :type/Integer, ::add/desired-alias "__cumulative_sum"}]]
+               :aggregation  [[:aggregation-options
+                               [:cum-sum [:field "sum" {:base-type :type/Integer}]]
+                               {::add/desired-alias "sum"}]]}
+              (add/add-alias-info
+               {:source-query {:source-table (meta/id :orders)
+                               :breakout     [[:field (meta/id :orders :id) nil]]
+                               :aggregation  [[:aggregation-options
+                                               [:cum-sum [:field (meta/id :orders :id) nil]]
+                                               {:name "sum"}]]}
+                :breakout     [[:field "id" {:base-type :type/Integer}]
+                               [:field "sum" {:base-type :type/Integer, :name "__cumulative_sum"}]],
+                :aggregation  [[:aggregation-options
+                                [:cum-sum [:field "sum" {:base-type :type/Integer}]]
+                                {:name "sum"}]]}))))))

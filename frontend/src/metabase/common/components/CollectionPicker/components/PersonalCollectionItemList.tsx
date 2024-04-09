@@ -48,6 +48,7 @@ const getSortedTopLevelPersonalCollections = (
     .map(
       (collection: Collection): CollectionPickerItem => ({
         ...collection,
+        here: ["collection"], // until this endpoint gives this to us, pretend they all have content
         model: "collection",
       }),
     )

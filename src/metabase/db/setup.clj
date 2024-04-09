@@ -62,8 +62,7 @@
   *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
                         (This shouldn't be necessary now that we run migrations inside a transaction, but is
                         available just in case)."
-  [db-type     :- :keyword
-   data-source :- (ms/InstanceOfClass javax.sql.DataSource)
+  [data-source :- (ms/InstanceOfClass javax.sql.DataSource)
    direction   :- :keyword
    & args]
   ;; TODO: use [[jdbc/with-db-transaction]] instead of manually commit/rollback
@@ -84,7 +83,7 @@
        (case direction
          :up            (liquibase/migrate-up-if-needed! liquibase data-source)
          :force         (liquibase/force-migrate-up-if-needed! liquibase data-source)
-         :down          (apply liquibase/rollback-major-version db-type conn liquibase args)
+         :down          (apply liquibase/rollback-major-version conn liquibase args)
          :print         (print-migrations-and-quit-if-needed! liquibase data-source)
          :release-locks (liquibase/force-release-locks! liquibase))
        ;; Migrations were successful; commit everything and re-enable auto-commit
@@ -144,11 +143,10 @@
 
 (mu/defn ^:private run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
-  [db-type       :- :keyword
-   data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
+  [data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
    auto-migrate? :- [:maybe :boolean]]
   (log/info "Running Database Migrations...")
-  (migrate! db-type data-source (if auto-migrate? :up :print))
+  (migrate! data-source (if auto-migrate? :up :print))
   (log/info "Database Migrations Current ..." (u/emoji "✅")))
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
@@ -166,7 +164,7 @@
                 config/*disable-setting-cache*  true]
          (verify-db-connection db-type data-source)
          (error-if-downgrade-required! data-source)
-         (run-schema-migrations! db-type data-source auto-migrate?))))
+         (run-schema-migrations! data-source auto-migrate?))))
   :done)
 
 ;;;; Toucan Setup.
