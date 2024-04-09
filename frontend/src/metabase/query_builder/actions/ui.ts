@@ -2,6 +2,7 @@ import { createAction } from "redux-actions";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import { updateUserSetting } from "metabase/redux/settings";
 import { UserApi } from "metabase/services";
 import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
@@ -65,7 +66,7 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
   return async (_dispatch, getState) => {
     // persist the fact that this user has seen the NewbModal
     const { currentUser } = getState();
-    await UserApi.update_qbnewb({ id: currentUser?.id });
+    await UserApi.update_qbnewb({ id: checkNotNull(currentUser).id });
     MetabaseAnalytics.trackStructEvent("QueryBuilder", "Close Newb Modal");
   };
 });
