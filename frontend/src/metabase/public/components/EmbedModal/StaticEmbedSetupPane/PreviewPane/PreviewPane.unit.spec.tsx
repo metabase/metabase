@@ -5,7 +5,6 @@ import { PreviewPane } from "./PreviewPane";
 const MOCK_PREVIEW_URL = "https://www.example.com/";
 
 type MockPreviewPaneProps = {
-  previewUrl?: string;
   isTransparent?: boolean;
   hidden?: boolean;
 };
@@ -32,7 +31,7 @@ describe("PreviewPane", () => {
   });
 
   it("should set the iframe attributes correctly", () => {
-    setup({});
+    setup();
     const iframe = screen.getByTestId("embed-preview-iframe");
     expect(iframe).toHaveAttribute("frameBorder", "0");
   });
