@@ -113,6 +113,10 @@ This action will delete any dashboard subscriptions or alerts the person has cre
 
 This action doesn't affect email distribution lists that are managed outside of Metabase.
 
+## Default user accounts
+
+Metabase will automatically create a user account called "Metabase Internal" with an email of `internal@metabase.com`. Metabase uses this account to load the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection into your Metabase. Metabase will exclude this Metabase Internal account from the People tab in the Admin settings, so you won't see it show up if you search for it. You may see this `internal@metabase.com` account in the logs, so we're just documenting the account here so that you know it's a legitimate account and not someone trying to spy on your Metabase.
+
 ## Groups
 
 To determine [who has access to what](../permissions/start.md), you’ll need to
