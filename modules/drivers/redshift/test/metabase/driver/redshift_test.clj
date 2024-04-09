@@ -48,6 +48,7 @@
         (is (= "com.amazon.redshift.Driver"
                (.getName (class driver))))))))
 
+
 (deftest ^:parallel default-select-test
   (is (= ["SELECT \"source\".* FROM (SELECT *) AS \"source\""]
          (->> {:from [[{::sql.qp/sql-source-query ["SELECT *"]}
