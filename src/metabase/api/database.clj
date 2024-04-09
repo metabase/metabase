@@ -784,23 +784,23 @@
   [{:keys [details is_on_demand is_full_sync] :as db} schedules]
   (let [let-user-control-scheduling (:let-user-control-scheduling details)]
     (merge
-     (dissoc db :schedules)
-     #p (sync.schedules/schedule-map->cron-strings
-         (match #p [(true? let-user-control-scheduling) is_full_sync is_on_demand]
-           [false _ _]
-           (sync.schedules/default-randomized-schedule)
+     db
+     (sync.schedules/schedule-map->cron-strings
+      (match [(true? let-user-control-scheduling) is_full_sync is_on_demand]
+        [false _ _]
+        (sync.schedules/default-randomized-schedule)
 
-           ;; regularly on a schedule
-           ;; sync both steps, schedule should be provided
-           [true true false]
-           (do
-            (assert (every? #(some? (% schedules)) [:cache_field_values :metadata_sync]))
-            (sync.schedules/scheduling schedules))
+        ;; regularly on a schedule
+        ;; sync both steps, schedule should be provided
+        [true true false]
+        (do
+         (assert (every? #(some? (% schedules)) [:cache_field_values :metadata_sync]))
+         (sync.schedules/scheduling schedules))
 
-           ;; Only when adding a new filter or never, I'll do it myself
-           ;; -> Sync metadata only
-           [true false _]
-           (sync.schedules/scheduling (dissoc schedules :cache_field_values)))))))
+        ;; Only when adding a new filter or never, I'll do it myself
+        ;; -> Sync metadata only
+        [true false _]
+        (sync.schedules/scheduling (dissoc schedules :cache_field_values)))))))
 
 (api/defendpoint POST "/"
   "Add a new `Database`."

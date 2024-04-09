@@ -25,6 +25,7 @@
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -285,6 +286,28 @@
       (is (= {:is_full_sync false}
              (select-keys (create-db-via-api! {:is_full_sync false}) [:is_full_sync]))))))
 
+(defn- all-db-sync-triggers-name
+  [db]
+  (map #(.getName (#'task.sync-databases/trigger-key db %))
+       @#'task.sync-databases/all-tasks))
+
+(defn- query-all-db-sync-triggers-name
+  [db]
+  (map :trigger_name (t2/query {:select [:trigger_name]
+                                :from   [:qrtz_triggers]
+                                :where  [:in :trigger_name (all-db-sync-triggers-name db)]})))
+
+(defn- sync-and-analyze-trigger-name
+  [db]
+  (.getName (#'task.sync-databases/trigger-key db @#'task.sync-databases/sync-analyze-task-info)))
+
+(defmacro with-test-driver-available!
+  [& body]
+  `(mt/with-model-cleanup [:model/Database]
+     (with-redefs [driver/available?   (constantly true)
+                   driver/can-connect? (constantly true)]
+       ~@body)))
+
 (deftest create-db-test-3
   (testing "POST /api/database"
     (testing "if `:let-user-control-scheduling` is false it will ignore any schedules provided"
@@ -306,25 +329,68 @@
         (is (= "monthly" (-> cache_field_values_schedule u.cron/cron-string->schedule-map :schedule_type)))
         (is (= "monthly" (-> metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))))))
 
+(deftest create-db-default-schedule-test
+  (testing "POST /api/database"
+    (testing "create a db with default scan options"
+      (with-test-driver-available!
+        (let [resp (mt/user-http-request :crowberto :post 200 "database"
+                                         {:name    (mt/random-name)
+                                          :engine  (u/qualified-name ::test-driver)
+                                          :details {:db "my_db"}})
+              db   (t2/select-one :model/Database (:id resp))]
+          (is (= (all-db-sync-triggers-name db)
+                 (query-all-db-sync-triggers-name db))))))))
+
+(deftest create-db-custom-schedule-scan-field-values-test
+  (testing "POST /api/database"
+    (testing "create a db with scan field values option is \"regularly on a schedule\""
+      (with-test-driver-available!
+        (let [resp (mt/user-http-request :crowberto :post 200 "database"
+                                         {:name         (mt/random-name)
+                                          :engine       (u/qualified-name ::test-driver)
+                                          :details      {:db                          "my_db"
+                                                         :let-user-control-scheduling true}
+                                          :schedules    {:metadata_sync      monthly-schedule
+                                                         :cache_field_values monthly-schedule}
+                                          :is_on_demand false
+                                          :is_full_sync true})
+              db   (t2/select-one :model/Database (:id resp))]
+          (is (= (all-db-sync-triggers-name db)
+                 (query-all-db-sync-triggers-name db))))))))
+
 (deftest create-db-on-demand-scan-field-values-test
   (testing "POST /api/database"
     (testing "create a db with scan field values option is \"Only when adding a new filter widget\""
-      (mt/with-model-cleanup [:model/Database]
-        (with-redefs [driver/available?   (constantly true)
-                      driver/can-connect? (constantly true)]
-          (let [resp (mt/user-http-request :crowberto :post 200 "database"
-                                           {:name         (mt/random-name)
-                                            :engine       (u/qualified-name ::test-driver)
-                                            :details      {:db                          "my_db"
-                                                           :let-user-control-scheduling true}
-                                            :schedules    {:metadata_sync      monthly-schedule
-                                                           :cache_field_values monthly-schedule}
-                                            :is_on_demand true
-                                            :is_full_sync false})]
-            #p (t2/query {:select [:%count.*]
-                          :from   [:qrtz_triggers]
-                          :where  [:= :trigger_name (format "metabase.task.update-field-values.trigger.%d" (:id resp))]})
-            resp))))))
+      (with-test-driver-available!
+        (let [resp (mt/user-http-request :crowberto :post 200 "database"
+                                         {:name         (mt/random-name)
+                                          :engine       (u/qualified-name ::test-driver)
+                                          :details      {:db                          "my_db"
+                                                         :let-user-control-scheduling true}
+                                          :schedules    {:metadata_sync      monthly-schedule
+                                                         :cache_field_values monthly-schedule}
+                                          :is_on_demand true
+                                          :is_full_sync false})
+              db   (t2/select-one :model/Database (:id resp))]
+          (is (= [(sync-and-analyze-trigger-name db)]
+                 (query-all-db-sync-triggers-name db))))))))
+
+(deftest create-db-never-scan-field-values-test
+  (testing "POST /api/database"
+    (testing "create a db with scan field values option is \"Never, I'll do it myself\""
+      (with-test-driver-available!
+        (let [resp (mt/user-http-request :crowberto :post 200 "database"
+                                         {:name         (mt/random-name)
+                                          :engine       (u/qualified-name ::test-driver)
+                                          :details      {:db                          "my_db"
+                                                         :let-user-control-scheduling true}
+                                          :schedules    {:metadata_sync      monthly-schedule
+                                                         :cache_field_values monthly-schedule}
+                                          :is_on_demand false
+                                          :is_full_sync false})
+              db   (t2/select-one :model/Database (:id resp))]
+          (is (= [(sync-and-analyze-trigger-name db)]
+                 (query-all-db-sync-triggers-name db))))))))
 
 (deftest create-db-test-5
   (testing "POST /api/database"
