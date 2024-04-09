@@ -1,26 +1,30 @@
-import PropTypes from "prop-types";
+import type { LocationDescriptor } from "history";
 import { useMemo } from "react";
 import { t } from "ttag";
-
-import Radio from "metabase/core/components/Radio";
-import { getFullName } from "metabase/lib/user";
-import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
 
 import {
   AccountHeaderRoot,
   HeaderAvatar,
   HeaderSection,
-  HeaderTitle,
   HeaderSubtitle,
-} from "./AccountHeader.styled";
+  HeaderTitle,
+} from "metabase/account/app/components/AccountHeader/AccountHeader.styled";
+import Radio from "metabase/core/components/Radio";
+import { getFullName } from "metabase/lib/user";
+import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
+import type { User } from "metabase-types/api";
 
-const propTypes = {
-  user: PropTypes.object.isRequired,
-  path: PropTypes.string,
-  onChangeLocation: PropTypes.func,
+type AccountHeaderProps = {
+  user: User;
+  path?: string;
+  onChangeLocation?: (nextLocation: LocationDescriptor) => void;
 };
 
-const AccountHeader = ({ user, path, onChangeLocation }) => {
+export const AccountHeader = ({
+  user,
+  path,
+  onChangeLocation,
+}: AccountHeaderProps) => {
   const hasPasswordChange = useMemo(
     () => PLUGIN_IS_PASSWORD_USER.every(predicate => predicate(user)),
     [user],
@@ -56,7 +60,3 @@ const AccountHeader = ({ user, path, onChangeLocation }) => {
     </AccountHeaderRoot>
   );
 };
-
-AccountHeader.propTypes = propTypes;
-
-export default AccountHeader;
