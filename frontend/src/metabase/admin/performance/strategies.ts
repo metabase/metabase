@@ -135,28 +135,21 @@ export const translateConfig = (
   config: Config,
   direction: "fromAPI" | "toAPI",
 ): Config => {
-  if (config.strategy.type === "ttl") {
-    return {
-      ...config,
-      strategy: {
-        ...config.strategy,
-        ...(direction === "fromAPI"
-          ? {
-              min_duration_seconds: Math.ceil(
-                config.strategy.min_duration_ms / 1000,
-              ),
-            }
-          : {
-              min_duration_ms:
-                config.strategy.min_duration_seconds === undefined
-                  ? defaultMinDurationMs
-                  : config.strategy.min_duration_seconds * 1000,
-              min_duration_seconds: undefined,
-            }),
-      },
-    };
+  const translated: Config = { ...config };
+  if (translated.strategy.type === "ttl") {
+    if (direction === "fromAPI") {
+      translated.strategy.min_duration_seconds = Math.ceil(
+        translated.strategy.min_duration_ms / 1000,
+      );
+    } else {
+      translated.strategy.min_duration_ms =
+        translated.strategy.min_duration_seconds === undefined
+          ? defaultMinDurationMs
+          : translated.strategy.min_duration_seconds * 1000;
+      delete translated.strategy.min_duration_seconds;
+    }
   }
-  return config;
+  return translated;
 };
 
 export const translateConfigFromAPI = (config: Config): Config =>
