@@ -549,14 +549,40 @@
                                 :aggregation  [[:count]]
                                 :breakout     [!year.created_at
                                                $product_id->products.category
-                                               $user_id->people.source]}
+                                               $user_id->people.source]
+                                :limit        1}
                    :pivot_rows [0 1 2]
                    :pivot_cols []})]
-      (mt/with-native-query-testing-context query
-        (is (= (mt/$ids orders
-                 [[:field %created_at {:temporal-unit :year}]
-                  [:field %products.category {:source-field %product_id}]
-                  [:field %people.source {:source-field %user_id}]
-                  [:expression "pivot-grouping"]
-                  [:aggregation 0]])
-               (mapv :field_ref (mt/cols (qp.pivot/run-pivot-query query)))))))))
+      (is (= (mt/$ids orders
+               [[:field %created_at {:temporal-unit :year}]
+                [:field %products.category {:source-field %product_id}]
+                [:field %people.source {:source-field %user_id}]
+                [:expression "pivot-grouping"]
+                [:aggregation 0]])
+             (mapv :field_ref (mt/cols (qp.pivot/run-pivot-query query))))))))
+
+(deftest ^:parallel fe-friendly-legacy-field-refs-test-2
+  (testing "field_refs in the result metadata should preserve :base-type if it was specified for some reason, otherwise FE will break"
+    ;; `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` will break if the `field_ref`s don't come
+    ;; back in this EXACT shape =(, see [[metabase.query-processor.middleware.annotate/fe-friendly-legacy-ref]]
+    (let [query (mt/$ids orders
+                  {:database   (mt/id)
+                   :type       :query
+                   :query      {:source-table $$orders
+                                :aggregation  [[:count]]
+                                :breakout     [[:field
+                                                (mt/id :products :category)
+                                                {:source-field (mt/id :orders :product_id)
+                                                 :base-type    :type/Text}]
+                                               [:field
+                                                (mt/id :people :source)
+                                                {:source-field (data/id :orders :user_id)
+                                                 :base-type    :type/Text}]]}
+                   :pivot_rows [0 1]
+                   :pivot_cols []})]
+      (is (= (mt/$ids orders
+               [[:field %products.category {:source-field %product_id, :base-type :type/Text}]
+                [:field %people.source {:source-field %user_id, :base-type :type/Text}]
+                [:expression "pivot-grouping"]
+                [:aggregation 0]])
+             (mapv :field_ref (mt/cols (qp.pivot/run-pivot-query query))))))))

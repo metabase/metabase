@@ -207,21 +207,18 @@
     :else
     {:base_type :type/*}))
 
-(defn- fe-friendly-legacy-ref
+(defn- fe-friendly-expression-ref
   "Apparently the FE viz code breaks for pivot queries if `field_ref` comes back with extra 'non-traditional' MLv2
-  info (`:base-type` or `:effective-type` in `:expression` or `:field` ID refs), so we better just strip this info out
-  to be sure. If you don't believe me remove this and run
-  `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` and you will see."
+  info (`:base-type` or `:effective-type` in `:expression`), so we better just strip this info out to be sure. If you
+  don't believe me remove this and run `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` and you
+  will see."
   [a-ref]
   (let [a-ref (mbql.u/remove-namespaced-options a-ref)]
     (lib.util.match/replace a-ref
-      [:field (id :guard pos-int?) (opts :guard (some-fn :base-type :effective-type))]
-      [:field id (not-empty (dissoc opts :base-type :effective-type))]
-
       [:expression expression-name (opts :guard (some-fn :base-type :effective-type))]
-      (let [fixed-ops (dissoc opts :base-type :effective-type)]
-        (if (seq fixed-ops)
-          [:expression expression-name fixed-ops]
+      (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
+        (if (seq fe-friendly-opts)
+          [:expression expression-name fe-friendly-opts]
           [:expression expression-name])))))
 
 (defn- col-info-for-expression
@@ -232,7 +229,7 @@
     :display_name    expression-name
     ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
     :expression_name expression-name
-    :field_ref       (fe-friendly-legacy-ref clause)}))
+    :field_ref       (fe-friendly-expression-ref clause)}))
 
 (mu/defn ^:private col-info-for-field-clause*
   [{:keys [source-metadata], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
@@ -251,7 +248,7 @@
                                                     opts))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
-    (cond-> {:field_ref (fe-friendly-legacy-ref clause)}
+    (cond-> {:field_ref (mbql.u/remove-namespaced-options clause)}
       (:base-type opts)
       (assoc :base_type (:base-type opts))
 
