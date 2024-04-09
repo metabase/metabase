@@ -23,13 +23,11 @@ import type { CardId } from "metabase-types/api";
 
 import { useEmbeddingContext } from "../../context";
 
-import { NotLoggedInBlock } from "./NotLoggedInBlock";
-
 interface InteractiveQuestionProps {
   questionId: CardId;
 }
 
-export const InteractiveQuestionSdk = (
+export const InteractiveQuestion = (
   props: InteractiveQuestionProps,
 ): JSX.Element | null => {
   const { isInitialized, isLoggedIn } = useEmbeddingContext();
@@ -57,12 +55,8 @@ export const InteractiveQuestionSdk = (
     dispatch(initializeQB(mockLocation, params));
   }, [dispatch, questionId]);
 
-  if (!isInitialized) {
+  if (!isInitialized || !isLoggedIn) {
     return null;
-  }
-
-  if (!isLoggedIn) {
-    return <NotLoggedInBlock />;
   }
 
   return (
