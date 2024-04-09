@@ -104,7 +104,7 @@
             spec    (sql-jdbc.conn/connection-details->spec :redshift details)
             user    (u/lower-case-en (mt/random-name))
             schema  (sql.tx/session-schema :redshift)]
-        (t2.with-temp/with-temp [Database database {:engine :redshift, :details details}]
+        (mt/with-temp [Database database {:engine :redshift, :details details}]
           (try
             (doseq [statement [(format "DROP TABLE IF EXISTS \"%s\".table_with_access;" schema)
                                (format "DROP TABLE IF EXISTS \"%s\".table_without_access;" schema)
