@@ -114,7 +114,7 @@ function ClauseStepDndContext<T>({
   onReorder,
 }: ClauseStepDndContextProps<T>) {
   const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 0 },
+    activationConstraint: { distance: 15 },
   });
 
   const handleSortEnd: DndContextProps["onDragEnd"] = useCallback(
