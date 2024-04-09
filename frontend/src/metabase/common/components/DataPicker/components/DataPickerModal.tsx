@@ -34,10 +34,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
     [onChange, onClose],
   );
 
-  const tabs: [
-    EntityTab<NotebookDataPickerValueItem["model"]>,
-    ...EntityTab<NotebookDataPickerValueItem["model"]>[],
-  ] = [
+  const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
     {
       displayName: t`Tables`,
       model: "table",

@@ -17,7 +17,7 @@ export const TabsView = <
   searchResults,
   selectedItem,
 }: {
-  tabs: [EntityTab<Model>, ...EntityTab<Model>[]];
+  tabs: EntityTab<Model>[];
   onItemSelect: (item: Item) => void;
   searchQuery: string;
   searchResults: Item[] | null;
