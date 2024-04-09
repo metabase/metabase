@@ -93,7 +93,7 @@ export class FullPageModal extends Component<
       <Transition mounted={open} transition={slideIn} duration={300}>
         {styles => (
           <SandboxedPortal container={this._modalElement}>
-            <div className="Modal--full">
+            <div className={ModalS.ModalFull}>
               {/* Using an OnClickOutsideWrapper is weird since this modal
               occupies the entire screen. We do this to put this modal on top of
               the OnClickOutsideWrapper popover stack.  Otherwise, clicks within

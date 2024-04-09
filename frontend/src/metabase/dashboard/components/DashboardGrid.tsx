@@ -373,7 +373,11 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       !!addSeriesModalDashCard && isQuestionDashCard(addSeriesModalDashCard);
     return (
       <Modal
-        className={cx(ModalS.Modal, DashboardS.AddSeriesModal)}
+        className={cx(
+          ModalS.Modal,
+          DashboardS.Modal,
+          DashboardS.AddSeriesModal,
+        )}
         data-testid="add-series-modal"
         data-element-id="modal"
         isOpen={isOpen}
