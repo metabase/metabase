@@ -56,8 +56,8 @@
   [(str/join
     "\n"
     ["select"
-     "  n.nspname as schema,"
      "  c.relname as name,"
+     "  n.nspname as schema,"
      "  case c.relkind"
      "    when 'r' then 'table'"
      "    when 'p' then 'partitioned table'"
