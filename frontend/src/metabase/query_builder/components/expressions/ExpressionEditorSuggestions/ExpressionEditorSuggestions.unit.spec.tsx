@@ -9,7 +9,7 @@ import type { Suggestion } from "metabase-lib/v1/expressions/suggest";
 import { suggest } from "metabase-lib/v1/expressions/suggest";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import ExpressionEditorSuggestions from "./ExpressionEditorSuggestions";
+import { ExpressionEditorSuggestions } from "./ExpressionEditorSuggestions";
 
 const METADATA = createMockMetadata({
   databases: [createSampleDatabase()],
