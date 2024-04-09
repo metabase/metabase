@@ -263,6 +263,7 @@
   [database :- (ms/InstanceOf Database)]
   (if (= perms/audit-db-id (:id database))
     (log/info (u/format-color :red "Not scheduling tasks for audit database"))
+    ;; TODO, fix this so fv trigger is optional
     (let [sync-job (task/job-info (job-key sync-analyze-task-info))
           fv-job   (task/job-info (job-key field-values-task-info))
 

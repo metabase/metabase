@@ -6129,6 +6129,17 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v50.2024-04-09T10:00:00
+      author: qnkhuat
+      comment: Drop not null constraint on metabase_database.cache_field_values_schedule
+      changes:
+        - dropNotNullConstraint:
+            tableName: metabase_database
+            columnName: cache_field_values_schedule
+      # nothing because it should always be like this
+      rollback:
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

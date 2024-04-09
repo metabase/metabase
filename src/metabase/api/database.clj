@@ -1,6 +1,7 @@
 (ns metabase.api.database
   "/api/database endpoints."
   (:require
+   [clojure.core.match :refer [match]]
    [clojure.string :as str]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
@@ -779,6 +780,28 @@
               (assoc :valid false))
       details)))
 
+(defn- db->schedule-map
+  [{:keys [details is_on_demand is_full_sync] :as db} schedules]
+  (let [let-user-control-scheduling (:let-user-control-scheduling details)]
+    (merge
+     (dissoc db :schedules)
+     #p (sync.schedules/schedule-map->cron-strings
+         (match #p [(true? let-user-control-scheduling) is_full_sync is_on_demand]
+           [false _ _]
+           (sync.schedules/default-randomized-schedule)
+
+           ;; regularly on a schedule
+           ;; sync both steps, schedule should be provided
+           [true true false]
+           (do
+            (assert (every? #(some? (% schedules)) [:cache_field_values :metadata_sync]))
+            (sync.schedules/scheduling schedules))
+
+           ;; Only when adding a new filter or never, I'll do it myself
+           ;; -> Sync metadata only
+           [true false _]
+           (sync.schedules/scheduling (dissoc schedules :cache_field_values)))))))
+
 (api/defendpoint POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]} :body}]
@@ -804,17 +827,15 @@
       (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
                                       Database
                                       (merge
-                                       {:name         name
-                                        :engine       engine
-                                        :details      details-or-error
-                                        :is_full_sync is_full_sync
-                                        :is_on_demand (boolean is_on_demand)
-                                        :cache_ttl    cache_ttl
-                                        :creator_id   api/*current-user-id*}
-                                       (sync.schedules/schedule-map->cron-strings
-                                        (if (:let-user-control-scheduling details)
-                                          (sync.schedules/scheduling schedules)
-                                          (sync.schedules/default-randomized-schedule)))
+                                       (db->schedule-map
+                                        {:name         name
+                                         :engine       engine
+                                         :details      details-or-error
+                                         :is_full_sync is_full_sync
+                                         :is_on_demand (boolean is_on_demand)
+                                         :cache_ttl    cache_ttl
+                                         :creator_id   api/*current-user-id*}
+                                        schedules)
                                        (when (some? auto_run_queries)
                                          {:auto_run_queries auto_run_queries})))))
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})

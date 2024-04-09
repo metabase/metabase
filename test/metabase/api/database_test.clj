@@ -259,6 +259,8 @@
        (t2/select-one Database :id db-id))
      (finally (t2/delete! Database :name db-name)))))
 
+(def ^:private monthly-schedule {:schedule_type "monthly" :schedule_day "fri" :schedule_frame "last"})
+
 (deftest create-db-test
   (testing "POST /api/database"
     (testing "Check that we can create a Database"
@@ -286,8 +288,7 @@
 (deftest create-db-test-3
   (testing "POST /api/database"
     (testing "if `:let-user-control-scheduling` is false it will ignore any schedules provided"
-      (let [monthly-schedule {:schedule_type "monthly" :schedule_day "fri" :schedule_frame "last"}
-            {:keys [details metadata_sync_schedule cache_field_values_schedule]}
+      (let [{:keys [details metadata_sync_schedule cache_field_values_schedule]}
             (create-db-via-api! {:schedules {:metadata_sync      monthly-schedule
                                              :cache_field_values monthly-schedule}})]
         (is (not (:let-user-control-scheduling details)))
@@ -297,14 +298,33 @@
 (deftest create-db-test-4
   (testing "POST /api/database"
     (testing "if `:let-user-control-scheduling` is true it will accept the schedules"
-      (let [monthly-schedule {:schedule_type "monthly" :schedule_day "fri" :schedule_frame "last"}
-            {:keys [details metadata_sync_schedule cache_field_values_schedule]}
+      (let [{:keys [details metadata_sync_schedule cache_field_values_schedule]}
             (create-db-via-api! {:details   {:let-user-control-scheduling true}
                                  :schedules {:metadata_sync      monthly-schedule
                                              :cache_field_values monthly-schedule}})]
         (is (:let-user-control-scheduling details))
         (is (= "monthly" (-> cache_field_values_schedule u.cron/cron-string->schedule-map :schedule_type)))
         (is (= "monthly" (-> metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))))))
+
+(deftest create-db-on-demand-scan-field-values-test
+  (testing "POST /api/database"
+    (testing "create a db with scan field values option is \"Only when adding a new filter widget\""
+      (mt/with-model-cleanup [:model/Database]
+        (with-redefs [driver/available?   (constantly true)
+                      driver/can-connect? (constantly true)]
+          (let [resp (mt/user-http-request :crowberto :post 200 "database"
+                                           {:name         (mt/random-name)
+                                            :engine       (u/qualified-name ::test-driver)
+                                            :details      {:db                          "my_db"
+                                                           :let-user-control-scheduling true}
+                                            :schedules    {:metadata_sync      monthly-schedule
+                                                           :cache_field_values monthly-schedule}
+                                            :is_on_demand true
+                                            :is_full_sync false})]
+            #p (t2/query {:select [:%count.*]
+                          :from   [:qrtz_triggers]
+                          :where  [:= :trigger_name (format "metabase.task.update-field-values.trigger.%d" (:id resp))]})
+            resp))))))
 
 (deftest create-db-test-5
   (testing "POST /api/database"

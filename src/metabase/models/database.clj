@@ -386,8 +386,8 @@
                          ;; you need to define it :)
                          false)))
                    settings)
-                   (when (not= <> settings)
-                     (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
+                  (when (not= <> settings)
+                    (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
    json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
