@@ -198,12 +198,10 @@
     (if (= (:type card-metadata) :metric)
       (let [metric-query (query metadata-providerable (:dataset-query card-metadata))
             metric-breakouts (:breakout (lib.util/query-stage metric-query -1))
-            base-query (if (seq metric-breakouts)
-                         (reduce
-                           #(lib.util/add-summary-clause %1 0 :breakout %2)
-                           base-query
-                           metric-breakouts)
-                         base-query)]
+            base-query (reduce
+                         #(lib.util/add-summary-clause %1 0 :breakout %2)
+                         base-query
+                         metric-breakouts)]
         (-> base-query
             (lib.util/add-summary-clause
               0 :aggregation
