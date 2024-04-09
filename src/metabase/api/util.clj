@@ -11,7 +11,6 @@
    [metabase.logger :as logger]
    [metabase.troubleshooting :as troubleshooting]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.product-feedback :refer [send-product-feedback]]
    [ring.util.response :as response]))
 
 (api/defendpoint POST "/password_check"
@@ -53,14 +52,5 @@
   (let [pool-info (prometheus/connection-pool-info)
         headers   {"Content-Disposition" "attachment; filename=\"connection_pool_info.json\""}]
     (assoc (response/response {:connection-pools pool-info}) :headers headers, :status 200)))
-
-
-(api/defendpoint POST "/product-feedback"
-  "Send feedback about metabase"
-  [:as {{:keys [comments source email]} :body}]
-  {comments ms/NonBlankString
-   source ms/NonBlankString
-   email [:maybe ms/NonBlankString]}
-  (send-product-feedback comments source email))
 
 (api/define-routes)
