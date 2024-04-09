@@ -21,7 +21,7 @@
 
 (defn- mock-metric
   ([]
-   (mock-metric meta/metadata-provider (basic-metric-query)))
+   (mock-metric (basic-metric-query)))
   ([query]
    (mock-metric meta/metadata-provider query))
   ([metadata-provider query]
