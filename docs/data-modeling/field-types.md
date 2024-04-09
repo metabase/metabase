@@ -20,7 +20,7 @@ Field types dictate how Metabase displays its data, as well as the column’s sp
 
 Common field types are text/varchar types.
 
-- **Category**
+- **Category**: If set to category, Metabase will know that it can use this field to group results when creating questions for automatic insights like [X-rays](../exploration-and-organization/x-rays.md).
 - **Comment**
 - **Description**
 - **Title**
