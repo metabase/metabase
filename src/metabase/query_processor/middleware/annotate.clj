@@ -214,7 +214,6 @@
   `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` and you will see."
   [a-ref]
   (let [a-ref (mbql.u/remove-namespaced-options a-ref)]
-    a-ref
     (lib.util.match/replace a-ref
       [:field (id :guard pos-int?) (opts :guard (some-fn :base-type :effective-type))]
       [:field id (not-empty (dissoc opts :base-type :effective-type))]
