@@ -11,16 +11,20 @@
    `sad-toucan-incidents` PUBLIC.INCIDENTS.TIMESTAMP | <unique-session-schema>.sad_toucan_incidents.timestamp"
   (:require
    [clojure.string :as str]
+   [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
+   [metabase.test :as mt]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -226,3 +230,27 @@
                                              (= (:name %) "extsales")))
                                 tables))))
     (original-describe-database driver database)))
+
+(def ^:private ^{:arglists '([db-id])} check-no-filtered-schemas-were-synced
+  "Make sure we're only syncing tables from the unique-session-schema."
+  (memoize
+   (fn [db-id]
+     (when-let [schemas (not-empty (t2/select-fn-set :schema [:model/Table :schema]
+                                                     :db_id  (u/the-id db-id)
+                                                     :schema [:not-in
+                                                              [[:inline "spectrum"]
+                                                               [:inline (unique-session-schema)]]]))]
+       (throw (ex-info "Error: synced schemas that should not have been synced!"
+                       {:bad-schemas schemas}))))))
+
+(defmethod data.impl/get-or-create-database! :redshift
+  [driver dbdef]
+  (let [db ((get-method data.impl/get-or-create-database! :postgres) driver dbdef)]
+    (check-no-filtered-schemas-were-synced (u/the-id db))
+    db))
+
+(deftest ^:parallel sync-test
+  (testing "Make sure we're only syncing tables from the unique-session-schema"
+    (mt/test-driver :redshift
+      (mt/dataset airports
+        (is (some? (mt/db)))))))
