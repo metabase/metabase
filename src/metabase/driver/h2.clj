@@ -355,8 +355,12 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                [:utf8tostring expr]))
 
-;; H2 v2 added date_trunc and extract, so we can borrow the Postgres implementation
-(defn- date-trunc [unit expr] [:date_trunc (h2x/literal unit) expr])
+;; H2 v2 added date_trunc and extract
+(defn- date-trunc [unit expr]
+  (-> [:date_trunc (h2x/literal unit) expr]
+      ;; date_trunc returns an arg of the same type as `expr`.
+      (h2x/with-database-type-info (h2x/database-type expr))))
+
 (defn- extract [unit expr] [::h2x/extract unit expr])
 
 (defn- extract-integer [unit expr]
