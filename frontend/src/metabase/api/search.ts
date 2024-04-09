@@ -1,5 +1,5 @@
 import type {
-  SearchModelType,
+  SearchModel,
   SearchRequest,
   SearchResponse,
   SearchResult,
@@ -9,7 +9,7 @@ import { Api } from "./api";
 import type { TagType } from "./tags";
 import { idTag, listTag } from "./tags";
 
-const SEARCH_TAG_TYPES: Record<SearchModelType, TagType> = {
+const SEARCH_TAG_TYPES: Record<SearchModel, TagType> = {
   action: "action",
   card: "card",
   collection: "collection",
@@ -23,7 +23,7 @@ const SEARCH_TAG_TYPES: Record<SearchModelType, TagType> = {
   table: "table",
 };
 
-function searchItemListTags(items: SearchResult[], models?: SearchModelType[]) {
+function searchItemListTags(items: SearchResult[], models?: SearchModel[]) {
   return [
     ...(models
       ? models.map(type => listTag(SEARCH_TAG_TYPES[type]))

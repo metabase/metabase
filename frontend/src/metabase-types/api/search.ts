@@ -7,7 +7,7 @@ import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
 
-export type EnabledSearchModelType =
+export type EnabledSearchModel =
   | "collection"
   | "dashboard"
   | "card"
@@ -17,9 +17,9 @@ export type EnabledSearchModelType =
   | "action"
   | "indexed-entity";
 
-export type SearchModelType =
+export type SearchModel =
   | ("segment" | "metric" | "snippet")
-  | EnabledSearchModelType;
+  | EnabledSearchModel;
 
 export interface SearchScore {
   weight: number;
@@ -42,7 +42,7 @@ export interface SearchScore {
 
 interface BaseSearchResult<
   Id extends SearchResultId,
-  Model extends SearchModelType,
+  Model extends SearchModel,
 > {
   id: Id;
   model: Model;
@@ -51,12 +51,12 @@ interface BaseSearchResult<
 
 export interface SearchResponse<
   Id extends SearchResultId = SearchResultId,
-  Model extends SearchModelType = SearchModelType,
+  Model extends SearchModel = SearchModel,
   Result extends BaseSearchResult<Id, Model> = SearchResult<Id, Model>,
 > {
   data: Result[];
   models: Model[] | null;
-  available_models: SearchModelType[];
+  available_models: SearchModel[];
   limit: number;
   offset: number;
   table_db_id: DatabaseId | null;
@@ -77,7 +77,7 @@ export type SearchResultId =
 
 export interface SearchResult<
   Id extends SearchResultId = SearchResultId,
-  Model extends SearchModelType = SearchModelType,
+  Model extends SearchModel = SearchModel,
 > {
   id: Id;
   name: string;
@@ -116,7 +116,7 @@ export interface SearchRequest {
   q?: string;
   archived?: boolean;
   table_db_id?: DatabaseId;
-  models?: SearchModelType[];
+  models?: SearchModel[];
   filter_items_in_personal_collection?: "only" | "exclude";
   context?: "search-bar" | "search-app";
   created_at?: string | null;

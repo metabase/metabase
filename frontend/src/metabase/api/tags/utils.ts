@@ -1,6 +1,7 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
 import type {
+  ApiKey,
   Card,
   Collection,
   Database,
@@ -9,6 +10,8 @@ import type {
   FieldId,
   ForeignKey,
   Metric,
+  PopularItem,
+  RecentItem,
   Segment,
   Table,
   Timeline,
@@ -16,7 +19,8 @@ import type {
   UserInfo,
 } from "metabase-types/api";
 
-import type { TagType } from "./types";
+import type { TagType } from "./constants";
+import { MODEL_TO_TAG_TYPE, MODEL_TYPES } from "./constants";
 
 export function tag(type: TagType): TagDescription<TagType> {
   return { type };
@@ -38,6 +42,29 @@ export function invalidateTags(
   tags: TagDescription<TagType>[],
 ): TagDescription<TagType>[] {
   return !error ? tags : [];
+}
+
+export function activityItemListTags(
+  items: RecentItem[] | PopularItem[],
+): TagDescription<TagType>[] {
+  return [
+    ...MODEL_TYPES.map(type => listTag(MODEL_TO_TAG_TYPE[type])),
+    ...items.flatMap(activityItemTags),
+  ];
+}
+
+export function activityItemTags(
+  item: RecentItem | PopularItem,
+): TagDescription<TagType>[] {
+  return [idTag(MODEL_TO_TAG_TYPE[item.model], item.model_id)];
+}
+
+export function apiKeyListTags(apiKeys: ApiKey[]): TagDescription<TagType>[] {
+  return [listTag("api-key"), ...apiKeys.flatMap(apiKeyTags)];
+}
+
+export function apiKeyTags(apiKey: ApiKey): TagDescription<TagType>[] {
+  return [idTag("api-key", apiKey.id)];
 }
 
 export function databaseListTags(
