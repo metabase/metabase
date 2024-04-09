@@ -2,6 +2,7 @@ import type {
   Bookmark,
   CreateBookmarkRequest,
   DeleteBookmarkRequest,
+  ReorderBookmarksRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -38,11 +39,11 @@ export const bookmarkApi = Api.injectEndpoints({
           ...(bookmark ? [idTag("bookmark", bookmark.id)] : []),
         ]),
     }),
-    updateOrdering: builder.mutation<void, Bookmark[]>({
-      query: bookmarks => ({
+    reorderBookmarks: builder.mutation<void, ReorderBookmarksRequest>({
+      query: body => ({
         method: "PUT",
         url: `/api/bookmark/ordering`,
-        body: { orderings: bookmarks },
+        body,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("bookmark")]),
@@ -54,5 +55,5 @@ export const {
   useListBookmarksQuery,
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
-  useUpdateOrderingMutation,
+  useReorderBookmarksMutation,
 } = bookmarkApi;

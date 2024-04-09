@@ -20,6 +20,11 @@ export interface Bookmark {
   card_type?: CardType;
 }
 
+export interface BookmarkOrdering {
+  type: BookmarkType;
+  item_id: number;
+}
+
 export interface CreateBookmarkRequest {
   id: CardId | CollectionId | DashboardId;
   type: BookmarkType;
@@ -28,4 +33,8 @@ export interface CreateBookmarkRequest {
 export interface DeleteBookmarkRequest {
   id: CardId | CollectionId | DashboardId;
   type: BookmarkType;
+}
+
+export interface ReorderBookmarksRequest {
+  orderings: BookmarkOrdering[];
 }
