@@ -3,17 +3,14 @@ import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 import type {
-  Card,
   DatasetColumn,
+  FieldId,
   FieldReference,
   ModelCacheRefreshStatus,
   TableColumnOrderSetting,
   TemplateTag,
-  StructuredDatasetQuery,
-  FieldId,
 } from "metabase-types/api";
 
 type FieldMetadata = {
@@ -113,39 +110,22 @@ export function checkCanBeModel(question: Question) {
     .every(isSupportedTemplateTagForModel);
 }
 
-export function isAdHocModelQuestionCard(card: Card, originalCard?: Card) {
-  if (!originalCard || isNative(card)) {
-    return false;
-  }
-
-  const isModel = card.type === "model" || originalCard.type === "model";
-  const isSameCard = card.id === originalCard.id;
-  const { query } = card.dataset_query as StructuredDatasetQuery;
-  const isSelfReferencing =
-    query["source-table"] === getQuestionVirtualTableId(originalCard.id);
-
-  // TEMPORARY HACK to unblock #38554 and #38664!
-  // Once those two PRs are merged, an immediate proper solution will follow.
-  // Why is this a hack?
-  //   1. We need to make this helper work with both models and metrics
-  //   2. Helper consolidation is needed
-  //   3. We need to extract the helper to a different namespace
-  //   4. `isAdHocModelQuestionCard` is only used in TableInteractive.jsx
-  //   5. Ideally, we should have only one helper that accepts question instead of a card
-  const isMetric = card.type === "metric" || originalCard.type === "metric";
-  const isModelOrMetric = isModel || isMetric;
-
-  return isModelOrMetric && isSameCard && isSelfReferencing;
-}
-
 export function isAdHocModelQuestion(
-  question: Question,
+  question?: Question,
   originalQuestion?: Question,
 ) {
-  if (!originalQuestion) {
+  if (!question || !originalQuestion) {
     return false;
   }
-  return isAdHocModelQuestionCard(question.card(), originalQuestion.card());
+
+  const isModel =
+    question.type() !== "question" || originalQuestion.type() !== "question";
+  const isSameQuestion = question.id() === originalQuestion.id();
+  const isSelfReferencing =
+    Lib.sourceTableOrCardId(question.query()) ===
+    getQuestionVirtualTableId(originalQuestion.id());
+
+  return isModel && isSameQuestion && isSelfReferencing;
 }
 
 export function checkCanRefreshModelCache(

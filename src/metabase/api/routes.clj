@@ -1,6 +1,6 @@
 (ns metabase.api.routes
   (:require
-   [compojure.core :refer [context defroutes]]
+   [compojure.core :refer [GET]]
    [compojure.route :as route]
    [metabase.api.action :as api.action]
    [metabase.api.activity :as api.activity]
@@ -8,8 +8,10 @@
    [metabase.api.api-key :as api.api-key]
    [metabase.api.automagic-dashboards :as api.magic]
    [metabase.api.bookmark :as api.bookmark]
+   [metabase.api.caching :as api.caching]
    [metabase.api.card :as api.card]
    [metabase.api.collection :as api.collection]
+   [metabase.api.common :as api :refer [defroutes context]]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.database :as api.database]
    [metabase.api.dataset :as api.dataset]
@@ -51,7 +53,9 @@
    [metabase.api.util :as api.util]
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [ring.middleware.content-type :as content-type]
+   [ring.util.response :as response]))
 
 (when config/ee-available?
   (classloader/require 'metabase-enterprise.api.routes))
@@ -61,13 +65,43 @@
 (def ^:private ^{:arglists '([request respond raise])} ee-routes
   ;; resolve the var for every request so we pick up any changes to it in interactive development
   (if-let [ee-handler-var (resolve 'metabase-enterprise.api.routes/routes)]
-    (fn [request respond raise]
-      ((var-get ee-handler-var) request respond raise))
+    (with-meta
+     (fn [request respond raise]
+       ((var-get ee-handler-var) request respond raise))
+     (meta ee-handler-var))
     (fn [_request respond _raise]
       (respond nil))))
 
+(api/defendpoint GET "/docs*"
+  "OpenAPI 3.1.0 JSON and UI
+
+  https://spec.openapis.org/oas/latest.html"
+  [:as {:keys [params uri]}]
+  (let [path    (:* params)
+        respond (fn [path]
+                  (-> (response/resource-response (str "openapi/" path))
+                      (content-type/content-type-response {:uri path})))]
+    (case path
+      ""                {:status  302
+                         :headers {"Location" (str uri "/")}
+                         :body    ""}
+      "/"               (-> (respond "index.html")
+                            ;; Better would be to append this to our CSP, but there is no good way right now and it's
+                            ;; just a single page. Necessary for rapidoc to work, script injects styles in runtime.
+                            (assoc-in [:headers "Content-Security-Policy"] "script-src 'self' 'unsafe-inline'"))
+      "/rapidoc-min.js" (respond "rapidoc-min.js")
+      "/openapi.json"   (merge
+                         (api/openapi-object (resolve 'metabase.api.routes/routes))
+                         {:openapi "3.1.0"
+                          :info    {:title   "Metabase API"
+                                    :version (:tag config/mb-version-info)}
+                          :servers [{:url         "/api"
+                                     :description "Metabase API"}]})
+      (respond path))))
+
 (defroutes ^{:doc "Ring routes for API endpoints."} routes
   ee-routes
+  #'GET_docs*
   (context "/action"               [] (+auth api.action/routes))
   (context "/activity"             [] (+auth api.activity/routes))
   (context "/alert"                [] (+auth api.alert/routes))
@@ -87,7 +121,7 @@
   (context "/login-history"        [] (+auth api.login-history/routes))
   (context "/premium-features"     [] (+auth api.premium-features/routes))
   (context "/metabot"              [] (+auth api.metabot/routes))
-  (context "/metric"               [] (+auth api.metric/routes))
+  (context "/legacy-metric"        [] (+auth api.metric/routes))
   (context "/model-index"          [] (+auth api.model-index/routes))
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
   (context "/notify"               [] (+static-apikey api.notify/routes))
@@ -100,6 +134,7 @@
   (context "/search"               [] (+auth api.search/routes))
   (context "/segment"              [] (+auth api.segment/routes))
   (context "/session"              [] api.session/routes)
+  (context "/caching"              [] (+auth api.caching/routes))
   (context "/setting"              [] (+auth api.setting/routes))
   (context "/setup"                [] api.setup/routes)
   (context "/slack"                [] (+auth api.slack/routes))

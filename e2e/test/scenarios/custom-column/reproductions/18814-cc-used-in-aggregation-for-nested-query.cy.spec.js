@@ -40,6 +40,6 @@ describe("issue 18814", () => {
 
     visualize();
 
-    cy.get(".Visualization").should("contain", "2022");
+    cy.findByTestId("query-visualization-root").should("contain", "2022");
   });
 });

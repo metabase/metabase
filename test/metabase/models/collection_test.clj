@@ -446,7 +446,7 @@
 ;;; ---------------------------------------------- Effective Ancestors -----------------------------------------------
 
 (defn- effective-ancestors [collection]
-  (map :name (collection/effective-ancestors collection)))
+  (map :name (#'collection/effective-ancestors* collection)))
 
 (deftest effective-ancestors-test
   (with-collection-hierarchy [{:keys [a c d]}]

@@ -498,8 +498,6 @@ describe("StringFilterValuePicker", () => {
       });
 
       userEvent.type(screen.getByPlaceholderText("Search by Email"), "a@b.com");
-      userEvent.hover(screen.getByText("a@b.com"));
-      userEvent.click(screen.getByText("a@b.com"));
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
     });
 
@@ -518,28 +516,28 @@ describe("StringFilterValuePicker", () => {
       });
 
       userEvent.type(screen.getByLabelText("Filter value"), "a@b.com");
-      expect(screen.getByText("a@b.com")).toBeInTheDocument();
-      expect(onChange).not.toHaveBeenCalled();
+      expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
     });
 
-    it("should not allow to create a value when there is the exact match in search results", async () => {
+    it("should not show free-form input in search results", async () => {
       const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
         values: ["a@b.com"],
         searchValues: {
-          "a@b.com": createMockFieldValues({
+          "a@b": createMockFieldValues({
             field_id: PEOPLE.EMAIL,
             values: [["a@b.com"]],
           }),
         },
       });
 
-      userEvent.type(screen.getByLabelText("Filter value"), "a@b.com");
+      userEvent.type(screen.getByLabelText("Filter value"), "a@b");
       act(() => jest.advanceTimersByTime(1000));
       expect(screen.getByText("a@b.com")).toBeInTheDocument();
-      expect(onChange).not.toHaveBeenCalled();
+      expect(screen.queryByText("a@b")).not.toBeInTheDocument();
+      expect(onChange).toHaveBeenLastCalledWith(["a@b.com", "a@b"]);
     });
   });
 

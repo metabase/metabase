@@ -1,6 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
+import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
 import {
   breakpointMinExtraLarge,
@@ -59,12 +60,12 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
     pointer-events: all;
   }
 
-  .DashCard:hover &,
-  .DashCard:focus-within & {
+  .${DashboardS.DashCard}:hover &,
+  .${DashboardS.DashCard}:focus-within & {
     border: 1px solid ${color("brand")};
   }
 
-  .DashCard.resizing & {
+  .${DashboardS.DashCard}.resizing & {
     border: 1px solid ${color("brand")};
   }
 
@@ -82,8 +83,8 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
     // to prevent clipping of text cards (https://github.com/metabase/metabase/issues/31613)
     if (isSingleRow && !isMobile) {
       return css`
-        .DashCard:hover &,
-        .DashCard:focus-within & {
+        .${DashboardS.DashCard}:hover &,
+        .${DashboardS.DashCard}:focus-within & {
           ${BORDER_ADJUSTED_SMALL_PADDING}// adjust for border on preview/no entered content
         }
 
@@ -93,8 +94,8 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
         `}
 
         ${breakpointMinExtraLarge} {
-          .DashCard:hover &,
-          .DashCard:focus-within & {
+          .${DashboardS.DashCard}:hover &,
+          .${DashboardS.DashCard}:focus-within & {
             ${BORDER_ADJUSTED_DEFAULT_PADDING}
           }
 
@@ -107,8 +108,8 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
     }
 
     return css`
-      .DashCard:hover &,
-      .DashCard:focus-within & {
+      .${DashboardS.DashCard}:hover &,
+      .${DashboardS.DashCard}:focus-within & {
         ${BORDER_ADJUSTED_DEFAULT_PADDING}
       }
 

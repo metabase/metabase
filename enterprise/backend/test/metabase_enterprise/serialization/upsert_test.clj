@@ -3,7 +3,7 @@
    [clojure.data :as data]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.upsert :as upsert]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric NativeQuerySnippet
+   [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field LegacyMetric NativeQuerySnippet
                             Pulse Segment Table User]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
@@ -80,7 +80,7 @@
                   :visualization_settings (if (= 1 instance-num) {:column_settings {}}
                                                                  {:click_behavior {}}))
 
-    (isa? model Metric)
+    (isa? model LegacyMetric)
     (assoc entity :table_id (mt/id :checkins))
 
     :else
@@ -113,7 +113,7 @@
                  Card
                  Table
                  Field
-                 Metric
+                 LegacyMetric
                  NativeQuerySnippet
                  Segment
                  Dashboard
@@ -128,4 +128,4 @@
   (is (= true
          (#'upsert/has-post-insert? User)))
   (is (= false
-         (#'upsert/has-post-insert? Metric))))
+         (#'upsert/has-post-insert? LegacyMetric))))

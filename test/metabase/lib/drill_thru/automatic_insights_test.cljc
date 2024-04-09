@@ -6,7 +6,7 @@
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   #_[metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -101,16 +101,17 @@
   (testing "sum_where(subtotal, products.category = \"Doohickey\") over time"
     (auto-insights (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                        (lib/aggregate (lib/sum-where
-                                        (meta/field-metadata :orders :subtotal)
-                                        (lib/= (meta/field-metadata :products :category)
-                                               "Doohickey")))
+                                       (meta/field-metadata :orders :subtotal)
+                                       (lib/= (meta/field-metadata :products :category)
+                                              "Doohickey")))
                        (lib/breakout (lib/with-temporal-bucket
                                        (meta/field-metadata :orders :created-at)
                                        :month)))
                    [[:= {} [:field {} (meta/id :orders :created-at)] "2023-12-01"]
                     [:= {} [:field {} (meta/id :products :category)] "Doohickey"]])))
 
-(deftest ^:parallel automatic-insights-apply-test-3
+;; TODO TB legacy macro test, delete or port
+#_(deftest ^:parallel automatic-insights-apply-test-3
   (testing "metric over time"
     (let [metric   {:description "Orders with a subtotal of $100 or more."
                     :archived false

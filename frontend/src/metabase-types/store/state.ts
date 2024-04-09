@@ -16,6 +16,7 @@ import type { SettingsState } from "./settings";
 import type { SetupState } from "./setup";
 import type { FileUploadState } from "./upload";
 
+type modalName = null | "collection" | "dashboard" | "action";
 export interface State {
   admin: AdminState;
   app: AppState;
@@ -32,6 +33,7 @@ export interface State {
   settings: SettingsState;
   setup: SetupState;
   upload: FileUploadState;
+  modal: modalName;
 }
 
 export type Dispatch<T = any> = (action: T) => void;

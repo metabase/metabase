@@ -16,7 +16,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.data-permissions :as data-perms]
@@ -131,7 +131,7 @@
   with those aggregations as source queries. This function determines whether `card` is using one of those queries so
   we can filter it out in Clojure-land."
   [{{{aggregations :aggregation} :query} :dataset_query}]
-  (mbql.u/match aggregations #{:cum-count :cum-sum}))
+  (lib.util.match/match aggregations #{:cum-count :cum-sum}))
 
 (defn card-can-be-used-as-source-query?
   "Does `card`'s query meet the conditions required for it to be used as a source query for another query?"
@@ -174,7 +174,8 @@
                                  :where    (into [:and
                                                   [:not= :result_metadata nil]
                                                   [:= :archived false]
-                                                  [:= :type (u/qualified-name card-type)]
+                                                  ;; always return metrics for now
+                                                  [:in :type [(u/qualified-name card-type) "metric"]]
                                                   [:in :database_id ids-of-dbs-that-support-source-queries]
                                                   (collection/visible-collection-ids->honeysql-filter-clause
                                                    (collection/permissions-set->visible-collection-ids
@@ -780,23 +781,22 @@
 
 (api/defendpoint POST "/"
   "Add a new `Database`."
-  [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl]} :body}]
-  {name             ms/NonBlankString
-   engine           DBEngineString
-   details          ms/Map
-   is_full_sync     [:maybe :boolean]
-   is_on_demand     [:maybe :boolean]
-   schedules        [:maybe sync.schedules/ExpandedSchedulesMap]
-   auto_run_queries [:maybe :boolean]
-   cache_ttl        [:maybe ms/PositiveInt]}
+  [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]} :body}]
+  {name              ms/NonBlankString
+   engine            DBEngineString
+   details           ms/Map
+   is_full_sync      [:maybe {:default true} ms/BooleanValue]
+   is_on_demand      [:maybe ms/BooleanValue]
+   schedules         [:maybe sync.schedules/ExpandedSchedulesMap]
+   auto_run_queries  [:maybe :boolean]
+   cache_ttl         [:maybe ms/PositiveInt]
+   connection_source [:maybe {:default :admin} [:enum :admin :setup]]}
   (api/check-superuser)
   (when cache_ttl
     (api/check (premium-features/enable-cache-granular-controls?)
                [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
                               "cache granular controls feature."))]))
-  (let [is-full-sync?    (or (nil? is_full_sync)
-                             (boolean is_full_sync))
-        details-or-error (test-connection-details engine details)
+  (let [details-or-error (test-connection-details engine details)
         valid?           (not= (:valid details-or-error) false)]
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
@@ -807,7 +807,7 @@
                                        {:name         name
                                         :engine       engine
                                         :details      details-or-error
-                                        :is_full_sync is-full-sync?
+                                        :is_full_sync is_full_sync
                                         :is_on_demand (boolean is_on_demand)
                                         :cache_ttl    cache_ttl
                                         :creator_id   api/*current-user-id*}
@@ -822,13 +822,13 @@
                                api/*current-user-id*
                                {:database     engine
                                 :database-id  (u/the-id <>)
-                                :source       :admin
+                                :source       connection_source
                                 :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
       ;; failed to connect, return error
       (do
         (snowplow/track-event! ::snowplow/database-connection-failed
                                api/*current-user-id*
-                               {:database engine :source :setup})
+                               {:database engine :source connection_source})
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 
@@ -840,8 +840,8 @@
    details :map}
   (api/check-superuser)
   (let [details-or-error (test-connection-details engine details)]
-    {:valid (not (false? (:valid details-or-error)))}))
-
+    ;; details that come back without a `:valid` key at all are... valid!
+    (update details-or-error :valid (comp not false?))))
 
 ;;; --------------------------------------- POST /api/database/sample_database ----------------------------------------
 

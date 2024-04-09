@@ -3,9 +3,9 @@
    [clojure.test :refer [deftest are]]
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.join :as lib.schema.join]
-   [metabase.mbql.schema :as mbql.s]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))

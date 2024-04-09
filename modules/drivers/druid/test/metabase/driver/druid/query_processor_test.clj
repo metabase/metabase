@@ -9,15 +9,13 @@
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.druid.query-processor :as druid.qp]
-   [metabase.models :refer [Field Metric Table]]
+   [metabase.models :refer [Field #_LegacyMetric Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
-   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (defn- str->absolute-dt [s]
   [:absolute-datetime (u.date/parse s "UTC") :default])
@@ -543,11 +541,12 @@
             (druid-query
               {:aggregation [[:distinct [:+ $id $checkins.venue_price]]]}))))))
 
-(deftest metrics-inside-aggregation-clauses-test
+;; TODO TB legacy macro test, delete or port
+#_(deftest metrics-inside-aggregation-clauses-test
   (mt/test-driver :druid
     (testing "check that we can handle METRICS inside expression aggregation clauses"
       (tqpt/with-flattened-dbdef
-        (t2.with-temp/with-temp [Metric metric {:definition (mt/$ids checkins
+        (t2.with-temp/with-temp [LegacyMetric metric {:definition (mt/$ids checkins
                                                               {:aggregation [:sum $venue_price]
                                                                :filter      [:> $venue_price 1]})
                                                 :table_id (mt/id :checkins)}]

@@ -12,6 +12,8 @@
    [clojure.walk :as walk]
    [goog.object :as gobject]
    [medley.core :as m]
+   [metabase.legacy-mbql.js :as mbql.js]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
@@ -23,12 +25,12 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.js :as mbql.js]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -121,7 +123,10 @@
 (defn ^:export legacy-query
   "Coerce a CLJS pMBQL query back to (1) a legacy query (2) in vanilla JS."
   [query-map]
-  (-> query-map lib.convert/->legacy-MBQL fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
+  (-> (if (lib.util/source-metric-id query-map)
+        (dissoc query-map :lib/metadata)
+        (lib.query/->legacy-MBQL query-map))
+      fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export append-stage
   "Adds a new blank stage to the end of the pipeline"
@@ -356,9 +361,28 @@
    (lib.core/normalize (js->clj source-clause :keywordize-keys true))
    (lib.core/normalize (js->clj target-clause :keywordize-keys true))))
 
-(defn- prep-query-for-equals [a-query field-ids]
+(defn- unwrap [a-query]
+  (let [a-query (mbql.js/unwrap a-query)]
+    (cond-> a-query
+      (map? a-query) (:dataset_query a-query))))
+
+(defn- normalize-to-clj
+  [a-query]
+  (let [normalize-fn (fn [q]
+                       (if (= (lib.util/normalized-query-type q) :mbql/query)
+                         (lib.normalize/normalize q)
+                         (mbql.normalize/normalize q)))]
+    (-> a-query (js->clj :keywordize-keys true) unwrap normalize-fn)))
+
+(defn ^:export normalize
+  "Normalize the MBQL or pMBQL query `a-query`.
+
+  Returns the JS form of the normalized query."
+  [a-query]
+  (-> a-query normalize-to-clj (clj->js :keyword-fn u/qualified-name)))
+
+(defn- prep-query-for-equals-legacy [a-query field-ids]
   (-> a-query
-      mbql.js/normalize-cljs
       ;; If `:native` exists, but it doesn't have `:template-tags`, add it.
       (m/update-existing :native #(merge {:template-tags {}} %))
       (m/update-existing :query (fn [inner-query]
@@ -369,32 +393,51 @@
                                     ;; match up. Therefore de-dupe with `frequencies` rather than simply `set`.
                                     (assoc inner-query :fields (frequencies fields)))))))
 
-(defn- compare-legacy-field-refs
+(defn- prep-query-for-equals-pMBQL
+  [a-query field-ids]
+  (let [fields (or (some->> (lib.core/fields a-query)
+                            (map #(assoc % 1 {})))
+                   (mapv (fn [id] [:field {} id]) field-ids))]
+    (lib.util/update-query-stage a-query -1 assoc :fields (frequencies fields))))
+
+(defn- prep-query-for-equals [a-query field-ids]
+  (when-let [normalized-query (some-> a-query normalize-to-clj)]
+    (if (contains? normalized-query :lib/type)
+      (prep-query-for-equals-pMBQL normalized-query field-ids)
+      (prep-query-for-equals-legacy normalized-query field-ids))))
+
+(defn- compare-field-refs
   [[key1 id1 opts1]
    [key2 id2 opts2]]
   ;; A mismatch of `:base-type` or `:effective-type` when both x and y have values for it is a failure.
   ;; If either ref does not have the `:base-type` or `:effective-type` set, that key is ignored.
   (letfn [(clean-opts [o1 o2]
             (not-empty
-              (cond-> o1
-                (not (:base-type o2))      (dissoc :base-type)
-                (not (:effective-type o2)) (dissoc :effective-type))))]
-    (= [key1 id1 (clean-opts opts1 opts2)]
-       [key2 id2 (clean-opts opts2 opts1)])))
+             (cond-> o1
+               (not (:base-type o2))      (dissoc :base-type)
+               (not (:effective-type o2)) (dissoc :effective-type))))]
+    (if (map? id1)
+      (= [key1 (clean-opts id1 id2) opts1]
+         [key2 (clean-opts id2 id1) opts2])
+      (= [key1 id1 (clean-opts opts1 opts2)]
+         [key2 id2 (clean-opts opts2 opts1)]))))
 
 (defn- query=* [x y]
   (cond
     (and (vector? x)
          (vector? y)
          (= (first x) (first y) :field))
-    (compare-legacy-field-refs x y)
+    (compare-field-refs x y)
 
-    ;; Otherwise this is a duplicate of clojure.core/=.
+    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid values don't
+    ;; have to match.
     (and (map? x) (map? y))
-    (and (= (set (keys x)) (set (keys y)))
-         (every? (fn [[k v]]
-                   (query=* v (get y k)))
-                 x))
+    (let [x (dissoc x :lib/uuid)
+          y (dissoc y :lib/uuid)]
+      (and (= (set (keys x)) (set (keys y)))
+           (every? (fn [[k v]]
+                     (query=* v (get y k)))
+                   x)))
 
     (and (sequential? x) (sequential? y))
     (and (= (count x) (count y))
@@ -416,9 +459,11 @@
   For now it pulls logic that touches query internals into `metabase.lib`."
   ([query1 query2] (query= query1 query2 nil))
   ([query1 query2 field-ids]
-   (let [n1 (prep-query-for-equals query1 field-ids)
-         n2 (prep-query-for-equals query2 field-ids)]
-     (query=* n1 n2))))
+   (and (= (some-> query1 (gobject/get "mbql/query"))
+           (some-> query2 (gobject/get "mbql/query")))
+        (let [n1 (prep-query-for-equals query1 field-ids)
+              n2 (prep-query-for-equals query2 field-ids)]
+          (query=* n1 n2)))))
 
 (defn ^:export group-columns
   "Given a group of columns returned by a function like [[metabase.lib.js/orderable-columns]], group the columns
@@ -748,7 +793,8 @@
   with \"card__\") of `a-query`. If `a-query` has none of these, nil is returned."
   [a-query]
   (or (lib.util/source-table-id a-query)
-      (some->> (lib.util/source-card-id a-query) (str "card__"))))
+      (some->> (lib.util/source-card-id a-query) (str "card__"))
+      (some->> (lib.util/source-metric-id a-query) (str "card__"))))
 
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
@@ -1050,7 +1096,7 @@
 
 (defn ^:export database-id
   "Get the Database ID (`:database`) associated with a query. If the query is using
-  the [[metabase.mbql.schema/saved-questions-virtual-database-id]] (used in some situations for queries with a
+  the [[metabase.legacy-mbql.schema/saved-questions-virtual-database-id]] (used in some situations for queries with a
   `:source-card`)
 
     {:database -1337}
@@ -1315,3 +1361,14 @@
     :can-run a-query
     (fn [_]
       (lib.core/can-run a-query))))
+
+(defn ^:export can-save
+  "Returns true if `query` for a card of `card-type` can be saved.
+  `card-type` is optional and defaults to \"question\"."
+  ([a-query]
+   (can-save a-query "question"))
+  ([a-query card-type]
+   (lib.cache/side-channel-cache
+    (keyword "can-save" card-type) a-query
+    (fn [_]
+      (lib.core/can-save a-query (keyword card-type))))))

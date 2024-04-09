@@ -758,7 +758,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.button("Save").click();
         cy.findByText("You're editing this dashboard.").should("not.exist");
         cy.log("Reported failing on v0.38.0 - link gets dropped");
-        cy.get(".DashCard").findAllByText(LINK_NAME);
+        cy.findByTestId("dashcard-container").findAllByText(LINK_NAME);
       });
     });
   });

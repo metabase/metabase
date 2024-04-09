@@ -54,7 +54,7 @@
    "database"       {:db-model :model/Database :alias :database}
    "dataset"        {:db-model :model/Card :alias :card}
    "indexed-entity" {:db-model :model/ModelIndexValue :alias :model-index-value}
-   "metric"         {:db-model :model/Metric :alias :metric}
+   "metric"         {:db-model :model/Card :alias :card}
    "segment"        {:db-model :model/Segment :alias :segment}
    "table"          {:db-model :model/Table :alias :table}})
 
@@ -74,6 +74,7 @@
   [model]
   (case model
     "dataset" (recur "card")
+    "metric" (recur "card")
     (str/capitalize model)))
 
 (defn model->alias

@@ -335,3 +335,17 @@
       (let [db (first (t2/insert-returning-instances! Database (dissoc (mt/with-temp-defaults Database) :details)))]
         (is (partial= {:details {}}
                       db))))))
+
+(deftest hydrate-tables-test
+  (is (= ["CATEGORIES"
+          "CHECKINS"
+          "ORDERS"
+          "PEOPLE"
+          "PRODUCTS"
+          "REVIEWS"
+          "USERS"
+          "VENUES"]
+       (-> (mt/db)
+           (t2/hydrate :tables)
+           :tables
+           (#(map :name %))))))

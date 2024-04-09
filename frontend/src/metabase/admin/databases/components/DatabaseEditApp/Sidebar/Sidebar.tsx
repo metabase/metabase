@@ -2,6 +2,10 @@ import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
 import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
+import {
+  useDiscardDatabaseFieldValuesMutation,
+  useRescanDatabaseFieldValuesMutation,
+} from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -28,8 +32,6 @@ interface DatabaseEditAppSidebarProps {
   ) => Promise<void>;
   syncDatabaseSchema: (databaseId: DatabaseId) => Promise<void>;
   dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
-  rescanDatabaseFields: (databaseId: DatabaseId) => Promise<void>;
-  discardSavedFieldValues: (databaseId: DatabaseId) => Promise<void>;
   deleteDatabase: (
     databaseId: DatabaseId,
     isDetailView: boolean,
@@ -42,30 +44,24 @@ const DatabaseEditAppSidebar = ({
   deleteDatabase,
   syncDatabaseSchema,
   dismissSyncSpinner,
-  rescanDatabaseFields,
-  discardSavedFieldValues,
   isAdmin,
   isModelPersistenceEnabled,
 }: DatabaseEditAppSidebarProps) => {
   const discardSavedFieldValuesModal = useRef<any>();
   const deleteDatabaseModal = useRef<any>();
-
   const isEditingDatabase = !!database.id;
-
   const isSynced = isSyncCompleted(database);
   const hasModelActionsSection =
     isEditingDatabase && database.supportsActions();
   const hasModelCachingSection =
     isModelPersistenceEnabled && database.supportsPersistence();
 
+  const [rescanDatabaseFieldValues] = useRescanDatabaseFieldValuesMutation();
+  const [discardDatabaseFieldValues] = useDiscardDatabaseFieldValuesMutation();
+
   const handleSyncDatabaseSchema = useCallback(
     () => syncDatabaseSchema(database.id),
     [database.id, syncDatabaseSchema],
-  );
-
-  const handleReScanFieldValues = useCallback(
-    () => rescanDatabaseFields(database.id),
-    [database.id, rescanDatabaseFields],
   );
 
   const handleDismissSyncSpinner = useCallback(
@@ -80,11 +76,6 @@ const DatabaseEditAppSidebar = ({
         settings: { "database-enable-actions": nextValue },
       }),
     [database.id, updateDatabase],
-  );
-
-  const handleDiscardSavedFieldValues = useCallback(
-    () => discardSavedFieldValues(database.id),
-    [database.id, discardSavedFieldValues],
   );
 
   const handleDeleteDatabase = useCallback(
@@ -121,7 +112,7 @@ const DatabaseEditAppSidebar = ({
             </SidebarGroup.ListItem>
             <SidebarGroup.ListItem>
               <ActionButton
-                actionFn={handleReScanFieldValues}
+                actionFn={() => rescanDatabaseFieldValues(database.id)}
                 normalText={t`Re-scan field values now`}
                 activeText={t`Starting…`}
                 failedText={t`Failed to start scan`}
@@ -160,7 +151,7 @@ const DatabaseEditAppSidebar = ({
                   <ConfirmContent
                     title={t`Discard saved field values`}
                     onClose={handleSavedFieldsModalClose}
-                    onAction={handleDiscardSavedFieldValues}
+                    onAction={() => discardDatabaseFieldValues(database.id)}
                   />
                 </ModalWithTrigger>
               </SidebarGroup.ListItem>

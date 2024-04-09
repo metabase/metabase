@@ -77,7 +77,7 @@ class AutomaticDashboardAppInner extends Component {
     );
     invalidateCollections();
     triggerToast(
-      <div className="flex align-center">
+      <div className={cx(CS.flex, CS.alignCenter)}>
         {t`Your dashboard was saved`}
         <Link className="link text-bold ml1" to={Urls.dashboard(newDashboard)}>
           {t`See it`}
@@ -129,7 +129,7 @@ class AutomaticDashboardAppInner extends Component {
                   data-testid="fixed-width-dashboard-header"
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
-                  <div className="flex align-center py2">
+                  <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
                     <XrayIcon name="bolt" size={24} />
                     <div>
                       <h2 className="text-wrap mr2">
@@ -150,7 +150,7 @@ class AutomaticDashboardAppInner extends Component {
                     )}
                   </div>
                   {this.props.tabs.length > 1 && (
-                    <div className={cx(CS.wrapper, "flex align-center")}>
+                    <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
                       <DashboardTabs location={this.props.location} />
                     </div>
                   )}
@@ -180,7 +180,7 @@ class AutomaticDashboardAppInner extends Component {
             <Dashboard isXray {...this.props} />
           </div>
           {more && (
-            <div className="flex justify-end px4 pb4">
+            <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>
               <Link
                 to={more}
                 className="ml2"

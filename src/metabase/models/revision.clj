@@ -161,7 +161,8 @@
   "Get the revisions for `model` with `id` in reverse chronological order."
   [model :- [:fn toucan-model?]
    id    :- pos-int?]
-  (t2/select Revision :model (name model) :model_id id {:order-by [[:id :desc]]}))
+  (let [model-name (name model)]
+    (t2/select Revision :model model-name :model_id id {:order-by [[:id :desc]]})))
 
 (mu/defn revisions+details
   "Fetch `revisions` for `model` with `id` and add details."
@@ -186,8 +187,9 @@
                                         [:user-id                       pos-int?]
                                         [:is-creation? {:optional true} [:maybe :boolean]]
                                         [:message      {:optional true} [:maybe :string]]]]
-  (let [serialized-object (serialize-instance entity id (dissoc object :message))
-        last-object       (t2/select-one-fn :object Revision :model (name entity) :model_id id {:order-by [[:id :desc]]})]
+  (let [entity-name (name entity)
+        serialized-object (serialize-instance entity id (dissoc object :message))
+        last-object       (t2/select-one-fn :object Revision :model entity-name :model_id id {:order-by [[:id :desc]]})]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
     ;; the last-object could have nested object, e.g: Dashboard can have multiple Card in it,
@@ -197,7 +199,7 @@
     (when-not (= (json/generate-string serialized-object)
                  (json/generate-string last-object))
       (t2/insert! Revision
-                  :model        (name entity)
+                  :model        entity-name
                   :model_id     id
                   :user_id      user-id
                   :object       serialized-object
@@ -214,14 +216,15 @@
             [:revision-id pos-int?]
             [:entity      [:fn toucan-model?]]]]
   (let [{:keys [id user-id revision-id entity]} info
-        serialized-instance (t2/select-one-fn :object Revision :model (name entity) :model_id id :id revision-id)]
+        model-name (name entity)
+        serialized-instance (t2/select-one-fn :object Revision :model model-name :model_id id :id revision-id)]
     (t2/with-transaction [_conn]
       ;; Do the reversion of the object
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change
-      (let [last-revision (t2/select-one Revision :model (name entity), :model_id id, {:order-by [[:id :desc]]})
+      (let [last-revision (t2/select-one Revision :model model-name, :model_id id, {:order-by [[:id :desc]]})
             new-revision  (first (t2/insert-returning-instances! Revision
-                                                                 :model        (name entity)
+                                                                 :model        model-name
                                                                  :model_id     id
                                                                  :user_id      user-id
                                                                  :object       serialized-instance

@@ -2,7 +2,6 @@ import { DELETE, POST, GET } from "metabase/lib/api";
 
 export const AuditApi = {
   unsubscribe_user: DELETE("/api/ee/audit-app/user/:id/subscriptions"),
-  getAuditInfo: GET("/api/ee/audit-app/user/audit-info"),
 };
 
 export const AutoDescribeApi = {

@@ -17,8 +17,8 @@
   Otherwise return an empty map."
   []
   (let [custom-reports     (audit-db/default-custom-reports-collection)
-        question-overview  (audit-db/entity-id->object :model/Dashboard audit-db/default-question-overview-entity-id)
-        dashboard-overview (audit-db/entity-id->object :model/Dashboard audit-db/default-dashboard-overview-entity-id)]
+        question-overview  (audit-db/memoized-select-audit-entity :model/Dashboard audit-db/default-question-overview-entity-id)
+        dashboard-overview (audit-db/memoized-select-audit-entity :model/Dashboard audit-db/default-dashboard-overview-entity-id)]
     (merge
      {}
      (when (mi/can-read? (audit-db/default-custom-reports-collection))

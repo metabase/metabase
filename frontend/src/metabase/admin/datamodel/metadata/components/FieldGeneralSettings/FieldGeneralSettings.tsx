@@ -3,6 +3,10 @@ import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import {
+  useDiscardFieldValuesMutation,
+  useRescanFieldValuesMutation,
+} from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import type { SelectChangeEvent } from "metabase/core/components/Select/Select";
@@ -13,9 +17,8 @@ import Fields from "metabase/entities/fields";
 import * as MetabaseCore from "metabase/lib/core";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { FieldId, FieldValuesType } from "metabase-types/api";
+import type { FieldValuesType } from "metabase-types/api";
 
-import { discardFieldValues, rescanFieldValues } from "../../actions";
 import FieldRemappingSettings from "../FieldRemappingSettings";
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import MetadataSection from "../MetadataSection";
@@ -32,16 +35,12 @@ interface OwnProps {
 
 interface DispatchProps {
   onUpdateField: (field: Field, updates: Partial<Field>) => void;
-  onRescanFieldValues: (fieldId: FieldId) => void;
-  onDiscardFieldValues: (fieldId: FieldId) => void;
 }
 
 type FieldGeneralSettingsProps = OwnProps & DispatchProps;
 
 const mapDispatchToProps: DispatchProps = {
   onUpdateField: Fields.actions.updateField,
-  onRescanFieldValues: rescanFieldValues,
-  onDiscardFieldValues: discardFieldValues,
 };
 
 const FieldGeneralSettings = ({
@@ -49,8 +48,6 @@ const FieldGeneralSettings = ({
   idFields,
   table,
   onUpdateField,
-  onRescanFieldValues,
-  onDiscardFieldValues,
 }: FieldGeneralSettingsProps) => {
   return (
     <div>
@@ -75,11 +72,7 @@ const FieldGeneralSettings = ({
       )}
       <FieldValuesTypeSection field={field} onUpdateField={onUpdateField} />
       <FieldRemappingSection field={field} table={table} />
-      <FieldCachedValuesSection
-        field={field}
-        onRescanFieldValues={onRescanFieldValues}
-        onDiscardFieldValues={onDiscardFieldValues}
-      />
+      <FieldCachedValuesSection field={field} />
     </div>
   );
 };
@@ -172,7 +165,7 @@ const FieldTypeSection = ({
     <MetadataSection>
       <MetadataSectionHeader title={t`Field Type`} />
       <SemanticTypeAndTargetPicker
-        className="flex align-center"
+        className={cx(CS.flex, CS.alignCenter)}
         field={field}
         idFields={idFields}
         onUpdateField={onUpdateField}
@@ -312,24 +305,12 @@ const FieldRemappingSection = ({
 
 interface FieldCachedValuesSectionProps {
   field: Field;
-  onRescanFieldValues: (fieldId: FieldId) => void;
-  onDiscardFieldValues: (fieldId: FieldId) => void;
 }
 
-const FieldCachedValuesSection = ({
-  field,
-  onRescanFieldValues,
-  onDiscardFieldValues,
-}: FieldCachedValuesSectionProps) => {
+const FieldCachedValuesSection = ({ field }: FieldCachedValuesSectionProps) => {
   const fieldId = Number(field.id);
-
-  const handleRescanFieldValues = useCallback(async () => {
-    await onRescanFieldValues(fieldId);
-  }, [fieldId, onRescanFieldValues]);
-
-  const handleDiscardFieldValues = useCallback(async () => {
-    await onDiscardFieldValues(fieldId);
-  }, [fieldId, onDiscardFieldValues]);
+  const [rescanFieldValues] = useRescanFieldValuesMutation();
+  const [discardFieldValues] = useDiscardFieldValuesMutation();
 
   return (
     <MetadataSection last>
@@ -339,7 +320,7 @@ const FieldCachedValuesSection = ({
       />
       <ActionButton
         className={cx(ButtonsS.Button, CS.mr2)}
-        actionFn={handleRescanFieldValues}
+        actionFn={() => rescanFieldValues(fieldId)}
         normalText={t`Re-scan this field`}
         activeText={t`Starting…`}
         failedText={t`Failed to start scan`}
@@ -347,7 +328,7 @@ const FieldCachedValuesSection = ({
       />
       <ActionButton
         className={cx(ButtonsS.Button, ButtonsS.ButtonDanger)}
-        actionFn={handleDiscardFieldValues}
+        actionFn={() => discardFieldValues(fieldId)}
         normalText={t`Discard cached field values`}
         activeText={t`Starting…`}
         failedText={t`Failed to discard values`}

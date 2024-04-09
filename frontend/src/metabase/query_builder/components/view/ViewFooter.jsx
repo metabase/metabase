@@ -57,7 +57,7 @@ const ViewFooter = ({
       data-testid="view-footer"
     >
       <ButtonBar
-        className="flex-full"
+        className={CS.flexFull}
         left={[
           !hideChartSettings && (
             <FooterButtonGroup>

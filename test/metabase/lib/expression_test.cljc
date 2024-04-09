@@ -485,7 +485,8 @@
           (are [mode expr]
                (nil? (lib.expression/diagnose-expression query 0 mode expr c-pos))
             :expression  (get exprs "non-circular-c")
-            :aggregation (get exprs "circular-c")
+            :aggregation (-> (get exprs "circular-c")
+                             (assoc 3 (lib/count)))
             :filter      (assoc (get exprs "circular-c") 0 :=)))
         (testing "circular definition"
           (is (= {:message "Cycle detected: c → x → b → c"}

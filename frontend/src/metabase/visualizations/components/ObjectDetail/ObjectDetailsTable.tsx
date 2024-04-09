@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
@@ -67,10 +68,14 @@ export function DetailsTableCell({
       } catch (e) {
         formattedJson = value;
       }
-      cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
+      cellValue = (
+        <pre className={QueryBuilderS.ObjectJSON}>{formattedJson}</pre>
+      );
     } else if (typeof value === "object") {
       const formattedJson = JSON.stringify(value, null, 2);
-      cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
+      cellValue = (
+        <pre className={QueryBuilderS.ObjectJSON}>{formattedJson}</pre>
+      );
     } else {
       cellValue = formatValue(value, {
         ...columnSettings,

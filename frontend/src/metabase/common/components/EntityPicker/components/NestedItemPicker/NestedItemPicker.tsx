@@ -1,46 +1,52 @@
-import type React from "react";
+import type { ComponentType } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Flex } from "metabase/ui";
-import type { SearchListQuery } from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
-  TypeWithModel,
+  ListProps,
   PickerState,
-  TisFolder,
+  IsFolder,
+  TypeWithModel,
 } from "../../types";
-import type { EntityItemListProps } from "../ItemList";
+import { AutoScrollBox } from "../AutoScrollBox";
 
-import { AutoScrollBox } from "./AutoScrollBox";
 import { ListBox } from "./NestedItemPicker.styled";
 
-export interface NestedItemPickerProps<TItem extends TypeWithModel> {
-  onFolderSelect: ({ folder }: { folder: TItem }) => void;
-  onItemSelect: (item: TItem) => void;
+export interface NestedItemPickerProps<
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+  Query,
+  Options extends EntityPickerOptions,
+> {
+  onFolderSelect: ({ folder }: { folder: Item }) => void;
+  onItemSelect: (item: Item) => void;
+  generateKey: (query?: Query) => string;
   itemName: string;
-  options: EntityPickerOptions;
-  path: PickerState<TItem>;
-  isFolder: TisFolder<TItem>;
-  listResolver: React.FC<
-    EntityItemListProps<TItem> & {
-      options: EntityPickerOptions;
-    }
-  >;
+  options: Options;
+  path: PickerState<Item, Query>;
+  isFolder: IsFolder<Id, Model, Item>;
+  listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
 }
 
-const generateKey = (query?: SearchListQuery) =>
-  JSON.stringify(query ?? "root");
-
-export function NestedItemPicker<TItem extends TypeWithModel>({
+export function NestedItemPicker<
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+  Query,
+  Options extends EntityPickerOptions,
+>({
   onFolderSelect,
   onItemSelect,
+  generateKey,
   options,
   path,
   isFolder,
   listResolver: ListResolver,
-}: NestedItemPickerProps<TItem>) {
-  const handleClick = (item: TItem) => {
+}: NestedItemPickerProps<Id, Model, Item, Query, Options>) {
+  const handleClick = (item: Item) => {
     if (isFolder(item)) {
       onFolderSelect({ folder: item });
     } else {
@@ -67,7 +73,7 @@ export function NestedItemPicker<TItem extends TypeWithModel>({
                   query={query}
                   selectedItem={selectedItem}
                   options={options}
-                  onClick={(item: TItem) => handleClick(item)}
+                  onClick={(item: Item) => handleClick(item)}
                   isCurrentLevel={index === path.length - 2}
                   isFolder={isFolder}
                 />

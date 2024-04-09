@@ -31,6 +31,9 @@ export const FETCH_DATABASE_SCHEMAS =
 export const FETCH_DATABASE_IDFIELDS =
   "metabase/entities/database/FETCH_DATABASE_IDFIELDS";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Databases = createEntity({
   name: "databases",
   path: "/api/database",

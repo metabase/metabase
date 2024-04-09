@@ -31,6 +31,10 @@
 
 (set! *warn-on-reflection* true)
 
+(comment
+  ;; idk why condo complains on this not being used when it is, in a keyword down there
+  lib.schema.metadata/used)
+
 ;;; --------------------------------------------- Basic CRUD Operations ----------------------------------------------
 
 (def ^:private default-max-field-search-limit 1000)

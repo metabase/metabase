@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import ListSearchField from "metabase/components/ListSearchField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { Icon, Box } from "metabase/ui";
 
@@ -61,11 +62,17 @@ export const AccordionListCell = ({
       content = (
         <div
           className={cx(
-            "List-section-header px2 py2 flex align-center hover-parent hover--opacity",
+            "List-section-header",
+            CS.px2,
+            CS.py2,
+            CS.flex,
+            CS.alignCenter,
+            "hover-parent",
+            "hover--opacity",
             {
               "List-section-header--cursor": hasCursor,
-              "cursor-pointer": canToggleSections,
-              "text-brand": sectionIsExpanded(sectionIndex),
+              [CS.cursorPointer]: canToggleSections,
+              [CS.textBrand]: sectionIsExpanded(sectionIndex),
             },
           )}
           onClick={
@@ -73,7 +80,14 @@ export const AccordionListCell = ({
           }
         >
           {icon && (
-            <span className="List-section-icon mr1 flex align-center">
+            <span
+              className={cx(
+                CS.mr1,
+                CS.flex,
+                CS.alignCenter,
+                "List-section-icon",
+              )}
+            >
               {icon}
             </span>
           )}
@@ -84,7 +98,7 @@ export const AccordionListCell = ({
             </Box>
           )}
           {sections.length > 1 && section.items && section.items.length > 0 && (
-            <span className="flex-align-right ml1 hover-child">
+            <span className={cx(CS.flexAlignRight, CS.ml1, "hover-child")}>
               <Icon
                 name={
                   sectionIsExpanded(sectionIndex) ? "chevronup" : "chevrondown"
@@ -100,7 +114,7 @@ export const AccordionListCell = ({
     content = <div className="my1" />;
   } else if (type === "loading") {
     content = (
-      <div className="m1 flex layout-centered">
+      <div className={cx(CS.m1, CS.flex, CS.layoutCentered)}>
         <LoadingSpinner />
       </div>
     );
@@ -135,12 +149,14 @@ export const AccordionListCell = ({
         aria-disabled={!isClickable}
         isClickable={isClickable}
         className={cx(
-          "List-item flex mx1",
+          "List-item",
+          CS.flex,
+          CS.mx1,
           {
             "List-item--selected": isSelected,
             "List-item--disabled": !isClickable,
             "List-item--cursor": hasCursor,
-            mb1: isLastItem,
+            [CS.mb1]: isLastItem,
           },
           getItemClassName(item, itemIndex),
         )}
@@ -151,7 +167,14 @@ export const AccordionListCell = ({
           onClick={isClickable ? () => onChange(item) : undefined}
         >
           {icon && (
-            <span className="List-item-icon text-default flex align-center">
+            <span
+              className={cx(
+                "List-item-icon",
+                CS.textDefault,
+                CS.flex,
+                CS.alignCenter,
+              )}
+            >
               {icon}
             </span>
           )}
@@ -171,7 +194,9 @@ export const AccordionListCell = ({
         </Content>
         {extra}
         {showItemArrows && (
-          <div className="List-item-arrow flex align-center px1">
+          <div
+            className={cx("List-item-arrow", CS.flex, CS.alignCenter, CS.px1)}
+          >
             <Icon name="chevronright" size={8} />
           </div>
         )}

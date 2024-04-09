@@ -188,3 +188,8 @@ export function selectSavedQuestionsToJoin(
     cy.findByText(secondQuestionName).click();
   });
 }
+
+export function selectFilterOperator(operatorName: string) {
+  cy.findByLabelText("Filter operator").click();
+  cy.findByRole("listbox").findByText(operatorName).click();
+}

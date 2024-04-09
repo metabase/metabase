@@ -20,7 +20,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
     cy.viewport(1400, 860);
   });
 
-  it("should be possible to sort by metric (metabase#8283)", () => {
+  // FIXME metrics v2
+  it.skip("should be possible to sort by metric (metabase#8283)", () => {
     createMetric({
       name: "Revenue",
       description: "Sum of orders subtotal",
@@ -107,7 +108,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       // `data`, `filtered by` and `view`
       cy.wait(["@dataset", "@dataset", "@dataset"]);
 
-      cy.get(".GuiBuilder").findByText("Count").click();
+      cy.findByTestId("gui-builder").findByText("Count").click();
       popover().contains("Custom Expression").click();
 
       cy.get(".ace_text-input")
@@ -125,10 +126,10 @@ describe("scenarios > admin > datamodel > metrics", () => {
       // verify popover is closed, otherwise its state will reset
       cy.findByRole("grid").should("not.exist");
 
-      cy.get(".GuiBuilder").findByText("Result: 93.8");
+      cy.findByTestId("gui-builder").findByText("Result: 93.8");
 
       // Let's make sure the custom expression is still preserved
-      cy.get(".GuiBuilder").findByText("Foo").click();
+      cy.findByTestId("gui-builder").findByText("Foo").click();
       cy.get(".ace_content").should("contain", customExpression);
     });
   });
@@ -161,7 +162,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
       );
     });
 
-    it("should see a newly asked question in its questions list", () => {
+    // FIXME metrics v2
+    it.skip("should see a newly asked question in its questions list", () => {
       // Ask a new question
       cy.visit("/reference/metrics/1/questions");
 

@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -8,6 +9,8 @@ import MetricItem from "metabase/admin/datamodel/components/MetricItem";
 import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import Metrics from "metabase/entities/metrics";
 
 class MetricListAppInner extends Component {
@@ -16,13 +19,13 @@ class MetricListAppInner extends Component {
 
     return (
       <div className="px3 pb2">
-        <div className="flex py2">
+        <div className={cx(CS.flex, CS.py2)}>
           {tableSelector}
           <Link to="/admin/datamodel/metric/create" className="ml-auto">
             <Button primary>{t`New metric`}</Button>
           </Link>
         </div>
-        <table className="AdminTable">
+        <table className={AdminS.AdminTable}>
           <thead className="text-bold">
             <tr>
               <th style={{ minWidth: "320px" }}>{t`Name`}</th>
@@ -41,7 +44,7 @@ class MetricListAppInner extends Component {
           </tbody>
         </table>
         {metrics.length === 0 && (
-          <div className="flex layout-centered m4 text-medium">
+          <div className={cx(CS.flex, CS.layoutCentered, CS.m4, CS.textMedium)}>
             {t`Create metrics to add them to the Summarize dropdown in the query builder`}
           </div>
         )}

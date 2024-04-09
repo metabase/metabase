@@ -44,6 +44,9 @@ export async function setup({
 
   fetchMock.post("path:/api/util/password_check", { valid: true });
   fetchMock.post("path:/api/setup", {});
+  fetchMock.put("path:/api/setting/anon-tracking-enabled", 200);
+  fetchMock.get("path:/api/session/properties", 200);
+  fetchMock.get("path:/api/setting", 200);
 
   renderWithProviders(<Setup />, { storeInitialState: state });
 
@@ -114,7 +117,7 @@ export const expectSectionsToHaveLabelsInOrder = ({
 }: {
   from?: number;
 } = {}): void => {
-  screen.getAllByRole("listitem").forEach((section, index) => {
+  screen.getAllByTestId("setup-step").forEach((section, index) => {
     if (index >= from) {
       expect(within(section).getByText(`${index + 1}`)).toBeInTheDocument();
     }

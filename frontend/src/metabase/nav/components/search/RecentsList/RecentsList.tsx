@@ -9,9 +9,10 @@ import {
   getItemName,
   getItemUrl,
 } from "metabase/nav/components/search/RecentsList/util";
-import type { IconName } from "metabase/ui";
-import { Paper } from "metabase/ui";
+import { Paper, type IconName } from "metabase/ui";
 import type { RecentItem, UnrestrictedLinkEntity } from "metabase-types/api";
+
+import { CommandPaletteMessage } from "./CommandPaletteMessage";
 
 type RecentsListProps = {
   onClick?: (elem: UnrestrictedLinkEntity) => void;
@@ -67,6 +68,7 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
         results={wrappedResults}
         onClick={onContainerClick}
       />
+      <CommandPaletteMessage />
     </Paper>
   );
 };

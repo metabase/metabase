@@ -221,7 +221,10 @@ describe(
                   cy.get("@modal").should("not.exist");
                   // By default, the dashboard contains one question
                   // After we add a new one, we check there are two questions now
-                  cy.get(".DashCard").should("have.length", 2);
+                  cy.findAllByTestId("dashcard-container").should(
+                    "have.length",
+                    2,
+                  );
                 });
 
                 it("should hide public collections when selecting a dashboard for a question in a personal collection", () => {

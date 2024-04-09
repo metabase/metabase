@@ -467,7 +467,7 @@
                                          :id [:in [rev-dash-1-new rev-dash-2-new rev-card-1-new]])))))))
 (deftest fks-are-indexed-test
   (mt/test-driver :postgres
-    (testing "all FKs should be indexed"
+    (testing "FKs are not created automatically in Postgres, check that migrations add necessary indexes"
      (is (= [] (t2/query
                 "SELECT
                      conrelid::regclass AS table_name,

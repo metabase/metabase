@@ -158,7 +158,7 @@ export function getParameterMappingOptions(
     // treat the dataset/model question like it is already composed so that we can apply
     // dataset/model-specific metadata to the underlying dimension options
     const query = !isQuestion
-      ? question.composeQuestion().query()
+      ? question.composeQuestionAdhoc().query()
       : question.query();
     const stageIndex = -1;
     const availableColumns = Lib.filterableColumns(query, stageIndex);

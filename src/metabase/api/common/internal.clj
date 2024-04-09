@@ -288,7 +288,8 @@
   "Transformer used on values coming over the API via defendpoint."
   (mtx/transformer
    (mtx/string-transformer)
-   (mtx/json-transformer)))
+   (mtx/json-transformer)
+   (mtx/default-value-transformer)))
 
 (defn- extract-symbols [in]
   (let [*symbols (atom [])]

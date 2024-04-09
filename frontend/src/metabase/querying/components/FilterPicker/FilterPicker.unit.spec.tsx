@@ -378,6 +378,8 @@ describe("FilterPicker", () => {
       );
 
       userEvent.click(screen.getByText("Total"));
+      userEvent.click(screen.getByDisplayValue("Between"));
+      userEvent.click(screen.getByText("Equal to"));
       const input = screen.getByPlaceholderText("Enter a number");
       userEvent.type(input, "100");
       userEvent.click(screen.getByText("Update filter"));

@@ -204,7 +204,7 @@ describeEE(
 
       // Check that attributes are synced
       cy.visit("/admin/people");
-      cy.get(".ContentTable").within(() => {
+      cy.findByTestId("admin-people-list-table").within(() => {
         cy.findByText("Bar1 Bar1")
           .closest("tr")
           .within(() => {

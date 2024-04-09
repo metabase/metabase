@@ -1,6 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
+import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
 
 import { FIXED_WIDTH } from "./Dashboard/Dashboard.styled";
@@ -28,7 +29,7 @@ export const DashboardCardContainer = styled.div<DashboardCardProps>`
     z-index: 2;
   }
 
-  .Card {
+  .${DashboardS.Card} {
     position: absolute;
     top: 0;
     left: 0;

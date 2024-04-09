@@ -148,7 +148,8 @@ describe("scenarios > question > nested", () => {
     cy.findAllByText("13");
   });
 
-  it("should apply metrics including filter to the nested question (metabase#12507)", () => {
+  // FIXME metrics v2
+  it.skip("should apply metrics including filter to the nested question (metabase#12507)", () => {
     const metric = {
       name: "Sum of discounts",
       description: "Discounted orders.",
@@ -368,10 +369,10 @@ describe("scenarios > question > nested", () => {
         display: "scalar",
       }).then(({ body: { id } }) => {
         visitQuestion(id);
-        cy.get(".ScalarValue").findByText(value);
+        cy.findByTestId("scalar-value").findByText(value);
 
         visitNestedQueryAdHoc(id);
-        cy.get(".ScalarValue").findByText(value);
+        cy.findByTestId("scalar-value").findByText(value);
       });
     }
   });

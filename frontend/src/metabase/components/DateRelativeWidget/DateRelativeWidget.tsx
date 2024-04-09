@@ -112,21 +112,24 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
         {Object.keys(RELATIVE_SHORTCUTS).map(sectionName => (
           <section key={sectionName}>
             <div
-              style={{}}
-              className="border-bottom text-uppercase flex layout-centered mb2"
+              className={cx(
+                CS.borderBottom,
+                CS.textUppercase,
+                CS.flex,
+                CS.layoutCentered,
+                CS.mb2,
+              )}
             >
               <h6
                 style={{
-                  position: "relative",
-                  backgroundColor: "white",
                   top: "6px",
                 }}
-                className="px2"
+                className={cx(CS.px2, CS.bgWhite, CS.relative)}
               >
                 {sectionName}
               </h6>
             </div>
-            <div className="flex">
+            <div className={CS.flex}>
               {RELATIVE_SHORTCUTS[sectionName].map((s, index) => (
                 <button
                   key={index}

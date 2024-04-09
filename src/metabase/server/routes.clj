@@ -2,7 +2,7 @@
   "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
    how these work. `/api/` routes are in `metabase.api.routes`."
   (:require
-   [compojure.core :refer [context defroutes GET]]
+   [compojure.core :refer [context defroutes GET OPTIONS]]
    [compojure.route :as route]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.routes :as api]
@@ -60,6 +60,9 @@
                 (log/warn e (trs "Error in api/health database check"))
                 {:status 503 :body {:status "Error getting app-db connection"}}))
          {:status 503, :body {:status "initializing", :progress (init-status/progress)}}))
+
+  (OPTIONS "/api/*" [] {:status 200 :body ""})
+
   ;; ^/api/ -> All other API routes
   (context "/api" [] (fn [& args]
                        ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete

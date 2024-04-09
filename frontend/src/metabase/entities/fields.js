@@ -2,7 +2,6 @@ import { assocIn, updateIn } from "icepick";
 import { normalize } from "normalizr";
 import { t } from "ttag";
 
-import { UPDATE_TABLE_FIELD_ORDER } from "metabase/entities/tables";
 import {
   field_visibility_types,
   field_semantic_types,
@@ -45,6 +44,9 @@ export const ADD_REMAPPINGS = "metabase/entities/fields/ADD_REMAPPINGS";
 export const ADD_PARAM_VALUES = "metabase/entities/fields/ADD_PARAM_VALUES";
 export const ADD_FIELDS = "metabase/entities/fields/ADD_FIELDS";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Fields = createEntity({
   name: "fields",
   path: "/api/field",
@@ -181,7 +183,11 @@ const Fields = createEntity({
         updateIn(state, [fieldId, "remappings"], (existing = []) =>
           Array.from(new Map(existing.concat(remappings))),
         ),
-      [UPDATE_TABLE_FIELD_ORDER]: (state, { payload: { fieldOrder } }) => {
+      // cannot use `UPDATE_TABLE_FIELD_ORDER` because of the dependency cycle
+      ["metabase/entities/UPDATE_TABLE_FIELD_ORDER"]: (
+        state,
+        { payload: { fieldOrder } },
+      ) => {
         fieldOrder.forEach((fieldId, index) => {
           state = assocIn(state, [fieldId, "position"], index);
         });

@@ -7,6 +7,7 @@ import {
   popover,
   removeSummaryGroupingField,
   restore,
+  selectFilterOperator,
   visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
@@ -113,11 +114,8 @@ describe("issue 30058", () => {
 const addCountGreaterThan2Filter = () => {
   openNotebook();
   cy.findAllByTestId("action-buttons").last().button("Filter").click();
-  popover().within(() => {
-    cy.findByText("Count").click();
-    cy.findByDisplayValue("Equal to").click();
-  });
-  cy.findByRole("listbox").findByText("Greater than").click();
+  popover().findByText("Count").click();
+  selectFilterOperator("Greater than");
   popover().within(() => {
     cy.findByPlaceholderText("Enter a number").type("2");
     cy.button("Add filter").click();

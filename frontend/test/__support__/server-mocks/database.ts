@@ -10,6 +10,8 @@ import { setupTableEndpoints } from "./table";
 
 export function setupDatabaseEndpoints(db: Database) {
   fetchMock.get(`path:/api/database/${db.id}`, db);
+  fetchMock.post(`path:/api/database/${db.id}/rescan_values`, {});
+  fetchMock.post(`path:/api/database/${db.id}/discard_values`, {});
   setupSchemaEndpoints(db);
   setupDatabaseIdFieldsEndpoints(db);
   db.tables?.forEach(table => setupTableEndpoints(table));
@@ -21,7 +23,7 @@ export function setupDatabaseEndpoints(db: Database) {
   });
 }
 
-export function setupDatabaseUsageInfo(
+export function setupDatabaseUsageInfoEndpoint(
   db: Database,
   usageInfo: DatabaseUsageInfo,
 ) {

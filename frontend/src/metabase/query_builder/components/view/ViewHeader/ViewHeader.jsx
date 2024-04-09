@@ -462,12 +462,12 @@ function ViewTitleHeaderRightSide(props) {
     [isRunning],
   );
 
-  const canRun = question.canRun();
-  const isSaveDisabled = !canRun || !isEditable;
+  const canSave = Lib.canSave(question.query(), question.type());
+  const isSaveDisabled = !canSave;
   const disabledSaveTooltip = getDisabledSaveTooltip(
     isEditable,
     requiredTemplateTags,
-    canRun,
+    canSave,
   );
 
   return (
@@ -558,7 +558,11 @@ function ViewTitleHeaderRightSide(props) {
 
 ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
 
-function getDisabledSaveTooltip(isEditable, requiredTemplateTags = [], canRun) {
+function getDisabledSaveTooltip(
+  isEditable,
+  requiredTemplateTags = [],
+  canSave,
+) {
   if (!isEditable) {
     return t`You don't have permission to save this question.`;
   }
@@ -567,7 +571,7 @@ function getDisabledSaveTooltip(isEditable, requiredTemplateTags = [], canRun) {
     tag => tag.required && !tag.default,
   );
 
-  if (!canRun) {
+  if (!canSave) {
     return getMissingRequiredTemplateTagsTooltip(missingValueRequiredTTags);
   }
 

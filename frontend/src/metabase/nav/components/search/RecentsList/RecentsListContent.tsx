@@ -58,7 +58,13 @@ export const RecentsListContent = ({
   }
 
   return (
-    <Stack spacing="md" px="sm" py="md" data-testid="recents-list-container">
+    <Stack
+      spacing="sm"
+      px="sm"
+      pt="md"
+      pb="sm"
+      data-testid="recents-list-container"
+    >
       <Title order={4} px="sm">{t`Recently viewed`}</Title>
       <Stack spacing={0}>
         {results.map((item, index) => {

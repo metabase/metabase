@@ -67,6 +67,7 @@
             stage-columns         (or (:metabase.lib.stage/cached-metadata stage)
                                       (get-in stage [:lib/stage-metadata :columns])
                                       (when (or (:source-card  stage)
+                                                (:sources      stage)
                                                 (:source-table stage)
                                                 (:expressions  stage)
                                                 (:fields       stage))

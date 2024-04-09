@@ -47,7 +47,7 @@ describe("scenarios > models query editor", () => {
       cy.findByText("Row limit").click();
       cy.findByPlaceholderText("Enter a limit").type("2");
 
-      cy.get(".RunButton").click();
+      cy.findByTestId("run-button").click();
       cy.wait("@dataset");
 
       cy.get(".cellData")
@@ -83,7 +83,7 @@ describe("scenarios > models query editor", () => {
       cy.findByText("Row limit").click();
       cy.findByPlaceholderText("Enter a limit").type("2");
 
-      cy.get(".RunButton").click();
+      cy.findByTestId("run-button").click();
       cy.wait("@dataset");
 
       cy.get(".cellData")
@@ -109,12 +109,12 @@ describe("scenarios > models query editor", () => {
 
       selectFromDropdown("Count of rows");
 
-      cy.get(".RunButton").click();
+      cy.findByTestId("run-button").click();
       cy.wait("@dataset");
 
       // FE chooses the scalar visualization to display count of rows for regular questions
       cy.get(".TableInteractive");
-      cy.get(".ScalarValue").should("not.exist");
+      cy.findByTestId("scalar-value").should("not.exist");
     });
   });
 

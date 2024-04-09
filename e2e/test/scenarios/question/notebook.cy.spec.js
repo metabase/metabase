@@ -17,6 +17,7 @@ import {
   openTable,
   popover,
   restore,
+  selectFilterOperator,
   startNewQuestion,
   summarize,
   visitQuestionAdhoc,
@@ -74,8 +75,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.findByTestId("step-summarize-0-0").within(() => {
       cy.icon("filter").click();
     });
+    popover().icon("int").click();
+    selectFilterOperator("Equal to");
     popover().within(() => {
-      cy.icon("int").click();
       cy.findByPlaceholderText("Enter a number").type("46");
       cy.contains("Add filter").click();
     });

@@ -1,9 +1,11 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import CheckBox from "metabase/core/components/CheckBox";
 import Swapper from "metabase/core/components/Swapper";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { color as c } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
 import type { CollectionItemModel } from "metabase-types/api";
@@ -34,7 +36,15 @@ export const ArchivedItem = ({
   showSelect,
 }: ArchivedItemProps) => (
   <div
-    className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover"
+    className={cx(
+      CS.flex,
+      CS.alignCenter,
+      CS.p2,
+      "hover-parent",
+      "hover--visibility",
+      CS.borderBottom,
+      "bg-light-hover",
+    )}
     data-testid={`archive-item-${name}`}
   >
     <Swapper

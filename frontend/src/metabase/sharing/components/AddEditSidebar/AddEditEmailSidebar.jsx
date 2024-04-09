@@ -48,12 +48,14 @@ function _AddEditEmailSidebar({
       onClose={handleSave}
       onCancel={onCancel}
     >
-      <div className="pt4 px4 flex align-center">
+      <div className={cx(CS.pt4, CS.px4, CS.flex, CS.alignCenter)}>
         <Icon name="mail" className="mr1" size={21} />
         <Heading>{t`Email this dashboard`}</Heading>
       </div>
       <CaveatMessage />
-      <div className="my2 px4 full-height flex flex-column">
+      <div
+        className={cx(CS.my2, CS.px4, CS.fullHeight, CS.flex, CS.flexColumn)}
+      >
         <div>
           <div className="text-bold mb1">{t`To:`}</div>
           <RecipientPicker
@@ -117,7 +119,7 @@ function _AddEditEmailSidebar({
             CS.textBold,
             CS.py3,
             CS.flex,
-            "justify-between",
+            CS.justifyBetween,
             CS.alignCenter,
             CS.borderTop,
           )}
@@ -133,12 +135,12 @@ function _AddEditEmailSidebar({
             CS.textBold,
             CS.py2,
             CS.flex,
-            "justify-between",
+            CS.justifyBetween,
             CS.alignCenter,
             CS.borderTop,
           )}
         >
-          <div className="flex align-center">
+          <div className={cx(CS.flex, CS.alignCenter)}>
             <Heading>{t`Attach results`}</Heading>
             <Icon
               name="info"

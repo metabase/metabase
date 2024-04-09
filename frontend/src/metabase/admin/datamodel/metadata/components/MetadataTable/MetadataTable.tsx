@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 import { connect } from "react-redux";
@@ -5,6 +6,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Radio from "metabase/core/components/Radio/Radio";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -100,7 +103,7 @@ const MetadataTable = ({
   );
 
   return (
-    <div className="MetadataTable full">
+    <div className={cx(AdminS.MetadataTable, CS.full)}>
       <TableTitleSection
         table={table}
         tab={tab}
@@ -160,7 +163,7 @@ const TableTitleSection = ({
   );
 
   return (
-    <div className="MetadataTable-title flex flex-column">
+    <div className={cx(CS.bgWhite, CS.flex, CS.flexColumn)}>
       {tab === "columns" ? (
         <>
           <TableNameInput
@@ -221,8 +224,16 @@ const TableVisibilitySection = ({
   );
 
   return (
-    <div className="MetadataTable-header flex align-center py2 text-medium">
-      <span className="mx1 text-uppercase">{t`Visibility`}</span>
+    <div
+      className={cx(
+        "MetadataTable-header",
+        CS.flex,
+        CS.alignCenter,
+        CS.py2,
+        CS.textMedium,
+      )}
+    >
+      <span className={cx(CS.mx1, CS.textUppercase)}>{t`Visibility`}</span>
       <span id="VisibilityTypes">
         <MetadataVisibilityBadge
           isChecked={table.visibility_type == null}

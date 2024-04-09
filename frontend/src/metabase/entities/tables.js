@@ -46,6 +46,9 @@ export const FETCH_TABLE_FOREIGN_KEYS =
 export const UPDATE_TABLE_FIELD_ORDER =
   "metabase/entities/UPDATE_TABLE_FIELD_ORDER";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Tables = createEntity({
   name: "tables",
   nameOne: "table",

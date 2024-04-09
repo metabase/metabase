@@ -1,6 +1,6 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, visitQuestion } from "e2e/support/helpers";
+import { createQuestion, restore, visitQuestion } from "e2e/support/helpers";
 import type {
   ConcreteFieldReference,
   StructuredQuery,
@@ -35,7 +35,7 @@ describe("issue 11994", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.createQuestion(
+    createQuestion(
       {
         database: SAMPLE_DB_ID,
         query: QUERY,
@@ -61,7 +61,7 @@ describe("issue 11994", () => {
       },
       { wrapId: true, idAlias: "pivotQuestionId" },
     );
-    cy.createQuestion(
+    createQuestion(
       {
         database: SAMPLE_DB_ID,
         query: QUERY,

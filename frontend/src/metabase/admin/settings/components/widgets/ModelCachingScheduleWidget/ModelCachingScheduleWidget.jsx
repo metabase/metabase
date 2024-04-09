@@ -65,7 +65,6 @@ const PersistedModelRefreshIntervalWidget = ({
         <WidgetContainer>
           <SelectLabel>{t`Refresh models every…`}</SelectLabel>
           <StyledSettingSelect
-            className="SettingsInput--short"
             setting={{
               ...setting,
               value: isCustom ? "custom" : setting.value,

@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import { useListApiKeyQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
-import AdminPaneLayout from "metabase/components/AdminPaneLayout";
+import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
@@ -15,6 +15,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import UserAvatar from "metabase/components/UserAvatar";
 import Input from "metabase/core/components/Input";
 import Link from "metabase/core/components/Link";
+import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -123,7 +124,7 @@ function ActionsPopover({
       className="block"
       triggerElement={<Icon className="text-light" name="ellipsis" />}
     >
-      <ul className="UserActionsSelect py1">
+      <ul className={cx(AdminS.UserActionsSelect, CS.py1)}>
         <EditGroupButton onClick={onEditGroupClicked.bind(null, group)}>
           {t`Edit Name`}
         </EditGroupButton>
@@ -212,7 +213,7 @@ function GroupRow({
       <td>
         <Link
           to={"/admin/people/groups/" + group.id}
-          className="link no-decoration flex align-center"
+          className={cx("link", CS.noDecoration, CS.flex, CS.alignCenter)}
         >
           <span className="text-white">
             <UserAvatar

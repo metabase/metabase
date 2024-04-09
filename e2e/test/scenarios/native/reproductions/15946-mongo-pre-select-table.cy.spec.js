@@ -23,8 +23,8 @@ describe("issue 15946", { tags: "@mongo" }, () => {
       .click();
     cy.get(".Modal").should("not.exist");
 
-    cy.get(".GuiBuilder-data").contains(MONGO_DB_NAME);
-    cy.get(".GuiBuilder-data").contains("Orders");
-    cy.get("aside .RunButton").should("not.be.disabled");
+    cy.findAllByTestId("gui-builder-data").first().contains(MONGO_DB_NAME);
+    cy.findAllByTestId("gui-builder-data").last().contains("Orders");
+    cy.findAllByTestId("run-button").should("not.be.disabled");
   });
 });

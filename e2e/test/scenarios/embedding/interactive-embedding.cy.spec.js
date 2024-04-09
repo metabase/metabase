@@ -18,6 +18,7 @@ import {
   dashboardGrid,
   createDashboardWithTabs,
   goToTab,
+  visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
@@ -479,18 +480,6 @@ describeEE("scenarios > embedding > full app", () => {
     });
   });
 });
-
-const visitFullAppEmbeddingUrl = ({ url, qs }) => {
-  cy.visit({
-    url,
-    qs,
-    onBeforeLoad(window) {
-      // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
-      // by removing the property the app would work in embedding mode
-      window.Cypress = undefined;
-    },
-  });
-};
 
 const visitQuestionUrl = urlOptions => {
   visitFullAppEmbeddingUrl(urlOptions);

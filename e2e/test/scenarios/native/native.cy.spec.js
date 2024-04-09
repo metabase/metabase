@@ -177,7 +177,7 @@ describe("scenarios > question > native", () => {
       // "Count" is pre-selected option for "Summarize"
       summarize();
       cy.findByText("Done").click();
-      cy.get(".ScalarValue").contains("1");
+      cy.findByTestId("scalar-value").contains("1");
 
       cy.findByTestId("qb-filters-panel").within(() => {
         cy.icon("close").click();

@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -13,7 +14,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
@@ -29,21 +30,21 @@
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
-(def Metric
+(def LegacyMetric
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
   We'll keep this till we replace all these symbols in our codebase."
-  :model/Metric)
+  :model/LegacyMetric)
 
-(methodical/defmethod t2/table-name :model/Metric [_model] :metric)
+(methodical/defmethod t2/table-name :model/LegacyMetric [_model] :metric)
 
-(doto :model/Metric
+(doto :model/LegacyMetric
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser))
 
-(defmethod mi/can-read? :model/Metric
+(defmethod mi/can-read? :model/LegacyMetric
   ([instance]
    (let [table (:table (t2/hydrate instance :table))]
      (data-perms/user-has-permission-for-table?
@@ -55,22 +56,22 @@
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
-(t2/deftransforms :model/Metric
+(t2/deftransforms :model/LegacyMetric
   {:definition mi/transform-metric-segment-definition})
 
-(t2/define-before-update :model/Metric
+(t2/define-before-update :model/LegacyMetric
   [{:keys [creator_id id], :as metric}]
   (u/prog1 (t2/changes metric)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? <> :creator_id)
-      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id Metric :id id))
+      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id LegacyMetric :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Metric.")))))))
 
-(t2/define-before-delete :model/Metric
+(t2/define-before-delete :model/LegacyMetric
   [{:keys [id] :as _metric}]
   (t2/delete! :model/Revision :model "Metric" :model_id id))
 
-(defmethod mi/perms-objects-set Metric
+(defmethod mi/perms-objects-set LegacyMetric
   [metric read-or-write]
   (let [table (or (:table metric)
                   (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id metric))))]
@@ -79,7 +80,7 @@
 (mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Metric's definition."
   [metadata-provider :- lib.metadata/MetadataProvider
-   {:keys [definition], table-id :table_id, :as _metric} :- (ms/InstanceOf :model/Metric)]
+   {:keys [definition], table-id :table_id, :as _metric} :- (ms/InstanceOf :model/LegacyMetric)]
   (when (seq definition)
     (try
       (let [database-id (u/the-id (lib.metadata.protocols/database metadata-provider))
@@ -93,13 +94,13 @@
 
 (mu/defn ^:private warmed-metadata-provider :- lib.metadata/MetadataProvider
   [database-id :- ::lib.schema.id/database
-   metrics     :- [:maybe [:sequential (ms/InstanceOf :model/Metric)]]]
+   metrics     :- [:maybe [:sequential (ms/InstanceOf :model/LegacyMetric)]]]
   (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider database-id)
                             (lib.metadata.protocols/store-metadatas!
                              :metadata/metric
                              (map #(lib.metadata.jvm/instance->metadata % :metadata/metric)
                                   metrics)))
-        segment-ids       (into #{} (mbql.u/match (map :definition metrics)
+        segment-ids       (into #{} (lib.util.match/match (map :definition metrics)
                                       [:segment (id :guard integer?) & _]
                                       id))
         segments          (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/segment segment-ids)
@@ -117,7 +118,7 @@
     metadata-provider))
 
 (mu/defn ^:private metrics->table-id->warmed-metadata-provider :- fn?
-  [metrics :- [:maybe [:sequential (ms/InstanceOf :model/Metric)]]]
+  [metrics :- [:maybe [:sequential (ms/InstanceOf :model/LegacyMetric)]]]
   (let [table-id->db-id             (when-let [table-ids (not-empty (into #{} (map :table_id metrics)))]
                                       (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))
         db-id->metadata-provider    (memoize
@@ -132,7 +133,7 @@
       [table-id :- ::lib.schema.id/table]
       (-> table-id table-id->db-id db-id->metadata-provider))))
 
-(methodical/defmethod t2.hydrate/batched-hydrate [Metric :definition_description]
+(methodical/defmethod t2.hydrate/batched-hydrate [LegacyMetric :definition_description]
   [_model _key metrics]
   (let [table-id->warmed-metadata-provider (metrics->table-id->warmed-metadata-provider metrics)]
     (for [metric metrics
@@ -142,11 +143,11 @@
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
 
-(defmethod revision/serialize-instance Metric
+(defmethod revision/serialize-instance LegacyMetric
   [_model _id instance]
   (dissoc instance :created_at :updated_at))
 
-(defmethod revision/diff-map Metric
+(defmethod revision/diff-map LegacyMetric
   [model metric1 metric2]
   (if-not metric1
     ;; model is the first version of the metric
@@ -166,29 +167,29 @@
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
 
-(defmethod serdes/hash-fields Metric
+(defmethod serdes/hash-fields LegacyMetric
   [_metric]
   [:name (serdes/hydrated-hash :table) :created_at])
 
-(defmethod serdes/extract-one "Metric"
+(defmethod serdes/extract-one "LegacyMetric"
   [_model-name _opts metric]
-  (-> (serdes/extract-one-basics "Metric" metric)
+  (-> (serdes/extract-one-basics "LegacyMetric" metric)
       (update :table_id   serdes/*export-table-fk*)
       (update :creator_id serdes/*export-user*)
       (update :definition serdes/export-mbql)))
 
-(defmethod serdes/load-xform "Metric" [metric]
+(defmethod serdes/load-xform "LegacyMetric" [metric]
   (-> metric
       serdes/load-xform-basics
       (update :table_id   serdes/*import-table-fk*)
       (update :creator_id serdes/*import-user*)
       (update :definition serdes/import-mbql)))
 
-(defmethod serdes/dependencies "Metric" [{:keys [definition table_id]}]
+(defmethod serdes/dependencies "LegacyMetric" [{:keys [definition table_id]}]
   (into [] (set/union #{(serdes/table->path table_id)}
                       (serdes/mbql-deps definition))))
 
-(defmethod serdes/storage-path "Metric" [metric _ctx]
+(defmethod serdes/storage-path "LegacyMetric" [metric _ctx]
   (let [{:keys [id label]} (-> metric serdes/path last)]
     (-> metric
         :table_id
@@ -199,7 +200,7 @@
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 
-(defmethod audit-log/model-details :model/Metric
+(defmethod audit-log/model-details :model/LegacyMetric
   [metric _event-type]
   (let [table-id (:table_id metric)
         db-id    (database/table-id->database-id table-id)]

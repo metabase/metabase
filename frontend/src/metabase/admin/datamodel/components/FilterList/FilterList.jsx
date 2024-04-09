@@ -1,7 +1,9 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import { Filter } from "../Filter";
@@ -19,7 +21,9 @@ class _FilterList extends Component {
   render() {
     const { filters, metadata, filterRenderer } = this.props;
     return (
-      <div className="Query-filterList scroll-x scroll-show">
+      <div
+        className={cx(QueryBuilderS.QueryFilterList, "scroll-x scroll-show")}
+      >
         {filters.map((filter, index) => (
           <Filter
             key={index}

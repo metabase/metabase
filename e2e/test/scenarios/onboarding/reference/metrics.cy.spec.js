@@ -11,7 +11,7 @@ describe("scenarios > reference > metrics", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.request("POST", "/api/metric", {
+    cy.request("POST", "/api/legacy-metric", {
       definition: {
         aggregation: ["count"],
         filter: ["<", ["field", ORDERS.TOTAL, null], 100],

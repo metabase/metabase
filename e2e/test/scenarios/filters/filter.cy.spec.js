@@ -20,6 +20,7 @@ import {
   checkExpressionEditorHelperPopoverPosition,
   getNotebookStep,
   queryBuilderMain,
+  selectFilterOperator,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
@@ -105,7 +106,7 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("12872");
     cy.log("At the moment of unfixed issue, it's showing '0'");
-    cy.get(".ScalarValue").contains("1");
+    cy.findByTestId("scalar-value").contains("1");
   });
 
   it("should filter based on remapped values (metabase#13235)", () => {
@@ -146,7 +147,7 @@ describe("scenarios > question > filter", () => {
             aggregation: [
               [
                 "aggregation-options",
-                ["+", 1, 1],
+                ["+", ["count"], 1],
                 { name: CE_NAME, "display-name": CE_NAME },
               ],
             ],
@@ -406,9 +407,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Reviewer").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    cy.findByDisplayValue("Is").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Is empty").click();
+    selectFilterOperator("Is empty");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
@@ -437,9 +436,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Rating").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    cy.findByDisplayValue("Equal to").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Is empty").click();
+    selectFilterOperator("Is empty");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
@@ -761,7 +758,7 @@ describe("scenarios > question > filter", () => {
       },
     });
 
-    cy.get(".ScalarValue").contains("5.41");
+    cy.findByTestId("scalar-value").contains("5.41");
     filter();
 
     filterField("Category").findByText("Gizmo").click();
@@ -892,8 +889,9 @@ describe("scenarios > question > filter", () => {
       openOrdersTable({ mode: "notebook" });
 
       filter({ mode: "notebook" });
+      popover().findByText("Total").click();
+      selectFilterOperator("Equal to");
       popover().within(() => {
-        cy.findByText("Total").click();
         cy.findByPlaceholderText("Enter a number").type("123");
         cy.button("Add filter").click();
       });

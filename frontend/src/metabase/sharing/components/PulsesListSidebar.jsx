@@ -9,6 +9,7 @@ import _ from "underscore";
 import Label from "metabase/components/type/Label";
 import Subhead from "metabase/components/type/Subhead";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { getParameters } from "metabase/dashboard/selectors";
 import {
@@ -39,7 +40,15 @@ function _PulsesListSidebar({
 }) {
   return (
     <Sidebar>
-      <div className="px4 pt3 flex justify-between align-center">
+      <div
+        className={cx(
+          CS.px4,
+          CS.pt3,
+          CS.flex,
+          CS.justifyBetween,
+          CS.alignCenter,
+        )}
+      >
         <Subhead>{t`Subscriptions`}</Subhead>
 
         <SidebarActions>
@@ -80,7 +89,13 @@ function _PulsesListSidebar({
                   "text-white-hover": canEdit,
                 })}
               >
-                <div className="flex align-center hover-child hover--inherit">
+                <div
+                  className={cx(
+                    CS.flex,
+                    CS.alignCenter,
+                    "hover-child hover--inherit",
+                  )}
+                >
                   <Icon
                     name={
                       pulse.channels[0].channel_type === "email"
@@ -174,11 +189,26 @@ function PulseDetails({ pulse, parameters }) {
   return (
     <div className="text-medium hover-child">
       <ul
-        className="flex flex-column scroll-x scroll-y text-unspaced"
+        className={cx(
+          CS.flex,
+          CS.flexColumn,
+          CS.scrollX,
+          CS.scrollY,
+          CS.textUnspaced,
+        )}
         style={{ maxHeight: 130 }}
       >
         {recipientText && (
-          <li className="flex align-start mr1 text-bold text-medium hover-child hover--inherit">
+          <li
+            className={cx(
+              CS.flex,
+              CS.alignStart,
+              CS.mr1,
+              CS.textBold,
+              CS.textMedium,
+              "hover-child hover--inherit",
+            )}
+          >
             <Icon
               name="group"
               className="text-medium hover-child hover--inherit"
@@ -193,7 +223,17 @@ function PulseDetails({ pulse, parameters }) {
           </li>
         )}
         {filterText && (
-          <li className="flex align-start mt1 mr1 text-bold text-medium hover-child hover--inherit">
+          <li
+            className={cx(
+              CS.flex,
+              CS.alignStart,
+              CS.mt1,
+              CS.mr1,
+              CS.textBold,
+              CS.textMedium,
+              "hover-child hover--inherit",
+            )}
+          >
             <Icon
               name="filter"
               className="text-medium hover-child hover--inherit"

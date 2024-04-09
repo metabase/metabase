@@ -37,7 +37,7 @@ describe("scenarios > dashboard > filters > ID", () => {
       addWidgetStringFilter("15");
       cy.findByTestId("loading-spinner").should("not.exist");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("114.42");
       });
     });
@@ -50,7 +50,7 @@ describe("scenarios > dashboard > filters > ID", () => {
       saveDashboard();
       cy.findByTestId("loading-spinner").should("not.exist");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("114.42");
       });
     });
@@ -68,7 +68,7 @@ describe("scenarios > dashboard > filters > ID", () => {
       addWidgetStringFilter("4");
       cy.findByTestId("loading-spinner").should("not.exist");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("47.68");
       });
 
@@ -83,7 +83,7 @@ describe("scenarios > dashboard > filters > ID", () => {
       saveDashboard();
       cy.findByTestId("loading-spinner").should("not.exist");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("47.68");
       });
 
@@ -108,7 +108,7 @@ describe("scenarios > dashboard > filters > ID", () => {
       addWidgetStringFilter("10");
       cy.findByTestId("loading-spinner").should("not.exist");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("6.75");
       });
     });
@@ -121,7 +121,7 @@ describe("scenarios > dashboard > filters > ID", () => {
       saveDashboard();
       cy.findByTestId("loading-spinner").should("not.exist");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("6.75");
       });
     });

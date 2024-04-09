@@ -13,6 +13,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import CheckBox from "metabase/core/components/CheckBox";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Swapper from "metabase/core/components/Swapper";
+import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { Icon } from "metabase/ui";
 
@@ -74,7 +75,7 @@ function EntityIconCheckBox({
 function EntityItemName({ name, variant }) {
   return (
     <h3
-      className={cx("overflow-hidden", {
+      className={cx(CS.overflowHidden, {
         "text-list": variant === "list",
       })}
     >
@@ -263,7 +264,7 @@ const EntityItem = ({
         onToggleSelected={onToggleSelected}
       />
 
-      <div className="overflow-hidden">
+      <div className={CS.overflowHidden}>
         <EntityItemName name={name} />
         <div>{extraInfo && extraInfo}</div>
       </div>

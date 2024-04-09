@@ -900,7 +900,7 @@
   [^TimestampDatasetDef this]
   (let [interval-seconds (.intervalSeconds this)]
     (mt/dataset-definition
-     (str "checkins_interval_" interval-seconds)
+     (str "interval_" interval-seconds)
      ["checkins"
       [{:field-name "timestamp"
         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]

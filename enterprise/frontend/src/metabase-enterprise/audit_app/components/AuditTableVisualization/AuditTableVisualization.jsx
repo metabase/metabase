@@ -7,6 +7,7 @@ import _ from "underscore";
 import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import CheckBox from "metabase/core/components/CheckBox";
+import AdminS from "metabase/css/admin.module.css";
 import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { Icon } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations/index";
@@ -121,7 +122,7 @@ export class AuditTableVisualization extends Component {
       );
     }
     return (
-      <table className="ContentTable">
+      <table className={AdminS.ContentTable}>
         <thead>
           <tr>
             {isSelectable && (

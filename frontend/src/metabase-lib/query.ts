@@ -1,5 +1,10 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { DatabaseId, DatasetQuery, TableId } from "metabase-types/api";
+import type {
+  CardType,
+  DatabaseId,
+  DatasetQuery,
+  TableId,
+} from "metabase-types/api";
 
 import type {
   CardMetadata,
@@ -96,4 +101,8 @@ export function sourceTableOrCardId(query: Query): TableId | null {
 
 export function canRun(query: Query): boolean {
   return ML.can_run(query);
+}
+
+export function canSave(query: Query, cardType: CardType): boolean {
+  return ML.can_save(query, cardType);
 }

@@ -108,11 +108,7 @@
   margin-bottom: 60px;
 }
 
-:global(.PopoverBody .Form-input) {
-  font-size: 1rem;
-}
-
-:global(.PopoverBody .Form-field) {
+:global(.PopoverBody) .FormField {
   margin-bottom: 0.75rem;
 }
 

@@ -126,6 +126,13 @@ export interface FieldValuesResult {
   has_more_values: boolean;
 }
 
+export interface FieldSearchInput {
+  fieldId: FieldId;
+  searchFieldId: FieldId;
+  value: string;
+  limit: number;
+}
+
 export interface FieldFormattingSettings {
   currency?: string;
 }

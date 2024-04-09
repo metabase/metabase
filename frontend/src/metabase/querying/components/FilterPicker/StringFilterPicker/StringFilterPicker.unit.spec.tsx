@@ -107,7 +107,7 @@ describe("StringFilterPicker", () => {
       setup();
 
       expect(screen.getByText("Product → Description")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("Is")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("Contains")).toBeInTheDocument();
       expect(screen.getByPlaceholderText("Enter some text")).toHaveValue("");
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
     });
@@ -167,6 +167,8 @@ describe("StringFilterPicker", () => {
       });
       await waitForLoaderToBeRemoved();
 
+      userEvent.click(screen.getByDisplayValue("Contains"));
+      userEvent.click(screen.getByText("Is"));
       userEvent.type(screen.getByPlaceholderText("Search by Email"), "t");
       jest.advanceTimersByTime(500);
       userEvent.click(await screen.findByText("test@metabase.test"));

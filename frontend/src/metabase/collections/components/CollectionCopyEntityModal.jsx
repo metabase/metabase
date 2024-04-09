@@ -1,10 +1,12 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { dissoc } from "icepick";
 import { useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import Collections from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import Dashboards from "metabase/entities/dashboards";
@@ -52,7 +54,7 @@ function CollectionCopyEntityModal({
     });
 
     triggerToast(
-      <div className="flex align-center">
+      <div className={cx(CS.flex, CS.alignCenter)}>
         {/* A shallow-copied newEntityObject will not include `uncopied` */}
         {newEntityObject.uncopied?.length > 0
           ? t`Duplicated ${entityObject.model}, but couldn't duplicate some questions`

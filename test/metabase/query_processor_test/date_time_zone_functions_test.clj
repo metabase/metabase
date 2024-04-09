@@ -1145,7 +1145,7 @@
 (deftest ^:parallel datetime-diff-type-test
   (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers-with-feature :datetime-diff))
     (testing "Cannot datetime-diff against time column"
-      (mt/dataset test-data-with-time
+      (mt/dataset time-test-data
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"datetimeDiff only allows datetime, timestamp, or date types. Found .*"

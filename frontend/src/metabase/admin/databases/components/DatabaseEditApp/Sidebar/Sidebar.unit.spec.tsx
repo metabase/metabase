@@ -1,7 +1,11 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import _ from "underscore";
 
-import { setupDatabaseUsageInfo } from "__support__/server-mocks/database";
+import {
+  setupDatabaseEndpoints,
+  setupDatabaseUsageInfoEndpoint,
+} from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
@@ -38,7 +42,8 @@ function setup({
     }),
   });
   const metadata = getMetadata(state);
-  setupDatabaseUsageInfo(database, {
+  setupDatabaseEndpoints(database);
+  setupDatabaseUsageInfoEndpoint(database, {
     question: 0,
     dataset: 0,
     metric: 0,
@@ -49,8 +54,6 @@ function setup({
   // the Sidebar is using is expecting these callbacks to be async
   const updateDatabase = jest.fn().mockResolvedValue({});
   const syncDatabaseSchema = jest.fn().mockResolvedValue({});
-  const rescanDatabaseFields = jest.fn().mockResolvedValue({});
-  const discardSavedFieldValues = jest.fn().mockResolvedValue({});
   const dismissSyncSpinner = jest.fn().mockResolvedValue({});
   const deleteDatabase = jest.fn().mockResolvedValue({});
 
@@ -61,8 +64,6 @@ function setup({
       isModelPersistenceEnabled={isModelPersistenceEnabled}
       updateDatabase={updateDatabase}
       syncDatabaseSchema={syncDatabaseSchema}
-      rescanDatabaseFields={rescanDatabaseFields}
-      discardSavedFieldValues={discardSavedFieldValues}
       dismissSyncSpinner={dismissSyncSpinner}
       deleteDatabase={deleteDatabase}
     />,
@@ -74,8 +75,6 @@ function setup({
     database,
     updateDatabase,
     syncDatabaseSchema,
-    rescanDatabaseFields,
-    discardSavedFieldValues,
     dismissSyncSpinner,
     deleteDatabase,
   };
@@ -88,10 +87,14 @@ describe("DatabaseEditApp/Sidebar", () => {
     expect(syncDatabaseSchema).toHaveBeenCalledWith(database.id);
   });
 
-  it("re-scans database field values", () => {
-    const { database, rescanDatabaseFields } = setup();
+  it("re-scans database field values", async () => {
+    const { database } = setup();
     userEvent.click(screen.getByText(/Re-scan field values now/i));
-    expect(rescanDatabaseFields).toHaveBeenCalledWith(database.id);
+    await waitFor(() => {
+      expect(
+        fetchMock.called(`path:/api/database/${database.id}/rescan_values`),
+      ).toBe(true);
+    });
   });
 
   describe("sync indicator", () => {
@@ -128,17 +131,21 @@ describe("DatabaseEditApp/Sidebar", () => {
   });
 
   describe("discarding field values", () => {
-    it("discards field values", () => {
-      const { database, discardSavedFieldValues } = setup();
+    it("discards field values", async () => {
+      const { database } = setup();
 
       userEvent.click(screen.getByText(/Discard saved field values/i));
       userEvent.click(within(getModal()).getByRole("button", { name: "Yes" }));
 
-      expect(discardSavedFieldValues).toHaveBeenCalledWith(database.id);
+      await waitFor(() => {
+        expect(
+          fetchMock.called(`path:/api/database/${database.id}/discard_values`),
+        ).toBe(true);
+      });
     });
 
     it("allows to cancel confirmation modal", async () => {
-      const { discardSavedFieldValues } = setup();
+      const { database } = setup();
 
       userEvent.click(screen.getByText(/Discard saved field values/i));
       userEvent.click(
@@ -146,7 +153,9 @@ describe("DatabaseEditApp/Sidebar", () => {
       );
 
       expect(getModal()).not.toBeInTheDocument();
-      expect(discardSavedFieldValues).not.toHaveBeenCalled();
+      expect(
+        fetchMock.called(`path:/api/database/${database.id}/discard_values`),
+      ).toBe(false);
     });
 
     NOT_SYNCED_DB_STATUSES.forEach(initial_sync_status => {

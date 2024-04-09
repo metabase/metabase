@@ -4,6 +4,7 @@ import _ from "underscore";
 import Databases from "metabase/entities/databases";
 import Fields from "metabase/entities/fields";
 import Metrics from "metabase/entities/metrics";
+import Questions from "metabase/entities/questions";
 import Schemas from "metabase/entities/schemas";
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";
@@ -300,6 +301,8 @@ export const loadMetadataForDependentItems =
     );
     const promises = uniqueDependentItems.flatMap(({ type, id }) => {
       switch (type) {
+        case "card":
+          return [Questions.actions.fetch({ id }, options)];
         case "schema":
           return [Schemas.actions.fetchList({ dbId: id }, options)];
         case "table":

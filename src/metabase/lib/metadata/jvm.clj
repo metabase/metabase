@@ -263,11 +263,11 @@
 ;;; Metric
 ;;;
 
-(derive :metadata/metric :model/Metric)
+(derive :metadata/metric :model/Card)
 
 (methodical/defmethod t2.model/resolve-model :metadata/metric
   [model]
-  (classloader/require 'metabase.models.metric)
+  (classloader/require 'metabase.models.card)
   model)
 
 (methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/metric
@@ -290,14 +290,16 @@
                 :metric/name
                 :metric/description
                 :metric/archived
-                :metric/definition]
-    :from      [[(t2/table-name :model/Metric) :metric]]
-    :left-join [[(t2/table-name :model/Table) :table]
-                [:= :metric/table_id :table/id]]}))
+                :metric/dataset_query]
+    :from      [[(t2/table-name :model/Card) :metric]]
+    :where     [:= :metric/type "metric"]}))
 
 (t2/define-after-select :metadata/metric
   [metric]
-  (instance->metadata metric :metadata/metric))
+  (let [card (instance->metadata metric :metadata/metric)]
+    (-> card
+        (dissoc :dataset-query)
+        (assoc :definition (:dataset-query card)))))
 
 ;;;
 ;;; Segment
@@ -347,12 +349,12 @@
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
-    (when-not database-id
-      (throw (ex-info (format "Cannot use %s with %s with a nil Database ID"
-                              `lib.metadata.protocols/database
-                              `UncachedApplicationDatabaseMetadataProvider)
-                      {})))
-    (t2/select-one :metadata/database database-id))
+            (when-not database-id
+              (throw (ex-info (format "Cannot use %s with %s with a nil Database ID"
+                                      `lib.metadata.protocols/database
+                                      `UncachedApplicationDatabaseMetadataProvider)
+                              {})))
+            (t2/select-one :metadata/database database-id))
 
   (table   [_this table-id]   (t2/select-one :metadata/table   :id table-id   :db_id       database-id))
   (field   [_this field-id]   (t2/select-one :metadata/column  :id field-id   :table/db_id database-id))
@@ -361,45 +363,45 @@
   (segment [_this segment-id] (t2/select-one :metadata/segment :id segment-id :table/db_id database-id))
 
   (tables [_this]
-    (t2/select :metadata/table
-               :db_id           database-id
-               :active          true
-               :visibility_type [:not-in #{"hidden" "technical" "cruft"}]))
+          (t2/select :metadata/table
+                     :db_id           database-id
+                     :active          true
+                     :visibility_type [:not-in #{"hidden" "technical" "cruft"}]))
 
   (fields [_this table-id]
-    (t2/select :metadata/column
-               :table_id        table-id
-               :active          true
-               :visibility_type [:not-in #{"sensitive" "retired"}]))
+          (t2/select :metadata/column
+                     :table_id        table-id
+                     :active          true
+                     :visibility_type [:not-in #{"sensitive" "retired"}]))
 
   (metrics [_this table-id]
-    (t2/select :metadata/metric :table_id table-id, :archived false))
+           (t2/select :metadata/metric :table_id table-id, :archived false))
 
   (segments [_this table-id]
-    (t2/select :metadata/segment :table_id table-id, :archived false))
+            (t2/select :metadata/segment :table_id table-id, :archived false))
 
   (setting [_this setting-name]
-    (setting/get setting-name))
+           (setting/get setting-name))
 
   lib.metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]
-    (let [database-id-key (case metadata-type
-                            :metadata/table :db_id
-                            :metadata/card  :database_id
-                            :table/db_id)]
-      (when (seq ids)
-        (t2/select metadata-type
-                   database-id-key database-id
-                   :id             [:in (set ids)]))))
+                 (let [database-id-key (case metadata-type
+                                         :metadata/table :db_id
+                                         :metadata/card  :database_id
+                                         :table/db_id)]
+                   (when (seq ids)
+                     (t2/select metadata-type
+                                database-id-key database-id
+                                :id             [:in (set ids)]))))
 
   pretty/PrettyPrintable
   (pretty [_this]
-    (list `->UncachedApplicationDatabaseMetadataProvider database-id))
+          (list `->UncachedApplicationDatabaseMetadataProvider database-id))
 
   Object
   (equals [_this another]
-    (and (instance? UncachedApplicationDatabaseMetadataProvider another)
-         (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
+          (and (instance? UncachedApplicationDatabaseMetadataProvider another)
+               (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
 
 (mu/defn application-database-metadata-provider :- lib.metadata/MetadataProvider
   "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.

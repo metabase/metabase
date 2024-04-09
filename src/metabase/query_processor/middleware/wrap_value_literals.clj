@@ -2,9 +2,10 @@
   "Middleware that wraps value literals in `value`/`absolute-datetime`/etc. clauses containing relevant type
   information; parses datetime string literals when appropriate."
   (:require
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.types :as types]
@@ -133,7 +134,7 @@
                                     :database_type \"VARCHAR\",
                                     :name \"description\"}]]]"
   [mbql]
-  (mbql.u/replace mbql
+  (lib.util.match/replace mbql
     [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
     [clause field (add-type-info x (type-info field))]
 
@@ -156,7 +157,7 @@
 (defn unwrap-value-literal
   "Extract value literal from `:value` form or returns form as is if not a `:value` form."
   [maybe-value-form]
-  (mbql.u/match-one maybe-value-form
+  (lib.util.match/match-one maybe-value-form
     [:value x & _] x
     _              &match))
 

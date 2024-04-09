@@ -16,7 +16,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection.graph :as graph]
@@ -100,7 +100,7 @@
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
                           [:%lower.name :asc]]})
-    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -200,8 +200,12 @@
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
-                                          (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
+                                          (update acc (case (keyword card-type)
+                                                       :model :dataset
+                                                       :metric :metric
+                                                       :card) conj collection-id))
                                         {:dataset #{}
+                                         :metric  #{}
                                          :card    #{}}
                                         (mdb.query/reducible-query {:select-distinct [:collection_id :type]
                                                                     :from            [:report_card]
@@ -228,9 +232,7 @@
 
 (def ^:private Models
   "This is basically a union type. [[api/defendpoint]] splits the string if it only gets one."
-  [:or
-   [:sequential ModelString]
-   ModelString])
+  [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} ModelString])
 
 (def ^:private valid-pinned-state-values
   "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
@@ -301,13 +303,14 @@
     always-false-hsql-expr
     always-true-hsql-expr))
 
+
 (defmulti ^:private post-process-collection-children
-  {:arglists '([model rows])}
-  (fn [model _]
+  {:arglists '([model collection rows])}
+  (fn [model _ _]
     (keyword model)))
 
 (defmethod ^:private post-process-collection-children :default
-  [_ rows]
+  [_ _ rows]
   rows)
 
 (defmethod collection-children-query :pulse
@@ -329,7 +332,7 @@
       (sql.helpers/where (pinned-state->clause pinned-state :p.collection_position))))
 
 (defmethod post-process-collection-children :pulse
-  [_ rows]
+  [_ _ rows]
   (for [row rows]
     (dissoc row
             :description :display :authority_level :moderated_status :icon :personal_owner_id
@@ -358,25 +361,29 @@
             [:= :archived (boolean archived?)]]})
 
 (defmethod post-process-collection-children :timeline
-  [_ rows]
+  [_ _collection rows]
   (for [row rows]
     (dissoc row
             :description :display :collection_position :authority_level :moderated_status
             :collection_preview :dataset_query :table_id :query_type :is_upload)))
 
 (defmethod post-process-collection-children :snippet
-  [_ rows]
+  [_ _collection rows]
   (for [row rows]
     (dissoc row
             :description :collection_position :display :authority_level
             :moderated_status :icon :personal_owner_id :collection_preview
             :dataset_query :table_id :query_type :is_upload)))
 
-(defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
+(defn- card-query [card-type collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                      :c.dataset_query
-                     [(h2x/literal (if dataset? "dataset" "card")) :model]
+                     [(h2x/literal (case card-type
+                                     :model "dataset"
+                                     :metric  "metric"
+                                     "card"))
+                      :model]
                      [:u.id :last_edit_user]
                      [:u.email :last_edit_email]
                      [:u.first_name :last_edit_first_name]
@@ -393,7 +400,7 @@
                        :order-by [[:id :desc]]
                        :limit    1}
                       :moderated_status]]
-                    dataset?
+                    (= :model card-type)
                     (conj :c.database_id))
        :from      [[:report_card :c]]
        :left-join [[:revision :r] [:and
@@ -404,29 +411,40 @@
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
-                   [:= :c.type (h2x/literal (if dataset? "model" "question"))]]}
-      (cond-> dataset?
+                   (case card-type
+                     :model
+                     [:= :c.type (h2x/literal "model")]
+
+                     :metric
+                     [:= :c.type (h2x/literal "metric")]
+
+                     [:= :c.type (h2x/literal "question")])]}
+      (cond-> (= :dataset card-type)
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dataset
   [_ collection options]
-  (card-query true collection options))
+  (card-query :model collection options))
+
+(defmethod collection-children-query :metric
+  [_ collection options]
+  (card-query :metric collection options))
+
+(defmethod collection-children-query :card
+  [_ collection options]
+  (card-query :question collection options))
 
 (defmethod post-process-collection-children :dataset
-  [_ rows]
+  [_ collection rows]
   (let [queries-before (map :dataset_query rows)
         queries-parsed (map (comp mbql.normalize/normalize json/parse-string) queries-before)]
     ;; We need to normalize the dataset queries for hydration, but reset the field to avoid leaking that transform.
     (->> (map #(assoc %2 :dataset_query %1) queries-parsed rows)
          upload/model-hydrate-based-on-upload
          (map #(assoc %2 :dataset_query %1) queries-before)
-         (post-process-collection-children :card))))
-
-(defmethod collection-children-query :card
-  [_ collection options]
-  (card-query false collection options))
+         (post-process-collection-children collection :card))))
 
 (defn- fully-parameterized-text?
   "Decide if `text`, usually (a part of) a query, is fully parameterized given the parameter types
@@ -463,7 +481,10 @@
       false)))
 
 (defn- fully-parameterized-query? [row]
-  (let [native-query (-> row :dataset_query json/parse-string mbql.normalize/normalize :native)]
+  (let [parsed-query (-> row :dataset_query json/parse-string)
+        ;; TODO TB handle pMBQL native queries
+        native-query (when (contains? parsed-query "native")
+                       (-> parsed-query mbql.normalize/normalize :native))]
     (if-let [template-tags (:template-tags native-query)]
       (fully-parameterized-text? (:query native-query) template-tags)
       true)))
@@ -475,7 +496,11 @@
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card
-  [_ rows]
+  [_ _ rows]
+  (map post-process-card-row rows))
+
+(defmethod post-process-collection-children :metric
+  [_ _ rows]
   (map post-process-card-row rows))
 
 (defn- dashboard-query [collection {:keys [archived? pinned-state]}]
@@ -502,7 +527,7 @@
   (dashboard-query collection options))
 
 (defmethod post-process-collection-children :dashboard
-  [_ rows]
+  [_ _ rows]
   (map #(dissoc %
                 :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
                 :dataset_query :table_id :query_type :is_upload)
@@ -542,27 +567,76 @@
   [_ collection options]
   (collection-query collection options))
 
+(defn- annotate-collections
+  [parent-coll colls]
+  (let [visible-collection-ids (collection/permissions-set->visible-collection-ids
+                                @api/*current-user-permissions-set*)
+
+        descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-ids->honeysql-filter-clause
+                                                                         :id
+                                                                         visible-collection-ids))
+
+        descendant-collection-ids (map u/the-id descendant-collections)
+
+        child-type->coll-id-set
+        (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
+                  (update acc (case (keyword card-type)
+                               :model :dataset
+                               :metric :metric
+                               :card) conj collection-id))
+                {:dataset #{}
+                 :metric  #{}
+                 :card    #{}}
+                (mdb.query/reducible-query {:select-distinct [:collection_id :type]
+                                            :from            [:report_card]
+                                            :where           [:and
+                                                              [:= :archived false]
+                                                              [:in :collection_id descendant-collection-ids]]}))
+
+        collections-containing-dashboards
+        (->> (t2/query {:select-distinct [:collection_id]
+                        :from :report_dashboard
+                        :where [:and
+                                [:= :archived false]
+                                [:in :collection_id descendant-collection-ids]]})
+             (map :collection_id)
+             (into #{}))
+
+        ;; the set of collections that contain collections (in terms of *effective* location)
+        collections-containing-collections
+        (->> descendant-collections
+             (reduce (fn [accu {:keys [location] :as _coll}]
+                       (let [effective-location (collection/effective-location-path location visible-collection-ids)
+                             parent-id (collection/location-path->parent-id effective-location)]
+                         (conj accu parent-id)))
+                     #{}))
+
+        child-type->coll-id-set
+        (merge child-type->coll-id-set
+               {:collection collections-containing-collections
+                :dashboard collections-containing-dashboards})
+
+        ;; why are we calling `annotate-collections` on all descendants, when we only need the collections in `colls`
+        ;; to be annotated? Because `annotate-collections` works by looping through the collections it's passed and
+        ;; using them to figure out the ancestors of a given collection. This could use a refactor - probably the
+        ;; caller of `annotate-collections` could be generating both `child-type->parent-ids` and
+        ;; `child-type->ancestor-ids`.
+        coll-id->annotated (m/index-by :id (collection/annotate-collections child-type->coll-id-set descendant-collections))]
+    (for [coll colls]
+      (merge coll (select-keys (coll-id->annotated (:id coll)) [:here :below])))))
+
 (defmethod post-process-collection-children :collection
-  [_ rows]
+  [_ parent-collection rows]
   (letfn [(update-personal-collection [{:keys [personal_owner_id] :as row}]
             (if personal_owner_id
               ;; when fetching root collection, we might have personal collection
               (assoc row :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
               (dissoc row :personal_owner_id)))]
-      (let [visible-collection-ids (collection/permissions-set->visible-collection-ids
-                                  @api/*current-user-permissions-set*)]
-        (for [row rows]
-          ;; Go through this rigamarole instead of hydration because we
-          ;; don't get models back from ulterior over-query
-          ;; Previous examination with logging to DB says that there's no N+1 query for this.
-          ;; However, this was only tested on H2 and Postgres
-          (-> row
-              (assoc :can_write (mi/can-write? Collection (:id row)))
-              (assoc :effective_location
-                      (collection/effective-location-path (:location row) visible-collection-ids))
-              (dissoc :collection_position :display :moderated_status :icon
-                      :collection_preview :dataset_query :table_id :query_type :is_upload)
-              update-personal-collection)))))
+    (for [row (annotate-collections parent-collection rows)]
+      (-> (t2/hydrate (t2/instance :model/Collection row) :can_write :effective_location)
+          (dissoc :collection_position :display :moderated_status :icon
+                  :collection_preview :dataset_query :table_id :query_type :is_upload)
+          update-personal-collection))))
 
 (mu/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
@@ -587,13 +661,13 @@
 (defn- post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
   `post-process-collection-children`. Must respect the order passed in."
-  [rows]
+  [collection rows]
   (->> (map-indexed (fn [i row] (vary-meta row assoc ::index i)) rows) ;; keep db sort order
        (map remove-unwanted-keys)
        (group-by :model)
        (into []
              (comp (map (fn [[model rows]]
-                          (post-process-collection-children (keyword model) rows)))
+                          (post-process-collection-children (keyword model) collection rows)))
                    cat
                    (map coalesce-edit-info)))
        (sort-by (comp ::index meta))))
@@ -603,6 +677,7 @@
     :collection Collection
     :card       Card
     :dataset    Card
+    :metric     Card
     :dashboard  Dashboard
     :pulse      Pulse
     :snippet    NativeQuerySnippet
@@ -648,10 +723,11 @@
   (let [rankings {:dashboard  1
                   :pulse      2
                   :dataset    3
-                  :card       4
-                  :snippet    5
-                  :collection 6
-                  :timeline   7}]
+                  :metric     4
+                  :card       5
+                  :snippet    6
+                  :collection 7
+                  :timeline   8}]
     (conj select-clause [[:inline (get rankings model 100)]
                          :model_ranking])))
 
@@ -659,7 +735,7 @@
   ;; generate the set of columns across all child queries. Remember to add type info if not a text column
   (into []
         (comp cat (map select-name) (distinct))
-        (for [model [:card :dashboard :snippet :pulse :collection :timeline]]
+        (for [model [:card :metric :dataset :dashboard :snippet :pulse :collection :timeline]]
           (:select (collection-children-query model {:id 1 :location "/"} nil)))))
 
 
@@ -739,7 +815,7 @@
                              :limit  mw.offset-paging/*limit*
                              :offset mw.offset-paging/*offset*))
         res         {:total  (->> (mdb.query/query total-query) first :count)
-                     :data   (->> (mdb.query/query limit-query) post-process-rows)
+                     :data   (->> (mdb.query/query limit-query) (post-process-rows collection))
                      :models models}
         limit-res   (assoc res
                            :limit  mw.offset-paging/*limit*
@@ -752,7 +828,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet :timeline]
+  (let [valid-models (for [model-kw [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)

@@ -365,11 +365,11 @@ function areComposedEntitiesEquivalent({
   tableMetadata,
 }) {
   const isQuestion = originalQuestion?.type() === "question";
-  if (!lastRunQuestion || !currentQuestion || isQuestion) {
+  if (!originalQuestion || !lastRunQuestion || !currentQuestion || isQuestion) {
     return false;
   }
 
-  const composedOriginal = originalQuestion.composeQuestion();
+  const composedOriginal = originalQuestion.composeQuestionAdhoc();
 
   const isLastRunComposed = areLegacyQueriesEqual(
     lastRunQuestion.datasetQuery(),

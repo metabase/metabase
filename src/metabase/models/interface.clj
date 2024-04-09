@@ -8,8 +8,10 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.plugins.classloader :as classloader]
@@ -18,6 +20,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -157,10 +160,44 @@
   {:in  json-in
    :out json-out-with-keywordization})
 
-;; `metabase-query` type is for *outer* queries like Card.dataset_query. Normalizes them on the way in & out
-(defn- maybe-normalize [query]
-  (cond-> query
-    (seq query) mbql.normalize/normalize))
+(defn- serialize-mlv2-query
+  "Saving MLv2 queries​ we can assume MLv2 queries are normalized enough already, but remove the metadata provider before
+  saving it, because it's not something that lends itself well to serialization."
+  [query]
+  (dissoc query :lib/metadata))
+
+(defn- deserialize-mlv2-query
+  "Reading MLv2 queries​: normalize them, then attach a MetadataProvider based on their Database."
+  [query]
+  (let [{database-id :database, :as normalized} (lib/normalize query)
+        metadata-provider                       (if (lib.metadata.protocols/metadata-provider? (:lib/metadata normalized))
+                                                  ;; in case someone passes in an already-normalized query
+                                                  ;; to [[maybe-normalize-query]] below, preserve the existing metadata
+                                                  ;; provider.
+                                                  (:lib/metadata normalized)
+                                                  ((requiring-resolve 'metabase.lib.metadata.jvm/application-database-metadata-provider)
+                                                   (u/the-id database-id)))]
+    (lib/query metadata-provider normalized)))
+
+(mu/defn maybe-normalize-query
+  "For top-level query maps like `Card.dataset_query`. Normalizes them on the way in & out."
+  [in-or-out :- [:enum :in :out]
+   query]
+  (letfn [(normalize [query]
+            (let [f (if (= (lib/normalized-query-type query) :mbql/query)
+                      ;; MLv2 queries
+                      (case in-or-out
+                        :in  serialize-mlv2-query
+                        :out deserialize-mlv2-query)
+                      ;; legacy queries: just normalize them with the legacy normalization code for now... in the near
+                      ;; future we'll probably convert to MLv2 before saving so everything in the app DB is MLv2
+                      (case in-or-out
+                        :in  mbql.normalize/normalize
+                        :out mbql.normalize/normalize))]
+              (f query)))]
+    (cond-> query
+      (and (map? query) (seq query))
+      normalize)))
 
 (defn catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
@@ -183,8 +220,8 @@
 
 (def transform-metabase-query
   "Transform for metabase-query."
-  {:in  (comp json-in maybe-normalize)
-   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization)})
+  {:in  (comp json-in (partial maybe-normalize-query :in))
+   :out (comp (catch-normalization-exceptions (partial maybe-normalize-query :out)) json-out-without-keywordization)})
 
 (def transform-parameters-list
   "Transform for parameters list."
@@ -666,3 +703,26 @@
   "In Metabase the FK key used for automagic hydration should use underscores (work around upstream Toucan 2 issue)."
   [_original-model dest-key _hydrated-key]
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
+
+(mu/defn instances-with-hydrated-data
+  "Helper function to write batched hydrations.
+  Assoc to each `instances` a key `hydration-key` with data from calling `instance-key->hydrated-data-fn` by `instance-key`.
+
+    (instances-with-hydrated-data
+      (t2/select :model/Database)
+      :tables
+      #(t2/select-fn->fn :db_id identity :model/Table)
+      :id)
+    ;; => [{:id 1 :tables [...tables-from-db-1]}
+           {:id 2 :tables [...tables-from-db-2]}]
+
+  - key->hydrated-items-fn: is a function that returns a map with key is `instance-key` and value is the hydrated data of that instance."
+  [instances                      :- [:sequential :any]
+   hydration-key                  :- :keyword
+   instance-key->hydrated-data-fn :- fn?
+   instance-key                   :- :keyword
+   & [{:keys [default] :as _options}]]
+  (when (seq instances)
+    (let [key->hydrated-items (instance-key->hydrated-data-fn)]
+      (for [item instances]
+        (assoc item hydration-key (get key->hydrated-items (get item instance-key) default))))))

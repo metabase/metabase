@@ -16,6 +16,9 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models
     :refer [Card CardBookmark Collection Dashboard Database ModerationReview
             Pulse PulseCard PulseChannel PulseChannelRecipient Table Timeline
@@ -94,6 +97,16 @@
    {:database (u/the-id db-or-id)
     :type     :query
     :query    {:source-table (u/the-id table-or-id), :aggregation [[:count]]}}))
+
+(defn pmbql-count-query
+  ([]
+   (pmbql-count-query (mt/id) (mt/id :venues)))
+
+  ([db-or-id table-or-id]
+   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (u/the-id db-or-id))
+         venues            (lib.metadata/table metadata-provider (u/the-id table-or-id))
+         query             (lib/query metadata-provider venues)]
+     (lib/aggregate query (lib/count)))))
 
 (defn card-with-name-and-query
   ([]
@@ -312,7 +325,7 @@
   (mt/with-temp [:model/Database {database-id :id} {}
                  :model/Table {table-id :id} {:db_id database-id}
                  :model/Segment {segment-id :id} {:table_id table-id}
-                 :model/Metric {metric-id :id} {:table_id table-id}
+                 :model/LegacyMetric {metric-id :id} {:table_id table-id}
                  :model/Card {model-id :id :as model} {:name "Model"
                                                        :type :model
                                                        :dataset_query {:query {:source-table (mt/id :venues)
@@ -674,53 +687,55 @@
           (t2.with-temp/with-temp [Collection collection]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (mt/with-model-cleanup [:model/Card]
-              (let [card (assoc (card-with-name-and-query (mt/random-name)
-                                                          (mbql-count-query (mt/id) (mt/id :venues)))
-                           :collection_id (u/the-id collection)
-                           :parameters [{:id "abc123", :name "test", :type "date"}]
-                           :parameter_mappings [{:parameter_id "abc123", :card_id 10,
-                                                 :target       [:dimension [:template-tags "category"]]}])]
-                (is (=? (merge
-                         card-defaults
-                         {:name                   (:name card)
-                          :collection_id          true
-                          :collection             (assoc collection :is_personal false)
-                          :creator_id             (mt/user->id :rasta)
-                          :parameters             [{:id "abc123", :name "test", :type "date"}]
-                          :parameter_mappings     [{:parameter_id "abc123", :card_id 10,
-                                                    :target       ["dimension" ["template-tags" "category"]]}]
-                          :dataset_query          true
-                          :query_type             "query"
-                          :visualization_settings {:global {:title nil}}
-                          :database_id            true
-                          :table_id               true
-                          :entity_id              true
-                          :can_write              true
-                          :dashboard_count        0
-                          :result_metadata        true
-                          :last-edit-info         {:timestamp true :id true :first_name "Rasta"
-                                                   :last_name "Toucan" :email "rasta@metabase.com"}
-                          :creator                (merge
-                                                    (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login :locale])
-                                                    {:common_name  "Rasta Toucan"
-                                                     :is_superuser false
-                                                     :last_name    "Toucan"
-                                                     :first_name   "Rasta"
-                                                     :email        "rasta@metabase.com"})
-                          :metabase_version       config/mb-version-string})
-                        (-> (mt/user-http-request :rasta :post 200 "card" card)
-                            (dissoc :created_at :updated_at :id)
-                            (update :table_id integer?)
-                            (update :database_id integer?)
-                            (update :collection_id integer?)
-                            (update :dataset_query map?)
-                            (update :entity_id string?)
-                            (update :result_metadata (partial every? map?))
-                            (update :creator dissoc :is_qbnewb)
-                            (update :last-edit-info (fn [edit-info]
-                                                      (-> edit-info
-                                                          (update :id boolean)
-                                                          (update :timestamp boolean)))))))))))))))
+              (doseq [[mbql-version query] {"MBQL" (mbql-count-query)
+                                            "pMBQL" (pmbql-count-query)}]
+                (testing mbql-version
+                  (let [card (assoc (card-with-name-and-query (mt/random-name) query)
+                                    :collection_id (u/the-id collection)
+                                    :parameters [{:id "abc123", :name "test", :type "date"}]
+                                    :parameter_mappings [{:parameter_id "abc123", :card_id 10,
+                                                          :target       [:dimension [:template-tags "category"]]}])]
+                    (is (=? (merge
+                             card-defaults
+                             {:name                   (:name card)
+                              :collection_id          true
+                              :collection             (assoc collection :is_personal false)
+                              :creator_id             (mt/user->id :rasta)
+                              :parameters             [{:id "abc123", :name "test", :type "date"}]
+                              :parameter_mappings     [{:parameter_id "abc123", :card_id 10,
+                                                        :target       ["dimension" ["template-tags" "category"]]}]
+                              :dataset_query          true
+                              :query_type             "query"
+                              :visualization_settings {:global {:title nil}}
+                              :database_id            true
+                              :table_id               true
+                              :entity_id              true
+                              :can_write              true
+                              :dashboard_count        0
+                              :result_metadata        true
+                              :last-edit-info         {:timestamp true :id true :first_name "Rasta"
+                                                       :last_name "Toucan" :email "rasta@metabase.com"}
+                              :creator                (merge
+                                                       (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login :locale])
+                                                       {:common_name  "Rasta Toucan"
+                                                        :is_superuser false
+                                                        :last_name    "Toucan"
+                                                        :first_name   "Rasta"
+                                                        :email        "rasta@metabase.com"})
+                              :metabase_version       config/mb-version-string})
+                            (-> (mt/user-http-request :rasta :post 200 "card" card)
+                                (dissoc :created_at :updated_at :id)
+                                (update :table_id integer?)
+                                (update :database_id integer?)
+                                (update :collection_id integer?)
+                                (update :dataset_query map?)
+                                (update :entity_id string?)
+                                (update :result_metadata (partial every? map?))
+                                (update :creator dissoc :is_qbnewb)
+                                (update :last-edit-info (fn [edit-info]
+                                                          (-> edit-info
+                                                              (update :id boolean)
+                                                              (update :timestamp boolean)))))))))))))))))
 
 (deftest ^:parallel create-card-validation-test
   (testing "POST /api/card"
@@ -770,6 +785,47 @@
                     (-> retrieved
                         (update :last-edit-info dissoc :timestamp)
                         (dissoc :collection)))))))))))
+
+(deftest create-and-update-metric-card-validation-test
+  (testing "POST /api/card"
+    (let [query (pmbql-count-query)
+          card-name (mt/random-name)
+          card (-> (card-with-name-and-query card-name query)
+                   (assoc :type :metric))
+          updated-card (-> card-name
+                           (card-with-name-and-query
+                            (-> query
+                                (lib/filter (lib/= (lib.metadata/field query (mt/id :venues :id)) 1))))
+                           (assoc :type :metric))
+          invalid-card (-> card-name
+                           (card-with-name-and-query
+                            (-> query (lib/breakout (first (lib/breakoutable-columns query)))))
+                           (assoc :type :metric))]
+      (mt/with-full-data-perms-for-all-users!
+        (mt/with-model-cleanup [:model/Card]
+          (testing "Can create a card defining a metric"
+            (let [{card-id :id} (mt/user-http-request :rasta :post 200 "card"
+                                                      (merge
+                                                       (mt/with-temp-defaults :model/Card)
+                                                       card))]
+              (is (pos-int? card-id))
+              (testing "Can update a card defining a metric"
+                (mt/user-http-request :rasta :put 200 (str "card/" card-id)
+                                      (merge
+                                       (mt/with-temp-defaults :model/Card)
+                                       updated-card)))
+              (testing "Update fails if there is a breakout"
+                (let [response (mt/user-http-request :rasta :put 400 (str "card/" card-id)
+                                                     (merge
+                                                      (mt/with-temp-defaults :model/Card)
+                                                      invalid-card))]
+                  (is (= "Card of type metric is invalid, cannot be saved." response))))))
+          (testing "Creation fails if there is a breakout"
+            (let [response (mt/user-http-request :rasta :post 400 "card"
+                                                 (merge
+                                                  (mt/with-temp-defaults :model/Card)
+                                                  invalid-card))]
+              (is (= "Card of type metric is invalid, cannot be saved." response)))))))))
 
 (deftest create-card-disallow-setting-enable-embedding-test
   (testing "POST /api/card"
@@ -1085,8 +1141,7 @@
 (deftest create-card-with-metric-type
   (mt/with-model-cleanup [:model/Card]
     (testing "can create a metric card"
-      (is (=? {:dataset false
-               :type    "metric"}
+      (is (=? {:type "metric"}
               (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query (mt/random-name))
                                                                        :type "metric")))))))
 
@@ -1207,8 +1262,7 @@
   (testing "can fetch a metric card"
     (mt/with-temp [:model/Card card {:dataset_query (mbql-count-query)
                                      :type "metric"}]
-      (is (=? {:dataset false
-               :type    "metric"}
+      (is (=? {:type "metric"}
               (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -3471,10 +3525,63 @@
                   (is (nil? (:based_on_upload (request card'))))))
               (testing "\nIf the card is a native query, based_on_upload should be nil"
                 (mt/with-temp [:model/Card card' (assoc card-defaults
-                                                        :dataset_query (mt/native-query {:native "select 1"}))]
+                                                        :dataset_query (mt/native-query {:query "select 1"}))]
                   (is (nil? (:based_on_upload (request card')))))))))))))
 
 (deftest based-on-upload-test
   (run-based-on-upload-test!
    (fn [card]
      (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))))
+
+(deftest save-mlv2-card-test
+  (testing "POST /api/card"
+    (testing "Should be able to save a Card with an MLv2 query (#39024)"
+      (mt/with-model-cleanup [:model/Card]
+        (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+              venues            (lib.metadata/table metadata-provider (mt/id :venues))
+              query             (lib/query metadata-provider venues)
+              response          (mt/user-http-request :crowberto :post 200 "card"
+                                                      {:name                   "pMBQL Card"
+                                                       :dataset_query          (dissoc query :lib/metadata)
+                                                       :display                :table
+                                                       :visualization_settings {}})]
+          (is (=? {:dataset_query {:lib/type     "mbql/query"
+                                   :lib/metadata (symbol "nil #_\"key is not present.\"") ; should be removed in JSON serialization
+                                   :database     (mt/id)
+                                   :stages       [{:lib/type     "mbql.stage/mbql"
+                                                   :source-table (mt/id :venues)}]}}
+                  response)))))))
+
+(deftest ^:parallel run-mlv2-card-query-test
+  (testing "POST /api/card/:id/query"
+    (testing "Should be able to run a query for a Card with an MLv2 query (#39024)"
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            venues            (lib.metadata/table metadata-provider (mt/id :venues))
+            query             (-> (lib/query metadata-provider venues)
+                                  (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
+                                  (lib/limit 2))]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+          (is (=? {:data {:rows [["1" "Red Medicine" "4" 10.0646 -165.374 3]
+                                 ["2" "Stout Burgers & Beers" "11" 34.0996 -118.329 2]]}}
+                  (mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id)))))))))
+
+(deftest ^:parallel validate-template-tags-test
+  (testing "POST /api/card"
+    (testing "Disallow saving a Card with native query Field filter template tags referencing a different Database (#14145)"
+      (let [bird-counts-db-id (mt/dataset daily-bird-counts (mt/id))
+            card-data         {:database_id            bird-counts-db-id
+                               :dataset_query          {:database bird-counts-db-id
+                                                        :type     :native
+                                                        :native   {:query         "SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}"
+                                                                   :template-tags {"FILTER" {:id           "_FILTER_"
+                                                                                             :name         "FILTER"
+                                                                                             :display-name "Filter"
+                                                                                             :type         :dimension
+                                                                                             :dimension    [:field (mt/id :venues :name) nil]
+                                                                                             :widget-type  :string/=
+                                                                                             :default      nil}}}}
+                               :name                   "Bad Card"
+                               :display                "table"
+                               :visualization_settings {}}]
+        (is (=? {:message #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"daily-bird-counts\""}
+                (mt/user-http-request :crowberto :post 400 "card" card-data)))))))

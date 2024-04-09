@@ -3,6 +3,7 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -11,8 +12,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.formatting.date :as fmt.date]
    [metabase.shared.util.i18n :as i18n]
    [metabase.shared.util.time :as shared.ut]
@@ -120,7 +122,7 @@
                         (temporal? maybe-clause)
                         (lib.util/clause? maybe-clause)
                         (clojure.core/contains? units (:temporal-unit (second maybe-clause)))))))]
-    (mbql.u/match-one filter-clause
+    (lib.util.match/match-one filter-clause
       [:= _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
       (shared.ut/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
 
@@ -151,6 +153,15 @@
       _
       (lib.metadata.calculation/display-name query stage-number filter-clause))))
 
+(defn- query-dependents-foreign-keys
+  [metadata-providerable columns]
+  (for [column columns
+        :let [fk-target-field-id (:fk-target-field-id column)]
+        :when (and fk-target-field-id (lib.types.isa/foreign-key? column))]
+    (if-let [fk-target-field (lib.metadata/field metadata-providerable fk-target-field-id)]
+      {:type :table, :id (:table-id fk-target-field)}
+      {:type :field, :id fk-target-field-id})))
+
 (defn- query-dependents
   [metadata-providerable query-or-join]
   (let [base-stage (first (:stages query-or-join))
@@ -168,9 +179,23 @@
          {:type :field, :id id}))
      ;; cf. frontend/src/metabase-lib/Question.ts and frontend/src/metabase-lib/queries/StructuredQuery.ts
      (when-let [card-id (:source-card base-stage)]
-       [{:type :table, :id (str "card__" card-id)}])
+       [{:type :table, :id (str "card__" card-id)}
+        {:type :card,  :id card-id}])
+     ;; support metric sources for now
+     (for [source (:sources base-stage)
+           :when (= (:lib/type source) :source/metric)
+           :let [card-id (:id source)
+                 metric-metadata (or (lib.metadata/metric metadata-providerable card-id)
+                                     (lib.metadata/card metadata-providerable card-id))
+                 metric-table-id (:table-id metric-metadata)]
+           item (cond-> [{:type :table, :id (str "card__" card-id)}
+                         {:type :card, :id card-id}]
+                  metric-table-id (conj {:type :table, :id metric-table-id}))]
+       item)
      (when-let [table-id (:source-table base-stage)]
-       [{:type :table, :id table-id}])
+       (cons {:type :table, :id table-id}
+             (query-dependents-foreign-keys metadata-providerable
+                                            (lib.metadata/fields metadata-providerable table-id))))
      (for [stage (:stages query-or-join)
            join (:joins stage)
            dependent (query-dependents metadata-providerable join)]
@@ -179,11 +204,12 @@
 (def ^:private DependentItem
   [:and
    [:map
-    [:type [:enum :database :schema :table :field]]]
+    [:type [:enum :database :schema :table :card :field]]]
    [:multi {:dispatch :type}
     [:database [:map [:id ::lib.schema.id/database]]]
     [:schema   [:map [:id ::lib.schema.id/database]]]
     [:table    [:map [:id [:or ::lib.schema.id/table :string]]]]
+    [:card     [:map [:id ::lib.schema.id/card]]]
     [:field    [:map [:id ::lib.schema.id/field]]]]])
 
 (mu/defn dependent-metadata :- [:sequential DependentItem]

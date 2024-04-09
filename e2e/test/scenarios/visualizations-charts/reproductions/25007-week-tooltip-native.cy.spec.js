@@ -29,5 +29,8 @@ describe("issue 25007", () => {
 });
 
 const clickLineDot = ({ index } = {}) => {
-  cy.get(".Visualization .dot").eq(index).click({ force: true });
+  cy.findByTestId("query-visualization-root")
+    .get(".dot")
+    .eq(index)
+    .click({ force: true });
 };

@@ -5969,6 +5969,105 @@ databaseChangeLog:
                 )
               );
 
+  - changeSet:
+      id: v50.2024-03-18T16:00:00
+      author: piranha
+      comment: 'Effective caching #36847'
+      changes:
+        - createTable:
+            tableName: cache_config
+            remarks: Cache Configuration
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model
+                  remarks: Name of an entity model
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  remarks: ID of the said entity
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: Timestamp when the config was inserted
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: Timestamp when the config was updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: strategy
+                  remarks: caching strategy name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: config
+                  remarks: caching strategy configuration
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: state
+                  remarks: state for strategies needing to keep some data between runs
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: invalidated_at
+                  remarks: indicates when a cache was invalidated last time for schedule-based strategies
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: next_run_at
+                  remarks: keeps next time to run for schedule-based strategies
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-03-18T16:00:01
+      author: piranha
+      comment: 'Effective caching #36847'
+      rollback: # will be removed with the table
+      changes:
+        - addUniqueConstraint:
+            remarks: Unique config for cache_config (model, model_id)
+            tableName: cache_config
+            constraintName: idx_cache_config_unique_model
+            columnNames: model, model_id
+
+  - changeSet:
+      id: v50.2024-03-21T17:41:00
+      author: qnkhuat
+      comment: Add metabase_table.estimated_row_count
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: estimated_row_count
+                  type: bigint
+                  remarks: The estimated row count
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

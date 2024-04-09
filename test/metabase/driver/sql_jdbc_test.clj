@@ -235,7 +235,7 @@
                  (spliced-count-of :checkins [:= $date "2014-03-05"])))))
       (when (mt/supports-time-type? driver/*driver*)
         (testing "splicing a time"
-          (mt/dataset test-data-with-time
+          (mt/dataset time-test-data
             (is (= 2
                    (mt/$ids users
                      (spliced-count-of :users [:= $last_login_time "09:30"]))))))))))

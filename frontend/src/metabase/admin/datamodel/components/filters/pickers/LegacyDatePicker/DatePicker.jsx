@@ -7,6 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Calendar from "metabase/components/Calendar";
+import CS from "metabase/css/core/index.css";
 import { FieldDimension } from "metabase-lib/v1/Dimension";
 
 import DatePickerSelector from "../DatePicker/DatePickerSelector";
@@ -69,7 +70,7 @@ const MultiDatePicker = ({
         />
       </div>
     </div>
-    <div className="Calendar--noContext">
+    <div>
       <Calendar
         initial={startValue ? moment(startValue) : moment()}
         selected={startValue && moment(startValue)}
@@ -77,6 +78,7 @@ const MultiDatePicker = ({
         onChange={(startValue, endValue) =>
           onFilterChange([op, field, startValue, endValue])
         }
+        noContext
       />
     </div>
   </div>
@@ -335,7 +337,7 @@ export default class DatePicker extends Component {
       <div
         // apply flex to align the operator selector and the "Widget" if necessary
         className={cx(className, "PopoverBody--marginBottom", {
-          "flex align-center": Widget && Widget.horizontalLayout,
+          [cx(CS.flex, CS.alignCenter)]: Widget && Widget.horizontalLayout,
         })}
         style={{ minWidth: 300 }}
       >
@@ -353,7 +355,7 @@ export default class DatePicker extends Component {
         {Widget && (
           <Widget
             {...this.props}
-            className="flex-full"
+            className={CS.flexFull}
             filter={filter}
             hideHoursAndMinutes={this.props.hideTimeSelectors}
             onFilterChange={filter => {

@@ -13,10 +13,11 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection]
@@ -441,7 +442,7 @@
 
 (defn- param-target->field-id [target query]
   (when-let [field-clause (params/param-target->field-clause target {:dataset_query query})]
-    (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)))
+    (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
 (mu/defn ^:private check-parameter-mapping-permissions
@@ -938,7 +939,7 @@
                field-id  (or
                           ;; Get the field id from the field-clause if it contains it. This is the common case
                           ;; for mbql queries.
-                          (mbql.u/match-one dimension [:field (id :guard integer?) _] id)
+                          (lib.util.match/match-one dimension [:field (id :guard integer?) _] id)
                           ;; Attempt to get the field clause from the model metadata corresponding to the field.
                           ;; This is the common case for native queries in which mappings from original columns
                           ;; have been performed using model metadata.
@@ -1093,10 +1094,8 @@
 
   `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
   [:as {{:keys [filtered filtering]} :params}]
-  {filtered  [:or ms/IntGreaterThanOrEqualToZero
-              [:+ ms/IntGreaterThanOrEqualToZero]]
-   filtering [:maybe [:or ms/IntGreaterThanOrEqualToZero
-                      [:+ ms/IntGreaterThanOrEqualToZero]]]}
+  {filtered  (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)
+   filtering [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]}
   (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
         filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})]
     (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]

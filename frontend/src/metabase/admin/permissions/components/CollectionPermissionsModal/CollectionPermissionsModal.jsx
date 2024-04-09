@@ -8,6 +8,7 @@ import { isPersonalCollectionChild } from "metabase/collections/utils";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import Collections from "metabase/entities/collections";
 import Groups from "metabase/entities/groups";
 import * as Urls from "metabase/lib/urls";
@@ -122,7 +123,7 @@ const CollectionPermissionsModal = ({
     <ModalContent
       title={modalTitle}
       onClose={onClose}
-      className="overflow-hidden"
+      className={CS.overflowHidden}
       footer={[
         ...(namespace === "snippets"
           ? []

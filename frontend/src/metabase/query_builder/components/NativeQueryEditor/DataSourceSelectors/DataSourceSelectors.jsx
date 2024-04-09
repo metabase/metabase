@@ -1,7 +1,10 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getNativeQueryLanguage } from "metabase/lib/engine";
 import {
   DatabaseDataSelector,
@@ -151,7 +154,16 @@ const checkIfThereAreMultipleDatabases = (database, databases) =>
   (databases.length > 1 && databases.some(db => db.id === database.id));
 
 const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
-  <div className="GuiBuilder-section GuiBuilder-data flex align-center ml2">
+  <div
+    className={cx(
+      QueryBuilderS.GuiBuilderSection,
+      QueryBuilderS.GuiBuilderData,
+      CS.flex,
+      CS.alignCenter,
+      CS.ml2,
+    )}
+    data-testid="gui-builder-data"
+  >
     <DatabaseDataSelector
       databases={databases}
       selectedDatabaseId={database?.id}
@@ -173,7 +185,16 @@ const SingleDatabaseName = ({ database }) => (
 SingleDatabaseName.propTypes = SingleDatabaseNamePropTypes;
 
 const TableSelector = ({ database, readOnly, selectedTable, setTableId }) => (
-  <div className="GuiBuilder-section GuiBuilder-data flex align-center ml2">
+  <div
+    className={cx(
+      QueryBuilderS.GuiBuilderSection,
+      QueryBuilderS.GuiBuilderData,
+      CS.flex,
+      CS.alignCenter,
+      CS.ml2,
+    )}
+    data-testid="gui-builder-data"
+  >
     <SchemaAndTableDataSelector
       selectedTableId={selectedTable?.id || null}
       selectedDatabaseId={database?.id}

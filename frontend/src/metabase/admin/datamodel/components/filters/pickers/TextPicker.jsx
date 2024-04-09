@@ -1,8 +1,11 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
+
+import CS from "metabase/css/core/index.css";
 
 import { TextPickerArea, TextPickerInput } from "./TextPicker.styled";
 
@@ -69,7 +72,16 @@ export default class TextPicker extends Component {
 
     return (
       <div data-testid={testId ?? "text-picker"}>
-        <div className="FilterInput px1 pt1 relative flex align-center">
+        <div
+          className={cx(
+            "FilterInput",
+            CS.px1,
+            CS.pt1,
+            CS.relative,
+            CS.flex,
+            CS.alignCenter,
+          )}
+        >
           {!!prefix && (
             <span
               data-testid="input-prefix"
@@ -81,7 +93,7 @@ export default class TextPicker extends Component {
           )}
           {!isSingleLine && (
             <TextPickerArea
-              className="input block full"
+              className={cx(CS.block, CS.full, CS.input)}
               type="text"
               value={this.state.fieldString}
               onChange={e => this.setValue(e.target.value)}
@@ -96,7 +108,7 @@ export default class TextPicker extends Component {
 
           {isSingleLine && (
             <TextPickerInput
-              className="input block full"
+              className={cx(CS.block, CS.full, CS.input)}
               style={{
                 paddingLeft: this.props.prefix
                   ? `${this.props.prefix.length}.2rem`

@@ -1,5 +1,10 @@
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { modal, restore, visitDashboard } from "e2e/support/helpers";
+import {
+  createQuestion,
+  modal,
+  restore,
+  visitDashboard,
+} from "e2e/support/helpers";
 
 const downloadsFolder = Cypress.config("downloadsFolder");
 
@@ -32,13 +37,13 @@ describe("error reporting modal", () => {
       expect(fileContent).to.have.property("backendErrors");
       expect(fileContent).to.have.property("userLogs");
       expect(fileContent).to.have.property("logs");
-      expect(fileContent).to.have.property("instanceInfo");
+      expect(fileContent).to.have.property("bugReportDetails");
     });
   });
 
   it("should include question-specific data when triggered on the question page", () => {
     cy.signInAsAdmin();
-    cy.createQuestion(
+    createQuestion(
       {
         name: "Diagnostic Question 1",
         query: { "source-table": 1, limit: 10 },
@@ -61,7 +66,7 @@ describe("error reporting modal", () => {
       expect(fileContent).to.have.property("backendErrors");
       expect(fileContent).to.have.property("userLogs");
       expect(fileContent).to.have.property("logs");
-      expect(fileContent).to.have.property("instanceInfo");
+      expect(fileContent).to.have.property("bugReportDetails");
       expect(fileContent).to.have.property("entityInfo");
       expect(fileContent).not.to.have.property("queryResults");
     });
@@ -84,7 +89,7 @@ describe("error reporting modal", () => {
       expect(fileContent).to.have.property("backendErrors");
       expect(fileContent).to.have.property("userLogs");
       expect(fileContent).to.have.property("logs");
-      expect(fileContent).to.have.property("instanceInfo");
+      expect(fileContent).to.have.property("bugReportDetails");
       expect(fileContent).to.have.property("entityInfo");
       expect(fileContent).to.have.property("queryResults");
     });
@@ -92,7 +97,7 @@ describe("error reporting modal", () => {
 
   it("can include query data on question pages", () => {
     cy.signInAsAdmin();
-    cy.createQuestion(
+    createQuestion(
       {
         name: "Diagnostic Question 1",
         query: { "source-table": 1, limit: 10 },
@@ -117,7 +122,7 @@ describe("error reporting modal", () => {
       expect(fileContent).to.have.property("backendErrors");
       expect(fileContent).to.have.property("userLogs");
       expect(fileContent).to.have.property("logs");
-      expect(fileContent).to.have.property("instanceInfo");
+      expect(fileContent).to.have.property("bugReportDetails");
       expect(fileContent).to.have.property("entityInfo");
       expect(fileContent).to.have.property("queryResults");
     });
@@ -144,7 +149,7 @@ describe("error reporting modal", () => {
       expect(fileContent.url).to.include("/dashboard/");
 
       expect(fileContent).to.have.property("frontendErrors");
-      expect(fileContent).to.have.property("instanceInfo");
+      expect(fileContent).to.have.property("bugReportDetails");
       expect(fileContent).to.have.property("entityInfo");
       expect(fileContent).not.to.have.property("logs");
       expect(fileContent).not.to.have.property("userLogs");

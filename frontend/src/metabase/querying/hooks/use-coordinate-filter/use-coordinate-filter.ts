@@ -19,7 +19,6 @@ interface UseCoordinateFilterProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
-  defaultOperator?: Lib.CoordinateFilterOperatorName;
 }
 
 export function useCoordinateFilter({
@@ -27,7 +26,6 @@ export function useCoordinateFilter({
   stageIndex,
   column,
   filter,
-  defaultOperator = "=",
 }: UseCoordinateFilterProps) {
   const filterParts = useMemo(
     () =>
@@ -46,7 +44,7 @@ export function useCoordinateFilter({
   );
 
   const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : defaultOperator,
+    filterParts ? filterParts.operator : "between",
   );
   const [values, setValues] = useState(
     getDefaultValues(operator, filterParts?.values ?? []),

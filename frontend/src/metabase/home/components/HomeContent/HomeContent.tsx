@@ -1,4 +1,4 @@
-import { useUpdate } from "react-use";
+import { useState } from "react";
 
 import {
   useDatabaseListQuery,
@@ -8,7 +8,8 @@ import {
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getUser } from "metabase/selectors/user";
+import { Box } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { PopularItem, RecentItem, User } from "metabase-types/api";
 
@@ -20,9 +21,7 @@ import { HomeRecentSection } from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";
 
 export const HomeContent = (): JSX.Element | null => {
-  const update = useUpdate();
   const user = useSelector(getUser);
-  const isAdmin = useSelector(getUserIsAdmin);
   const isXrayEnabled = useSelector(getIsXrayEnabled);
   const { data: databases, error: databasesError } = useDatabaseListQuery();
   const { data: recentItems, error: recentItemsError } = useRecentItemListQuery(
@@ -31,6 +30,9 @@ export const HomeContent = (): JSX.Element | null => {
   const { data: popularItems, error: popularItemsError } =
     usePopularItemListQuery({ reload: true });
   const error = databasesError || recentItemsError || popularItemsError;
+  const [showEmbedHomepage, setShowEmbedHomepage] = useState(() =>
+    shouldShowEmbedHomepage(),
+  );
 
   if (error) {
     return <LoadingAndErrorWrapper error={error} />;
@@ -38,10 +40,6 @@ export const HomeContent = (): JSX.Element | null => {
 
   if (!user || isLoading(user, databases, recentItems, popularItems)) {
     return <LoadingAndErrorWrapper loading />;
-  }
-
-  if (isAdmin && shouldShowEmbedHomepage()) {
-    return <EmbedMinimalHomepage onDismiss={update} />;
   }
 
   if (isPopularSection(user, recentItems, popularItems)) {
@@ -53,10 +51,23 @@ export const HomeContent = (): JSX.Element | null => {
   }
 
   if (isXraySection(databases, isXrayEnabled)) {
-    return <HomeXraySection />;
+    return (
+      <>
+        <HomeXraySection />
+        {showEmbedHomepage && (
+          <Box mt={64}>
+            <EmbedMinimalHomepage
+              onDismiss={() => setShowEmbedHomepage(false)}
+            />
+          </Box>
+        )}
+      </>
+    );
   }
 
-  return null;
+  return showEmbedHomepage ? (
+    <EmbedMinimalHomepage onDismiss={() => setShowEmbedHomepage(false)} />
+  ) : null;
 };
 
 const isLoading = (

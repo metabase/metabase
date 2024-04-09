@@ -10,6 +10,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -19,7 +20,6 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -474,6 +474,18 @@
   "Whether the first stage of the query is a native query stage."
   [query :- :map]
   (= (first-stage-type query) :mbql.stage/native))
+
+(defn first-metric-id
+  "Return the ID of the first metric source in `sources`, if any."
+  [sources]
+  (some #(when (= (:lib/type %) :source/metric)
+           (:id %))
+        sources))
+
+(mu/defn source-metric-id :- [:maybe ::lib.schema.id/metric]
+  "If this query has a metric in `:sources`, return its ID."
+  [query]
+  (-> query :stages first :sources first-metric-id))
 
 (mu/defn unique-name-generator :- [:=>
                                    [:cat ::lib.schema.common/non-blank-string]

@@ -45,6 +45,16 @@
             (lib.metadata.calculation/display-name query stage-number card-metadata :long))
           (fallback-display-name source-card)))))
 
+;; handle single metric sources like cards for now
+(defmethod lib.metadata.calculation/describe-top-level-key-method :sources
+  [query stage-number _k]
+  (let [{:keys [sources]} (lib.util/query-stage query stage-number)
+        metric-id (lib.util/first-metric-id sources)]
+    (when sources
+      (or (when-let [card-metadata (lib.metadata/card query metric-id)]
+            (lib.metadata.calculation/display-name query stage-number card-metadata :long))
+          (i18n/tru "Metric {0}" (pr-str metric-id))))))
+
 (mu/defn ^:private infer-returned-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card-query            :- :map]

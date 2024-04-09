@@ -1,10 +1,19 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import {
+  setupCollectionByIdEndpoint,
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { NewModals } from "metabase/new/components/NewModals/NewModals";
 import type { Database } from "metabase-types/api";
-import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockDatabase,
+  createMockCollection,
+} from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import NewItemMenu from "./NewItemMenu";
@@ -41,6 +50,8 @@ const DB_WITHOUT_WRITE_ACCESS = createMockDatabase({
   native_permissions: "none",
 });
 
+const COLLECTION = createMockCollection();
+
 function setup({
   databases = [SAMPLE_DATABASE, DB_WITH_ACTIONS],
   hasModels = true,
@@ -48,6 +59,12 @@ function setup({
   const models = hasModels ? [createMockCard({ type: "model" })] : [];
 
   setupDatabasesEndpoints(databases);
+  setupCollectionsEndpoints({
+    collections: [COLLECTION],
+  });
+  setupCollectionByIdEndpoint({
+    collections: [COLLECTION],
+  });
 
   fetchMock.get(
     {
@@ -61,11 +78,36 @@ function setup({
     },
   );
 
-  renderWithProviders(<NewItemMenu trigger={<button>New</button>} />);
+  renderWithProviders(
+    <>
+      <NewItemMenu trigger={<button>New</button>} />
+      <NewModals />
+    </>,
+  );
   userEvent.click(screen.getByText("New"));
 }
 
 describe("NewItemMenu", () => {
+  describe("New Collection", () => {
+    it("should open new collection modal on click", async () => {
+      setup();
+      userEvent.click(await screen.findByText("Collection"));
+      const modal = await screen.findByRole("dialog", {
+        name: /new collection/i,
+      });
+      expect(modal).toBeVisible();
+    });
+  });
+
+  describe("New Dashboard", () => {
+    it("should open new dashboard modal on click", async () => {
+      setup();
+      userEvent.click(await screen.findByText("Dashboard"));
+      const modal = await screen.findByRole("dialog");
+      expect(modal).toHaveTextContent("New dashboard");
+    });
+  });
+
   describe("New Action", () => {
     it("should open action editor on click", async () => {
       setup();

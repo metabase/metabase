@@ -1,8 +1,8 @@
 (ns metabase.query-processor.middleware.cumulative-aggregations
   "Middlware for handling cumulative count and cumulative sum aggregations."
   (:require
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli :as mu]))
 
 ;;;; Pre-processing
@@ -19,7 +19,7 @@
 (mu/defn ^:private replace-cumulative-ags :- mbql.s/Query
   "Replace `cum-count` and `cum-sum` aggregations in `query` with `count` and `sum` aggregations, respectively."
   [query]
-  (mbql.u/replace-in query [:query :aggregation]
+  (lib.util.match/replace-in query [:query :aggregation]
     ;; cumulative count doesn't neccesarily have a field-id arg
     [:cum-count]       [:count]
     [:cum-count field] [:count field]
@@ -29,7 +29,7 @@
   "Pre-processing middleware. Rewrite `:cum-count` and `:cum-sum` aggregations as `:count` and `:sum` respectively. Add
   information about the indecies of the replaced aggregations under the `::replaced-indices` key."
   [{{breakouts :breakout, aggregations :aggregation} :query, :as query}]
-  (if-not (mbql.u/match aggregations #{:cum-count :cum-sum})
+  (if-not (lib.util.match/match aggregations #{:cum-count :cum-sum})
     query
     (let [query'            (replace-cumulative-ags query)
           ;; figure out which indexes are being changed in the results. Since breakouts always get included in

@@ -6,6 +6,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.normalize :as lib.normalize]
@@ -14,7 +15,6 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
@@ -234,7 +234,7 @@
   [[_tag value opts]]
   ;; `:value` uses `:snake_case` keys in legacy MBQL for some insane reason (actually this was to match the shape of
   ;; the keys in Field metadata), at least for the three type keys enumerated below.
-  ;; See [[metabase.mbql.schema/ValueTypeInfo]].
+  ;; See [[metabase.legacy-mbql.schema/ValueTypeInfo]].
   (let [opts (set/rename-keys opts {:base_type     :base-type
                                     :semantic_type :semantic-type
                                     :database_type :database-type})
@@ -284,7 +284,7 @@
 
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
-  like [[metabase.mbql.normalize/normalize]], and then probably to [[->pMBQL]]."
+  like [[metabase.legacy-mbql.normalize/normalize]], and then probably to [[->pMBQL]]."
   [database-id inner-query]
   (merge {:database database-id, :type :query}
          (if (:native inner-query)
@@ -557,11 +557,10 @@
   If you have only the inner query map (`{:source-table 2 ...}` or similar), call [[js-legacy-inner-query->pMBQL]]
   instead."
   [query-map]
-  (-> query-map
-      from-json
-      (u/assoc-default :type :query)
-      mbql.normalize/normalize
-      ->pMBQL))
+  (let [clj-map (from-json query-map)]
+    (if (= (:lib/type clj-map) "mbql/query")
+      (lib.normalize/normalize clj-map)
+      (-> clj-map (u/assoc-default :type :query) mbql.normalize/normalize ->pMBQL))))
 
 (defn js-legacy-inner-query->pMBQL
   "Given a JSON-formatted *inner* query, transform it to pMBQL.

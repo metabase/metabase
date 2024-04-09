@@ -194,7 +194,7 @@
 
 (deftest calculated-semantic-type-test
   (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
-    (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_ _ column-name]
+    (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_driver _database-type column-name]
                                                                   (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]

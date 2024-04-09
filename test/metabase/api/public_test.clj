@@ -353,7 +353,7 @@
                                                           :type  "number"
                                                           :value 2}])))))
 
-      ;; see longer explanation in [[metabase.mbql.schema/parameter-types]]
+      ;; see longer explanation in [[metabase.legacy-mbql.schema/parameter-types]]
       (testing "If the FE client is incorrectly passing in the parameter as a `:category` type, allow it for now"
         (with-temp-public-card [{uuid :public_uuid} {:dataset_query {:database (mt/id)
                                                                      :type     :native

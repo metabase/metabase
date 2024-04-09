@@ -77,7 +77,7 @@
   (when (and (active?)
              (= :native (:type query)))
     (let [query-field-records (map (fn [field-id] {:card_id  card-id :field_id field-id})
-                                   (field-ids-for-card card)) ]
+                                   (field-ids-for-card card))]
       ;; This feels inefficient at first glance, but the number of records should be quite small and doing some sort
       ;; of upsert-or-delete would involve comparisons in Clojure-land that are more expensive than just "killing and
       ;; filling" the records.

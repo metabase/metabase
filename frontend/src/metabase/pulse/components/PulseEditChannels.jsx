@@ -1,4 +1,5 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import { assoc, assocIn } from "icepick";
 import PropTypes from "prop-types";
 import { Component } from "react";
@@ -9,6 +10,7 @@ import ActionButton from "metabase/components/ActionButton";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import SchedulePicker from "metabase/containers/SchedulePicker";
 import Toggle from "metabase/core/components/Toggle";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { channelIsValid, createChannel } from "metabase/lib/pulse";
 import SlackChannelField from "metabase/sharing/components/SlackChannelField";
@@ -249,8 +251,10 @@ export default class PulseEditChannels extends Component {
         this.renderChannel(channel, index, channelSpec),
       );
     return (
-      <li key={channelSpec.type} className="border-row-divider">
-        <div className="flex align-center p3 border-row-divider">
+      <li key={channelSpec.type} className={CS.borderRowDivider}>
+        <div
+          className={cx(CS.flex, CS.alignCenter, CS.p3, CS.borderRowDivider)}
+        >
           {CHANNEL_ICONS[channelSpec.type] && (
             <Icon
               className="mr1 text-light"
@@ -260,7 +264,7 @@ export default class PulseEditChannels extends Component {
           )}
           <h2>{channelSpec.name}</h2>
           <Toggle
-            className="flex-align-right"
+            className={CS.flexAlignRight}
             value={channels.length > 0}
             onChange={this.toggleChannel.bind(this, channelSpec.type)}
           />

@@ -1,11 +1,11 @@
 (ns metabase.query-processor.middleware.resolve-fields
   "Middleware that resolves the Fields referenced by a query."
   (:require
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -31,7 +31,7 @@
 (mu/defmethod field-ids ::pmbql :- [:set ::lib.schema.id/field]
   [query :- ::lib.schema/query]
   (into #{}
-        (mbql.u/match (:stages query)
+        (lib.util.match/match (:stages query)
           [:field _opts (id :guard pos-int?)]
           id
 
@@ -41,9 +41,9 @@
 
 (mu/defmethod field-ids ::legacy :- [:set ::lib.schema.id/field]
   [query :- ::mbql.s/Query]
-  (into (set (mbql.u/match (:query query) [:field (id :guard integer?) _] id))
+  (into (set (lib.util.match/match (:query query) [:field (id :guard integer?) _] id))
         (comp cat (keep :id))
-        (mbql.u/match (:query query) {:source-metadata source-metadata} source-metadata)))
+        (lib.util.match/match (:query query) {:source-metadata source-metadata} source-metadata)))
 
 (defn resolve-fields
   "Resolve all field referenced in the `query`, and store them in the QP Store."

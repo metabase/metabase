@@ -467,7 +467,7 @@ function testTooltipText(rowPairs = []) {
 
 function openDashCardVisualizationOptions() {
   cy.icon("pencil").click();
-  cy.get(".Card").realHover();
+  cy.findByTestId("dashcard").realHover();
   cy.icon("palette").click();
 }
 

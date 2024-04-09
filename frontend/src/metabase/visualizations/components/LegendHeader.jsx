@@ -3,6 +3,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
 
 import ExplicitSize from "../../components/ExplicitSize";
@@ -58,7 +59,14 @@ class LegendHeader extends Component {
       <div
         className={cx(
           styles.LegendHeader,
-          "Card-title mx1 flex flex-no-shrink flex-row align-center",
+          "Card-title",
+          CS.textDefault,
+          "text-smaller",
+          CS.mx1,
+          CS.flex,
+          CS.flexNoShrink,
+          CS.flexRow,
+          CS.alignCenter,
         )}
       >
         {series.map((s, index) => [
@@ -87,7 +95,7 @@ class LegendHeader extends Component {
           />,
         ])}
         {actionButtons && (
-          <span className="flex-no-shrink flex-align-right relative">
+          <span className={cx(CS.flexNoShrink, CS.flexAlignRight, CS.relative)}>
             {actionButtons}
           </span>
         )}

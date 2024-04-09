@@ -12,3 +12,7 @@ export type GenericErrorResponse = {
 export interface MaxLengthParams {
   max: number;
 }
+
+export interface LengthParams {
+  length: number;
+}

@@ -6,7 +6,7 @@ import { isNumber } from "metabase/lib/types";
 import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
 import { Flex, Grid, NumberInput, Text } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -22,13 +22,7 @@ export function NumberFilterEditor({
   onChange,
   onInput,
 }: FilterEditorProps) {
-  const { columnIcon, isKey } = useMemo(
-    () => ({
-      columnIcon: getColumnIcon(column),
-      isKey: Lib.isPrimaryKey(column) || Lib.isForeignKey(column),
-    }),
-    [column],
-  );
+  const columnIcon = useMemo(() => getColumnIcon(column), [column]);
   const [isFocused, setIsFocused] = useState(false);
 
   const {
@@ -46,7 +40,6 @@ export function NumberFilterEditor({
     stageIndex,
     column,
     filter,
-    defaultOperator: isKey ? "=" : "between",
   });
 
   const handleOperatorChange = (newOperator: Lib.NumberFilterOperatorName) => {

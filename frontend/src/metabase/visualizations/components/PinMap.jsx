@@ -226,7 +226,7 @@ export default class PinMap extends Component {
             CS.m1,
             CS.z2,
             CS.flex,
-            "flex-column",
+            CS.flexColumn,
             "hover-child",
           )}
         >

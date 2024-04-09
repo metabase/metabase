@@ -13,6 +13,9 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
@@ -452,113 +455,157 @@
             (is (= ["VA" nil 2 29] (nth rows 130)))
             (is (= [nil nil 3 2009] (last rows)))))))))
 
-(deftest parameter-values-test
-  (mt/dataset test-data
-    (testing "static-list"
-      (let [parameter {:values_query_type "list",
-                       :values_source_type "static-list",
-                       :values_source_config {:values ["foo1" "foo2" "bar"]},
-                       :name "Text",
-                       :slug "text",
-                       :id "89e8bb5f",
-                       :type :string/=,
-                       :sectionId "string"}]
-        (testing "values"
-          (is (partial= {:values [["foo1"] ["foo2"] ["bar"]]}
-                        (mt/user-http-request :crowberto :post 200
-                                              "dataset/parameter/values"
-                                              {:parameter parameter}))))
-        (testing "search"
-          (is (partial= {:values [["foo1"] ["foo2"]]}
-                        (mt/user-http-request :crowberto :post 200
-                                              "dataset/parameter/search/fo"
-                                              {:parameter parameter}))))))
-    (mt/with-temp [Card {card-id :id} {:database_id (mt/id)
-                                       :dataset_query (mt/mbql-query products)}]
-      (let [parameter {:values_query_type "list",
-                       :values_source_type "card",
-                       :values_source_config {:card_id card-id,
-                                              :value_field
-                                              [:field (mt/id :products :category) nil]},
-                       :name "Text 1",
-                       :slug "text_1",
-                       :id "2487b568",
-                       :type :string/=,
-                       :sectionId "string"}]
-        (testing "card"
-          (testing "values"
-            (let [values (-> (mt/user-http-request :crowberto :post 200
-                                                   "dataset/parameter/values"
-                                                   {:parameter parameter})
-                             :values set)]
-              (is (= #{["Gizmo"] ["Widget"] ["Gadget"] ["Doohickey"]} values))))
-          (testing "search"
-            (let [values (-> (mt/user-http-request :crowberto :post 200
-                                                   "dataset/parameter/search/g"
-                                                   {:parameter parameter})
-                             :values set)]
-              (is (= #{["Gizmo"] ["Widget"] ["Gadget"]} values)))))))
+(deftest ^:parallel parameter-values-test
+  (testing "static-list"
+    (let [parameter {:values_query_type "list",
+                     :values_source_type "static-list",
+                     :values_source_config {:values ["foo1" "foo2" "bar"]},
+                     :name "Text",
+                     :slug "text",
+                     :id "89e8bb5f",
+                     :type :string/=,
+                     :sectionId "string"}]
+      (testing "values"
+        (is (partial= {:values [["foo1"] ["foo2"] ["bar"]]}
+                      (mt/user-http-request :crowberto :post 200
+                                            "dataset/parameter/values"
+                                            {:parameter parameter}))))
+      (testing "search"
+        (is (partial= {:values [["foo1"] ["foo2"]]}
+                      (mt/user-http-request :crowberto :post 200
+                                            "dataset/parameter/search/fo"
+                                            {:parameter parameter})))))))
 
-    (testing "nil value (current behavior of field values)"
-      (let [parameter {:values_query_type "list",
-                       :values_source_type nil,
-                       :values_source_config {},
-                       :name "Text 2",
-                       :slug "text_2",
-                       :id "707f4bbf",
-                       :type :string/=,
-                       :sectionId "string"}]
+(deftest ^:parallel parameter-values-test-2
+  (mt/with-temp [Card {card-id :id} {:database_id (mt/id)
+                                     :dataset_query (mt/mbql-query products)}]
+    (let [parameter {:values_query_type "list",
+                     :values_source_type "card",
+                     :values_source_config {:card_id card-id,
+                                            :value_field
+                                            [:field (mt/id :products :category) nil]},
+                     :name "Text 1",
+                     :slug "text_1",
+                     :id "2487b568",
+                     :type :string/=,
+                     :sectionId "string"}]
+      (testing "card"
         (testing "values"
           (let [values (-> (mt/user-http-request :crowberto :post 200
                                                  "dataset/parameter/values"
-                                                 {:parameter parameter
-                                                  :field_ids [(mt/id :products :category)
-                                                              (mt/id :people :source)]})
+                                                 {:parameter parameter})
                            :values set)]
-            (is (set/subset? #{["Doohickey"] ["Facebook"]} values))))
-
+            (is (= #{["Gizmo"] ["Widget"] ["Gadget"] ["Doohickey"]} values))))
         (testing "search"
           (let [values (-> (mt/user-http-request :crowberto :post 200
                                                  "dataset/parameter/search/g"
-                                                 {:parameter parameter
-                                                  :field_ids [(mt/id :products :category)
-                                                              (mt/id :people :source)]})
+                                                 {:parameter parameter})
                            :values set)]
-            ;; results matched on g, does not include Doohickey (which is in above results)
-            (is (set/subset? #{["Widget"] ["Google"]} values))
-            (is (not (contains? values ["Doohickey"])))))
+            (is (= #{["Gizmo"] ["Widget"] ["Gadget"]} values))))))))
 
-        (testing "deduplicates the values returned from multiple fields"
-          (let [values (-> (mt/user-http-request :crowberto :post 200
-                                                 "dataset/parameter/values"
-                                                 {:parameter parameter
-                                                  :field_ids [(mt/id :people :source)
-                                                              (mt/id :people :source)]})
-                           :values)]
-            (is (= [["Twitter"] ["Organic"] ["Affiliate"] ["Google"] ["Facebook"]] values))))))
+(deftest ^:parallel parameter-values-test-3
+  (testing "nil value (current behavior of field values)"
+    (let [parameter {:values_query_type "list",
+                     :values_source_type nil,
+                     :values_source_config {},
+                     :name "Text 2",
+                     :slug "text_2",
+                     :id "707f4bbf",
+                     :type :string/=,
+                     :sectionId "string"}]
+      (testing "values"
+        (let [values (-> (mt/user-http-request :crowberto :post 200
+                                               "dataset/parameter/values"
+                                               {:parameter parameter
+                                                :field_ids [(mt/id :products :category)
+                                                            (mt/id :people :source)]})
+                         :values set)]
+          (is (set/subset? #{["Doohickey"] ["Facebook"]} values))))
 
-    (testing "fallback to field-values"
-      (let [mock-default-result {:values          [["field-values"]]
-                                 :has_more_values false}]
-        (with-redefs [api.dataset/parameter-field-values (constantly mock-default-result)]
-          (testing "if value-field not found in source card"
-            (t2.with-temp/with-temp [Card {source-card-id :id}]
-              (is (= mock-default-result
-                     (mt/user-http-request :crowberto :post 200 "dataset/parameter/values"
-                                           {:parameter  {:values_source_type   "card"
-                                                         :values_source_config {:card_id     source-card-id
-                                                                                :value_field (mt/$ids $people.source)}
-                                                         :type                 :string/=,
-                                                         :name                 "Text"
-                                                         :id                   "abc"}})))))
+      (testing "search"
+        (let [values (-> (mt/user-http-request :crowberto :post 200
+                                               "dataset/parameter/search/g"
+                                               {:parameter parameter
+                                                :field_ids [(mt/id :products :category)
+                                                            (mt/id :people :source)]})
+                         :values set)]
+          ;; results matched on g, does not include Doohickey (which is in above results)
+          (is (set/subset? #{["Widget"] ["Google"]} values))
+          (is (not (contains? values ["Doohickey"])))))
 
-          (testing "if value-field not found in source card"
-            (t2.with-temp/with-temp [Card {source-card-id :id} {:archived true}]
-              (is (= mock-default-result
-                     (mt/user-http-request :crowberto :post 200 "dataset/parameter/values"
-                                           {:parameter  {:values_source_type   "card"
-                                                         :values_source_config {:card_id     source-card-id
-                                                                                :value_field (mt/$ids $people.source)}
-                                                         :type                 :string/=,
-                                                         :name                 "Text"
-                                                         :id                   "abc"}}))))))))))
+      (testing "deduplicates the values returned from multiple fields"
+        (let [values (-> (mt/user-http-request :crowberto :post 200
+                                               "dataset/parameter/values"
+                                               {:parameter parameter
+                                                :field_ids [(mt/id :people :source)
+                                                            (mt/id :people :source)]})
+                         :values)]
+          (is (= [["Twitter"] ["Organic"] ["Affiliate"] ["Google"] ["Facebook"]] values)))))))
+
+(deftest parameter-values-test-4
+  (testing "fallback to field-values"
+    (let [mock-default-result {:values          [["field-values"]]
+                               :has_more_values false}]
+      (with-redefs [api.dataset/parameter-field-values (constantly mock-default-result)]
+        (testing "if value-field not found in source card"
+          (t2.with-temp/with-temp [Card {source-card-id :id}]
+            (is (= mock-default-result
+                   (mt/user-http-request :crowberto :post 200 "dataset/parameter/values"
+                                         {:parameter  {:values_source_type   "card"
+                                                       :values_source_config {:card_id     source-card-id
+                                                                              :value_field (mt/$ids $people.source)}
+                                                       :type                 :string/=,
+                                                       :name                 "Text"
+                                                       :id                   "abc"}})))))
+
+        (testing "if value-field not found in source card"
+          (t2.with-temp/with-temp [Card {source-card-id :id} {:archived true}]
+            (is (= mock-default-result
+                   (mt/user-http-request :crowberto :post 200 "dataset/parameter/values"
+                                         {:parameter  {:values_source_type   "card"
+                                                       :values_source_config {:card_id     source-card-id
+                                                                              :value_field (mt/$ids $people.source)}
+                                                       :type                 :string/=,
+                                                       :name                 "Text"
+                                                       :id                   "abc"}})))))))))
+
+(deftest ^:parallel adhoc-mlv2-query-test
+  (testing "POST /api/dataset"
+    (testing "Should be able to run an ad-hoc MLv2 query (#39024)"
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            venues            (lib.metadata/table metadata-provider (mt/id :venues))
+            query             (-> (lib/query metadata-provider venues)
+                                  (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
+                                  (lib/limit 2))]
+        (is (=? {:data {:rows [["1" "Red Medicine" "4" 10.0646 -165.374 3]
+                               ["2" "Stout Burgers & Beers" "11" 34.0996 -118.329 2]]}}
+                (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
+
+(deftest ^:parallel mlv2-query-convert-to-native-test
+  (testing "POST /api/dataset/native"
+    (testing "Should be able to convert an MLv2 query to native (#39024)"
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            venues            (lib.metadata/table metadata-provider (mt/id :venues))
+            query             (-> (lib/query metadata-provider venues)
+                                  (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
+                                  (lib/limit 2))]
+        (is (=? {:query
+                 ["SELECT"
+                  "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\","
+                  "  \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\","
+                  "  \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\","
+                  "  \"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\","
+                  "  \"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\","
+                  "  \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\""
+                  "FROM"
+                  "  \"PUBLIC\".\"VENUES\""
+                  "ORDER BY"
+                  "  \"PUBLIC\".\"VENUES\".\"ID\" ASC"
+                  "LIMIT"
+                  "  2"],
+                 :params nil}
+                (-> (mt/user-http-request :crowberto :post 200 "dataset/native" query)
+                    (update :query (fn [s]
+                                     (some->> s
+                                              (driver/prettify-native-form :h2)
+                                              str/split-lines))))))))))

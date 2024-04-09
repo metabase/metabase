@@ -190,7 +190,7 @@ const EditSandboxingModal = ({
           </div>
         )}
 
-        <div className="flex align-center justify-end">
+        <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd)}>
           <Button onClick={onCancel}>{t`Cancel`}</Button>
           <ActionButton
             error={error}
@@ -203,7 +203,7 @@ const EditSandboxingModal = ({
           </ActionButton>
         </div>
         {error && (
-          <div className="flex align-center my2 text-error">
+          <div className={cx(CS.flex, CS.alignCenter, CS.my2, CS.textError)}>
             {typeof error === "string"
               ? error
               : // @ts-expect-error provide correct type for error
@@ -224,8 +224,8 @@ interface SummaryRowProps {
 }
 
 const SummaryRow = ({ icon, content }: SummaryRowProps) => (
-  <div className="flex align-center">
-    <Icon className="p1" name={icon} />
+  <div className={cx(CS.flex, CS.alignCenter)}>
+    <Icon className={CS.p1} name={icon} />
     <span>{content}</span>
   </div>
 );

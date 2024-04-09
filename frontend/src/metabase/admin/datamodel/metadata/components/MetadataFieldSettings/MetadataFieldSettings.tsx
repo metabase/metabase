@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -144,7 +145,7 @@ const FieldSidebar = ({
 
   return (
     <div>
-      <div className="flex align-center mb2">
+      <div className={cx(CS.flex, CS.alignCenter, CS.mb2)}>
         <MetadataBackButton
           selectedDatabaseId={database.id}
           selectedSchemaId={schema.id}

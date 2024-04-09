@@ -1,47 +1,46 @@
 import type { IconName } from "metabase/ui";
-import type {
-  SearchResult,
-  SearchListQuery,
-  SearchModelType,
-  CollectionId,
-} from "metabase-types/api";
 
-import type { CollectionPickerOptions } from "./components/CollectionPicker";
 import type { EntityPickerModalOptions } from "./components/EntityPickerModal";
 
-export type TypeWithModel = {
-  id: any;
+export type TypeWithModel<Id, Model extends string> = {
+  id: Id;
+  model: Model;
   name: string;
-  model: SearchModelType;
 };
 
-export type TisFolder<TItem extends TypeWithModel> = (item: TItem) => boolean;
+export type IsFolder<
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+> = (item: Item) => boolean;
 
-export type PickerState<T> = PickerStateItem<T>[];
+export type PickerState<Item, Query> = PickerStateItem<Item, Query>[];
 
-export type PickerStateItem<T> = EntityPickerStateItem<T>;
-
-type EntityPickerStateItem<T> = {
-  query?: SearchListQuery;
-  selectedItem: T | any | null;
+export type PickerStateItem<Item, Query> = {
+  query?: Query;
+  selectedItem: Item | null;
 };
 
-export type EntityPickerOptions = EntityPickerModalOptions &
-  CollectionPickerOptions;
+export type EntityPickerOptions = EntityPickerModalOptions;
 
-export type CollectionPickerItem = Pick<
-  SearchResult,
-  "name" | "description" | "can_write" | "model"
-> & {
-  id: CollectionId;
-  location?: string | null;
-  effective_location?: string | null;
-  is_personal?: boolean;
-};
-
-export type EntityTab = {
-  element: JSX.Element;
+export type EntityTab<Model extends string> = {
   displayName: string;
-  model: string;
+  element: JSX.Element;
   icon: IconName;
+  model: Model;
+};
+
+export type ListProps<
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+  Query,
+  Options extends EntityPickerOptions,
+> = {
+  query?: Query;
+  onClick: (val: Item) => void;
+  selectedItem: Item | null;
+  isFolder: IsFolder<Id, Model, Item>;
+  isCurrentLevel: boolean;
+  options: Options;
 };
