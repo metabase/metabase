@@ -1,176 +1,189 @@
 import Color from "color";
-import d3 from "d3";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
 import _ from "underscore";
 
-import {
-  TREND_LINE_DATA_KEY,
-  X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { getTrendDataPointsFromInsight } from "metabase/visualizations/lib/trends";
+import { checkNumber, isNotNull } from "metabase/lib/types";
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { getTrendLineFunction } from "metabase/visualizations/lib/trends";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { SeriesSettings } from "metabase-types/api";
-import type { Insight } from "metabase-types/api/insight";
+import type { RawSeries } from "metabase-types/api";
 
-import { replaceValues } from "./dataset";
+import { msToDays, tryGetDate } from "../utils/timeseries";
+
+import { getScaledMinAndMax } from "./axis";
+import {
+  getKeyBasedDatasetTransform,
+  getNormalizedDatasetTransform,
+  transformDataset,
+} from "./dataset";
 import type {
   ChartDataset,
+  Datum,
   NumericAxisScaleTransforms,
   SeriesModel,
-  TrendDataset,
   TrendLineSeriesModel,
+  TrendLinesModel,
+  YAxisModel,
 } from "./types";
 
-/**
- * Computes the dataset for a single series, based on its `insight` object.
- *
- * @param {Insight} insight - Insight object for a series
- * @param {ChartDataset} dataset - Dataset for the series
- * @returns {TrendDataset} Resultant dataset for the series with the given `insight` object
- */
-function getSingleSeriesTrendDataset(
-  insight: Insight,
-  dataset: ChartDataset,
-): TrendDataset {
-  const xValues = dataset.map(
-    // We know the value is a string because it has to be a timeseries aggregation
-    row => moment(row[X_AXIS_DATA_KEY] as string),
-  );
-  const trendDataPoints = getTrendDataPointsFromInsight(
-    insight,
-    d3.extent(xValues),
-    xValues.length,
-  );
+const getTrendKeyForSeries = (seriesModel: SeriesModel) => {
+  return `${seriesModel.dataKey}_trend`;
+};
 
-  return trendDataPoints.map(([_x, y], rowIndex) => ({
-    [X_AXIS_DATA_KEY]: dataset[rowIndex][X_AXIS_DATA_KEY],
-    [TREND_LINE_DATA_KEY]: y,
-  }));
-}
-
-/**
- * Normalizes the trend line datasets for each series, if the visualization is a normalized
- * stacked bar chart. Otherwise, it will just return the input datasets without any transformation.
- *
- * @param {TrendDataset[]} trendDatasets - Datasets for the trend lines for each series
- * @param {SeriesModel[]} seriesModels - Locally computed series models
- * @param {ComputedVisualizationSettings} settings - Locally computed visualization settings for the chart
- * @returns {TrendDataset[]} Resultant trend line datasets
- */
-function normalizeTrendDatasets(
-  trendDatasets: TrendDataset[],
+const getSeriesModelsWithTrends = (
+  rawSeries: RawSeries,
   seriesModels: SeriesModel[],
-  settings: ComputedVisualizationSettings,
-): TrendDataset[] {
-  if (settings["stackable.stack_type"] !== "normalized") {
-    return trendDatasets;
-  }
+): [SeriesModel, any][] => {
+  return seriesModels
+    .map(seriesModel => {
+      // Breakout series do not support trend lines because the data grouping happens on the client
+      if ("breakoutColumn" in seriesModel) {
+        return null;
+      }
 
-  // The chart should not be stacked if the series aren't either all bars, or all areas
-  const seriesSettings: SeriesSettings[] = seriesModels.map(
-    ({ legacySeriesSettingsObjectKey }) =>
-      settings.series(legacySeriesSettingsObjectKey),
-  );
-  const allBar = seriesSettings.every(({ display }) => display === "bar");
-  const allArea = seriesSettings.every(({ display }) => display === "area");
-  if (!(allBar || allArea)) {
-    return trendDatasets;
-  }
+      const seriesDataset = rawSeries.find(
+        series =>
+          series.card.id === seriesModel.cardId ||
+          (series.card.id == null && seriesModel.cardId == null),
+      )?.data;
 
-  // For each row in the chart dataset (e.g. question results), compute the sum
-  // of the trend line value at that row for all series.
-  const rowCount = trendDatasets[0].length;
-  const trendLineTotals = _.range(rowCount).map(rowIndex =>
-    trendDatasets.reduce(
-      (total, trendDataset) =>
-        total + trendDataset[rowIndex][TREND_LINE_DATA_KEY],
-      0,
-    ),
-  );
+      const insight = seriesDataset?.insights?.find(
+        insight => insight.col === seriesModel.column.name,
+      );
 
-  return trendDatasets.map(trendDataset =>
-    trendDataset.map((row, rowIndex) => ({
-      ...row,
-      [TREND_LINE_DATA_KEY]:
-        row[TREND_LINE_DATA_KEY] / trendLineTotals[rowIndex],
-    })),
-  );
-}
+      if (!insight) {
+        return null;
+      }
 
-export function getTrendLineModelAndDatasets(
-  seriesModels: SeriesModel[],
-  dataset: ChartDataset,
+      const trendFunction = getTrendLineFunction(insight);
+
+      const resultTuple: [SeriesModel, any] = [seriesModel, trendFunction];
+      return resultTuple;
+    })
+    .filter(isNotNull);
+};
+
+// When y-axis auto range is disabled we limit trend line values with the y-axis ranges so that trend lines cannot expand them
+const getLimitTrendLineTransform = (
+  seriesModels: TrendLineSeriesModel[],
+  yAxisModels: [YAxisModel | null, YAxisModel | null],
   yAxisScaleTransforms: NumericAxisScaleTransforms,
-  rawInsights: Insight[],
+  settings: ComputedVisualizationSettings,
+) => {
+  const { customMin, customMax } = getScaledMinAndMax(
+    settings,
+    yAxisScaleTransforms,
+  );
+
+  return (datum: Datum) => {
+    const transformedDatum = { ...datum };
+
+    seriesModels.forEach(seriesModel => {
+      const axis = yAxisModels.find(yAxisModel =>
+        yAxisModel?.seriesKeys.includes(seriesModel.sourceDataKey),
+      );
+
+      if (!axis) {
+        throw new Error(
+          `Missing y-axis for series with key ${seriesModel.sourceDataKey}`,
+        );
+      }
+
+      const trendValue = transformedDatum[seriesModel.dataKey];
+      const minBoundary =
+        customMin != null && customMin < axis.extent[0]
+          ? customMin
+          : axis.extent[0];
+      const maxBoundary =
+        customMax != null && customMax > axis.extent[1]
+          ? customMax
+          : axis.extent[1];
+
+      if (checkNumber(trendValue) < minBoundary) {
+        transformedDatum[seriesModel.dataKey] = minBoundary;
+      } else if (checkNumber(trendValue) > maxBoundary) {
+        transformedDatum[seriesModel.dataKey] = maxBoundary;
+      }
+    });
+
+    return transformedDatum;
+  };
+};
+
+export const getTrendLines = (
+  rawSeries: RawSeries,
+  yAxisModels: [YAxisModel | null, YAxisModel | null],
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
+  seriesModels: SeriesModel[],
+  chartDataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-): {
-  trendLinesSeries: TrendLineSeriesModel[];
-  trendLinesDataset: TrendDataset;
-} {
-  // The trend line can only be shown when the question has only a single
-  // aggregation on a time field. When this is not the case, the backend will
-  // return null for the insights object, so our array will have length 0.
-  const canShowTrendLine = rawInsights.length !== 0;
-  if (!settings["graph.show_trendline"] || !canShowTrendLine) {
-    return {
-      trendLinesSeries: [],
-      trendLinesDataset: [],
-    };
+): TrendLinesModel | undefined => {
+  if (!settings["graph.show_trendline"]) {
+    return;
   }
 
-  // Filter out insight objects that are not used for any series (e.g. columns
-  // not visualized)
-  const legacySeriesKeys = new Set(
-    seriesModels.map(
-      seriesModel => seriesModel.legacySeriesSettingsObjectKey.card._seriesKey,
-    ),
-  );
-  const insights = rawInsights.filter(insight =>
-    legacySeriesKeys.has(insight.col),
-  );
-  if (insights.length !== seriesModels.length) {
-    throw Error("Number of insight objects does not match number of series");
-  }
-
-  // compute datasets for each trend line series
-  const rawDatasets = insights.map(insight =>
-    getSingleSeriesTrendDataset(insight, dataset),
-  );
-  const normalizedDatasets = normalizeTrendDatasets(
-    rawDatasets,
+  const seriesModelsWithTrends = getSeriesModelsWithTrends(
+    rawSeries,
     seriesModels,
-    settings,
-  );
-  const transformedDatasets = normalizedDatasets.map(dataset =>
-    replaceValues(dataset, (dataKey, value) =>
-      dataKey === TREND_LINE_DATA_KEY
-        ? yAxisScaleTransforms.toEChartsAxisValue(value)
-        : value,
-    ),
   );
 
-  const trendLinesDataset = transformedDatasets.map(dataset => ({
-    dimensions: [X_AXIS_DATA_KEY, TREND_LINE_DATA_KEY],
-    source: dataset,
-  }));
+  if (seriesModelsWithTrends.length === 0) {
+    return;
+  }
 
-  const trendLinesSeries: TrendLineSeriesModel[] = seriesModels.map(
-    seriesModel => ({
+  const dataset = chartDataset.map(datum => {
+    const trendDatum: Datum = {
+      [X_AXIS_DATA_KEY]: datum[X_AXIS_DATA_KEY],
+    };
+
+    seriesModelsWithTrends.forEach(([seriesModel, trendFn]) => {
+      const trendLineDataKey = getTrendKeyForSeries(seriesModel);
+
+      const date = tryGetDate(datum[X_AXIS_DATA_KEY]);
+      if (date != null) {
+        trendDatum[trendLineDataKey] = trendFn(msToDays(date.valueOf()));
+      }
+    });
+
+    return trendDatum;
+  });
+
+  const trendSeriesModels: TrendLineSeriesModel[] = seriesModelsWithTrends.map(
+    ([seriesModel]) => ({
+      dataKey: getTrendKeyForSeries(seriesModel),
+      sourceDataKey: seriesModel.dataKey,
       name: `${seriesModel.name}; trend line`, // not used in UI
       color: Color(renderingContext.getColor(seriesModel.color))
         .lighten(0.25)
         .hex(),
-      dataKey: TREND_LINE_DATA_KEY,
     }),
   );
+  const dataKeys = trendSeriesModels.map(seriesModel => seriesModel.dataKey);
+
+  const transformedDataset = transformDataset(dataset, [
+    {
+      condition: settings["stackable.stack_type"] === "normalized",
+      fn: getNormalizedDatasetTransform(dataKeys),
+    },
+    getKeyBasedDatasetTransform(dataKeys, value =>
+      yAxisScaleTransforms.toEChartsAxisValue(value),
+    ),
+    {
+      condition: !settings["graph.y_axis.auto_range"],
+      fn: getLimitTrendLineTransform(
+        trendSeriesModels,
+        yAxisModels,
+        yAxisScaleTransforms,
+        settings,
+      ),
+    },
+  ]);
 
   return {
-    trendLinesSeries,
-    trendLinesDataset,
+    dataset: transformedDataset,
+    seriesModels: trendSeriesModels,
   };
-}
+};

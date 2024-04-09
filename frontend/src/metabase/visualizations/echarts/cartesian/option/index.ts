@@ -93,8 +93,17 @@ export const getCartesianChartOption = (
 
   const echartsDataset = [
     { source: chartModel.transformedDataset, dimensions },
-    ...chartModel.trendLinesDataset,
   ];
+
+  if (chartModel.trendLinesModel) {
+    echartsDataset.push({
+      source: chartModel.trendLinesModel?.dataset,
+      dimensions: [
+        X_AXIS_DATA_KEY,
+        ...chartModel.trendLinesModel?.seriesModels.map(s => s.dataKey),
+      ],
+    });
+  }
 
   return {
     ...getSharedEChartsOptions(isPlaceholder),

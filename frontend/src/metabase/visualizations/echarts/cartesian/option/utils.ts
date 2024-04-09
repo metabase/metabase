@@ -1,7 +1,7 @@
-import type { CartesianChartModel, SeriesModel } from "../model/types";
+import type { CartesianChartModel, DataKey } from "../model/types";
 
 export function getSeriesYAxisIndex(
-  seriesModel: SeriesModel,
+  dataKey: DataKey,
   chartModel: CartesianChartModel,
 ): number {
   const { leftAxisModel, rightAxisModel } = chartModel;
@@ -11,5 +11,5 @@ export function getSeriesYAxisIndex(
     return 0;
   }
 
-  return leftAxisModel.seriesKeys.includes(seriesModel.dataKey) ? 0 : 1;
+  return leftAxisModel.seriesKeys.includes(dataKey) ? 0 : 1;
 }
