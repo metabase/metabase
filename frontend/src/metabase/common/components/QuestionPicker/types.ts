@@ -1,7 +1,7 @@
 import type {
   CardId,
   CollectionId,
-  SearchListQuery,
+  SearchRequest,
   SearchModelType,
   SearchResult,
 } from "metabase-types/api";
@@ -34,6 +34,6 @@ export type QuestionItemListProps = ListProps<
   CollectionId | CardId,
   SearchModelType,
   QuestionPickerItem,
-  SearchListQuery,
+  SearchRequest,
   QuestionPickerOptions
 >;
