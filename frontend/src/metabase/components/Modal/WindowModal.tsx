@@ -32,7 +32,6 @@ export class WindowModal extends Component<WindowModalProps> {
 
   static defaultProps = {
     className: ModalS.Modal,
-    backdropClassName: "Modal-backdrop",
     enableTransition: true,
     trapFocus: true,
   };
@@ -95,7 +94,6 @@ export class WindowModal extends Component<WindowModalProps> {
   render() {
     const {
       enableMouseEvents,
-      backdropClassName,
       isOpen,
       style,
       enableTransition,
@@ -135,7 +133,7 @@ export class WindowModal extends Component<WindowModalProps> {
               }}
             >
               <div
-                className={cx(backdropClassName, backdropClassnames)}
+                className={cx(ModalS.ModalBackdrop, backdropClassnames)}
                 style={style}
                 data-testid={dataTestId}
               >

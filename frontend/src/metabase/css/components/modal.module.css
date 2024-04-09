@@ -14,7 +14,7 @@
  * https://github.com/philipwalton/flexbugs/issues/157
  * Set margin to zero when using Flexbox in `WindowModal` component
  */
-:global(.Modal-backdrop >) .Modal {
+.ModalBackdrop > .Modal {
   margin: 0;
 }
 
@@ -48,7 +48,7 @@
   z-index: 3;
 }
 
-:global(.Modal-backdrop) {
+.ModalBackdrop {
   background-color: color-mod(var(--color-bg-black) alpha(-40%));
 }
 
@@ -56,59 +56,59 @@
 
 /* backdrop */
 
-:global(.Modal-backdrop.Modal-appear),
-:global(.Modal-backdrop.Modal-enter) {
+.ModalBackdrop:global(.Modal-appear),
+.ModalBackdrop:global(.Modal-enter) {
   background-color: color-mod(var(--color-bg-black) alpha(-99%));
 }
 
-:global(.Modal-backdrop.Modal-appear-active),
-:global(.Modal-backdrop.Modal-enter-active) {
+.ModalBackdrop:global(.Modal-appear-active),
+.ModalBackdrop:global(.Modal-enter-active) {
   transition: background-color 200ms ease-in-out;
   background-color: color-mod(var(--color-bg-black) alpha(-40%));
 }
 
-:global(.Modal-backdrop.Modal-exit) {
+.ModalBackdrop:global(.Modal-exit) {
   background-color: color-mod(var(--color-bg-black) alpha(-40%));
 }
 
-:global(.Modal-backdrop.Modal-exit-active) {
+.ModalBackdrop:global(.Modal-exit-active) {
   transition: background-color 200ms ease-in-out 100ms;
   background-color: color-mod(var(--color-bg-black) alpha(-99%));
 }
 
 /* modal */
 
-:global(.Modal-backdrop.Modal-appear) .Modal,
-:global(.Modal-backdrop.Modal-enter) .Modal {
+.ModalBackdrop:global(.Modal-appear) .Modal,
+.ModalBackdrop:global(.Modal-enter) .Modal {
   opacity: 0.01;
   transform: translate(0, 40px);
 }
 
-:global(.Modal-backdrop.Modal-appear-active) .Modal,
-:global(.Modal-backdrop.Modal-enter-active) .Modal {
+.ModalBackdrop:global(.Modal-appear-active) .Modal,
+.ModalBackdrop:global(.Modal-enter-active) .Modal {
   transition: opacity 200ms linear 100ms, transform 200ms ease-in-out 100ms;
   opacity: 1;
   transform: translate(0, 0);
 }
 
-:global(.Modal-backdrop.Modal-exit) .Modal {
+.ModalBackdrop:global(.Modal-exit) .Modal {
   opacity: 1;
   transform: translate(0, 0);
 }
 
-:global(.Modal-backdrop.Modal-exit-active) .Modal {
+.ModalBackdrop:global(.Modal-exit-active) .Modal {
   transition: opacity 200ms linear, transform 200ms ease-in-out;
   opacity: 0.01;
   transform: translate(0, -40px);
 }
 
 @media (prefers-reduced-motion) {
-  :global(.Modal-backdrop.Modal-appear),
-  :global(.Modal-backdrop.Modal-enter),
-  :global(.Modal-backdrop.Modal-exit),
-  :global(.Modal-backdrop.Modal-appear) .Modal,
-  :global(.Modal-backdrop.Modal-enter) .Modal,
-  :global(.Modal-backdrop.Modal-exit) .Modal {
+  .ModalBackdrop:global(.Modal-appear),
+  .ModalBackdrop:global(.Modal-enter),
+  .ModalBackdrop:global(.Modal-exit),
+  .ModalBackdrop:global(.Modal-appear) .Modal,
+  .ModalBackdrop:global(.Modal-enter) .Modal,
+  .ModalBackdrop:global(.Modal-exit) .Modal {
     transition: none;
   }
 }
