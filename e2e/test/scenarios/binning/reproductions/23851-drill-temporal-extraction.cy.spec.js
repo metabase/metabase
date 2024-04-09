@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { getNotebookStep, popover, restore } from "e2e/support/helpers";
+import {
+  chartPathWithColor,
+  getNotebookStep,
+  popover,
+  restore,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -35,8 +40,8 @@ describe("issue 23851", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".bar").should("have.length", 7);
-    cy.get(".bar").eq(5).click();
+    chartPathWithColor("#509EE3").should("have.length", 7);
+    chartPathWithColor("#509EE3").eq(5).click();
     popover().findByText("See these Orders").click();
 
     cy.wait("@dataset");
