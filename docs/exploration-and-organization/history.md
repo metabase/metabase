@@ -52,7 +52,7 @@ Archiving a collection archives all of the collection's contents as well. You ca
 2. Click the `...` beside the "Collections" header in the sidebar.
 3. Click **View archive**.
 
-To view archived [events and timelines](./events-and-timelines.md), go to relevant unarchived collection, click on the collection's **Calendar** icon, then the three-dot menu (**...**) and select the option to view the archived events or timelines.
+To view archived [events and timelines](./events-and-timelines.md), go to the relevant unarchived collection, click on the collection's **Calendar** icon, then the three-dot menu (**...**) and select the option to view the archived events or timelines.
 
 ## Unarchiving items
 
