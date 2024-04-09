@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [macaw.core :as mac]
    [metabase.config :as config]
+   [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -86,13 +87,14 @@
 
   Direct references are columns that are named in the query; indirect ones are from wildcards. If a field could be both direct and indirect, it will *only* show up in the `:direct` set."
   [card]
-  (let [{native-query :native
-         db-id        :database} (:dataset_query card)
-        parsed-query             (mac/query->components (mac/parsed-query (:query native-query)))
-        direct-ids               (direct-field-ids-for-query parsed-query db-id)
-        indirect-ids             (set/difference
-                                  (indirect-field-ids-for-query parsed-query db-id)
-                                  direct-ids)]
+  (let [query        (:dataset_query card)
+        db-id        (:database query)
+        sql-string   (:query (nqa.sub/replace-tags query))
+        parsed-query (mac/query->components (mac/parsed-query sql-string))
+        direct-ids   (direct-field-ids-for-query parsed-query db-id)
+        indirect-ids (set/difference
+                      (indirect-field-ids-for-query parsed-query db-id)
+                      direct-ids)]
     {:direct   direct-ids
      :indirect indirect-ids}))
 
