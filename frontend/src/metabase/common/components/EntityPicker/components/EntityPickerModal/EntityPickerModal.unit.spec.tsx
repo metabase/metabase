@@ -26,7 +26,7 @@ interface SetupOpts {
   onItemSelect?: () => void;
   onClose?: () => void;
   onConfirm?: () => void;
-  tabs?: [EntityTab<SampleModelType>, ...EntityTab<SampleModelType>[]];
+  tabs?: EntityTab<SampleModelType>[];
   options?: EntityPickerModalOptions;
   selectedItem?: null | TypeWithModel<number, SampleModelType>;
   actionButtons?: JSX.Element[];
@@ -96,16 +96,15 @@ describe("EntityPickerModal", () => {
   });
 
   it("should show a tab list when more than 1 tab is supplied", async () => {
-    const tabs: [EntityTab<SampleModelType>, ...EntityTab<SampleModelType>[]] =
-      [
-        TEST_TAB,
-        {
-          icon: "folder",
-          displayName: "All the bar",
-          model: "table",
-          element: <TestPicker name="bar" />,
-        },
-      ];
+    const tabs: EntityTab<SampleModelType>[] = [
+      TEST_TAB,
+      {
+        icon: "folder",
+        displayName: "All the bar",
+        model: "table",
+        element: <TestPicker name="bar" />,
+      },
+    ];
     setup({
       tabs,
     });

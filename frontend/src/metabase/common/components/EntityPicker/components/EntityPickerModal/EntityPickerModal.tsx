@@ -26,7 +26,6 @@ import { TabsView } from "./TabsView";
 export type EntityPickerModalOptions = {
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
-  allowCreateNew?: boolean;
   confirmButtonText?: string;
   cancelButtonText?: string;
 };
@@ -34,7 +33,6 @@ export type EntityPickerModalOptions = {
 export const defaultOptions: EntityPickerModalOptions = {
   showSearch: true,
   hasConfirmButtons: true,
-  allowCreateNew: true,
 };
 
 export interface EntityPickerModalProps<Model extends string, Item> {
@@ -44,7 +42,7 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   onItemSelect: (item: Item) => void;
   canSelectItem: boolean;
   onClose: () => void;
-  tabs: [EntityTab<Model>, ...EntityTab<Model>[]]; // Enforces that the array is not empty
+  tabs: EntityTab<Model>[];
   options?: Partial<EntityPickerOptions>;
   searchResultFilter?: (results: Item[]) => Item[];
   actionButtons?: JSX.Element[];

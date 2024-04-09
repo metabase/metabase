@@ -20,7 +20,7 @@ interface ItemListProps<
   items?: Item[] | null;
   isLoading?: boolean;
   error?: unknown;
-  onClick: (val: Item) => void;
+  onClick: (item: Item) => void;
   selectedItem: Item | null;
   isFolder: (item: Item) => boolean;
   isCurrentLevel: boolean;

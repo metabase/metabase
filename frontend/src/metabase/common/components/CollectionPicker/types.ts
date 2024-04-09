@@ -26,6 +26,7 @@ export type CollectionPickerItem = TypeWithModel<
   };
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {
+  allowCreateNew?: boolean;
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
   namespace?: "snippets";

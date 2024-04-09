@@ -1,11 +1,18 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import {
+  DataPickerModal,
+  tablePickerValueFromTable,
+} from "metabase/common/components/DataPicker";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import Tables from "metabase/entities/tables";
+import { useDispatch } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatabaseId, TableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
 import type { NotebookStepUiComponentProps } from "../../types";
@@ -19,16 +26,23 @@ export const DataStep = ({
   color,
   updateQuery,
 }: NotebookStepUiComponentProps) => {
+  const dispatch = useDispatch();
   const { stageIndex } = step;
-
   const question = step.question;
+  const questionRef = useLatest(question);
+  const metadata = question.metadata();
   const collectionId = question.collectionId();
-  const databaseId = Lib.databaseID(query);
-  const tableId = Lib.sourceTableOrCardId(query);
-  const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : null;
 
-  const pickerLabel = table
-    ? Lib.displayInfo(query, stageIndex, table).displayName
+  const tableId = Lib.sourceTableOrCardId(query);
+  const table = metadata.table(tableId);
+  const tableMetadata = tableId
+    ? Lib.tableOrCardMetadata(query, tableId)
+    : null;
+
+  const [isDataPickerOpen, setIsDataPickerOpen] = useState(!tableMetadata);
+
+  const pickerLabel = tableMetadata
+    ? Lib.displayInfo(query, stageIndex, tableMetadata).displayName
     : t`Pick your starting data`;
 
   const isRaw = useMemo(() => {
@@ -38,11 +52,16 @@ export const DataStep = ({
     );
   }, [query, stageIndex]);
 
-  const canSelectTableColumns = table && isRaw && !readOnly;
+  const canSelectTableColumns = tableMetadata && isRaw && !readOnly;
 
-  const handleTableSelect = (tableId: TableId, databaseId: DatabaseId) => {
-    const metadata = question.metadata();
-    const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+  const handleTableSelect = async (tableId: TableId) => {
+    // we need to populate question metadata with selected table
+    await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
+
+    // using questionRef because question is most likely stale by now
+    const metadata = questionRef.current.metadata();
+    const table = checkNotNull(metadata.table(tableId));
+    const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
     const nextTable = Lib.tableOrCardMetadata(metadataProvider, tableId);
     updateQuery(Lib.queryFromTableOrCardMetadata(metadataProvider, nextTable));
   };
@@ -51,7 +70,7 @@ export const DataStep = ({
     <NotebookCell color={color}>
       <NotebookCellItem
         color={color}
-        inactive={!table}
+        inactive={!tableMetadata}
         right={
           canSelectTableColumns && (
             <DataFieldPopover
@@ -65,16 +84,20 @@ export const DataStep = ({
         rightContainerStyle={{ width: 37, height: 37, padding: 0 }}
         data-testid="data-step-cell"
       >
-        <DataSourceSelector
-          hasTableSearch
-          collectionId={collectionId}
-          databaseQuery={{ saved: true }}
-          selectedDatabaseId={databaseId}
-          selectedTableId={tableId}
-          setSourceTableFn={handleTableSelect}
-          isInitiallyOpen={!table}
-          triggerElement={<DataStepCell>{pickerLabel}</DataStepCell>}
-        />
+        <>
+          <DataStepCell onClick={() => setIsDataPickerOpen(true)}>
+            {pickerLabel}
+          </DataStepCell>
+
+          {isDataPickerOpen && (
+            <DataPickerModal
+              collectionId={collectionId}
+              value={tablePickerValueFromTable(table)}
+              onChange={handleTableSelect}
+              onClose={() => setIsDataPickerOpen(false)}
+            />
+          )}
+        </>
       </NotebookCellItem>
     </NotebookCell>
   );

@@ -27,7 +27,7 @@ class Schema {
   }
 
   displayName() {
-    return this.name ? titleize(humanize(this.name)) : null;
+    return titleize(humanize(this.name));
   }
 
   getTables() {

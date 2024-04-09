@@ -70,17 +70,19 @@ export const CollectionPickerModal = ({
     }
   };
 
-  const modalActions = [
-    <Button
-      key="collection-on-the-go"
-      miw="21rem"
-      onClick={openCreateDialog}
-      leftIcon={<Icon name="add" />}
-      disabled={selectedItem?.can_write === false}
-    >
-      {t`Create a new collection`}
-    </Button>,
-  ];
+  const modalActions = options.allowCreateNew
+    ? [
+        <Button
+          key="collection-on-the-go"
+          miw="21rem"
+          onClick={openCreateDialog}
+          leftIcon={<Icon name="add" />}
+          disabled={selectedItem?.can_write === false}
+        >
+          {t`Create a new collection`}
+        </Button>,
+      ]
+    : [];
 
   const tabs: [EntityTab<SearchModelType>] = [
     {

@@ -492,11 +492,11 @@ class Question {
     return this.setCard(assoc(this.card(), "name", name));
   }
 
-  collectionId(): number | null | undefined {
+  collectionId(): CollectionId | null | undefined {
     return this._card && this._card.collection_id;
   }
 
-  setCollectionId(collectionId: number | null | undefined) {
+  setCollectionId(collectionId: CollectionId | null | undefined) {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
 
