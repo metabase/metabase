@@ -651,6 +651,48 @@
           (is (true? @connections-stay-open?))
           (tx/destroy-db! driver/*driver* empty-dbdef))))))
 
+(deftest update-db-to-sync-on-custom-schedule-test
+  (with-test-driver-available!
+    (mt/with-temp
+      [:model/Database db {}]
+      (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                            {:details   {:let-user-control-scheduling true}
+                             :schedules {:cache_field_values monthly-schedule}}))))
+
+(deftest update-db-to-scan-field-values-on-demand-test
+  (with-test-driver-available!
+    (mt/with-temp
+      [:model/Database db {}]
+      (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                            {:details     {:let-user-control-scheduling true}
+                             :schedules   {:metadata_sync      monthly-schedule
+                                           :cache_field_values monthly-schedule}
+                             :is_full_sync false
+                             :is_on_demand true})
+      (is (= [(sync-and-analyze-trigger-name db)]
+             (query-all-db-sync-triggers-name db))))))
+
+(deftest update-db-to-never-scan-values-on-demand-test
+  (with-test-driver-available!
+    (mt/with-temp
+      [:model/Database db {}]
+      (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                            {:details     {:let-user-control-scheduling true}
+                             :schedules   {:metadata_sync      monthly-schedule
+                                           :cache_field_values monthly-schedule}
+                             :is_full_sync false
+                             :is_on_demand false})
+      (is (= [(sync-and-analyze-trigger-name db)]
+             (query-all-db-sync-triggers-name db)))
+      (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                            {:details     {:let-user-control-scheduling false}
+                             :schedules   {:metadata_sync      monthly-schedule
+                                           :cache_field_values monthly-schedule}
+                             :is_full_sync true
+                             :is_on_demand false})
+      (is (= (all-db-sync-triggers-name db)
+             (query-all-db-sync-triggers-name db))))))
+
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
     (is (= (merge (dissoc (mt/object-defaults Database) :details)

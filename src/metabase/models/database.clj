@@ -229,6 +229,7 @@
 
 (t2/define-before-update :model/Database
   [database]
+  (def database database)
   (let [database                  (mi/pre-update-changes database)
         {new-metadata-schedule    :metadata_sync_schedule,
          new-fieldvalues-schedule :cache_field_values_schedule,
@@ -256,12 +257,17 @@
                    handle-secrets-changes)
         ;; TODO - this logic would make more sense in post-update if such a method existed
         ;; if the sync operation schedules have changed, we need to reschedule this DB
-        (when (or new-metadata-schedule new-fieldvalues-schedule)
+        (when (or (contains? database :metadata_sync_schedule)
+                  (contains? database :cache_field_values_schedule))
           ;; if one of the schedules wasn't passed continue using the old one
-          (let [new-metadata-schedule    (or new-metadata-schedule old-metadata-schedule)
-                new-fieldvalues-schedule (or new-fieldvalues-schedule old-fieldvalues-schedule)]
-            (when (not= [new-metadata-schedule new-fieldvalues-schedule]
-                        [old-metadata-schedule old-fieldvalues-schedule])
+          (let [new-metadata-schedule    (if (contains? database :metadata_sync_schedule)
+                                           new-metadata-schedule
+                                           old-metadata-schedule)
+                new-fieldvalues-schedule (if (contains? database :cache_field_values_schedule)
+                                           new-fieldvalues-schedule
+                                           old-fieldvalues-schedule)]
+            (when-not (= [new-metadata-schedule new-fieldvalues-schedule]
+                         [old-metadata-schedule old-fieldvalues-schedule])
               (log/info
                (format "%s Database '%s' sync/analyze schedules have changed!" existing-engine existing-name)
                "\n"
@@ -271,9 +277,9 @@
               ;; reschedule the database. Make sure we're passing back the old schedule if one of the two wasn't
               ;; supplied
               (schedule-tasks!
-               (assoc database
-                      :metadata_sync_schedule      new-metadata-schedule
-                      :cache_field_values_schedule new-fieldvalues-schedule)))))
+               #p (assoc database
+                         :metadata_sync_schedule      new-metadata-schedule
+                         :cache_field_values_schedule new-fieldvalues-schedule)))))
         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
         (when (and (:database-enable-actions (or new-settings existing-settings))

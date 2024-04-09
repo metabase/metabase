@@ -70,6 +70,5 @@
 (defn scheduling
   "Adds sync schedule defaults to a map of schedule-maps."
   [{:keys [cache_field_values metadata_sync] :as _schedules}]
-  (cond-> {:metadata_sync (or metadata_sync (randomly-once-an-hour))}
-    cache_field_values
-    (assoc :cache_field_values cache_field_values)))
+  {:metadata_sync      (or metadata_sync (randomly-once-an-hour))
+   :cache_field_values cache_field_values})

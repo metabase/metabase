@@ -179,7 +179,7 @@
                task-info :- TaskInfo]
   (triggers/key (format "metabase.task.%s.trigger.%d" (name (:key task-info)) (u/the-id database))))
 
-(mu/defn ^:private cron-schedule :- u.cron/CronScheduleString
+(mu/defn ^:private cron-schedule :- [:maybe u.cron/CronScheduleString]
   "Fetch the appropriate cron schedule string for `database` and `task-info`."
   [database  :- (ms/InstanceOf Database)
    task-info :- TaskInfo]
