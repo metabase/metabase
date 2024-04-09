@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { Component, Fragment } from "react";
+import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -112,15 +112,14 @@ export default class ExpressionEditorSuggestions extends Component {
               className={CS.pb1}
             >
               {suggestions.map((suggestion, i) => (
-                <Fragment key={`$suggestion-${i}`}>
-                  <ExpressionEditorSuggestionsListItem
-                    query={query}
-                    stageIndex={stageIndex}
-                    suggestion={suggestion}
-                    isHighlighted={i === highlightedIndex}
-                    onMouseDownCapture={this.createOnMouseDownHandler(i)}
-                  />
-                </Fragment>
+                <ExpressionEditorSuggestionsListItem
+                  key={`suggestion-${i}`}
+                  query={query}
+                  stageIndex={stageIndex}
+                  suggestion={suggestion}
+                  isHighlighted={i === highlightedIndex}
+                  onMouseDownCapture={this.createOnMouseDownHandler(i)}
+                />
               ))}
             </ExpressionList>
           }
