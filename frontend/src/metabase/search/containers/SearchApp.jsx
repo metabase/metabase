@@ -47,7 +47,9 @@ function SearchApp({ location }) {
   const query = {
     q: searchText,
     ..._.omit(searchFilters, SearchFilterKeys.Type),
-    models: searchFilters[SearchFilterKeys.Type] ?? undefined,
+    models: searchFilters[SearchFilterKeys.Type]
+      ? [searchFilters[SearchFilterKeys.Type]]
+      : undefined,
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
     context: SearchContextTypes.SEARCH_APP,
