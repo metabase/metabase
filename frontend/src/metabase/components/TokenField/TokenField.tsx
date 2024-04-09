@@ -51,7 +51,7 @@ export type TokenFieldProps = {
   optionRenderer?: (option: any) => React.ReactNode;
   valueRenderer?: (value: any) => React.ReactNode;
   layoutRenderer?: (args: LayoutRendererArgs) => React.ReactNode;
-  color?: string;
+  color?: "brand";
   style?: React.CSSProperties;
   className?: string;
   valueStyle?: React.CSSProperties;
@@ -660,10 +660,11 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
                   CS.inlineBlock,
                   CS.full,
                   CS.cursorPointer,
-                  `text-${color}-hover`,
                   CS.bgLightHover,
                   {
-                    [`text-${color} bg-light`]:
+                    [cx(CS.bgLight, {
+                      [color]: CS.textBrand,
+                    })]:
                       !this.state.listIsHovered &&
                       this._valueIsEqual(
                         selectedOptionValue,

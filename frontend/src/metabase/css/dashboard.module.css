@@ -34,20 +34,6 @@
   fill: currentColor;
 }
 
-.Dashboard.DashboardNight :global(.bg-light) {
-  background-color: var(--color-bg-black);
-}
-
-/* TODO: MAKE SURE THIS WORKS WITH THE NEW .bg-medium class */
-.Dashboard.DashboardNight :global(.bg-medium) {
-  background-color: #596269;
-}
-
-/* TODO: MAKE SURE THIS WORKS WITH THE NEW .textDark class */
-.Dashboard.DashboardNight :global(.text-dark) {
-  color: var(--color-bg-light);
-}
-
 .Dashboard.DashboardNight :global(.border-top),
 .Dashboard.DashboardNight :global(.border-left),
 .Dashboard.DashboardNight :global(.border-bottom),
