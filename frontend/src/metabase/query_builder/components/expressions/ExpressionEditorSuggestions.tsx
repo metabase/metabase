@@ -1,7 +1,6 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { t } from "ttag";
-import { Component, type MouseEventHandler } from "react";
+import { useEffect, useRef, useCallback, type RefObject } from "react";
 import _ from "underscore";
 
 import { HoverParent } from "metabase/components/MetadataInfo/InfoIcon";
@@ -25,96 +24,55 @@ import {
   PopoverHoverTarget,
 } from "./ExpressionEditorSuggestions.styled";
 
-function colorForIcon(icon: string | undefined | null) {
-  switch (icon) {
-    case "segment":
-      return { normal: color("accent2"), highlighted: color("brand-white") };
-    case "insight":
-      return { normal: color("accent1"), highlighted: color("brand-white") };
-    case "function":
-      return { normal: color("brand"), highlighted: color("brand-white") };
-    default:
-      return {
-        normal: color("text-medium"),
-        highlighted: color("brand-white"),
-      };
-  }
-}
-
 // eslint-disable-next-line import/no-default-export
-export default class ExpressionEditorSuggestions extends Component {
-  static propTypes = {
-    query: PropTypes.object.isRequired,
-    stageIndex: PropTypes.number.isRequired,
-    suggestions: PropTypes.array,
-    onSuggestionMouseDown: PropTypes.func, // signature is f(index)
-    highlightedIndex: PropTypes.number.isRequired,
-    target: PropTypes.instanceOf(Element),
-  };
-
-  componentDidUpdate(prevProps) {
-    if (
-      (prevProps && prevProps.highlightedIndex) !== this.props.highlightedIndex
-    ) {
-      if (this._selectedRow && isObscured(this._selectedRow)) {
-        this._selectedRow.scrollIntoView({ block: "nearest" });
-      }
-    }
+export default function ExpressionEditorSuggestions({
+  query,
+  stageIndex,
+  suggestions,
+  onSuggestionMouseDown,
+  highlightedIndex,
+  target,
+}: {
+  query: Lib.Query;
+  stageIndex: number;
+  suggestions: Suggestion[];
+  onSuggestionMouseDown: (index: number) => void;
+  highlightedIndex: number;
+  target: RefObject<HTMLElement>;
+}) {
+  if (!suggestions.length || !target) {
+    return null;
   }
 
-  // when a given suggestion is clicked
-  onSuggestionMouseDown(event, index) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (event.target.tagName === "A" || event.target.tagName === "BUTTON") {
-      return;
-    }
-
-    this.props.onSuggestionMouseDown && this.props.onSuggestionMouseDown(index);
-  }
-
-  createOnMouseDownHandler = _.memoize(i => {
-    return event => this.onSuggestionMouseDown(event, i);
-  });
-
-  render() {
-    const { query, stageIndex, suggestions, highlightedIndex, target } =
-      this.props;
-
-    if (!suggestions.length || !target) {
-      return null;
-    }
-
-    return (
-      <DelayGroup>
-        <ExpressionPopover
-          placement="bottom-start"
-          sizeToFit
-          visible
-          reference={target}
-          zIndex={300}
-          content={
-            <ExpressionList
-              data-testid="expression-suggestions-list"
-              className={CS.pb1}
-            >
-              {suggestions.map((suggestion: Suggestion, i: number) => (
-                <ExpressionEditorSuggestionsListItem
-                  key={`suggestion-${i}`}
-                  query={query}
-                  stageIndex={stageIndex}
-                  suggestion={suggestion}
-                  isHighlighted={i === highlightedIndex}
-                  onMouseDown={this.createOnMouseDownHandler(i)}
-                />
-              ))}
-            </ExpressionList>
-          }
-        />
-      </DelayGroup>
-    );
-  }
+  return (
+    <DelayGroup>
+      <ExpressionPopover
+        placement="bottom-start"
+        sizeToFit
+        visible
+        reference={target}
+        zIndex={300}
+        content={
+          <ExpressionList
+            data-testid="expression-suggestions-list"
+            className={CS.pb1}
+          >
+            {suggestions.map((suggestion: Suggestion, idx: number) => (
+              <ExpressionEditorSuggestionsListItem
+                key={`suggesion-${idx}`}
+                query={query}
+                stageIndex={stageIndex}
+                suggestion={suggestion}
+                isHighlighted={idx === highlightedIndex}
+                index={idx}
+                onMouseDown={onSuggestionMouseDown}
+              />
+            ))}
+          </ExpressionList>
+        }
+      />
+    </DelayGroup>
+  );
 }
 
 function ExpressionEditorSuggestionsListItem({
@@ -123,20 +81,44 @@ function ExpressionEditorSuggestionsListItem({
   suggestion,
   isHighlighted,
   onMouseDown,
+  index,
 }: {
   query: Lib.Query;
   stageIndex: number;
-  suggestion: Suggestion;
+  index: number;
   isHighlighted: boolean;
-  onMouseDown: MouseEventHandler;
+  onMouseDown: (index: number) => void;
+  suggestion: Suggestion;
 }) {
   const { icon, helpText } = suggestion;
   const { normal, highlighted } = colorForIcon(icon);
 
+  const ref = useRef<HTMLLIElement>(null);
+  useEffect(
+    function () {
+      if (!isHighlighted || !ref.current || !isObscured(ref.current)) {
+        return;
+      }
+
+      ref.current.scrollIntoView({ block: "nearest" });
+    },
+    [isHighlighted],
+  );
+
+  const handleMouseDown = useCallback(
+    function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      onMouseDown?.(index);
+    },
+    [index, onMouseDown],
+  );
+
   return (
     <HoverParent>
       <ExpressionListItem
-        onMouseDown={onMouseDown}
+        onMouseDown={handleMouseDown}
+        ref={ref}
         isHighlighted={isHighlighted}
         className={cx(CS.hoverParent, CS.hoverInherit)}
         data-ignore-outside-clicks
@@ -201,4 +183,20 @@ function SuggestionSpan({
   ) : (
     <>{suggestion.name}</>
   );
+}
+
+function colorForIcon(icon: string | undefined | null) {
+  switch (icon) {
+    case "segment":
+      return { normal: color("accent2"), highlighted: color("brand-white") };
+    case "insight":
+      return { normal: color("accent1"), highlighted: color("brand-white") };
+    case "function":
+      return { normal: color("brand"), highlighted: color("brand-white") };
+    default:
+      return {
+        normal: color("text-medium"),
+        highlighted: color("brand-white"),
+      };
+  }
 }
