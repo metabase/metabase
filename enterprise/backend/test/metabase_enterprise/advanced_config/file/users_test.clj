@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
-   [metabase-enterprise.advanced-config.file.users :as advanced-config.file.users]
    [metabase.models :refer [User]]
+   [metabase.setup :as setup]
    [metabase.test :as mt]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
@@ -70,7 +70,7 @@
                                                                     :email        "cam+config-file-admin-test@metabase.com"
                                                                     :password     "2cans"
                                                                     :is_superuser false}]}}]
-          (with-redefs [advanced-config.file.users/init-from-config-file-is-first-user? (constantly true)]
+          (with-redefs [setup/has-user-setup (constantly false)]
             (is (= :ok
                    (advanced-config.file/initialize!)))
             (is (partial= {:first_name   "Cam"

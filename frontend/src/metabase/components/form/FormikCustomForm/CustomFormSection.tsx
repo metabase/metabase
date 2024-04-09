@@ -13,8 +13,8 @@ interface SectionProps {
 
 function StandardSection({ title, children, ...props }: SectionProps) {
   return (
-    <section className="mb4" {...props}>
-      {title && <h2 className="mb2">{title}</h2>}
+    <section className={CS.mb4} {...props}>
+      {title && <h2 className={CS.mb2}>{title}</h2>}
       {children}
     </section>
   );
@@ -23,9 +23,9 @@ function StandardSection({ title, children, ...props }: SectionProps) {
 function CollapsibleSection({ title, children, ...props }: SectionProps) {
   const [isExpanded, { toggle: handleToggle }] = useToggle(false);
   return (
-    <section className="mb4" {...props}>
+    <section className={CS.mb4} {...props}>
       <CollapsibleSectionContent onClick={handleToggle}>
-        <DisclosureTriangle className="mr1" open={isExpanded} />
+        <DisclosureTriangle className={CS.mr1} open={isExpanded} />
         <h3>{title}</h3>
       </CollapsibleSectionContent>
       <div className={isExpanded ? undefined : CS.hide}>{children}</div>

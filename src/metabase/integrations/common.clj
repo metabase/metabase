@@ -11,8 +11,7 @@
                                                   define-multi-setting-impl]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru
-                               trs]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -56,7 +55,7 @@
       (try
         (t2/insert! PermissionsGroupMembership :group_id id, :user_id user-id)
         (catch Throwable e
-          (log/error e (trs "Error adding User {0} to Group {1}" user-id id)))))))
+          (log/errorf e "Error adding User %s to Group %s" user-id id))))))
 
 (define-multi-setting send-new-sso-user-admin-email?
   (deferred-tru "Should new email notifications be sent to admins, for all new SSO users?")

@@ -143,7 +143,7 @@
                      :from [(t2/table-name :model/Table)]
                      :where [:= :db_id audit-db-id]}]}
                   {:name [:lower :name]}))
-    (log/infof "Adjusted Audit DB for loading Analytics Content")))
+    (log/info "Adjusted Audit DB for loading Analytics Content")))
 
 (defn- adjust-audit-db-to-host!
   [{audit-db-id :id :keys [engine]}]

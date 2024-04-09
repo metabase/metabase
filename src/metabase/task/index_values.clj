@@ -10,7 +10,6 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -88,16 +87,12 @@
   "Public API to start indexing a model."
   [model-index]
   (let [trigger (refresh-trigger model-index)]
-    (log/info
-     (u/format-color :green (trs "Scheduling indexing for model: {0}" (:model_id model-index))))
+    (log/info (u/format-color :green "Scheduling indexing for model: %s" (:model_id model-index)))
     (try (task/add-trigger! trigger)
          (catch ObjectAlreadyExistsException _e
-           (log/info (u/format-color :red (trs "Index already present for model: {0}"
-                                                 (:model_id model-index)))))
+           (log/info (u/format-color :red "Index already present for model: %s" (:model_id model-index))))
          (catch Exception e
-           (log/warn (trs "Error scheduling indexing for model: {0}"
-                          (:model_id model-index))
-                     e)))))
+           (log/warnf e "Error scheduling indexing for model: %s" (:model_id model-index))))))
 
 (defn remove-indexing-job
   "Public API to remove an indexing job on a model."

@@ -50,7 +50,7 @@ export const CollectionPickerModal = ({
   ] = useToggle(false);
 
   const pickerRef = useRef<{
-    onFolderSelect: (item: { folder: CollectionPickerItem }) => void;
+    onNewCollection: (item: CollectionPickerItem) => void;
   }>();
 
   const handleItemSelect = useCallback(
@@ -101,8 +101,8 @@ export const CollectionPickerModal = ({
     },
   ];
 
-  const handleNewCollectionCreate = (folder: CollectionPickerItem) => {
-    pickerRef.current?.onFolderSelect({ folder });
+  const handleNewCollectionCreate = (newCollection: CollectionPickerItem) => {
+    pickerRef.current?.onNewCollection(newCollection);
   };
 
   return (

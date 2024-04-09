@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [potemkin.types :as p.types])
   (:import
@@ -57,7 +56,7 @@
 
 (defn- format-rows-xform [rf metadata]
   {:pre [(fn? rf)]}
-  (log/debug (tru "Formatting rows with results timezone ID {0}" (qp.timezone/results-timezone-id)))
+  (log/debugf "Formatting rows with results timezone ID %s" (qp.timezone/results-timezone-id))
   (let [timezone-id  (t/zone-id (qp.timezone/results-timezone-id))
         ;; a column will have `converted_timezone` metadata if it is the result of `convert-timezone` expression
         ;; in that case, we'll format the results with the target timezone.

@@ -1088,3 +1088,9 @@ export const getSubmittableQuestion = (state, question) => {
 
   return submittableQuestion;
 };
+
+export const getIsNotebookNativePreviewShown = state =>
+  getSetting(state, "notebook-native-preview-shown");
+
+export const getNotebookNativePreviewSidebarWidth = state =>
+  getSetting(state, "notebook-native-preview-sidebar-width");

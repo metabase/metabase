@@ -513,7 +513,10 @@ describe("AddToDashSelectDashModal", () => {
 
             it("should render all collections", async () => {
               expect(
-                screen.getByRole("heading", { name: "New dashboard" }),
+                await screen.findByRole("heading", {
+                  name: "New dashboard",
+                  hidden: true, // This is needed because the entity picker modal is also rendered, causing this heading to be inaccessible
+                }),
               ).toBeInTheDocument();
               const popover = screen.getByTestId("entity-picker-modal");
               expect(popover).toBeInTheDocument();
@@ -536,7 +539,10 @@ describe("AddToDashSelectDashModal", () => {
 
             it('should render "New collection" option', async () => {
               expect(
-                screen.getByRole("heading", { name: "New dashboard" }),
+                await screen.findByRole("heading", {
+                  name: /new dashboard/i,
+                  hidden: true, // This is needed because the entity picker modal is also rendered, causing this heading to be inaccessible
+                }),
               ).toBeInTheDocument();
 
               const popover = screen.getByTestId("entity-picker-modal");

@@ -18,7 +18,9 @@ export function FieldSet({
   noPadding = false,
   children,
 }: FieldSetProps) {
-  const fieldSetClassName = cx("bordered rounded", { "px2 pb2": !noPadding });
+  const fieldSetClassName = cx(CS.bordered, CS.rounded, {
+    [cx(CS.px2, CS.pb2)]: !noPadding,
+  });
 
   return (
     <fieldset
