@@ -83,6 +83,10 @@ export default class ExpressionEditorSuggestions extends Component {
     event.preventDefault();
     event.stopPropagation();
 
+    if (event.target.tagName === "A" || event.target.tagName === "BUTTON") {
+      return;
+    }
+
     this.props.onSuggestionMouseDown && this.props.onSuggestionMouseDown(index);
   }
 
