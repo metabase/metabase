@@ -44,7 +44,9 @@
   ([card-id]
    (trigger-parse! card-id "SELECT TAX, TOTAL FROM orders"))
   ([card-id query]
-   (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query query})})))
+   (if (string? query)
+     (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query query})})
+     (t2/update! :model/Card card-id {:dataset_query query}))))
 
 ;;;;
 ;;;; Actual tests
@@ -68,9 +70,22 @@
         (is (= #{tax-qf total-qf}
                (query-fields-for-card card-id))))
 
-      (testing "Removing columns from the query removes the Queryfields"
+      (testing "Removing columns from the query removes the QueryFields"
         (trigger-parse! card-id "SELECT tax, not_total FROM orders")
         (is (= #{tax-qf}
+               (query-fields-for-card card-id))))
+
+      (testing "Columns referenced via field filters are still found"
+        (trigger-parse! card-id
+                        (mt/native-query {:query "SELECT tax FROM orders WHERE {{adequate_total}}"
+                                          :template-tags {"adequate_total"
+                                                          {:type         :dimension
+                                                           :name         "adequate_total"
+                                                           :display-name "Total is big enough"
+                                                           :dimension    [:field (mt/id :orders :total)
+                                                                          {:base-type :type/Number}]
+                                                           :widget-type  :number/>=}}}))
+        (is (= #{tax-qf total-qf}
                (query-fields-for-card card-id)))))))
 
 (deftest bogus-queries-test
