@@ -5,11 +5,7 @@ import { Component, Fragment } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-// import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import {
-  HoverParent,
-  // PopoverHoverTarget,
-} from "metabase/components/MetadataInfo/InfoIcon";
+import { HoverParent } from "metabase/components/MetadataInfo/InfoIcon";
 import { Popover } from "metabase/components/MetadataInfo/Popover";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
