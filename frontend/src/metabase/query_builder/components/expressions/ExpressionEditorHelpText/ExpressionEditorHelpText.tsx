@@ -47,7 +47,7 @@ export const ExpressionEditorHelpTextContent = ({
     <>
       {/* Prevent stealing focus from input box causing the help text to be closed (metabase#17548) */}
       <Container
-        onMouseDown={e => e.preventDefault()}
+        onMouseDown={evt => evt.preventDefault()}
         data-testid="expression-helper-popover"
       >
         <FunctionHelpCode data-testid="expression-helper-popover-structure">
