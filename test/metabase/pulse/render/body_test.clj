@@ -1,5 +1,6 @@
 (ns metabase.pulse.render.body-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [hiccup.core :refer [html]]
@@ -7,13 +8,12 @@
    [metabase.formatter :as formatter]
    [metabase.models :refer [Card]]
    [metabase.pulse.render.body :as body]
-   [metabase.pulse.render.common :as common]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.pulse.util :as pu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [schema.core :as s]))
+   [metabase.test.data.interface :as tx]
+   [metabase.util :as u]))
 
 (use-fixtures :each
   (fn warn-possible-rebuild
@@ -605,7 +605,7 @@
 
 (deftest add-dashcard-timeline-events-test-34924
   (testing "Timeline events should be added to the isomorphic renderer stages"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Collection {collection-id :id :as _collection} {:name "Rasta's Collection"}
                        :model/Timeline tl-a {:name "tl-a" :collection_id collection-id}

@@ -5,6 +5,8 @@ import {
   visualize,
   changeBinningForDimension,
   summarize,
+  chartPathWithColor,
+  lineChartCircle,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -26,7 +28,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Total: 50 bins");
 
-      cy.get(".bar");
+      chartPathWithColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("70");
     });
@@ -41,7 +43,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Created At: Quarter");
 
-      cy.get("circle");
+      lineChartCircle();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q1 2023");
     });
@@ -56,7 +58,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Longitude: 20°");
 
-      cy.get(".bar");
+      chartPathWithColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("180° W");
     });
@@ -74,7 +76,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Total: 50 bins");
 
-      cy.get(".bar");
+      chartPathWithColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("70");
     });
@@ -90,7 +92,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Created At: Quarter");
 
-      cy.get("circle");
+      lineChartCircle();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q1 2023");
     });
@@ -106,7 +108,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Longitude: 20°");
 
-      cy.get(".bar");
+      chartPathWithColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("180° W");
     });
@@ -122,7 +124,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Total: Auto binned");
 
-      cy.get(".bar");
+      chartPathWithColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("60");
     });
@@ -136,7 +138,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Created At: Month");
 
-      cy.get("circle");
+      lineChartCircle();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("January 2023");
     });
@@ -150,7 +152,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Longitude: Auto binned");
 
-      cy.get(".bar");
+      chartPathWithColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("170° W");
     });
