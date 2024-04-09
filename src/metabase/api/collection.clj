@@ -220,6 +220,7 @@
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
   #{"card"       ; SavedQuestion
     "dataset"    ; Model. TODO : update this
+    "metric"
     "collection"
     "dashboard"
     "pulse"      ; I think the only kinds of Pulses we still have are Alerts?
