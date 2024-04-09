@@ -379,7 +379,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
           DashboardS.AddSeriesModal,
         )}
         data-testid="add-series-modal"
-        data-element-id="modal"
         isOpen={isOpen}
       >
         {isOpen && (
