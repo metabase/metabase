@@ -1,6 +1,6 @@
-import type { UserId } from "./user";
 import type { CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
+import type { UserId } from "./user";
 
 export const ACTIVITY_MODELS = [
   "table",
@@ -15,7 +15,6 @@ export interface ActivityModelObject {
   name: string;
   display_name?: string;
   moderated_status?: string;
-  name: string;
   collection_id?: CollectionId;
   collection_name?: string;
   database_name?: string;

@@ -7,6 +7,10 @@ import {
   commandPaletteSearch,
   closeCommandPalette,
   visitFullAppEmbeddingUrl,
+  pressPageDown,
+  pressPageUp,
+  pressHome,
+  pressEnd,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -66,11 +70,49 @@ describe("command palette", () => {
 
       commandPaletteSearch().clear().type("Uploads");
       cy.findByRole("option", { name: "Settings - Uploads" }).should("exist");
+      commandPaletteSearch().clear();
     });
 
     cy.log("We can close the command palette using escape");
     closeCommandPalette();
     commandPalette().should("not.exist");
+
+    openCommandPalette();
+    //waiot for things to render
+    commandPalette()
+      .findByRole("option", { name: "New question" })
+      .should("exist");
+
+    pressPageDown();
+    commandPalette()
+      .findByRole("option", { name: "New model" })
+      .should("have.attr", "aria-selected", "true");
+
+    pressPageDown();
+    commandPalette()
+      .findByRole("option", { name: "Orders in a dashboard" })
+      .should("have.attr", "aria-selected", "true");
+
+    pressPageUp();
+    commandPalette()
+      .findByRole("option", { name: "New dashboard" })
+      .should("have.attr", "aria-selected", "true");
+
+    pressPageUp();
+    commandPalette()
+      .findByRole("option", { name: "New question" })
+      .should("have.attr", "aria-selected", "true");
+
+    pressEnd();
+
+    commandPalette()
+      .findByRole("option", { name: "Orders in a dashboard" })
+      .should("have.attr", "aria-selected", "true");
+
+    pressHome();
+    commandPalette()
+      .findByRole("option", { name: "New question" })
+      .should("have.attr", "aria-selected", "true");
   });
 
   it("should render links to site settings in settings pages", () => {
