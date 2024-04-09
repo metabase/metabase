@@ -19,6 +19,7 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.redshift :as redshift.test]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -275,64 +276,72 @@
                 (execute! (str "DROP VIEW IF EXISTS %s;")
                           qual-view-nm)))))))))
 
-#_(deftest filtered-syncable-schemas-test
+(deftest describe-database-privileges-test
   (mt/test-driver :redshift
-    (testing "Should filter out schemas for which the user has no perms"
-      ;; create a random username and random schema name, and grant the user USAGE permission for it
-      (let [temp-username (u/lower-case-en (mt/random-name))
-            random-schema (u/lower-case-en (mt/random-name))
-            user-pw       "Password1234"
-            db-det        (:details (mt/db))]
-        (execute! (str "CREATE SCHEMA %s;"
-                       "CREATE USER %s PASSWORD '%s';%n"
-                       "GRANT USAGE ON SCHEMA %s TO %s;%n")
-                  random-schema
-                  temp-username
-                  user-pw
-                  random-schema
-                  temp-username)
-        (try
-          (t2.with-temp/with-temp [Database db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
-            (sql-jdbc.execute/do-with-connection-with-options
-             :redshift
-             db
-             nil
-             (fn [^java.sql.Connection conn]
-               (let [schemas (reduce conj
-                                     #{}
-                                     (sql-jdbc.sync/filtered-syncable-schemas :redshift
-                                                                              conn
-                                                                              (.getMetaData conn)
-                                                                              nil
-                                                                              nil))]
-                 (testing "filtered-syncable-schemas for the user should contain the newly created random schema"
-                   (is (contains? schemas random-schema)))
-                 (testing "should not contain the current session-schema name (since that was never granted)"
-                   (is (not (contains? schemas (redshift.test/unique-session-schema)))))))))
-          (finally
-            (execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
-                           "DROP USER IF EXISTS %s;%n"
-                           "DROP SCHEMA IF EXISTS %s;%n")
-                      random-schema
-                      temp-username
-                      temp-username
-                      random-schema)))))))
+    (testing "Should filter out schemas for which the user has insufficient select perms"
+      (let [user-name    (u/lower-case-en (mt/random-name))
+            schema       (sql.tx/session-schema :redshift)
+            table-name   (u/lower-case-en (mt/random-name))
+            schema+table (format "\"%s\".\"%s\"" schema table-name)
+            user-pw      "Password1234"
+            details      (assoc (:details (mt/db)) :user user-name, :password user-pw)
+            revoke-schema-usage (format "REVOKE USAGE ON SCHEMA \"%s\" FROM %s;%n" schema user-name)]
+        (try (execute! (str (format "CREATE USER %s PASSWORD '%s';%n" user-name user-pw)
+                            (format "CREATE TABLE %s (i INTEGER);%n" schema+table)))
+               (mt/with-temp [:model/Database db {:engine :redshift, :details details}]
+                 (let [table-is-in-results? (fn []
+                                              (binding [redshift.test/*override-describe-database-to-filter-by-db-name?* false]
+                                                (->> (:tables (driver/describe-database :redshift db))
+                                                     (map :name)
+                                                     (some #{table-name})
+                                                     boolean)))
+                       grant-schema-usage   (format "GRANT USAGE ON SCHEMA \"%s\" TO %s;%n" schema user-name)
+                       revoke-table-select  (format "REVOKE SELECT ON TABLE %s FROM %s;%n" schema+table user-name)
+                       grant-table-select   (format "GRANT SELECT ON TABLE %s TO %s;%n" schema+table user-name)]
+                   (testing "with schema usage and table select grants, table should be in results"
+                     (execute! (str grant-schema-usage grant-table-select))
+                     (is (true? (table-is-in-results?))))
+                   (testing "with no schema usage and no table select grants, table should not be in results"
+                     (execute! (str revoke-schema-usage revoke-table-select))
+                     (is (false? (table-is-in-results?))))
+                   (testing "with no schema usage but table select grants, table should not be in results"
+                     (execute! (str revoke-schema-usage grant-table-select))
+                     (is (false? (table-is-in-results?))))
+                   (testing "with schema usage but no table select grants, table should not be in results"
+                     (execute! (str grant-schema-usage revoke-table-select))
+                     (is (false? (table-is-in-results?))))))
+             (finally
+               (execute! (str revoke-schema-usage
+                              (format "DROP USER IF EXISTS %s;%n" user-name)))))))))
 
-#_(deftest syncable-schemas-test
+(deftest describe-database-exclude-metabase-cache-test
   (mt/test-driver :redshift
-    (testing "metabase_cache schemas should be excluded"
-      (mt/dataset test-data
+    (testing "metabase_cache tables should be excluded from the describe-database results"
+      (mt/dataset avian-singles
         (mt/with-persistence-enabled [persist-models!]
-          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-            (mt/with-temp [:model/Card _ {:name "model"
-                                          :type :model
-                                          :dataset_query (mt/mbql-query categories)
-                                          :database_id (mt/id)}]
-              (persist-models!)
-              (is (some (partial re-matches #"metabase_cache(.*)")
-                        (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
-              (is (nil? (some (partial re-matches #"metabase_cache(.*)")
-                              (driver/syncable-schemas driver/*driver* (mt/db))))))))))))
+          (let [details (assoc (:details (mt/db))
+                               :schema-filters-type "inclusion"
+                               :schema-filters-patterns "metabase_cache*,20*,pg_*")] ; 20* matches test session schemas
+            (mt/with-temp [:model/Card _      {:name          "model"
+                                               :type          :model
+                                               :dataset_query (mt/mbql-query users)
+                                               :database_id   (mt/id)}
+                           :model/Database db {:engine :redshift, :details details}]
+              (binding [redshift.test/*override-describe-database-to-filter-by-db-name?* false]
+                (persist-models!)
+                (let [synced-schemas (set (map :schema (:tables (driver/describe-database :redshift db))))]
+                  (testing "sense check: there are results matching some schemas in the schema-filters-patterns"
+                    (is (some #(re-matches #"20(.*)" %) synced-schemas)))
+                  (let [all-schemas (map :table_schema (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                                                                   "select distinct table_schema from information_schema.tables;"))]
+                    (testing "metabase_cache_ tables are excluded from results"
+                      (let [match? #(re-matches #"metabase_cache(.*)" %)]
+                        (is (some match? all-schemas))
+                        (is (not-any? match? synced-schemas))))
+                    (testing "system tables are excluded from results"
+                      (let [match? #(re-matches #"pg_(.*)" %)]
+                        (is (some match? all-schemas))
+                        (is (not-any? match? synced-schemas))))))))))))))
 
 (deftest sync-materialized-views-test
   (mt/test-driver :redshift
