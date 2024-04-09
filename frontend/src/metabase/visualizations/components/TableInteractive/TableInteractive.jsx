@@ -24,6 +24,7 @@ import {
   getRowIndexToPKMap,
   getQueryBuilderMode,
 } from "metabase/query_builder/selectors";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { Icon, DelayGroup } from "metabase/ui";
 import {
@@ -81,6 +82,7 @@ function pickRowsToMeasure(rows, columnIndex, count = 10) {
 const mapStateToProps = state => ({
   queryBuilderMode: getQueryBuilderMode(state),
   rowIndexToPkMap: getRowIndexToPKMap(state),
+  isEmbeddingSdk: getIsEmbeddingSdk(state),
 });
 
 const mapDispatchToProps = dispatch => ({
@@ -190,11 +192,9 @@ class TableInteractive extends Component {
       column => column.source === "aggregation",
     );
     const isNotebookPreview = this.props.queryBuilderMode === "notebook";
-    const newShowDetailState = !(
-      isPivoted ||
-      hasAggregation ||
-      isNotebookPreview
-    );
+    const newShowDetailState =
+      !(isPivoted || hasAggregation || isNotebookPreview) &&
+      !this.props.isEmbeddingSdk;
 
     if (newShowDetailState !== this.state.showDetailShortcut) {
       this.setState({
