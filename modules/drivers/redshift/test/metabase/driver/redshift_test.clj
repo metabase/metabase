@@ -37,6 +37,7 @@
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
 
+
 (deftest ^:parallel correct-driver-test
   (mt/test-driver :redshift
     (testing "Make sure we're using the correct driver for Redshift"
