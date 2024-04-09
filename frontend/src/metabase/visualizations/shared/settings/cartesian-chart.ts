@@ -182,6 +182,9 @@ export const getDefaultLegendIsReversed = (
   vizSettings["stackable.stack_display"] != null &&
   vizSettings["stackable.stack_type"] != null;
 
+export const getDefaultShowDataLabels = () => false;
+export const getDefaultDataLabelsFrequency = () => "fit";
+
 const WATERFALL_UNSUPPORTED_X_AXIS_SCALES = ["pow", "log"];
 export const isXAxisScaleValid = (
   series: RawSeries,

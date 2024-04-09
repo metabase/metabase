@@ -7,11 +7,13 @@ import { getDimensionModel } from "metabase/visualizations/echarts/cartesian/mod
 import type { LegacySeriesSettingsObjectKey } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   getDefaultBubbleSizeCol,
+  getDefaultDataLabelsFrequency,
   getDefaultGoalLabel,
   getDefaultIsHistogram,
   getDefaultIsNumeric,
   getDefaultIsTimeSeries,
   getDefaultLegendIsReversed,
+  getDefaultShowDataLabels,
   getDefaultStackDisplayValue,
   getDefaultStackingValue,
   getDefaultXAxisScale,
@@ -199,36 +201,28 @@ export const computeStaticComboChartSettings = (
 
   fillWithDefaultValue(
     settings,
-    "graph.y_axis.labels_enabled",
-    getIsYAxisLabelEnabledDefault(),
-  );
-
-  fillWithDefaultValue(
-    settings,
-    "graph.x_axis.labels_enabled",
-    getIsXAxisLabelEnabledDefault(),
-  );
-
-  fillWithDefaultValue(
-    settings,
-    "graph.x_axis.title_text",
-    getDefaultXAxisTitle(dimensionModel.column),
-  );
-
-  fillWithDefaultValue(settings, "graph.x_axis.axis_enabled", true);
-
-  fillWithDefaultValue(settings, "graph.y_axis.axis_enabled", true);
-
-  fillWithDefaultValue(
-    settings,
     "graph.x_axis._is_numeric",
     getDefaultIsNumeric(mainDataset, dimensionModel.columnIndex),
   );
+
   fillWithDefaultValue(
     settings,
     "graph.x_axis._is_timeseries",
     getDefaultIsTimeSeries(mainDataset, dimensionModel.columnIndex),
   );
+
+  fillWithDefaultValue(
+    settings,
+    "graph.show_values",
+    getDefaultShowDataLabels(),
+  );
+
+  fillWithDefaultValue(
+    settings,
+    "graph.label_value_frequency",
+    getDefaultDataLabelsFrequency(),
+  );
+
   fillWithDefaultValue(
     settings,
     "graph.x_axis._is_histogram",
