@@ -117,7 +117,7 @@
     [:= (search.config/column-with-model-alias model :creator_id) (first creator-ids)]
     [:in (search.config/column-with-model-alias model :creator_id) creator-ids]))
 
-(doseq [model ["card" "dataset" "dashboard" "action"]]
+(doseq [model ["card" "dataset" "metric" "dashboard" "action"]]
   (defmethod build-optional-filter-query [:created-by model]
     [_filter model query creator-ids]
     (sql.helpers/where query (default-created-by-fitler-clause model creator-ids))))
@@ -138,6 +138,10 @@
     (sql.helpers/where query false-clause)))
 
 (defmethod build-optional-filter-query [:verified "dataset"]
+  [filter _model query verified]
+  (build-optional-filter-query filter "card" query verified))
+
+(defmethod build-optional-filter-query [:verified "metric"]
   [filter _model query verified]
   (build-optional-filter-query filter "card" query verified))
 
@@ -167,7 +171,7 @@
      :else
      [:and [:>= dt-col start] [:< dt-col end]])))
 
-(doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "action"]]
+(doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "metric" "action"]]
   (defmethod build-optional-filter-query [:created-at model]
     [_filter model query created-at]
     (sql.helpers/where query (date-range-filter-clause

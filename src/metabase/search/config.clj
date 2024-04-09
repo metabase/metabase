@@ -201,6 +201,10 @@
   [_]
   (searchable-columns-for-model "card"))
 
+(defmethod searchable-columns-for-model "metric"
+  [_]
+  (searchable-columns-for-model "card"))
+
 (defmethod searchable-columns-for-model "dashboard"
   [_]
   [:name
