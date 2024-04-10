@@ -9,25 +9,21 @@
   border: var(--border-size) var(--border-style) var(--color-border);
 }
 
-:global(.border-bottom),
-.border-bottom,
 .borderBottom {
   border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
 /* ensure that a border-top item inside of a bordred element won't double up */
-.bordered > :global(.border-bottom:last-child) {
+.bordered > .border-bottom:last-child {
   border-bottom: none;
 }
 
-:global(.border-top),
-.border-top,
 .borderTop {
   border-top: var(--border-size) var(--border-style) var(--color-border);
 }
 
 /* ensure that a border-top item inside of a bordred element won't double up */
-.bordered > :global(.border-top:first-child) {
+.bordered > .border-top:first-child {
   border-top: none;
 }
 
@@ -80,10 +76,6 @@
 :global(.borderless),
 .borderless {
   border: none !important;
-}
-
-.border-bottom {
-  border-bottom: var(--border-size) dashed var(--color-border);
 }
 
 :global(.border-medium) {

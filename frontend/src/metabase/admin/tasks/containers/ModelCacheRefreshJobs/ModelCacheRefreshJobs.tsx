@@ -147,7 +147,7 @@ function ModelCacheRefreshJobs({ children, onRefresh }: Props) {
 
           return (
             <div data-testid="model-cache-logs">
-              <table className={cx(AdminS.ContentTable, "border-bottom")}>
+              <table className={cx(AdminS.ContentTable, CS.borderBottom)}>
                 <colgroup>
                   <col style={{ width: "30%" }} />
                   <col style={{ width: "40%" }} />
