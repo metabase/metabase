@@ -98,12 +98,10 @@
   background-color: var(--color-bg-black);
 }
 
-/* TODO: MAKE SURE THIS WORKS WITH THE NEW .bg-medium class */
 .DashboardNight .bgMedium {
   background-color: #596269;
 }
 
-/* TODO: MAKE SURE THIS WORKS WITH THE NEW .textDark class */
 .DashboardNight .textDark {
   color: var(--color-bg-light);
 }

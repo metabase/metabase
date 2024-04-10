@@ -84,7 +84,7 @@
 }
 
 .guideTitleBody {
-  composes: text-dark textBold from "style";
+  composes: textDark textBold from "style";
   width: 100%;
   composes: guideLeftPaddedBody;
 }
@@ -95,7 +95,7 @@
 }
 
 .guideSeeAllBody {
-  composes: text-dark textBold mt4 from "style";
+  composes: textDark textBold mt4 from "style";
   width: 100%;
   display: flex;
   composes: guideLeftPaddedBody;
@@ -187,7 +187,7 @@
 }
 
 .guideEditTextarea {
-  composes: text-dark input p2 from "style";
+  composes: textDark input p2 from "style";
   resize: none;
   font-size: 16px;
   width: 100%;
@@ -211,7 +211,7 @@
 }
 
 .guideEditInput {
-  composes: text-dark input p2 from "style";
+  composes: textDark input p2 from "style";
   width: 100%;
   font-size: 16px;
   display: block;
