@@ -391,6 +391,8 @@
                (qp/process-query
                  (mt/native-query {:query "select interval '5 days'"}))))))))
 
+;; Cal 2024-04-10: Commented this out instead of deleting it. We used to use this for `driver/describe-database` (see metabase#37439)
+;; We might use it again in the future for getting privileges for actions.
 #_(deftest table-privileges-test
   (mt/test-driver :redshift
     (testing "`table-privileges` should return the correct data for current_user and role privileges"

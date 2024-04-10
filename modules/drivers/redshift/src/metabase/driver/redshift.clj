@@ -57,6 +57,7 @@
   ;; See https://github.com/dbt-labs/dbt-redshift/issues/742 for an implementation for DBT's integration with redshift
   ;; for inspiration, and the JDBC driver itself:
   ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java#L1794
+  ;; This is a vector so adding parameters doesn't require a change to describe-database-tables in the future.
   [(str/join
     "\n"
     ["select"
@@ -454,6 +455,8 @@
   [driver db-id table-name column-names values]
   ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values))
 
+;; Cal 2024-04-10: Commented this out instead of deleting it. We used to use this for `driver/describe-database` (see metabase#37439)
+;; This might be helpful for getting privileges for actions in the future.
 #_(defmethod sql-jdbc.sync/current-user-table-privileges :redshift
   [_driver conn-spec & {:as _options}]
   ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
