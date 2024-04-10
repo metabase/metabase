@@ -308,7 +308,7 @@
              (->> query lib/available-segments (map to-legacy-refs)))))
     (testing "metric refs come without options"
       (is (= [["metric" metric-id]]
-             (->> query lib/available-metrics (map to-legacy-refs)))))
+             (->> query lib/available-legacy-metrics (map to-legacy-refs)))))
     (testing "aggregation references (#37698)"
       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                       (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
@@ -330,7 +330,7 @@
         (let [segment-expr (lib.js/expression-clause-for-legacy-expression query -1 (first legacy-refs))]
           (is (=? [:segment {} segment-id] segment-expr))
           (is (= ["segment" segment-id] (js->clj (lib.js/legacy-expression-for-expression-clause query -1 segment-expr)))))))
-    (let [legacy-refs (->> query lib/available-metrics (map #(lib.js/legacy-ref query -1 %)))]
+    (let [legacy-refs (->> query lib/available-legacy-metrics (map #(lib.js/legacy-ref query -1 %)))]
       (testing "metric refs come without options"
         (is (= [["metric" metric-id]] (map array-checker legacy-refs))))
       (testing "metric legacy ref can be converted to an expression and back (#37173)"

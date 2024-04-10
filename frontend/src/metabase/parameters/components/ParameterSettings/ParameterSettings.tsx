@@ -20,7 +20,6 @@ import { ValuesSourceSettings } from "../ValuesSourceSettings";
 import {
   SettingLabel,
   SettingLabelError,
-  SettingSection,
   SettingValueWidget,
 } from "./ParameterSettings.styled";
 import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
@@ -127,18 +126,18 @@ export const ParameterSettings = ({
         />
       </Box>
       {canUseCustomSource(parameter) && (
-        <SettingSection>
+        <Box mb="xl">
           <SettingLabel>{t`How should people filter on this column?`}</SettingLabel>
           <ValuesSourceSettings
             parameter={parameter}
             onChangeQueryType={onChangeQueryType}
             onChangeSourceSettings={handleSourceSettingsChange}
           />
-        </SettingSection>
+        </Box>
       )}
 
       {isSingleOrMultiSelectable(parameter) && (
-        <SettingSection>
+        <Box mb="xl">
           <SettingLabel>{t`People can pick`}</SettingLabel>
           <Radio.Group
             value={isMultiValue}
@@ -157,7 +156,7 @@ export const ParameterSettings = ({
               />
             </Stack>
           </Radio.Group>
-        </SettingSection>
+        </Box>
       )}
 
       <Box mb="lg">

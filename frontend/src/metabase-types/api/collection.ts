@@ -68,14 +68,15 @@ export interface Collection {
   path?: CollectionId[];
 }
 
-export type CollectionItemModel =
-  | "card"
-  | "dataset"
-  | "dashboard"
-  | "pulse"
-  | "snippet"
-  | "collection"
-  | "indexed-entity";
+export const COLLECTION_ITEM_MODELS = [
+  "card",
+  "dataset",
+  "dashboard",
+  "snippet",
+  "collection",
+  "indexed-entity",
+] as const;
+export type CollectionItemModel = typeof COLLECTION_ITEM_MODELS[number];
 
 export type CollectionItemId = number;
 
@@ -95,6 +96,8 @@ export interface CollectionItem {
   database_id?: DatabaseId;
   moderated_status?: string;
   type?: string;
+  here?: CollectionItemModel[];
+  below?: CollectionItemModel[];
   can_write?: boolean;
   "last-edit-info"?: LastEditInfo;
   location?: string;
@@ -114,4 +117,23 @@ export interface CollectionListQuery {
   "personal-only"?: boolean;
   namespace?: string;
   tree?: boolean;
+}
+
+export interface ListCollectionItemsRequest {
+  id: CollectionId;
+  models?: CollectionItemModel[];
+  archived?: boolean;
+  pinned_state?: "all" | "is_pinned" | "is_not_pinned";
+  limit?: number;
+  offset?: number;
+  sort_column?: "name" | "last_edited_at" | "last_edited_by" | "model";
+  sort_direction?: "asc" | "desc";
+}
+
+export interface ListCollectionItemsResponse {
+  data: CollectionItem[];
+  models: CollectionItemModel[] | null;
+  limit: number;
+  offset: number;
+  total: number;
 }

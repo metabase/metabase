@@ -92,6 +92,7 @@ export const PaletteResults = () => {
                   <Flex gap=".5rem" style={{ minWidth: 0 }}>
                     {item.icon && (
                       <Icon
+                        aria-hidden
                         name={(item.icon as IconName) || "click"}
                         color={
                           active ? color("brand-light") : color("text-light")
@@ -116,6 +117,7 @@ export const PaletteResults = () => {
                   </Flex>
                   {active && (
                     <Flex
+                      aria-hidden
                       gap="0.5rem"
                       fw={400}
                       style={{
