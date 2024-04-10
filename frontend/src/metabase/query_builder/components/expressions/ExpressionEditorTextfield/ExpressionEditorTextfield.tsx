@@ -580,39 +580,39 @@ class ExpressionEditorTextfield extends React.Component<
 
     return (
       <React.Fragment>
-        <EditorContainer
-          isFocused={isFocused}
-          hasError={Boolean(errorMessage)}
-          ref={this.suggestionTarget}
-          data-testid="expression-editor-textfield"
+        <ExpressionEditorSuggestions
+          query={query}
+          stageIndex={stageIndex}
+          suggestions={suggestions}
+          onSuggestionMouseDown={this.onSuggestionSelected}
+          highlightedIndex={highlightedSuggestionIndex}
         >
-          <EditorEqualsSign>=</EditorEqualsSign>
-          <AceEditor
-            commands={this.commands}
-            mode="text"
-            ref={this.input}
-            value={source}
-            markers={this.errorAsMarkers(errorMessage)}
-            focus={true}
-            highlightActiveLine={false}
-            wrapEnabled={true}
-            fontSize={12}
-            onBlur={this.handleInputBlur}
-            onFocus={this.handleFocus}
-            setOptions={ACE_OPTIONS}
-            onChange={this.handleExpressionChange}
-            onCursorChange={this.handleCursorChange}
-            width="100%"
-          />
-          <ExpressionEditorSuggestions
-            query={query}
-            stageIndex={stageIndex}
-            target={this.suggestionTarget.current}
-            suggestions={suggestions}
-            onSuggestionMouseDown={this.onSuggestionSelected}
-            highlightedIndex={highlightedSuggestionIndex}
-          />
-        </EditorContainer>
+          <EditorContainer
+            isFocused={isFocused}
+            hasError={Boolean(errorMessage)}
+            ref={this.suggestionTarget}
+            data-testid="expression-editor-textfield"
+          >
+            <EditorEqualsSign>=</EditorEqualsSign>
+            <AceEditor
+              commands={this.commands}
+              mode="text"
+              ref={this.input}
+              value={source}
+              markers={this.errorAsMarkers(errorMessage)}
+              focus={true}
+              highlightActiveLine={false}
+              wrapEnabled={true}
+              fontSize={12}
+              onBlur={this.handleInputBlur}
+              onFocus={this.handleFocus}
+              setOptions={ACE_OPTIONS}
+              onChange={this.handleExpressionChange}
+              onCursorChange={this.handleCursorChange}
+              width="100%"
+            />
+          </EditorContainer>
+        </ExpressionEditorSuggestions>
         {errorMessage && hasChanges && (
           <ErrorMessageContainer>{errorMessage.message}</ErrorMessageContainer>
         )}

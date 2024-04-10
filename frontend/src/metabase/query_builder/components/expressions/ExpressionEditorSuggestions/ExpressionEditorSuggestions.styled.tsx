@@ -6,16 +6,11 @@ import {
   HoverParent,
   PopoverHoverTarget as BasePopoverHoverTarget,
 } from "metabase/components/MetadataInfo/InfoIcon";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { alpha, color } from "metabase/lib/colors";
-
-export const ExpressionPopover = styled(TippyPopover)`
-  border-color: ${alpha("accent2", 0.2)};
-  border-radius: 0;
-`;
+import { color } from "metabase/lib/colors";
 
 export const ExpressionList = styled.ul`
   min-width: 150px;
+  max-height: 350px;
   overflow-y: auto;
 `;
 
