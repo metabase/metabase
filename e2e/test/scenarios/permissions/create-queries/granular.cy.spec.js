@@ -49,7 +49,7 @@ describe("scenarios > admin > permissions > create queries > granular", () => {
     // should allow setting a granular value for one table
     modifyPermission("Orders", NATIVE_QUERIES_PERMISSION_INDEX, "No");
 
-    // should alos remove native permissions for all other tables
+    // should also remove native permissions for all other tables
     assertPermissionTable([
       ["Accounts", "Can view", "Query builder only"],
       ["Analytic Events", "Can view", "Query builder only"],
