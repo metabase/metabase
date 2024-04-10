@@ -18,6 +18,7 @@ import {
   createModelFromTableName,
   queryWritableDB,
   setTokenFeatures,
+  entityPickerModal,
 } from "e2e/support/helpers";
 import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
 import { createMockActionParameter } from "metabase-types/api/mocks";
@@ -219,7 +220,11 @@ describe(
       });
 
       modal().eq(1).findByText("Select a model").click();
-      popover().findByText("Order").click();
+      entityPickerModal().within(() => {
+        cy.findByText("Order").click();
+        cy.button("Select").click();
+      });
+
       cy.findByRole("button", { name: "Create" }).click();
 
       cy.get("@modelId").then(modelId => {

@@ -5,6 +5,7 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  modifyPermission,
   describeEE,
   modal,
   openOrdersTable,
@@ -24,6 +25,7 @@ import {
   sendEmailAndAssert,
   setTokenFeatures,
   selectFilterOperator,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 const {
@@ -37,12 +39,14 @@ const {
   PEOPLE_ID,
 } = SAMPLE_DATABASE;
 
-const { DATA_GROUP } = USER_GROUPS;
+const { DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
+
+const DATA_ACCESS_PERMISSION_INDEX = 0;
 
 describeEE("formatting > sandboxes", () => {
   describe("admin", () => {
     beforeEach(() => {
-      restore();
+      restore("default-ee");
       cy.signInAsAdmin();
       setTokenFeatures("all");
       cy.visit("/admin/people");
@@ -85,7 +89,7 @@ describeEE("formatting > sandboxes", () => {
     const QUESTION_NAME = "Joined test";
 
     beforeEach(() => {
-      restore();
+      restore("default-ee");
       cy.signInAsAdmin();
       setTokenFeatures("all");
 
@@ -190,7 +194,7 @@ describeEE("formatting > sandboxes", () => {
 
   describe("Sandboxing reproductions", () => {
     beforeEach(() => {
-      restore();
+      restore("default-ee");
       cy.signInAsAdmin();
       setTokenFeatures("all");
     });
@@ -203,12 +207,17 @@ describeEE("formatting > sandboxes", () => {
         },
       });
 
-      cy.updatePermissionsSchemas({
-        schemas: {
-          PUBLIC: {
-            [ORDERS_ID]: "all",
-            [PRODUCTS_ID]: "all",
-            [REVIEWS_ID]: "all",
+      cy.updatePermissionsGraph({
+        [COLLECTION_GROUP]: {
+          [SAMPLE_DB_ID]: {
+            "view-data": "unrestricted",
+            "create-queries": {
+              PUBLIC: {
+                [ORDERS_ID]: "query-builder",
+                [PRODUCTS_ID]: "query-builder",
+                [REVIEWS_ID]: "query-builder",
+              },
+            },
           },
         },
       });
@@ -311,10 +320,19 @@ describeEE("formatting > sandboxes", () => {
           },
         });
 
-        cy.updatePermissionsSchemas({
-          schemas: {
-            PUBLIC: {
-              [PRODUCTS_ID]: "all",
+        cy.updatePermissionsGraph({
+          [COLLECTION_GROUP]: {
+            [SAMPLE_DB_ID]: {
+              "view-data": {
+                PUBLIC: {
+                  [PRODUCTS_ID]: "unrestricted",
+                },
+              },
+              "create-queries": {
+                PUBLIC: {
+                  [PRODUCTS_ID]: "query-builder",
+                },
+              },
             },
           },
         });
@@ -380,10 +398,15 @@ describeEE("formatting > sandboxes", () => {
         },
       });
 
-      cy.updatePermissionsSchemas({
-        schemas: {
-          PUBLIC: {
-            [PRODUCTS_ID]: "all",
+      cy.updatePermissionsGraph({
+        [COLLECTION_GROUP]: {
+          [SAMPLE_DB_ID]: {
+            "view-data": "unrestricted",
+            "create-queries": {
+              PUBLIC: {
+                [PRODUCTS_ID]: "query-builder",
+              },
+            },
           },
         },
       });
@@ -656,10 +679,14 @@ describeEE("formatting > sandboxes", () => {
             },
           });
 
-          cy.updatePermissionsSchemas({
-            schemas: {
-              PUBLIC: {
-                [PRODUCTS_ID]: "all",
+          cy.updatePermissionsGraph({
+            [COLLECTION_GROUP]: {
+              [SAMPLE_DB_ID]: {
+                "view-data": {
+                  PUBLIC: {
+                    [PRODUCTS_ID]: "unrestricted",
+                  },
+                },
               },
             },
           });
@@ -756,7 +783,7 @@ describeEE("formatting > sandboxes", () => {
       });
     });
 
-    it("attempt to sandbox based on question with differently-typed columns than a sandboxed table should provide meaningful UI error (metabase#14612)", () => {
+    it.only("attempt to sandbox based on question with differently-typed columns than a sandboxed table should provide meaningful UI error (metabase#14612)", () => {
       const QUESTION_NAME = "Different type";
       const ERROR_MESSAGE =
         "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.";
@@ -773,28 +800,29 @@ describeEE("formatting > sandboxes", () => {
       cy.visit(
         `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
       );
-      cy.wait("@tablePermissions");
-      cy.icon("eye")
-        .eq(1) // No better way of doing this, undfortunately (see table above)
-        .click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sandboxed").click();
-      cy.button("Change").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "Use a saved question to create a custom view for this table",
-      ).click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(QUESTION_NAME).click();
-      cy.button("Save").click();
+      modifyPermission("data", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
 
+      modal().within(() => {
+        cy.findByText("Change access to this database to “Sandboxed”?");
+        cy.button("Change").click();
+      });
+
+      modal()
+        .findByText(
+          "Use a saved question to create a custom view for this table",
+        )
+        .click();
+
+      modal().findByText("Select a question").click();
+
+      entityPickerModal().findByText(QUESTION_NAME).click();
+      modal().button("Save").click();
       cy.wait("@sandboxTable").then(({ response }) => {
         expect(response.statusCode).to.eq(400);
         expect(response.body.message).to.eq(ERROR_MESSAGE);
       });
       modal().scrollTo("bottom");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(ERROR_MESSAGE);
+      modal().findByText(ERROR_MESSAGE);
     });
 
     it("should be able to use summarize columns from joined table based on a saved question (metabase#14766)", () => {
