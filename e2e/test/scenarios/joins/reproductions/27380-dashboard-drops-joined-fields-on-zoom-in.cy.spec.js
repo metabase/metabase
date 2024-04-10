@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, visitDashboard } from "e2e/support/helpers";
+import {
+  restore,
+  visitDashboard,
+  lineChartCircle,
+  echartsContainer,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -33,14 +38,14 @@ describe("issue 27380", () => {
     );
 
     // Doesn't really matter which 'circle" we click on the graph
-    cy.get("circle").last().realClick();
+    lineChartCircle().last().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See this month by week").click();
     cy.wait("@dataset");
 
     // Graph should still exist
-    // Let's check only the y-axis label
-    cy.get(".y-axis-label").invoke("text").should("eq", "Count");
+    // Checks the y-axis label
+    echartsContainer().findByText("Count");
 
     cy.icon("notebook").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
