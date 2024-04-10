@@ -18,7 +18,7 @@ import {
 } from "./ModelDetailPage.styled";
 import ModelInfoSidePanel from "./ModelInfoSidePanel";
 import ModelSchemaDetails from "./ModelSchemaDetails";
-import ModelUsageDetails from "./ModelUsageDetails";
+import { ModelUsageDetails } from "./ModelUsageDetails";
 
 interface Props {
   model: Question;

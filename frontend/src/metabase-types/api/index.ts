@@ -18,6 +18,7 @@ export * from "./models";
 export * from "./modelIndexes";
 export * from "./notifications";
 export * from "./permissions";
+export * from "./performance";
 export * from "./query";
 export * from "./revision";
 export * from "./schema";

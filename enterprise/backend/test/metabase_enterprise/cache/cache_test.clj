@@ -1,6 +1,7 @@
 (ns metabase-enterprise.cache.cache-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]
@@ -111,3 +112,75 @@
                                          :model_id 0
                                          :strategy {:type     "schedule"
                                                     :schedule "0/2 * * * * ?"}})))))))))
+
+
+(deftest invalidation-test
+  (mt/discard-setting-changes [enable-query-caching]
+    (public-settings/enable-query-caching! true)
+    (mt/with-model-cleanup [:model/CacheConfig
+                            [:model/QueryCache :updated_at]]
+      (mt/with-premium-features #{:cache-granular-controls :audit-app}
+        (mt/with-temp [:model/Dashboard     dash           {}
+                       :model/Card          {card1-id :id} {:database_id   (mt/id)
+                                                            :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]]
+                                                                                                  :limit    5})}
+                       :model/Card          {card2-id :id} {:database_id   (mt/id)
+                                                            :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]]
+                                                                                                  :limit    5})}
+                       :model/DashboardCard _              {:dashboard_id (:id dash)
+                                                            :card_id      card1-id}
+                       :model/CacheConfig   _              {:model          "database"
+                                                            :model_id       (mt/id)
+                                                            :strategy       "schedule"
+                                                            :config         {:schedule "0 * * * * ?"}
+                                                            :invalidated_at (t/offset-date-time)}
+                       :model/CacheConfig   _              {:model          "dashboard"
+                                                            :model_id       (:id dash)
+                                                            :strategy       "schedule"
+                                                            :config         {:schedule "0 * * * * ?"}
+                                                            :invalidated_at (t/offset-date-time)}]
+          (let [run-query! (fn [card-id & params]
+                             (-> (apply mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id) params)
+                                 (select-keys [:cached])))
+                invalidate! (fn [status & args]
+                              (apply mt/user-http-request :crowberto :post status "cache/invalidate" args))]
+
+            (is (=? {:data [{:model "database" :model_id (mt/id)}]}
+                    (mt/user-http-request :crowberto :get 200 "cache/"
+                                          :model "database")))
+
+            (testing "making a query will cache it"
+              (is (=? {:cached false :data some?}
+                      (run-query! card1-id)))
+              (is (=? {:cached true :data some?}
+                      (run-query! card1-id)))
+              (is (=? {:cached true :data some?}
+                      (run-query! card2-id))))
+
+            (testing "invalidation drops cache only for affected card"
+              (is (=? {:count 1}
+                      (invalidate! 200 :question card2-id :include :overrides)))
+              (is (=? {:cached true :data some?}
+                      (run-query! card1-id)))
+              (is (=? {:cached false :data some?}
+                      (run-query! card2-id))))
+
+            (testing "but invalidating a whole config drops cache for any affected card"
+              (doseq [card-id [card1-id card2-id]]
+                (is (=? {:count 1}
+                        (invalidate! 200 :database (mt/id))))
+                (is (=? {:cached false :data some?}
+                        (run-query! card-id {:ignore_cache true})))))
+
+            (testing "when invalidating database config directly, dashboard-related queries are still cached"
+              (is (=? {:count 1}
+                      (invalidate! 200 :database (mt/id))))
+              (is (=? {:cached true :data some?}
+                      (run-query! card1-id {:dashboard_id (:id dash)}))))
+
+            (testing "but with overrides - will go through every card and mark cache invalidated"
+              ;; not a concrete number here since (mt/id) can have a bit more than 2 cards we've currently defined
+              (is (=? {:count pos-int?}
+                      (invalidate! 200 :include :overrides :database (mt/id))))
+              (is (=? {:cached false :data some?}
+                      (run-query! card1-id {:dashboard_id (:id dash)}))))))))))

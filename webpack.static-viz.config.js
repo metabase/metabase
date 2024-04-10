@@ -3,6 +3,7 @@ const TerserPlugin = require("terser-webpack-plugin");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
 const { IgnorePlugin } = require("webpack");
 
+const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
@@ -74,11 +75,16 @@ module.exports = env => {
             },
           ],
         },
+        {
+          test: /\.svg$/i,
+          use: "null-loader",
+        },
       ],
     },
     resolve: {
       extensions: [".webpack.js", ".web.js", ".js", ".jsx", ".ts", ".tsx"],
       alias: {
+        assets: ASSETS_PATH,
         metabase: SRC_PATH,
         cljs: devMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
         "metabase-lib": LIB_SRC_PATH,

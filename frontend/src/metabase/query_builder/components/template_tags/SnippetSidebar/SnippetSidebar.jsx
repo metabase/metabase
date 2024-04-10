@@ -100,7 +100,7 @@ class SnippetSidebarInner extends React.Component {
           <div className={cx(CS.px3, CS.flex, CS.flexColumn, CS.alignCenter)}>
             <svg
               viewBox="0 0 10 10"
-              className="mb2"
+              className={CS.mb2}
               style={{ width: "25%", marginTop: 120 }}
             >
               <path
@@ -142,7 +142,9 @@ class SnippetSidebarInner extends React.Component {
                     }}
                   />
                 </div>
-                <span className={cx({ hide: showSearch }, CS.textHeavy, CS.h3)}>
+                <span
+                  className={cx({ [CS.hide]: showSearch }, CS.textHeavy, CS.h3)}
+                >
                   {snippetCollection.id === "root" ? (
                     t`Snippets`
                   ) : (
@@ -161,7 +163,7 @@ class SnippetSidebarInner extends React.Component {
                         );
                       }}
                     >
-                      <Icon name="chevronleft" className="mr1" />
+                      <Icon name="chevronleft" className={CS.mr1} />
                       {snippetCollection.name}
                     </SnippetTitle>
                   )}
@@ -178,7 +180,7 @@ class SnippetSidebarInner extends React.Component {
               >
                 {[
                   ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map(f =>
-                    f(this, { className: "mr2" }),
+                    f(this, { className: CS.mr2 }),
                   ),
                 ]}
                 {snippets.length >= MIN_SNIPPETS_FOR_SEARCH && (
@@ -223,7 +225,7 @@ class SnippetSidebarInner extends React.Component {
                             <Icon
                               name={icon}
                               size={ICON_SIZE}
-                              className="mr2"
+                              className={CS.mr2}
                             />
                             <h4>{name}</h4>
                           </MenuIconContainer>
@@ -291,7 +293,7 @@ class ArchivedSnippetsInner extends React.Component {
     return (
       <SidebarContent>
         <SidebarHeader
-          className="p2"
+          className={CS.p2}
           title={t`Archived snippets`}
           onBack={onBack}
         />

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
-import type { SearchModelType } from "metabase-types/api";
+import type { SearchModel } from "metabase-types/api";
 
 import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
@@ -50,23 +50,23 @@ export const CollectionPickerModal = ({
   ] = useToggle(false);
 
   const pickerRef = useRef<{
-    onFolderSelect: (item: { folder: CollectionPickerItem }) => void;
+    onNewCollection: (item: CollectionPickerItem) => void;
   }>();
 
   const handleItemSelect = useCallback(
-    (item: CollectionPickerItem) => {
+    async (item: CollectionPickerItem) => {
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
       } else {
-        onChange(item);
+        await onChange(item);
       }
     },
     [onChange, options],
   );
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (selectedItem) {
-      onChange(selectedItem);
+      await onChange(selectedItem);
     }
   };
 
@@ -82,7 +82,7 @@ export const CollectionPickerModal = ({
     </Button>,
   ];
 
-  const tabs: [EntityTab<SearchModelType>] = [
+  const tabs: [EntityTab<SearchModel>] = [
     {
       displayName: t`Collections`,
       model: "collection",
@@ -99,8 +99,8 @@ export const CollectionPickerModal = ({
     },
   ];
 
-  const handleNewCollectionCreate = (folder: CollectionPickerItem) => {
-    pickerRef.current?.onFolderSelect({ folder });
+  const handleNewCollectionCreate = (newCollection: CollectionPickerItem) => {
+    pickerRef.current?.onNewCollection(newCollection);
   };
 
   return (

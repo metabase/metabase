@@ -12,6 +12,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.db.custom-migrations-test :as custom-migrations-test]
    [metabase.db.query :as mdb.query]
@@ -1181,6 +1182,47 @@
           (is (= "no" (t2/select-one-fn :perm_value
                                         (t2/table-name :model/DataPermissions)
                                         :db_id db-id :group_id group-id :perm_type "perms/manage-database"))))))))
+
+(deftest create-internal-user-test
+  (testing "The internal user is created if it doesn't already exist"
+    (impl/test-migrations "v50.2024-03-28T16:30:35" [migrate!]
+      (let [get-users #(t2/query "SELECT * FROM core_user")]
+        (is (= [] (get-users)))
+        (migrate!)
+        (is (=? [{:id               config/internal-mb-user-id
+                  :first_name       "Metabase"
+                  :last_name        "Internal"
+                  :email            "internal@metabase.com"
+                  :password         some?
+                  :password_salt    some?
+                  :is_active        false
+                  :is_superuser     false
+                  :login_attributes nil
+                  :sso_source       nil
+                  :type             "internal"
+                  :date_joined      some?}]
+                (get-users))))))
+  (testing "The internal user isn't created again if it already exists"
+    (impl/test-migrations "v50.2024-03-28T16:30:35" [migrate!]
+      (t2/insert-returning-pks!
+       :core_user
+       ;; Copied from the old `metabase-enterprise.internal-user` namespace
+       {:id               config/internal-mb-user-id
+        :first_name       "Metabase"
+        :last_name        "Internal"
+        :email            "internal@metabase.com"
+        :password         (str (random-uuid))
+        :password_salt    (str (random-uuid))
+        :is_active        false
+        :is_superuser     false
+        :login_attributes nil
+        :sso_source       nil
+        :type             "internal"
+        :date_joined      :%now})
+      (let [get-users    #(t2/query "SELECT * FROM core_user")
+            users-before (get-users)]
+        (migrate!)
+        (is (= users-before (get-users)))))))
 
 (deftest data-permissions-migration-rollback-test
   (testing "Data permissions are correctly rolled back from `data_permissions` to `permissions`"

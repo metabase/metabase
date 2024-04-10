@@ -70,7 +70,7 @@ function ErrorDetailDisplay(props) {
       });
       return (
         <tr key={x}>
-          <td align="right" className="m0 mt1 text-medium">
+          <td align="right" className={cx(CS.m0, CS.mt1, CS.textMedium)}>
             {formatColumn(resCols[nameToResCol[x]])}
           </td>
           <td>
@@ -88,7 +88,7 @@ function ErrorDetailDisplay(props) {
       ?.split("|")
       ?.map((x, idx) => (
         <tr key={x}>
-          <td align="right" className="m0 mt1 text-medium">
+          <td align="right" className={cx(CS.m0, CS.mt1, CS.textMedium)}>
             {idx === 0 && formatColumn(resCols[nameToResCol.dash_name_str])}
           </td>
           <td className={CS.textBold}>

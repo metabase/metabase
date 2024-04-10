@@ -71,11 +71,11 @@ describe("command palette utils", () => {
       expect(processResults([...testActions, ...testRecent])).toHaveLength(12);
       expect(
         processResults([...testRecent, ...testAdmin, ...testDoc]),
-      ).toHaveLength(18);
+      ).toHaveLength(19);
     });
 
-    it("should not add a header to doc", () => {
-      expect(processResults([...testDoc])).toHaveLength(1);
+    it("should add a header to doc", () => {
+      expect(processResults([...testDoc])).toHaveLength(2);
     });
 
     it("should enforce a specific order", () => {
@@ -96,7 +96,7 @@ describe("command palette utils", () => {
       );
       const adminIndex = results.findIndex(action => action === "Admin");
 
-      [actionsIndex, searchIndex, recentsIndex, adminIndex].forEach(
+      [actionsIndex, recentsIndex, adminIndex, searchIndex].forEach(
         (val, i, arr) => {
           expect(val).not.toBe(-1);
           const next = arr[i + 1] || Infinity; //can't call expect in an if, so this lets us do the last comparison

@@ -26,6 +26,7 @@ frontend_sources: &frontend_sources
   - ".eslintrc"
   - "postcss.config.js"
   - "webpack.config.js"
+  - "webpack.embedding-sdk.config.js"
   - "webpack.static-viz.config.js"
   - ".nvmrc"
 

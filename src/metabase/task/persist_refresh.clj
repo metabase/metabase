@@ -23,7 +23,6 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [potemkin.types :as p]
    [toucan2.core :as t2])
@@ -59,7 +58,7 @@
 (defn- refresh-with-stats! [refresher database stats persisted-info]
   ;; Since this could be long running, double check state just before refreshing
   (when (contains? (persisted-info/refreshable-states) (t2/select-one-fn :state PersistedInfo :id (:id persisted-info)))
-    (log/info (trs "Attempting to refresh persisted model {0}." (:card_id persisted-info)))
+    (log/infof "Attempting to refresh persisted model %s." (:card_id persisted-info))
     (let [card (t2/select-one Card :id (:card_id persisted-info))
           definition (persisted-info/metadata->definition (:result_metadata card)
                                                           (:table_name persisted-info))
@@ -74,8 +73,8 @@
           {:keys [state error]} (try
                                   (refresh! refresher database definition card)
                                   (catch Exception e
-                                    (log/info e (trs "Error refreshing persisting model with card-id {0}"
-                                                     (:card_id persisted-info)))
+                                    (log/infof e "Error refreshing persisting model with card-id %s"
+                                               (:card_id persisted-info))
                                     {:state :error :error (ex-message e)}))]
       (t2/update! PersistedInfo (u/the-id persisted-info)
                   {:active (= state :success),
@@ -130,14 +129,14 @@
                                              (:archived card-info)
                                              (not= (:type card-info) :model))
                                        (let [database (-> persisted-info :database_id db-id->db)]
-                                         (log/info (trs "Unpersisting model with card-id {0}" (:card_id persisted-info)))
+                                         (log/infof "Unpersisting model with card-id %s" (:card_id persisted-info))
                                          (try
                                            (unpersist! refresher database persisted-info)
                                            (when-not (= "off" current-state)
                                              (t2/delete! PersistedInfo :id (:id persisted-info)))
                                            (update stats :success inc)
                                            (catch Exception e
-                                             (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id persisted-info)))
+                                             (log/infof e "Error unpersisting model with card-id %s" (:card_id persisted-info))
                                              (update stats :error inc))))
                                        (update stats :skipped inc))))
                                  {:success 0, :error 0, :skipped 0}
@@ -189,7 +188,7 @@
   "Refresh tables backing the persisted models. Updates all persisted tables with that database id which are in a state
   of \"persisted\"."
   [database-id refresher]
-  (log/info (trs "Starting persisted model refresh task for Database {0}." database-id))
+  (log/infof "Starting persisted model refresh task for Database %s." database-id)
   (persisted-info/ready-unpersisted-models! database-id)
   (let [database  (t2/select-one Database :id database-id)
         persisted (refreshable-models database-id)
@@ -198,8 +197,8 @@
                             {:success 0, :error 0, :trigger "Scheduled"}
                             persisted))
         {:keys [error success]} (save-task-history! "persist-refresh" database-id thunk)]
-    (log/info
-      (trs "Finished persisted model refresh task for Database {0} with {1} successes and {2} errors." database-id success error))))
+    (log/infof "Finished persisted model refresh task for Database %s with %s successes and %s errors."
+               database-id success error)))
 
 (defn- refresh-individual!
   "Refresh an individual model based on [[PersistedInfo]]."
@@ -215,10 +214,9 @@
                                      database
                                      {:success 0 :error 0, :trigger "Manual"}
                                      persisted-info))
-        (log/info (trs "Finished updated model-id {0} from persisted-info {1}."
-                       (:card_id persisted-info)
-                       (u/the-id persisted-info))))
-      (log/info (trs "Unable to refresh model with card-id {0}" (:card_id persisted-info))))))
+        (log/infof "Finished updated model-id %s from persisted-info %s."
+                   (:card_id persisted-info) (u/the-id persisted-info)))
+      (log/infof "Unable to refresh model with card-id %s" (:card_id persisted-info)))))
 
 (defn- refresh-job-fn!
   "Refresh tables. Gets the database id from the job context and calls `refresh-tables!'`."
@@ -227,7 +225,7 @@
     (case type
       "database"   (refresh-tables!     db-id        dispatching-refresher)
       "individual" (refresh-individual! persisted-id dispatching-refresher)
-      (log/info (trs "Unknown payload type {0}" type)))))
+      (log/infof "Unknown payload type %s" type))))
 
 (defn- prune-job-fn!
   [_job-context]
@@ -365,7 +363,7 @@
     (try (task/add-trigger! tggr)
          (catch ObjectAlreadyExistsException _e
            (log/info
-            (u/format-color 'green "Persistence already present for model %d"
+            (u/format-color :green "Persistence already present for model %d %s"
                             (:card_id persisted-info)
                             (.. ^Trigger tggr getKey getName)))))))
          ;; other errors?

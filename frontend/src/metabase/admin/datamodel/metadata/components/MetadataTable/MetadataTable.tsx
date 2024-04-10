@@ -251,9 +251,9 @@ const TableVisibilitySection = ({
         </MetadataVisibilityBadge>
 
         {table.visibility_type && (
-          <span id="VisibilitySubTypes" className="border-left mx2">
+          <span id="VisibilitySubTypes" className={cx("border-left", CS.mx2)}>
             <span
-              className={cx("mx2", CS.textUppercase, "text-medium")}
+              className={cx(CS.mx2, CS.textUppercase, CS.textMedium)}
             >{t`Why Hide?`}</span>
             <MetadataVisibilityBadge
               isChecked={table.visibility_type === "technical"}
@@ -304,7 +304,7 @@ interface MetadataTabSectionProps {
 
 const TableTabSection = ({ tab, onChangeTab }: MetadataTabSectionProps) => {
   return (
-    <div className="mx1 border-bottom">
+    <div className={cx(CS.mx1, CS.borderBottom)}>
       <Radio
         colorScheme="default"
         value={tab}

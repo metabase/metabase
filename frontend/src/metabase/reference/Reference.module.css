@@ -34,6 +34,7 @@
 }
 
 .schemaSeparator {
+  /* TODO FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-light mt2 from "style";
   margin-left: var(--icon-width);
   font-size: 18px;

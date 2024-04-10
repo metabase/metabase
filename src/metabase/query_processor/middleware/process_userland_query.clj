@@ -17,7 +17,6 @@
    [metabase.query-processor.middleware.normalize-query :as normalize]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -58,6 +57,7 @@
 
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
+ <<<<<<< HEAD
   [execution-info field-usages]
   (let [execution-info (add-running-time execution-info)
         ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
@@ -72,7 +72,7 @@
                          (try
                           (save-execution-metadata!* execution-info field-usages)
                           (catch Throwable e
-                            (log/error e (trs "Error saving query execution info")))))]
+                            (log/error e "Error saving query execution info"))))]
     (if *save-execution-metadata-async*
       (.submit clojure.lang.Agent/pooledExecutor ^Runnable f)
       (f))))

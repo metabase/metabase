@@ -21,6 +21,7 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
   padding: 0 0.875rem;
   padding-right: 0.5rem;
   cursor: pointer;
+  min-height: 1.625rem;
 
   &:hover {
     color: ${color("white")};

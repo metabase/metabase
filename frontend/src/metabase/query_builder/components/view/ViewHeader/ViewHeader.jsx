@@ -1,3 +1,4 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { useEffect, useCallback, useState } from "react";
 import { usePrevious } from "react-use";
@@ -5,6 +6,7 @@ import { t } from "ttag";
 
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -338,7 +340,7 @@ function AhHocQuestionLeftSide(props) {
       <ViewHeaderLeftSubHeading>
         {isSummarized && (
           <QuestionDataSource
-            className="mb1"
+            className={CS.mb1}
             question={question}
             isObjectDetail={isObjectDetail}
             subHead
@@ -464,7 +466,7 @@ function ViewTitleHeaderRightSide(props) {
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
       {FilterHeaderToggle.shouldRender(props) && (
         <FilterHeaderToggle
-          className="ml2 mr1"
+          className={cx(CS.ml2, CS.mr1)}
           query={question.query()}
           isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}
@@ -473,13 +475,13 @@ function ViewTitleHeaderRightSide(props) {
       )}
       {FilterHeaderButton.shouldRender(props) && (
         <FilterHeaderButton
-          className="hide sm-show"
+          className={cx(CS.hide, CS.smShow)}
           onOpenModal={onOpenModal}
         />
       )}
       {QuestionSummarizeWidget.shouldRender(props) && (
         <QuestionSummarizeWidget
-          className="hide sm-show"
+          className={cx(CS.hide, CS.smShow)}
           isShowingSummarySidebar={isShowingSummarySidebar}
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}

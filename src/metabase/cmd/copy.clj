@@ -180,11 +180,11 @@
        (fn
          ([cnt]
           (when (pos? cnt)
-            (log/info (str " " (u/colorize 'green (trs "copied {0} instances." cnt))))))
+            (log/info (str " " (u/format-color :green "copied %s instances." cnt)))))
          ([cnt chunkk]
           (when (seq chunkk)
             (when (zero? cnt)
-              (log/info (u/colorize 'blue (trs "Copying instances of {0}..." (name model)))))
+              (log/info (u/format-color :blue "Copying instances of %s..." (name model))))
             (try
               (insert-chunk! target-db-type target-db-conn-spec table-name chunkk)
               (catch Throwable e
@@ -199,7 +199,8 @@
   "Make sure [target] application DB is empty before we start copying data."
   [data-source]
   ;; check that there are no Users yet
-  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} "SELECT count(*) AS cnt FROM core_user;")]
+  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} ["SELECT count(*) AS cnt FROM core_user where not id = ?;"
+                                                               config/internal-mb-user-id])]
     (assert (integer? cnt))
     (when (pos? cnt)
       (throw (ex-info (trs "Target DB is already populated!")

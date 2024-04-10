@@ -18,22 +18,6 @@ export const ActivityApi = {
   ),
 };
 
-export const BookmarkApi = {
-  card: {
-    create: POST("/api/bookmark/card/:id"),
-    delete: DELETE("/api/bookmark/card/:id"),
-  },
-  collection: {
-    create: POST("/api/bookmark/collection/:id"),
-    delete: DELETE("/api/bookmark/collection/:id"),
-  },
-  dashboard: {
-    create: POST("/api/bookmark/dashboard/:id"),
-    delete: DELETE("/api/bookmark/dashboard/:id"),
-  },
-  reorder: PUT("/api/bookmark/ordering"),
-};
-
 // only available with token loaded
 export const GTAPApi = {
   list: GET("/api/mt/gtap"),
@@ -220,13 +204,8 @@ export const DashboardApi = {
   ),
 };
 
-export const SearchApi = {
-  list: GET("/api/search"),
-};
-
 export const CollectionsApi = {
   list: GET("/api/collection"),
-  listItems: GET("/api/collection/:collectionId/items"),
   create: POST("/api/collection"),
   get: GET("/api/collection/:id"),
   // Temporary route for getting things not in a collection
@@ -319,15 +298,7 @@ export const TimelineEventApi = {
 };
 
 export const MetabaseApi = {
-  db_validate: POST("/api/database/validate"),
   db_add_sample_database: POST("/api/database/sample_database"),
-  db_metadata: GET("/api/database/:dbId/metadata"),
-  db_schemas: GET("/api/database/:dbId/schemas"),
-  db_syncable_schemas: GET("/api/database/:dbId/syncable_schemas"),
-  db_schema_tables: GET("/api/database/:dbId/schema/:schemaName"),
-  db_virtual_dataset_tables: GET("/api/database/:dbId/datasets/:schemaName"),
-  //db_tables:   GET("/api/database/:dbId/tables"),
-  db_fields: GET("/api/database/:dbId/fields"),
   db_autocomplete_suggestions: GET(
     "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:query",
   ),
@@ -612,4 +583,10 @@ export const ApiKeysApi = {
   delete: DELETE("/api/api-key/:id"),
   edit: PUT("/api/api-key/:id"),
   regenerate: PUT("/api/api-key/:id/regenerate"),
+};
+
+export const CacheConfigApi = {
+  list: GET("/api/cache"),
+  update: PUT("/api/cache"),
+  delete: DELETE("/api/cache"),
 };
