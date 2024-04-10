@@ -2,6 +2,7 @@ import { t, jt } from "ttag";
 
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
@@ -17,9 +18,18 @@ import {
   Icon,
 } from "metabase/ui";
 
+import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
+
 export const DataPermissionsHelp = () => {
   const isAdvancedPermissionsFeatureEnabled = useSelector(
     state => getSetting(state, "token-features").advanced_permissions,
+  );
+
+  const shouldShowLegacyNoSelfServiceInfo = useSelector(state =>
+    hasPermissionValueInGraph(
+      state.admin.permissions.originalDataPermissions,
+      DataPermissionValue.LEGACY_NO_SELF_SERVICE,
+    ),
   );
 
   return (
@@ -62,6 +72,15 @@ export const DataPermissionsHelp = () => {
                 description={t`The group can view data based on the database role you specify with a user attribute (manually or via SSO).`}
               />
 
+              {shouldShowLegacyNoSelfServiceInfo && (
+                <PermissionHelpDescription
+                  icon="eye"
+                  iconColor="accent5"
+                  name={t`No self-service (Deprecated)`}
+                  description={t`The group can't use the query builder or drill through existing questions. They also can't see the data in the Browse data section. They can still view questions based on this data, if they have permissions to the relevant collection. 'Blocked', 'Impersonated' and 'Sandboxed' in another group will override 'No self-service'.`}
+                />
+              )}
+
               <PermissionHelpDescription
                 hasUpgradeNotice={!isAdvancedPermissionsFeatureEnabled}
                 icon="close"
@@ -86,6 +105,15 @@ export const DataPermissionsHelp = () => {
                 name={t`Can view`}
                 description={t`The group can view all data for that schema or table.`}
               />
+
+              {shouldShowLegacyNoSelfServiceInfo && (
+                <PermissionHelpDescription
+                  icon="eye"
+                  iconColor="accent5"
+                  name={t`No self-service (Deprecated)`}
+                  description={t`"No self-service" works like it does for databases, except here it is scoped to individual schemas or tables.`}
+                />
+              )}
 
               <PermissionHelpDescription
                 hasUpgradeNotice={!isAdvancedPermissionsFeatureEnabled}
