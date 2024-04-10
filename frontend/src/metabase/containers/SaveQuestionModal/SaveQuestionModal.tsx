@@ -115,7 +115,7 @@ export const SaveQuestionModal = ({
 
   const getOriginalNameModification = (originalQuestion: Question | null) =>
     originalQuestion
-      ? originalQuestion?.displayName() + " - " + t`Modified`
+      ? t`${originalQuestion.displayName()}  - Modified`
       : undefined;
 
   const initialValues: FormValues = useMemo(
