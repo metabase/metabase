@@ -97,6 +97,9 @@ function transformPropsToState(
     clause,
     query,
     stageIndex,
+    expressionPosition,
+    metadata,
+    reportTimezone,
   } = props;
   const expressionFromClause = clause
     ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
@@ -108,11 +111,23 @@ function transformPropsToState(
     query,
   });
 
+  const { suggestions = [], helpText = null } = suggest({
+    reportTimezone,
+    startRule,
+    source,
+    targetOffset: 0,
+    expressionPosition,
+    query,
+    stageIndex,
+    metadata,
+    getColumnIcon,
+  });
+
   return {
     source,
     highlightedSuggestionIndex: 0,
-    helpText: null,
-    suggestions: [],
+    helpText,
+    suggestions,
     isFocused: false,
     errorMessage: null,
     hasChanges: false,
