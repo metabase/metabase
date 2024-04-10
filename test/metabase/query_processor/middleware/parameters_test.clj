@@ -268,8 +268,7 @@
                                  "\"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
                                  "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", "
                                  "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
-                                 "FROM \"PUBLIC\".\"VENUES\" "
-                                 "LIMIT 1048575")]
+                                 "FROM \"PUBLIC\".\"VENUES\"")]
         (is (= (native-query
                 {:query (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2") :params []})
                (substitute-params
