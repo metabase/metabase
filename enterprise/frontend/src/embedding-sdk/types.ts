@@ -12,4 +12,3 @@ export type SDKConfigType = {
   metabaseInstanceUrl: string;
   font?: string;
 } & SDKAuthType;
-
