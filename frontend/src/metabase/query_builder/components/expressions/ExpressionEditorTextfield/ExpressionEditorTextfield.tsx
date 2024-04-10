@@ -28,7 +28,7 @@ import type { Expression } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { ExpressionEditorHelpText } from "../ExpressionEditorHelpText";
-import ExpressionEditorSuggestions from "../ExpressionEditorSuggestions";
+import { ExpressionEditorSuggestions } from "../ExpressionEditorSuggestions";
 import ExpressionMode from "../ExpressionMode";
 
 import {
