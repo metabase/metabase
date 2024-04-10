@@ -143,11 +143,10 @@
 
 (mu/defn ^:private run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
-  [db-type       :- :keyword
-   data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
+  [data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
    auto-migrate? :- :boolean]
   (log/info "Running Database Migrations...")
-  (migrate! db-type data-source (if auto-migrate? :up :print))
+  (migrate! data-source (if auto-migrate? :up :print))
   (log/info "Database Migrations Current ..." (u/emoji "✅")))
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
@@ -165,7 +164,7 @@
                 custom-migrations/*create-sample-content* create-sample-content?]
          (verify-db-connection db-type data-source)
          (error-if-downgrade-required! data-source)
-         (run-schema-migrations! db-type data-source auto-migrate?))))
+         (run-schema-migrations! data-source auto-migrate?))))
   :done)
 
 ;;;; Toucan Setup.
