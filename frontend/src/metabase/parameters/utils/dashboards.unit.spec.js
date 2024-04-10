@@ -3,7 +3,6 @@ import {
   createParameter,
   setParameterName,
   hasMapping,
-  isDashboardParameterWithoutMapping,
   getParametersMappedToDashcard,
   hasMatchingParameters,
   getFilteringParameterValuesMap,
@@ -189,95 +188,6 @@ describe("metabase/parameters/utils/dashboards", () => {
       };
 
       expect(hasMapping(parameter, dashboard)).toBe(true);
-    });
-  });
-
-  describe("isDashboardParameterWithoutMapping", () => {
-    const parameter = { id: "foo" };
-
-    it("should return false when passed a falsy dashboard", () => {
-      expect(isDashboardParameterWithoutMapping(parameter, undefined)).toBe(
-        false,
-      );
-    });
-
-    it("should return false when the given parameter is not found in the dashboard's parameters list", () => {
-      const brokenDashboard = {
-        dashcards: [
-          {
-            parameter_mappings: [
-              {
-                parameter_id: "bar",
-              },
-              {
-                // having this parameter mapped but not in the parameters list shouldn't happen in practice,
-                // but I am proving the significance of having the parameter exist in the dashboard's parameters list
-                parameter_id: "foo",
-              },
-            ],
-          },
-        ],
-        parameters: [
-          {
-            id: "bar",
-          },
-        ],
-      };
-
-      expect(
-        isDashboardParameterWithoutMapping(parameter, brokenDashboard),
-      ).toBe(false);
-    });
-
-    it("should return false when the given parameter is both found in the dashboard's parameters and also mapped", () => {
-      const dashboard = {
-        dashcards: [
-          {
-            parameter_mappings: [
-              {
-                parameter_id: "bar",
-              },
-              {
-                parameter_id: "foo",
-              },
-            ],
-          },
-        ],
-        parameters: [
-          {
-            id: "bar",
-          },
-          { id: "foo" },
-        ],
-      };
-
-      expect(isDashboardParameterWithoutMapping(parameter, dashboard)).toBe(
-        false,
-      );
-    });
-
-    it("should return true when the given parameter is found on the dashboard but is not mapped", () => {
-      const dashboard = {
-        dashcards: [
-          {
-            parameter_mappings: [
-              {
-                parameter_id: "bar",
-              },
-            ],
-          },
-        ],
-        parameters: [
-          {
-            id: "bar",
-          },
-          { id: "foo" },
-        ],
-      };
-
-      expect(isDashboardParameterWithoutMapping(parameter, dashboard)).toBe(
-        true,
-      );
     });
   });
 

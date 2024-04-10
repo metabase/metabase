@@ -70,11 +70,13 @@ export function setParameterName(
 export function setParameterType(
   parameter: Parameter,
   type: string,
+  sectionId: string,
 ): Parameter {
+  // maybe also reset default?
   return {
     ...parameter,
-    // here we need to map sliced type to the correct type
     type,
+    sectionId,
   };
 }
 
@@ -88,22 +90,6 @@ export function hasMapping(parameter: Parameter, dashboard: Dashboard) {
       return parameter_mapping.parameter_id === parameter.id;
     });
   });
-}
-
-export function isDashboardParameterWithoutMapping(
-  parameter: Parameter,
-  dashboard: Dashboard,
-) {
-  if (!dashboard || !dashboard.parameters) {
-    return false;
-  }
-
-  const parameterExistsOnDashboard = dashboard.parameters.some(
-    dashParam => dashParam.id === parameter.id,
-  );
-  const parameterHasMapping = hasMapping(parameter, dashboard);
-
-  return parameterExistsOnDashboard && !parameterHasMapping;
 }
 
 function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {

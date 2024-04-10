@@ -218,12 +218,13 @@ export const setParameterName = createThunkAction(
 export const SET_PARAMETER_TYPE = "metabase/dashboard/SET_PARAMETER_TYPE";
 export const setParameterType = createThunkAction(
   SET_PARAMETER_TYPE,
-  (parameterId: ParameterId, type: string) => (dispatch, getState) => {
-    updateParameter(dispatch, getState, parameterId, parameter =>
-      dashboardUtils.setParameterType(parameter, type),
-    );
-    return { id: parameterId, type };
-  },
+  (parameterId: ParameterId, type: string, sectionId: string) =>
+    (dispatch, getState) => {
+      updateParameter(dispatch, getState, parameterId, parameter =>
+        dashboardUtils.setParameterType(parameter, type, sectionId),
+      );
+      return { id: parameterId, type };
+    },
 );
 
 export const setParameterFilteringParameters = createThunkAction(

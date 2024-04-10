@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
+import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { Radio, Stack, Text, TextInput, Box, Select } from "metabase/ui";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
@@ -22,8 +23,6 @@ import {
   SettingLabelError,
   SettingValueWidget,
 } from "./ParameterSettings.styled";
-import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
-import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 
 export interface ParameterSettingsProps {
   parameter: Parameter;
@@ -40,12 +39,12 @@ export interface ParameterSettingsProps {
 }
 
 const parameterSections = getDashboardParameterSections();
-const dataTypeOptions = parameterSections.map(section => {
+const dataTypeSections = parameterSections.map(section => {
   return {
     label: section.name,
-    value: section.id
-  }
-})
+    value: section.id,
+  };
+});
 
 export const ParameterSettings = ({
   parameter,
@@ -61,12 +60,12 @@ export const ParameterSettings = ({
   embeddedParameterVisibility,
 }: ParameterSettingsProps): JSX.Element => {
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
-  const [dataType, setDataType] = useState(getParameterType(parameter));
+  const [sectionId, setSectionId] = useState(parameter.sectionId);
 
   useLayoutEffect(() => {
     setTempLabelValue(parameter.name);
-    // onChangeType(parameter.type);
-  }, [onChangeType, parameter]);
+    setSectionId(parameter.sectionId);
+  }, [onChangeType, parameter.name, parameter.sectionId]);
 
   const labelError = getLabelError({
     labelValue: tempLabelValue,
@@ -86,9 +85,45 @@ export const ParameterSettings = ({
     }
   };
 
-  const handleDataTypeChange = (nextType: string) => {
-    onChangeType(nextType);
-  }
+  const handleDataTypeChange = (nextSectionId: string) => {
+    const section = parameterSections.find(
+      s => s.id === nextSectionId,
+    ) as typeof parameterSections[number];
+    const options = section.options;
+
+    let operator;
+
+    if (nextSectionId === "id") {
+      operator = options[0];
+    }
+
+    if (nextSectionId === "location") {
+      operator = options.find(o => o.name === "Is");
+    }
+
+    if (nextSectionId === "number") {
+      operator = options.find(o => o.name === "Between");
+    }
+
+    if (nextSectionId === "string") {
+      operator = options.find(o => o.name === "Is");
+    }
+
+    if (nextSectionId === "date") {
+      const dateOptions = options.concat([
+        {
+          name: "Default",
+          value: "Let user choose",
+          type: "default",
+          sectionId: "date",
+        },
+      ]);
+
+      operator = dateOptions.find(o => o.name === "Default");
+    }
+
+    onChangeType(operator.type, operator.sectionId);
+  };
 
   const handleSourceSettingsChange = useCallback(
     (sourceType: ValuesSourceType, sourceConfig: ValuesSourceConfig) => {
@@ -116,13 +151,9 @@ export const ParameterSettings = ({
       <Box mb="xl">
         <SettingLabel>{t`Data type`}</SettingLabel>
         <Select
-          data={dataTypeOptions}
-          value={dataType}
+          data={dataTypeSections}
+          value={sectionId}
           onChange={handleDataTypeChange}
-        // value={tempLabelValue}
-        // onBlur={handleLabelBlur}
-        // error={labelError}
-        // aria-label={t`Label`}
         />
       </Box>
       {canUseCustomSource(parameter) && (

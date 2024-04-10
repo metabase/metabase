@@ -85,10 +85,10 @@ export const ParameterSidebar = ({
   );
 
   const handleTypeChange = useCallback(
-    (nextType: string) => {
-      onChangeType(parameterId, nextType);
+    (nextType: string, sectionId: string) => {
+      onChangeType(parameterId, nextType, sectionId);
     },
-    [parameterId, onChangeType]
+    [parameterId, onChangeType],
   );
 
   const handleDefaultValueChange = useCallback(
