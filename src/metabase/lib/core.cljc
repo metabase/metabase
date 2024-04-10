@@ -16,6 +16,7 @@
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.expression.preview :as lib.expression.preview]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
@@ -51,6 +52,7 @@
          lib.drill-thru.pivot/keep-me
          lib.equality/keep-me
          lib.expression/keep-me
+         lib.expression.preview/keep-me
          lib.field/keep-me
          lib.filter/keep-me
          lib.filter.update/keep-me
@@ -172,6 +174,8 @@
   rtrim
   upper
   lower]
+ [lib.expression.preview
+  preview-expression]
  [lib.fe-util
   dependent-metadata
   expression-clause
