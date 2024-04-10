@@ -6,6 +6,7 @@ import {
   visitDashboard,
   queryBuilderHeader,
   modal,
+  chartPathWithColor,
 } from "e2e/support/helpers";
 
 const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
@@ -58,7 +59,8 @@ describe("issue 23293", () => {
         },
       );
 
-      cy.get(".bar").first().realClick();
+      // Click on the first bar
+      chartPathWithColor("#509EE3").first().realClick();
       popover()
         .findByText(/^See these/)
         .click();

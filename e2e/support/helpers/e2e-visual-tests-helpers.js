@@ -16,5 +16,7 @@ export function chartPathsWithColors(colors) {
 
 const CIRCLE_PATH = "M1 0A1 1 0 1 1 1 -0.0001";
 export function lineChartCircle() {
-  return echartsContainer().find(`path[d="${CIRCLE_PATH}"]`);
+  return echartsContainer()
+    .find(`path[d="${CIRCLE_PATH}"]`)
+    .should("be.visible");
 }

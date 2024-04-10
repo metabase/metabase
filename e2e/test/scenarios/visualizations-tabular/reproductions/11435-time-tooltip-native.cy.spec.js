@@ -1,4 +1,4 @@
-import { restore, popover } from "e2e/support/helpers";
+import { restore, popover, lineChartCircle } from "e2e/support/helpers";
 
 const questionDetails = {
   name: "11435",
@@ -36,5 +36,5 @@ describe("issue 11435", () => {
 });
 
 const hoverLineDot = ({ index } = {}) => {
-  cy.findByTestId("query-visualization-root").get(".dot").eq(index).realHover();
+  lineChartCircle().eq(index).realHover();
 };
