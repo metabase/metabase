@@ -77,6 +77,17 @@
   :getter     (fn [] (long-timezone-name (report-timezone)))
   :doc        false)
 
+;; lbrdnk: TODO: Is this actually the right namespace for defsetting?
+;; lbrdnk: TODO: Setting should be avail only when feature is supported? (Probably not doable in simple manner.)
+(defsetting enable-json-unfolding
+  (deferred-tru "Should we enable JSON unfolding for this Database?")
+  :type           :boolean
+  ;; TODO: Verify following should actaully be true!
+  :export?        true
+  :default        true
+  :database-local :only
+  :visibility     :admin)
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Current Driver                                                 |

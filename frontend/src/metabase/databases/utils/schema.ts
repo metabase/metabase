@@ -60,6 +60,8 @@ export const getDefinedFields = (
     : fields.filter(field => !ADVANCED_FIELDS.includes(field.name));
 };
 
+// TODO: Are we changing the way FE sends db data to BE (json unfolding in settings)?
+//       If so, this logic should be modified!
 export const getSubmitValues = (
   engine: Engine | undefined,
   values: DatabaseData,
@@ -70,6 +72,11 @@ export const getSubmitValues = (
     .filter(field => isDetailField(field))
     .filter(field => isFieldVisible(field, values.details))
     .map(field => [field.name, values.details[field.name]]);
+
+  // console.log("getSubmitValues")
+  // console.log(values)
+  // console.log(fields)
+  // console.log(entries)
 
   return {
     ...values,

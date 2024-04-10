@@ -779,6 +779,19 @@
               (assoc :valid false))
       details)))
 
+;; lbrdnk: TODO: Following is temporary, until I figure out if it makes sense to update FE json unfolding value
+;;               handling -- if it won't be under details. Should not.
+;; lbrdnk: TODO: Also check other misusages of details. I believe I've also seen some other settings conveyed
+;;               using that structure.
+(def ^:private settings-keys
+  [:json-unfolding])
+
+(defn- tmp-extract-settings
+  [details]
+  ;; TODO: Remove when swapping sync code's database-supports? for setting check.
+  {:details  details #_(dissoc details settings-keys)
+   :settings (select-keys details settings-keys)})
+
 (api/defendpoint POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]} :body}]
@@ -796,7 +809,8 @@
     (api/check (premium-features/enable-cache-granular-controls?)
                [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
                               "cache granular controls feature."))]))
-  (let [details-or-error (test-connection-details engine details)
+  (let [{:keys [settings details]} (tmp-extract-settings details)
+        details-or-error (test-connection-details engine details)
         valid?           (not= (:valid details-or-error) false)]
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
@@ -809,6 +823,7 @@
                                         :details      details-or-error
                                         :is_full_sync is_full_sync
                                         :is_on_demand (boolean is_on_demand)
+                                        :settings     settings
                                         :cache_ttl    cache_ttl
                                         :creator_id   api/*current-user-id*}
                                        (sync.schedules/schedule-map->cron-strings
@@ -925,6 +940,8 @@
    settings           [:maybe ms/Map]}
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (let [existing-database (api/write-check (t2/select-one Database :id id))
+        {:keys [details] settings-from-details :settings} (tmp-extract-settings details)
+        settings (merge settings settings-from-details)
         details           (some->> details
                                    (driver.u/db-details-client->server (or engine (:engine existing-database)))
                                    (upsert-sensitive-fields existing-database))

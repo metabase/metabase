@@ -102,6 +102,7 @@ type DatabaseEditErrorType = {
   message: string;
 };
 
+// lbrdnk: This is the edit form in admin interface.
 function DatabaseEditApp(props: DatabaseEditAppProps) {
   const {
     database,

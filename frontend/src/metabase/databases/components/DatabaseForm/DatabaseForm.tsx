@@ -35,6 +35,7 @@ interface DatabaseFormProps {
   setIsDirty?: (isDirty: boolean) => void;
 }
 
+// lbrdnk: This is the form that's shared between admin interface and eg. intro screen.
 export const DatabaseForm = ({
   initialValues: initialData,
   autofocusFieldName,

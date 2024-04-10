@@ -7,6 +7,8 @@ export type DatabaseId = number;
 
 export type InitialSyncStatus = "incomplete" | "complete" | "aborted";
 
+// lbrdnk: TODO: If we are updating FE handling of json unfolding (moving to settings), following
+//               may have to be also updated.
 export type DatabaseSettings = {
   [key: string]: any;
   "database-enable-actions"?: boolean;
