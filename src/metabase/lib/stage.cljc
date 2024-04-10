@@ -16,6 +16,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
@@ -164,21 +165,17 @@
       (not-empty (lib.metadata.calculation/visible-columns query stage-number card options)))))
 
 (mu/defn ^:private metric-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
-  [query          :- ::lib.schema/query
-   _stage-number   :- :int
-   sources        :- [:maybe ::lib.schema/sources]
-   options        :- lib.metadata.calculation/VisibleColumnsOptions]
-  ;; deal with just a single source for now
-  (when-let [{metric-id :id, source-type :lib/type} (first sources)]
-    (when (= source-type :source/metric)
-      (when-let [card (lib.metadata/card query metric-id)]
-        (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
-                               (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
-          (not-empty (lib.metadata.calculation/visible-columns
-                      (assoc metric-query :lib/metadata (:lib/metadata query))
-                      -1
-                      (lib.util/query-stage metric-query -1)
-                      options)))))))
+  [query         :- ::lib.schema/query
+   _stage-number :- :int
+   card          :- ::lib.schema.metadata/card
+   options       :- lib.metadata.calculation/VisibleColumnsOptions]
+  (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
+                         (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
+    (not-empty (lib.metadata.calculation/visible-columns
+                (assoc metric-query :lib/metadata (:lib/metadata query))
+                -1
+                (lib.util/query-stage metric-query -1)
+                options))))
 
 (mu/defn ^:private expressions-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query           :- ::lib.schema/query
@@ -221,35 +218,37 @@
    stage-number                          :- :int
    {:keys [unique-name-fn], :as options} :- lib.metadata.calculation/VisibleColumnsOptions]
   {:pre [(fn? unique-name-fn)]}
-  (let [{:keys [source-table source-card sources], :as this-stage} (lib.util/query-stage query stage-number)]
-    (mapv
-     #(cond-> %
-        (not (lib.util/first-metric-id sources))
-        (dissoc ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning :fk-field-id))
-     (or
-      ;; 1a. columns returned by previous stage
-      (previous-stage-metadata query stage-number unique-name-fn)
-      ;; 1b or 1c
-      (or
-       ;; 1b: default visible Fields for the source Table
-       (when source-table
-         (assert (integer? source-table))
-         (let [table-metadata (lib.metadata/table query source-table)]
-           (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
-       ;; 1c. Metadata associated with a saved Question
-       (when source-card
-         (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
-       ;; 1e. Metadata associated with a Metric
-       (when sources
-         (metric-metadata query stage-number sources options))
-       ;; 1d: `:lib/stage-metadata` for the (presumably native) query
-       (for [col (:columns (:lib/stage-metadata this-stage))]
-         (assoc col
-                :lib/source :source/native
-                :lib/source-column-alias  (:name col)
-                ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
-                ;; that gets added later gets deduplicated from these.
-                :lib/desired-column-alias (unique-name-fn (:name col)))))))))
+  (let [{:keys [source-table source-card], :as this-stage} (lib.util/query-stage query stage-number)
+        card (some->> source-card (lib.metadata/card query))
+        metric-based? (= (:type card) :metric)]
+    (into []
+          (if metric-based?
+            identity
+            (map #(dissoc % ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning :fk-field-id)))
+          (or
+           ;; 1a. columns returned by previous stage
+           (previous-stage-metadata query stage-number unique-name-fn)
+           ;; 1b or 1c
+           (or
+            ;; 1b: default visible Fields for the source Table
+            (when source-table
+              (assert (integer? source-table))
+              (let [table-metadata (lib.metadata/table query source-table)]
+                (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
+            ;; 1e. Metadata associated with a Metric
+            (when metric-based?
+              (metric-metadata query stage-number card options))
+            ;; 1c. Metadata associated with a saved Question
+            (when source-card
+              (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
+            ;; 1d: `:lib/stage-metadata` for the (presumably native) query
+            (for [col (:columns (:lib/stage-metadata this-stage))]
+              (assoc col
+                     :lib/source :source/native
+                     :lib/source-column-alias  (:name col)
+                     ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
+                     ;; that gets added later gets deduplicated from these.
+                     :lib/desired-column-alias (unique-name-fn (:name col)))))))))
 
 (mu/defn ^:private existing-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
   [query        :- ::lib.schema/query

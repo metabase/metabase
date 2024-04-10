@@ -1,11 +1,13 @@
 (ns metabase.lib.metric-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.util :as lib.util]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -194,3 +196,32 @@
                 :lib/source-column-alias  "metric"
                 :lib/type                 :metadata/column}]
               (lib/returned-columns query -1 query))))))
+
+(deftest ^:parallel metric-visible-columns-test
+  (let [metric-card-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                              (lib/filter (lib/< (meta/field-metadata :orders :tax) 4))
+                              (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                              (lib/aggregate (lib/avg (meta/field-metadata :orders :total))))
+        meta-provider (lib.tu/mock-metadata-provider
+                       meta/metadata-provider
+                       {:cards [{:id 1
+                                 :name "metric"
+                                 :database-id (meta/id)
+                                 :dataset-query (lib.convert/->legacy-MBQL metric-card-query)
+                                 :type :metric}]})
+        metric-based-query (lib/query meta-provider (lib.metadata/card meta-provider 1))]
+    (testing "Metric aggregation added and breakouts copied on query creation"
+      (is (=? {:lib/type :mbql/query
+               :database (meta/id)
+               :stages
+               [{:lib/type :mbql.stage/mbql
+                 :source-card 1
+                 :breakout
+                 [[:field
+                   {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :month}
+                   (meta/id :orders :created-at)]]
+                 :aggregation [[:metric {} 1]]}]}
+              metric-based-query)))
+    (testing "The columns of the query underlying the metric are visible in the metric-based query"
+      (is (= (lib/visible-columns metric-card-query 0 (lib.util/query-stage metric-card-query 0))
+             (lib/visible-columns metric-based-query 0 (lib.util/query-stage metric-based-query 0)))))))
