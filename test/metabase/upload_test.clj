@@ -17,8 +17,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
-   [metabase.sync :as sync]
-   [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
@@ -284,7 +282,8 @@
                   "1, Luke Skywalker"
                   "2, Darth Vader"]
                  "example csv file")
-           auxiliary-sync-steps :never}}] ; usually we don't care about analyze or field values for tests
+           ;; usually we don't care about analyze or field values for tests, so skip by default for speed
+           auxiliary-sync-steps :never}}]
   (let [schema (sql.tx/session-schema driver/*driver*)
         db     (t2/select-one :model/Database (mt/id))]
     (binding [upload/*auxiliary-sync-steps* auxiliary-sync-steps]
@@ -292,8 +291,6 @@
                                                    :file       file
                                                    :schema     schema
                                                    :table-name table-name})))))
-
-
 
 (defn upload-example-csv!
   "Upload a small CSV file to the given collection ID. `grant-permission?` controls whether the
@@ -304,16 +301,17 @@
            uploads-enabled          true
            user-id                  (mt/user->id :rasta)
            db-id                    (mt/id)
-           auxiliary-sync-steps :never ; usually we don't care about analyze or field values for tests
+           ;; usually we don't care about analyze or field values for tests, so skip by default for speed
+           auxiliary-sync-steps     :never
            csv-file-prefix          "example csv file"}
       :as args}]
   (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
     (mt/with-current-user user-id
-      (let [file              (or file (csv-file-with
-                                        ["id, name"
-                                         "1, Luke Skywalker"
-                                         "2, Darth Vader"]
-                                        csv-file-prefix))
+      (let [file        (or file (csv-file-with
+                                  ["id, name"
+                                   "1, Luke Skywalker"
+                                   "2, Darth Vader"]
+                                  csv-file-prefix))
             db          (t2/select-one :model/Database db-id)
             schema-name (if (contains? args :schema-name)
                           (ddl.i/format-name driver/*driver* (:schema-name args))
@@ -571,14 +569,6 @@
         (testing "Check the data was uploaded into the table correctly"
           (is (= [@#'upload/auto-pk-column-name "unnamed_column" "ship_name" "unnamed_column_2"]
                  (column-names-for-table table))))))))
-
-(defn- scan-and-sync-table!
-  [database table]
-  (sync-fields/sync-fields-for-table! database table)
-  (if upload/*auxiliary-sync-steps*
-    (sync/sync-table! table)
-    (future
-      (sync/sync-table! table))))
 
 (deftest create-from-csv-duplicate-names-test
   (testing "Upload a CSV file with duplicate column names"
