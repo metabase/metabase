@@ -67,8 +67,7 @@
                               :now                                                 true
                               :persist-models                                      true
                               :schemas                                             true
-                              :sql/window-functions.order-by-output-column-numbers false
-                              :table-privileges                                    true}]
+                              :sql/window-functions.order-by-output-column-numbers false}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -78,6 +77,7 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
+                 :table-privileges
                  :uploads
                  :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
