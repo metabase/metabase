@@ -113,19 +113,20 @@
 
 (deftest sync-existing-table-comment-test
   (testing "test adding a comment to the source table that was initially empty, so we can check that the resync picks it up"
-    (mt/test-drivers #{:h2 :postgres}
-      (let [dbdef (basic-table "table_with_comment_after_sync" nil)]
+    (mt/test-drivers #{:h2 :postgres :redshift}
+      (let [table-name (apply str (take 10 (mt/random-name)))
+            added-comment (mt/random-name)
+            dbdef (basic-table table-name nil)]
        (mt/dataset dbdef
          ;; modify the source DB to add the comment and resync
          (driver/notify-database-updated driver/*driver* (mt/db))
-         (tx/create-db! driver/*driver* (basic-table "table_with_comment_after_sync" nil))
+         (tx/create-db! driver/*driver* dbdef)
          ;; create the comment
          (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                         [(sql.tx/standalone-table-comment-sql
                           driver/*driver*
                           dbdef
-                          (tx/map->TableDefinition {:table-name "table_with_comment_after_sync"
-                                                    :table-comment "added comment"}))])
+                          (tx/map->TableDefinition {:table-name table-name
+                                                    :table-comment added-comment}))])
          (sync-tables/sync-tables-and-database! (mt/db))
-         (is (= #{{:name (mt/format-name "table_with_comment_after_sync"), :description "added comment"}}
-                (db->tables (mt/db)))))))))
+         (is (true? (t2/exists? :model/Table :db_id (u/the-id (mt/db)) :description added-comment))))))))

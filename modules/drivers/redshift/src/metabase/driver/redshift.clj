@@ -2,7 +2,6 @@
   "Amazon Redshift Driver."
   (:require
    [cheshire.core :as json]
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
@@ -14,6 +13,7 @@
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.public-settings :as public-settings]
@@ -51,11 +51,63 @@
   [& args]
   (apply (get-method driver/describe-table :sql-jdbc) args))
 
-;; don't use the Postgres implementation for `describe-database` as it uses a custom SQL to get the tables.
-;; we should do the same for Redshift tho
+(def ^:private get-tables-sql
+  ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.
+  ;; It does not return tables from datashares, which is a relatively new feature of redshift.
+  ;; See https://github.com/dbt-labs/dbt-redshift/issues/742 for an implementation for DBT's integration with redshift
+  ;; for inspiration, and the JDBC driver itself:
+  ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java#L1794
+  ;; This is a vector so adding parameters doesn't require a change to describe-database-tables in the future.
+  [(str/join
+    "\n"
+    ["select"
+     "  c.relname as name,"
+     "  n.nspname as schema,"
+     "  case c.relkind"
+     "    when 'r' then 'table'"
+     "    when 'p' then 'partitioned table'"
+     "    when 'v' then 'view'"
+     "    when 'f' then 'foreign table'"
+     "    when 'm' then 'materialized view'"
+     "    end as type,"
+     "  d.description"
+     "  from pg_catalog.pg_namespace n, pg_catalog.pg_class c"
+     "  left join pg_catalog.pg_description d on c.oid = d.objoid and d.objsubid = 0"
+     "  left join pg_catalog.pg_class dc on d.classoid=dc.oid and dc.relname='pg_class'"
+     "  left join pg_catalog.pg_namespace dn on dn.oid=dc.relnamespace and dn.nspname='pg_catalog'"
+     "  where c.relnamespace = n.oid"
+     "    and n.nspname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
+     "    and c.relkind in ('r', 'p', 'v', 'f', 'm')"
+     "    and pg_catalog.has_schema_privilege(n.nspname, 'USAGE')"
+     "    and (pg_catalog.has_table_privilege('\"'||n.nspname||'\".\"'||c.relname||'\"','SELECT')"
+     "         or pg_catalog.has_any_column_privilege('\"'||n.nspname||'\".\"'||c.relname||'\"','SELECT'))"
+     "union all"
+     "select"
+     "  tablename as name,"
+     "  schemaname as schema,"
+     "  'EXTERNAL TABLE' as type,"
+     ;; external tables don't have descriptions
+     "  null as description"
+     "from svv_external_tables t"
+     "where schemaname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
+     ;; for external tables, USAGE privileges on a schema is sufficient to select
+     "  and pg_catalog.has_schema_privilege(t.schemaname, 'USAGE')"])])
+
+(defn- describe-database-tables
+  [database]
+  (let [[inclusion-patterns
+         exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
+        syncable? (fn [schema]
+                    (driver.s/include-schema? inclusion-patterns exclusion-patterns schema))]
+    (eduction
+     (comp (filter (comp syncable? :schema))
+           (map #(dissoc % :type)))
+     (sql-jdbc.execute/reducible-query database get-tables-sql))))
+
 (defmethod driver/describe-database :redshift
- [& args]
- (apply (get-method driver/describe-database :sql-jdbc) args))
+ [_driver database]
+  ;; TODO: change this to return a reducible so we don't have to hold 100k tables in memory in a set like this
+  {:tables (into #{} (describe-database-tables database))})
 
 (defmethod sql-jdbc.sync/describe-fks-sql :redshift
   [driver & {:keys [schema-names table-names]}]
@@ -90,12 +142,13 @@
   [driver & {:keys [schema-names table-names]}]
   (sql/format {:select [[:c.column_name :name]
                         [:c.data_type :database-type]
-                        [[:- :c.ordinal_position 1] :database-position]
-                        [:c.schema_name :table-schema]
+                        [[:- :c.ordinal_position [:inline 1]] :database-position]
+                        [:c.table_schema :table-schema]
                         [:c.table_name :table-name]
                         [[:not= :pk.column_name nil] :pk?]
-                        [[:case [:not= :c.remarks ""] :c.remarks :else nil] :field-comment]]
-               :from [[:svv_all_columns :c]]
+                        [[:case [:not= :c.remarks [:inline ""]] :c.remarks :else nil] :field-comment]]
+               ;; svv_columns excludes columns from datashares, unlike svv_all_columns with includes them
+               :from [[:svv_columns :c]]
                :left-join [[{:select [:tc.table_schema
                                       :tc.table_name
                                       :kc.column_name]
@@ -105,15 +158,15 @@
                                      [:= :tc.constraint_name :kc.constraint_name]
                                      [:= :tc.table_schema :kc.table_schema]
                                      [:= :tc.table_name :kc.table_name]]]
-                             :where [:= :tc.constraint_type "PRIMARY KEY"]}
+                             :where [:= :tc.constraint_type [:inline "PRIMARY KEY"]]}
                             :pk]
                            [:and
-                            [:= :c.schema_name :pk.table_schema]
+                            [:= :c.table_schema :pk.table_schema]
                             [:= :c.table_name :pk.table_name]
                             [:= :c.column_name :pk.column_name]]]
                :where [:and
-                       [:raw "c.schema_name !~ '^information_schema|catalog_history|pg_'"]
-                       (when schema-names [:in :c.schema_name schema-names])
+                       [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
+                       (when schema-names [:in :c.table_schema schema-names])
                        (when table-names [:in :c.table_name table-names])]
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
@@ -375,38 +428,6 @@
        " */ "
        (qp.util/default-query->remark query)))
 
-(defn- reducible-schemas-with-usage-permissions
-  "Takes something `reducible` that returns a collection of string schema names (e.g. an `Eduction`) and returns an
-  `IReduceInit` that filters out schemas for which the DB user has no schema privileges."
-  [^Connection conn reducible]
-  (reify clojure.lang.IReduceInit
-    (reduce [_ rf init]
-      (with-open [stmt (prepare-statement conn "SELECT HAS_SCHEMA_PRIVILEGE(?, 'USAGE');")]
-        (reduce
-         rf
-         init
-         (eduction
-          (filter (fn [^String table-schema]
-                    (try
-                      (with-open [rs (.executeQuery (doto stmt (.setString 1 table-schema)))]
-                        (let [has-perm? (and (.next rs)
-                                             (.getBoolean rs 1))]
-                          (or has-perm?
-                              (log/tracef "Ignoring schema %s because no USAGE privilege on it" table-schema))))
-                      (catch Throwable e
-                        (log/error e "Error checking schema permissions")
-                        false))))
-          reducible))))))
-
-(defmethod sql-jdbc.sync/filtered-syncable-schemas :redshift
-  [driver conn metadata schema-inclusion-patterns schema-exclusion-patterns]
-  (let [parent-method (get-method sql-jdbc.sync/filtered-syncable-schemas :sql-jdbc)]
-    (reducible-schemas-with-usage-permissions conn (parent-method driver
-                                                                  conn
-                                                                  metadata
-                                                                  schema-inclusion-patterns
-                                                                  schema-exclusion-patterns))))
-
 (defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
@@ -434,7 +455,9 @@
   [driver db-id table-name column-names values]
   ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values))
 
-(defmethod sql-jdbc.sync/current-user-table-privileges :redshift
+;; Cal 2024-04-10: Commented this out instead of deleting it. We used to use this for `driver/describe-database` (see metabase#37439)
+;; This might be helpful for getting privileges for actions in the future.
+#_(defmethod sql-jdbc.sync/current-user-table-privileges :redshift
   [_driver conn-spec & {:as _options}]
   ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
   ;; result in an operation not supported error
