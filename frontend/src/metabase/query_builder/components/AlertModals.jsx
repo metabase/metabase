@@ -536,7 +536,7 @@ export function AlertEditSchedule({ alertType, schedule, onScheduleChange }) {
   return (
     <div>
       <h3 className="mt4 mb3 text-dark">
-        How often should we check for results?
+        {t`How often should we check for results?`}
       </h3>
 
       <div className="bordered rounded mb2">
@@ -546,7 +546,7 @@ export function AlertEditSchedule({ alertType, schedule, onScheduleChange }) {
             schedule={schedule}
             scheduleOptions={["hourly", "daily", "weekly"]}
             onScheduleChange={onScheduleChange}
-            textBeforeInterval="Check"
+            textBeforeInterval={t`Check`}
           />
         </div>
       </div>
