@@ -6,8 +6,6 @@ import CS from "metabase/css/core/index.css";
 
 const DropTargetBackgroundAndBorder = ({
   highlighted,
-  hovered,
-  noDrop = false,
   margin = 0,
   marginLeft = margin,
   marginRight = margin,
