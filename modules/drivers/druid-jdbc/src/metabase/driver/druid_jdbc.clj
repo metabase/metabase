@@ -4,6 +4,7 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -27,10 +28,6 @@
 (doseq [[feature supported?] {:set-timezone            true
                               :expression-aggregations true}]
   (defmethod driver/database-supports? [:druid feature] [_driver _feature _db] supported?))
-
-;; TODO: Clean up!
-(defmethod driver/database-supports? [:druid-jdbc :nested-field-columns] [& _] true)
-#_(defmethod driver/database-supports? (:engine database) :nested-field-columns database)
 
 ;; TODO: Double check this driver does not have to implement the following method.
 #_(defmethod driver/describe-database :druid-jdbc
@@ -173,3 +170,7 @@
   (case database-type
     "COMPLEX<json>"  :type/SerializedJSON
     nil))
+
+(defmethod driver/database-supports? [:druid-jdbc :nested-field-columns]
+  [_driver _feat db]
+  (driver.common/json-unfolding-default db))
