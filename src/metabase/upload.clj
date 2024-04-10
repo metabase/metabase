@@ -258,18 +258,18 @@
 ;;;; |  Create upload
 ;;;; +------------------+
 
-(def ^:dynamic *sync-synchronously?*
-  "For testing purposes, often we'd like to sync synchronously so that we can test the results immediately and avoid
-  race conditions."
-  false)
+(def ^:dynamic *auxiliary-sync-steps*
+  "For testing purposes, we'd like to control whether the analyze and field values steps of sync are run synchronously, or not at all.
+   In production this should always be asynchronous, so users can use the table earlier."
+  :asynchronous)
 
 (defn- scan-and-sync-table!
   [database table]
   (sync-fields/sync-fields-for-table! database table)
-  (if *sync-synchronously?*
-    (sync/sync-table! table)
-    (future
-      (sync/sync-table! table))))
+  (case *auxiliary-sync-steps*
+    :asynchronous (future (sync/sync-table! table))
+    :synchronous (sync/sync-table! table)
+    :never nil))
 
 (defn- can-use-uploads-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database for the subset of reasons common to all uploads
