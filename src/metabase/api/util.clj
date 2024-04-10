@@ -13,7 +13,6 @@
    [metabase.api.common.validation :as validation]
    [metabase.config :as config]
    [metabase.logger :as logger]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.troubleshooting :as troubleshooting]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -45,15 +44,13 @@
   []
   {:token (crypto-random/hex 32)})
 
-(defsetting product-feedback-url
-  "URL for where to send product feedback"
-  :type :string
-  :default "https://store-api.metabase.com/api/v1/crm/product-feedback"
-  :getter (fn [] (if config/is-prod?
-                   (setting/get-value-of-type :string :product-feedback-url)
-                   (env :mb-product-feedback-url) ))
-  :visibility :internal
-  :export? false)
+(defn- product-feedback-url
+  "Product feedback url. When not prod, reads `MB_PRODUCT_FEEDBACK_URL` from the environment to prevent development
+  feedback from hitting the endpoint."
+  []
+  (if config/is-prod?
+    "https://store-api.metabase.com/api/v1/crm/product-feedback"
+    (env :mb-product-feedback-url)))
 
 (mu/defn send-feedback!
   "Sends the feedback to the api endpoint"
