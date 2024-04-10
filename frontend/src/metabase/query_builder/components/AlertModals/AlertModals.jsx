@@ -570,7 +570,7 @@ export function AlertEditSchedule({ alertType, schedule, onScheduleChange }) {
   return (
     <div>
       <h3 className={cx(CS.mt4, CS.mb3, CS.textDark)}>
-        How often should we check for results?
+        {t`How often should we check for results?`}
       </h3>
 
       <div className={cx(CS.bordered, CS.rounded, CS.mb2)}>
@@ -580,7 +580,7 @@ export function AlertEditSchedule({ alertType, schedule, onScheduleChange }) {
             schedule={schedule}
             scheduleOptions={["hourly", "daily", "weekly"]}
             onScheduleChange={onScheduleChange}
-            textBeforeInterval="Check"
+            textBeforeInterval={t`Check`}
           />
         </div>
       </div>
@@ -679,7 +679,8 @@ function RawDataAlertTipInner(props) {
           CS.p2,
           CS.mr2,
           CS.textMedium,
-          "circle bg-light",
+          CS.circle,
+          "bg-light",
         )}
       >
         <Icon name="lightbulb" size="20" />

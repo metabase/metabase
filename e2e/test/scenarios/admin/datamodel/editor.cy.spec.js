@@ -14,6 +14,7 @@ import {
   startNewQuestion,
   setTokenFeatures,
   openTable,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS_ID, REVIEWS, REVIEWS_ID, PEOPLE_ID } =
@@ -283,7 +284,10 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow sorting fields in the custom order", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
-      moveField(0, 200);
+      //moveField(0, 200);
+      moveDnDKitElement(cy.findAllByTestId("grabber").first(), {
+        vertical: 200,
+      });
       cy.wait("@updateFieldOrder");
       openProductsTable();
       assertTableHeader([
@@ -656,28 +660,6 @@ const searchAndSelectValue = (newValue, searchText = newValue) => {
 
 const getFieldSection = fieldName => {
   return cy.findByLabelText(fieldName);
-};
-
-const moveField = (fieldIndex, deltaY) => {
-  cy.findAllByTestId("grabber")
-    .eq(fieldIndex)
-    .trigger("pointerdown", 0, 0, { force: true, button: 0, isPrimary: true })
-    .wait(200)
-    .trigger("pointermove", 5, 5, { force: true, button: 0, isPrimary: true })
-    .wait(200)
-    //cy.get("#ColumnsList")
-    .trigger("pointermove", 10, deltaY, {
-      force: true,
-      button: 0,
-      isPrimary: true,
-    })
-    .wait(200)
-    .trigger("pointerup", 10, deltaY, {
-      force: true,
-      button: 0,
-      isPrimary: true,
-    })
-    .wait(200);
 };
 
 const setTableOrder = order => {

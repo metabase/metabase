@@ -6,8 +6,6 @@ import CS from "metabase/css/core/index.css";
 
 const DropTargetBackgroundAndBorder = ({
   highlighted,
-  hovered,
-  noDrop = false,
   margin = 0,
   marginLeft = margin,
   marginRight = margin,
@@ -16,7 +14,7 @@ const DropTargetBackgroundAndBorder = ({
 }) => (
   <div
     className={cx(CS.absolute, CS.rounded, {
-      "pointer-events-none": !highlighted,
+      [CS.pointerEventsNone]: !highlighted,
     })}
     style={{
       top: -marginTop,
