@@ -639,7 +639,6 @@
                          :model/QueryField
                          :model/LegacyMetricImportantField]]
       (t2/delete! child-model :field_id [:in field-ids])))
-  ;; Finally deleting the direct descendants
   (doseq [model table-referencing-models]
     (t2/delete! model :table_id table-id))
 
