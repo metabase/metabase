@@ -846,3 +846,12 @@
                   (if-not (pos-int? value)
                     20
                     value))))
+
+;; This is used by the embedding homepage
+(defsetting example-dashboard-id
+  (deferred-tru "The ID of the example dashboard.")
+  :visibility :authenticated
+  :export?    false
+  :type       :integer
+  :setter     :none
+  :doc        false)
