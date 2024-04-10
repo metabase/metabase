@@ -345,8 +345,11 @@ describe("scenarios > question > new", () => {
     cy.findByTestId("save-question-modal").within(() => {
       cy.findByText("Save as new question").click();
 
-      cy.findByDisplayValue(modifiedQuestionName).should("exist");
-      cy.findByDisplayValue(originalDescription).should("exist");
+      cy.findByLabelText("Name").should("have.value", modifiedQuestionName);
+      cy.findByLabelText("Description").should(
+        "have.value",
+        originalDescription,
+      );
     });
   });
 
