@@ -122,7 +122,7 @@ export default class ExpressionEditorSuggestions extends Component {
                   stageIndex={stageIndex}
                   suggestion={suggestion}
                   isHighlighted={i === highlightedIndex}
-                  onMouseDownCapture={this.createOnMouseDownHandler(i)}
+                  onMouseDown={this.createOnMouseDownHandler(i)}
                 />
               ))}
             </ExpressionList>
@@ -138,7 +138,7 @@ function ExpressionEditorSuggestionsListItem({
   stageIndex,
   suggestion,
   isHighlighted,
-  onMouseDownCapture,
+  onMouseDown,
 }) {
   const { icon, helpText } = suggestion;
   const { normal, highlighted } = colorForIcon(icon);
@@ -146,7 +146,7 @@ function ExpressionEditorSuggestionsListItem({
   return (
     <HoverParent>
       <ExpressionListItem
-        onMouseDownCapture={onMouseDownCapture}
+        onMouseDown={onMouseDown}
         isHighlighted={isHighlighted}
         className={cx(CS.hoverParent, CS.hoverInherit)}
         data-ignore-outside-clicks
