@@ -356,7 +356,9 @@ describe("SaveQuestionModal", () => {
 
       await userEvent.click(screen.getByText("Save as new question"));
 
-      expect(screen.getByLabelText("Name")).toHaveValue(CARD.name);
+      expect(screen.getByLabelText("Name")).toHaveValue(
+        `${CARD.name} - Modified`,
+      );
       expect(screen.getByLabelText("Description")).toHaveValue(
         CARD.description,
       );
@@ -380,7 +382,9 @@ describe("SaveQuestionModal", () => {
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
-      expect(newQuestion.displayName()).toBe(originalQuestion.displayName());
+      expect(newQuestion.displayName()).toBe(
+        `${originalQuestion.displayName()} - Modified`,
+      );
       expect(newQuestion.description()).toBe("Example");
       expect(newQuestion.collectionId()).toBe(null);
     });

@@ -113,10 +113,17 @@ export const SaveQuestionModal = ({
     }
   }
 
+  const getOriginalNameModification = (originalQuestion: Question | null) =>
+    originalQuestion
+      ? originalQuestion?.displayName() + " - " + t`Modified`
+      : undefined;
+
   const initialValues: FormValues = useMemo(
     () => ({
       name:
-        originalQuestion?.displayName() ||
+        // Saved question
+        getOriginalNameModification(originalQuestion) ||
+        // Ad-hoc query
         question.generateQueryDescription() ||
         "",
       description: question.description() || "",
