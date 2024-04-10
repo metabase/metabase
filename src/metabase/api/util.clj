@@ -47,12 +47,14 @@
   "URL for where to send product feedback"
   :type :string
   :default "https://store-api.metabase.com/api/v1/crm/product-feedback"
-  :visibility :internal)
+  :visibility :internal
+  :export? false)
 
 (mu/defn send-feedback!
-  [comments :- ms/NonBlankString
+  "Sends the feedback to the api endpoint"
+  [comments :- [:maybe ms/NonBlankString]
    source :- ms/NonBlankString
-   email :- ms/NonBlankString]
+   email :- [:maybe ms/NonBlankString]]
   (try (http/post (product-feedback-url)
                   {:content-type :json
                    :body         (json/generate-string {:comments comments
@@ -63,10 +65,11 @@
          (throw e))))
 
 (api/defendpoint POST "/product-feedback"
+  "Endpoint to provide feedback from the product"
   [:as {{:keys [comments source email]} :body}]
-  {comments ms/NonBlankString
+  {comments [:maybe ms/NonBlankString]
    source ms/NonBlankString
-   email ms/NonBlankString}
+   email [:maybe ms/NonBlankString]}
   (future (send-feedback! comments source email))
   api/generic-204-no-content)
 

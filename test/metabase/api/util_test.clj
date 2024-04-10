@@ -61,14 +61,14 @@
       (is (map? (mt/user-http-request :crowberto :get 200 "util/diagnostic_info/connection_pool_info"))))))
 
 (deftest product-feedback-tests
-  (testing "requires non-blank comments, source, and email"
-    (doseq [missing [:comments :source :email]]
-      (let [payload  {:comments "foo" :source "foo" :email "foo"}
-            response (mt/user-http-request :crowberto :post 400 "util/product-feedback" (dissoc payload missing))]
-        (testing (str "without " missing)
-          (is (= {:errors          {missing "value must be a non-blank string."},
-                  :specific-errors {missing ["should be a string, received: nil" "non-blank string, received: nil"]}}
-                 response))))))
+  (testing "requires non-blank source"
+    (let [payload  {:comments "foo"
+                    :email    "foo"}
+          response (mt/user-http-request :crowberto :post 400 "util/product-feedback" payload)]
+      (testing (str "without " :source)
+        (is (= {:errors          {:source "value must be a non-blank string."},
+                :specific-errors {:source ["should be a string, received: nil" "non-blank string, received: nil"]}}
+               response)))))
   (testing "fires the proxy in background"
     (let [sent? (promise)]
       (with-redefs [api.util/send-feedback! (fn [comments source email]
