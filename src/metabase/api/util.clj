@@ -6,12 +6,14 @@
    [clj-http.client :as http]
    [compojure.core :refer [GET POST]]
    [crypto.random :as crypto-random]
+   [environ.core :refer [env]]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.stats :as stats]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.config :as config]
    [metabase.logger :as logger]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.troubleshooting :as troubleshooting]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -47,6 +49,9 @@
   "URL for where to send product feedback"
   :type :string
   :default "https://store-api.metabase.com/api/v1/crm/product-feedback"
+  :getter (fn [] (if config/is-prod?
+                   (setting/get-value-of-type :string :product-feedback-url)
+                   (env :mb-product-feedback-url) ))
   :visibility :internal
   :export? false)
 
