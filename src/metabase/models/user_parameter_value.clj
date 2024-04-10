@@ -35,16 +35,17 @@
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :last_used_param_values]
   "Hydrate a map of parameter-id->last-used-value for the dashboards."
   [_model _k dashboards]
-  (let [user-id                         api/*current-user-id*
-        all-parameter-ids               (into #{} (comp (mapcat :parameters) (map :id)) dashboards)
-        parameter-ids->last-used-values (into {}
-                                              (t2/select-fn-vec
-                                               (fn [{:keys [parameter_id value]}]
-                                                 [parameter_id value])
-                                               :model/UserParameterValue
-                                               :user_id user-id
-                                               :parameter_id [:in all-parameter-ids]))]
-    (map
-     (fn [dashboard]
-       (let [param-ids (mapv :id (:parameters dashboard))]
-         (assoc dashboard :last_used_param_values (select-keys parameter-ids->last-used-values param-ids)))) dashboards)))
+  (if-let [user-id api/*current-user-id*]
+    (let [all-parameter-ids               (into #{} (comp (mapcat :parameters) (map :id)) dashboards)
+          parameter-ids->last-used-values (into {}
+                                                (t2/select-fn-vec
+                                                 (fn [{:keys [parameter_id value]}]
+                                                   [parameter_id value])
+                                                 :model/UserParameterValue
+                                                 :user_id user-id
+                                                 :parameter_id [:in all-parameter-ids]))]
+      (map
+       (fn [dashboard]
+         (let [param-ids (mapv :id (:parameters dashboard))]
+           (assoc dashboard :last_used_param_values (select-keys parameter-ids->last-used-values param-ids)))) dashboards))
+    dashboards))

@@ -144,8 +144,9 @@
         request-param-id->param   (into {} (map (juxt :id identity)) request-params)
         merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)
                                                request-param-id->param))]
-    (doseq [{:keys [id value]} request-params]
-      (user-parameter-value/upsert! api/*current-user-id* id value))
+    (when-let [user-id api/*current-user-id*]
+      (doseq [{:keys [id value]} request-params]
+        (user-parameter-value/upsert! user-id id value)))
     (log/tracef "Dashboard parameters:\n%s\nRequest parameters:\n%s\nMerged:\n%s"
                 (u/pprint-to-str (->> dashboard-param-id->param
                                       (m/map-vals (fn [param]
