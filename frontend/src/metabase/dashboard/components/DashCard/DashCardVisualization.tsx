@@ -233,7 +233,7 @@ export function DashCardVisualization({
   return (
     <WrappedVisualization
       className={cx(CS.flexFull, CS.overflowHidden, {
-        "pointer-events-none": isEditingDashboardLayout,
+        [CS.pointerEventsNone]: isEditingDashboardLayout,
       })}
       classNameWidgets={cx({
         [cx(CS.textLight, CS.textMediumHover)]: isEmbed,

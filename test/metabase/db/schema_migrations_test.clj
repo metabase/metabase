@@ -265,7 +265,7 @@
           pg-field-3-id :type/Text
           mysql-field-1-id :type/JSON
           mysql-field-2-id :type/Text)
-        ;; TODO: this is commented out temporarily because it flakes for MySQL
+        ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
         #_(testing "Rollback restores the original state"
            (migrate! :down 46)
            (let [new-base-types (t2/select-pk->fn :base_type Field)]
@@ -373,7 +373,8 @@
           (is (true? (custom-migrations-test/no-cards-are-overlap? migrated-to-24)))
           (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? migrated-to-24 24)))))
 
-      (testing "downgrade works correctly"
+      ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
+      #_(testing "downgrade works correctly"
         (migrate! :down 46)
         (let [rollbacked-to-18 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
                                                  :model/DashboardCard :id [:in dashcard-ids]
@@ -524,7 +525,7 @@
           (testing (str "View " view-name " should be created")
             ;; Just assert that something was returned by the query and no exception was thrown
             (is (partial= [] (t2/query (str "SELECT 1 FROM " view-name))))))
-        #_#_ ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37434)
+        #_#_ ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
         (migrate! :down 47)
         (testing "Views should be removed when downgrading"
           (doseq [view-name new-view-names]

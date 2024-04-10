@@ -132,7 +132,7 @@ export default class ActionButton extends Component {
             : cx(className, {
                 [successClassName]: result === "success",
                 [failedClassName]: result === "failed",
-                "pointer-events-none": isActionDisabled,
+                [CS.pointerEventsNone]: isActionDisabled,
               })
         }
         onClick={this.onClick}

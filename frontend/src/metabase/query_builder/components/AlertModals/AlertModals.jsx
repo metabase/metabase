@@ -679,7 +679,7 @@ function RawDataAlertTipInner(props) {
           CS.p2,
           CS.mr2,
           CS.textMedium,
-          "circle",
+          CS.circle,
           CS.bgLight,
         )}
       >
