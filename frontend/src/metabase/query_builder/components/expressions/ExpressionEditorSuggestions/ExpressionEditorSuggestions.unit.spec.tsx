@@ -119,4 +119,14 @@ describe("ExpressionEditorSuggestions", () => {
         ?.endsWith("#aggregations"),
     ).toBe(true);
   });
+
+  test("suggestions should  functions when first opened", async () => {
+    setup({ startRule: "expression" });
+    expect(screen.getByText("Most used functions")).toBeInTheDocument();
+  });
+
+  test("suggestions should not include popular functions when text has been typed", async () => {
+    setup({ source: "[", startRule: "expression" });
+    expect(screen.queryByText("Most used functions")).not.toBeInTheDocument();
+  });
 });
