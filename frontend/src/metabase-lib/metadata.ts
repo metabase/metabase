@@ -145,29 +145,7 @@ declare function DisplayInfoFn(
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
-export const displayInfo: typeof DisplayInfoFn = (...args) => {
-  const result = ML.display_info(...args);
-
-  // TODO: remove this mock
-  if (result.displayName?.startsWith("Extract day, month")) {
-    const [query, stageIndex] = args;
-    const columns = visibleColumns(query, stageIndex);
-    const createdAtColumn = columns.find(column => {
-      return (
-        ML.display_info(query, stageIndex, column).displayName === "Created At"
-      );
-    });
-
-    return {
-      type: "drill-thru/combine-columns",
-      defaultSeparator: "/",
-      column: createdAtColumn!,
-      availableColumns: columns.slice(0, 5),
-    };
-  }
-
-  return result;
-};
+export const displayInfo: typeof DisplayInfoFn = ML.display_info;
 
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
   return ML.group_columns(columns);
