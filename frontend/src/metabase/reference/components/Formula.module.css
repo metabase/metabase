@@ -5,7 +5,6 @@
 }
 
 .formulaHeader {
-  /* Need to figure out what to do with this - DON'T MERGE BEFORE THIS IS SORTED */
   composes: textBrand py1 px2 from "style";
   align-items: center;
   display: flex;

@@ -364,7 +364,6 @@ class CollapsibleSection extends React.Component {
       show: !previousState.show,
     }));
   }
-
   render() {
     const { title, children } = this.props;
     const { show } = this.state;

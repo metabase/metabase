@@ -265,7 +265,7 @@ function TargetWithSource({
             }
           </div>
           <div style={{ marginTop: 9 }}>
-            <span className={cx(CS.textBrand, CS.textBold)}>{name}</span>
+            <span className={cx(CS.textBrand, CS.textBold)}>{name}</span>{" "}
             {targetName}
           </div>
         </div>

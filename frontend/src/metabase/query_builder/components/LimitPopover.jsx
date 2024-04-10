@@ -13,7 +13,7 @@ const CustomRowLimit = ({ limit, onChangeLimit, onClose }) => {
     <LimitInput
       small
       defaultValue={limit}
-      className={limit != null ? cx(CS.textBrand, CS.borderBrand) : null}
+      className={cx({ [cx(CS.textBrand, CS.borderBrand)]: limit != null })}
       placeholder={t`Pick a limit`}
       onKeyPress={e => {
         if (e.key === "Enter") {

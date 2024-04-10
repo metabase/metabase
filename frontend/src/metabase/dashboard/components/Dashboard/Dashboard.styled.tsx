@@ -118,11 +118,10 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
     css`
       transition: background-color 1s linear, border-color 1s linear,
         color 1s linear;
-    `} /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */ ${({
-    isNightMode,
-    isSticky,
-    hasScroll,
-  }) =>
+    `}
+
+  /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */
+  ${({ isNightMode, isSticky, hasScroll }) =>
     isSticky &&
     css`
       position: sticky;
