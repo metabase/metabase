@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { popover, restore } from "e2e/support/helpers";
+import { popover, restore, lineChartCircle } from "e2e/support/helpers";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe.skip("issue 12496", () => {
@@ -37,7 +37,7 @@ describe.skip("issue 12496", () => {
   };
   it("should display correct day range in filter pill when drilling into a week", () => {
     setup("week");
-    cy.get(".dot").eq(0).click({ force: true });
+    lineChartCircle().eq(0).click({ force: true });
     popover().contains("See this Order").click();
     cy.findByTestId("qb-filters-panel")
       .contains("Created At is April 24–30, 2022")
@@ -51,7 +51,7 @@ describe.skip("issue 12496", () => {
   });
   it("should display correct day range in filter pill when drilling into a month", () => {
     setup("month");
-    cy.get(".dot").eq(0).click({ force: true });
+    lineChartCircle().eq(0).click({ force: true });
     popover().contains("See this Order").click();
     cy.findByTestId("qb-filters-panel")
       .contains("Created At is April 2022")
@@ -65,7 +65,7 @@ describe.skip("issue 12496", () => {
   });
   it("should display correct day range in filter pill when drilling into a hour", () => {
     setup("hour");
-    cy.get(".dot").eq(0).click({ force: true });
+    lineChartCircle().eq(0).click({ force: true });
     popover().contains("See this Order").click();
     cy.findByTestId("qb-filters-panel")
       .contains("Created At is April 30, 2022, 6:00–59 PM")
@@ -83,7 +83,7 @@ describe.skip("issue 12496", () => {
   });
   it("should display correct minute in filter pill when drilling into a minute", () => {
     setup("minute");
-    cy.get(".dot").eq(0).click({ force: true });
+    lineChartCircle().eq(0).click({ force: true });
     popover().contains("See this Order").click();
     cy.findByTestId("qb-filters-panel")
       .contains("Created At is April 30, 2022, 6:56 PM")
@@ -96,7 +96,7 @@ describe.skip("issue 12496", () => {
   });
   it("should display correct minute in filter pill when drilling into a day", () => {
     setup("day");
-    cy.get(".dot").eq(0).click({ force: true });
+    lineChartCircle().eq(0).click({ force: true });
     popover().contains("See this Order").click();
     cy.findByTestId("qb-filters-panel")
       .contains("Created At is April 30, 2022")
