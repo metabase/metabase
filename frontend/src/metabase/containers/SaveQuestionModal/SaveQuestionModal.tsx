@@ -126,7 +126,8 @@ export const SaveQuestionModal = ({
         // Ad-hoc query
         question.generateQueryDescription() ||
         "",
-      description: question.description() || "",
+      description:
+        originalQuestion?.description() || question.description() || "",
       collection_id:
         question.collectionId() === undefined ||
         isReadonly ||
