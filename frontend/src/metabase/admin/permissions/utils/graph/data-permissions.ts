@@ -275,8 +275,11 @@ export function downgradeNativePermissionsIfNeeded(
   { databaseId }: DatabaseEntityId,
   value: DataPermissionValue,
 ) {
-  // if changing schemas to none, downgrade native to none
-  if (isRestrictivePermission(value)) {
+  // remove query creation permissions if view permission is getting restricted
+  if (
+    isRestrictivePermission(value) ||
+    value === DataPermissionValue.LEGACY_NO_SELF_SERVICE
+  ) {
     return updatePermission(
       permissions,
       groupId,

@@ -134,13 +134,21 @@ const buildNativePermission = (
     entityId,
     DataPermission.CREATE_QUERIES,
   );
-  const nativePermissionWarning = getPermissionWarning(
-    value,
-    defaultGroupNativePermissionValue,
-    null,
-    defaultGroup,
-    groupId,
+
+  const disabledTooltip = getNativePermissionDisabledTooltip(
+    isAdmin,
+    accessPermissionValue,
   );
+
+  const nativePermissionWarning = disabledTooltip
+    ? ""
+    : getPermissionWarning(
+        value,
+        defaultGroupNativePermissionValue,
+        null,
+        defaultGroup,
+        groupId,
+      );
 
   const nativePermissionConfirmations = (newValue: DataPermissionValue) => [
     getPermissionWarningModal(
@@ -152,11 +160,6 @@ const buildNativePermission = (
     ),
     getRawQueryWarningModal(permissions, groupId, entityId, newValue),
   ];
-
-  const disabledTooltip = getNativePermissionDisabledTooltip(
-    isAdmin,
-    accessPermissionValue,
-  );
 
   return {
     permission: DataPermission.CREATE_QUERIES,

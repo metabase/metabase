@@ -147,16 +147,16 @@ const buildNativePermission = (
     DataPermission.CREATE_QUERIES,
   );
 
+  const disabledTooltip = getNativePermissionDisabledTooltip(
+    isAdmin,
+    accessPermissionValue,
+  );
+
   return {
     permission: DataPermission.CREATE_QUERIES,
     type: DataPermissionType.NATIVE,
-    isDisabled:
-      isAdmin ||
-      (!isAdmin && accessPermissionValue === DataPermissionValue.BLOCKED),
-    disabledTooltip: getNativePermissionDisabledTooltip(
-      isAdmin,
-      accessPermissionValue,
-    ),
+    isDisabled: !!disabledTooltip,
+    disabledTooltip,
     isHighlighted: isAdmin,
     value,
     options: _.compact([
