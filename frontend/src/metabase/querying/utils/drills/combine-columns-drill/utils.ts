@@ -129,8 +129,8 @@ export const getExpressionName = (
   columnsAndSeparators: ColumnAndSeparator[],
 ): string => {
   const columns = [column, ...columnsAndSeparators.map(({ column }) => column)];
-  const names = columns.map(column =>
-    Lib.displayInfo(query, stageIndex, column),
+  const names = columns.map(
+    column => Lib.displayInfo(query, stageIndex, column).displayName,
   );
   return names.join(" ");
 };
