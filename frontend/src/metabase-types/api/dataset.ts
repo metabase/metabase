@@ -3,14 +3,10 @@ import type { LocalFieldReference } from "metabase-types/api";
 import type { Card } from "./card";
 import type { DatabaseId } from "./database";
 import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
+import type { Insight } from "./insight";
 import type { ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
-import type {
-  DatasetQuery,
-  DatetimeUnit,
-  DimensionReference,
-  RelativeDatetimeUnit,
-} from "./query";
+import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
 
 export type RowValue = string | number | null | boolean;
@@ -53,11 +49,6 @@ export interface DatasetColumn {
 export interface ResultsMetadata {
   columns: DatasetColumn[];
 }
-
-export type Insight = {
-  col: string;
-  unit: RelativeDatetimeUnit;
-};
 
 export interface DatasetData {
   rows: RowValues[];

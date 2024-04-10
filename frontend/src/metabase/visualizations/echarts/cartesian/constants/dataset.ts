@@ -15,8 +15,6 @@ export const X_AXIS_DATA_KEY = `${NULL_CHAR}_x`;
 // dataset (e.g. `chartModel.dataset`)
 export const ORIGINAL_INDEX_DATA_KEY = `${NULL_CHAR}_original_dataset_key`;
 
-export const TREND_LINE_DATA_KEY = `${NULL_CHAR}_trend`;
-
 // For ticks we want to pick the largest interval that exist 3 times in the
 // range. For example, if data has week granularity but the range is more than 3
 // months, we want to show monthly ticks.
