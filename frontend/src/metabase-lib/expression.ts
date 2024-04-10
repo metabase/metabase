@@ -102,13 +102,10 @@ export function diagnoseExpression(
 }
 
 export function previewExpression(
-  _query: Query,
-  _stageIndex: number,
-  _expressionClause: ExpressionClause,
-  queryResults: RowValues[],
-): RowValue[] {
-  // TODO: remove this mock
-  return queryResults.map(
-    () => `https://www.example.com/${Math.floor(1000 * Math.random())}`,
-  );
+  query: Query,
+  stageIndex: number,
+  expressionClause: ExpressionClause,
+  row: RowValues,
+): RowValue {
+  return ML.preview_expression(query, stageIndex, expressionClause, row);
 }

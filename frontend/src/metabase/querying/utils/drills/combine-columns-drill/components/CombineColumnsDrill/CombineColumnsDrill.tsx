@@ -9,7 +9,8 @@ import type { ColumnAndSeparator } from "../../types";
 import {
   getColumnOptions,
   getDefaultSeparator,
-  getNewQuery,
+  getDrillExpressionClause,
+  getExpressionName,
   getNextColumnAndSeparator,
 } from "../../utils";
 import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
@@ -19,7 +20,6 @@ import styles from "./CombineColumnsDrill.module.css";
 
 interface Props {
   column: Lib.ColumnMetadata;
-  drill: Lib.DrillThru;
   query: Lib.Query;
   stageIndex: number;
   onSubmit: (query: Lib.Query) => void;
@@ -27,7 +27,6 @@ interface Props {
 
 export const CombineColumnsDrill = ({
   column,
-  drill,
   query,
   stageIndex,
   onSubmit,
@@ -44,9 +43,9 @@ export const CombineColumnsDrill = ({
       separator: defaultSeparator,
     },
   ]);
-  const newQuery = useMemo(
-    () => getNewQuery(query, stageIndex, column, columnsAndSeparators),
-    [query, stageIndex, column, columnsAndSeparators],
+  const expressionClause = useMemo(
+    () => getDrillExpressionClause(column, columnsAndSeparators),
+    [column, columnsAndSeparators],
   );
 
   const handleChange = (index: number, change: Partial<ColumnAndSeparator>) => {
@@ -78,6 +77,15 @@ export const CombineColumnsDrill = ({
 
   const handleSubmit: FormEventHandler = event => {
     event.preventDefault();
+
+    const name = getExpressionName(
+      query,
+      stageIndex,
+      column,
+      columnsAndSeparators,
+    );
+    const newQuery = Lib.expression(query, stageIndex, name, expressionClause);
+
     onSubmit(newQuery);
   };
 
@@ -122,7 +130,7 @@ export const CombineColumnsDrill = ({
 
           <Preview
             columnsAndSeparators={columnsAndSeparators}
-            drill={drill}
+            expressionClause={expressionClause}
             query={query}
             stageIndex={stageIndex}
           />

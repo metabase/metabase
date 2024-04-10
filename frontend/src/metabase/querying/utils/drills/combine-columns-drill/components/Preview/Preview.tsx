@@ -13,29 +13,21 @@ const PREVIEW_LINE_COLORS = ["text-dark", "text-medium", "text-light"];
 
 interface Props {
   columnsAndSeparators: ColumnAndSeparator[];
-  drill: Lib.DrillThru;
+  expressionClause: Lib.ExpressionClause;
   query: Lib.Query;
   stageIndex: number;
 }
 
-export const Preview = ({
-  columnsAndSeparators,
-  drill,
-  query,
-  stageIndex,
-}: Props) => {
+export const Preview = ({ expressionClause, query, stageIndex }: Props) => {
   const datasets = useSelector(getQueryResults);
-  const queryResults = useMemo(
-    () =>
-      extractQueryResults(datasets)
-        .filter(value => value !== null)
-        .slice(0, PREVIEW_LINE_COLORS.length),
-    [datasets],
-  );
+  const queryResults = useMemo(() => {
+    return extractQueryResults(datasets)
+      .filter(value => value !== null)
+      .slice(0, PREVIEW_LINE_COLORS.length);
+  }, [datasets]);
   const values = useMemo(
-    () =>
-      getPreview(query, stageIndex, drill, columnsAndSeparators, queryResults),
-    [query, stageIndex, drill, columnsAndSeparators, queryResults],
+    () => getPreview(query, stageIndex, expressionClause, queryResults),
+    [query, stageIndex, expressionClause, queryResults],
   );
 
   if (values.length === 0) {

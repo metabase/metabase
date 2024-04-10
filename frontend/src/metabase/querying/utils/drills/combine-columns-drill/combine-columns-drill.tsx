@@ -12,7 +12,6 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   question,
   query: originalQuery,
   stageIndex: originalStageIndex,
-  drill,
   clicked,
 }) => {
   if (!clicked.column) {
@@ -35,7 +34,6 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   }: ClickActionPopoverProps) => (
     <CombineColumnsDrill
       column={column}
-      drill={drill}
       query={query}
       stageIndex={stageIndex}
       onSubmit={newQuery => {

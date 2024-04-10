@@ -62,23 +62,12 @@ export const extractQueryResults = (
 export const getPreview = (
   query: Lib.Query,
   stageIndex: number,
-  drill: Lib.DrillThru,
-  columnsAndSeparators: ColumnAndSeparator[],
+  expressionClause: Lib.ExpressionClause,
   queryResults: RowValues[],
 ): RowValue[] => {
-  const expression = Lib.combineColumnsDrillExpression(
-    query,
-    stageIndex,
-    drill,
-    columnsAndSeparators,
-  );
-  const preview = Lib.previewExpression(
-    query,
-    stageIndex,
-    expression,
-    queryResults,
-  );
-  return preview;
+  return queryResults.map(result => {
+    return Lib.previewExpression(query, stageIndex, expressionClause, result);
+  });
 };
 
 export const getDefaultSeparator = (column: Lib.ColumnMetadata): string => {
@@ -93,33 +82,17 @@ export const getDefaultSeparator = (column: Lib.ColumnMetadata): string => {
   return " ";
 };
 
-export const getNewQuery = (
-  query: Lib.Query,
-  stageIndex: number,
+export const getDrillExpressionClause = (
   column: Lib.ColumnMetadata,
   columnsAndSeparators: ColumnAndSeparator[],
 ) => {
-  const expressionName = getExpressionName(
-    query,
-    stageIndex,
-    column,
-    columnsAndSeparators,
-  );
-  const expressionClause = Lib.expressionClause("concat", [
+  return Lib.expressionClause("concat", [
     column,
     ...columnsAndSeparators.flatMap(({ column, separator }) => [
       separator,
       column,
     ]),
   ]);
-  const newQuery = Lib.expression(
-    query,
-    stageIndex,
-    expressionName,
-    expressionClause,
-  );
-
-  return newQuery;
 };
 
 export const getExpressionName = (
