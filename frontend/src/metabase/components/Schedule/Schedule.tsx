@@ -297,7 +297,6 @@ const ScheduleTypeSelect = ({
 
   return (
     <AutoSizedSelect
-      //miw={`${Math.max(longestLabel.length, 5) + 2}em`}
       display="flex"
       value={scheduleType}
       onChange={(value: ScheduleType) =>
