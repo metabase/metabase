@@ -75,9 +75,14 @@ export function getPermissionWarning(
     return t`The "${defaultGroup.name}" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
   }
 
+  if (value === DataPermissionValue.LEGACY_NO_SELF_SERVICE) {
+    return t`In a future release, if a group's View data access for a database (or any of its schemas or tables) is still set to No self-service (Deprecated), Metabase will automatically change that group's View data access for the entire database to Blocked. We'll be defaulting to Blocked, the least permissive View data access, to prevent any unintended access to data.`;
+  }
+
   if (hasGreaterPermissions(defaultGroupValue, value, descendingPermissions)) {
     return getDefaultGroupHasHigherAccessText(defaultGroup);
   }
+
   return null;
 }
 
