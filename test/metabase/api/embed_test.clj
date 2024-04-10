@@ -1588,7 +1588,8 @@
           output-helper {:csv  (fn [output] (->> output csv/read-csv last))
                          :json (fn [output] (->> output (map (juxt :NUMBER :DATE)) last))}]
       (with-embedding-enabled-and-new-secret-key
-        (t2.with-temp/with-temp [Card {card-id :id} {:display :table :dataset_query q}
+        (t2.with-temp/with-temp [Card {card-id :id} {:enable_embedding true
+                                                     :display :table :dataset_query q}
                                  Dashboard {dashboard-id :id} {:enable_embedding true
                                                                :embedding_params {:name "enabled"}}
                                  DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
@@ -1598,6 +1599,12 @@
                                                               [:json true ["2,000" "March 26, 2024"]]
                                                               [:json false [2000 "2024-03-26"]]]]
             (testing (format "export_format %s yields expected output for %s exports." apply-formatting? export-format)
+              (is (= expected
+                     (->> (mt/user-http-request
+                           :crowberto :get 200
+                           (format "embed/card/%s/query/%s?format_rows=%s"
+                                   (card-token card-id) (name export-format) apply-formatting?))
+                          ((get output-helper export-format)))))
               (is (= expected
                      (->> (mt/user-http-request
                            :crowberto :get 200
