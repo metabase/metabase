@@ -95,15 +95,6 @@ textarea {
   opacity: 0.4;
 }
 
-.faded {
-  opacity: 0.4;
-}
-
-.fadeInHover:hover {
-  opacity: 1;
-  transition: opacity 0.3s;
-}
-
 .circle {
   border-radius: 99px;
 }

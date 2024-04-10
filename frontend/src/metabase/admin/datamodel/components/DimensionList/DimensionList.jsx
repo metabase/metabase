@@ -1,12 +1,10 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
-import { t } from "ttag";
 import _ from "underscore";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
-import Tooltip from "metabase/core/components/Tooltip";
 import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
 import { Icon, Box } from "metabase/ui";
@@ -80,12 +78,7 @@ export class DimensionList extends Component {
   };
 
   renderItemExtra = (item, isSelected) => {
-    const {
-      enableSubDimensions,
-      preventNumberSubDimensions,
-      onAddDimension,
-      onRemoveDimension,
-    } = this.props;
+    const { enableSubDimensions, preventNumberSubDimensions } = this.props;
 
     const surpressSubDimensions =
       preventNumberSubDimensions && item.dimension.field().isSummable();
@@ -98,8 +91,6 @@ export class DimensionList extends Component {
       !item.dimension?.isExpression() &&
       !surpressSubDimensions &&
       item.dimension.dimensions();
-
-    const multiSelect = !!(onAddDimension || onRemoveDimension);
 
     const sectionDimension = this.props.dimension
       ? this.props.dimension
@@ -119,12 +110,8 @@ export class DimensionList extends Component {
           <PopoverWithTrigger
             className={this.props.className}
             hasArrow={false}
-            triggerElement={this.renderSubDimensionTrigger(
-              item.dimension,
-              multiSelect,
-              preventNumberSubDimensions,
-            )}
-            tetherOptions={multiSelect ? null : SUBMENU_TETHER_OPTIONS}
+            triggerElement={this.renderSubDimensionTrigger(item.dimension)}
+            tetherOptions={SUBMENU_TETHER_OPTIONS}
             sizeToFit
           >
             {({ onClose }) => (
@@ -142,39 +129,11 @@ export class DimensionList extends Component {
             )}
           </PopoverWithTrigger>
         ) : null}
-        {!isSelected && onAddDimension && (
-          <Tooltip tooltip={t`Add grouping`}>
-            <Icon
-              name="add"
-              className={cx(
-                CS.mx1,
-                CS.cursorPointer,
-                CS.hoverChild,
-                CS.faded,
-                CS.fadeInHover,
-              )}
-              onClick={e => {
-                e.stopPropagation();
-                this.handleAdd(item);
-              }}
-            />
-          </Tooltip>
-        )}
-        {isSelected && onRemoveDimension && (
-          <Icon
-            name="close"
-            className={cx(CS.mx1, CS.cursorPointer, CS.faded, CS.fadeInHover)}
-            onClick={e => {
-              e.stopPropagation();
-              this.handleRemove(item);
-            }}
-          />
-        )}
       </Box>
     );
   };
 
-  renderSubDimensionTrigger(otherDimension, multiSelect) {
+  renderSubDimensionTrigger(otherDimension) {
     const dimensions = this.getDimensions();
     const subDimension =
       _.find(dimensions, dimension =>
@@ -195,9 +154,7 @@ export class DimensionList extends Component {
         data-testid="dimension-list-item-binning"
       >
         {name && <h4>{name}</h4>}
-        {!multiSelect && (
-          <Icon name="chevronright" className={CS.ml1} size={16} />
-        )}
+        <Icon name="chevronright" className={CS.ml1} size={16} />
       </FieldListGroupingTrigger>
     );
   }
@@ -240,20 +197,6 @@ export class DimensionList extends Component {
       onChangeDimension(this.getDimensionFromItem(item), item);
     } else if (onChangeOther) {
       onChangeOther(item);
-    }
-  };
-
-  handleAdd = item => {
-    const dimension = this.getDimensionFromItem(item);
-    if (dimension && this.props.onAddDimension) {
-      this.props.onAddDimension(dimension, item);
-    }
-  };
-
-  handleRemove = item => {
-    const dimension = this.getDimensionFromItem(item);
-    if (dimension && this.props.onRemoveDimension) {
-      this.props.onRemoveDimension(dimension, item);
     }
   };
 
