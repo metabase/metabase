@@ -104,6 +104,6 @@ textarea {
   transition: opacity 0.3s;
 }
 
-:global(.circle) {
+.circle {
   border-radius: 99px;
 }
