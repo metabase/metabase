@@ -1760,20 +1760,34 @@
       :row_count
       pos?))
 
+(defn- referencing-models []
+  (map :table_name (t2/select :information_schema.columns :column_name "table_id")))
+
 (deftest delete-upload!-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (testing "We can delete an uploaded table and all the application data around it"
-      (with-upload-table! [table (create-upload-table!
-                                  :col->upload-type (ordered-map/ordered-map
-                                                     :_mb_row_id auto-pk-type
-                                                     :number_1 int-type
-                                                     :number_2 int-type)
-                                  :rows [[1, 1]])]
+    (with-upload-table! [table (create-upload-table!
+                                :col->upload-type (ordered-map/ordered-map
+                                                   :_mb_row_id auto-pk-type
+                                                   :number_1 int-type
+                                                   :number_2 int-type)
+                                :rows [[1, 1]])]
 
-        (is (seq (t2/select :model/Field :table_id (:id table))))
+      (testing "The upload table and the expected application data are created"
         (is (upload-table-exists? table))
+        (is (seq (t2/select :model/Table :id (:id table))))
+        (is (seq (t2/select :model/Field :table_id (:id table))))
+        ;; there are some other miscellaneous children
+        (is (some #(seq (t2/select % :table_id (:id table)))
+                  (remove #{"metabase_field"} (referencing-models)))))
 
-        (upload/delete-upload! table)
+      (upload/delete-upload! table)
 
-        (is (empty? (t2/select :model/Field :table_id (:id table))))
-        (is (not (upload-table-exists? table)))))))
+      (testing "The upload table and related application data are deleted\n")
+      (is (not (upload-table-exists? table)))
+      (is (empty? (t2/select :model/Table :id (:id table))))
+      (is (empty? (t2/select :model/Field :table_id (:id table))))
+      ;; there are no obvious child instances remaining
+      (doseq [model (referencing-models)]
+        ;; if this fails due to new related models being added, make sure to clean up their children too
+        (testing (format "And there are no more related %s instances" model)
+          (is (empty? (t2/select model :table_id (:id table)))))))))
