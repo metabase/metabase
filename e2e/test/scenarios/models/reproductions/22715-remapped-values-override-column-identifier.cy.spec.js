@@ -66,7 +66,9 @@ describe("filtering based on the remapped column name should result in a correct
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Today").should("not.exist");
 
-    cy.get(".cellData").should("have.length", 4).and("contain", "Created At");
+    cy.get("[data-testid=cellData]")
+      .should("have.length", 4)
+      .and("contain", "Created At");
   });
 
   it("when done through the filter trigger (metabase#22715-2)", () => {
@@ -79,7 +81,9 @@ describe("filtering based on the remapped column name should result in a correct
 
     cy.wait("@dataset");
 
-    cy.get(".cellData").should("have.length", 4).and("contain", "Created At");
+    cy.get("[data-testid=cellData]")
+      .should("have.length", 4)
+      .and("contain", "Created At");
   });
 });
 

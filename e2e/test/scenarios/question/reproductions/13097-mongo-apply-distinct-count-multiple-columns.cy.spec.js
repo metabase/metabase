@@ -46,7 +46,7 @@ describe("issue 13097", { tags: "@mongo" }, () => {
     visualize();
 
     // cy.log("Reported failing on stats ~v0.36.3");
-    cy.get(".cellData")
+    cy.get("[data-testid=cellData]")
       .should("have.length", 4)
       .and("contain", "Distinct values of City")
       .and("contain", "1,966")

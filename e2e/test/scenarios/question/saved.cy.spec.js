@@ -246,7 +246,7 @@ describe("scenarios > question > saved", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Tax")
-      .closest(".TableInteractive-headerCellData")
+      .closest(".test-TableInteractive-headerCellData")
       .as("headerCell")
       .then($cell => {
         const originalWidth = $cell[0].getBoundingClientRect().width;

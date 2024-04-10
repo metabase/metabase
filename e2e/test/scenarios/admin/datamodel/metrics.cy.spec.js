@@ -64,14 +64,20 @@ describe("scenarios > admin > datamodel > metrics", () => {
       .first()
       .as("tableHeader")
       .within(() => {
-        cy.get(".cellData").eq(1).invoke("text").should("eq", "Revenue");
+        cy.get("[data-testid=cellData]")
+          .eq(1)
+          .invoke("text")
+          .should("eq", "Revenue");
       });
 
     cy.get("@table")
       .last()
       .as("tableBody")
       .within(() => {
-        cy.get(".cellData").eq(1).invoke("text").should("eq", "50,072.98");
+        cy.get("[data-testid=cellData]")
+          .eq(1)
+          .invoke("text")
+          .should("eq", "50,072.98");
       });
   });
 

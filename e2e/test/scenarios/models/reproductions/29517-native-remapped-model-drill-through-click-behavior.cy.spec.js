@@ -103,7 +103,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
     cy.wait("@loadTargetDashboard");
 
     cy.location("pathname").should("eq", `/dashboard/${ORDERS_DASHBOARD_ID}`);
-    cy.get(".cellData").contains("37.65");
+    cy.get("[data-testid=cellData]").contains("37.65");
   });
 });
 

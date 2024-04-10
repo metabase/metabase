@@ -521,7 +521,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^10 –/)
-      .closest(".TableInteractive-cellWrapper")
+      .closest(".test-TableInteractive-cellWrapper")
       .next()
       .contains("85")
       .click();
@@ -565,7 +565,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findByText("Distinct values").click();
 
     // there should be 0 distinct values since they are all null
-    cy.get(".TableInteractive-cellWrapper").contains("0");
+    cy.get(".test-TableInteractive-cellWrapper").contains("0");
   });
 
   it("should parse value on click through on the first row of pie chart (metabase#15250)", () => {

@@ -248,7 +248,7 @@ describe("scenarios > question > summarize sidebar", () => {
     summarize();
 
     cy.findAllByTestId("header-cell").should("have.length", 4);
-    cy.get(".TableInteractive-headerCellData--sorted").as("sortedCell");
+    cy.get(".test-TableInteractive-headerCellData--sorted").as("sortedCell");
 
     cy.log('At this point only "Sum of Subtotal" should be sorted');
     cy.get("@sortedCell").its("length").should("eq", 1);
@@ -266,7 +266,7 @@ describe("scenarios > question > summarize sidebar", () => {
     removeMetricFromSidebar("Sum of Total");
 
     cy.findAllByTestId("header-cell").should("have.length", 2);
-    cy.get(".cellData").should("contain", 744); // `Count` for year 2022
+    cy.get("[data-testid=cellData]").should("contain", 744); // `Count` for year 2022
   });
 
   // flaky test (#19454)

@@ -97,7 +97,7 @@ const dashboardDetails = {
       });
 
       cy.get(".ace_content").should("not.be.visible");
-      cy.get(".cellData").should("contain", "51");
+      cy.get("[data-testid=cellData]").should("contain", "51");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row");
     });

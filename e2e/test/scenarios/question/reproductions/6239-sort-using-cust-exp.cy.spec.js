@@ -39,12 +39,12 @@ describe("issue 6239", () => {
     // Line chart renders initially. Switch to the table view.
     cy.icon("table2").click();
 
-    cy.get(".cellData")
+    cy.get("[data-testid=cellData]")
       .eq(1)
       .should("contain", "CE")
       .and("have.descendants", ".Icon-chevronup");
 
-    cy.get(".cellData").eq(3).invoke("text").should("eq", "1");
+    cy.get("[data-testid=cellData]").eq(3).invoke("text").should("eq", "1");
 
     // Go back to the notebook editor
     cy.icon("notebook").click();
@@ -56,11 +56,11 @@ describe("issue 6239", () => {
 
     visualize();
 
-    cy.get(".cellData")
+    cy.get("[data-testid=cellData]")
       .eq(1)
       .should("contain", "CE")
       .and("have.descendants", ".Icon-chevrondown");
 
-    cy.get(".cellData").eq(3).invoke("text").should("eq", "584");
+    cy.get("[data-testid=cellData]").eq(3).invoke("text").should("eq", "584");
   });
 });

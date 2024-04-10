@@ -48,7 +48,7 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
     dragColumn(0, 100);
     cy.findByTestId("qb-header").button("Refresh").click();
     cy.wait("@dataset");
-    cy.get(".cellData").should("contain", "37.65");
+    cy.get("[data-testid=cellData]").should("contain", "37.65");
     cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
   });
 });

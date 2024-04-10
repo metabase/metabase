@@ -72,5 +72,5 @@ function assertNoError() {
   cy.get("main")
     .findByText("There was a problem with your question")
     .should("not.exist");
-  cy.get(".cellData").should("contain", "37.65");
+  cy.get("[data-testid=cellData]").should("contain", "37.65");
 }

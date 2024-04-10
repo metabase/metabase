@@ -275,7 +275,7 @@ describe("scenarios > question > native subquery", () => {
     );
 
     visitQuestion("@toplevelQuestionId");
-    cy.get("#main-data-grid .cellData").should("have.text", "41");
+    cy.get("#main-data-grid [data-testid=cellData]").should("have.text", "41");
   });
 
   it("should be able to reference a nested question (metabase#25988)", () => {
@@ -302,7 +302,7 @@ describe("scenarios > question > native subquery", () => {
 
         runNativeQuery();
 
-        cy.get(".cellData").should("contain", "37.65");
+        cy.get("[data-testid=cellData]").should("contain", "37.65");
       },
     );
   });
@@ -325,7 +325,7 @@ describe("scenarios > question > native subquery", () => {
 
           runNativeQuery();
 
-          cy.get(".cellData").should("contain", "1");
+          cy.get("[data-testid=cellData]").should("contain", "1");
         },
       );
     },

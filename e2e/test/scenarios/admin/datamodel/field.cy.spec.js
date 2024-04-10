@@ -166,7 +166,7 @@ describe("scenarios > admin > datamodel > field", () => {
 
           cy.log("Make sure custom mapping appears in QB");
           openTable({ database: dbId, table: NUMBER_WITH_NULLS_ID });
-          cy.get(".cellData").should("contain", remappedNullValue);
+          cy.get("[data-testid=cellData]").should("contain", remappedNullValue);
         },
       );
     });

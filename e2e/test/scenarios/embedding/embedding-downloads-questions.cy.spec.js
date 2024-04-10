@@ -73,7 +73,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
           setFilters: { text: "Foo" },
         });
 
-        cy.get(".cellData").should("have.text", "Foo");
+        cy.get("[data-testid=cellData]").should("have.text", "Foo");
         cy.findByRole("contentinfo").icon("download").click();
 
         popover().within(() => {
@@ -90,7 +90,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
           cy.visit(url + "&hide_download_button=true");
         });
 
-        cy.get(".cellData").should("have.text", "Foo");
+        cy.get("[data-testid=cellData]").should("have.text", "Foo");
         cy.findByRole("contentinfo").icon("download");
       });
     });
@@ -127,7 +127,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
         visitIframe();
 
         filterWidget().type("Foo{enter}");
-        cy.get(".cellData").should("have.text", "Foo");
+        cy.get("[data-testid=cellData]").should("have.text", "Foo");
 
         cy.location("search").should("eq", "?text=Foo");
         cy.location("hash").should("match", /&hide_download_button=true$/);
