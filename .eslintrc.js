@@ -1,4 +1,11 @@
 /* eslint-disable import/no-commonjs */
+/* eslint-disable no-undef */
+
+// `postcss-modules` lints css modules class names, but it currently crashes
+// eslint on vscode if you use webstorm or want to run the lint for the cli, you
+// can use this flag to enable it. This is set to true in CI
+const shouldLintCssModules =
+  process.env.LINT_CSS_MODULES === "true" || process.env.CI;
 
 module.exports = {
   rules: {
@@ -98,8 +105,12 @@ module.exports = {
       },
     ],
     complexity: ["error", { max: 54 }],
-    "postcss-modules/no-unused-class": "off",
-    "postcss-modules/no-undef-class": "error",
+    ...(shouldLintCssModules
+      ? {
+          "postcss-modules/no-unused-class": "off",
+          "postcss-modules/no-undef-class": "error",
+        }
+      : {}),
   },
   globals: {
     before: true,
@@ -123,7 +134,7 @@ module.exports = {
     "plugin:import/errors",
     "plugin:import/warnings",
     "plugin:import/typescript",
-    "plugin:postcss-modules/recommended",
+    ...(shouldLintCssModules ? ["plugin:postcss-modules/recommended"] : []),
   ],
   settings: {
     "import/internal-regex": "^metabase/|^metabase-lib/",
