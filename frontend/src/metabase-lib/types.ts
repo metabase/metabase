@@ -464,11 +464,7 @@ export type ColumnExtractDrillThruInfo =
   };
 
 export type CombineColumnsDrillThruInfo =
-  BaseDrillThruInfo<"drill-thru/combine-columns"> & {
-    defaultSeparator: string;
-    column: ColumnMetadata;
-    availableColumns: ColumnMetadata[];
-  };
+  BaseDrillThruInfo<"drill-thru/combine-columns">;
 
 export type QuickFilterDrillThruOperator =
   | "="
