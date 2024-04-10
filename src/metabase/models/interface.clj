@@ -472,7 +472,7 @@
 
 ;; --- helper fns
 (defn pre-update-changes
-  "Returns the changes used for pre-update hooks.
+  "Returns the changes used for pre-update hooks. Not to confused with the changes before the update.
   This is to match the input of pre-update for toucan1 methods"
   [row]
   (t2.protocols/with-current row (merge (t2.model/primary-key-values-map row)

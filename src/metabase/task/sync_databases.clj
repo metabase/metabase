@@ -258,28 +258,29 @@
         ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
         (cron/with-misfire-handling-instruction-do-nothing))))))
 
-(defn- update-db-task-trigger!
+(defn- update-db-triggers-if-needed!
+  "Replace or remove the existing trigger if the schedule changes, do nothing if schedule is the same."
   [database task-info]
   (let [job                                 (task/job-info (job-key task-info))
-        trigger                             (trigger database task-info)
+        new-trigger                         (trigger database task-info)
         ;; there should be only one schedule per task per DB
-        existing-trigger-with-same-schedule (some #(when (and (= (:key %) (.. trigger getKey getName))
+        existing-trigger-with-same-schedule (some #(when (and (= (:key %) (.. new-trigger getKey getName))
                                                               (= (:schedule %) (cron-schedule database task-info)))
                                                      %)
                                                   (:triggers job))]
     (cond
-     ;; no new schedule needed
-     ;; delete any existing triggers
-     (nil? trigger)
+     ;; no new schedule
+     ;; delete the existing trigger
+     (nil? new-trigger)
      (delete-trigger! database task-info)
 
-     ;; just need to create a new trigger
-     (and (some? trigger)
+     ;; need to recreate the new trigger
+     (and (some? new-trigger)
           (nil? existing-trigger-with-same-schedule))
      (do
       ;; delete all existing triggers just to be sure
       (delete-trigger! database task-info)
-      (task/add-trigger! trigger))
+      (task/add-trigger! new-trigger))
 
      ;; don't need to do anything as the existing trigger matches the new schedule
      :else
@@ -292,7 +293,7 @@
   (if (= perms/audit-db-id (:id database))
     (log/info (u/format-color :red "Not scheduling tasks for audit database"))
     (doseq [task all-tasks]
-      (update-db-task-trigger! database task))))
+      (update-db-triggers-if-needed! database task))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              TASK INITIALIZATION                                               |

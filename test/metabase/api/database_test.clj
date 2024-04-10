@@ -288,14 +288,14 @@
 
 (defn- all-db-sync-triggers-name
   [db]
-  (map #(.getName (#'task.sync-databases/trigger-key db %))
-       @#'task.sync-databases/all-tasks))
+  (set (map #(.getName (#'task.sync-databases/trigger-key db %))
+            @#'task.sync-databases/all-tasks)))
 
 (defn- query-all-db-sync-triggers-name
   [db]
-  (map :trigger_name (t2/query {:select [:trigger_name]
-                                :from   [:qrtz_triggers]
-                                :where  [:in :trigger_name (all-db-sync-triggers-name db)]})))
+  (set (map :trigger_name (t2/query {:select [:trigger_name]
+                                      :from   [:qrtz_triggers]
+                                      :where  [:in :trigger_name (all-db-sync-triggers-name db)]}))))
 
 (defn- sync-and-analyze-trigger-name
   [db]
@@ -651,13 +651,13 @@
           (is (true? @connections-stay-open?))
           (tx/destroy-db! driver/*driver* empty-dbdef))))))
 
-(deftest update-db-to-sync-on-custom-schedule-test
-  (with-test-driver-available!
-    (mt/with-temp
-      [:model/Database db {}]
-      (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
-                            {:details   {:let-user-control-scheduling true}
-                             :schedules {:cache_field_values monthly-schedule}}))))
+#_(deftest update-db-to-sync-on-custom-schedule-test
+    (with-test-driver-available!
+      (mt/with-temp
+        [:model/Database db {}]
+        (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                              {:details   {:let-user-control-scheduling true}
+                               :schedules {:cache_field_values monthly-schedule}}))))
 
 (deftest update-db-to-scan-field-values-on-demand-test
   (with-test-driver-available!

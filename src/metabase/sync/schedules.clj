@@ -71,4 +71,5 @@
   "Adds sync schedule defaults to a map of schedule-maps."
   [{:keys [cache_field_values metadata_sync] :as _schedules}]
   {:metadata_sync      (or metadata_sync (randomly-once-an-hour))
+   ;; cache_field_values is nullable
    :cache_field_values cache_field_values})

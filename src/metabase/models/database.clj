@@ -81,7 +81,7 @@
    (and (not= pk config/audit-db-id)
         (current-user-can-write-db? pk))))
 
-(defn- schedule-tasks!
+(defn- check-and-schedule-tasks-for-db!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
@@ -135,7 +135,7 @@
   (u/prog1 database
     (set-new-database-permissions! database)
     ;; schedule the Database sync & analyze tasks
-    (schedule-tasks! (t2.realize/realize database))))
+    (check-and-schedule-tasks-for-db! (t2.realize/realize database))))
 
 (def ^:private ^:dynamic *normalizing-details*
   "Track whether we're calling [[driver/normalize-db-details]] already to prevent infinite
@@ -229,12 +229,11 @@
 
 (t2/define-before-update :model/Database
   [database]
-  (def database database)
-  (let [database                  (mi/pre-update-changes database)
+  (let [database-with-changes                (mi/pre-update-changes database)
         {new-metadata-schedule    :metadata_sync_schedule,
          new-fieldvalues-schedule :cache_field_values_schedule,
          new-engine               :engine
-         new-settings             :settings} database
+         new-settings             :settings} database-with-changes
         {is-sample?               :is_sample
          old-metadata-schedule    :metadata_sync_schedule
          old-fieldvalues-schedule :cache_field_values_schedule
@@ -249,45 +248,33 @@
                       {:status-code     400
                        :existing-engine existing-engine
                        :new-engine      new-engine}))
-      (u/prog1 (-> database
+      (u/prog1 (-> database-with-changes
                    ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
-                   (cond-> (and (some? (:details database))
-                                (not (driver/database-supports? (or new-engine existing-engine) :nested-field-columns database)))
+                   (cond-> (and (some? (:details database-with-changes))
+                                (not (driver/database-supports? (or new-engine existing-engine) :nested-field-columns database-with-changes)))
                      (update :details dissoc :json_unfolding))
                    handle-secrets-changes)
         ;; TODO - this logic would make more sense in post-update if such a method existed
         ;; if the sync operation schedules have changed, we need to reschedule this DB
-        (when (or (contains? database :metadata_sync_schedule)
-                  (contains? database :cache_field_values_schedule))
-          ;; if one of the schedules wasn't passed continue using the old one
-          (let [new-metadata-schedule    (if (contains? database :metadata_sync_schedule)
-                                           new-metadata-schedule
-                                           old-metadata-schedule)
-                new-fieldvalues-schedule (if (contains? database :cache_field_values_schedule)
-                                           new-fieldvalues-schedule
-                                           old-fieldvalues-schedule)]
-            (when-not (= [new-metadata-schedule new-fieldvalues-schedule]
-                         [old-metadata-schedule old-fieldvalues-schedule])
-              (log/info
-               (format "%s Database '%s' sync/analyze schedules have changed!" existing-engine existing-name)
-               "\n"
-               (format "Sync metadata was: '%s' is now: '%s'" old-metadata-schedule new-metadata-schedule)
-               "\n"
-               (format "Cache FieldValues was: '%s', is now: '%s'" old-fieldvalues-schedule new-fieldvalues-schedule))
-              ;; reschedule the database. Make sure we're passing back the old schedule if one of the two wasn't
-              ;; supplied
-              (schedule-tasks!
-               (assoc database
-                      :metadata_sync_schedule      new-metadata-schedule
-                      :cache_field_values_schedule new-fieldvalues-schedule)))))
+        #_(update-schedules-if-changes! (t2/original database-with-changes) (t2/changes database))
         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
         (when (and (:database-enable-actions (or new-settings existing-settings))
-                   (not (driver/database-supports? (or new-engine existing-engine) :actions database)))
+                   (not (driver/database-supports? (or new-engine existing-engine) :actions database-with-changes)))
           (throw (ex-info (trs "The database does not support actions.")
                           {:status-code     400
                            :existing-engine existing-engine
                            :new-engine      new-engine})))))))
+
+(t2/define-after-update :model/Database
+  [database]
+  #_(log/info
+     (format "%s Database '%s' sync/analyze schedules have changed!" existing-engine existing-name)
+     "\n"
+     (format "Sync metadata was: '%s' is now: '%s'" old-metadata-schedule new-metadata-schedule)
+     "\n"
+     (format "Cache FieldValues was: '%s', is now: '%s'" old-fieldvalues-schedule new-fieldvalues-schedule))
+  (check-and-schedule-tasks-for-db! (t2.realize/realize database)))
 
 (t2/define-before-insert :model/Database
   [{:keys [details initial_sync_status], :as database}]

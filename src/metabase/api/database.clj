@@ -315,8 +315,8 @@
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
 (mu/defn ^:private expanded-schedules [db :- (mi/InstanceOf Database)]
-  {:cache_field_values (some-> (:cache_field_values_schedule db) u.cron/cron-string->schedule-map)
-   :metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))})
+  {:metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))
+   :cache_field_values (some-> (:cache_field_values_schedule db) u.cron/cron-string->schedule-map)})
 
 (defn- add-expanded-schedules
   "Add 'expanded' versions of the cron schedules strings for DB in a format that is appropriate for frontend
@@ -781,14 +781,14 @@
       details)))
 
 (defn- db->schedule-map
-  [& {:keys [user-control on-demand? full-sync? schedules]}]
+  [& {:keys [user-control full-sync? on-demand? schedules]}]
   (sync.schedules/schedule-map->cron-strings
-   (match [(true? user-control) full-sync? on-demand?]
+   (match [user-control full-sync? on-demand?]
      [false _ _]
      (sync.schedules/default-randomized-schedule)
 
      ;; "Regularly on a schedule"
-     ;; sync both steps, schedule should be provided
+     ;; -> sync both steps, schedule should be provided
      [true true false]
      (do
       (assert (every? #(some? (% schedules)) [:cache_field_values :metadata_sync]))
@@ -797,6 +797,8 @@
      ;; "Only when adding a new filter" or "Never, I'll do it myself"
      ;; -> Sync metadata only
      [true false _]
+     ;; schedules should only contains metadata_sync, but FE might sending both
+     ;; so we just manually dissoc it here
      (sync.schedules/scheduling (dissoc schedules :cache_field_values)))))
 
 (api/defendpoint POST "/"
@@ -828,11 +830,11 @@
                                         :engine       engine
                                         :details      details-or-error
                                         :is_full_sync is_full_sync
-                                        :is_on_demand (boolean is_on_demand)
+                                        :is_on_demand is_on_demand
                                         :cache_ttl    cache_ttl
                                         :creator_id   api/*current-user-id*}
                                        (db->schedule-map
-                                        :user-control (:let-user-control-scheduling details)
+                                        :user-control (boolean (:let-user-control-scheduling details))
                                         :on-demand?   is_on_demand
                                         :full-sync?   is_full_sync
                                         :schedules    schedules)
@@ -970,31 +972,36 @@
                    (merge
                     (m/remove-vals
                      nil?
-                     (merge {:name               name
-                             :engine             engine
-                             :details            details
-                             :refingerprint      refingerprint
-                             :is_full_sync       full-sync?
-                             :is_on_demand       on-demand?
-                             :description        description
-                             :caveats            caveats
-                             :points_of_interest points_of_interest
-                             :auto_run_queries   auto_run_queries}
-                            ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
-                            (when (seq settings)
-                              {:settings (into {}
-                                               (remove (fn [[_k v]] (nil? v)))
-                                               (merge (:settings existing-database) settings))})))
+                     (merge
+                      {:name               name
+                       :engine             engine
+                       :details            details
+                       :refingerprint      refingerprint
+                       :is_full_sync       full-sync?
+                       :is_on_demand       (boolean is_on_demand)
+                       :description        description
+                       :caveats            caveats
+                       :points_of_interest points_of_interest
+                       :auto_run_queries   auto_run_queries}
+                      ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
+                      (when (seq settings)
+                        {:settings (into {}
+                                         (remove (fn [[_k v]] (nil? v)))
+                                         (merge (:settings existing-database) settings))})))
+                    ;; cache_field_values_schedule is nullable
                     (when (or
+                           ;; turned on advanced sync options
                            (and (get-in existing-database [:details :let-user-control-scheduling])
-                                (not (:let-user-control-scheduling details)))
+                                (not (:failed-fingerprints details)))
+                           ;; user's controling the schedules, then we'll always attempt to update the schedule
+                           ;; if the schedules doesn't change, it'll be no op
+                           ;; see [metabase.task.sync-databases/update-db-task-trigger!]
                            (:let-user-control-scheduling details))
-                      (db->schedule-map
-                       :user-control (:let-user-control-scheduling details)
-                       :on-demand?   (if (some? on-demand?) on-demand? (:is_on_demand existing-database))
-                       :full-sync?   (if (some? full-sync?) full-sync? (:is_full_sync existing-database))
-                       :schedules    schedules))))
-
+                     (db->schedule-map
+                      :user-control (boolean (:let-user-control-scheduling details))
+                      :on-demand?   (if (some? on-demand?) on-demand? (:is_on_demand existing-database))
+                      :full-sync?   (if (some? full-sync?) full-sync? (:is_full_sync existing-database))
+                      :schedules    schedules))))
        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
        ;; with the advanced-config feature enabled.
        (when (premium-features/enable-cache-granular-controls?)
