@@ -47,7 +47,7 @@ export const QuestionPickerModal = ({
   title = t`Choose a question or model`,
   onChange,
   onClose,
-  value,
+  value = { model: "collection", id: "root" },
   options = defaultOptions,
   models = ["card", "dataset"],
 }: QuestionPickerModalProps) => {
@@ -114,6 +114,7 @@ export const QuestionPickerModal = ({
       onConfirm={handleConfirm}
       onClose={onClose}
       selectedItem={selectedItem}
+      initialValue={value}
       tabs={filteredTabs}
       options={options}
       searchResultFilter={results => results}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { usePrevious } from "react-use";
+import { useMount, usePrevious } from "react-use";
 
 import { Icon, Tabs } from "metabase/ui";
 
@@ -19,17 +19,26 @@ export const TabsView = <
   searchQuery,
   searchResults,
   selectedItem,
+  initialValue,
 }: {
   tabs: EntityTab<Model>[];
   onItemSelect: (item: Item) => void;
   searchQuery: string;
   searchResults: Item[] | null;
   selectedItem: Item | null;
+  initialValue?: Partial<Item>;
 }) => {
   const hasSearchTab = !!searchQuery;
   const previousSearchQuery = usePrevious(searchQuery);
   const defaultTab = hasSearchTab ? { model: "search" } : tabs[0];
   const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
+
+  useMount(() => {
+    const tabModels = tabs.map(tab => tab.model);
+    if (initialValue?.model && tabModels.includes(initialValue.model)) {
+      setSelectedTab(initialValue.model);
+    }
+  });
 
   useEffect(() => {
     // when when the searchQuery changes, switch to the search tab
