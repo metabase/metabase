@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, MouseEvent } from "react";
 import { useCallback, useState } from "react";
 
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
@@ -66,7 +66,11 @@ export function Popover({
       }}
     >
       <HoverCard.Target>{children}</HoverCard.Target>
-      <Dropdown>
+      <Dropdown
+        onClick={stopPropagation}
+        onMouseDown={stopPropagation}
+        onMouseUp={stopPropagation}
+      >
         {/* HACK: adds an element between the target and the card */}
         {/* to avoid the card from disappearing */}
         <Target />
@@ -81,4 +85,8 @@ export function Popover({
       </Dropdown>
     </HoverCard>
   );
+}
+
+function stopPropagation(evt: MouseEvent) {
+  evt.stopPropagation();
 }
