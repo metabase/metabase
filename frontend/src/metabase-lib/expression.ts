@@ -1,5 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { RowValue, RowValues } from "metabase-types/api";
+import type { DatasetColumn, RowValue } from "metabase-types/api";
 
 import type {
   AggregationClause,
@@ -105,7 +105,10 @@ export function previewExpression(
   query: Query,
   stageIndex: number,
   expressionClause: ExpressionClause,
-  row: RowValues,
+  row: {
+    col: DatasetColumn | ColumnMetadata;
+    value: RowValue;
+  }[],
 ): RowValue {
   return ML.preview_expression(query, stageIndex, expressionClause, row);
 }

@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import type { Dataset, RowValue, RowValues } from "metabase-types/api";
+import type { Dataset, DatasetColumn, RowValue } from "metabase-types/api";
 
 import type { ColumnAndSeparator, ColumnOption } from "./types";
 
@@ -61,21 +61,35 @@ export const formatSeparator = (separator: string) => {
 
 export const extractQueryResults = (
   datasets: Dataset[] | null,
-): RowValues[] => {
+): {
+  col: DatasetColumn | Lib.ColumnMetadata;
+  value: RowValue;
+}[][] => {
   if (!datasets || datasets.length === 0) {
     return [];
   }
 
-  return datasets[0].data.rows;
+  const data = datasets[0].data;
+  const columns = data.results_metadata.columns;
+  const rows = data.rows;
+
+  return rows.map(row => {
+    return row.map((value, index) => {
+      return { value, col: columns[index] };
+    });
+  });
 };
 
 export const getPreview = (
   query: Lib.Query,
   stageIndex: number,
   expressionClause: Lib.ExpressionClause,
-  queryResults: RowValues[],
+  results: {
+    col: DatasetColumn | Lib.ColumnMetadata;
+    value: RowValue;
+  }[][],
 ): RowValue[] => {
-  return queryResults.map(result => {
+  return results.map(result => {
     return Lib.previewExpression(query, stageIndex, expressionClause, result);
   });
 };

@@ -21,9 +21,7 @@ interface Props {
 export const Preview = ({ expressionClause, query, stageIndex }: Props) => {
   const datasets = useSelector(getQueryResults);
   const queryResults = useMemo(() => {
-    return extractQueryResults(datasets)
-      .filter(value => value !== null)
-      .slice(0, PREVIEW_LINE_COLORS.length);
+    return extractQueryResults(datasets).slice(0, PREVIEW_LINE_COLORS.length);
   }, [datasets]);
   const values = useMemo(
     () => getPreview(query, stageIndex, expressionClause, queryResults),
