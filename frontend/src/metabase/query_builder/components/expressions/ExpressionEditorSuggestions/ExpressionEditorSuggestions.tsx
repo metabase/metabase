@@ -62,7 +62,6 @@ export function ExpressionEditorSuggestions({
       radius="xs"
       withinPortal
       zIndex={300}
-      returnFocus
     >
       <Popover.Target>{children}</Popover.Target>
       <Popover.Dropdown>
