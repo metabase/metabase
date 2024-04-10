@@ -196,16 +196,15 @@
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
         ->unbucketed-display-name #(-> %
                                        (update 1 dissoc :temporal-unit)
-                                       ->display-name)
-        temporal? #(lib.util/original-isa? % :type/Temporal)]
+                                       ->display-name)]
     (mbql.u/match-one expr
-      [:between _ (x :guard temporal?) (y :guard string?) (z :guard string?)]
+      [:between _ x (y :guard string?) (z :guard string?)]
       (i18n/tru "{0} is {1}"
                 (->unbucketed-display-name x)
                 (shared.ut/format-diff y z))
 
       [:between _
-       [:+ _ (x :guard temporal?) [:interval _ n unit]]
+       [:+ _ x [:interval _ n unit]]
        [:relative-datetime _ n2 unit2]
        [:relative-datetime _ 0 _]]
       (i18n/tru "{0} is in the {1}, starting {2} ago"
@@ -214,7 +213,7 @@
                 (inflections/pluralize n (name unit)))
 
       [:between _
-       [:+ _ (x :guard temporal?) [:interval _ n unit]]
+       [:+ _ x [:interval _ n unit]]
        [:relative-datetime _ 0 _]
        [:relative-datetime _ n2 unit2]]
       (i18n/tru "{0} is in the {1}, starting {2} from now"
