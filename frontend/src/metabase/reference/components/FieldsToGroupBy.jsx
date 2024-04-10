@@ -31,7 +31,7 @@ class FieldsToGroupBy extends Component {
       <div>
         <div className={D.detailBody}>
           <div className={D.detailTitle}>
-            <span className={D.detailName}>{title}</span>
+            <span>{title}</span>
           </div>
           <div className={S.usefulQuestions}>
             {fields &&
