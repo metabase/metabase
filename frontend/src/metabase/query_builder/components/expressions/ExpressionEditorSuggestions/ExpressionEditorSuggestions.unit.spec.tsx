@@ -1,5 +1,3 @@
-import { useRef } from "react";
-
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -24,11 +22,10 @@ type WrapperProps = {
 };
 
 function Wrapper(props: WrapperProps) {
-  const ref = useRef(null);
   return (
-    <div ref={ref}>
-      <ExpressionEditorSuggestions {...props} target={ref.current} />
-    </div>
+    <ExpressionEditorSuggestions {...props}>
+      <div>target</div>
+    </ExpressionEditorSuggestions>
   );
 }
 
