@@ -437,17 +437,17 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       <QuestionPickerModal
         onChange={handleSelect}
         value={
-          replaceCardModalDashCard.card.collection_id
+          replaceCardModalDashCard.card.id
             ? {
-                id: replaceCardModalDashCard.card.collection_id,
-                model: "collection",
+                id: replaceCardModalDashCard.card.id,
+                model:
+                  replaceCardModalDashCard.card.type === "model"
+                    ? "dataset"
+                    : "card",
               }
             : undefined
         }
         onClose={handleClose}
-        options={{
-          allowCreateNew: false,
-        }}
       />
     );
   }

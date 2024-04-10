@@ -62,7 +62,7 @@ export const CollectionPickerInner = (
     error,
     isLoading: loadingCurrentCollection,
   } = useCollectionQuery({
-    id: isValidCollectionId(initialValue?.id) ? initialValue?.id : "root",
+    id: (isValidCollectionId(initialValue?.id) && initialValue?.id) || "root",
     enabled: !!initialValue?.id,
   });
 

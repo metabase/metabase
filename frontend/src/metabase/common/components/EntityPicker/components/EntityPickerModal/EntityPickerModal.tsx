@@ -40,6 +40,7 @@ export const defaultOptions: EntityPickerModalOptions = {
 export interface EntityPickerModalProps<Model extends string, Item> {
   title?: string;
   selectedItem: Item | null;
+  initialValue?: Partial<Item>;
   onConfirm: () => void;
   onItemSelect: (item: Item) => void;
   canSelectItem: boolean;
@@ -61,6 +62,7 @@ export function EntityPickerModal<
   canSelectItem,
   onConfirm,
   selectedItem,
+  initialValue,
   onClose,
   tabs,
   options,
@@ -132,6 +134,7 @@ export function EntityPickerModal<
                 searchQuery={searchQuery}
                 searchResults={searchResults}
                 selectedItem={selectedItem}
+                initialValue={initialValue}
               />
             ) : (
               <SinglePickerView>{tabs[0].element}</SinglePickerView>
