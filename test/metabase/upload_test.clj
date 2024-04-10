@@ -1761,7 +1761,10 @@
       pos?))
 
 (defn- referencing-models []
-  (map :table_name (t2/select :information_schema.columns :column_name "table_id")))
+  (->> (t2/select :information_schema.columns :column_name "table_id")
+       (map :table_name)
+       (remove #(str/starts-with? % "v_"))
+       (map keyword)))
 
 (deftest delete-upload!-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -1779,7 +1782,9 @@
         ;; there are some other miscellaneous children
         ;; FIXME for some reason I get some stuff populated here locally but not in CI - not critical to debug
         #_(is (some #(seq (t2/select % :table_id (:id table)))
-                  (remove #{"metabase_field"} (referencing-models)))))
+                  (remove #{"metabase_field"} (referencing-models))))
+        (is (= (set (referencing-models))
+               (set (map t2/table-name @#'upload/table-referencing-models)))))
 
       (upload/delete-upload! table)
 

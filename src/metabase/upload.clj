@@ -613,32 +613,35 @@
 ;;; |  public interface for updating an uploaded table
 ;;; +--------------------------------------------------
 
-(defn- delete-table-from-app-db! [{table-id :id table-name :name}]
-  ;; These instances will be permanently orphaned, so we might as well clean them up.
-  (doseq [model [:model/DataPermissions
-                 ;; We delete the directly connected cards, for example the initially created model.
-                 ;; More complex cards are left behind, their usage of this table may be incidental.
-                 ;; Perhaps in future we'll also want to delete the native queries that only reference this table.
-                 :model/Card
-                 :model/Segment
-                 :model/LegacyMetric
-                 ;; Both of these would have leaked otherwise, might as well clean them up.
-                 :model/DataPermissions
-                 (when config/ee-available?
-                   :model/GroupTableAccessPolicy)
-                 ;; will get cleaned up on next sync, but no hard in doing it pre-emptively
-                 :model/TablePrivileges]]
-    (when model
-      (t2/delete! model :table_id table-id)))
+(def ^:private table-referencing-models
+  (remove nil?
+          [:model/Field
+           :model/DataPermissions
+           ;; We delete the directly connected cards, for example the initially created model.
+           ;; More complex cards are left behind, their usage of this table may be incidental.
+           ;; Perhaps in future we'll also want to delete the native queries that only reference this table.
+           :model/Card
+           :model/Segment
+           :model/LegacyMetric
+           ;; Both of these would have leaked otherwise, might as well clean them up.
+           :model/DataPermissions
+           (when config/ee-available?
+             :model/GroupTableAccessPolicy)
+           ;; will get cleaned up on next sync, but no hard in doing it pre-emptively
+           :model/TablePrivileges]))
 
+(defn- delete-table-from-app-db! [{table-id :id table-name :name}]
+  ;; Related instances will be permanently orphaned, so we might as well clean them up.
+  ;; We descend transitive relations and delete from the bottom up.
   (when-let [field-ids (seq (map :id (t2/select :model/Field :id :table_id table-id)))]
     (doseq [child-model [:model/FieldValues
                          :model/Dimension
                          :model/QueryField
                          :model/LegacyMetricImportantField]]
-      (t2/delete! child-model :field_id [:in field-ids]))
-
-    (t2/delete! :model/Field :id [:in field-ids]) )
+      (t2/delete! child-model :field_id [:in field-ids])))
+  ;; Finally deleting the direct descendants
+  (doseq [model table-referencing-models]
+    (t2/delete! model :table_id table-id))
 
   (t2/delete! :model/Table :name table-name))
 
