@@ -9,6 +9,7 @@
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sync :as driver.s]
@@ -622,11 +623,13 @@
                  :model/Segment
                  :model/LegacyMetric
                  ;; Both of these would have leaked otherwise, might as well clean them up.
-                 :model/GroupTableAccessPolicy
                  :model/DataPermissions
+                 (when config/ee-available?
+                   :model/GroupTableAccessPolicy)
                  ;; will get cleaned up on next sync, but no hard in doing it pre-emptively
                  :model/TablePrivileges]]
-    (t2/delete! model :table_id table-id))
+    (when model
+      (t2/delete! model :table_id table-id)))
 
   (when-let [field-ids (seq (map :id (t2/select :model/Field :id :table_id table-id)))]
     (doseq [child-model [:model/FieldValues
