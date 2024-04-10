@@ -63,7 +63,7 @@ function setup({ source = "", startRule }: SetupOpts) {
 }
 
 describe("ExpressionEditorSuggestions", () => {
-  test("suggestions items should show column info icon", async () => {
+  it("should render with the column info icon", async () => {
     setup({ source: "[", startRule: "expression" });
 
     await waitFor(() =>
@@ -87,7 +87,7 @@ describe("ExpressionEditorSuggestions", () => {
     );
   });
 
-  test("suggestions should render correct functions link for expressions", async () => {
+  it("should render correct functions link for expressions", async () => {
     setup({ startRule: "expression" });
     expect(screen.getByText("View all functions")).toBeInTheDocument();
     expect(
@@ -98,7 +98,7 @@ describe("ExpressionEditorSuggestions", () => {
     ).toBe(true);
   });
 
-  test("suggestions should render correct functions link for filters", async () => {
+  it("should render correct functions link for filters", async () => {
     setup({ startRule: "boolean" });
     expect(screen.getByText("View all functions")).toBeInTheDocument();
     expect(
@@ -109,7 +109,7 @@ describe("ExpressionEditorSuggestions", () => {
     ).toBe(true);
   });
 
-  test("suggestions should render correct functions link for aggregations", async () => {
+  it("should render correct functions link for aggregations", async () => {
     setup({ startRule: "aggregation" });
     expect(screen.getByText("View all functions")).toBeInTheDocument();
     expect(
@@ -120,12 +120,12 @@ describe("ExpressionEditorSuggestions", () => {
     ).toBe(true);
   });
 
-  test("suggestions should  functions when first opened", async () => {
+  it("should  functions when first opened", async () => {
     setup({ startRule: "expression" });
     expect(screen.getByText("Most used functions")).toBeInTheDocument();
   });
 
-  test("suggestions should not include popular functions when text has been typed", async () => {
+  it("should not include popular functions when text has been typed", async () => {
     setup({ source: "[", startRule: "expression" });
     expect(screen.queryByText("Most used functions")).not.toBeInTheDocument();
   });
