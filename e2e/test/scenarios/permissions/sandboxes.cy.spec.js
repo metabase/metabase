@@ -24,6 +24,7 @@ import {
   sendEmailAndAssert,
   setTokenFeatures,
   selectFilterOperator,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 const {
@@ -775,26 +776,28 @@ describeEE("formatting > sandboxes", () => {
       );
       cy.wait("@tablePermissions");
       cy.icon("eye")
-        .eq(1) // No better way of doing this, undfortunately (see table above)
+        .eq(1) // No better way of doing this, unfortunately (see table above)
         .click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sandboxed").click();
-      cy.button("Change").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "Use a saved question to create a custom view for this table",
-      ).click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(QUESTION_NAME).click();
-      cy.button("Save").click();
+      popover().findByText("Sandboxed").click();
+      modal().button("Change").click();
+      modal()
+        .findByText(
+          "Use a saved question to create a custom view for this table",
+        )
+        .click();
+      modal().findByText("Select a question").click();
 
+      entityPickerModal().within(() => {
+        cy.findByText(QUESTION_NAME).click();
+        cy.button("Select").click();
+      });
+      modal().button("Save").click();
       cy.wait("@sandboxTable").then(({ response }) => {
         expect(response.statusCode).to.eq(400);
         expect(response.body.message).to.eq(ERROR_MESSAGE);
       });
       modal().scrollTo("bottom");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(ERROR_MESSAGE);
+      modal().findByText(ERROR_MESSAGE);
     });
 
     it("should be able to use summarize columns from joined table based on a saved question (metabase#14766)", () => {
