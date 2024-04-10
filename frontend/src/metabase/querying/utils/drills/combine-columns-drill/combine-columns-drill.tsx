@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import type { Drill } from "metabase/visualizations/types/click-actions";
+import type {
+  ClickActionPopoverProps,
+  Drill,
+} from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
 
 import { CombineColumnsDrill } from "./components";
@@ -26,14 +29,20 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
     originalStageIndex,
   );
 
-  const DrillPopover = () => (
+  const DrillPopover = ({
+    onChangeCardAndRun,
+    onClose,
+  }: ClickActionPopoverProps) => (
     <CombineColumnsDrill
       column={column}
       drill={drill}
       query={query}
       stageIndex={stageIndex}
       onSubmit={newQuery => {
-        question.setQuery(newQuery);
+        const nextQuestion = question.setQuery(newQuery);
+        const nextCard = nextQuestion.card();
+        onChangeCardAndRun({ nextCard });
+        onClose();
       }}
     />
   );
