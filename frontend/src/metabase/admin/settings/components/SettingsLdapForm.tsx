@@ -10,6 +10,7 @@ import { updateLdapSettings } from "metabase/admin/settings/settings";
 import type { SettingElement } from "metabase/admin/settings/types";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { FormSection } from "metabase/containers/FormikForm";
+import CS from "metabase/css/core/index.css";
 import {
   Form,
   FormErrorMessage,
@@ -144,7 +145,7 @@ export const SettingsLdapFormView = ({
       {({ dirty }) => (
         <Form m="0 1rem" maw="32.5rem">
           <Breadcrumbs
-            className="mb3"
+            className={CS.mb3}
             crumbs={[
               [t`Authentication`, "/admin/settings/authentication"],
               [t`LDAP`],

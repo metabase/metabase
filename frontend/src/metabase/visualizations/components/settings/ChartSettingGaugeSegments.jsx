@@ -35,7 +35,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
               <tr>
                 <td>
                   <ColorSelector
-                    className="mr1"
+                    className={CS.mr1}
                     value={segment.color}
                     colors={getColorPalette()}
                     onChange={color => onChangeProperty(index, "color", color)}
@@ -63,12 +63,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                   {segments.length > 1 && (
                     <Icon
                       name="close"
-                      className={cx(
-                        CS.cursorPointer,
-                        "text-grey-2",
-                        "text-grey-4-hover",
-                        CS.ml2,
-                      )}
+                      className={cx(CS.cursorPointer, CS.ml2)}
                       onClick={() =>
                         onChange(segments.filter((v, i) => i !== index))
                       }
@@ -77,7 +72,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                 </td>
               </tr>
               <tr>
-                <td colSpan={3} className="pb2">
+                <td colSpan={3} className={CS.pb2}>
                   <input
                     type="text"
                     className={cx(CS.full, CS.input)}

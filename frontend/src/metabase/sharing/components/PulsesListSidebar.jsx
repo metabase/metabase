@@ -83,7 +83,7 @@ function _PulsesListSidebar({
           </Tooltip>
         </SidebarActions>
       </div>
-      <div className="my2 mx4">
+      <div className={cx(CS.my2, CS.mx4)}>
         {pulses.map(pulse => {
           const canEdit = canEditPulse(pulse, formInput);
 
@@ -98,7 +98,7 @@ function _PulsesListSidebar({
               }
             >
               <div
-                className={cx("px3 py2", CS.hoverParent, CS.hoverInherit, {
+                className={cx(CS.px3, CS.py2, CS.hoverParent, CS.hoverInherit, {
                   "text-white-hover": canEdit,
                 })}
               >
@@ -116,7 +116,7 @@ function _PulsesListSidebar({
                         ? "mail"
                         : "slack"
                     }
-                    className="mr1"
+                    className={CS.mr1}
                     style={{ paddingBottom: "5px" }}
                     size={16}
                   />
@@ -230,7 +230,12 @@ function PulseDetails({ pulse, parameters }) {
               size={12}
             />
             <span
-              className={cx("ml1 text-medium", CS.hoverChild, CS.hoverInherit)}
+              className={cx(
+                CS.ml1,
+                CS.textMedium,
+                CS.hoverChild,
+                CS.hoverInherit,
+              )}
               style={{ fontSize: "12px" }}
             >
               {recipientText}
@@ -256,7 +261,12 @@ function PulseDetails({ pulse, parameters }) {
               size={12}
             />
             <span
-              className={cx("ml1 text-medium", CS.hoverChild, CS.hoverInherit)}
+              className={cx(
+                CS.ml1,
+                "text-medium",
+                CS.hoverChild,
+                CS.hoverInherit,
+              )}
               style={{ fontSize: "12px" }}
             >
               {filterText}

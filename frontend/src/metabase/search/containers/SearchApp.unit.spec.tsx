@@ -17,7 +17,7 @@ import { Route } from "metabase/hoc/Title";
 import { checkNotNull } from "metabase/lib/types";
 import SearchApp from "metabase/search/containers/SearchApp";
 import type { SearchFilters } from "metabase/search/types";
-import type { EnabledSearchModelType, SearchResult } from "metabase-types/api";
+import type { EnabledSearchModel, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
@@ -31,7 +31,7 @@ jest.mock("metabase/search/containers/constants", () => ({
   PAGE_SIZE: 4,
 }));
 
-const TYPE_FILTER_LABELS: Record<EnabledSearchModelType, string> = {
+const TYPE_FILTER_LABELS: Record<EnabledSearchModel, string> = {
   collection: "Collection",
   dashboard: "Dashboard",
   database: "Database",
@@ -181,8 +181,8 @@ describe("SearchApp", () => {
         await userEvent.click(
           popover.getByRole("checkbox", {
             name: TYPE_FILTER_LABELS[
-              model as EnabledSearchModelType
-            ] as EnabledSearchModelType,
+              model as EnabledSearchModel
+            ] as EnabledSearchModel,
           }),
         );
         await userEvent.click(popover.getByRole("button", { name: "Apply" }));
@@ -201,7 +201,7 @@ describe("SearchApp", () => {
       async ({ name, model }) => {
         await setup({
           searchText: name,
-          searchFilters: { type: [model as EnabledSearchModelType] },
+          searchFilters: { type: [model as EnabledSearchModel] },
         });
 
         expect(screen.getByText(`Results for "${name}"`)).toBeInTheDocument();
@@ -214,7 +214,7 @@ describe("SearchApp", () => {
         const fieldSetContent = typeFilter.getByTestId("field-set-content");
 
         expect(fieldSetContent).toHaveTextContent(
-          TYPE_FILTER_LABELS[model as EnabledSearchModelType],
+          TYPE_FILTER_LABELS[model as EnabledSearchModel],
         );
       },
     );

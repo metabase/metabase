@@ -66,8 +66,11 @@ const setup = async ({
 
 describe("HomeContent", () => {
   beforeEach(() => {
-    jest.useFakeTimers({ advanceTimers: true });
-    jest.setSystemTime(new Date(2020, 0, 10));
+    jest.useFakeTimers({
+      advanceTimers: true,
+      now: new Date(2020, 0, 10),
+      doNotFake: ["setTimeout"],
+    });
     localStorage.clear();
   });
 
@@ -88,7 +91,7 @@ describe("HomeContent", () => {
     });
 
     expect(
-      screen.getByText("Here are some popular tables"),
+      await screen.findByText("Here are some popular tables"),
     ).toBeInTheDocument();
   });
 

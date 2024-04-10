@@ -1,4 +1,4 @@
-(ns metabase.legacy-mbql.util-test
+(ns ^:mb/once metabase.legacy-mbql.util-test
   (:require
    [clojure.string :as str]
    [clojure.test :as t]
@@ -301,7 +301,7 @@
                [:field 1 {:temporal-unit :week, :binning {:strategy :default}}]
                [:relative-datetime :current]])))))
 
-(t/deftest relative-datetime-current-inside-between-test
+(t/deftest ^:parallel relative-datetime-current-inside-between-test
   (t/testing ":relative-datetime should work inside a :between clause (#19606)\n"
     (let [absolute "2022-03-11T15:48:00-08:00"
           relative [:relative-datetime :current]
@@ -824,7 +824,7 @@
       (t/is (= [:aggregation 0]
                (mbql.u/update-field-options [:aggregation 0 {:b 2}] dissoc :b))))))
 
-(t/deftest remove-namespaced-options-test
+(t/deftest ^:parallel remove-namespaced-options-test
   (t/are [clause expected] (= expected
                               (mbql.u/remove-namespaced-options clause))
     [:field 1 {::namespaced true}]                [:field 1 nil]
@@ -836,7 +836,7 @@
     [:aggregation 0 {::namespaced true}]          [:aggregation 0]
     [:aggregation 0 {::namespaced true, :a 1}]    [:aggregation 0 {:a 1}]))
 
-(t/deftest with-temporal-unit-test
+(t/deftest ^:parallel with-temporal-unit-test
   (t/is (= [:field 1 {:temporal-unit :day}]
            (mbql.u/with-temporal-unit [:field 1 nil] :day)))
   (t/is (= [:field "t" {:base-type :type/Date, :temporal-unit :day}]
@@ -846,7 +846,7 @@
     (t/is (= [:field "t" {:base-type :type/Date}]
              (mbql.u/with-temporal-unit [:field "t" {:base-type :type/Date}] :minute)))))
 
-(t/deftest desugar-time-interval-expression-test
+(t/deftest ^:parallel desugar-time-interval-expression-test
   (t/is (= [:=
             [:expression "Date" {:temporal-unit :quarter}]
             [:relative-datetime 0 :quarter]]

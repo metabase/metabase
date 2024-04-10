@@ -110,15 +110,15 @@ function ProfileLink({ adminItems, onLogout }) {
           <div
             className={cx(CS.px4, CS.pt4, CS.pb2, CS.textCentered, CS.relative)}
           >
-            <div className="text-brand pb2">
+            <div className={cx(CS.textBrand, CS.pb2)}>
               <LogoIcon height={48} />
             </div>
             <h2
               style={{ fontSize: "1.75em" }}
               className="text-dark"
             >{t`Thanks for using ${applicationName}!`}</h2>
-            <div className="pt2">
-              <h3 className="text-dark mb1">
+            <div className={CS.pt2}>
+              <h3 className={cx(CS.textDark, CS.mb1)}>
                 {t`You're on version`} {tag}
               </h3>
               <p className={cx("text-medium", CS.textBold)}>
