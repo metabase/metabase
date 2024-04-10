@@ -1,35 +1,37 @@
-{
-  "rules": {
-    "strict": [2, "never"],
+/* eslint-disable import/no-commonjs */
+
+module.exports = {
+  rules: {
+    strict: [2, "never"],
     "no-undef": 2,
     "no-var": 1,
     "no-unused-vars": [
       "error",
       {
-        "vars": "all",
-        "args": "none",
-        "varsIgnorePattern": "^_",
-        "ignoreRestSiblings": true
-      }
+        vars: "all",
+        args: "none",
+        varsIgnorePattern: "^_",
+        ignoreRestSiblings: true,
+      },
     ],
-    "no-empty": [1, { "allowEmptyCatch": true }],
+    "no-empty": [1, { allowEmptyCatch: true }],
     "no-restricted-imports": [
       "error",
       {
-        "paths": [
+        paths: [
           {
-            "name": "moment",
-            "message": "Moment is deprecated, please use dayjs"
+            name: "moment",
+            message: "Moment is deprecated, please use dayjs",
           },
           {
-            "name": "moment-timezone",
-            "message": "Moment is deprecated, please use dayjs"
-          }
-        ]
-      }
+            name: "moment-timezone",
+            message: "Moment is deprecated, please use dayjs",
+          },
+        ],
+      },
     ],
-    "curly": [1, "all"],
-    "eqeqeq": [1, "smart"],
+    curly: [1, "all"],
+    eqeqeq: [1, "smart"],
     "import/no-default-export": 2,
     "import/no-named-as-default": 0,
     "import/no-commonjs": 1,
@@ -37,23 +39,23 @@
       "error",
       {
         "newlines-between": "always",
-        "alphabetize": {
-          "order": "asc",
-          "orderImportKind": "asc",
-          "caseInsensitive": false
+        alphabetize: {
+          order: "asc",
+          orderImportKind: "asc",
+          caseInsensitive: false,
         },
-        "groups": [
+        groups: [
           "builtin",
           "external",
           "internal",
           "parent",
           "sibling",
-          "index"
+          "index",
         ],
-        "warnOnUnassignedImports": false
-      }
+        warnOnUnassignedImports: false,
+      },
     ],
-    "no-console": [2, { "allow": ["warn", "error", "errorBuffer"] }],
+    "no-console": [2, { allow: ["warn", "error", "errorBuffer"] }],
     "react/no-is-mounted": 2,
     "react/prefer-es6-class": 2,
     "react/display-name": 1,
@@ -66,17 +68,17 @@
     "react/no-unescaped-entities": 2,
     "react/jsx-no-target-blank": 2,
     "react/jsx-key": 2,
-    "react/forbid-component-props": [2, { "forbid": ["sx"] }],
+    "react/forbid-component-props": [2, { forbid: ["sx"] }],
     "react-hooks/exhaustive-deps": [
       "warn",
-      { "additionalHooks": "(useSyncedQueryString|useSafeAsyncFunction)" }
+      { additionalHooks: "(useSyncedQueryString|useSafeAsyncFunction)" },
     ],
-    "prefer-const": [1, { "destructuring": "all" }],
+    "prefer-const": [1, { destructuring: "all" }],
     "no-useless-escape": 0,
     "no-only-tests/no-only-tests": [
       "error",
       {
-        "block": [
+        block: [
           "describe",
           "it",
           "context",
@@ -91,62 +93,62 @@
           "When",
           "Then",
           "describeWithSnowplow",
-          "describeEE"
-        ]
-      }
+          "describeEE",
+        ],
+      },
     ],
-    "complexity": ["error", { "max": 54 }]
+    complexity: ["error", { max: 54 }],
   },
-  "globals": {
-    "before": true,
-    "cy": true,
-    "Cypress": true
+  globals: {
+    before: true,
+    cy: true,
+    Cypress: true,
   },
-  "env": {
-    "browser": true,
-    "es6": true,
-    "commonjs": true,
-    "jest": true,
-    "jest/globals": true
+  env: {
+    browser: true,
+    es6: true,
+    commonjs: true,
+    jest: true,
+    "jest/globals": true,
   },
-  "parser": "babel-eslint",
-  "plugins": ["react", "no-only-tests"],
-  "extends": [
+  parser: "babel-eslint",
+  plugins: ["react", "no-only-tests"],
+  extends: [
     "eslint:recommended",
     "plugin:react/recommended",
     "plugin:react/jsx-runtime",
     "plugin:react-hooks/recommended",
     "plugin:import/errors",
     "plugin:import/warnings",
-    "plugin:import/typescript"
+    "plugin:import/typescript",
   ],
-  "settings": {
+  settings: {
     "import/internal-regex": "^metabase/|^metabase-lib/",
     "import/resolver": {
-      "webpack": {
-        "typescript": true
-      }
+      webpack: {
+        typescript: true,
+      },
     },
     "import/ignore": ["\\.css$"],
-    "react": {
-      "version": "detect"
-    }
+    react: {
+      version: "detect",
+    },
   },
-  "parserOptions": {
-    "ecmaFeatures": {
-      "legacyDecorators": true
-    }
+  parserOptions: {
+    ecmaFeatures: {
+      legacyDecorators: true,
+    },
   },
-  "overrides": [
+  overrides: [
     {
-      "files": ["*.js", "*.jsx", "*.ts", "*.tsx"],
-      "rules": {
+      files: ["*.js", "*.jsx", "*.ts", "*.tsx"],
+      rules: {
         "no-unconditional-metabase-links-render": "error",
-        "no-literal-metabase-strings": "error"
-      }
+        "no-literal-metabase-strings": "error",
+      },
     },
     {
-      "files": [
+      files: [
         "*.unit.spec.*",
         "frontend/src/metabase/admin/**/*",
         "frontend/src/metabase/setup/**/*",
@@ -154,19 +156,19 @@
         "*.stories.*",
         "e2e/**/*",
         "**/tests/*",
-        "release/**/*"
+        "release/**/*",
       ],
-      "rules": {
+      rules: {
         "no-unconditional-metabase-links-render": "off",
-        "no-literal-metabase-strings": "off"
-      }
+        "no-literal-metabase-strings": "off",
+      },
     },
     {
-      "extends": ["plugin:@typescript-eslint/recommended"],
-      "files": ["*.ts", "*.tsx"],
-      "parser": "@typescript-eslint/parser",
-      "plugins": ["@typescript-eslint"],
-      "rules": {
+      extends: ["plugin:@typescript-eslint/recommended"],
+      files: ["*.ts", "*.tsx"],
+      parser: "@typescript-eslint/parser",
+      plugins: ["@typescript-eslint"],
+      rules: {
         "prefer-rest-params": "off",
         "@typescript-eslint/explicit-module-boundary-types": "off",
         "@typescript-eslint/no-inferrable-types": "off",
@@ -176,32 +178,32 @@
         "@typescript-eslint/no-unused-vars": [
           "error",
           {
-            "argsIgnorePattern": "^_",
-            "varsIgnorePattern": "^_",
-            "ignoreRestSiblings": true,
-            "destructuredArrayIgnorePattern": "^_"
-          }
+            argsIgnorePattern: "^_",
+            varsIgnorePattern: "^_",
+            ignoreRestSiblings: true,
+            destructuredArrayIgnorePattern: "^_",
+          },
         ],
         // This was introduced in 6.0.0
-        "@typescript-eslint/no-unsafe-declaration-merging": "off"
-      }
+        "@typescript-eslint/no-unsafe-declaration-merging": "off",
+      },
     },
     {
-      "extends": [
+      extends: [
         "plugin:jest/recommended",
         "plugin:jest-dom/recommended",
-        "plugin:testing-library/react"
+        "plugin:testing-library/react",
       ],
-      "plugins": ["jest", "jest-dom", "testing-library"],
-      "files": [
+      plugins: ["jest", "jest-dom", "testing-library"],
+      files: [
         "*.unit.spec.ts",
         "*.unit.spec.tsx",
         "*.unit.spec.js",
-        "*.unit.spec.jsx"
+        "*.unit.spec.jsx",
       ],
-      "rules": {
-        "jest/valid-title": ["error", { "ignoreTypeOfDescribeName": true }]
-      }
-    }
-  ]
-}
+      rules: {
+        "jest/valid-title": ["error", { ignoreTypeOfDescribeName: true }],
+      },
+    },
+  ],
+};
