@@ -2048,6 +2048,17 @@
                                               expression-position)
           clj->js))))
 
+(defn ^:export preview-expression
+  "Evaluates `an-expression-clause` against a row of data as returned from a query.
+
+  Not all expression operators can be evaluated in memory outside the data warehouse. Further, many more operators
+  *could* be supported but have not been implemented yet.
+
+  Throws if `an-expression-clause` contains any subexpressions that can't be evaluated in memory."
+  [a-query stage-number an-expression-clause row]
+  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
+    (lib.core/preview-expression a-query stage-number an-expression-clause (mapv row-cell row))))
+
 ;; TODO: [[field-values-search-info]] seems over-specific - I feel like we can do a better job of extracting search info
 ;; from arbitrary entities, akin to [[display-info]].
 
