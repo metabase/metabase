@@ -21,7 +21,6 @@
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.types :as types]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -381,7 +380,7 @@
           limit        (or maybe-limit default-max-field-search-limit)]
       (metadata-queries/search-values-query field search-field value limit))
     (catch Throwable e
-      (log/error e (trs "Error searching field values"))
+      (log/error e "Error searching field values")
       []))))
 
 (api/defendpoint GET "/:id/search/:search-id"
@@ -423,7 +422,7 @@
       (first (get-in results [:data :rows])))
     ;; as with fn above this error can usually be safely ignored which is why log level is log/debug
     (catch Throwable e
-      (log/debug e (trs "Error searching for remapping"))
+      (log/debug e "Error searching for remapping")
       nil)))
 
 (defn parse-query-param-value-for-field

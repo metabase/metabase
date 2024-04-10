@@ -174,7 +174,7 @@
 .DashDragging {
 }
 
-:global(.Modal).AddSeriesModal {
+.Modal.AddSeriesModal {
   height: 80%;
   max-height: 600px;
   width: 80%;
@@ -217,7 +217,7 @@
 
 .Dashboard :global(text.value-label),
 .Dashboard :global(text.value-label-white),
-.Dashboard :global(.LineAreaBarChart .dc-chart .axis text) {
+.Dashboard .LineAreaBarChart :global(.dc-chart .axis text) {
   font-size: 12px;
 }
 

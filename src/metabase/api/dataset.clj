@@ -27,7 +27,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -43,7 +43,7 @@
   well."
   [outer-query]
   (when-let [source-card-id (qp.util/query->source-card-id outer-query)]
-    (log/info (trs "Source query for this query is Card {0}" (pr-str source-card-id)))
+    (log/infof "Source query for this query is Card %s" (pr-str source-card-id))
     (api/read-check Card source-card-id)
     source-card-id))
 

@@ -25,6 +25,8 @@ export const createMockQueryBuilderUIControlsState = (
   previousQueryBuilderMode: false,
   snippetCollectionId: null,
   datasetEditorTab: "query",
+  isShowingNotebookNativePreview: false,
+  notebookNativePreviewSidebarWidth: null,
   ...opts,
 });
 

@@ -228,5 +228,10 @@ export const createMockSettings = (
   "user-visibility": null,
   "last-acknowledged-version": "v1",
   "last-used-native-database-id": 1,
+  "embedding-homepage": "hidden",
+  "setup-embedding-autoenabled": false,
+  "setup-license-active-at-setup": false,
+  "notebook-native-preview-shown": false,
+  "notebook-native-preview-sidebar-width": null,
   ...opts,
 });

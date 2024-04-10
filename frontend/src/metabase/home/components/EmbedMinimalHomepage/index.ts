@@ -1,1 +1,0 @@
-export { EmbedMinimalHomepage } from "./EmbedMinimalHomepage";

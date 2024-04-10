@@ -1747,6 +1747,34 @@
                               (update!)))))
                     (io/delete-file file)))))))))))
 
+(deftest update-coercing-multiple-columns-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (doseq [action (actions-to-test driver/*driver*)]
+      (testing (action-testing-str action)
+        (with-mysql-local-infile-on-and-off
+          (testing "Append succeeds if the CSV file contains multiple columns that don't match the existing column types, but are coercible"
+            (binding [driver/*insert-chunk-rows* 1]
+              (let [upload-type int-type
+                    uncoerced   "2.1"
+                    coerced     2.1]
+                (with-upload-table!
+                  [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
+                                                                   upload/auto-pk-column-keyword auto-pk-type
+                                                                   :column_1 upload-type
+                                                                   :column_2 upload-type)
+                                                :rows             []})]
+                  (let [csv-rows ["column_1,column_2"
+                                  (str uncoerced "," uncoerced)]
+                        file     (csv-file-with csv-rows)
+                        update!  #(update-csv! action {:file file, :table-id (:id table)})]
+                    (testing (format "\nUploading %s into a column of type %s should be coerced to %s"
+                                     uncoerced (name upload-type) coerced)
+                      (testing "\nAppend should succeed"
+                        (is (= {:row-count 1}
+                               (update!))))
+                      (is (= [[1 coerced coerced]]
+                             (rows-for-table table))))))))))))))
+
 (deftest create-from-csv-int-and-float-test
   (testing "Creation should handle a mix of int and float-or-int values in any order"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)

@@ -64,7 +64,8 @@
 }
 
 :global(.border-brand),
-.border-brand {
+.border-brand,
+.borderBrand {
   border-color: var(--color-brand) !important;
 }
 

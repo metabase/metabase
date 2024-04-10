@@ -163,10 +163,9 @@ describe("SummarizeSidebar", () => {
 
   it("should list render the info icon on breakout columns", async () => {
     await setup();
-
-    screen.queryAllByTestId("dimension-list-item").forEach(item => {
-      expect(within(item).getByLabelText("More info")).toBeInTheDocument();
-    });
+    expect(screen.getAllByLabelText("More info").length).toBeGreaterThanOrEqual(
+      1,
+    );
   });
 
   it("shouldn't list breakout columns without an aggregation", async () => {

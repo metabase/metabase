@@ -186,7 +186,7 @@ describe("collection permissions", () => {
                     openCollectionMenu();
                     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     popover().within(() => cy.findByText("Archive").click());
-                    cy.get(".Modal").findByText("Archive").click();
+                    modal().findByText("Archive").click();
 
                     cy.wait("@editCollection");
 
@@ -278,7 +278,7 @@ describe("collection permissions", () => {
                       cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
                       openCollectionMenu();
                       popover().within(() => cy.findByText("Archive").click());
-                      cy.get(".Modal").findByText("Cancel").click();
+                      modal().findByText("Cancel").click();
                       cy.location("pathname").should(
                         "eq",
                         `/collection/${THIRD_COLLECTION_ID}-third-collection`,
@@ -474,7 +474,7 @@ function duplicate(item) {
   cy.visit("/collection/root");
   openCollectionItemMenu(item);
   cy.findByText("Duplicate").click();
-  cy.get(".Modal")
+  modal()
     .as("modal")
     .within(() => {
       clickButton("Duplicate");

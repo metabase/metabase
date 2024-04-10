@@ -10,8 +10,10 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -61,7 +63,8 @@
 (mu/defn can-run :- :boolean
   "Returns whether the query is runnable. Manually validate schema for cljs."
   [query :- ::lib.schema/query]
-  (and (mc/validate ::lib.schema/query query)
+  (and (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+         (mc/validate ::lib.schema/query query))
        (boolean (can-run-method query))))
 
 (mu/defn can-save :- :boolean
@@ -95,31 +98,25 @@
                       {:legacy-query legacy-query}
                       e)))))
 
-(defn- query-from-unknown-query [metadata-providerable query]
-  (assoc (lib.convert/->pMBQL query)
-         :lib/type     :mbql/query
-         :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)))
-
-(mu/defn ^:private query-from-existing :- ::lib.schema/query
-  "Create a pMBQL query from either an existing pMBQL query (attaching metadata provider as needed), or from a legacy MBQL
-  query (converting it to pMBQL)."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
-   query                 :- :map]
-  (let [f (if (some #(get query %) [:type "type"])
-            query-from-legacy-query
-            query-from-unknown-query)]
-    (f metadata-providerable query)))
-
 (defmulti ^:private query-method
   "Implementation for [[query]]."
   {:arglists '([metadata-providerable x])}
   (fn [_metadata-providerable x]
-    (lib.dispatch/dispatch-value x))
+    (or (lib.util/normalized-query-type x)
+        (lib.dispatch/dispatch-value x)))
   :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod query-method :query ; legacy MBQL query
+  [metadata-providerable legacy-query]
+  (query-from-legacy-query metadata-providerable legacy-query))
+
+(defmethod query-method :native ; legacy native query
+  [metadata-providerable legacy-query]
+  (query-from-legacy-query metadata-providerable legacy-query))
 
 (defmethod query-method :dispatch-type/map
   [metadata-providerable query]
-  (query-from-existing metadata-providerable query))
+  (query-method metadata-providerable (assoc (lib.convert/->pMBQL query) :lib/type :mbql/query)))
 
 ;;; this should already be a query in the shape we want but:
 ;; - let's make sure it has the database metadata that was passed in
@@ -130,7 +127,8 @@
   (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
         query (-> query
                   (assoc :lib/metadata metadata-provider)
-                  (dissoc :lib.convert/converted?))
+                  (dissoc :lib.convert/converted?)
+                  lib.normalize/normalize)
         stages (:stages query)]
     (cond-> query
       converted?
@@ -229,15 +227,15 @@
 (mu/defn uses-segment? :- :boolean
   "Tests whether `a-query` uses segment with ID `segment-id`.
   `segment-id` can be a regular segment ID or a string. The latter is for symmetry
-  with [[uses-metric?]]."
+  with [[uses-legacy-metric?]]."
   [a-query :- ::lib.schema/query
    segment-id :- [:or ::lib.schema.id/segment :string]]
   (occurs-in-stage-clause? a-query :filters #(occurs-in-expression? % :segment segment-id)))
 
-(mu/defn uses-metric? :- :boolean
+(mu/defn uses-legacy-metric? :- :boolean
   "Tests whether `a-query` uses metric with ID `metric-id`.
   `metric-id` can be a regular metric ID or a string. The latter is to support
-  some strange use-cases (see [[metabase.lib.metric-test/ga-metric-metadata-test]])."
+  some strange use-cases (see [[metabase.lib.legacy-metric-test/ga-metric-metadata-test]])."
   [a-query :- ::lib.schema/query
-   metric-id :- [:or ::lib.schema.id/metric :string]]
+   metric-id :- [:or ::lib.schema.id/legacy-metric :string]]
   (occurs-in-stage-clause? a-query :aggregation #(occurs-in-expression? % :metric metric-id)))

@@ -361,7 +361,7 @@ describe(
                 openQuestionActions();
                 cy.findByTestId("add-to-dashboard-button").click();
 
-                cy.get(".Modal").within(() => {
+                modal().within(() => {
                   cy.findByText("Orders in a dashboard").should("not.exist");
                   cy.icon("search").click();
                   cy.findByPlaceholderText("Search").type(
@@ -378,7 +378,7 @@ describe(
                 openQuestionActions();
                 cy.findByTestId("add-to-dashboard-button").click();
 
-                cy.get(".Modal").within(() => {
+                modal().within(() => {
                   cy.findByText("Create a new dashboard").click();
                   cy.findByLabelText(/Which collection/).should(
                     "contain.text",
