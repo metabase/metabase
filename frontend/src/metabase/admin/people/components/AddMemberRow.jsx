@@ -131,7 +131,7 @@ const AddMemberTypeaheadPopover = Typeahead({
 
   return (
     <TippyPopover
-      className="bordered"
+      className={CS.bordered}
       offset={0}
       placement="bottom-start"
       visible={suggestions.length > 0}

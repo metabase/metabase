@@ -5,7 +5,6 @@
   --border-color: var(--color-border);
 }
 
-:global(.bordered),
 .bordered {
   border: var(--border-size) var(--border-style) var(--color-border);
 }
@@ -17,7 +16,7 @@
 }
 
 /* ensure that a border-top item inside of a bordred element won't double up */
-:global(.bordered > .border-bottom:last-child) {
+.bordered > :global(.border-bottom:last-child) {
   border-bottom: none;
 }
 
@@ -28,7 +27,7 @@
 }
 
 /* ensure that a border-top item inside of a bordred element won't double up */
-:global(.bordered > .border-top:first-child) {
+.bordered > :global(.border-top:first-child) {
   border-top: none;
 }
 
