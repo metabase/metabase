@@ -58,7 +58,7 @@ export function JoinTablePicker({
 
   const tableId = pickerInfo?.tableId ?? pickerInfo?.cardId;
   const tableFilter = (table: Table) => !tableId || table.db_id === databaseId;
-  const isDisabled = table != null || isReadOnly;
+  const isDisabled = isReadOnly;
 
   const handleTableChange = async (tableId: TableId) => {
     await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
@@ -76,6 +76,7 @@ export function JoinTablePicker({
           <JoinTableColumnPicker columnPicker={columnPicker} />
         ) : null
       }
+      containerStyle={CONTAINER_STYLE}
       rightContainerStyle={RIGHT_CONTAINER_STYLE}
       aria-label={t`Right table`}
     >
@@ -126,6 +127,10 @@ function JoinTableColumnPicker({ columnPicker }: JoinTableColumnPickerProps) {
     </Popover>
   );
 }
+
+const CONTAINER_STYLE = {
+  padding: 0,
+};
 
 const RIGHT_CONTAINER_STYLE = {
   width: 37,

@@ -16,8 +16,8 @@
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   #?@(:clj ([metabase.util.log :as log])))
   #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
 
 (def ^:private ^:dynamic *pMBQL-uuid->legacy-index*
@@ -49,25 +49,29 @@
   #{:aggregation :breakout :expressions :fields :filters :order-by :joins})
 
 (defn- clean-stage-schema-errors [almost-stage]
-  (loop [almost-stage almost-stage
-         removals []]
-    (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/stage.mbql almost-stage)
-                                              :errors
-                                              (filter (comp stage-keys first :in))
-                                              (map (juxt :type :in))
-                                              first)]
-      (let [new-stage (clean-location almost-stage error-type error-location)]
-        (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"
-                   (u/colorize :yellow (pr-str error-location))
-                   (u/colorize :yellow (pr-str (or error-type
-                                                   ;; if `error-type` is missing, which seems to happen sometimes,
-                                                   ;; fall back to humanizing the entire error.
-                                                   (me/humanize (mc/explain ::lib.schema/stage.mbql almost-stage)))))
-                   (u/colorize :red (u/pprint-to-str (first (data/diff almost-stage new-stage)))))
-        (if (= new-stage almost-stage)
-          almost-stage
-          (recur new-stage (conj removals [error-type error-location]))))
-      almost-stage)))
+  (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+    (loop [almost-stage almost-stage
+           removals []]
+      (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/stage.mbql almost-stage)
+                                                :errors
+                                                (filter (comp stage-keys first :in))
+                                                (map (juxt :type :in))
+                                                first)]
+        (let [new-stage  (clean-location almost-stage error-type error-location)
+              error-desc (pr-str (or error-type
+                                     ;; if `error-type` is missing, which seems to happen sometimes,
+                                     ;; fall back to humanizing the entire error.
+                                     (me/humanize (mc/explain ::lib.schema/stage.mbql almost-stage))))]
+          #?(:cljs (js/console.warn "Clean: Removing bad clause due to error!" error-location error-desc
+                                    (u/pprint-to-str (first (data/diff almost-stage new-stage))))
+             :clj  (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"
+                              (u/colorize :yellow (pr-str error-location))
+                              (u/colorize :yellow error-desc)
+                              (u/colorize :red (u/pprint-to-str (first (data/diff almost-stage new-stage))))))
+          (if (= new-stage almost-stage)
+            almost-stage
+            (recur new-stage (conj removals [error-type error-location]))))
+        almost-stage))))
 
 (defn- clean-stage-ref-errors [almost-stage]
   (reduce (fn [almost-stage [loc _]]
@@ -491,9 +495,11 @@
                                                         (for [expression expressions
                                                               :let [legacy-clause (->legacy-MBQL expression)]]
                                                           [(lib.util/expression-name expression)
-                                                           ;; We wrap literals in :value ->pMBQL
-                                                           ;; so unwrap this direction
-                                                           (if (= :value (first legacy-clause))
+                                                           ;; We wrap literals in :value ->pMBQL so unwrap this
+                                                           ;; direction. Also, `:aggregation-options` is not allowed
+                                                           ;; inside `:expressions` in legacy, we'll just have to toss
+                                                           ;; the extra info.
+                                                           (if (#{:value :aggregation-options} (first legacy-clause))
                                                              (second legacy-clause)
                                                              legacy-clause)]))))
                 (update-list->legacy-boolean-expression :filters :filter))

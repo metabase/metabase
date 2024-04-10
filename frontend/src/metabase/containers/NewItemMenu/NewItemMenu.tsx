@@ -45,7 +45,7 @@ export default _.compose(
   Search.loadList({
     // Checking if there is at least one model,
     // so we can decide if "Action" option should be shown
-    query: { models: "dataset", limit: 1 },
+    query: { models: ["dataset"], limit: 1 },
     loadingAndErrorWrapper: false,
     listName: "models",
   }),

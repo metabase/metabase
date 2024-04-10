@@ -135,7 +135,7 @@ function formatMetric([, metricId]: FieldReference, options: Options) {
     throw new Error("`query` is a required parameter to format expressions");
   }
 
-  const metric = Lib.availableMetrics(query, stageIndex).find(metric => {
+  const metric = Lib.availableLegacyMetrics(query, stageIndex).find(metric => {
     const [_, availableMetricId] = Lib.legacyRef(query, stageIndex, metric);
 
     return availableMetricId === metricId;

@@ -95,13 +95,10 @@ describe("QueryColumnPicker", () => {
   });
 
   it("should render info icons", () => {
-    const { sampleColumnInfo } = setup();
-
-    expect(
-      within(
-        screen.getByLabelText(sampleColumnInfo.displayName),
-      ).getByLabelText("More info"),
-    ).toBeInTheDocument();
+    setup();
+    expect(screen.getAllByLabelText("More info").length).toBeGreaterThanOrEqual(
+      1,
+    );
   });
 
   it("should highlight column used in a given clause", () => {

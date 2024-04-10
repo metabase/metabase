@@ -80,7 +80,6 @@
     (fn [& args]
       (apply f* (unique-identifier) args))))
 
-
 (defn increment-app-db-unique-indentifier!
   "Increment the [[unique-identifier]] for the Metabase application DB. This effectively flushes all caches using it as
   a key (including things using [[mdb/memoize-for-application-db]]) such as the Settings cache. Should only be used

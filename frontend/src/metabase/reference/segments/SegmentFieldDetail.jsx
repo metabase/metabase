@@ -1,4 +1,5 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -163,7 +164,9 @@ const SegmentFieldDetail = props => {
       >
         {() => (
           <div className={CS.wrapper}>
-            <div className="pl3 py2 mb4 bg-white bordered">
+            <div
+              className={cx(CS.pl3, CS.py2, CS.mb4, CS.bgWhite, CS.bordered)}
+            >
               <List>
                 <li className={CS.relative}>
                   <Detail

@@ -95,8 +95,8 @@
 (defmethod lib.metadata.calculation/column-name-method ::count-aggregation
   [_query _stage-number [tag :as _clause]]
   (case tag
-    :count     "count"
-    :cum-count "cum_count"
+    :count       "count"
+    :cum-count   "count"
     :count-where "count_where"))
 
 (defmethod lib.metadata.calculation/metadata-method ::quantity-aggregation
@@ -256,7 +256,7 @@
     stage-number :- :int
     aggregable :- Aggregable]
    ;; if this is a Metric metadata, convert it to `:metric` MBQL clause before adding.
-   (if (= (lib.dispatch/dispatch-value aggregable) :metadata/metric)
+   (if (= (lib.dispatch/dispatch-value aggregable) :metadata/legacy-metric)
      (recur query stage-number (lib.ref/ref aggregable))
      (lib.util/add-summary-clause query stage-number :aggregation aggregable))))
 

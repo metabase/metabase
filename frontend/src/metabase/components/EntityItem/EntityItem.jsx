@@ -278,7 +278,7 @@ const EntityItem = ({
           onMove={onMove}
           onCopy={onCopy}
           onArchive={onArchive}
-          className="ml1"
+          className={CS.ml1}
         />
       </EntityItemActions>
     </EntityItemWrapper>

@@ -9,7 +9,6 @@
    [metabase.query-processor :as qp]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util.cron :as u.cron]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -87,7 +86,7 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
                              :limit        (inc max-indexed-values)}})
                 :data :rows (filter valid-tuples?))]
       (catch Exception e
-        (log/warn (trs "Error fetching indexed values for model {0}" (:id model)) e)
+        (log/warnf e "Error fetching indexed values for model %s" (:id model))
         [(ex-message e) []]))))
 
 (defn find-changes
@@ -140,9 +139,8 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
                                      "overflow"
                                      "indexed")}))
         (catch Exception e
-          (log/error (format "Error saving model-index values for model-index: %d, model: %d"
-                             (:id model-index) (:model-id model-index))
-                     e)
+          (log/error e (format "Error saving model-index values for model-index: %d, model: %d"
+                               (:id model-index) (:model-id model-index)))
           (t2/update! ModelIndex (:id model-index)
                       {:state      "error"
                        :error      (ex-message e)

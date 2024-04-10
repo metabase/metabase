@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.driver.common :as driver.common]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -20,7 +21,6 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
-   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -207,15 +207,29 @@
     :else
     {:base_type :type/*}))
 
+(defn- fe-friendly-expression-ref
+  "Apparently the FE viz code breaks for pivot queries if `field_ref` comes back with extra 'non-traditional' MLv2
+  info (`:base-type` or `:effective-type` in `:expression`), so we better just strip this info out to be sure. If you
+  don't believe me remove this and run `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` and you
+  will see."
+  [a-ref]
+  (let [a-ref (mbql.u/remove-namespaced-options a-ref)]
+    (lib.util.match/replace a-ref
+      [:expression expression-name (opts :guard (some-fn :base-type :effective-type))]
+      (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
+        (if (seq fe-friendly-opts)
+          [:expression expression-name fe-friendly-opts]
+          [:expression expression-name])))))
+
 (defn- col-info-for-expression
-  [inner-query [_ expression-name :as clause]]
+  [inner-query [_expression expression-name :as clause]]
   (merge
    (infer-expression-type (mbql.u/expression-with-name inner-query expression-name))
    {:name            expression-name
     :display_name    expression-name
     ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
     :expression_name expression-name
-    :field_ref       clause}))
+    :field_ref       (fe-friendly-expression-ref clause)}))
 
 (mu/defn ^:private col-info-for-field-clause*
   [{:keys [source-metadata], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]

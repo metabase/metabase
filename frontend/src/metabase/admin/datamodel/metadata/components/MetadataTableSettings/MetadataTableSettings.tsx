@@ -70,7 +70,7 @@ const MetadataTableSettings = ({
             selectedSchemaId={schemaId}
             selectedTableId={table.id}
           />
-          <div className="my4 py1 ml2">
+          <div className={cx(CS.my4, CS.py1, CS.ml2)}>
             <Breadcrumbs
               crumbs={[
                 [database.displayName(), Urls.dataModelDatabase(database.id)],

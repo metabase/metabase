@@ -139,7 +139,7 @@
     (when-not ((some-fn symbol? nil?) (hooks/sexpr table))
       (hooks/reg-finding! (assoc (meta table)
                                  :message "First arg to mbql-query should be either a table name symbol or nil."
-                                 :type ::mbql-query-first-arg)))
+                                 :type :metabase/mbql-query-first-arg)))
     (let [result (replace-$id-special-tokens query)
           ;; HACK I'm not sure WHY it works but I ran into https://github.com/clj-kondo/clj-kondo/issues/1773 when
           ;; trying to get this working -- for some magical reason wrapping the whole thing in a `do` form seems to fix

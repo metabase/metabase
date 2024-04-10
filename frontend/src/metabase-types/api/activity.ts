@@ -1,21 +1,31 @@
-export type ModelType = "table" | "card" | "dataset" | "dashboard";
+import type { UserId } from "./user";
 
-export interface ModelObject {
+export const ACTIVITY_MODELS = [
+  "table",
+  "card",
+  "dataset",
+  "dashboard",
+] as const;
+export type ActivityModel = typeof ACTIVITY_MODELS[number];
+export type ActivityModelId = number;
+
+export interface ActivityModelObject {
+  name: string;
   display_name?: string;
   moderated_status?: string;
-  name: string;
 }
 
 export interface RecentItem {
   cnt: number;
   max_ts: string;
-  model_id: number;
-  user_id: number;
-  model: ModelType;
-  model_object: ModelObject;
+  user_id: UserId;
+  model: ActivityModel;
+  model_id: ActivityModelId;
+  model_object: ActivityModelObject;
 }
 
 export interface PopularItem {
-  model: ModelType;
-  model_object: ModelObject;
+  model: ActivityModel;
+  model_id: ActivityModelId;
+  model_object: ActivityModelObject;
 }

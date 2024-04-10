@@ -16,9 +16,6 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
         backgroundColor: theme.fn.rgba(theme.fn.themeColor("bg-black"), 0.6),
       },
     }),
-    defaultProps: {
-      p: DEFAULT_MODAL_SPACING,
-    },
   },
   ModalRoot: {
     defaultProps: {
@@ -33,6 +30,11 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
     defaultProps: {
       p: DEFAULT_MODAL_SPACING,
       pb: "sm",
+    },
+  },
+  ModalBody: {
+    defaultProps: {
+      p: DEFAULT_MODAL_SPACING,
     },
   },
   ModalCloseButton: {
