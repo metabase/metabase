@@ -30,7 +30,9 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
   padding: 0 0.875rem;
   padding-right: 0.5rem;
   cursor: pointer;
-  min-height: 1.625rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
 
   &:hover {
     ${highlighted}
@@ -86,9 +88,6 @@ export const GroupTitle = styled(ExpressionListItem)`
   color: ${color("text-medium")};
 
   border-top: 1px solid ${color("border")};
-  height: 2rem;
-  display: flex;
-  align-items: center;
 
   &:first-child {
     border-top: none;
