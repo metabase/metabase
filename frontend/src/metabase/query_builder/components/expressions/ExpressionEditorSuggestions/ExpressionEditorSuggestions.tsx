@@ -104,8 +104,8 @@ function ExpressionEditorSuggestionsListItem({
   onMouseDown: (index: number) => void;
   suggestion: Suggestion;
 }) {
-  const { icon, helpText, name, range = [] } = suggestion;
-  const [start = 0, end = name.length - 1] = range;
+  const { icon, helpText, range = [] } = suggestion;
+  const [start = 0, end = 0] = range;
 
   const { normal, highlighted } = colorForIcon(icon);
 
