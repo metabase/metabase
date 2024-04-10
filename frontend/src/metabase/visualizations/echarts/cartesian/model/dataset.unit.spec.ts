@@ -1,5 +1,5 @@
+import { checkNumber } from "metabase/lib/types";
 import {
-  NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -33,6 +33,7 @@ import type {
   ChartDataset,
   DataKey,
   LegacySeriesSettingsObjectKey,
+  NumericAxisScaleTransforms,
   SeriesModel,
   XAxisModel,
 } from "./types";
@@ -59,10 +60,16 @@ const createMockComputedVisualizationSettings = (
   });
 };
 
+const yAxisScaleTransforms: NumericAxisScaleTransforms = {
+  toEChartsAxisValue: (value: RowValue) => checkNumber(value),
+  fromEChartsAxisValue: (value: number) => value,
+};
+
 describe("dataset transform functions", () => {
   const xAxisModel: XAxisModel = {
     axisType: "category",
     isHistogram: false,
+    valuesCount: 3,
     formatter: value => String(value),
   };
 
@@ -194,7 +201,7 @@ describe("dataset transform functions", () => {
         },
         {
           [X_AXIS_DATA_KEY]: 3,
-          "1:category": "category3",
+          "1:category": "category2",
           "1:month": 3,
           "1:count": 900,
         },
@@ -254,7 +261,7 @@ describe("dataset transform functions", () => {
         },
         {
           [X_AXIS_DATA_KEY]: 3,
-          "1:category": "category3",
+          "1:category": "category2",
           "1:month": 3,
           "1:count": 900,
           "2:also_month:type2": 3,
@@ -323,6 +330,7 @@ describe("dataset transform functions", () => {
         originalDataset,
         xAxisModel,
         seriesModels,
+        yAxisScaleTransforms,
         createMockComputedVisualizationSettings({
           "stackable.stack_type": "stacked",
         }),
@@ -332,7 +340,6 @@ describe("dataset transform functions", () => {
         {
           [X_AXIS_DATA_KEY]: "A",
           [POSITIVE_STACK_TOTAL_DATA_KEY]: Number.MIN_VALUE,
-          [NEGATIVE_STACK_TOTAL_DATA_KEY]: -Number.MIN_VALUE,
           dimensionKey: "A",
           series1: 100,
           series2: 200,
@@ -341,7 +348,6 @@ describe("dataset transform functions", () => {
         {
           [X_AXIS_DATA_KEY]: "B",
           [POSITIVE_STACK_TOTAL_DATA_KEY]: Number.MIN_VALUE,
-          [NEGATIVE_STACK_TOTAL_DATA_KEY]: -Number.MIN_VALUE,
           dimensionKey: "B",
           series1: 300,
           series2: 400,
@@ -355,6 +361,7 @@ describe("dataset transform functions", () => {
         originalDataset,
         xAxisModel,
         seriesModels,
+        yAxisScaleTransforms,
         createMockComputedVisualizationSettings({
           "stackable.stack_type": "normalized",
         }),
@@ -388,6 +395,7 @@ describe("dataset transform functions", () => {
         dataset,
         xAxisModel,
         seriesModels,
+        yAxisScaleTransforms,
         createMockComputedVisualizationSettings({
           series: (key: LegacySeriesSettingsObjectKey) => ({
             "line.missing":
@@ -411,6 +419,7 @@ describe("dataset transform functions", () => {
         [],
         xAxisModel,
         seriesModels,
+        yAxisScaleTransforms,
         createMockVisualizationSettings({
           series: (key: LegacySeriesSettingsObjectKey) => ({
             "line.missing":
@@ -497,28 +506,10 @@ describe("dataset transform functions", () => {
           [],
           xAxisModel,
           seriesModels,
+          yAxisScaleTransforms,
           createMockComputedVisualizationSettings(),
         ),
       ).not.toThrow();
     });
-  });
-});
-
-describe("applySquareRootScaling", () => {
-  it("should apply square root scaling to numeric values", () => {
-    expect(applySquareRootScaling(0)).toBe(0);
-    expect(applySquareRootScaling(1)).toBe(1);
-    expect(applySquareRootScaling(16)).toBe(4);
-  });
-
-  it("should preserve numeric values sign", () => {
-    expect(applySquareRootScaling(-1)).toBe(-1);
-    expect(applySquareRootScaling(-16)).toBe(-4);
-  });
-
-  it("should return other types unchanged", () => {
-    expect(applySquareRootScaling(null)).toBe(null);
-    expect(applySquareRootScaling("foo")).toBe("foo");
-    expect(applySquareRootScaling(true)).toBe(true);
   });
 });
