@@ -1,4 +1,4 @@
-(ns metabase.native-query-analyzer.parameter-substitution-test
+(ns ^:parallel metabase.native-query-analyzer.parameter-substitution-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
