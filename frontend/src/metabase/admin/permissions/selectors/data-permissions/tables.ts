@@ -178,8 +178,10 @@ export const buildTablesPermissions = (
     accessPermission.value,
   );
 
-  return [
-    accessPermission,
+  const hasAnyAccessOptions = accessPermission.options.length > 1;
+
+  return _.compact([
+    hasAnyAccessOptions && accessPermission,
     nativePermission,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
       entityId,
@@ -190,5 +192,5 @@ export const buildTablesPermissions = (
       defaultGroup,
       "tables",
     ),
-  ];
+  ]);
 };

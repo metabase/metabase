@@ -97,7 +97,7 @@ const buildAccessPermission = (
   return {
     permission: DataPermission.VIEW_DATA,
     type: DataPermissionType.ACCESS,
-    isDisabled: isAdmin || (!isAdmin && options.length <= 1),
+    isDisabled: isAdmin,
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
     isHighlighted: isAdmin,
     value: accessPermissionValue,
@@ -210,8 +210,10 @@ export const buildSchemasPermissions = (
     accessPermission.value,
   );
 
-  return [
-    accessPermission,
+  const hasAnyAccessOptions = accessPermission.options.length > 1;
+
+  return _.compact([
+    hasAnyAccessOptions && accessPermission,
     nativePermission,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
       entityId,
@@ -222,5 +224,5 @@ export const buildSchemasPermissions = (
       defaultGroup,
       "schemas",
     ),
-  ];
+  ]);
 };

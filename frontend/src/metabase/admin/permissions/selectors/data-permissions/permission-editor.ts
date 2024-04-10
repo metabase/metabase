@@ -22,6 +22,7 @@ import type {
   RawGroupRouteParams,
   PermissionSectionConfig,
 } from "../../types";
+import { DataPermission } from "../../types";
 import {
   getTableEntityId,
   getSchemaEntityId,
@@ -134,6 +135,16 @@ const getGroup = (state: State, props: { params: RawGroupRouteParams }) => {
   });
 };
 
+const hasViewDataOptions = (entities: any[]) => {
+  return entities.some(
+    entity =>
+      entity.permissions?.findIndex(
+        (permissionSectionConfig: any) =>
+          permissionSectionConfig.permission === DataPermission.VIEW_DATA,
+      ) > -1,
+  );
+};
+
 export const getDatabasesPermissionEditor = createSelector(
   getMetadataWithHiddenTables,
   getGroupRouteParams,
@@ -167,17 +178,6 @@ export const getDatabasesPermissionEditor = createSelector(
     const hasSingleSchema =
       databaseId != null &&
       metadata.database(databaseId)?.getSchemas().length === 1;
-
-    const permissionSubject = getPermissionSubject(
-      { databaseId, schemaName },
-      hasSingleSchema,
-    );
-    const columns = [
-      { name: getEditorEntityName(params, hasSingleSchema) },
-      { name: t`View data` },
-      { name: t`Create queries` },
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
-    ];
 
     let entities: any = [];
 
@@ -252,6 +252,18 @@ export const getDatabasesPermissionEditor = createSelector(
           };
         });
     }
+
+    const permissionSubject = getPermissionSubject(
+      { databaseId, schemaName },
+      hasSingleSchema,
+    );
+
+    const columns = _.compact([
+      { name: getEditorEntityName(params, hasSingleSchema) },
+      hasViewDataOptions(entities) && { name: t`View data` },
+      { name: t`Create queries` },
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
+    ]);
 
     const breadcrumbs = getDatabasesEditorBreadcrumbs(params, metadata, group);
     const title = t`Permissions for the `;
@@ -328,14 +340,6 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
         throw new Error("No default group found");
       }
 
-      const permissionSubject = getPermissionSubject(params);
-      const columns = [
-        { name: t`Group name` },
-        { name: t`View data` },
-        { name: t`Create queries` },
-        ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
-      ];
-
       const entities = sortedGroups.map(group => {
         const isAdmin = isAdminGroup(group);
         let groupPermissions;
@@ -390,6 +394,15 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
           permissions: groupPermissions,
         };
       });
+
+      const permissionSubject = getPermissionSubject(params);
+
+      const columns = _.compact([
+        { name: t`Group name` },
+        hasViewDataOptions(entities) && { name: t`View data` },
+        { name: t`Create queries` },
+        ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
+      ]);
 
       return {
         title: t`Permissions for`,
