@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { popover, restore } from "e2e/support/helpers";
+import { popover, restore, lineChartCircle } from "e2e/support/helpers";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
@@ -24,7 +24,7 @@ describe("issue 33079", () => {
 
   it("underlying records drill should work in a non-English locale (metabase#33079)", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
-    cy.get(".dot").eq(1).click({ force: true });
+    lineChartCircle().eq(1).click({ force: true });
     popover()
       .findByText(/Order/) // See these Orders
       .click();

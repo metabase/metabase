@@ -1,5 +1,11 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, summarize, popover, sidebar } from "e2e/support/helpers";
+import {
+  restore,
+  summarize,
+  popover,
+  sidebar,
+  chartPathWithColor,
+} from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -31,10 +37,14 @@ describe("issue 20548", () => {
 
   it("should not display duplicate Y-axis after modifying/reordering metrics (metabase#20548)", () => {
     removeAggregationItem("Count");
-    cy.get(".bar").should("have.length", 4);
+    // Ensure bars of only one series exist
+    chartPathWithColor("#88BF4D").should("have.length", 4);
+    chartPathWithColor("#509EE3").should("not.exist");
 
     addAggregationItem("Count");
-    cy.get(".bar").should("have.length", 8);
+    // Ensure bars of two series exist
+    chartPathWithColor("#88BF4D").should("have.length", 4);
+    chartPathWithColor("#509EE3").should("have.length", 4);
 
     // Although the test already fails on the previous step, let's add some more assertions to prevent future regressions
     assertOnLegendItemFrequency("Count", 1);
