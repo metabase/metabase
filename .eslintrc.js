@@ -2,7 +2,7 @@
 /* eslint-disable no-undef */
 
 // `postcss-modules` lints css modules class names, but it currently crashes
-// eslint on vscode if you use webstorm or want to run the lint for the cli, you
+// eslint on vscode. If you use webstorm or want to run the lint for the cli, you
 // can use this flag to enable it. This is set to true in CI
 const shouldLintCssModules =
   process.env.LINT_CSS_MODULES === "true" || process.env.CI;
