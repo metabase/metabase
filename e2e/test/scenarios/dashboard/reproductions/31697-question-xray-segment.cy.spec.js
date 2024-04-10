@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { popover, restore, visitQuestion } from "e2e/support/helpers";
+import {
+  lineChartCircle,
+  popover,
+  restore,
+  visitQuestion,
+} from "e2e/support/helpers";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -41,7 +46,7 @@ describe("issue 31697", () => {
 
   it("should allow x-rays for questions with segments (metabase#31697)", () => {
     cy.get("@questionId").then(visitQuestion);
-    cy.get(".dot").eq(0).click({ force: true });
+    lineChartCircle().eq(0).click({ force: true });
     popover().findByText("Automatic insights…").click();
     popover().findByText("X-ray").click();
     cy.wait("@xrayDashboard");
