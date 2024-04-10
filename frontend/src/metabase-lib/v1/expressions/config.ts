@@ -559,3 +559,30 @@ export const STANDARD_AGGREGATIONS = new Set([
   "max",
   "median",
 ]);
+
+// "popular" expressions to suggest initially.
+export const POPULAR_EXPRESSIONS = new Set([
+  // Functions
+  "case",
+  "concat",
+  "contains",
+  "between",
+  "coalesce",
+  "now",
+  "replace",
+  "interval",
+  "substring",
+  "lower",
+
+  // Aggregations
+  "count",
+  "distinct",
+  "count-where",
+  "sum",
+  "avg",
+  "percentile",
+  "share",
+  "sum-where",
+  "min",
+  "median",
+]);
