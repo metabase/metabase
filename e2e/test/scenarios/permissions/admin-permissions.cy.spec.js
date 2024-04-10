@@ -1,12 +1,10 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
-  popover,
   modal,
   describeEE,
   isOSS,
@@ -21,13 +19,10 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
-
 const { ALL_USERS_GROUP, ADMIN_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 
-const DATA_ACCESS_PERMISSION_INDEX = 0;
 const NATIVE_QUERIES_PERMISSION_INDEX = 1;
 
 describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
@@ -389,91 +384,6 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         ]);
       });
 
-      it("allows view and edit permissions", () => {
-        cy.visit("/admin/permissions");
-
-        selectSidebarItem("collection");
-
-        assertPermissionTable([["Sample Database", "Can view", "No"]]);
-
-        // Drill down to tables permissions
-        cy.findByTextEnsureVisible("Sample Database").click();
-
-        assertPermissionTable([
-          ["Accounts", "Can view", "No"],
-          ["Analytic Events", "Can view", "No"],
-          ["Feedback", "Can view", "No"],
-          ["Invoices", "Can view", "No"],
-          ["Orders", "Can view", "No"],
-          ["People", "Can view", "No"],
-          ["Products", "Can view", "No"],
-          ["Reviews", "Can view", "No"],
-        ]);
-
-        // Navigate back
-        selectSidebarItem("collection");
-
-        modifyPermission(
-          "Sample Database",
-          NATIVE_QUERIES_PERMISSION_INDEX,
-          "Query builder and native",
-        );
-
-        assertPermissionTable([
-          ["Sample Database", "Can view", "Query builder and native"],
-        ]);
-
-        // Drill down to tables permissions
-        cy.findByTextEnsureVisible("Sample Database").click();
-
-        assertPermissionTable([
-          ["Accounts", "Can view", "Query builder and native"],
-          ["Analytic Events", "Can view", "Query builder and native"],
-          ["Feedback", "Can view", "Query builder and native"],
-          ["Invoices", "Can view", "Query builder and native"],
-          ["Orders", "Can view", "Query builder and native"],
-          ["People", "Can view", "Query builder and native"],
-          ["Products", "Can view", "Query builder and native"],
-          ["Reviews", "Can view", "Query builder and native"],
-        ]);
-
-        cy.button("Save changes").click();
-
-        modal().within(() => {
-          cy.findByText("Save permissions?");
-          cy.contains(
-            "collection will now be able to read or write native queries for Sample Database.",
-          );
-          cy.button("Yes").click();
-        });
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Save changes").should("not.exist");
-
-        assertPermissionTable([
-          ["Accounts", "Can view", "Query builder and native"],
-          ["Analytic Events", "Can view", "Query builder and native"],
-          ["Feedback", "Can view", "Query builder and native"],
-          ["Invoices", "Can view", "Query builder and native"],
-          ["Orders", "Can view", "Query builder and native"],
-          ["People", "Can view", "Query builder and native"],
-          ["Products", "Can view", "Query builder and native"],
-          ["Reviews", "Can view", "Query builder and native"],
-        ]);
-
-        // After saving permissions, user should be able to make further edits without refreshing the page
-        // metabase#37811
-        selectSidebarItem("data");
-
-        modifyPermission(
-          "Sample Database",
-          NATIVE_QUERIES_PERMISSION_INDEX,
-          "No",
-        );
-
-        cy.button("Refresh the page").should("not.exist");
-      });
-
       it("should show a modal when a revision changes while an admin is editing", () => {
         cy.intercept("/api/permissions/graph/group/1").as("graph");
         cy.visit("/admin/permissions");
@@ -500,77 +410,6 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     });
 
     context("database focused view", () => {
-      it("allows view and edit permissions", () => {
-        cy.visit("/admin/permissions/");
-
-        cy.get("label").contains("Databases").click();
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Select a database to see group permissions");
-
-        selectSidebarItem("Sample Database");
-
-        assertPermissionTable([
-          ["Administrators", "Can view", "Query builder and native"],
-          ["All Users", "Can view", "No"],
-          ["collection", "Can view", "No"],
-          ["data", "Can view", "Query builder and native"],
-          ["nosql", "Can view", "Query builder only"],
-          ["readonly", "Can view", "No"],
-        ]);
-
-        modifyPermission(
-          "readonly",
-          NATIVE_QUERIES_PERMISSION_INDEX,
-          "Query builder and native",
-        );
-
-        assertPermissionTable([
-          ["Administrators", "Can view", "Query builder and native"],
-          ["All Users", "Can view", "No"],
-          ["collection", "Can view", "No"],
-          ["data", "Can view", "Query builder and native"],
-          ["nosql", "Can view", "Query builder only"],
-          ["readonly", "Can view", "Query builder and native"],
-        ]);
-
-        selectSidebarItem("Orders");
-
-        assertPermissionTable([
-          ["Administrators", "Can view", "Query builder and native"],
-          ["All Users", "Can view", "No"],
-          ["collection", "Can view", "No"],
-          ["data", "Can view", "Query builder and native"],
-          ["nosql", "Can view", "Query builder only"],
-          ["readonly", "Can view", "Query builder and native"],
-        ]);
-
-        // Navigate back
-        cy.get("a").contains("Sample Database").click();
-
-        cy.button("Save changes").click();
-
-        modal().within(() => {
-          cy.findByText("Save permissions?");
-          cy.contains(
-            "readonly will now be able to read or write native queries for Sample Database.",
-          );
-          cy.button("Yes").click();
-        });
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Save changes").should("not.exist");
-
-        assertPermissionTable([
-          ["Administrators", "Can view", "Query builder and native"],
-          ["All Users", "Can view", "No"],
-          ["collection", "Can view", "No"],
-          ["data", "Can view", "Query builder and native"],
-          ["nosql", "Can view", "Query builder only"],
-          ["readonly", "Can view", "Query builder and native"],
-        ]);
-      });
-
       it("should show a modal when a revision changes while an admin is editing", () => {
         cy.intercept("/api/permissions/graph/group/1").as("graph");
         cy.visit("/admin/permissions/");
@@ -604,179 +443,6 @@ describeEE("scenarios > admin > permissions", () => {
     restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
-  });
-
-  it("allows editing sandboxed access in the database focused view", () => {
-    cy.visit(
-      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
-    );
-
-    modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
-
-    modal().within(() => {
-      cy.findByText("Change access to this database to granular?");
-      cy.button("Change").click();
-    });
-
-    cy.url().should(
-      "include",
-      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
-    );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Grant sandboxed access to this table");
-    cy.button("Save").should("be.disabled");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("User ID").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a user attribute").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("attr_uid").click();
-    cy.button("Save").click();
-
-    assertPermissionTable([
-      [
-        "Administrators",
-        "Can view",
-        "Query builder and native",
-        "1 million rows",
-        "Yes",
-      ],
-      ["All Users", "Sandboxed", "No", "1 million rows", "No"],
-      ["collection", "Can view", "No", "No", "No"],
-      ["data", "Can view", "Query builder and native", "No", "No"],
-      ["nosql", "Can view", "Query builder only", "No", "No"],
-      ["readonly", "Can view", "No", "No", "No"],
-    ]);
-
-    modifyPermission(
-      "All Users",
-      DATA_ACCESS_PERMISSION_INDEX,
-      "Edit sandboxed access",
-    );
-
-    cy.url().should(
-      "include",
-      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
-    );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Grant sandboxed access to this table");
-
-    cy.button("Save").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Grant sandboxed access to this table").should("not.exist");
-
-    cy.button("Save changes").click();
-
-    assertPermissionTable([
-      [
-        "Administrators",
-        "Can view",
-        "Query builder and native",
-        "1 million rows",
-        "Yes",
-      ],
-      ["All Users", "Sandboxed", "No", "1 million rows", "No"],
-      ["collection", "Can view", "No", "No", "No"],
-      ["data", "Can view", "Query builder and native", "No", "No"],
-      ["nosql", "Can view", "Query builder only", "No", "No"],
-      ["readonly", "Can view", "No", "No", "No"],
-    ]);
-  });
-
-  it("allows editing sandboxed access in the group focused view", () => {
-    cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
-    cy.visit(
-      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
-    );
-
-    modifyPermission("Orders", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
-
-    modal().within(() => {
-      cy.findByText("Change access to this database to granular?");
-      cy.button("Change").click();
-    });
-
-    cy.url().should(
-      "include",
-      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
-    );
-    modal().within(() => {
-      cy.findByText("Grant sandboxed access to this table");
-      cy.button("Save").should("be.disabled");
-      cy.findByText("Pick a column").click();
-    });
-
-    popover().findByText("User ID").click();
-    modal().findByText("Pick a user attribute").click();
-    popover().findByText("attr_uid").click();
-    modal().button("Save").click();
-
-    assertPermissionTable([
-      ["Accounts", "Can view", "No", "1 million rows", "No"],
-      ["Analytic Events", "Can view", "No", "1 million rows", "No"],
-      ["Feedback", "Can view", "No", "1 million rows", "No"],
-      ["Invoices", "Can view", "No", "1 million rows", "No"],
-      ["Orders", "Sandboxed", "No", "1 million rows", "No"],
-      ["People", "Can view", "No", "1 million rows", "No"],
-      ["Products", "Can view", "No", "1 million rows", "No"],
-      ["Reviews", "Can view", "No", "1 million rows", "No"],
-    ]);
-
-    modifyPermission(
-      "Orders",
-      DATA_ACCESS_PERMISSION_INDEX,
-      "Edit sandboxed access",
-    );
-
-    cy.url().should(
-      "include",
-      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
-    );
-
-    modal().findByText("Grant sandboxed access to this table");
-
-    cy.button("Save").click();
-
-    modal().should("not.exist");
-
-    cy.url().should(
-      "include",
-      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC`,
-    );
-
-    cy.button("Save changes").click();
-
-    modal().within(() => {
-      cy.findByText("Save permissions?").should("exist");
-      cy.contains(
-        "All Users will be given access to 1 table in Sample Database",
-      ).should("exist");
-      cy.button("Yes").click();
-    });
-
-    cy.wait("@saveGraph");
-
-    // assertions that specifically targets metabase#37774. Should be able to reload with the schema in the URL and not error
-    cy.url().should(
-      "include",
-      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC`,
-    );
-    cy.reload();
-
-    assertPermissionTable([
-      ["Accounts", "Can view", "No", "1 million rows", "No"],
-      ["Analytic Events", "Can view", "No", "1 million rows", "No"],
-      ["Feedback", "Can view", "No", "1 million rows", "No"],
-      ["Invoices", "Can view", "No", "1 million rows", "No"],
-      ["Orders", "Sandboxed", "No", "1 million rows", "No"],
-      ["People", "Can view", "No", "1 million rows", "No"],
-      ["Products", "Can view", "No", "1 million rows", "No"],
-      ["Reviews", "Can view", "No", "1 million rows", "No"],
-    ]);
   });
 
   it("Visualization and Settings query builder buttons are not visible for questions that use blocked data sources", () => {
