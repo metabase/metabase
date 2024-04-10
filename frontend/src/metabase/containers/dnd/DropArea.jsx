@@ -16,7 +16,7 @@ const DropTargetBackgroundAndBorder = ({
 }) => (
   <div
     className={cx(CS.absolute, CS.rounded, {
-      "pointer-events-none": !highlighted,
+      [CS.pointerEventsNone]: !highlighted,
     })}
     style={{
       top: -marginTop,

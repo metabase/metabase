@@ -85,8 +85,8 @@ textarea {
   min-height: 110px;
 }
 
-:global(.pointer-events-none),
-:global(.pointer-events-none *) {
+.pointerEventsNone,
+.pointerEventsNone * {
   pointer-events: none;
 }
 
