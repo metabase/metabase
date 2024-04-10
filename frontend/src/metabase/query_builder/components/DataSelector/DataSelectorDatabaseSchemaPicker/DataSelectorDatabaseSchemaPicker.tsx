@@ -37,6 +37,7 @@ type Section = {
   icon?: IconName;
   loading?: boolean;
   active: boolean;
+  type?: string;
 };
 
 type Sections = Section[];
@@ -105,6 +106,7 @@ const DataSelectorDatabaseSchemaPicker = ({
     sections.unshift({
       name: <RawDataBackButton />,
       active: true,
+      type: "back",
     });
   }
 

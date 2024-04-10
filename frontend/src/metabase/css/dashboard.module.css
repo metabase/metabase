@@ -162,7 +162,7 @@
 .DashDragging {
 }
 
-:global(.Modal).AddSeriesModal {
+.Modal.AddSeriesModal {
   height: 80%;
   max-height: 600px;
   width: 80%;

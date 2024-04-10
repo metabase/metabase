@@ -7,7 +7,14 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, invalidateTags, listTag, tag } from "./tags";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideMetricListTags,
+  provideMetricTags,
+  tag,
+} from "./tags";
 
 export const metricApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -16,17 +23,14 @@ export const metricApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/legacy-metric",
       }),
-      providesTags: (metrics = []) => [
-        listTag("metric"),
-        ...(metrics.map(({ id }) => idTag("metric", id)) ?? []),
-      ],
+      providesTags: (metrics = []) => provideMetricListTags(metrics),
     }),
     getMetric: builder.query<Metric, MetricId>({
       query: id => ({
         method: "GET",
         url: `/api/legacy-metric/${id}`,
       }),
-      providesTags: metric => (metric ? [idTag("metric", metric.id)] : []),
+      providesTags: metric => (metric ? provideMetricTags(metric) : []),
     }),
     createMetric: builder.mutation<Metric, CreateMetricRequest>({
       query: body => ({
