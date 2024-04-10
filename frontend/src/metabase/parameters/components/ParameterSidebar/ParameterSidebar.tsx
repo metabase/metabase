@@ -18,8 +18,6 @@ import { canUseLinkedFilters } from "../../utils/linked-filters";
 import { ParameterLinkedFilters } from "../ParameterLinkedFilters";
 import { ParameterSettings } from "../ParameterSettings";
 
-import S from "./ParameterSidebar.module.css";
-
 export interface ParameterSidebarProps {
   parameter: Parameter;
   otherParameters: Parameter[];
@@ -160,13 +158,7 @@ export const ParameterSidebar = ({
       onRemove={handleRemove}
       data-testid="dashboard-parameter-sidebar"
     >
-      <Tabs
-        value={tab}
-        onTabChange={handleTabChange}
-        classNames={{
-          tab: S.tab,
-        }}
-      >
+      <Tabs radius={0} value={tab} onTabChange={handleTabChange}>
         <Tabs.List grow>
           {tabs.map(tab => {
             return (
