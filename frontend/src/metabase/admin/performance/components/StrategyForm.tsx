@@ -1,9 +1,12 @@
+import styled from "@emotion/styled";
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { SettingSelect } from "metabase/admin/settings/components/widgets/SettingSelect";
+import { Schedule } from "metabase/components/Schedule/Schedule";
 import type { FormTextInputProps } from "metabase/forms";
 import {
   Form,
@@ -25,11 +28,17 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import type { Strategy, StrategyType } from "metabase-types/api";
+import type {
+  ScheduleSettings,
+  ScheduleStrategy,
+  Strategy,
+  StrategyType,
+} from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
 import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
 import { rootId, Strategies, strategyValidationSchema } from "../strategies";
+import { cronToScheduleSettings, scheduleSettingsToCron } from "../utils";
 
 export const StrategyForm = ({
   targetId,
@@ -57,6 +66,11 @@ export const StrategyForm = ({
     </FormProvider>
   );
 };
+
+export const StyledSettingSelect = styled(SettingSelect)`
+  width: 125px;
+  margin-top: 12px;
+`;
 
 const StrategyFormBody = ({
   targetId,
@@ -127,9 +141,69 @@ const StrategyFormBody = ({
             <input type="hidden" name="unit" />
           </>
         )}
+        {selectedStrategyType === "schedule" && <ScheduleStrategyFormFields />}
       </Stack>
       <FormButtons />
     </Form>
+  );
+};
+
+// const namedCronSchedules = [
+//   {
+//     value: "0 0 0/1 * * ? *",
+//     name: t`Hour`,
+//   },
+//   {
+//     value: "0 0 0/2 * * ? *",
+//     name: t`2 hours`,
+//   },
+//   {
+//     value: "0 0 0/3 * * ? *",
+//     name: t`3 hours`,
+//   },
+//   {
+//     value: "0 0 0/6 * * ? *",
+//     name: t`6 hours`,
+//   },
+//   {
+//     value: "0 0 0/12 * * ? *",
+//     name: t`12 hours`,
+//   },
+//   {
+//     value: "0 0 0 ? * * *",
+//     name: t`24 hours`,
+//   },
+//   {
+//     value: "custom",
+//     name: t`Custom…`,
+//   },
+// ];
+
+const ScheduleStrategyFormFields = () => {
+  const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
+  const initialSchedule = cronToScheduleSettings(values.schedule);
+  const [schedule, setSchedule] = useState<ScheduleSettings>(
+    initialSchedule || {},
+  );
+  if (!initialSchedule) {
+    // Show custom cron input
+    return (
+      <>
+        (Show custom cron input here since we can&apos;t convert the expression)
+      </>
+    );
+  }
+  return (
+    <Schedule
+      schedule={schedule}
+      scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
+      onScheduleChange={(nextSchedule: ScheduleSettings) => {
+        setSchedule(nextSchedule);
+        const cron = scheduleSettingsToCron(nextSchedule);
+        setFieldValue("schedule", cron);
+      }}
+      textBeforeInterval={t`Invalidate`}
+    />
   );
 };
 

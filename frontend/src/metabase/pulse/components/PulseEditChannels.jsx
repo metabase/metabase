@@ -196,7 +196,9 @@ export default class PulseEditChannels extends Component {
             }
           />
         ) : null}
-        {!this.props.hideSchedulePicker && channelSpec.schedules && (
+        {
+          // NOTE that I think this is dead code because afaik channelSpec.schedules is never set
+          !this.props.hideSchedulePicker && channelSpec.schedules && (
           <SchedulePicker
             schedule={_.pick(
               channel,

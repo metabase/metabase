@@ -17,6 +17,7 @@ export type SettingElement = {
   searchProp?: string;
   placeholder?: string;
   options?: { value: SettingValue; name: string }[];
+
   value?: SettingValue;
   defaultValue?: SettingValue;
   required?: boolean;
