@@ -1,5 +1,6 @@
 (ns metabase.models.user-parameter-value
   (:require
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -17,21 +18,11 @@
 (t2/deftransforms :model/UserParameterValue
   {:value mi/transform-json})
 
-#_
-(t2/define-before-insert :model/UserParameterValue
-  [upv]
-  (u/prog1 upv
-    (validate upv)))
-
-#_
-(t2/define-before-update :model/UserParameterValue
-  [upv]
-  (u/prog1 (t2/changes upv)
-    (when (:value <>)
-      (validate <>))))
-
-(defn- upsert!
-  [user-id parameter-id value]
+(mu/defn upsert!
+  "Upsert or delete parameter value set by the user."
+  [user-id      :- ms/PositiveInt
+   parameter-id :- ms/NonBlankString
+   value        #_#_:- [:maybe :Any]]
   (or (pos? (t2/update! :model/UserParameterValue {:user_id      user-id
                                                    :parameter_id parameter-id}
                         {:value value}))
@@ -39,18 +30,21 @@
                                              :parameter_id parameter-id
                                              :value        value})))
 
-(mu/defn upsert-or-delete!
-  "Upsert or delete parameter value set by the user."
-  [user-id      :- ms/PositiveInt
-   parameter-id :- ms/NonBlankString
-   value        #_#_:- [:maybe :Any]]
-  ;;WIP
-  (upsert! user-id parameter-id value))
-
-
 ;; hydration
 
-(methodical/defmethod t2/batched-hydrate [:model/Dashboard :last-used-param-values]
-  "Return a map of parameter-id->last used value for the dashboards."
+(methodical/defmethod t2/batched-hydrate [:model/Dashboard :last_used_param_values]
+  "Hydrate a map of parameter-id->last-used-value for the dashboards."
   [_model _k dashboards]
-  dashboards)
+  (let [user-id                         api/*current-user-id*
+        all-parameter-ids               (into #{} (comp (mapcat :parameters) (map :id)) dashboards)
+        parameter-ids->last-used-values (into {}
+                                              (t2/select-fn-vec
+                                               (fn [{:keys [parameter_id value]}]
+                                                 [parameter_id value])
+                                               :model/UserParameterValue
+                                               :user_id user-id
+                                               :parameter_id [:in all-parameter-ids]))]
+    (map
+     (fn [dashboard]
+       (let [param-ids (mapv :id (:parameters dashboard))]
+         (assoc dashboard :last_used_param_values (select-keys parameter-ids->last-used-values param-ids)))) dashboards)))
