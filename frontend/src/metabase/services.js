@@ -18,22 +18,6 @@ export const ActivityApi = {
   ),
 };
 
-export const BookmarkApi = {
-  card: {
-    create: POST("/api/bookmark/card/:id"),
-    delete: DELETE("/api/bookmark/card/:id"),
-  },
-  collection: {
-    create: POST("/api/bookmark/collection/:id"),
-    delete: DELETE("/api/bookmark/collection/:id"),
-  },
-  dashboard: {
-    create: POST("/api/bookmark/dashboard/:id"),
-    delete: DELETE("/api/bookmark/dashboard/:id"),
-  },
-  reorder: PUT("/api/bookmark/ordering"),
-};
-
 // only available with token loaded
 export const GTAPApi = {
   list: GET("/api/mt/gtap"),
@@ -220,13 +204,8 @@ export const DashboardApi = {
   ),
 };
 
-export const SearchApi = {
-  list: GET("/api/search"),
-};
-
 export const CollectionsApi = {
   list: GET("/api/collection"),
-  listItems: GET("/api/collection/:collectionId/items"),
   create: POST("/api/collection"),
   get: GET("/api/collection/:id"),
   // Temporary route for getting things not in a collection
@@ -604,4 +583,10 @@ export const ApiKeysApi = {
   delete: DELETE("/api/api-key/:id"),
   edit: PUT("/api/api-key/:id"),
   regenerate: PUT("/api/api-key/:id/regenerate"),
+};
+
+export const CacheConfigApi = {
+  list: GET("/api/cache"),
+  update: PUT("/api/cache"),
+  delete: DELETE("/api/cache"),
 };

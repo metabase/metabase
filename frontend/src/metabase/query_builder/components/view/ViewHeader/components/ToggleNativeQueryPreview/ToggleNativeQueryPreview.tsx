@@ -2,11 +2,16 @@ import { t } from "ttag";
 
 import { getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
+import {
+  setNotebookNativePreviewState,
+  setUIControls,
+} from "metabase/query_builder/actions";
 import { getUiControls } from "metabase/query_builder/selectors";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+
+import { trackNotebookNativePreviewShown } from "../../../../../analytics";
 
 import { SqlButton } from "./ToggleNativeQueryPreview.styled";
 
@@ -29,25 +34,30 @@ export const ToggleNativeQueryPreview = ({
 }: ToggleNativeQueryPreviewProps): JSX.Element => {
   const dispatch = useDispatch();
   const {
-    isNativePreviewSidebarOpen,
-  }: { isNativePreviewSidebarOpen?: boolean } = useSelector(getUiControls);
+    isShowingNotebookNativePreview,
+  }: { isShowingNotebookNativePreview: boolean } = useSelector(getUiControls);
 
   const engineType = getEngineNativeType(question.database()?.engine);
-  const tooltip = isNativePreviewSidebarOpen
+  const tooltip = isShowingNotebookNativePreview
     ? BUTTON_TOOLTIP_CLOSE[engineType]
     : BUTTON_TOOLTIP[engineType];
 
-  const handleClick = () =>
+  const handleClick = () => {
     dispatch(
       setUIControls({
-        isNativePreviewSidebarOpen: !isNativePreviewSidebarOpen,
+        isShowingNotebookNativePreview: !isShowingNotebookNativePreview,
       }),
     );
+
+    dispatch(setNotebookNativePreviewState(!isShowingNotebookNativePreview));
+
+    trackNotebookNativePreviewShown(question, !isShowingNotebookNativePreview);
+  };
 
   return (
     <Tooltip label={tooltip} position="top">
       <SqlButton
-        isSelected={isNativePreviewSidebarOpen}
+        isSelected={isShowingNotebookNativePreview}
         onClick={handleClick}
         aria-label={tooltip}
       >

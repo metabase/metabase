@@ -27,7 +27,6 @@
    [metabase.task :as task]
    [metabase.troubleshooting :as troubleshooting]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log])
   (:import
    (java.lang.management ManagementFactory)))
@@ -45,17 +44,14 @@
 ;; don't i18n this, it's legalese
 (log/info
  (format "\nMetabase %s" config/mb-version-string)
-
  (format "\n\nCopyright © %d Metabase, Inc." (.getYear (java.time.LocalDate/now)))
-
  (str "\n\n"
       (if config/ee-available?
-        (str (deferred-trs "Metabase Enterprise Edition extensions are PRESENT.")
+        (str "Metabase Enterprise Edition extensions are PRESENT."
              "\n\n"
-             (deferred-trs "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License.")
-             " "
-             (deferred-trs "See {0} for details." "https://www.metabase.com/license/commercial/"))
-        (deferred-trs "Metabase Enterprise Edition extensions are NOT PRESENT."))))
+             "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License."
+             "See https://www.metabase.com/license/commercial/ for details.")
+        "Metabase Enterprise Edition extensions are NOT PRESENT.")))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -70,7 +66,7 @@
                            (when-not (= 80 port) (str ":" port))))
         setup-url (str site-url "/setup/")]
     (log/info (u/format-color 'green
-                              (str (deferred-trs "Please use the following URL to setup your Metabase installation:")
+                              (str "Please use the following URL to setup your Metabase installation:"
                                    "\n\n"
                                    setup-url
                                    "\n\n")))))
@@ -84,11 +80,11 @@
 (defn- destroy!
   "General application shutdown function which should be called once at application shutdown."
   []
-  (log/info (trs "Metabase Shutting Down ..."))
+  (log/info "Metabase Shutting Down ...")
   (task/stop-scheduler!)
   (server/stop-web-server!)
   (prometheus/shutdown!)
-  (log/info (trs "Metabase Shutdown COMPLETE")))
+  (log/info "Metabase Shutdown COMPLETE"))
 
 (defenterprise ensure-audit-db-installed!
   "OSS implementation of `audit-db/ensure-db-installed!`, which is an enterprise feature, so does nothing in the OSS
@@ -98,8 +94,8 @@
 (defn- init!*
   "General application initialization function which should be run once at application startup."
   []
-  (log/info (trs "Starting Metabase version {0} ..." config/mb-version-string))
-  (log/info (trs "System info:\n {0}" (u/pprint-to-str (troubleshooting/system-info))))
+  (log/infof "Starting Metabase version %s ..." config/mb-version-string)
+  (log/infof "System info:\n %s" (u/pprint-to-str (troubleshooting/system-info)))
   (init-status/set-progress! 0.1)
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy!))
@@ -109,7 +105,7 @@
   (init-status/set-progress! 0.3)
   (settings/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations
-  (log/info (trs "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."))
+  (log/info "Setting up and migrating Metabase DB. Please sit tight, this may take a minute...")
   ;; Cal 2024-04-03:
   ;; we have to skip creating sample content if we're running tests, because it causes some tests to timeout
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
@@ -118,7 +114,7 @@
   (init-status/set-progress! 0.5)
   ;; Set up Prometheus
   (when (prometheus/prometheus-server-port)
-    (log/info (trs "Setting up prometheus metrics"))
+    (log/info "Setting up prometheus metrics")
     (prometheus/setup!)
     (init-status/set-progress! 0.6))
 
@@ -131,7 +127,7 @@
     (config-from-file/init-from-file-if-code-available!)
     (init-status/set-progress! 0.7)
     (when new-install?
-      (log/info (trs "Looks like this is a new installation ... preparing setup wizard"))
+      (log/info "Looks like this is a new installation ... preparing setup wizard")
       ;; create setup token
       (create-setup-token-and-log-setup-url!)
       ;; publish install event
@@ -154,7 +150,7 @@
   (init-status/set-complete!)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
         duration   (- (System/currentTimeMillis) start-time)]
-    (log/info (trs "Metabase Initialization COMPLETE in {0}" (u/format-milliseconds duration)))))
+    (log/infof "Metabase Initialization COMPLETE in %s" (u/format-milliseconds duration))))
 
 (defn init!
   "General application initialization function which should be run once at application startup. Calls `[[init!*]] and
@@ -168,7 +164,7 @@
 ;;; -------------------------------------------------- Normal Start --------------------------------------------------
 
 (defn- start-normally []
-  (log/info (trs "Starting Metabase in STANDALONE mode"))
+  (log/info "Starting Metabase in STANDALONE mode")
   (try
     ;; launch embedded webserver async
     (server/start-web-server! handler/app)
@@ -178,7 +174,7 @@
     (when (config/config-bool :mb-jetty-join)
       (.join (server/instance)))
     (catch Throwable e
-      (log/error e (trs "Metabase Initialization FAILED"))
+      (log/error e "Metabase Initialization FAILED")
       (System/exit 1))))
 
 (defn- run-cmd [cmd args]
@@ -191,7 +187,7 @@
   []
   (let [mb-trace-str (config/config-str :mb-ns-trace)]
     (when (not-empty mb-trace-str)
-      (log/warn (trs "WARNING: You have enabled namespace tracing, which could log sensitive information like db passwords."))
+      (log/warn "WARNING: You have enabled namespace tracing, which could log sensitive information like db passwords.")
       (doseq [namespace (map symbol (str/split mb-trace-str #",\s*"))]
         (try (require namespace)
              (catch Throwable _

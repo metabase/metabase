@@ -100,13 +100,19 @@
    (merge
     ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type)
     (when (= ag-type :count)
-      {:base_type :type/BigInteger})))
+      {:base_type :type/BigInteger})
+    (when (= ag-type :cum-count)
+      {:base_type :type/Decimal})))
 
   ([driver ag-type field]
    (merge
     ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
-    (when (#{:sum :cum-count} ag-type)
-      {:base_type :type/BigInteger}))))
+    (when (= ag-type :sum)
+      {:base_type :type/BigInteger})
+    ;; because it's implemented as sum(count(field)) OVER (...). But shouldn't a sum of integers be an
+    ;; integer? :thinking_face:
+    (when (= ag-type :cum-count)
+      {:base_type :type/Decimal}))))
 
 (defmethod execute/execute-sql! :h2
   [driver _ dbdef sql]

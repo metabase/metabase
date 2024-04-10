@@ -60,9 +60,9 @@
        (do
          ;; If the plugins directory is a temp directory, fall back to reading the DB directly from the JAR until a
          ;; working plugins directory is available. (We want to ensure the sample DB is in a stable location.)
-         (log/warn (trs (str "Sample database could not be extracted to the plugins directory,"
-                             "which may result in slow startup times. "
-                             "Please set MB_PLUGINS_DIR to a writable directory and restart Metabase.")))
+         (log/warn (str "Sample database could not be extracted to the plugins directory,"
+                        "which may result in slow startup times. "
+                        "Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))
          (jar-db-details resource)))}))
 
 (defn extract-and-sync-sample-database!
@@ -70,7 +70,7 @@
   we update its details."
   []
   (try
-    (log/info (trs "Loading sample database"))
+    (log/info "Loading sample database")
     (let [details (try-to-extract-sample-database!)
           db (if (t2/exists? Database :is_sample true)
                (t2/select-one Database (first (t2/update-returning-pks! Database :is_sample true {:details details})))
@@ -83,7 +83,7 @@
       (sync/sync-database! db))
     (log/debug "Finished adding Sample Database.")
     (catch Throwable e
-      (log/error e (trs "Failed to load sample database")))))
+      (log/error e "Failed to load sample database"))))
 
 (defn update-sample-database-if-needed!
   "Update the path to the sample database DB if it exists in case the JAR has moved."

@@ -43,16 +43,16 @@ describe("command palette", () => {
       cy.log("Should search entities and docs");
       commandPaletteSearch().type("Orders, Count");
 
-      cy.findByRole("option", { name: /Orders, Count/ }).should("exist");
+      cy.findByRole("option", { name: "Orders, Count" }).should("exist");
       cy.findByText('Search documentation for "Orders, Count"').should("exist");
 
       // Since the command palette list is virtualized, we will search for a few
       // to ensure they're reachable
       commandPaletteSearch().clear().type("People");
-      cy.findByRole("option", { name: /Admin - People/ }).should("exist");
+      cy.findByRole("option", { name: "People" }).should("exist");
 
       commandPaletteSearch().clear().type("Uploads");
-      cy.findByRole("option", { name: /Settings - Uploads/ }).should("exist");
+      cy.findByRole("option", { name: "Settings - Uploads" }).should("exist");
     });
 
     cy.log("We can close the command palette using escape");
@@ -67,7 +67,7 @@ describe("command palette", () => {
 
     commandPalette().within(() => {
       commandPaletteSearch().type("Nested");
-      cy.findByRole("option", { name: /Enable Nested Queries/ }).click();
+      cy.findByRole("option", { name: "Enable Nested Queries" }).click();
     });
 
     cy.findByTestId("enable-nested-queries-setting").should("be.visible");
@@ -79,7 +79,7 @@ describe("command palette", () => {
 
     commandPalette().within(() => {
       commandPaletteSearch().clear().type("Week");
-      cy.findByRole("option", { name: /First day of the week/ }).click();
+      cy.findByRole("option", { name: "First day of the week" }).click();
     });
 
     cy.location("pathname").should("contain", "settings/localization");

@@ -180,11 +180,11 @@
        (fn
          ([cnt]
           (when (pos? cnt)
-            (log/info (str " " (u/colorize 'green (trs "copied {0} instances." cnt))))))
+            (log/info (str " " (u/format-color :green "copied %s instances." cnt)))))
          ([cnt chunkk]
           (when (seq chunkk)
             (when (zero? cnt)
-              (log/info (u/colorize 'blue (trs "Copying instances of {0}..." (name model)))))
+              (log/info (u/format-color :blue "Copying instances of %s..." (name model))))
             (try
               (insert-chunk! target-db-type target-db-conn-spec table-name chunkk)
               (catch Throwable e

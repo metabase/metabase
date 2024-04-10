@@ -105,7 +105,7 @@ const DatabaseSchemasPane = ({
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Search.loadList({
   query: (_state: State, props: DatabaseSchemasPaneProps) => ({
-    models: "dataset",
+    models: ["dataset"],
     table_db_id: props.database.id,
   }),
   listName: "models",

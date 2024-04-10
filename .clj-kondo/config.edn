@@ -18,7 +18,14 @@
   :use                          {:level :warning}
   :warn-on-reflection           {:level :warning}
 
-  :metabase/defsetting-must-specify-export {:level :warning}
+  :metabase/defsetting-must-specify-export                             {:level :warning}
+  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests {:level :warning}
+  :metabase/mbql-query-first-arg                                       {:level :warning}
+  :metabase/missing-test-expr-requires-in-cljs                         {:level :warning}
+  :metabase/test-helpers-use-non-thread-safe-functions                 {:level :warning}
+  :metabase/validate-deftest                                           {:level :warning}
+  :metabase/validate-logging                                           {:level :warning}
+  :metabase/warn-about-schema=                                         {:level :warning}
 
   ;;
   ;; disabled linters
@@ -34,6 +41,7 @@
   ;; :docstring-leading-trailing-whitespace {:level :warning}
   ;; :docstring-no-summary                  {:level :warning}
   ;; :shadowed-var                          {:level :warning}
+  ;; :def-fn                                {:level :warning}
 
   :unresolved-symbol
   {:exclude
@@ -162,6 +170,15 @@
     metabase-enterprise.sandbox.api.table                         table
     metabase-enterprise.test                                      met
     metabase.analytics.stats                                      stats
+    metabase.analyze.query-results                                qr
+    metabase.analyze.classifiers.category                         classifiers.category
+    metabase.analyze.classifiers.core                             classifiers
+    metabase.analyze.classifiers.name                             classifiers.name
+    metabase.analyze.classifiers.no-preview-display               classifiers.no-preview-display
+    metabase.analyze.classifiers.text-fingerprint                 classifiers.text-fingerprint
+    metabase.analyze.fingerprint.fingerprinters                   fingerprinters
+    metabase.analyze.fingerprint.insights                         insights
+    metabase.analyze.fingerprint.schema                           fingerprint.schema
     metabase.api.activity                                         api.activity
     metabase.api.alert                                            api.alert
     metabase.api.automagic-dashboards                             api.magic
@@ -289,6 +306,7 @@
     metabase.models.timeline                                      timeline
     metabase.models.timeline-event                                timeline-event
     metabase.native-query-analyzer                                query-analyzer
+    metabase.native-query-analyzer.parameter-substitution         nqa.sub
     metabase.plugins.initialize                                   plugins.init
     metabase.public-settings                                      public-settings
     metabase.public-settings.premium-features                     premium-features
@@ -342,14 +360,7 @@
     metabase.server.protocols                                     server.protocols
     metabase.shared.util                                          shared.u
     metabase.shared.util.currency                                 currency
-    metabase.sync.analyze.classifiers.category                    classifiers.category
-    metabase.sync.analyze.classifiers.name                        classifiers.name
-    metabase.sync.analyze.classifiers.no-preview-display          classifiers.no-preview-display
-    metabase.sync.analyze.classifiers.text-fingerprint            classifiers.text-fingerprint
-    metabase.sync.analyze.fingerprint                             fingerprint
-    metabase.sync.analyze.fingerprint.fingerprinters              fingerprinters
-    metabase.sync.analyze.fingerprint.insights                    insights
-    metabase.sync.analyze.query-results                           qr
+    metabase.sync.analyze.fingerprint                             sync.fingerprint
     metabase.sync.field-values                                    field-values
     metabase.sync.interface                                       i
     metabase.sync.schedules                                       sync.schedules
@@ -402,12 +413,7 @@
     ring.adapter.jetty9.servlet                                   servlet
     saml20-clj.core                                               saml
     toucan.db                                                     db
-    toucan.models                                                 models}}
-
-  :metabase/validate-deftest                                           {:level :warning}
-  :metabase/missing-test-expr-requires-in-cljs                         {:level :warning}
-  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests {:level :warning}
-  :metabase/warn-about-schema=                                         {:level :warning}}
+    toucan.models                                                 models}}}
 
  :lint-as
  {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
@@ -571,6 +577,19 @@
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
+   metabase.util/format-color                                                                                                hooks.metabase.util/format-color
+   metabase.util.log/trace                                                                                                   hooks.metabase.util.log/info
+   metabase.util.log/tracef                                                                                                  hooks.metabase.util.log/infof
+   metabase.util.log/debug                                                                                                   hooks.metabase.util.log/info
+   metabase.util.log/debugf                                                                                                  hooks.metabase.util.log/infof
+   metabase.util.log/info                                                                                                    hooks.metabase.util.log/info
+   metabase.util.log/infof                                                                                                   hooks.metabase.util.log/infof
+   metabase.util.log/warn                                                                                                    hooks.metabase.util.log/info
+   metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
+   metabase.util.log/error                                                                                                   hooks.metabase.util.log/info
+   metabase.util.log/errorf                                                                                                  hooks.metabase.util.log/infof
+   metabase.util.log/fatal                                                                                                   hooks.metabase.util.log/info
+   metabase.util.log/fatalf                                                                                                  hooks.metabase.util.log/infof
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def}
 
   :macroexpand
@@ -631,7 +650,7 @@
    :name    source-namespaces}
   {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))"
    :name    printable-namespaces}
-  {:pattern "^metabase\\.lib\\.*"
+  {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\.*"
    :name    metabase-lib}
   ;;
   ;; QP source namespaces: `metabase.query-processor.*`, `metabase-enterprise.sandbox.query-processor.*`, and
@@ -643,12 +662,10 @@
  :config-in-ns
  {test-namespaces
   {:linters
-   {:inline-def                                          {:level :off}
-    :missing-docstring                                   {:level :off}
-    :private-call                                        {:level :off}
-    :metabase/defsetting-must-specify-export             {:level :off}
-    :hooks.metabase.test.data/mbql-query-first-arg       {:level :error}
-    :metabase/test-helpers-use-non-thread-safe-functions {:level :warning}}
+   {:inline-def                              {:level :off}
+    :missing-docstring                       {:level :off}
+    :private-call                            {:level :off}
+    :metabase/defsetting-must-specify-export {:level :off}}
    :hooks
    {:analyze-call
     {clojure.core/defmacro hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation

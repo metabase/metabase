@@ -21,7 +21,7 @@
    [metabase.query-processor.util.nest-query :as nest-query]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -420,8 +420,8 @@
   of `honeysql-form`. Most drivers can use the default implementations for all of these methods, but some may need to
   override one or more (e.g. SQL Server needs to override this method for the `:limit` clause, since T-SQL uses `TOP`
   instead of `LIMIT`)."
-  {:added "0.32.0", :arglists '([driver top-level-clause honeysql-form query]), :style/indent 2}
-  (fn [driver top-level-clause _ _]
+  {:added "0.32.0", :arglists '([driver top-level-clause honeysql-form inner-query]), :style/indent [:form]}
+  (fn [driver top-level-clause _honeysql-form _inner-query]
     [(driver/dispatch-on-initialized-driver driver) top-level-clause])
   :hierarchy #'driver/hierarchy)
 
@@ -686,6 +686,100 @@
   [:power
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
+
+(defmethod driver/database-supports? [:sql :sql/window-functions.order-by-output-column-numbers]
+  [_driver _feature _database]
+  true)
+
+(defn- format-rows-unbounded-preceding [_clause _args]
+  ["ROWS UNBOUNDED PRECEDING"])
+
+(sql/register-clause!
+ ::rows-unbounded-preceding
+ #'format-rows-unbounded-preceding
+ nil)
+
+(defn- over-rows-with-order-by-copying-expressions
+  "e.g.
+
+    OVER (ORDER BY date_trunc('month', my_column))"
+  [driver expr]
+  (let [{:keys [group-by]} (apply-top-level-clause
+                            driver
+                            :breakout
+                            {}
+                            *inner-query*)]
+    [:over
+     [expr
+      {:order-by                  (mapv (fn [expr]
+                                          [expr :asc])
+                                        group-by)
+       ::rows-unbounded-preceding []}]]))
+
+;;; For databases that do something intelligent with ORDER BY 1, 2: we can take advantage of that functionality
+;;; implement the window function versions of cumulative sum and cumulative sum more simply.
+
+(defn- over-rows-with-order-by-output-column-numbers
+  "e.g.
+
+    OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING)"
+  [_driver expr]
+  [:over
+   [expr
+    {:order-by                  (mapv (fn [i]
+                                        [[:inline (inc i)] :asc])
+                                      (range (count (:breakout *inner-query*))))
+     ::rows-unbounded-preceding []}]])
+
+(defn- cumulative-aggregation-window-function [driver expr]
+  (let [over-rows-with-order-by (if (driver/database-supports? driver
+                                                               :sql/window-functions.order-by-output-column-numbers
+                                                               (lib.metadata/database (qp.store/metadata-provider)))
+                                  over-rows-with-order-by-output-column-numbers
+                                  over-rows-with-order-by-copying-expressions)]
+    (over-rows-with-order-by driver expr)))
+
+;;;    cum-count()
+;;;
+;;; should compile to SQL like
+;;;
+;;;    sum(count()) OVER (ORDER BY ...)
+;;;
+;;; where the ORDER BY matches what's in the query (i.e., the breakouts), or
+;;;
+;;;    sum(count()) OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING)
+;;;
+;;; if the database supports ordering by SELECT expression position
+(defmethod ->honeysql [:sql :cum-count]
+  [driver [_cum-count expr-or-nil]]
+  ;; a cumulative count with no breakouts doesn't really mean anything, just compile it as a normal count.
+  (if (empty? (:breakout *inner-query*))
+    (->honeysql driver [:count expr-or-nil])
+    (cumulative-aggregation-window-function
+     driver
+     [:sum (if expr-or-nil
+             [:count (->honeysql driver expr-or-nil)]
+             [:count :*])])))
+
+;;;    cum-sum(total)
+;;;
+;;; should compile to SQL like
+;;;
+;;;    sum(sum(total)) OVER (ORDER BY ...)
+;;;
+;;; where the ORDER BY matches what's in the query (i.e., the breakouts), or
+;;;
+;;;    sum(sum(total)) OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING)
+;;;
+;;; if the database supports ordering by SELECT expression position
+(defmethod ->honeysql [:sql :cum-sum]
+  [driver [_cum-sum expr]]
+  ;; a cumulative sum with no breakouts doesn't really mean anything, just compile it as a normal sum.
+  (if (empty? (:breakout *inner-query*))
+    (->honeysql driver [:sum expr])
+    (cumulative-aggregation-window-function
+     driver
+     [:sum [:sum (->honeysql driver expr)]])))
 
 (defn- interval? [expr]
   (mbql.u/is-clause? :interval expr))
@@ -1071,7 +1165,7 @@
   [:or
    [:and mbql.s/value
     [:fn {:error/message "string value"} #(string? (second %))]]
-   mbql.s/FieldOrExpressionDef])
+   ::mbql.s/FieldOrExpressionDef])
 
 (mu/defn ^:private generate-pattern
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
@@ -1348,11 +1442,9 @@
      (format-honeysql-2 dialect honeysql-form)
      (catch Throwable e
        (try
-         (log/error e
-                    (u/format-color 'red
-                                    (str (deferred-tru "Invalid HoneySQL form: {0}" (ex-message e))
-                                         "\n"
-                                         (u/pprint-to-str honeysql-form))))
+         (log/error e (u/format-color :red
+                                      "Invalid HoneySQL form: %s\n%s"
+                                      (ex-message e) (u/pprint-to-str honeysql-form)))
          (finally
            (throw (ex-info (tru "Error compiling HoneySQL form: {0}" (ex-message e))
                            {:dialect dialect

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { PopoverHoverTarget, HoverParent } from "../InfoIcon";
+import { PopoverHoverTarget, HoverParent, defaultDelay } from "../InfoIcon";
 import type { TableInfoPopoverProps } from "../TableInfoPopover";
 import { TableInfoPopover } from "../TableInfoPopover";
 export { HoverParent };
@@ -11,7 +11,7 @@ type TableInfoIconProps = TableInfoPopoverProps & {
 
 export function TableInfoIcon({
   className,
-  delay = [0, 150],
+  delay = defaultDelay,
   table,
   ...props
 }: TableInfoIconProps) {

@@ -18,8 +18,7 @@ const modelB = {
   type: "model",
 };
 
-// TODO: unskip when 40252 is fixed
-describe.skip("issue 40252", () => {
+describe("issue 40252", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

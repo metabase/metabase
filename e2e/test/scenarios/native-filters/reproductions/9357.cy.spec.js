@@ -1,4 +1,8 @@
-import { restore, openNativeEditor } from "e2e/support/helpers";
+import {
+  restore,
+  openNativeEditor,
+  moveDnDKitElement,
+} from "e2e/support/helpers";
 
 import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
@@ -15,24 +19,9 @@ describe("issue 9357", () => {
     );
 
     // Drag the firstparameter to last position
-    cy.get("fieldset")
-      .findAllByRole("listitem")
-      .first()
-      .trigger("pointerdown", 0, 0, { force: true, isPrimary: true, button: 0 })
-      .wait(200)
-      .trigger("pointermove", 5, 5, { force: true, isPrimary: true, button: 0 })
-      .wait(200)
-      .trigger("pointermove", 430, 5, {
-        force: true,
-        isPrimary: true,
-        button: 0,
-      })
-      .wait(200)
-      .trigger("pointerup", 430, 5, {
-        force: true,
-        isPrimary: true,
-        button: 0,
-      });
+    moveDnDKitElement(cy.get("fieldset").findAllByRole("listitem").first(), {
+      horizontal: 430,
+    });
 
     // Ensure they're in the right order
     cy.findAllByText("Variable name").parent().as("variableField");

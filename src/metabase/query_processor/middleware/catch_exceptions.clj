@@ -129,11 +129,9 @@
           (catch Throwable e
             ;; format the Exception and return it
             (let [formatted-exception (format-exception* query e @extra-info)]
-              (log/error (str (trs "Error processing query: {0}"
-                                   (or (:error formatted-exception)
-                                       ;; log in server locale, respond in user locale
-                                       (trs "Error running query")))
-                              "\n" (u/pprint-to-str formatted-exception)))
+              (log/errorf "Error processing query: %s\n%s"
+                          (or (:error formatted-exception) "Error running query")
+                          (u/pprint-to-str formatted-exception))
               ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
               (let [result (update formatted-exception
                                    :error (fnil identity (trs "Error running query")))]

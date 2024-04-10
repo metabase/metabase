@@ -61,13 +61,13 @@
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 ;; Features that are supported by Postgres and all of its child drivers like Redshift
-(doseq [[feature supported?] {:convert-timezone         true
-                              :datetime-diff            true
-                              :now                      true
-                              :persist-models           true
-                              :table-privileges         true
-                              :schemas                  true
-                              :connection-impersonation true}]
+(doseq [[feature supported?] {:connection-impersonation                            true
+                              :convert-timezone                                    true
+                              :datetime-diff                                       true
+                              :now                                                 true
+                              :persist-models                                      true
+                              :schemas                                             true
+                              :sql/window-functions.order-by-output-column-numbers false}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -77,6 +77,7 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
+                 :table-privileges
                  :uploads
                  :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
