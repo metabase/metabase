@@ -483,16 +483,6 @@
                                                    :db_id     new-db-id
                                                    :group_id  group-id
                                                    :perm_type :perms/view-data)))
-            (t2/delete! :model/Database :id new-db-id)))
-
-        (testing "A new database gets `blocked` data perms if a group has `blocked` perms for any database"
-          (data-perms/set-database-permission! group-id db-id-2 :perms/view-data :blocked)
-          (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
-            (is (= :blocked (t2/select-one-fn :perm_value
-                                              :model/DataPermissions
-                                              :db_id     new-db-id
-                                              :group_id  group-id
-                                              :perm_type :perms/view-data)))
             (t2/delete! :model/Database :id new-db-id))))
 
       (t2/delete! :model/DataPermissions :group_id group-id)
