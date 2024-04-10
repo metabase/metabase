@@ -7,21 +7,17 @@ import { useInitData } from "embedding-sdk/hooks";
 import type { SDKConfigType } from "embedding-sdk/types";
 
 import { SdkContentWrapper } from "./SdkContentWrapper";
-import type {AppStore} from "embedding-sdk/store/types";
 
 interface AppInitializeControllerProps {
-  store: AppStore;
   children: React.ReactNode;
   config: SDKConfigType;
 }
 
 export const AppInitializeController = ({
-  store,
   config,
   children,
 }: AppInitializeControllerProps) => {
   const { isLoggedIn, isInitialized } = useInitData({
-    store,
     config,
   });
 

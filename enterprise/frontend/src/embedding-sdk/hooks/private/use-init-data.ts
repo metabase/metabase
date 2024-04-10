@@ -1,6 +1,8 @@
+import type { AnyAction } from "@reduxjs/toolkit";
 import { useEffect, useState } from "react";
 import _ from "underscore";
 
+import { store } from "embedding-sdk/store";
 import {
   getOrRefreshSession,
   getSessionTokenState,
@@ -16,12 +18,10 @@ import registerVisualizations from "metabase/visualizations/register";
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
-  store: any;
   config: SDKConfigType;
 }
 
 export const useInitData = ({
-  store,
   config,
 }: InitDataLoaderParameters): {
   isLoggedIn: boolean;
@@ -48,22 +48,25 @@ export const useInitData = ({
       const unsubscribe = store.subscribe(updateToken);
 
       if (config.jwtProviderUri) {
-        store.dispatch(getOrRefreshSession(config.jwtProviderUri));
+        store.dispatch(
+          getOrRefreshSession(config.jwtProviderUri) as unknown as AnyAction,
+        );
       }
 
       updateToken();
 
       return () => unsubscribe();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [config]);
 
   useEffect(() => {
     api.basename = config.metabaseInstanceUrl;
 
     if (config.authType === "jwt") {
       api.onBeforeRequest = () =>
-        store.dispatch(getOrRefreshSession(config.jwtProviderUri));
+        store.dispatch(
+          getOrRefreshSession(config.jwtProviderUri) as unknown as AnyAction,
+        );
       api.sessionToken = sessionTokenState?.token?.id;
     } else if (config.authType === "apiKey" && config.apiKey) {
       api.apiKey = config.apiKey;
@@ -79,7 +82,7 @@ export const useInitData = ({
       setIsInitialized(true);
       setIsLoggedIn(true);
     });
-  }, [config, dispatch, sessionTokenState, store]);
+  }, [config, dispatch, sessionTokenState]);
 
   return {
     isLoggedIn,

@@ -1,8 +1,10 @@
-import { createAsyncThunk, createReducer } from "@reduxjs/toolkit";
+import { createReducer } from "@reduxjs/toolkit";
+
 import type {
   EmbeddingSessionTokenState,
   SdkState,
 } from "embedding-sdk/store/types";
+import { createAsyncThunk } from "metabase/lib/redux";
 
 const initialState: EmbeddingSessionTokenState = {
   token: null,
@@ -13,24 +15,24 @@ const initialState: EmbeddingSessionTokenState = {
 export const getSessionTokenState = (state: SdkState) =>
   state.embeddingSessionToken;
 
-const GET_OR_REFRESH_SESSION =
-  "metabase-enterprise/embeddingSessionToken/GET_OR_REFRESH_SESSION";
+const GET_OR_REFRESH_SESSION = "embeddingSessionToken/GET_OR_REFRESH_SESSION";
 
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
   async (url: string, { dispatch, getState }) => {
-    const state = getSessionTokenState(getState());
+    const state = getSessionTokenState(getState() as SdkState);
     const token = state?.token;
 
     const isTokenValid = token && token.exp * 1000 >= Date.now();
 
-    if (!state.loading && !isTokenValid) {
-      return dispatch(refreshTokenAsync(url));
+    if (state.loading || isTokenValid) {
+      return token;
     }
-    return token;
+    return dispatch(refreshTokenAsync(url));
   },
 );
-const REFRESH_TOKEN = "metabase-enterprise/embeddingSessionToken/REFRESH_TOKEN";
+
+const REFRESH_TOKEN = "embeddingSessionToken/REFRESH_TOKEN";
 
 export const refreshTokenAsync = createAsyncThunk(
   REFRESH_TOKEN,
