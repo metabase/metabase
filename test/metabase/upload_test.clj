@@ -1779,8 +1779,9 @@
         (is (upload-table-exists? table))
         (is (seq (t2/select :model/Table :id (:id table))))
         (is (seq (t2/select :model/Field :table_id (:id table))))
-        ;; there are some other miscellaneous children
-        ;; FIXME for some reason I get some stuff populated here locally but not in CI - not critical to debug
+        ;; there may be some other miscellaneous children
+        ;; at the time of writing the only other instances are in v_fields, and only locally - not in CI
+        ;; it would be good to populate more of them, as far as it is cheap and simple.
         #_(is (some #(seq (t2/select % :table_id (:id table)))
                   (remove #{"metabase_field"} (referencing-models))))
         (is (= (set (referencing-models))
