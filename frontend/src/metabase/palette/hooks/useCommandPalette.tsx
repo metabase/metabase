@@ -9,7 +9,7 @@ import {
   useRecentItemListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
-import { normalizedCollection } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { getIcon, getName } from "metabase/entities/recent-items";
 import Search from "metabase/entities/search";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -92,52 +92,55 @@ export const useCommandPalette = ({
   ]);
 
   const searchResultActions = useMemo<PaletteAction[]>(() => {
-    const ret: PaletteAction[] = [];
     if (isSearchLoading) {
-      ret.push({
-        id: "search-is-loading",
-        name: "Loading...",
-        keywords: query,
-        section: "search",
-      });
+      return [
+        {
+          id: "search-is-loading",
+          name: "Loading...",
+          keywords: query,
+          section: "search",
+        },
+      ];
     } else if (searchError) {
-      ret.push({
-        id: "search-error",
-        name: t`Could not load search results`,
-        section: "search",
-      });
+      return [
+        {
+          id: "search-error",
+          name: t`Could not load search results`,
+          section: "search",
+        },
+      ];
     } else if (debouncedSearchText) {
       if (searchResults?.length) {
-        ret.push(
-          ...searchResults.map(result => {
-            const wrappedResult = Search.wrapEntity(result, dispatch);
-            return {
-              id: `search-result-${result.id}`,
-              name: result.name,
-              icon: wrappedResult.getIcon().name,
-              section: "search",
-              perform: () => {
-                dispatch(closeModal());
-                dispatch(push(wrappedResult.getUrl()));
-              },
-              extra: {
-                parentCollection: wrappedResult.getCollection().name,
-                isVerified: result.moderated_status === "verified",
-                database: result.database_name,
-              },
-            };
-          }),
-        );
-      } else {
-        ret.push({
-          id: "no-search-results",
-          name: t`No results for “${debouncedSearchText}”`,
-          keywords: debouncedSearchText,
-          section: "search",
+        return searchResults.map(result => {
+          const wrappedResult = Search.wrapEntity(result, dispatch);
+          return {
+            id: `search-result-${result.id}`,
+            name: result.name,
+            icon: wrappedResult.getIcon().name,
+            section: "search",
+            perform: () => {
+              dispatch(closeModal());
+              dispatch(push(wrappedResult.getUrl()));
+            },
+            extra: {
+              parentCollection: wrappedResult.getCollection().name,
+              isVerified: result.moderated_status === "verified",
+              database: result.database_name,
+            },
+          };
         });
+      } else {
+        return [
+          {
+            id: "no-search-results",
+            name: t`No results for “${debouncedSearchText}”`,
+            keywords: debouncedSearchText,
+            section: "search",
+          },
+        ];
       }
     }
-    return ret;
+    return [];
   }, [
     dispatch,
     query,
@@ -150,10 +153,8 @@ export const useCommandPalette = ({
   useRegisterActions(searchResultActions, [searchResultActions]);
 
   const recentItemsActions = useMemo<PaletteAction[]>(() => {
-    const ret: PaletteAction[] = [];
-
-    recentItems?.forEach(item => {
-      ret.push({
+    return (
+      recentItems?.map(item => ({
         id: `recent-item-${getName(item)}`,
         name: getName(item),
         icon: getIcon(item).name,
@@ -167,16 +168,14 @@ export const useCommandPalette = ({
                 database: item.model_object.database_name,
               }
             : {
-                parentCollection: normalizedCollection({
-                  id: item.model_object.collection_id,
-                  name: item.model_object.collection_name,
-                }).name,
+                parentCollection:
+                  item.model_object.collection_id === null
+                    ? ROOT_COLLECTION.name
+                    : item.model_object.collection_name,
                 isVerified: item.model_object.moderated_status === "verified",
               },
-      });
-    });
-
-    return ret;
+      })) || []
+    );
   }, [dispatch, recentItems]);
 
   useRegisterActions(hasQuery ? [] : recentItemsActions, [

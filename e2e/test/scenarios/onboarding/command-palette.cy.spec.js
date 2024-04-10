@@ -78,7 +78,7 @@ describe("command palette", () => {
     commandPalette().should("not.exist");
 
     openCommandPalette();
-    //waiot for things to render
+    //wait for things to render
     commandPalette()
       .findByRole("option", { name: "New question" })
       .should("exist");

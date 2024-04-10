@@ -13,6 +13,8 @@ import { processResults, findClosesestActionIndex } from "../utils";
 
 import { PaletteResultItem } from "./PaletteResultItem";
 
+const PAGE_SIZE = 4;
+
 export const PaletteResults = () => {
   // Used for finding actions within the list
   const { searchQuery, query } = useKBar(state => ({
@@ -50,12 +52,14 @@ export const PaletteResults = () => {
   });
 
   useKeyPressEvent("PageDown", () => {
-    query.setActiveIndex(i => findClosesestActionIndex(processedResults, i, 4));
+    query.setActiveIndex(i =>
+      findClosesestActionIndex(processedResults, i, PAGE_SIZE),
+    );
   });
 
   useKeyPressEvent("PageUp", () => {
     query.setActiveIndex(i =>
-      findClosesestActionIndex(processedResults, i, -4),
+      findClosesestActionIndex(processedResults, i, -PAGE_SIZE),
     );
   });
 

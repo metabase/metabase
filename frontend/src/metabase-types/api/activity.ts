@@ -15,7 +15,7 @@ export interface ActivityModelObject {
   name: string;
   display_name?: string;
   moderated_status?: string;
-  collection_id?: CollectionId;
+  collection_id?: CollectionId | null;
   collection_name?: string;
   database_name?: string;
   db_id?: DatabaseId;
