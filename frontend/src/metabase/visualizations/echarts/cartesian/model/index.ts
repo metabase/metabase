@@ -28,7 +28,7 @@ import type {
 import type { RawSeries } from "metabase-types/api";
 
 import { getAxisTransforms } from "./transforms";
-import { getTrendLineModelAndDatasets } from "./trend-line";
+import { getTrendLines } from "./trend-line";
 
 const SUPPORTED_AUTO_SPLIT_TYPES = ["line", "area", "bar", "combo"];
 
@@ -130,8 +130,6 @@ export const getCartesianChartModel = (
     rawSeries[0].card.display,
   );
 
-  const insights = rawSeries.flatMap(series => series.data.insights ?? []);
-
   const { leftAxisModel, rightAxisModel } = getYAxesModels(
     seriesModels,
     transformedDataset,
@@ -141,11 +139,12 @@ export const getCartesianChartModel = (
     renderingContext,
   );
 
-  const { trendLinesSeries, trendLinesDataset } = getTrendLineModelAndDatasets(
-    seriesModels,
-    dataset,
+  const trendLinesModel = getTrendLines(
+    rawSeries,
+    [leftAxisModel, rightAxisModel],
     yAxisScaleTransforms,
-    insights,
+    seriesModels,
+    transformedDataset,
     settings,
     renderingContext,
   );
@@ -157,12 +156,10 @@ export const getCartesianChartModel = (
     yAxisScaleTransforms,
     columnByDataKey,
     dimensionModel,
-    insights,
     xAxisModel,
     leftAxisModel,
     rightAxisModel,
-    trendLinesDataset,
-    trendLinesSeries,
+    trendLinesModel,
     bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
   };
 };

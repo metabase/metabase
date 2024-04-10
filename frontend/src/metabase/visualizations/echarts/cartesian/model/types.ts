@@ -6,7 +6,6 @@ import type {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   ORIGINAL_INDEX_DATA_KEY,
-  TREND_LINE_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
   CardId,
@@ -14,7 +13,6 @@ import type {
   DateTimeAbsoluteUnit,
   RowValue,
 } from "metabase-types/api";
-import type { Insight } from "metabase-types/api/insight";
 
 export type BreakoutValue = RowValue;
 export type ColumnName = string;
@@ -69,7 +67,9 @@ export type ScatterSeriesModel = (RegularSeriesModel | BreakoutSeriesModel) & {
   bubbleSizeDataKey?: DataKey;
 };
 
-export type TrendLineSeriesModel = BaseSeriesModel;
+export type TrendLineSeriesModel = BaseSeriesModel & {
+  sourceDataKey: DataKey;
+};
 
 export type SeriesModel =
   | RegularSeriesModel
@@ -174,17 +174,16 @@ export type YAxisModel = {
   formatter: AxisFormatter;
 };
 
-export type TrendDataset = ChartDataset<
-  Datum & { [TREND_LINE_DATA_KEY]: number }
->;
+export type TrendLinesModel = {
+  dataset: ChartDataset;
+  seriesModels: TrendLineSeriesModel[];
+};
 
 export type BaseCartesianChartModel = {
   dimensionModel: DimensionModel;
   seriesModels: SeriesModel[];
   dataset: ChartDataset;
   transformedDataset: ChartDataset;
-  trendLinesDataset: TrendDataset;
-  trendLinesSeries: TrendLineSeriesModel[];
   yAxisScaleTransforms: NumericAxisScaleTransforms;
 
   leftAxisModel: YAxisModel | null;
@@ -196,10 +195,11 @@ export type BaseCartesianChartModel = {
   // Allows to use multiple ECharts series options to represent single data series
   // and map series ids to data keys for chart events
   seriesIdToDataKey?: Record<string, DataKey>;
+
+  trendLinesModel?: TrendLinesModel;
 };
 
 export type CartesianChartModel = BaseCartesianChartModel & {
-  insights: Insight[];
   bubbleSizeDomain: Extent | null;
 };
 
