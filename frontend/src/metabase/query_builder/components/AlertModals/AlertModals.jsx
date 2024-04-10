@@ -580,7 +580,7 @@ export function AlertEditSchedule({ alertType, schedule, onScheduleChange }) {
             schedule={schedule}
             scheduleOptions={["hourly", "daily", "weekly"]}
             onScheduleChange={onScheduleChange}
-            textBeforeInterval="Check"
+            textBeforeInterval={t`Check`}
           />
         </div>
       </div>
