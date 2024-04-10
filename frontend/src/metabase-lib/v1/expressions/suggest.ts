@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
@@ -11,6 +12,7 @@ import {
   EXPRESSION_FUNCTIONS,
   getMBQLName,
   MBQL_CLAUSES,
+  POPULAR_EXPRESSIONS,
 } from "metabase-lib/v1/expressions/config";
 import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import type {
@@ -32,6 +34,7 @@ export type Suggestion = {
   range?: [number, number];
   column?: Lib.ColumnMetadata;
   helpText?: HelpText;
+  group?: GroupName;
 };
 
 const suggestionText = (func: MBQLClauseFunctionConfig) => {
@@ -39,6 +42,14 @@ const suggestionText = (func: MBQLClauseFunctionConfig) => {
   const suffix = args.length > 0 ? "(" : " ";
   return displayName + suffix;
 };
+
+const GROUPS = {
+  popular: {
+    displayName: t`Most used functions`,
+  },
+} as const;
+
+export type GroupName = keyof typeof GROUPS;
 
 type SuggestArgs = {
   source: string;
@@ -90,6 +101,39 @@ export function suggest({
         }
       }
     }
+
+    suggestions.push(
+      ...Array.from(POPULAR_EXPRESSIONS.keys())
+        .map((name: string): Suggestion | null => {
+          const clause = MBQL_CLAUSES[name];
+          if (!clause) {
+            return null;
+          }
+
+          // only allow aggregation functions when we're aggregating
+          if (
+            (startRule === "aggregation" && clause.type !== "aggregation") ||
+            (startRule !== "aggregation" && clause.type === "aggregation")
+          ) {
+            return null;
+          }
+
+          return {
+            type: "functions",
+            name: clause.displayName,
+            text: suggestionText(clause),
+            index: targetOffset,
+            icon: "function",
+            order: 1,
+            group: "popular",
+            helpText: database
+              ? getHelpText(name, database, reportTimezone)
+              : undefined,
+          };
+        })
+        .filter((suggestion): suggestion is Suggestion => Boolean(suggestion)),
+    );
+
     return { suggestions };
   }
 
