@@ -18,7 +18,10 @@ import { useSelector } from "metabase/lib/redux";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { DelayGroup, Icon, type IconName, Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type { Suggestion } from "metabase-lib/v1/expressions/suggest";
+import type {
+  Suggestion,
+  GroupName,
+} from "metabase-lib/v1/expressions/suggest";
 
 import { ExpressionEditorHelpTextContent } from "../ExpressionEditorHelpText";
 
@@ -55,10 +58,12 @@ export function ExpressionEditorSuggestions({
   startRule: string;
   children: ReactNode;
 }) {
+  const groups = group(suggestions);
+
   return (
     <Popover
       position="bottom-start"
-      opened={suggestions?.length > 0}
+      opened={suggestions.length > 0}
       radius="xs"
       withinPortal
       zIndex={300}
@@ -70,7 +75,18 @@ export function ExpressionEditorSuggestions({
             data-testid="expression-suggestions-list"
             className={CS.pb1}
           >
-            {suggestions.map((suggestion: Suggestion, idx: number) => (
+            {groups._none.map((suggestion: Suggestion, idx: number) => (
+              <ExpressionEditorSuggestionsListItem
+                key={`suggesion-${idx}`}
+                query={query}
+                stageIndex={stageIndex}
+                suggestion={suggestion}
+                isHighlighted={idx === highlightedIndex}
+                index={idx}
+                onSuggestionMouseDown={onSuggestionMouseDown}
+              />
+            ))}
+            {groups.popular.map((suggestion: Suggestion, idx: number) => (
               <ExpressionEditorSuggestionsListItem
                 key={`suggesion-${idx}`}
                 query={query}
@@ -214,4 +230,25 @@ function colorForIcon(icon: string | undefined | null) {
         highlighted: color("brand-white"),
       };
   }
+}
+
+type Groups = {
+  [key in GroupName | "_none"]: Suggestion[];
+};
+
+function group(suggestions: Suggestion[]): Groups {
+  const groups: Groups = {
+    _none: [],
+    popular: [],
+  };
+
+  for (const suggestion of suggestions) {
+    if (suggestion.group) {
+      groups[suggestion.group] ??= [];
+      groups[suggestion.group].push(suggestion);
+    } else {
+      groups._none.push(suggestion);
+    }
+  }
+  return groups;
 }
