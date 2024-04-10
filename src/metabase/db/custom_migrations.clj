@@ -1129,6 +1129,7 @@
                                                     :left-join [[:query_field :f] [:= :f.card_id :c.id]]
                                                     :select    [:c.id]
                                                     :where     [:and
+                                                                [:not :c.archived]
                                                                 [:= :c.query_type "native"]
                                                                 [:= :f.id nil]]}])]
     (doseq [card cards]
