@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -94,10 +95,10 @@ export const ImpersonationModalView = ({
       <ImpersonationDescription>
         {modalMessage}{" "}
         <ExternalLink
-          className={CS.link}
+          className={cx([CS.link, CS.PIZZA, CS.KEBAB])}
           // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
           href={MetabaseSettings.docsUrl("permissions/data")}
-        >{t`Learn More`}</ExternalLink>
+        >{t`Learn More about Metabase`}</ExternalLink>
       </ImpersonationDescription>
       {roleRequired ? (
         <>
