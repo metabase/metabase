@@ -679,7 +679,8 @@ function RawDataAlertTipInner(props) {
           CS.p2,
           CS.mr2,
           CS.textMedium,
-          "circle bg-light",
+          CS.circle,
+          "bg-light",
         )}
       >
         <Icon name="lightbulb" size="20" />
