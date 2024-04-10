@@ -4078,11 +4078,11 @@
                                                                    :type     :query
                                                                    :query    {:expressions  {"VendorTitle" [:concat
                                                                                                             [:field
-                                                                                                             "vendor"
+                                                                                                             "VENDOR"
                                                                                                              {:base-type :type/Text}]
                                                                                                             "🦜🦜🦜"
                                                                                                             [:field
-                                                                                                             "title"
+                                                                                                             "TITLE"
                                                                                                              {:base-type :type/Text}]]},
                                                                               :source-table (format "card__%s" base-card-id)}}}
                          DashboardCard {_ :id} {:dashboard_id       dashboard-id

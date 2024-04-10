@@ -406,13 +406,13 @@
 
 (api/defendpoint GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
-  [token export-format :as {:keys [query-params format_rows]}]
+  [token export-format format_rows :as {:keys [query-params]}]
   {export-format (into [:enum] api.dataset/export-formats)
    format_rows   [:maybe :boolean]}
   (run-query-for-unsigned-token-async
    (embed/unsign token)
    export-format
-   (m/map-keys keyword query-params)
+   (dissoc (m/map-keys keyword query-params) :format_rows)
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false

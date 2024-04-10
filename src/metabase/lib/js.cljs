@@ -1344,11 +1344,16 @@
   Question, or another query. Suggested conditions will be returned if the existing query has a foreign key to the
   primary key of the `joinable`. (See #31175 for more info.)
 
+  When editing a join, the `position` (0-based index) of the join should be provided. Any columns introduced by that
+  join or later joins are treated as not available for join conditions.
+
   Returns `[]` if we cannot determine any \"obvious\" join conditions.
 
   > **Code health:** Healthy"
-  [a-query stage-number joinable]
-  (to-array (lib.core/suggested-join-conditions a-query stage-number joinable)))
+  ([a-query stage-number joinable]
+   (to-array (lib.core/suggested-join-conditions a-query stage-number joinable)))
+  ([a-query stage-number joinable position]
+   (to-array (lib.core/suggested-join-conditions a-query stage-number joinable position))))
 
 (defn ^:export join-fields
   "Get the fields list associated with `a-join`. That is, the set of fields from the *joinable* which are being joined
@@ -1610,7 +1615,7 @@
 ;;
 ;; These functions still work, but no new calls should be added. They will be removed when legacy Metrics are removed
 ;; in 2024.
-(defn ^:export metric-metadata
+(defn ^:export legacy-metric-metadata
   "Return the opaque metadata value for the legacy Metric with `metric-id`, if it can be found.
 
   `metadata-providerable` is anything that can provide metadata - it can be JS `Metadata` itself, but more commonly it
@@ -1619,16 +1624,16 @@
   > **Code health:** Legacy, Single use, Deprecated. No new calls; this is only for legacy Metrics and will be removed
   when they are."
   [metadata-providerable metric-id]
-  (lib.metadata/metric metadata-providerable metric-id))
+  (lib.metadata/legacy-metric metadata-providerable metric-id))
 
-(defn ^:export available-metrics
+(defn ^:export available-legacy-metrics
   "Returns a JS array of opaque metadata values for those legacy Metrics that could be used as aggregations on
   `a-query`.
 
   > **Code health:** Legacy, Single use, Deprecated. No new calls; this is only for legacy Metrics and will be removed
   when they are."
   [a-query stage-number]
-  (to-array (lib.core/available-metrics a-query stage-number)))
+  (to-array (lib.core/available-legacy-metrics a-query stage-number)))
 
 ;; TODO: Move all the join logic into one block - it's scattered all through the lower half of this namespace.
 
