@@ -98,9 +98,7 @@
          (loop [acc []]
            (if-not (.next rset)
              acc
-             ;; for whatever dumb reason the Snowflake JDBC driver always returns these as uppercase despite us making
-             ;; them all lower-case
-             (let [catalog (u/lower-case-en (.getString rset "TABLE_CAT"))
+             (let [catalog (.getString rset "TABLE_CAT")
                    acc     (cond-> acc
                              (sql.tu.unique-prefix/old-dataset-name? catalog) (conj catalog))]
                (recur acc)))))))))
