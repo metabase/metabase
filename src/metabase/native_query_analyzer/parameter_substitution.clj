@@ -34,42 +34,25 @@
    ;; Potentially deprecated
    :location/city           ["Moon Twp"]
    :location/state          ["PA"]
-   :location/zip_code       ["15143"]
+   :location/zip_code       ["15108"]
    :location/country        ["USA"]})
 
 (defn- type->value
   [t]
   (default-values t))
 
-(defn- field-filter->parameter
-  [{:keys [name id widget-type default]}]
-  {:value  (or default
-               (type->value widget-type))
-   :id     id
-   :type   widget-type
-   :target [:dimension [:template-tag name]]})
-
-(defn- template-tag->parameter
-  [{:keys [type name id default] :as tag}]
-  (if (= type :dimension)
-    (field-filter->parameter tag)
-    {:value  (or default
-                 (type->value type))
-     :id     id
-     :type   type
-     :target [:variable [:template-tag name]]}))
-
-(defn- template-tags->parameters
-  [name->tag]
-  (map template-tag->parameter (vals name->tag)))
+(defn- tag-default
+  [{:keys [default type widget-type] :as tag}]
+  (assoc tag :default
+         (or default
+             (if (= type :dimension)
+               (type->value widget-type)
+               (type->value type)))))
 
 (defn replace-tags
   "Given a native dataset_query, return a `{:query \"<SQL string>\"}` where the SQL no longer has Metabase-specific
   template tags."
   [query]
-  (if-let [tags (seq (get-in query [:native :template-tags]))]
-    (->> tags
-         (template-tags->parameters)
-         (assoc query :parameters)
-         (qp.compile/compile))
+  (if-let [name->tag (seq (get-in query [:native :template-tags]))]
+    (qp.compile/compile (assoc-in query [:native :template-tags] (update-vals name->tag tag-default)))
     (:native query)))
