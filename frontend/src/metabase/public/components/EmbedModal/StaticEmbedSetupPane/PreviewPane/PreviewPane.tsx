@@ -4,19 +4,22 @@ import CS from "metabase/css/core/index.css";
 
 import { PreviewPaneContainer } from "./PreviewPane.styled";
 
-/**
- *
- * @param {object} props
- * @param {string=} props.className
- * @param {string} props.previewUrl
- * @param {boolean} props.isTransparent
- * @param {boolean} props.hidden
- * @returns
- */
-// eslint-disable-next-line react/prop-types
-export function PreviewPane({ className, previewUrl, isTransparent, hidden }) {
+type PreviewPaneProps = {
+  className?: string;
+  previewUrl: string;
+  isTransparent: boolean;
+  hidden: boolean;
+};
+
+export function PreviewPane({
+  className,
+  previewUrl,
+  isTransparent,
+  hidden,
+}: PreviewPaneProps) {
   return (
     <PreviewPaneContainer
+      data-testid="preview-pane-container"
       hidden={hidden}
       isTransparent={isTransparent}
       className={cx(className, CS.flex, CS.relative)}
