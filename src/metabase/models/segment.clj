@@ -37,7 +37,7 @@
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
 
 (t2/deftransforms :model/Segment
-  {:definition mi/transform-metric-segment-definition})
+  {:definition mi/transform-legacy-metric-segment-definition})
 
 (doto :model/Segment
   (derive :metabase/model)
@@ -83,7 +83,7 @@
             query       (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
         (lib/describe-top-level-key query :filters))
       (catch Throwable e
-        (log/error e (tru "Error calculating Segment description: {0}" (ex-message e)))
+        (log/errorf e "Error calculating Segment description: %s" (ex-message e))
         nil))))
 
 (mu/defn ^:private warmed-metadata-provider :- lib.metadata/MetadataProvider

@@ -5,34 +5,27 @@
     "emitDeclarationOnly": true,
     "outDir": "./resources/embedding-sdk/dist",
     "paths": {
-      "*": [
-        "./frontend/src/*",
-        "./frontend/test/*",
-        "./enterprise/frontend/src/*",
-        "./enterprise/frontend/test/*"
-      ],
-      "cljs/*": ["./target/cljs_dev/*"]
+      "*": ["./frontend/src/*", "./enterprise/frontend/src/*"],
+      "cljs/*": ["./target/cljs_release/*"]
     }
   },
   "include": [
-    "frontend/src/**/*",
-    "enterprise/frontend/src/**/*",
-    "frontend/test/**/*",
-    "enterprise/frontend/test/**/*"
+    "frontend/src/**/*.ts",
+    "frontend/src/**/*.tsx",
+    "enterprise/frontend/src/**/*.ts",
+    "enterprise/frontend/src/**/*.tsx"
   ],
   "exclude": [
     "node_modules",
-    // The following files will load `frontend/src/metabase/app` which will conflict with
-    // `frontend/src/metabase/App.tsx`, since now we're loading both JS and TS files.
-    "frontend/src/metabase/app-main.js",
-    "frontend/src/metabase/app-public.js",
-    "frontend/src/metabase/app-embed.js",
-
-    "**/*.unit.spec.ts",
-    "**/*.unit.spec.tsx",
+    "**/*.unit.spec.*",
+    "**/mocks/*",
     "**/tests/*",
     "**/test/*",
+    "**/__support__/*",
     "**/test-utils.ts",
+    "**/test-utils.tsx",
+    "**/test-helpers.ts",
+    "**/testMocks.ts",
     "**/*.stories.tsx"
   ]
 }

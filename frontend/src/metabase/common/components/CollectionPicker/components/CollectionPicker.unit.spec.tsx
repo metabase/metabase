@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
@@ -7,6 +8,8 @@ import {
   mockScrollBy,
   renderWithProviders,
   screen,
+  within,
+  waitFor,
 } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
 import {
@@ -182,8 +185,6 @@ describe("CollectionPicker", () => {
     expect(
       await screen.findByRole("button", { name: /Collection 3/ }),
     ).toHaveAttribute("data-active", "true");
-
-    expect(await screen.findByLabelText("empty")).toBeInTheDocument();
   });
 
   it("should render the path back to personal collection", async () => {
@@ -197,5 +198,31 @@ describe("CollectionPicker", () => {
     expect(
       await screen.findByRole("button", { name: /personal sub_collection/ }),
     ).toHaveAttribute("data-active", "true");
+  });
+
+  it("should allow selecting, but not navigating into collections without children", async () => {
+    act(() => {
+      setup({ initialValue: { id: 1, model: "collection" } });
+    });
+
+    const personalSubCollectionButton = await screen.findByRole("button", {
+      name: /personal sub_collection/,
+    });
+    expect(personalSubCollectionButton).not.toHaveAttribute("data-active");
+
+    expect(
+      within(personalSubCollectionButton).queryByLabelText("chevronright icon"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(personalSubCollectionButton);
+
+    expect(personalSubCollectionButton).toHaveAttribute("data-active", "true");
+
+    // selecting an empty collection should not show another column
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("item-picker-level-2"),
+      ).not.toBeInTheDocument(),
+    );
   });
 });

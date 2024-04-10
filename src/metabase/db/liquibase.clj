@@ -198,7 +198,7 @@
     (try
       (force-release-locks! liquibase)
       (catch Exception e
-        (log/error e (trs "Unable to release the Liquibase lock after a migration failure"))))))
+        (log/error e "Unable to release the Liquibase lock after a migration failure")))))
 
 (defn- lock-service ^LockService [^Liquibase liquibase]
   (.getLockService (LockServiceFactory/getInstance) (.getDatabase liquibase)))
@@ -278,10 +278,10 @@
 (defn migrate-up-if-needed!
   "Run any unrun `liquibase` migrations, if needed."
   [^Liquibase liquibase ^DataSource data-source]
-  (log/info (trs "Checking if Database has unrun migrations..."))
+  (log/info "Checking if Database has unrun migrations...")
   (if (seq (unrun-migrations data-source))
     (do
-     (log/info (trs "Database has unrun migrations. Checking if migration lock is taken..."))
+     (log/info "Database has unrun migrations. Checking if migration lock is taken...")
      (with-scope-locked liquibase
       ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
       ;; sure something still needs to be done...
@@ -290,14 +290,13 @@
         (if (pos? unrun-migrations-count)
           (let [^Contexts contexts nil
                 start-time         (System/currentTimeMillis)]
-            (log/info (trs "Running {0} migrations ..." unrun-migrations-count))
+            (log/infof "Running %s migrations ..." unrun-migrations-count)
             (doseq [^ChangeSet change to-run-migrations]
               (log/tracef "To run migration %s" (.getId change)))
             (.update liquibase contexts)
-            (log/info (trs "Migration complete in {0}" (u/format-milliseconds (- (System/currentTimeMillis) start-time)))))
-          (log/info
-           (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance."))))))
-    (log/info (trs "No unrun migrations found."))))
+            (log/infof "Migration complete in %s" (u/format-milliseconds (- (System/currentTimeMillis) start-time))))
+          (log/info "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
+    (log/info "No unrun migrations found.")))
 
 (defn update-with-change-log
   "Run update with the change log instances in `liquibase`. Must be called within a scope holding the liquibase lock."
@@ -340,7 +339,7 @@
             exec-listener  (proxy [AbstractChangeExecListener] []
                              (willRun [^ChangeSet change-set _database-change-log _database _run-status]
                                (when (instance? ChangeSet change-set)
-                                 (log/info (format "Start executing migration with id %s" (.getId change-set)))))
+                                 (log/infof "Start executing migration with id %s" (.getId change-set))))
 
                              (runFailed [^ChangeSet _change-set _database-change-log _database ^Exception e]
                                (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))
@@ -354,7 +353,7 @@
                                    ChangeSet$ExecType/FAILED
                                    (log/error (u/format-color 'red "[ERROR]"))
 
-                                   (log/info (format "[%s]" (.name exec-type)))))))]
+                                   (log/infof "[%s]" (.name exec-type))))))]
         (try
           (doseq [^ChangeSet change-set (.getChangeSets change-log)]
             (.setFailOnError change-set false))
@@ -403,12 +402,12 @@
 (defn rollback-major-version
   "Roll back migrations later than given Metabase major version"
   ;; default rollback to previous version
-  ([db-type conn liquibase]
+  ([conn liquibase]
    ;; get current major version of Metabase we are running
-   (rollback-major-version db-type conn liquibase (dec (config/current-major-version))))
+   (rollback-major-version conn liquibase (dec (config/current-major-version))))
 
   ;; with explicit target version
-  ([_db-type conn ^Liquibase liquibase target-version]
+  ([conn ^Liquibase liquibase target-version]
    (when (or (not (integer? target-version)) (< target-version 44))
      (throw (IllegalArgumentException.
              (format "target version must be a number between 44 and the previous major version (%d), inclusive"

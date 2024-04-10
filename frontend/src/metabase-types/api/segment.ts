@@ -1,5 +1,5 @@
 import type { StructuredQuery } from "./query";
-import type { TableId } from "./table";
+import type { Table, TableId } from "./table";
 
 export type SegmentId = number;
 
@@ -8,6 +8,7 @@ export interface Segment {
   name: string;
   description: string;
   table_id: TableId;
+  table?: Table;
   archived: boolean;
   definition: StructuredQuery;
   definition_description: string;

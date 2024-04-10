@@ -6,6 +6,8 @@ const TerserPlugin = require("terser-webpack-plugin");
 const webpack = require("webpack");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
+const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
+const path = require("path");
 
 const mainConfig = require("./webpack.config");
 
@@ -131,6 +133,15 @@ module.exports = env => {
       // https://github.com/remarkjs/remark/discussions/903
       new webpack.ProvidePlugin({
         process: "process/browser.js",
+      }),
+
+      new ForkTsCheckerWebpackPlugin({
+        async: isDevMode,
+        typescript: {
+          configFile: path.resolve(__dirname, "./tsconfig.sdk.json"),
+          mode: "write-dts",
+          memoryLimit: 4096,
+        },
       }),
 
       shouldAnalyzeBundles &&

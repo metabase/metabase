@@ -54,6 +54,7 @@ export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
   searchCaseInsensitive?: boolean;
   searchPlaceholder?: string;
   searchFuzzy?: boolean;
+  globalSearch?: boolean;
   hideEmptySectionsInSearch?: boolean;
   width?: number;
 
@@ -315,6 +316,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
           searchCaseInsensitive={searchCaseInsensitive}
           searchFuzzy={searchFuzzy}
           searchPlaceholder={searchPlaceholder}
+          globalSearch={this.props.globalSearch}
           hideEmptySectionsInSearch={hideEmptySectionsInSearch}
           data-testid={testId ? `${testId}-list` : null}
         />

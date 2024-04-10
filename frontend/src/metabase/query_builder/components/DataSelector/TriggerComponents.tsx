@@ -47,13 +47,13 @@ export function Trigger({
     <span
       className={
         className ||
-        cx(CS.px2, CS.py2, CS.textBold, CS.cursorPointer, "text-default")
+        cx(CS.px2, CS.py2, CS.textBold, CS.cursorPointer, CS.textDefault)
       }
       style={style}
     >
       {children}
       {showDropdownIcon && (
-        <Icon className="ml1" name="chevrondown" size={iconSize} />
+        <Icon className={CS.ml1} name="chevrondown" size={iconSize} />
       )}
     </span>
   );
@@ -86,7 +86,7 @@ export function FieldTrigger({
 export function DatabaseTrigger({ database }: { database: Database }) {
   return database ? (
     <span
-      className={cx(CS.textWrap, "text-grey", CS.noDecoration)}
+      className={cx(CS.textWrap, CS.noDecoration)}
       data-testid="selected-database"
     >
       {database.name}
@@ -101,7 +101,7 @@ export function DatabaseTrigger({ database }: { database: Database }) {
 export function TableTrigger({ table }: { table: Table }) {
   return table ? (
     <span
-      className={cx(CS.textWrap, "text-grey", CS.noDecoration)}
+      className={cx(CS.textWrap, CS.noDecoration)}
       data-testid="selected-table"
     >
       {table.display_name || table.name}

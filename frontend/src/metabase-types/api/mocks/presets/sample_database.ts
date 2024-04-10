@@ -384,6 +384,7 @@ export const createOrdersProductIdField = (opts?: Partial<Field>): Field =>
     effective_type: "type/Integer",
     semantic_type: "type/FK",
     fk_target_field_id: PRODUCTS.ID,
+    description: "The unique identifier of the product",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -518,6 +519,7 @@ export const createOrdersCreatedAtField = (opts?: Partial<Field>): Field =>
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
+    description: "The timestamp the order was created",
     default_dimension_option: DEFAULT_TEMPORAL_BUCKETING_OPTION,
     dimension_options: createTemporalFieldBucketingOptions(),
     fingerprint: createMockFingerprint({

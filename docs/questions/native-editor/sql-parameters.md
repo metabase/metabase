@@ -18,7 +18,7 @@ Field Filter, a special type of filter, have a [slightly different syntax](#fiel
 
 This example defines a **Text** variable called `category`:
 
-```sql
+```
 {% raw %}
 SELECT
   count(*)
@@ -31,7 +31,7 @@ WHERE
 
 Metabase will read the variable and attach a filter widget to the query, which people can use to change the value inserted into the `cat` variable with quotes. So if someone entered "Gizmo" into the filter widget, the query Metabase would run would be:
 
-```sql
+```
 SELECT
   count(*)
 FROM
@@ -118,7 +118,7 @@ Let's say you want to create a Field Filter that filters the `People` table by s
 
 The syntax for Field Filters differs from a Text, Number, or Date variable.
 
-```sql
+```
 {% raw %}
 SELECT
   *
@@ -196,7 +196,7 @@ The reason is that field filters generate SQL based on the mapped field; Metabas
 
 Your main query should be aware of all the tables that your Field Filter variable is pointing to, otherwise you'll get a SQL syntax error. For example, let's say that your main query includes a field filter like this:
 
-```sql
+```
 {% raw %}
 SELECT
   *
@@ -209,7 +209,7 @@ WHERE
 
 Let's say the `{% raw %}{{ product_category }}{% endraw %}` variable refers to another question that uses the `Products` table. For the field filter to work, you'll need to include a join to `Products` in your main query.
 
-```sql
+```
 {% raw %}
 SELECT
   *
@@ -248,7 +248,7 @@ In the variables sidebar, you can set a default value for your variable. This va
 
 You can also define default values directly in your query by enclosing comment syntax inside the end brackets of an optional parameter.
 
-```sql
+```
 WHERE column = [[ {% raw %}{{ your_parameter }}{% endraw %} --]] your_default_value
 ```
 
@@ -256,7 +256,7 @@ The comment will "activate" whenever you pass a value to `your_parameter`.
 
 This is useful when defining complex default values (for example, if your default value is a function like `CURRENT_DATE`). Here's a PostgreSQL example that sets the default value of a Date filter to the current date using `CURRENT_DATE`:
 
-```sql
+```
 {% raw %}
 SELECT
   *
@@ -286,7 +286,7 @@ To make a clause optional in your native query, type `[[brackets around a {% raw
 
 In this example, if no value is given to `cat`, then the query will just select all the rows from the `products` table. But if `cat` does have a value, like "Widget", then the query will only grab the products with a category type of Widget:
 
-```sql
+```
 {% raw %}
 SELECT
   count(*)
@@ -297,7 +297,7 @@ FROM
 
 To use multiple optional clauses, you must include at least one regular `WHERE` clause followed by optional clauses, each starting with `AND`:
 
-```sql
+```
 {% raw %}
 SELECT
   count(*)
