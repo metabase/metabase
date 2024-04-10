@@ -14,7 +14,6 @@
 (doto :model/UserParameterValue
   (derive :metabase/model))
 
-
 (t2/deftransforms :model/UserParameterValue
   {:value mi/transform-json})
 
