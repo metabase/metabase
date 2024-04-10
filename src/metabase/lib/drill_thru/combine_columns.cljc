@@ -25,28 +25,10 @@
   (when (and column
              (nil? value)
              (lib.types.isa/string? column))
-    (merge {:lib/type :metabase.lib.drill-thru/drill-thru
-            :type     :drill-thru/combine-columns
-            :column   column})))
-
-(defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/combine-columns
-  [_query _stage-number {:keys [column]}]
-  {:type   :drill-thru/combine-columns
-   :column column})
+    {:lib/type :metabase.lib.drill-thru/drill-thru
+     :type     :drill-thru/combine-columns
+     :column   column}))
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/combine-columns
   [_query _stage-number _drill & _args]
-  (throw (ex-info "Do not call drill-thru for combine-columns; add the expression directly" {}))
-  #_(let [expr           (apply lib.expression/concat column
-                              (apply concat sep-col-pairs))
-        display-name   (->> sep-col-pairs
-                            (map second)
-                            (cons column)
-                            (map :name)
-                            (str/join "_"))
-        unique-name-fn (lib.util/unique-name-generator)]
-    (doseq [col-name (->> (lib.util/query-stage query stage-number)
-                          (lib.metadata.calculation/returned-columns query stage-number)
-                          (map :name))]
-      (unique-name-fn col-name))
-    (lib.expression/expression query stage-number (unique-name-fn display-name) expr)))
+  (throw (ex-info "Do not call drill-thru for combine-columns; add the expression directly" {})))
