@@ -350,21 +350,17 @@
     (testing "Check that we properly fetch materialized views"
       (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
         (mt/with-temp [Database database {:engine :redshift, :details db-details}]
-          (let [table-name    (tx/db-qualified-table-name (:name database) "table")
+          (let [table-name    (tx/db-qualified-table-name (:name database) "sync_t")
                 qual-tbl-nm   (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) table-name)
-                mview-nm      (tx/db-qualified-table-name (:name database) "mv")
+                mview-nm      (tx/db-qualified-table-name (:name database) "sync_mv")
                 qual-mview-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) mview-nm)]
-            (try
-              (execute!
-               (str "DROP TABLE IF EXISTS %1$s CASCADE;\n"
-                    "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));\n"
-                    "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
-               qual-tbl-nm
-               qual-mview-nm)
-              (is (some #(= mview-nm (:name %))
-                        (:tables (sql-jdbc.describe-database/describe-database :redshift database))))
-              (finally
-                (execute! "DROP TABLE IF EXISTS %s CASCADE;" qual-tbl-nm)))))))))
+            (execute!
+             (str "CREATE TABLE IF NOT EXISTS %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));\n"
+                  "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
+             qual-tbl-nm
+             qual-mview-nm)
+            (is (some #(= mview-nm (:name %))
+                      (:tables (sql-jdbc.describe-database/describe-database :redshift database))))))))))
 
 (mt/defdataset unix-timestamps
   [["timestamps"
