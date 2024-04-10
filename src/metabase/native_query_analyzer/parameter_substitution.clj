@@ -14,6 +14,8 @@
    :id                      "1"
    :category                "sample category"
    :date/single             "2024-01-09"
+   ;; Card ref: doesn't matter
+   :card                    nil
    ;; Field filters
    :date/range              "2023-01-09~2024-01-09"
    :date/month-year         "2024-01"

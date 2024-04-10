@@ -2,9 +2,11 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.lib.native :as lib-native]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def ^:private ->sql (comp :query nqa.sub/replace-tags))
 
@@ -183,6 +185,16 @@
   (is (= "SELECT * FROM people WHERE (\"PUBLIC\".\"PEOPLE\".\"NAME\" LIKE ?)"
          (->sql (mt/native-query {:template-tags (tags "str_starts")
                                   :query         "SELECT * FROM people WHERE {{str_starts}}"})))))
+
+(deftest card-ref-test
+  (t2.with-temp/with-temp
+    [:model/Card {card-id :id} {:type          :model
+                                :dataset_query (mt/native-query {:query "select * from checkins"})}]
+    (let [q  (format "SELECT * FROM {{#%s}} LIMIT 3" card-id)
+          tt (lib-native/extract-template-tags q)]
+      (is (= "SELECT * FROM (select * from checkins) LIMIT 3"
+             (->sql (mt/native-query {:template-tags tt
+                                      :query         q})))))))
 
 (deftest default-values
   (let [blocklist #{;; there's a type check on :template-tags blocking these

@@ -12,9 +12,7 @@
    [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   [net.sf.jsqlparser JSQLParserException]))
+   [toucan2.core :as t2]))
 
 (def ^:dynamic *parse-queries-in-test?*
   "Normally, a native card's query is parsed on every create/update. For most tests, this is an unnecessary
@@ -81,11 +79,12 @@
       (seq table-wildcards)            (active-fields-from-tables table-wildcards))))
 
 (defn- field-ids-for-card
-  "Returns a `{:direct #{...} :indirect #{...}}` map with field IDs that (may) be referenced in the given cards's query. Errs on the side of optimism:
-  i.e., it may return fields that are *not* in the query, and is unlikely to fail to return fields that are in the
-  query.
+  "Returns a `{:direct #{...} :indirect #{...}}` map with field IDs that (may) be referenced in the given cards's
+  query. Errs on the side of optimism: i.e., it may return fields that are *not* in the query, and is unlikely to fail
+  to return fields that are in the query.
 
-  Direct references are columns that are named in the query; indirect ones are from wildcards. If a field could be both direct and indirect, it will *only* show up in the `:direct` set."
+  Direct references are columns that are named in the query; indirect ones are from wildcards. If a field could be
+  both direct and indirect, it will *only* show up in the `:direct` set."
   [card]
   (let [query        (:dataset_query card)
         db-id        (:database query)
@@ -124,5 +123,5 @@
         (t2/with-transaction [_conn]
           (t2/delete! :model/QueryField :card_id card-id)
           (t2/insert! :model/QueryField query-field-records)))
- (catch JSQLParserException e
-      (log/error e "Error parsing native query")))))
+      (catch Exception e
+        (log/error e "Error parsing native query")))))
