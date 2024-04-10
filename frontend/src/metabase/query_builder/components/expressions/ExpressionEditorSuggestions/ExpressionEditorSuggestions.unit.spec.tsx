@@ -19,6 +19,7 @@ type WrapperProps = {
   suggestions?: Suggestion[];
   highlightedIndex: number;
   onSuggestionMouseDown: () => void;
+  startRule: string;
 };
 
 function Wrapper(props: WrapperProps) {
@@ -30,14 +31,15 @@ function Wrapper(props: WrapperProps) {
 }
 
 type SetupOpts = {
-  source: string;
+  source?: string;
+  startRule: string;
 };
 
-function setup(opts: SetupOpts) {
+function setup({ source = "", startRule }: SetupOpts) {
   const query = createQuery({ metadata: METADATA });
   const stageIndex = 0;
   const { suggestions } = suggest({
-    source: opts.source,
+    source,
     query,
     stageIndex,
     metadata: METADATA,
@@ -51,6 +53,7 @@ function setup(opts: SetupOpts) {
     suggestions,
     onSuggestionMouseDown: jest.fn(),
     highlightedIndex: -1,
+    startRule,
   };
 
   const { rerender } = renderWithProviders(<Wrapper {...props} />);
@@ -61,7 +64,7 @@ function setup(opts: SetupOpts) {
 
 describe("ExpressionEditorSuggestions", () => {
   test("suggestions items should show column info icon", async () => {
-    setup({ source: "[" });
+    setup({ source: "[", startRule: "expression" });
 
     await waitFor(() =>
       screen.findAllByTestId("expression-suggestions-list-item"),
@@ -73,7 +76,7 @@ describe("ExpressionEditorSuggestions", () => {
   });
 
   test("suggestions items should show function helptext info icons", async () => {
-    setup({ source: "con" });
+    setup({ source: "con", startRule: "expression" });
 
     await waitFor(() =>
       screen.findAllByTestId("expression-suggestions-list-item"),
@@ -82,5 +85,38 @@ describe("ExpressionEditorSuggestions", () => {
     expect(screen.getAllByLabelText("More info").length).toBeGreaterThanOrEqual(
       1,
     );
+  });
+
+  test("suggestions should render correct functions link for expressions", async () => {
+    setup({ startRule: "expression" });
+    expect(screen.getByText("View all functions")).toBeInTheDocument();
+    expect(
+      screen
+        .getByText("View all functions")
+        .getAttribute("href")
+        ?.endsWith("#functions"),
+    ).toBe(true);
+  });
+
+  test("suggestions should render correct functions link for filters", async () => {
+    setup({ startRule: "boolean" });
+    expect(screen.getByText("View all functions")).toBeInTheDocument();
+    expect(
+      screen
+        .getByText("View all functions")
+        .getAttribute("href")
+        ?.endsWith("#functions"),
+    ).toBe(true);
+  });
+
+  test("suggestions should render correct functions link for aggregations", async () => {
+    setup({ startRule: "aggregation" });
+    expect(screen.getByText("View all functions")).toBeInTheDocument();
+    expect(
+      screen
+        .getByText("View all functions")
+        .getAttribute("href")
+        ?.endsWith("#aggregations"),
+    ).toBe(true);
   });
 });

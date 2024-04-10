@@ -1,5 +1,11 @@
 import cx from "classnames";
-import { useEffect, useRef, useCallback, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useCallback,
+  type ReactNode,
+  type MouseEvent,
+} from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,6 +14,8 @@ import { Popover as InfoPopover } from "metabase/components/MetadataInfo/Popover
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isObscured } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { DelayGroup, Icon, type IconName, Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { Suggestion } from "metabase-lib/v1/expressions/suggest";
@@ -16,6 +24,8 @@ import { ExpressionEditorHelpTextContent } from "../ExpressionEditorHelpText";
 
 import {
   ExpressionListItem,
+  ExpressionListFooter,
+  ExternalIcon,
   ExpressionList,
   SuggestionMatch,
   SuggestionTitle,
@@ -23,12 +33,18 @@ import {
   PopoverHoverTarget,
 } from "./ExpressionEditorSuggestions.styled";
 
+const ALL_FUNCTIONS_LINK =
+  "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#functions";
+const ALL_AGGREGATIONS_LINK =
+  "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#aggregations";
+
 export function ExpressionEditorSuggestions({
   query,
   stageIndex,
   suggestions = [],
   onSuggestionMouseDown,
   highlightedIndex,
+  startRule,
   children,
 }: {
   query: Lib.Query;
@@ -36,6 +52,7 @@ export function ExpressionEditorSuggestions({
   suggestions?: Suggestion[];
   onSuggestionMouseDown: (index: number) => void;
   highlightedIndex: number;
+  startRule: string;
   children: ReactNode;
 }) {
   return (
@@ -67,6 +84,7 @@ export function ExpressionEditorSuggestions({
             ))}
           </ExpressionList>
         </DelayGroup>
+        <AllFunctionsLink startRule={startRule} />
       </Popover.Dropdown>
     </Popover>
   );
@@ -154,6 +172,32 @@ function ExpressionEditorSuggestionsListItem({
         )}
       </ExpressionListItem>
     </HoverParent>
+  );
+}
+
+function AllFunctionsLink({ startRule }: { startRule: string }) {
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
+  const allLink =
+    startRule === "aggregation" ? ALL_AGGREGATIONS_LINK : ALL_FUNCTIONS_LINK;
+
+  function handleMouseDownCapture(evt: MouseEvent) {
+    // prevent the dropdown from closing
+    evt.preventDefault();
+  }
+
+  if (!showMetabaseLinks) {
+    return null;
+  }
+
+  return (
+    <ExpressionListFooter
+      target="blank"
+      href={allLink}
+      onMouseDownCapture={handleMouseDownCapture}
+    >
+      {t`View all functions`} <ExternalIcon name="external" />
+    </ExpressionListFooter>
   );
 }
 
