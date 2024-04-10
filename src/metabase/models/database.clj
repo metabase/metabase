@@ -154,7 +154,6 @@
         (doseq [group non-admin-groups]
           (data-perms/set-database-permission! group database :perms/view-data :unrestricted)
           (data-perms/set-database-permission! group database :perms/create-queries :no)
-          (data-perms/set-database-permission! group database :perms/native-query-editing :no)
           (data-perms/set-database-permission! group database :perms/download-results :one-million-rows)
           (data-perms/set-database-permission! group database :perms/manage-table-metadata :no)
           (data-perms/set-database-permission! group database :perms/manage-database :no))
