@@ -107,7 +107,6 @@ module.exports = {
     complexity: ["error", { max: 54 }],
     ...(shouldLintCssModules
       ? {
-          "postcss-modules/no-unused-class": "off",
           "postcss-modules/no-undef-class": "error",
         }
       : {}),
@@ -125,7 +124,7 @@ module.exports = {
     "jest/globals": true,
   },
   parser: "babel-eslint",
-  plugins: ["react", "no-only-tests"],
+  plugins: ["react", "no-only-tests", "postcss-modules"],
   extends: [
     "eslint:recommended",
     "plugin:react/recommended",
@@ -134,7 +133,6 @@ module.exports = {
     "plugin:import/errors",
     "plugin:import/warnings",
     "plugin:import/typescript",
-    ...(shouldLintCssModules ? ["plugin:postcss-modules/recommended"] : []),
   ],
   settings: {
     "import/internal-regex": "^metabase/|^metabase-lib/",
