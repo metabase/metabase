@@ -25,7 +25,7 @@ import { Loader, Text, Stack } from "metabase/ui";
 import type {
   SearchResponse as SearchResultsType,
   CollectionItem,
-  SearchModelType,
+  SearchModel,
 } from "metabase-types/api";
 
 export type SearchResultsFooter =
@@ -43,7 +43,7 @@ export type SearchResultsProps = {
   forceEntitySelect?: boolean;
   searchText?: string;
   searchFilters?: SearchFilters;
-  models?: SearchModelType[];
+  models?: SearchModel[];
   footerComponent?: SearchResultsFooter;
   onFooterSelect?: () => void;
   isSearchBar?: boolean;
@@ -85,7 +85,7 @@ export const SearchResults = ({
   const query: {
     q?: string;
     limit: number;
-    models?: SearchModelType[];
+    models?: SearchModel[];
     context?: "search-bar" | "search-app";
   } & SearchFilters = {
     q: debouncedSearchText,

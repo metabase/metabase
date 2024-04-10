@@ -1,4 +1,5 @@
-import { createEntity } from "metabase/lib/entities";
+import { activityApi } from "metabase/api";
+import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { entityTypeForObject } from "metabase/lib/schema";
 import { RecentItemSchema } from "metabase/schema";
 
@@ -25,6 +26,15 @@ const RecentItems = createEntity({
   nameOne: "recentItem",
   path: "/api/activity/recent_views",
   schema: RecentItemSchema,
+
+  api: {
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        activityApi.endpoints.listRecentItems,
+      ),
+  },
 
   wrapEntity(item, dispatch = null) {
     const entity = getEntity(item);

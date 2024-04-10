@@ -7,19 +7,27 @@ import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
 
-export type EnabledSearchModelType =
-  | "collection"
-  | "dashboard"
-  | "card"
-  | "database"
-  | "table"
-  | "dataset"
-  | "action"
-  | "indexed-entity";
+const ENABLED_SEARCH_MODELS = [
+  "collection",
+  "dashboard",
+  "card",
+  "database",
+  "table",
+  "dataset",
+  "action",
+  "indexed-entity",
+] as const;
 
-export type SearchModelType =
-  | ("segment" | "metric" | "snippet")
-  | EnabledSearchModelType;
+export const SEARCH_MODELS = [
+  ...ENABLED_SEARCH_MODELS,
+  "segment",
+  "metric",
+  "snippet",
+] as const;
+
+export type EnabledSearchModel = typeof ENABLED_SEARCH_MODELS[number];
+
+export type SearchModel = typeof SEARCH_MODELS[number];
 
 export interface SearchScore {
   weight: number;
@@ -42,7 +50,7 @@ export interface SearchScore {
 
 interface BaseSearchResult<
   Id extends SearchResultId,
-  Model extends SearchModelType,
+  Model extends SearchModel,
 > {
   id: Id;
   model: Model;
@@ -51,12 +59,12 @@ interface BaseSearchResult<
 
 export interface SearchResponse<
   Id extends SearchResultId = SearchResultId,
-  Model extends SearchModelType = SearchModelType,
+  Model extends SearchModel = SearchModel,
   Result extends BaseSearchResult<Id, Model> = SearchResult<Id, Model>,
 > {
   data: Result[];
   models: Model[] | null;
-  available_models: SearchModelType[];
+  available_models: SearchModel[];
   limit: number;
   offset: number;
   table_db_id: DatabaseId | null;
@@ -77,7 +85,7 @@ export type SearchResultId =
 
 export interface SearchResult<
   Id extends SearchResultId = SearchResultId,
-  Model extends SearchModelType = SearchModelType,
+  Model extends SearchModel = SearchModel,
 > {
   id: Id;
   name: string;
@@ -116,7 +124,7 @@ export interface SearchRequest {
   q?: string;
   archived?: boolean;
   table_db_id?: DatabaseId;
-  models?: SearchModelType | SearchModelType[];
+  models?: SearchModel[];
   filter_items_in_personal_collection?: "only" | "exclude";
   context?: "search-bar" | "search-app";
   created_at?: string | null;

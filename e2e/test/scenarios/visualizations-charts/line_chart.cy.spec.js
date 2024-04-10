@@ -8,6 +8,7 @@ import {
   openSeriesSettings,
   queryBuilderMain,
   addOrUpdateDashboardCard,
+  modal,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -521,7 +522,7 @@ describe("scenarios > visualizations > line chart", () => {
         cy.findByDisplayValue(old_name).clear().type(new_name);
       });
 
-      cy.get(".Modal")
+      modal()
         .as("modal")
         .within(() => {
           cy.button("Done").click();
