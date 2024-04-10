@@ -746,7 +746,7 @@
                    :headers))))
       (testing " handles large numbers of tables and fields sensibly with prefix"
         (mt/with-model-cleanup [Field Table Database]
-          (let [tmp-db (first (t2/insert-returning-instances! Database {:name "Temp Autocomplete Pagination DB" :engine "h2" :details "{}"}))]
+          (mt/with-temp [Database tmp-db {:name "Temp Autocomplete Pagination DB" :engine "h2"}]
             ;; insert more than 50 temporary tables and fields
             (doseq [i (range 60)]
               (let [tmp-tbl (first (t2/insert-returning-instances! Table {:name (format "My Table %d" i) :db_id (u/the-id tmp-db) :active true}))]
