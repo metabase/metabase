@@ -27,6 +27,8 @@ export const tryGetDate = (rowValue: RowValue): Dayjs | null => {
   return date.isValid() ? date : null;
 };
 
+export const msToDays = (ms: number) => ms / (24 * 60 * 60 * 1000);
+
 // mostly matches
 // https://github.com/mbostock/d3/wiki/Time-Scales
 // https://github.com/mbostock/d3/wiki/Time-Intervals

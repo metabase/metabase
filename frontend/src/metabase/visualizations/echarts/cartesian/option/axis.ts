@@ -24,6 +24,7 @@ import type {
 import { isNumericBaseType } from "metabase-lib/v1/types/utils/isa";
 
 import type { ChartMeasurements } from "../chart-measurements/types";
+import { getScaledMinAndMax } from "../model/axis";
 import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
 
 import { getTicksOptions } from "./ticks";
@@ -75,21 +76,6 @@ export const getYAxisRange = (
     ? getCustomAxisRange({ axisExtent: axisModel.extent, customMin, customMax })
     : {};
 };
-
-function getScaledMinAndMax(
-  settings: ComputedVisualizationSettings,
-  yAxisScaleTransforms: NumericAxisScaleTransforms,
-) {
-  const min = settings["graph.y_axis.min"];
-  const max = settings["graph.y_axis.max"];
-
-  const { toEChartsAxisValue } = yAxisScaleTransforms;
-
-  const customMin = min ? (toEChartsAxisValue(min) as number) : undefined;
-  const customMax = max ? (toEChartsAxisValue(max) as number) : undefined;
-
-  return { customMin, customMax };
-}
 
 export const getAxisNameDefaultOption = (
   { getColor, fontFamily }: RenderingContext,
