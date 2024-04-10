@@ -95,12 +95,11 @@ textarea {
   opacity: 0.4;
 }
 
-:global(.faded),
 .faded {
   opacity: 0.4;
 }
 
-:global(.fade-in-hover:hover) {
+.fadeInHover:hover {
   opacity: 1;
   transition: opacity 0.3s;
 }
