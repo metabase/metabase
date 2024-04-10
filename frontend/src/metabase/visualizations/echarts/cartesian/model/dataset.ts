@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import moment from "moment-timezone";
 
 import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
 import { checkNumber, isNotNull } from "metabase/lib/types";
@@ -544,6 +545,59 @@ export const applyVisualizationSettingsDataTransformations = (
     xAxisModel.isHistogram
   ) {
     dataset = filterNullDimensionValues(dataset, showWarning);
+  }
+
+  if (xAxisModel.axisType === "time" && "unit" in xAxisModel) {
+    const unit = xAxisModel.unit;
+    const nextDataset = [];
+
+    // TODO Which ORIGINAL_INDEX_DATA_KEY to use when combining datums?
+    const nonCombinableDatumKeys = [X_AXIS_DATA_KEY, ORIGINAL_INDEX_DATA_KEY];
+
+    for (let i = 0; i < dataset.length; i++) {
+      const datum = dataset[i];
+      const nextDatum = dataset[i + 1];
+
+      if (!nextDatum) {
+        nextDataset.push(datum);
+        continue;
+      }
+
+      let d1 = moment(datum[X_AXIS_DATA_KEY] as string);
+      let d2 = moment(nextDatum[X_AXIS_DATA_KEY] as string);
+
+      if (d1.isDST() && !d2.isDST()) {
+        d1 = d1.subtract(1, "hour");
+      } else if (d2.isDST() && !d1.isDST()) {
+        d2 = d2.subtract(1, "hour");
+      }
+
+      const diff = d2.diff(d1, unit, false);
+      const isOverlapping = diff < 1;
+
+      if (isOverlapping) {
+        const combinedDatum = { ...datum };
+
+        Object.keys(datum)
+          .filter(key => !nonCombinableDatumKeys.includes(key))
+          .forEach(key => {
+            if (
+              typeof datum[key] === "number" &&
+              typeof nextDatum[key] === "number"
+            ) {
+              combinedDatum[key] = datum[key] + nextDatum[key];
+            } else {
+              // Can we have anything else here? What should we do?
+            }
+          });
+        nextDataset.push(combinedDatum);
+        i++;
+      } else {
+        nextDataset.push(datum);
+      }
+    }
+
+    dataset = nextDataset;
   }
 
   if (settings["graph.y_axis.scale"] === "log") {
