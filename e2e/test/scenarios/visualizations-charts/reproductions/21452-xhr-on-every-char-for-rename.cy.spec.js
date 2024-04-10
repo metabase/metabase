@@ -4,6 +4,7 @@ import {
   visitQuestionAdhoc,
   popover,
   openSeriesSettings,
+  lineChartCircle,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -40,7 +41,7 @@ describe("issue 21452", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
 
-    cy.get("circle").first().realHover();
+    lineChartCircle().first().realHover();
 
     popover().within(() => {
       testPairedTooltipValues("Created At", "2022");
