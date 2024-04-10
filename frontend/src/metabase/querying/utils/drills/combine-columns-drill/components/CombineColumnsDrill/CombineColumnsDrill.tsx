@@ -8,7 +8,8 @@ import * as Lib from "metabase-lib";
 import type { ColumnAndSeparator } from "../../types";
 import {
   getColumnOptions,
-  getInitialColumnAndSeparator,
+  getDefaultSeparator,
+  getNewQuery,
   getNextColumnAndSeparator,
 } from "../../utils";
 import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
@@ -17,28 +18,36 @@ import { Preview } from "../Preview";
 import styles from "./CombineColumnsDrill.module.css";
 
 interface Props {
+  column: Lib.ColumnMetadata;
   drill: Lib.DrillThru;
-  drillInfo: Lib.CombineColumnsDrillThruInfo;
   query: Lib.Query;
   stageIndex: number;
-  onSubmit: (columnsAndSeparators: ColumnAndSeparator[]) => void;
+  onSubmit: (query: Lib.Query) => void;
 }
 
 export const CombineColumnsDrill = ({
+  column,
   drill,
-  drillInfo,
   query,
   stageIndex,
   onSubmit,
 }: Props) => {
-  const { availableColumns, column } = drillInfo;
+  const defaultSeparator = getDefaultSeparator(column);
   const columnInfo = Lib.displayInfo(query, stageIndex, column);
+  const columns = Lib.expressionableColumns(query, stageIndex);
   const options = useMemo(() => {
-    return getColumnOptions(query, stageIndex, availableColumns);
-  }, [query, stageIndex, availableColumns]);
+    return getColumnOptions(query, stageIndex, columns);
+  }, [query, stageIndex, columns]);
   const [columnsAndSeparators, setColumnsAndSeparators] = useState([
-    getInitialColumnAndSeparator(drillInfo),
+    {
+      column: columns[0],
+      separator: defaultSeparator,
+    },
   ]);
+  const newQuery = useMemo(
+    () => getNewQuery(query, stageIndex, column, columnsAndSeparators),
+    [query, stageIndex, column, columnsAndSeparators],
+  );
 
   const handleChange = (index: number, change: Partial<ColumnAndSeparator>) => {
     setColumnsAndSeparators(value => [
@@ -51,7 +60,12 @@ export const CombineColumnsDrill = ({
   const handleAdd = () => {
     setColumnsAndSeparators(value => [
       ...value,
-      getNextColumnAndSeparator(drillInfo, options, columnsAndSeparators),
+      getNextColumnAndSeparator(
+        columns,
+        defaultSeparator,
+        options,
+        columnsAndSeparators,
+      ),
     ]);
   };
 
@@ -64,7 +78,7 @@ export const CombineColumnsDrill = ({
 
   const handleSubmit: FormEventHandler = event => {
     event.preventDefault();
-    onSubmit(columnsAndSeparators);
+    onSubmit(newQuery);
   };
 
   return (

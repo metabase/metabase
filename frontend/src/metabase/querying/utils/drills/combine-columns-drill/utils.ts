@@ -33,21 +33,15 @@ export const toSelectValue = (
   return String(index);
 };
 
-export const getInitialColumnAndSeparator = (
-  drillInfo: Lib.CombineColumnsDrillThruInfo,
-): ColumnAndSeparator => ({
-  column: drillInfo.availableColumns[0],
-  separator: drillInfo.defaultSeparator,
-});
-
 export const getNextColumnAndSeparator = (
-  drillInfo: Lib.CombineColumnsDrillThruInfo,
+  columns: Lib.ColumnMetadata[],
+  defaultSeparator: string,
   options: ColumnOption[],
   columnsAndSeparators: ColumnAndSeparator[],
 ): ColumnAndSeparator => {
   const lastSeparator = columnsAndSeparators.at(-1)?.separator;
-  const separator = lastSeparator ?? drillInfo.defaultSeparator;
-  const defaultColumn = drillInfo.availableColumns[0];
+  const separator = lastSeparator ?? defaultSeparator;
+  const defaultColumn = columns[0];
   const nextUnusedOption = options.find(option => {
     return columnsAndSeparators.every(({ column }) => column !== option.column);
   });
@@ -85,4 +79,58 @@ export const getPreview = (
     queryResults,
   );
   return preview;
+};
+
+export const getDefaultSeparator = (column: Lib.ColumnMetadata): string => {
+  if (Lib.isURL(column)) {
+    return "/";
+  }
+
+  if (Lib.isEmail(column)) {
+    return "";
+  }
+
+  return " ";
+};
+
+export const getNewQuery = (
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  columnsAndSeparators: ColumnAndSeparator[],
+) => {
+  const expressionName = getExpressionName(
+    query,
+    stageIndex,
+    column,
+    columnsAndSeparators,
+  );
+  const expressionClause = Lib.expressionClause("concat", [
+    column,
+    ...columnsAndSeparators.flatMap(({ column, separator }) => [
+      separator,
+      column,
+    ]),
+  ]);
+  const newQuery = Lib.expression(
+    query,
+    stageIndex,
+    expressionName,
+    expressionClause,
+  );
+
+  return newQuery;
+};
+
+export const getExpressionName = (
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  columnsAndSeparators: ColumnAndSeparator[],
+): string => {
+  const columns = [column, ...columnsAndSeparators.map(({ column }) => column)];
+  const names = columns.map(column =>
+    Lib.displayInfo(query, stageIndex, column),
+  );
+  return names.join(" ");
 };
