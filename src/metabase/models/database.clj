@@ -277,9 +277,9 @@
               ;; reschedule the database. Make sure we're passing back the old schedule if one of the two wasn't
               ;; supplied
               (schedule-tasks!
-               #p (assoc database
-                         :metadata_sync_schedule      new-metadata-schedule
-                         :cache_field_values_schedule new-fieldvalues-schedule)))))
+               (assoc database
+                      :metadata_sync_schedule      new-metadata-schedule
+                      :cache_field_values_schedule new-fieldvalues-schedule)))))
         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
         (when (and (:database-enable-actions (or new-settings existing-settings))
