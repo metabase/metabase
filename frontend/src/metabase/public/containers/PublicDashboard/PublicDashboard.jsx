@@ -32,7 +32,7 @@ import {
 } from "metabase/services";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 
-import EmbedFrame from "../components/EmbedFrame";
+import EmbedFrame from "../../components/EmbedFrame";
 
 import { DashboardContainer } from "./PublicDashboard.styled";
 
@@ -57,7 +57,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-class PublicDashboard extends Component {
+class PublicDashboardInner extends Component {
   _initialize = async () => {
     const {
       initialize,
@@ -206,8 +206,8 @@ class PublicDashboard extends Component {
   }
 }
 
-export default _.compose(
+export const PublicDashboard = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   title(({ dashboard }) => dashboard && dashboard.name),
   DashboardControls,
-)(PublicDashboard);
+)(PublicDashboardInner);
