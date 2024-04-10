@@ -188,30 +188,6 @@ export const getFieldsPermission = (
   }
 };
 
-export function hasPermissionValueInGraph(
-  permissions: GroupsPermissions,
-  permissionValue: DataPermissionValue,
-): boolean {
-  function _hasPermissionValueInGraph(permissionsGraphSection: any) {
-    for (const key in permissionsGraphSection) {
-      if (permissionsGraphSection[key] === permissionValue) {
-        return true;
-      } else if (
-        typeof permissionsGraphSection[key] === "object" &&
-        hasPermissionValueInGraph(permissionsGraphSection[key], permissionValue)
-      ) {
-        return true;
-      } else {
-        continue;
-      }
-    }
-
-    return false;
-  }
-
-  return _hasPermissionValueInGraph(permissions);
-}
-
 // Ideally this would live in downgradeNativePermissionsIfNeeded, but originally that function was
 // created to only be called if a view permission was changing. there needs to be some reworking
 // in some of the setter methods to make sure the downgrading will always happen at the appropriate time

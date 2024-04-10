@@ -528,38 +528,6 @@ describe("scenarios > admin > permissions", () => {
       cy.findByLabelText("Close").click();
     });
 
-    // Data permissions w/ `legacy-no-self-service` in graph
-    cy.visit("/admin/permissions");
-
-    cy.intercept("GET", `/api/permissions/graph/group/${ALL_USERS_GROUP}`, {
-      statusCode: 200,
-      body: {
-        revision: 1,
-        groups: {
-          1: {
-            1: {
-              "view-data": "legacy-no-self-service",
-              "create-queries": "query-builder-and-native",
-              download: { schemas: "full" },
-            },
-          },
-        },
-      },
-    });
-
-    cy.get("main").within(() => {
-      cy.findByText("Permissions help").as("permissionHelpButton").click();
-      cy.get("@permissionHelpButton").should("not.exist");
-    });
-
-    cy.findByLabelText("Permissions help reference")
-      .as("permissionsHelpContent")
-      .within(() => {
-        cy.findByText("Database 'View data' levels").click();
-        cy.findAllByText(/No self-service/);
-        cy.findByLabelText("Close").click();
-      });
-
     cy.get("main").within(() => {
       cy.findByText("Collections").click();
       cy.get("@permissionHelpButton").click();
