@@ -461,59 +461,71 @@
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                  :model/Database         {db-id-1 :id}  {}
                  :model/Database         {db-id-2 :id}  {}]
-    ;; First delete the default permissions for the group so we start with a clean slate
-    (t2/delete! :model/DataPermissions :group_id group-id)
-    (testing "Data permissions... "
-      (testing "A new database gets `unrestricted` perms if a group only has `unrestricted` (or `legacy-no-self-service`) perms for other databases"
-        (data-perms/set-database-permission! group-id db-id-1 :perms/view-data :unrestricted)
-        (mt/with-temp [:model/Database {new-db-id :id} {}]
-          (is (= :unrestricted (t2/select-one-fn :perm_value
-                                                 :model/DataPermissions
-                                                 :db_id     new-db-id
-                                                 :group_id  group-id
-                                                 :perm_type :perms/view-data))))
-        (data-perms/set-database-permission! group-id db-id-1 :perms/view-data :legacy-no-self-service)
-        (mt/with-temp [:model/Database {new-db-id :id} {}]
-          (is (= :unrestricted (t2/select-one-fn :perm_value
-                                                 :model/DataPermissions
-                                                 :db_id     new-db-id
-                                                 :group_id  group-id
-                                                 :perm_type :perms/view-data)))))
-      (testing "A new database gets `blocked` data perms if a group has `blocked` perms for any database"
-        (data-perms/set-database-permission! group-id db-id-2 :perms/view-data :blocked)
-        (mt/with-temp [:model/Database {new-db-id :id} {}]
-          (is (= :blocked (t2/select-one-fn :perm_value
-                                            :model/DataPermissions
-                                            :db_id     new-db-id
-                                            :group_id  group-id
-                                            :perm_type :perms/view-data))))))
+    (mt/with-model-cleanup [:model/Database]
+      ;; First delete the default permissions for the group so we start with a clean slate
+      (t2/delete! :model/DataPermissions :group_id group-id)
+      (testing "Data permissions... "
+        (testing "A new database gets `unrestricted` perms if a group only has `unrestricted` (or `legacy-no-self-service`) perms for other databases"
+          (data-perms/set-database-permission! group-id db-id-1 :perms/view-data :unrestricted)
+          ;; We don't use `with-temp` to create the new Database because it always grants permissions automatically
+          (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
+            (is (= :unrestricted (t2/select-one-fn :perm_value
+                                                   :model/DataPermissions
+                                                   :db_id     new-db-id
+                                                   :group_id  group-id
+                                                   :perm_type :perms/view-data)))
+            (t2/delete! :model/Database :id new-db-id))
 
-    (t2/delete! :model/DataPermissions :group_id group-id)
-    (testing "Query permissions... "
-      (testing "A new database gets `query-builder-and-native` query permissions if a group only has `query-builder-and-native` for other databases"
-        (data-perms/set-database-permission! group-id db-id-1 :perms/create-queries :query-builder-and-native)
-        (mt/with-temp [:model/Database {new-db-id :id} {}]
-          (is (= :query-builder-and-native (t2/select-one-fn :perm_value
-                                                             :model/DataPermissions
-                                                             :db_id     new-db-id
-                                                             :group_id  group-id
-                                                             :perm_type :perms/create-queries)))))
-      (testing "A new database gets `query-builder` query permissions if a group has `query-builder` for any database"
-        (data-perms/set-database-permission! group-id db-id-2 :perms/create-queries :query-builder)
-        (mt/with-temp [:model/Database {new-db-id :id} {}]
-          (is (= :query-builder (t2/select-one-fn :perm_value
-                                                  :model/DataPermissions
-                                                  :db_id     new-db-id
-                                                  :group_id  group-id
-                                                  :perm_type :perms/create-queries)))))
-      (testing "A new database gets `no` query permissions if a group has `no` for any database"
-        (data-perms/set-database-permission! group-id db-id-2 :perms/create-queries :no)
-        (mt/with-temp [:model/Database {new-db-id :id} {}]
-          (is (= :no (t2/select-one-fn :perm_value
-                                       :model/DataPermissions
-                                       :db_id     new-db-id
-                                       :group_id  group-id
-                                       :perm_type :perms/create-queries))))))))
+          (data-perms/set-database-permission! group-id db-id-1 :perms/view-data :legacy-no-self-service)
+          (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
+            (is (= :unrestricted (t2/select-one-fn :perm_value
+                                                   :model/DataPermissions
+                                                   :db_id     new-db-id
+                                                   :group_id  group-id
+                                                   :perm_type :perms/view-data)))
+            (t2/delete! :model/Database :id new-db-id)))
+
+        (testing "A new database gets `blocked` data perms if a group has `blocked` perms for any database"
+          (data-perms/set-database-permission! group-id db-id-2 :perms/view-data :blocked)
+          (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
+            (is (= :blocked (t2/select-one-fn :perm_value
+                                              :model/DataPermissions
+                                              :db_id     new-db-id
+                                              :group_id  group-id
+                                              :perm_type :perms/view-data)))
+            (t2/delete! :model/Database :id new-db-id))))
+
+      (t2/delete! :model/DataPermissions :group_id group-id)
+      (testing "Query permissions... "
+        (testing "A new database gets `query-builder-and-native` query permissions if a group only has `query-builder-and-native` for other databases"
+          (data-perms/set-database-permission! group-id db-id-1 :perms/create-queries :query-builder-and-native)
+          (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
+            (is (= :query-builder-and-native (t2/select-one-fn :perm_value
+                                                               :model/DataPermissions
+                                                               :db_id     new-db-id
+                                                               :group_id  group-id
+                                                               :perm_type :perms/create-queries)))
+            (t2/delete! :model/Database :id new-db-id)))
+
+        (testing "A new database gets `query-builder` query permissions if a group has `query-builder` for any database"
+          (data-perms/set-database-permission! group-id db-id-2 :perms/create-queries :query-builder)
+          (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
+            (is (= :query-builder (t2/select-one-fn :perm_value
+                                                    :model/DataPermissions
+                                                    :db_id     new-db-id
+                                                    :group_id  group-id
+                                                    :perm_type :perms/create-queries)))
+            (t2/delete! :model/Database :id new-db-id)))
+
+        (testing "A new database gets `no` query permissions if a group has `no` for any database"
+          (data-perms/set-database-permission! group-id db-id-2 :perms/create-queries :no)
+          (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
+            (is (= :no (t2/select-one-fn :perm_value
+                                         :model/DataPermissions
+                                         :db_id     new-db-id
+                                         :group_id  group-id
+                                         :perm_type :perms/create-queries)))
+            (t2/delete! :model/Database :id new-db-id)))))))
 
 (deftest set-new-table-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
