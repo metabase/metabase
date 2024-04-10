@@ -146,7 +146,7 @@
   [db-type       :- :keyword
    data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
    auto-migrate? :- :boolean]
-  (log/info (trs "Running Database Migrations..."))
+  (log/info "Running Database Migrations...")
   (migrate! db-type data-source (if auto-migrate? :up :print))
   (log/info "Database Migrations Current ..." (u/emoji "✅")))
 
@@ -165,7 +165,7 @@
                 custom-migrations/*create-sample-content* create-sample-content?]
          (verify-db-connection db-type data-source)
          (error-if-downgrade-required! data-source)
-         (run-schema-migrations! data-source auto-migrate?))))
+         (run-schema-migrations! db-type data-source auto-migrate?))))
   :done)
 
 ;;;; Toucan Setup.
