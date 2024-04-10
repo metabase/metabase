@@ -56,7 +56,7 @@ const useGetInitialCollection = (
 
   const { data: currentCollection, error: collectionError } =
     useCollectionQuery({
-      id: isValidCollectionId(collectionId) ? collectionId : "root",
+      id: (isValidCollectionId(collectionId) && collectionId) || "root",
       enabled: !isQuestion || !!currentQuestion,
     });
 
@@ -136,24 +136,22 @@ export const QuestionPicker = ({
           models,
         });
 
-        setPath(newPath);
-
         if (currentCollection.can_write) {
           // start with the current item selected if we can
-          onItemSelect(
-            currentQuestion
-              ? {
-                  id: currentQuestion.id,
-                  name: currentQuestion.name,
-                  model: currentQuestion.type === "model" ? "dataset" : "card",
-                }
-              : {
-                  id: currentCollection.id,
-                  name: currentCollection.name,
-                  model: "collection",
-                },
-          );
+          newPath[newPath.length - 1].selectedItem = currentQuestion
+            ? {
+                id: currentQuestion.id,
+                name: currentQuestion.name,
+                model: currentQuestion.type === "model" ? "dataset" : "card",
+              }
+            : {
+                id: currentCollection.id,
+                name: currentCollection.name,
+                model: "collection",
+              };
         }
+
+        setPath(newPath);
       }
     },
     [currentCollection, userPersonalCollectionId],
