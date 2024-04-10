@@ -15,14 +15,3 @@ export type WaterfallColors = {
   waterfallPositive: string;
   waterfallNegative: string;
 };
-
-export const getWaterfallColors = (
-  colorSettings: Partial<WaterfallColors> = {},
-  getColor: ColorGetter,
-): WaterfallColors => {
-  return {
-    waterfallTotal: colorSettings.waterfallTotal ?? getColor("text-dark"),
-    waterfallPositive: colorSettings.waterfallPositive ?? getColor("accent1"),
-    waterfallNegative: colorSettings.waterfallNegative ?? getColor("accent3"),
-  };
-};
