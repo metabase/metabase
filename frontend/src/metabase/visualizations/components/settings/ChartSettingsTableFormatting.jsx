@@ -179,7 +179,7 @@ const SortableRuleList = ({ rules, cols, onEdit, onRemove, onMove }) => {
   const getId = rule => rule.id.toString();
 
   const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 0 },
+    activationConstraint: { distance: 15 },
   });
 
   const handleSortEnd = ({ id, newIndex }) => {
