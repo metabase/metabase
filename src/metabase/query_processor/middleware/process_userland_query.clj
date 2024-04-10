@@ -57,7 +57,6 @@
 
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
- <<<<<<< HEAD
   [execution-info field-usages]
   (let [execution-info (add-running-time execution-info)
         ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
