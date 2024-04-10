@@ -43,7 +43,7 @@ const suggestionText = (func: MBQLClauseFunctionConfig) => {
   return displayName + suffix;
 };
 
-const GROUPS = {
+export const GROUPS = {
   popular: {
     displayName: t`Most used functions`,
   },

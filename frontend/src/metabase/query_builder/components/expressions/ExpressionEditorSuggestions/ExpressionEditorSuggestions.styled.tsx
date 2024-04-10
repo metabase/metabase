@@ -78,3 +78,19 @@ export const PopoverHoverTarget = styled(BasePopoverHoverTarget)`
     visibility: visible;
   }
 `;
+
+export const GroupTitle = styled(ExpressionListItem)`
+  text-transform: uppercase;
+  font-weight: bold;
+  font-size: 12px;
+  color: ${color("text-medium")};
+
+  border-top: 1px solid ${color("border")};
+  height: 2rem;
+  display: flex;
+  align-items: center;
+
+  &:first-child {
+    border-top: none;
+  }
+`;

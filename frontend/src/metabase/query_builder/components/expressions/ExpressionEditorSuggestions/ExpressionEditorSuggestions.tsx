@@ -22,6 +22,7 @@ import type {
   Suggestion,
   GroupName,
 } from "metabase-lib/v1/expressions/suggest";
+import { GROUPS } from "metabase-lib/v1/expressions/suggest";
 
 import { ExpressionEditorHelpTextContent } from "../ExpressionEditorHelpText";
 
@@ -32,6 +33,7 @@ import {
   ExpressionList,
   SuggestionMatch,
   SuggestionTitle,
+  GroupTitle,
   QueryColumnInfoIcon,
   PopoverHoverTarget,
 } from "./ExpressionEditorSuggestions.styled";
@@ -75,33 +77,67 @@ export function ExpressionEditorSuggestions({
             data-testid="expression-suggestions-list"
             className={CS.pb1}
           >
-            {groups._none.map((suggestion: Suggestion, idx: number) => (
-              <ExpressionEditorSuggestionsListItem
-                key={`suggesion-${idx}`}
-                query={query}
-                stageIndex={stageIndex}
-                suggestion={suggestion}
-                isHighlighted={idx === highlightedIndex}
-                index={idx}
-                onSuggestionMouseDown={onSuggestionMouseDown}
-              />
-            ))}
-            {groups.popular.map((suggestion: Suggestion, idx: number) => (
-              <ExpressionEditorSuggestionsListItem
-                key={`suggesion-${idx}`}
-                query={query}
-                stageIndex={stageIndex}
-                suggestion={suggestion}
-                isHighlighted={idx === highlightedIndex}
-                index={idx}
-                onMouseDown={onSuggestionMouseDown}
-              />
-            ))}
+            <ExpressionEditorSuggestionsListGroup
+              suggestions={groups._none}
+              query={query}
+              stageIndex={stageIndex}
+              highlightedIndex={highlightedIndex}
+              onSuggestionMouseDown={onSuggestionMouseDown}
+            />
+            <ExpressionEditorSuggestionsListGroup
+              name="popular"
+              suggestions={groups.popular}
+              query={query}
+              stageIndex={stageIndex}
+              highlightedIndex={highlightedIndex}
+              onSuggestionMouseDown={onSuggestionMouseDown}
+            />
           </ExpressionList>
         </DelayGroup>
         <AllFunctionsLink startRule={startRule} />
       </Popover.Dropdown>
     </Popover>
+  );
+}
+
+function ExpressionEditorSuggestionsListGroup({
+  name,
+  query,
+  stageIndex,
+  suggestions = [],
+  onSuggestionMouseDown,
+  highlightedIndex,
+}: {
+  name?: GroupName;
+  query: Lib.Query;
+  stageIndex: number;
+  suggestions?: Suggestion[];
+  onSuggestionMouseDown: (index: number) => void;
+  highlightedIndex: number;
+}) {
+  const definition = name && GROUPS[name];
+
+  if (suggestions.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      {definition?.displayName && (
+        <GroupTitle isHighlighted={false}>{definition.displayName}</GroupTitle>
+      )}
+      {suggestions.map((suggestion: SuggestionWithIndex) => (
+        <ExpressionEditorSuggestionsListItem
+          key={`suggesion-${suggestion.index}`}
+          query={query}
+          stageIndex={stageIndex}
+          suggestion={suggestion}
+          isHighlighted={suggestion.index === highlightedIndex}
+          index={suggestion.index}
+          onMouseDown={onSuggestionMouseDown}
+        />
+      ))}
+    </>
   );
 }
 
@@ -232,8 +268,12 @@ function colorForIcon(icon: string | undefined | null) {
   }
 }
 
+type SuggestionWithIndex = Suggestion & {
+  index: number;
+};
+
 type Groups = {
-  [key in GroupName | "_none"]: Suggestion[];
+  [key in GroupName | "_none"]: SuggestionWithIndex[];
 };
 
 function group(suggestions: Suggestion[]): Groups {
@@ -242,13 +282,16 @@ function group(suggestions: Suggestion[]): Groups {
     popular: [],
   };
 
-  for (const suggestion of suggestions) {
-    if (suggestion.group) {
-      groups[suggestion.group] ??= [];
-      groups[suggestion.group].push(suggestion);
-    } else {
-      groups._none.push(suggestion);
-    }
-  }
+  suggestions
+    .map((suggestion, index) => ({ ...suggestion, index }))
+    .forEach(function (suggestion) {
+      if (suggestion.group) {
+        groups[suggestion.group] ??= [];
+        groups[suggestion.group].push(suggestion);
+      } else {
+        groups._none.push(suggestion);
+      }
+    });
+
   return groups;
 }
