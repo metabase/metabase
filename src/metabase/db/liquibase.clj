@@ -252,7 +252,7 @@
   (let [done? #(empty? (locked-instances))]
     (if (done?)
       :none
-      (do (log/info "Waiting for migration lock(s) to be released")
+      (do (log/infof "Waiting for migration lock(s) to be released (max %.1f secs)" (/ timeout-ms 1000))
           (wait-until done? sleep-ms timeout-ms)))))
 
 (defn- liquibase->url [^Liquibase liquibase]
@@ -264,12 +264,14 @@
   "Release any locks held by this process corresponding to the same database."
   [conn-or-data-source]
   (when-let [instances (not-empty (locked-instances))]
+    ;; We cannot use the existing instances to clear the locks, as their connections are currently blocked.
+    ;; Since we cannot "clone" a connection (they have "forgotten" their password), we use this new conn.
     (with-liquibase [liquibase conn-or-data-source]
       (let [url (liquibase->url liquibase)]
         (doseq [instance instances]
           (when (= url (liquibase->url instance))
             (log/warnf "Releasing liquibase lock on %s before migrations finished" url)
-            (release-lock-if-needed! instance #_liquibase)))))))
+            (release-lock-if-needed! liquibase)))))))
 
 (def ^:private ^:dynamic *lock-depth* 0)
 

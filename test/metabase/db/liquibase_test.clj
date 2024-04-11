@@ -10,7 +10,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test :as mt]
-   [metabase.util.log :as log]
    [metabase.util.yaml :as u.yaml]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]))
@@ -116,14 +115,9 @@
                 locked?  (promise)]
             (future
              (liquibase/with-scope-locked liquibase
-               (let [liquibase-conn (.. liquibase getDatabase getConnection)]
-                 (is (liquibase/holding-lock? liquibase))
-                 (deliver locked true)
-                 (log/info "Starting mock migration transaction")
-                 (.setAutoCommit liquibase-conn false)
-                 @released
-                 (.commit liquibase-conn))
-               (log/info "Finished mock migration transaction")
+               (is (liquibase/holding-lock? liquibase))
+               (deliver locked true)
+               @released
                (deliver locked? (liquibase/holding-lock? liquibase))))
             @locked
             (liquibase/release-concurrent-locks! conn)
