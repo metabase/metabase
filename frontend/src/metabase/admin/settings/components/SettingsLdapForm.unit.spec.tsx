@@ -250,7 +250,6 @@ describe("SettingsLdapForm", () => {
       "ldap-group-sync": true,
       "ldap-group-base": "group-base",
       "ldap-group-membership-filter": "(filter2)",
-      "ldap-sync-admin-group": true,
     };
 
     await userEvent.type(
@@ -299,9 +298,6 @@ describe("SettingsLdapForm", () => {
       await screen.findByRole("textbox", { name: /Group membership filter/ }),
       ATTRS["ldap-group-membership-filter"],
     );
-    await userEvent.click(
-      screen.getByRole("checkbox", { name: /Sync Administrator group/ }),
-    );
 
     await userEvent.click(await screen.findByRole("button", { name: /Save/ }));
 
@@ -310,13 +306,10 @@ describe("SettingsLdapForm", () => {
     });
   });
 
-  it("should hide group membership and sync admin group fields when appropriate", async () => {
+  it("should hide group membership fields when appropriate", async () => {
     setup({ "ldap-enabled": true });
     expect(
       screen.queryByRole("textbox", { name: /Group membership filter/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("checkbox", { name: /Sync Administrator group/ }),
     ).not.toBeInTheDocument();
   });
 });

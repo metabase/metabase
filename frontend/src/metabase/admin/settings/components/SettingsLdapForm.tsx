@@ -45,6 +45,10 @@ const LDAP_SCHEMA = Yup.object({
 
 export type SettingValues = Partial<Settings>;
 
+type LdapFormValues = Omit<SettingValues, "ldap-port"> & {
+  "ldap-port"?: string;
+};
+
 type LdapFormSettingElement = Omit<SettingElement, "key"> & {
   key: string; // ensuring key is required
   is_env_setting?: boolean;
@@ -126,10 +130,10 @@ export const SettingsLdapFormView = ({
   }, [settings, settingValues, ldapAttributes, defaultableAttrs]);
 
   const handleSubmit = useCallback(
-    (values: SettingValues) => {
+    (values: LdapFormValues) => {
       return onSubmit({
         ...values,
-        "ldap-port": values["ldap-port"],
+        "ldap-port": parseInt(values["ldap-port"]?.trim() || ""),
         "ldap-enabled": true,
       });
     },
@@ -225,7 +229,7 @@ const getAttributeValues = (
   settings: Record<string, LdapFormSettingElement>,
   values: SettingValues,
   defaultableAttrs: Set<string>,
-) => {
+): LdapFormValues => {
   return Object.fromEntries(
     ldapAttributes.map(key => [
       key,
