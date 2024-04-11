@@ -47,8 +47,6 @@
   border-color: color-mod(var(--color-border) alpha(-80%)) !important;
 }
 
-:global(.border-error),
-.border-error,
 .borderError {
   border-color: var(--color-error) !important;
 }
