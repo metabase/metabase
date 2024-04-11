@@ -9,7 +9,7 @@ import { DRILLS } from "./constants";
 export function queryDrill(
   question: Question,
   clicked: Lib.ClickObject,
-  availableDrillsFilter: (drill: DrillThruDisplayInfo) => boolean,
+  isDrillEnabled: (drill: DrillThruDisplayInfo) => boolean,
 ): ClickAction[] {
   const query = question.query();
   const stageIndex = -1;
@@ -32,7 +32,7 @@ export function queryDrill(
       const drillInfo = Lib.displayInfo(query, stageIndex, drill);
       const drillHandler = DRILLS[drillInfo.type];
 
-      if (!availableDrillsFilter(drillInfo)) {
+      if (!isDrillEnabled(drillInfo)) {
         return null;
       }
 

@@ -51,8 +51,8 @@ export class Mode {
   isDrillEnabled = (drill: DrillThruDisplayInfo): boolean => {
     const mode = this._queryMode;
 
-    if (mode.hasDrills && Array.isArray(mode.hasDrills)) {
-      return mode.hasDrills.includes(drill.type);
+    if (mode.hasDrills && mode.availableOnlyDrills != null) {
+      return mode.availableOnlyDrills.includes(drill.type);
     }
 
     return true;

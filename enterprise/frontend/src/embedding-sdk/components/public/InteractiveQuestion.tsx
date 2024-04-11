@@ -27,9 +27,9 @@ interface InteractiveQuestionProps {
   questionId: CardId;
 }
 
-export const InteractiveQuestion = (
-  props: InteractiveQuestionProps,
-): JSX.Element | null => {
+export const InteractiveQuestion = ({
+  questionId,
+}: InteractiveQuestionProps): JSX.Element | null => {
   const { isInitialized, isLoggedIn } = useEmbeddingContext();
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
@@ -38,7 +38,6 @@ export const InteractiveQuestion = (
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);
 
-  const { questionId } = props;
   const { isRunning } = uiControls;
 
   useEffect(() => {
@@ -55,7 +54,7 @@ export const InteractiveQuestion = (
     dispatch(initializeQB(mockLocation, params));
   }, [dispatch, questionId]);
 
-  if (!isInitialized || !isLoggedIn) {
+  if (!isInitialized || !isLoggedIn || !question) {
     return null;
   }
 
@@ -66,44 +65,38 @@ export const InteractiveQuestion = (
       error={typeof result === "string" ? result : null}
       noWrapper
     >
-      {() => {
-        if (!question) {
-          return null;
-        }
-
-        return (
-          <Stack h="100%">
-            {FilterHeader.shouldRender({
-              question,
-              queryBuilderMode: uiControls.queryBuilderMode,
-              isObjectDetail: false,
-            }) && (
-              <FilterHeader
-                expanded
-                question={question}
-                updateQuestion={(...args) => dispatch(updateQuestion(...args))}
-              />
-            )}
-            <Group h="100%" pos="relative" align="flex-start">
-              <QueryVisualization
-                className={cx(CS.flexFull, CS.fullWidth)}
-                question={question}
-                rawSeries={[{ card, data: result && result.data }]}
-                isRunning={isRunning}
-                isObjectDetail={false}
-                isResultDirty={false}
-                isNativeEditorOpen={false}
-                result={result}
-                noHeader
-                mode={mode}
-                navigateToNewCardInsideQB={(props: any) => {
-                  dispatch(navigateToNewCardInsideQB(props));
-                }}
-              />
-            </Group>
-          </Stack>
-        );
-      }}
+      {() => (
+        <Stack h="100%">
+          {FilterHeader.shouldRender({
+            question,
+            queryBuilderMode: uiControls.queryBuilderMode,
+            isObjectDetail: false,
+          }) && (
+            <FilterHeader
+              expanded
+              question={question}
+              updateQuestion={(...args) => dispatch(updateQuestion(...args))}
+            />
+          )}
+          <Group h="100%" pos="relative" align="flex-start">
+            <QueryVisualization
+              className={cx(CS.flexFull, CS.fullWidth)}
+              question={question}
+              rawSeries={[{ card, data: result && result.data }]}
+              isRunning={isRunning}
+              isObjectDetail={false}
+              isResultDirty={false}
+              isNativeEditorOpen={false}
+              result={result}
+              noHeader
+              mode={mode}
+              navigateToNewCardInsideQB={(props: any) => {
+                dispatch(navigateToNewCardInsideQB(props));
+              }}
+            />
+          </Group>
+        </Stack>
+      )}
     </LoadingAndErrorWrapper>
   );
 };
