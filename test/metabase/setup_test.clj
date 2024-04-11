@@ -3,10 +3,10 @@
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.db :as mdb]
+   [metabase.public-settings :as public-settings]
    [metabase.setup :as setup]
    [metabase.test :as mt]
-   [toucan2.core :as t2]
-   [metabase.public-settings :as public-settings]))
+   [toucan2.core :as t2]))
 
 (deftest has-user-setup-ignores-internal-user-test
   (mt/with-empty-h2-app-db
