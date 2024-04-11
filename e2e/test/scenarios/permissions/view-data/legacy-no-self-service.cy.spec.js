@@ -31,7 +31,6 @@ describeEE(
       // and test that it does not exist
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       selectPermissionRow("Sample Database", DATA_ACCESS_PERMISSION_INDEX);
       popover().should("not.contain", "No self-service (Deprecated)");
 

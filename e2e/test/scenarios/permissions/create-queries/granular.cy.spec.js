@@ -11,7 +11,7 @@ import {
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-const NATIVE_QUERIES_PERMISSION_INDEX = 1;
+const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
 describe("scenarios > admin > permissions > create queries > granular", () => {
   beforeEach(() => {
@@ -36,14 +36,14 @@ describe("scenarios > admin > permissions > create queries > granular", () => {
     );
 
     assertPermissionTable([
-      ["Accounts", "Can view", "Query builder and native"],
-      ["Analytic Events", "Can view", "Query builder and native"],
-      ["Feedback", "Can view", "Query builder and native"],
-      ["Invoices", "Can view", "Query builder and native"],
-      ["Orders", "Can view", "Query builder and native"],
-      ["People", "Can view", "Query builder and native"],
-      ["Products", "Can view", "Query builder and native"],
-      ["Reviews", "Can view", "Query builder and native"],
+      ["Accounts", "Query builder and native"],
+      ["Analytic Events", "Query builder and native"],
+      ["Feedback", "Query builder and native"],
+      ["Invoices", "Query builder and native"],
+      ["Orders", "Query builder and native"],
+      ["People", "Query builder and native"],
+      ["Products", "Query builder and native"],
+      ["Reviews", "Query builder and native"],
     ]);
 
     // should allow setting a granular value for one table
@@ -51,14 +51,14 @@ describe("scenarios > admin > permissions > create queries > granular", () => {
 
     // should also remove native permissions for all other tables
     assertPermissionTable([
-      ["Accounts", "Can view", "Query builder only"],
-      ["Analytic Events", "Can view", "Query builder only"],
-      ["Feedback", "Can view", "Query builder only"],
-      ["Invoices", "Can view", "Query builder only"],
-      ["Orders", "Can view", "No"],
-      ["People", "Can view", "Query builder only"],
-      ["Products", "Can view", "Query builder only"],
-      ["Reviews", "Can view", "Query builder only"],
+      ["Accounts", "Query builder only"],
+      ["Analytic Events", "Query builder only"],
+      ["Feedback", "Query builder only"],
+      ["Invoices", "Query builder only"],
+      ["Orders", "No"],
+      ["People", "Query builder only"],
+      ["Products", "Query builder only"],
+      ["Reviews", "Query builder only"],
     ]);
 
     // should not allow 'query builder and native' as a granular permissions permission options
@@ -67,7 +67,7 @@ describe("scenarios > admin > permissions > create queries > granular", () => {
 
     // should have db set to granular
     selectSidebarItem("All Users");
-    assertPermissionTable([["Sample Database", "Can view", "Granular"]]);
+    assertPermissionTable([["Sample Database", "Granular"]]);
 
     // should allow saving
     cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
@@ -89,8 +89,6 @@ describe("scenarios > admin > permissions > create queries > granular", () => {
       "Query builder only",
     );
     selectSidebarItem("All Users");
-    assertPermissionTable([
-      ["Sample Database", "Can view", "Query builder only"],
-    ]);
+    assertPermissionTable([["Sample Database", "Query builder only"]]);
   });
 });

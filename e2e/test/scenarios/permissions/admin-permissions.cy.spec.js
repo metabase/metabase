@@ -23,7 +23,7 @@ const { ALL_USERS_GROUP, ADMIN_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 
-const NATIVE_QUERIES_PERMISSION_INDEX = 1;
+const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
 describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   beforeEach(() => {
@@ -42,14 +42,14 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     );
 
     assertPermissionTable([
-      ["Accounts", "Can view", "No"],
-      ["Analytic Events", "Can view", "No"],
-      ["Feedback", "Can view", "No"],
-      ["Invoices", "Can view", "No"],
-      ["Orders", "Can view", "No"],
-      ["People", "Can view", "No"],
-      ["Products", "Can view", "No"],
-      ["Reviews", "Can view", "No"],
+      ["Accounts", "No"],
+      ["Analytic Events", "No"],
+      ["Feedback", "No"],
+      ["Invoices", "No"],
+      ["Orders", "No"],
+      ["People", "No"],
+      ["Products", "No"],
+      ["Reviews", "No"],
     ]);
   });
 
@@ -366,21 +366,21 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         cy.findByText("1 person");
 
         assertPermissionTable([
-          ["Sample Database", "Can view", "Query builder and native"],
+          ["Sample Database", "Query builder and native"],
         ]);
 
         // Drill down to tables permissions
         cy.findByTextEnsureVisible("Sample Database").click();
 
         assertPermissionTable([
-          ["Accounts", "Can view", "Query builder and native"],
-          ["Analytic Events", "Can view", "Query builder and native"],
-          ["Feedback", "Can view", "Query builder and native"],
-          ["Invoices", "Can view", "Query builder and native"],
-          ["Orders", "Can view", "Query builder and native"],
-          ["People", "Can view", "Query builder and native"],
-          ["Products", "Can view", "Query builder and native"],
-          ["Reviews", "Can view", "Query builder and native"],
+          ["Accounts", "Query builder and native"],
+          ["Analytic Events", "Query builder and native"],
+          ["Feedback", "Query builder and native"],
+          ["Invoices", "Query builder and native"],
+          ["Orders", "Query builder and native"],
+          ["People", "Query builder and native"],
+          ["Products", "Query builder and native"],
+          ["Reviews", "Query builder and native"],
         ]);
       });
 
