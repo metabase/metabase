@@ -5,6 +5,7 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
@@ -175,3 +176,31 @@
                     :group_id group-id)))
     :blocked
     :unrestricted))
+
+(defenterprise new-group-view-data-permission-level
+  "Returns the default view-data permission level for a new group for a given database. This is `blocked` if All Users
+  has block permissions for the database, or if any connection impersonation policies or sandboxes exist. Otherwise, it
+  is `unrestricted`."
+  :feature :none
+  [db-id]
+  (let [all-users-group-id (u/the-id (perms-group/all-users))]
+    (if (or
+         (and
+          (premium-features/enable-advanced-permissions?)
+          (t2/exists? :model/DataPermissions
+                      :perm_type :perms/view-data
+                      :perm_value :blocked
+                      :db_id db-id
+                      :group_id all-users-group-id))
+         (and
+          (premium-features/enable-advanced-permissions?)
+          (t2/exists? :model/ConnectionImpersonation
+                      :group_id all-users-group-id
+                      :db_id db-id))
+         (and
+          (premium-features/enable-sandboxes?)
+          (t2/exists? :model/GroupTableAccessPolicy
+                      :group_id all-users-group-id
+                      :db_id db-id)))
+      :blocked
+      :unrestricted)))

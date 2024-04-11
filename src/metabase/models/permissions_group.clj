@@ -94,14 +94,9 @@
 
 (defn- set-default-permission-values!
   [group]
-  ;; New groups get data access but no query permissions by default, and no other perms
   (t2/with-transaction [_conn]
     (doseq [db-id (t2/select-pks-vec :model/Database)]
-      (data-perms/set-database-permission! group db-id :perms/view-data             :unrestricted)
-      (data-perms/set-database-permission! group db-id :perms/create-queries        :no)
-      (data-perms/set-database-permission! group db-id :perms/download-results      :no)
-      (data-perms/set-database-permission! group db-id :perms/manage-table-metadata :no)
-      (data-perms/set-database-permission! group db-id :perms/manage-database       :no))))
+      (data-perms/set-new-group-permissions! group db-id))))
 
 (t2/define-after-insert :model/PermissionsGroup
   [group]

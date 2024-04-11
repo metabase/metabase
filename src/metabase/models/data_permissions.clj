@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -630,6 +631,37 @@
                           :perm_value value
                           :group_id group-id))
             lowest-to-highest-values))))
+
+(defenterprise new-group-view-data-permission-level
+  "Returns the default view-data permission level for a new group for a given database. On OSS, this is always `unrestricted`."
+  metabase-enterprise.advanced-permissions.common
+  [_group-id]
+  :unrestricted)
+
+(defn set-new-group-permissions!
+  "Sets permissions for a newly-added group to their appropriate values for a single database. This is generally based
+  on the permissions of the All Users group."
+  [group-or-id db-or-id]
+  (let [db-id                (u/the-id db-or-id)
+        all-users-id         (u/the-id (perms-group/all-users))
+        view-data-level      (new-group-view-data-permission-level db-id)
+        create-queries-level (->> (t2/select-fn-set :value
+                                                    [:model/DataPermissions [:perm_value :value]]
+                                                    :perm_type :perms/create-queries
+                                                    :db_id db-id
+                                                    :group_id all-users-id)
+                                  (coalesce-most-restrictive :perms/create-queries))
+        download-level      (->> (t2/select-fn-set :value
+                                                   [:model/DataPermissions [:perm_value :value]]
+                                                   :perm_type :perms/download-results
+                                                   :db_id db-id
+                                                   :group_id all-users-id)
+                                 (coalesce-most-restrictive :perms/create-queries))]
+    (set-database-permission! group-or-id db-or-id :perms/view-data view-data-level)
+    (set-database-permission! group-or-id db-or-id :perms/create-queries create-queries-level)
+    (set-database-permission! group-or-id db-or-id :perms/download-results download-level)
+    (set-database-permission! group-or-id db-or-id :perms/manage-table-metadata :no)
+    (set-database-permission! group-or-id db-or-id :perms/manage-database :no)))
 
 (defenterprise new-database-view-data-permission-level
   "Returns the default view-data permission level for a new database for a given group. On OSS, this is always `unrestricted`."
