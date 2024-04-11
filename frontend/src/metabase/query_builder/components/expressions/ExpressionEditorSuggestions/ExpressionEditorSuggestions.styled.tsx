@@ -11,7 +11,7 @@ import { Icon } from "metabase/ui";
 
 export const ExpressionList = styled.ul`
   min-width: 250px;
-  max-height: 350px;
+  max-height: 300px;
   overflow-y: auto;
 `;
 
