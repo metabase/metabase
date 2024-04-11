@@ -190,7 +190,7 @@ export const useChartEvents = (
 
       const { datumIndex: originalDatumIndex, index } = hovered;
       const hoveredSeries = chartModel.seriesModels[index];
-      if (!hoveredSeries || !originalDatumIndex) {
+      if (!hoveredSeries) {
         return;
       }
 
@@ -200,26 +200,30 @@ export const useChartEvents = (
         option?.series as LineSeriesOption[]
       ).findIndex(series => series.id === hoveredSeries.dataKey);
 
-      // (issue #40215)
-      // since some transformed datasets have indexes differing from
-      // the original datasets indexes and ECharts uses the transformedDataset
-      // for rendering, we need to figure out the correct transformedDataset's
-      // index in order to highlight the correct element
-      const transformedDatumIndex = getTransformedDatumIndex(
-        chartModel.transformedDataset,
-        originalDatumIndex,
-      );
+      let dataIndex: number | undefined;
+
+      if (originalDatumIndex != null) {
+        // (issue #40215)
+        // since some transformed datasets have indexes differing from
+        // the original datasets indexes and ECharts uses the transformedDataset
+        // for rendering, we need to figure out the correct transformedDataset's
+        // index in order to highlight the correct element
+        dataIndex = getTransformedDatumIndex(
+          chartModel.transformedDataset,
+          originalDatumIndex,
+        );
+      }
 
       chart.dispatchAction({
         type: "highlight",
-        dataIndex: transformedDatumIndex,
+        dataIndex,
         seriesIndex: eChartsSeriesIndex,
       });
 
       return () => {
         chart.dispatchAction({
           type: "downplay",
-          dataIndex: transformedDatumIndex,
+          dataIndex,
           seriesIndex: eChartsSeriesIndex,
         });
       };
