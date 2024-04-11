@@ -509,21 +509,21 @@ describe("scenarios > admin > permissions", () => {
     cy.findByLabelText("Permissions help reference").within(() => {
       cy.findByText("Data permissions");
 
-      cy.findByText("Database 'View data' levels").click();
+      cy.findByText("Database ‘View data’ levels").click();
       cy.findByTestId("database-view-data-level").should(
         "not.contain",
         /No self-service/,
       );
-      cy.findByText("Database 'View data' levels").click();
+      cy.findByText("Database ‘View data’ levels").click();
 
-      cy.findByText(/Schema or table 'View data' levels/).click();
+      cy.findByText(/Schema or table ‘View data’ levels/).click();
       cy.findByTestId("schema-table-level").should(
         "not.contain",
         /No self-service/,
       );
-      cy.findByText(/Schema or table 'View data' levels/).click();
+      cy.findByText(/Schema or table ‘View data’ levels/).click();
 
-      cy.findByText("'Create queries' levels");
+      cy.findByText("‘Create queries’ levels");
 
       cy.findByLabelText("Close").click();
     });
@@ -555,7 +555,7 @@ describe("scenarios > admin > permissions", () => {
     cy.findByLabelText("Permissions help reference")
       .as("permissionsHelpContent")
       .within(() => {
-        cy.findByText("Database 'View data' levels").click();
+        cy.findByText("Database ‘View data’ levels").click();
         cy.findAllByText(/No self-service/);
         cy.findByLabelText("Close").click();
       });
