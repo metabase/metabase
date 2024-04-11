@@ -51,7 +51,7 @@
   border-color: var(--color-error) !important;
 }
 
-:global(.border-success) {
+.borderSuccess {
   border-color: var(--color-success) !important;
 }
 
