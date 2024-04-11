@@ -173,12 +173,12 @@
           (is (not @saved-query-execution?)))))))
 
 (deftest save-field-usage-test
-  (testing "execute a query will save field usages"
+  (testing "execute an userland query will capture field usages"
     (mt/with-model-cleanup [:model/FieldUsage]
       (mt/with-temp [:model/Field {field-id :id} {:table_id (mt/id :products)
                                                   :name     "very_interesting_field"}
-                     :model/Card card           {:dataset_query (mt/mbql-query products
-                                                                               {:filter [:> [:field field-id nil] 1]})}]
+                     :model/Card card            {:dataset_query (mt/mbql-query products
+                                                                                {:filter [:> [:field field-id nil] 1]})}]
         (binding [process-userland-query/*save-execution-metadata-async* false
                   qp.pipeline/*execute*                                  (fn [_driver _query respond]
                                                                            (respond {} []))]
@@ -192,8 +192,7 @@
                     :aggregation_function       nil
                     :field_id                   field-id
                     :query_execution_id         (mt/malli=? pos-int?)}]
-                  (t2/select :model/FieldUsage
-                             :field_id field-id))))))))
+                  (t2/select :model/FieldUsage :field_id field-id))))))))
 
 (deftest query-result-should-not-contains-preprocessed-query-test
   (let [query (mt/mbql-query venues {:limit 1})]
