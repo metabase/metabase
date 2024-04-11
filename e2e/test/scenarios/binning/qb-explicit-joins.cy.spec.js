@@ -7,7 +7,7 @@ import {
   startNewQuestion,
   echartsContainer,
   lineChartCircle,
-  chartPathWithColor,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
@@ -262,7 +262,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("25");
 
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
     });
 
     it("should work for longitude", () => {
@@ -285,7 +285,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("160° W");
 
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
     });
   });
 });
@@ -315,7 +315,7 @@ function assertQueryBuilderState({
   if (visualizationSelector === "circle") {
     lineChartCircle();
   } else {
-    chartPathWithColor("#509EE3");
+    chartPathWithFillColor("#509EE3");
   }
 
   cy.findByText(title);

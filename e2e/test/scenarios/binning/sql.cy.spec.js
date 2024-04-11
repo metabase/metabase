@@ -8,7 +8,7 @@ import {
   openTable,
   visitQuestionAdhoc,
   lineChartCircle,
-  chartPathWithColor,
+  chartPathWithFillColor,
   echartsContainer,
 } from "e2e/support/helpers";
 
@@ -86,7 +86,7 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by TOTAL: 50 bins");
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
     });
 
     it("should work for longitude", () => {
@@ -100,7 +100,7 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by LONGITUDE: 10°");
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
     });
   });
 
@@ -156,7 +156,7 @@ describe("scenarios > binning > from a saved sql question", () => {
         assertOnResponse(response);
       });
 
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
     });
 
     it("should work for longitude", () => {
@@ -173,7 +173,7 @@ describe("scenarios > binning > from a saved sql question", () => {
         assertOnResponse(response);
       });
 
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
     });
   });
 
@@ -217,7 +217,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       assertOnXYAxisLabels({ xLabel: "TOTAL", yLabel: "Count" });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by TOTAL: Auto binned");
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
     });
 
     it("should work for longitude", () => {
@@ -229,7 +229,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       assertOnXYAxisLabels({ xLabel: "LONGITUDE", yLabel: "Count" });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by LONGITUDE: Auto binned");
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("170° W");
     });
