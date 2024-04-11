@@ -513,6 +513,8 @@
       (f driver db-id table-name {k v} settings))))
 
 (defmethod driver/alter-columns! :redshift
-  [_driver _db-id _table-name _column-definitions]
+  [_driver _db-id _table-name column-definitions]
   ;; TODO: redshift doesn't allow promotion of ints to floats using ALTER TABLE.
-  (throw (ex-info "Uploaded value with the wrong type" {})))
+  (let [[column-name type-and-constraints] (first column-definitions)
+        type (first type-and-constraints)]
+    (throw (ex-info (format "Uploaded a value with type '%s' to the '%s' column" (name type) (name column-name)) {}))))

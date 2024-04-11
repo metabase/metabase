@@ -1624,7 +1624,7 @@
                       [(merge
                         {:upload-type int-type, :uncoerced "2.1"}
                         (if (= driver/*driver* :redshift)
-                          {:fail-msg "Uploaded value with the wrong type"} ; TODO: redshift doesn't allow promotion of ints to floats
+                          {:fail-msg "Uploaded a value with type 'double precision' to the 'test_column' column"} ; TODO: redshift doesn't allow promotion of ints to floats
                           {:coerced 2.1})) ; column is promoted to float
                        {:upload-type int-type,   :uncoerced "2.0",        :coerced 2} ; value is coerced to int
                        {:upload-type float-type, :uncoerced "2",          :coerced 2.0}
