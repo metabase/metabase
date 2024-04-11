@@ -51,7 +51,7 @@ export const GROUPS = {
 
 export type GroupName = keyof typeof GROUPS;
 
-type SuggestArgs = {
+export type SuggestArgs = {
   source: string;
   query: Lib.Query;
   stageIndex: number;

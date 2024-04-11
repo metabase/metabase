@@ -14,8 +14,6 @@ import { Popover as InfoPopover } from "metabase/components/MetadataInfo/Popover
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isObscured } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { DelayGroup, Icon, type IconName, Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type {
@@ -25,6 +23,7 @@ import type {
 import { GROUPS } from "metabase-lib/v1/expressions/suggest";
 
 import { ExpressionEditorHelpTextContent } from "../ExpressionEditorHelpText";
+import type { SuggestionFooter } from "../ExpressionEditorTextfield";
 
 import {
   ExpressionListItem,
@@ -38,28 +37,40 @@ import {
   PopoverHoverTarget,
 } from "./ExpressionEditorSuggestions.styled";
 
-const ALL_FUNCTIONS_LINK =
-  "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#functions";
-const ALL_AGGREGATIONS_LINK =
-  "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#aggregations";
+type WithIndex<T> = T & {
+  index: number;
+};
 
 export function ExpressionEditorSuggestions({
   query,
   stageIndex,
-  suggestions = [],
+  suggestions: _suggestions = [],
   onSuggestionMouseDown,
   highlightedIndex,
-  startRule,
   children,
 }: {
   query: Lib.Query;
   stageIndex: number;
-  suggestions?: Suggestion[];
+  suggestions?: (Suggestion | SuggestionFooter)[];
   onSuggestionMouseDown: (index: number) => void;
   highlightedIndex: number;
-  startRule: string;
   children: ReactNode;
 }) {
+  const withIndex = _suggestions.map((suggestion, index) => ({
+    ...suggestion,
+    index,
+  }));
+
+  const suggestions = withIndex.filter(
+    (suggestion): suggestion is WithIndex<Suggestion> =>
+      !("footer" in suggestion),
+  );
+
+  const footers = withIndex.filter(
+    (suggestion): suggestion is WithIndex<SuggestionFooter> =>
+      "footer" in suggestion,
+  );
+
   const groups = group(suggestions);
 
   return (
@@ -94,7 +105,13 @@ export function ExpressionEditorSuggestions({
             />
           </ExpressionList>
         </DelayGroup>
-        <AllFunctionsLink startRule={startRule} />
+        {footers.map(suggestion => (
+          <Footer
+            key={suggestion.index}
+            suggestion={suggestion}
+            highlightedIndex={highlightedIndex}
+          />
+        ))}
       </Popover.Dropdown>
     </Popover>
   );
@@ -226,28 +243,26 @@ function ExpressionEditorSuggestionsListItem({
   );
 }
 
-function AllFunctionsLink({ startRule }: { startRule: string }) {
-  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-
-  const allLink =
-    startRule === "aggregation" ? ALL_AGGREGATIONS_LINK : ALL_FUNCTIONS_LINK;
-
+function Footer({
+  suggestion,
+  highlightedIndex,
+}: {
+  suggestion: WithIndex<SuggestionFooter>;
+  highlightedIndex: number;
+}) {
   function handleMouseDownCapture(evt: MouseEvent) {
     // prevent the dropdown from closing
     evt.preventDefault();
   }
 
-  if (!showMetabaseLinks) {
-    return null;
-  }
-
   return (
     <ExpressionListFooter
       target="blank"
-      href={allLink}
+      href={suggestion.href}
       onMouseDownCapture={handleMouseDownCapture}
+      isHighlighted={highlightedIndex === suggestion.index}
     >
-      {t`View all functions`} <ExternalIcon name="external" />
+      {suggestion.name} <ExternalIcon name={suggestion.icon} />
     </ExpressionListFooter>
   );
 }
@@ -282,16 +297,14 @@ function group(suggestions: Suggestion[]): Groups {
     popular: [],
   };
 
-  suggestions
-    .map((suggestion, index) => ({ ...suggestion, index }))
-    .forEach(function (suggestion) {
-      if (suggestion.group) {
-        groups[suggestion.group] ??= [];
-        groups[suggestion.group].push(suggestion);
-      } else {
-        groups._none.push(suggestion);
-      }
-    });
+  suggestions.forEach(function (suggestion) {
+    if (suggestion.group) {
+      groups[suggestion.group] ??= [];
+      groups[suggestion.group].push(suggestion);
+    } else {
+      groups._none.push(suggestion);
+    }
+  });
 
   return groups;
 }

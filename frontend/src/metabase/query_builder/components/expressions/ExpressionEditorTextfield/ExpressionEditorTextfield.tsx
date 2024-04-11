@@ -11,12 +11,17 @@ import _ from "underscore";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
 import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
 import { format } from "metabase-lib/v1/expressions/format";
 import { processSource } from "metabase-lib/v1/expressions/process";
-import type { Suggestion } from "metabase-lib/v1/expressions/suggest";
+import type {
+  SuggestArgs,
+  Suggestion,
+} from "metabase-lib/v1/expressions/suggest";
 import { suggest } from "metabase-lib/v1/expressions/suggest";
 import { tokenize } from "metabase-lib/v1/expressions/tokenizer";
 import type {
@@ -39,6 +44,50 @@ import {
 
 ace.config.set("basePath", "/assets/ui/");
 ace.config.set("useStrictCSP", true);
+
+export type SuggestionFooter = {
+  footer: true;
+  name: string;
+  icon: IconName;
+  href: string;
+};
+
+type SuggestWithFooters = {
+  suggestions: (Suggestion | SuggestionFooter)[];
+  helpText?: HelpText;
+};
+
+function suggestWithFooters(
+  args: SuggestArgs,
+  showMetabaseLinks: boolean,
+): SuggestWithFooters {
+  const res = suggest(args);
+
+  const suggestions: (Suggestion | SuggestionFooter)[] = res.suggestions ?? [];
+
+  if (showMetabaseLinks) {
+    if (args.startRule === "aggregation") {
+      suggestions?.push({
+        footer: true,
+        name: t`View all aggregations`,
+        icon: "external",
+        href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#aggregations",
+      });
+    } else {
+      suggestions?.push({
+        footer: true,
+        name: t`View all functions`,
+        icon: "external",
+        href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#functions",
+      });
+    }
+  }
+
+  return {
+    ...res,
+    suggestions,
+  };
+}
 
 const ACE_OPTIONS = {
   behavioursEnabled: false,
@@ -75,11 +124,12 @@ interface ExpressionEditorTextfieldProps {
     expressionClause: Lib.ExpressionClause | null,
   ) => void;
   helpTextTarget: RefObject<HTMLElement>;
+  showMetabaseLinks: boolean;
 }
 
 interface ExpressionEditorTextfieldState {
   source: string;
-  suggestions: Suggestion[];
+  suggestions: (Suggestion | SuggestionFooter)[];
   highlightedSuggestionIndex: number;
   isFocused: boolean;
   errorMessage: ErrorWithMessage | null;
@@ -100,6 +150,7 @@ function transformPropsToState(
     expressionPosition,
     metadata,
     reportTimezone,
+    showMetabaseLinks,
   } = props;
   const expressionFromClause = clause
     ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
@@ -111,17 +162,20 @@ function transformPropsToState(
     query,
   });
 
-  const { suggestions = [], helpText = null } = suggest({
-    reportTimezone,
-    startRule,
-    source,
-    targetOffset: 0,
-    expressionPosition,
-    query,
-    stageIndex,
-    metadata,
-    getColumnIcon,
-  });
+  const { suggestions = [], helpText = null } = suggestWithFooters(
+    {
+      reportTimezone,
+      startRule,
+      source,
+      targetOffset: 0,
+      expressionPosition,
+      query,
+      stageIndex,
+      metadata,
+      getColumnIcon,
+    },
+    showMetabaseLinks,
+  );
 
   return {
     source,
@@ -136,6 +190,7 @@ function transformPropsToState(
 
 const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
+  showMetabaseLinks: getShowMetabaseLinks(state),
 });
 
 const CURSOR_DEBOUNCE_INTERVAL = 10;
@@ -196,11 +251,30 @@ class ExpressionEditorTextfield extends React.Component<
     }
   }
 
+  handleKeypress = (evt: KeyboardEvent) => {
+    if (evt.key !== "Enter") {
+      return;
+    }
+
+    evt.preventDefault();
+    evt.stopPropagation();
+    this.handleEnter();
+  };
+
+  textarea() {
+    return this.input.current?.refEditor?.getElementsByTagName("textarea")[0];
+  }
+
   componentDidMount() {
     if (this.input.current) {
       const { editor } = this.input.current;
       // "ExpressionMode" constructor is not typed, so cast it here explicitly
       const mode = new ExpressionMode() as unknown as Ace.SyntaxMode;
+
+      // HACK: manually register the keypress event for the enter key,
+      // since ACE doesn ot seem to call the event handlers in time for
+      // them to do certain things, like window.open.
+      this.textarea()?.addEventListener("keypress", this.handleKeypress);
 
       editor.getSession().setMode(mode);
 
@@ -231,9 +305,19 @@ class ExpressionEditorTextfield extends React.Component<
     }
   }
 
+  componentWillUnmount() {
+    this.textarea()?.removeEventListener("keypress", this.handleKeypress);
+  }
+
   onSuggestionSelected = (index: number) => {
     const { source, suggestions } = this.state;
     const suggestion = suggestions && suggestions[index];
+
+    if ("footer" in suggestion) {
+      // open link in new window
+      window.open(suggestion.href, "tab");
+      return;
+    }
 
     if (this.input.current && suggestion) {
       const { editor } = this.input.current;
@@ -376,7 +460,9 @@ class ExpressionEditorTextfield extends React.Component<
     this.updateSuggestions([]);
   }
 
-  updateSuggestions(suggestions: Suggestion[] | undefined = []) {
+  updateSuggestions(
+    suggestions: (Suggestion | SuggestionFooter)[] | undefined = [],
+  ) {
     this.setState({ suggestions });
 
     // Correctly bind Tab depending on whether suggestions are available or not
@@ -503,19 +589,23 @@ class ExpressionEditorTextfield extends React.Component<
       metadata,
       expressionPosition,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
+      showMetabaseLinks,
     } = this.props;
     const { source } = this.state;
-    const { suggestions, helpText } = suggest({
-      reportTimezone,
-      startRule,
-      source,
-      targetOffset: cursor.column,
-      expressionPosition,
-      query,
-      stageIndex,
-      metadata,
-      getColumnIcon,
-    });
+    const { suggestions, helpText } = suggestWithFooters(
+      {
+        reportTimezone,
+        startRule,
+        source,
+        targetOffset: cursor.column,
+        expressionPosition,
+        query,
+        stageIndex,
+        metadata,
+        getColumnIcon,
+      },
+      showMetabaseLinks,
+    );
 
     this.setState({ helpText: helpText || null });
     if (this.state.isFocused) {
@@ -544,6 +634,7 @@ class ExpressionEditorTextfield extends React.Component<
   }
 
   commands: ICommand[] = [
+    // Note: Enter is handled manually (see componentDidUpdate)
     {
       name: "arrowDown",
       bindKey: { win: "Down", mac: "Down" },
@@ -556,13 +647,6 @@ class ExpressionEditorTextfield extends React.Component<
       bindKey: { win: "Up", mac: "Up" },
       exec: () => {
         this.handleArrowUp();
-      },
-    },
-    {
-      name: "enter",
-      bindKey: { win: "Enter", mac: "Enter" },
-      exec: () => {
-        this.handleEnter();
       },
     },
     {
@@ -583,7 +667,7 @@ class ExpressionEditorTextfield extends React.Component<
   ];
 
   render() {
-    const { width, query, stageIndex, startRule } = this.props;
+    const { width, query, stageIndex } = this.props;
     const {
       source,
       suggestions,
@@ -602,7 +686,6 @@ class ExpressionEditorTextfield extends React.Component<
           suggestions={suggestions}
           onSuggestionMouseDown={this.onSuggestionSelected}
           highlightedIndex={highlightedSuggestionIndex}
-          startRule={startRule}
         >
           <EditorContainer
             isFocused={isFocused}

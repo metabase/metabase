@@ -41,7 +41,7 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
   ${props => props.isHighlighted && highlighted}
 `;
 
-export const ExpressionListFooter = styled.a`
+export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
   border-top: 1px solid ${color("border")};
   background: white;
   height: 2rem;
@@ -53,6 +53,12 @@ export const ExpressionListFooter = styled.a`
   justify-content: space-between;
 
   padding-left: 0.875rem;
+
+  &:hover {
+    ${highlighted}
+  }
+
+  ${props => props.isHighlighted && highlighted}
 `;
 
 export const ExternalIcon = styled(Icon)`
