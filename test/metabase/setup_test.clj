@@ -54,7 +54,14 @@
       (mdb/setup-db! :create-sample-content? true)
       (is (= 1
              (public-settings/example-dashboard-id)))))
-  (testing "The example-dashboard-id setting should be set if the example content is loaded"
+  (testing "The example-dashboard-id setting should be nil if the example content isn't loaded"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
+      (is (nil? (public-settings/example-dashboard-id)))))
+  (testing "The example-dashboard-id setting should be reset to nil if the example dashboard is archived"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? true)
+      (is (= 1
+             (public-settings/example-dashboard-id)))
+      (t2/update! :model/Dashboard 1 {:archived true})
       (is (nil? (public-settings/example-dashboard-id))))))

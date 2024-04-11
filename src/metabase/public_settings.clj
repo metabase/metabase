@@ -856,6 +856,6 @@
   :setter     :none
   :getter     (fn []
                 (let [id (setting/get-value-of-type :integer :example-dashboard-id)]
-                  (when (t2/exists? :model/Dashboard id)
+                  (when (and id (t2/exists? :model/Dashboard :id id :archived false))
                     id)))
   :doc        false)
