@@ -37,6 +37,8 @@ export const useInitData = ({
     registerVisualizationsOnce();
   }, []);
 
+  const jwtProviderUri =
+    config.authType === "jwt" ? config.jwtProviderUri : null;
   useEffect(() => {
     if (config.authType === "jwt") {
       const updateToken = () => {
@@ -46,15 +48,15 @@ export const useInitData = ({
 
       const unsubscribe = store.subscribe(updateToken);
 
-      if (config.jwtProviderUri) {
-        dispatch(getOrRefreshSession(config.jwtProviderUri));
+      if (jwtProviderUri) {
+        dispatch(getOrRefreshSession(jwtProviderUri));
       }
 
       updateToken();
 
       return () => unsubscribe();
     }
-  }, [config, dispatch]);
+  }, [config.authType, dispatch, jwtProviderUri]);
 
   useEffect(() => {
     api.basename = config.metabaseInstanceUrl;
