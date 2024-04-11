@@ -57,7 +57,7 @@ function _PulsesListSidebar({
               name="add"
               className={cx(
                 CS.textBrand,
-                "bg-light-hover",
+                CS.bgLightHover,
                 CS.rounded,
                 CS.p1,
                 CS.cursorPointer,
@@ -72,7 +72,7 @@ function _PulsesListSidebar({
               name="close"
               className={cx(
                 CS.textLight,
-                "bg-light-hover",
+                CS.bgLightHover,
                 CS.rounded,
                 CS.p1,
                 CS.cursorPointer,
@@ -99,7 +99,7 @@ function _PulsesListSidebar({
             >
               <div
                 className={cx(CS.px3, CS.py2, CS.hoverParent, CS.hoverInherit, {
-                  "text-white-hover": canEdit,
+                  [CS.textWhiteHover]: canEdit,
                 })}
               >
                 <div
@@ -201,7 +201,7 @@ function PulseDetails({ pulse, parameters }) {
   const filterText = buildFilterText(pulse, parameters);
 
   return (
-    <div className={cx("text-medium", CS.hoverChild)}>
+    <div className={cx(CS.textMedium, CS.hoverChild)}>
       <ul
         className={cx(
           CS.flex,
@@ -226,7 +226,7 @@ function PulseDetails({ pulse, parameters }) {
           >
             <Icon
               name="group"
-              className={cx("text-medium", CS.hoverChild, CS.hoverInherit)}
+              className={cx(CS.textMedium, CS.hoverChild, CS.hoverInherit)}
               size={12}
             />
             <span
@@ -257,13 +257,13 @@ function PulseDetails({ pulse, parameters }) {
           >
             <Icon
               name="filter"
-              className={cx("text-medium", CS.hoverChild, CS.hoverInherit)}
+              className={cx(CS.textMedium, CS.hoverChild, CS.hoverInherit)}
               size={12}
             />
             <span
               className={cx(
                 CS.ml1,
-                "text-medium",
+                CS.textMedium,
                 CS.hoverChild,
                 CS.hoverInherit,
               )}

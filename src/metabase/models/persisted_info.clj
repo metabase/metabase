@@ -85,6 +85,7 @@
    refreshable with the feature flag disabled."
   metabase-enterprise.cache.config
   []
+  ;; meant to be the same as the enterprise version except that "off" is not honored and is refreshed
   #{"refreshing" "creating" "persisted" "error" "off"})
 
 (defenterprise prunable-states

@@ -575,7 +575,8 @@ class TableInteractive extends Component {
           backgroundColor,
         }}
         className={cx(
-          "TableInteractive-cellWrapper text-dark",
+          "TableInteractive-cellWrapper",
+          CS.textDark,
           CS.hoverParent,
           CS.hoverVisibility,
           {
