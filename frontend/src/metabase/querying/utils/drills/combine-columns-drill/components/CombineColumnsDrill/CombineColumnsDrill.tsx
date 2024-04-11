@@ -2,21 +2,18 @@ import type { FormEventHandler } from "react";
 import { useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import { getQueryResults } from "metabase/query_builder/selectors";
 import { Box, Button, Card, Flex, Icon, Stack, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { usePreview } from "../../hooks";
 import type { ColumnAndSeparator } from "../../types";
 import {
-  extractQueryResults,
   formatSeparator,
   getColumnOptions,
   getDefaultSeparator,
   getDrillExpressionClause,
   getExpressionName,
   getNextColumnAndSeparator,
-  getPreview,
 } from "../../utils";
 import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
 import { Preview } from "../Preview";
@@ -58,21 +55,11 @@ export const CombineColumnsDrill = ({
     () => getDrillExpressionClause(column, columnsAndSeparators),
     [column, columnsAndSeparators],
   );
-  const datasets = useSelector(getQueryResults);
-  const queryResults = useMemo(
-    () => extractQueryResults(originalQuery, originalStageIndex, datasets),
-    [originalQuery, originalStageIndex, datasets],
+  const { error, preview } = usePreview(
+    originalQuery,
+    originalStageIndex,
+    expressionClause,
   );
-  const preview = useMemo(() => {
-    const { columns, rows } = queryResults;
-    return getPreview(
-      originalQuery,
-      originalStageIndex,
-      expressionClause,
-      columns,
-      rows,
-    );
-  }, [originalQuery, originalStageIndex, expressionClause, queryResults]);
 
   const handleChange = (index: number, change: Partial<ColumnAndSeparator>) => {
     setColumnsAndSeparators(value => [
@@ -155,7 +142,7 @@ export const CombineColumnsDrill = ({
             )}
           </Stack>
 
-          <Preview preview={preview} />
+          <Preview error={error} preview={preview} />
 
           <Flex align="center" gap="md" justify="space-between">
             <Button
