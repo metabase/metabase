@@ -26,7 +26,7 @@ import {
 export function ExpressionEditorSuggestions({
   query,
   stageIndex,
-  suggestions,
+  suggestions = [],
   onSuggestionMouseDown,
   highlightedIndex,
   children,
