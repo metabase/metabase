@@ -277,6 +277,16 @@
   (check-action-commands-allowed query)
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))
 
+(defn- dateadd [unit amount expr]
+  (let [expr (h2x/cast-unless-type-in "datetime" #{"datetime" "timestamp" "timestamp with time zone"} expr)]
+    (-> [:dateadd
+         (h2x/literal unit)
+         (if (number? amount)
+           (sql.qp/inline-num (long amount))
+           (h2x/cast :long amount))
+         expr]
+        (h2x/with-database-type-info (h2x/database-type expr)))))
+
 (defmethod sql.qp/add-interval-honeysql-form :h2
   [driver hsql-form amount unit]
   (cond
@@ -290,12 +300,7 @@
     (recur driver hsql-form (* amount 1000.0) :millisecond)
 
     :else
-    [:dateadd
-     (h2x/literal unit)
-     (h2x/cast :long (if (number? amount)
-                       (sql.qp/inline-num amount)
-                       amount))
-     (h2x/cast :datetime hsql-form)]))
+    (dateadd unit amount hsql-form)))
 
 (defmethod driver/humanize-connection-error-message :h2
   [_ message]
@@ -323,8 +328,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql.qp/current-datetime-honeysql-form :h2
-  [_]
-  (h2x/with-database-type-info :%now :TIMESTAMP))
+  [_driver]
+  (h2x/with-database-type-info :%now "timestamp"))
 
 (defn- add-to-1970 [expr unit-str]
   [:timestampadd
@@ -350,11 +355,17 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                [:utf8tostring expr]))
 
-;; H2 v2 added date_trunc and extract, so we can borrow the Postgres implementation
-(defn- date-trunc [unit expr] [:date_trunc (h2x/literal unit) expr])
+;; H2 v2 added date_trunc and extract
+(defn- date-trunc [unit expr]
+  (-> [:date_trunc (h2x/literal unit) expr]
+      ;; date_trunc returns an arg of the same type as `expr`.
+      (h2x/with-database-type-info (h2x/database-type expr))))
+
 (defn- extract [unit expr] [::h2x/extract unit expr])
 
-(def ^:private extract-integer (comp h2x/->integer extract))
+(defn- extract-integer [unit expr]
+  (-> (extract unit expr)
+      (h2x/with-database-type-info "integer")))
 
 (defmethod sql.qp/date [:h2 :default]          [_ _ expr] expr)
 (defmethod sql.qp/date [:h2 :second-of-minute] [_ _ expr] (extract-integer :second expr))
@@ -589,3 +600,10 @@
   (let [f (get-method driver/add-columns! :sql-jdbc)]
     (doseq [[k v] column-definitions]
       (f driver db-id table-name {k v} settings))))
+
+(defmethod driver/alter-columns! :h2
+  [driver db-id table-name column-definitions]
+  ;; H2 doesn't support altering multiple columns at a time, so we break it up into individual ALTER TABLE statements
+  (let [f (get-method driver/alter-columns! :sql-jdbc)]
+    (doseq [[k v] column-definitions]
+      (f driver db-id table-name {k v}))))

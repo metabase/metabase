@@ -10,7 +10,7 @@
   (:import
    (java.time Instant OffsetDateTime OffsetTime ZonedDateTime ZoneId)))
 
-(p.types/defprotocol+ FormatValue
+(p.types/defprotocol+ ^:private FormatValue
   "Protocol for determining how QP results of various classes are serialized. Drivers can add implementations to support
   custom driver types as needed."
   (format-value [v ^ZoneId timezone-id]

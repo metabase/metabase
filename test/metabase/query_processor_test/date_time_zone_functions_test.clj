@@ -107,6 +107,7 @@
     :query-fn    (fn [op field-id] {:expressions {"expr" [op [:field field-id nil]]}
                                     :aggregation [[:count]]
                                     :breakout    [[:expression "expr"]]})}])
+
 (deftest ^:parallel extraction-function-tests
   (mt/dataset times-mixed
     (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
@@ -180,7 +181,7 @@
                                           :filter      [:= $index 1]
                                           :limit       1})]
           (mt/with-native-query-testing-context query
-            (is (= (if (or (= driver/*driver* :sqlserver)
+            (is (= (if (or (#{:sqlserver :h2} driver/*driver*)
                            (driver/database-supports? driver/*driver* :set-timezone (mt/db)))
                      {:get-year        2004
                       :get-quarter     1
@@ -191,10 +192,10 @@
                       ;; the timezone that they were inserted in
                       ;; maybe they need explicit convert-timezone to the report-tz before extraction?
                       :get-hour        (case driver/*driver*
-                                         (:sqlserver :snowflake :oracle) 5
+                                         (:h2 :sqlserver :snowflake :oracle) 5
                                          2)
                       :get-minute      (case driver/*driver*
-                                         (:sqlserver :snowflake :oracle) 19
+                                         (:h2 :sqlserver :snowflake :oracle) 19
                                          49)
                       :get-second      9}
                      {:get-year        2003

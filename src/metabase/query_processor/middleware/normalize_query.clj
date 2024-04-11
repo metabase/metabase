@@ -13,10 +13,12 @@
 (defn- normalize*
   [query]
   (let [metadata-provider (or (when-let [existing (:lib/metadata query)]
-                                (when (lib.metadata.protocols/metadata-provider?  existing)
+                                (when (lib.metadata.protocols/metadata-provider? existing)
                                   existing))
                               (qp.store/metadata-provider))]
-    (lib/query metadata-provider query)))
+    ;; removing `:lib/converted?` will keep MLv2 from doing a bunch of extra transformations to something that's already
+    ;; a well-formed pMBQL query, we don't need that and it actually ends up breaking some stuff
+    (lib/query metadata-provider (dissoc query :lib.convert/converted?))))
 
 (mu/defn normalize-preprocessing-middleware :- [:and
                                                 [:map

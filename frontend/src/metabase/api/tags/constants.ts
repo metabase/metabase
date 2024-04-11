@@ -1,6 +1,10 @@
+export type TagType = typeof TAG_TYPES[number];
+
 export const TAG_TYPES = [
   "action",
+  "alert",
   "api-key",
+  "bookmark",
   "card",
   "collection",
   "dashboard",
@@ -15,9 +19,10 @@ export const TAG_TYPES = [
   "table",
   "timeline",
   "timeline-event",
+  "user",
 ] as const;
 
-export const MODEL_TO_TAG_TYPE = {
+export const TAG_TYPE_MAPPING = {
   collection: "collection",
   card: "card",
   dashboard: "dashboard",
@@ -30,21 +35,3 @@ export const MODEL_TO_TAG_TYPE = {
   metric: "metric",
   snippet: "snippet",
 } as const;
-
-export type TagType = typeof TAG_TYPES[number];
-
-export function tag(type: TagType) {
-  return { type };
-}
-
-export function listTag(type: TagType) {
-  return { type, id: "LIST" };
-}
-
-export function idTag(type: TagType, id: string | number) {
-  return { type, id };
-}
-
-export function invalidateTags<T>(error: unknown, tags: T[]) {
-  return !error ? tags : [];
-}
