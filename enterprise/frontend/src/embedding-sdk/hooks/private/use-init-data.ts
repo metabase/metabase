@@ -1,4 +1,3 @@
-import type { AnyAction } from "@reduxjs/toolkit";
 import { useEffect, useState } from "react";
 import _ from "underscore";
 
@@ -48,25 +47,21 @@ export const useInitData = ({
       const unsubscribe = store.subscribe(updateToken);
 
       if (config.jwtProviderUri) {
-        store.dispatch(
-          getOrRefreshSession(config.jwtProviderUri) as unknown as AnyAction,
-        );
+        dispatch(getOrRefreshSession(config.jwtProviderUri));
       }
 
       updateToken();
 
       return () => unsubscribe();
     }
-  }, [config]);
+  }, [config, dispatch]);
 
   useEffect(() => {
     api.basename = config.metabaseInstanceUrl;
 
     if (config.authType === "jwt") {
       api.onBeforeRequest = () =>
-        store.dispatch(
-          getOrRefreshSession(config.jwtProviderUri) as unknown as AnyAction,
-        );
+        dispatch(getOrRefreshSession(config.jwtProviderUri));
       api.sessionToken = sessionTokenState?.token?.id;
     } else if (config.authType === "apiKey" && config.apiKey) {
       api.apiKey = config.apiKey;
