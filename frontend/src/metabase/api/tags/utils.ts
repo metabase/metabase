@@ -172,7 +172,14 @@ export function provideDashboardTags(
   const cards = dashboard.dashcards
     .flatMap(dashcard => (isVirtualDashCard(dashcard) ? [] : [dashcard]))
     .map(dashcard => dashcard.card);
-  return [idTag("dashboard", dashboard.id), ...provideCardListTags(cards)];
+
+  return [
+    idTag("dashboard", dashboard.id),
+    ...provideCardListTags(cards),
+    ...(dashboard.collection
+      ? provideCollectionTags(dashboard.collection)
+      : []),
+  ];
 }
 
 export function provideFieldListTags(
