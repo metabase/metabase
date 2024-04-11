@@ -12,7 +12,6 @@ import type {
   ScheduleSettings,
   ScheduleType,
 } from "metabase-types/api";
-import { useEffect, useRef } from "react";
 
 type HandleChangeProperty = (
   name: ScheduleProperty,
@@ -158,12 +157,7 @@ export const Schedule = ({
   };
 
   return (
-    <Box
-      ref={ref}
-      lh="41px"
-      display="flex"
-      style={{ flexWrap: "wrap", gap: ".5rem" }}
-    >
+    <Box lh="41px" display="flex" style={{ flexWrap: "wrap", gap: ".5rem" }}>
       <ScheduleBody
         schedule={schedule}
         handleChangeProperty={handleChangeProperty}
