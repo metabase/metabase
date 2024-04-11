@@ -87,15 +87,20 @@ export const getPreview = (
   expressionClause: Lib.ExpressionClause,
   columns: Lib.ColumnMetadata[],
   rows: RowValues[],
-): RowValue[] => {
-  return rows.map(row => {
-    return Lib.previewExpression(
+): { color: string; value: RowValue }[] => {
+  const PREVIEW_COLORS = ["text-dark", "text-medium", "text-light"];
+
+  return rows.slice(0, PREVIEW_COLORS.length).map((row, index) => {
+    const color = PREVIEW_COLORS[index];
+    const value = Lib.previewExpression(
       query,
       stageIndex,
       expressionClause,
       columns,
       row,
     );
+
+    return { color, value };
   });
 };
 

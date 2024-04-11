@@ -10,23 +10,15 @@ import { CombineColumnsDrill } from "./components";
 
 export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   question,
-  query: originalQuery,
-  stageIndex: originalStageIndex,
+  query,
+  stageIndex,
   clicked,
 }) => {
   if (!clicked.column) {
     return [];
   }
 
-  const column = Lib.fromLegacyColumn(
-    originalQuery,
-    originalStageIndex,
-    clicked.column,
-  );
-  const { query, stageIndex } = Lib.asReturned(
-    originalQuery,
-    originalStageIndex,
-  );
+  const column = Lib.fromLegacyColumn(query, stageIndex, clicked.column);
 
   const DrillPopover = ({
     onChangeCardAndRun,

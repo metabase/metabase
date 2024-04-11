@@ -2,17 +2,21 @@ import type { FormEventHandler } from "react";
 import { useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
+import { useSelector } from "metabase/lib/redux";
+import { getQueryResults } from "metabase/query_builder/selectors";
 import { Box, Button, Card, Flex, Icon, Stack, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { ColumnAndSeparator } from "../../types";
 import {
+  extractQueryResults,
   formatSeparator,
   getColumnOptions,
   getDefaultSeparator,
   getDrillExpressionClause,
   getExpressionName,
   getNextColumnAndSeparator,
+  getPreview,
 } from "../../utils";
 import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
 import { Preview } from "../Preview";
@@ -28,21 +32,25 @@ interface Props {
 
 export const CombineColumnsDrill = ({
   column,
-  query,
-  stageIndex,
+  query: originalQuery,
+  stageIndex: originalStageIndex,
   onSubmit,
 }: Props) => {
-  const defaultSeparator = getDefaultSeparator(column);
-  const columnInfo = Lib.displayInfo(query, stageIndex, column);
-  const columns = Lib.expressionableColumns(query, stageIndex);
-  const options = useMemo(
-    () => getColumnOptions(query, stageIndex, columns),
-    [query, stageIndex, columns],
+  const columnInfo = Lib.displayInfo(originalQuery, originalStageIndex, column);
+  const { query, stageIndex } = Lib.asReturned(
+    originalQuery,
+    originalStageIndex,
   );
+  const expressionableColumns = Lib.expressionableColumns(query, stageIndex);
+  const options = useMemo(
+    () => getColumnOptions(query, stageIndex, expressionableColumns),
+    [query, stageIndex, expressionableColumns],
+  );
+  const defaultSeparator = getDefaultSeparator(column);
   const [isUsingDefaultSeparator, setIsUsingDefaultSeparator] = useState(true);
   const [columnsAndSeparators, setColumnsAndSeparators] = useState([
     {
-      column: columns[0],
+      column: expressionableColumns[0],
       separator: defaultSeparator,
     },
   ]);
@@ -50,6 +58,21 @@ export const CombineColumnsDrill = ({
     () => getDrillExpressionClause(column, columnsAndSeparators),
     [column, columnsAndSeparators],
   );
+  const datasets = useSelector(getQueryResults);
+  const queryResults = useMemo(
+    () => extractQueryResults(originalQuery, originalStageIndex, datasets),
+    [originalQuery, originalStageIndex, datasets],
+  );
+  const preview = useMemo(() => {
+    const { columns, rows } = queryResults;
+    return getPreview(
+      originalQuery,
+      originalStageIndex,
+      expressionClause,
+      columns,
+      rows,
+    );
+  }, [originalQuery, originalStageIndex, expressionClause, queryResults]);
 
   const handleChange = (index: number, change: Partial<ColumnAndSeparator>) => {
     setColumnsAndSeparators(value => [
@@ -63,7 +86,7 @@ export const CombineColumnsDrill = ({
     setColumnsAndSeparators(value => [
       ...value,
       getNextColumnAndSeparator(
-        columns,
+        expressionableColumns,
         defaultSeparator,
         options,
         columnsAndSeparators,
@@ -132,12 +155,7 @@ export const CombineColumnsDrill = ({
             )}
           </Stack>
 
-          <Preview
-            columnsAndSeparators={columnsAndSeparators}
-            expressionClause={expressionClause}
-            query={query}
-            stageIndex={stageIndex}
-          />
+          <Preview preview={preview} />
 
           <Flex align="center" gap="md" justify="space-between">
             <Button
