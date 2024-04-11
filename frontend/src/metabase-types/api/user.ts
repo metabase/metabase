@@ -110,3 +110,9 @@ export type CreateUserResponse =
   | {
       updated_at: string;
     };
+
+export type UpdatePasswordRequest = {
+  id: UserId;
+  password: string;
+  old_password?: string;
+};

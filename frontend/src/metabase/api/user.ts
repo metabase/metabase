@@ -1,4 +1,8 @@
-import type { CreateUserResponse, CreateUserRequest } from "metabase-types/api";
+import type {
+  CreateUserResponse,
+  CreateUserRequest,
+  UpdatePasswordRequest,
+} from "metabase-types/api";
 
 import { Api } from "./api";
 // import { listTag, invalidateTags } from "./tags";
@@ -13,7 +17,15 @@ export const userApi = Api.injectEndpoints({
       }),
       // FIXME: invalidatesTags is needed
     }),
+    updatePassword: builder.mutation<void, UpdatePasswordRequest>({
+      query: ({ id, old_password, password }) => ({
+        method: "PUT",
+        url: `/api/user/${id}/password`,
+        body: { old_password, password },
+      }),
+      // FIXME: invalidatesTags is maybe needed?
+    }),
   }),
 });
 
-export const { useCreateUserMutation } = userApi;
+export const { useCreateUserMutation, useUpdatePasswordMutation } = userApi;
