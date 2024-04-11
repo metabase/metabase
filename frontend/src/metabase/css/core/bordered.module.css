@@ -55,8 +55,6 @@
   border-color: var(--color-success) !important;
 }
 
-:global(.border-brand),
-.border-brand,
 .borderBrand {
   border-color: var(--color-brand) !important;
 }

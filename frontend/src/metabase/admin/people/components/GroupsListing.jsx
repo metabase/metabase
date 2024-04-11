@@ -152,7 +152,7 @@ function EditingGroupRow({
 }) {
   const textIsValid = group.name && group.name.length;
   return (
-    <tr className={cx(CS.bordered, "border-brand rounded")}>
+    <tr className={cx(CS.bordered, CS.borderBrand, "rounded")}>
       <td>
         <Input
           className={CS.h3}
