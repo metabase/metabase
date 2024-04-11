@@ -1,9 +1,0 @@
-.inputs {
-  overflow: auto;
-  /**
-   * Extra padding to prevent vertical scrollbar from being shown while the last
-   * remove button is pressed. Mantine adds transform: translateY(0.0625rem)
-   * to the button while it's pressed.
-   */
-  padding-bottom: 0.0625rem;
-}

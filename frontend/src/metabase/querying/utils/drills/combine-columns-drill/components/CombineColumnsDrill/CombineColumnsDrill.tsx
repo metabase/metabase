@@ -2,7 +2,16 @@ import type { FormEventHandler } from "react";
 import { useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
-import { Box, Button, Card, Flex, Icon, Stack, Title } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Card,
+  Flex,
+  Icon,
+  ScrollArea,
+  Stack,
+  Title,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { usePreview } from "../../hooks";
@@ -18,12 +27,10 @@ import {
 import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
 import { Preview } from "../Preview";
 
-import S from "./CombineColumnsDrill.module.css";
-
 /**
  * Required to not cut off outline on the "x" button.
  */
-const OVERFLOW_SAFETY_MARGIN = 4;
+const OVERFLOW_SAFETY_MARGIN = 16;
 
 interface Props {
   column: Lib.ColumnMetadata;
@@ -113,7 +120,7 @@ export const CombineColumnsDrill = ({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Card className={S.card} maw="100vw" w={474} p="lg">
+      <Card maw="100vw" w={474} p="lg">
         <Title
           mb="lg"
           order={4}
@@ -121,28 +128,26 @@ export const CombineColumnsDrill = ({
 
         <Stack spacing="lg">
           <Stack spacing={12}>
-            <Stack
-              className={S.inputs}
-              m={-OVERFLOW_SAFETY_MARGIN}
-              mah="50vh"
-              p={OVERFLOW_SAFETY_MARGIN}
-              spacing="sm"
-            >
-              {columnsAndSeparators.map(({ column, separator }, index) => (
-                <ColumnAndSeparatorRow
-                  column={column}
-                  index={index}
-                  key={index}
-                  options={options}
-                  separator={separator}
-                  showLabels={index === 0}
-                  showRemove={columnsAndSeparators.length > 1}
-                  showSeparator={!isUsingDefaultSeparator}
-                  onChange={handleChange}
-                  onRemove={handleRemove}
-                />
-              ))}
-            </Stack>
+            <ScrollArea mx={-OVERFLOW_SAFETY_MARGIN}>
+              <Box mah="50vh" px={OVERFLOW_SAFETY_MARGIN}>
+                <Stack spacing="sm">
+                  {columnsAndSeparators.map(({ column, separator }, index) => (
+                    <ColumnAndSeparatorRow
+                      column={column}
+                      index={index}
+                      key={index}
+                      options={options}
+                      separator={separator}
+                      showLabels={index === 0}
+                      showRemove={columnsAndSeparators.length > 1}
+                      showSeparator={!isUsingDefaultSeparator}
+                      onChange={handleChange}
+                      onRemove={handleRemove}
+                    />
+                  ))}
+                </Stack>
+              </Box>
+            </ScrollArea>
 
             <Flex
               align="center"
