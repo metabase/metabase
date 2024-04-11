@@ -120,6 +120,13 @@ CustomYAxisRange.args = {
   renderingContext,
 };
 
+export const AutoYAxisExcludeZeroWithGoal = Template.bind({});
+AutoYAxisExcludeZeroWithGoal.args = {
+  rawSeries: data.autoYAxisExcludeZeroWithGoal as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const GoalLine = Template.bind({});
 GoalLine.args = {
   rawSeries: data.goalLine as any,
