@@ -46,7 +46,7 @@ export interface AlertCard {
 }
 
 export interface ListAlertsRequest {
-  user_ud?: UserId;
+  user_id?: UserId;
   archived?: boolean;
 }
 
