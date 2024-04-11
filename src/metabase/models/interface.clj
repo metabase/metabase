@@ -339,9 +339,7 @@
 
 (def ^{:arglists '([s])} ^:private validate-cron-string
   (let [validator (mc/validator u.cron/CronScheduleString)]
-    (fn [s]
-      (when (validator s)
-        s))))
+    (partial mu/validate-throw validator)))
 
 (def transform-cron-string
   "Transform for encrypted json."

@@ -1256,10 +1256,10 @@
 
 (deftest fetch-db-with-expanded-schedules
   (testing "If we FETCH a database will it have the correct 'expanded' schedules?"
-    (t2.with-temp/with-temp [Database db {:metadata_sync_schedule      "0 0 * * * ? *"
+    (t2.with-temp/with-temp [Database db {:metadata_sync_schedule      "0 0 * ? * 6 *"
                                           :cache_field_values_schedule "0 0 23 ? * 6L *"}]
       (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
-              :metadata_sync_schedule      "0 0 * * * ? *"
+              :metadata_sync_schedule      "0 0 * ? * 6 *"
               :schedules                   {:cache_field_values schedule-map-for-last-friday-at-11pm
                                             :metadata_sync      schedule-map-for-weekly}}
              (-> (mt/user-http-request :crowberto :get 200 (format "database/%d" (u/the-id db)))
