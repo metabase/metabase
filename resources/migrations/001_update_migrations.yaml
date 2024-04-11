@@ -5559,6 +5559,7 @@ databaseChangeLog:
         - dropNotNullConstraint:
             tableName: metabase_database
             columnName: cache_field_values_schedule
+            columnDataType: varchar(254)
       # nothing because it should always be like this
       rollback:
 
