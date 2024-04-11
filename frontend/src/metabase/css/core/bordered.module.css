@@ -43,7 +43,7 @@
   border-left: var(--border-size) var(--border-style) var(--color-border);
 }
 
-:global(.border-light) {
+.borderLight {
   border-color: color-mod(var(--color-border) alpha(-80%)) !important;
 }
 
