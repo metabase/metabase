@@ -41,16 +41,22 @@ export const Preview = ({ error, preview }: Props) => {
       {error && <SmallGenericError message={getErrorMessage(error)} />}
 
       {!error && (
-        <Card bg="bg-light" p={0} radius="xs" shadow="none" withBorder>
-          <ScrollArea className={S.scrollArea} p="md">
-            {preview.map(({ color, value }, index) => (
-              <Box key={index}>
-                <Text color={color} size="sm">
-                  {value}
-                </Text>
-              </Box>
-            ))}
-          </ScrollArea>
+        <Card
+          bg="bg-light"
+          className={S.scrollArea}
+          component={ScrollArea}
+          p="md"
+          radius="xs"
+          shadow="none"
+          withBorder
+        >
+          {preview.map(({ color, value }, index) => (
+            <Box key={index}>
+              <Text color={color} size="sm">
+                {value}
+              </Text>
+            </Box>
+          ))}
         </Card>
       )}
     </Stack>
