@@ -1,6 +1,6 @@
 import cx from "classnames";
-import { t } from "ttag";
 import { useEffect, useRef, useCallback, type ReactNode } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { HoverParent } from "metabase/components/MetadataInfo/InfoIcon";
@@ -120,7 +120,6 @@ function ExpressionEditorSuggestionsListItem({
         ref={ref}
         isHighlighted={isHighlighted}
         className={cx(CS.hoverParent, CS.hoverInherit)}
-        data-ignore-outside-clicks
         data-testid="expression-suggestions-list-item"
       >
         {icon && (
@@ -128,10 +127,9 @@ function ExpressionEditorSuggestionsListItem({
             name={icon as IconName}
             color={isHighlighted ? highlighted : normal}
             className={CS.mr1}
-            data-ignore-outside-clicks
           />
         )}
-        <SuggestionTitle data-ignore-outside-clicks>
+        <SuggestionTitle>
           {suggestion.name.slice(0, start)}
           <SuggestionMatch>{suggestion.name.slice(start, end)}</SuggestionMatch>
           {suggestion.name.slice(end)}
