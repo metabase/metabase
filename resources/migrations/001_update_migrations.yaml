@@ -6114,6 +6114,29 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.CreateInternalUser"
 
+  - changeSet:
+      id: v50.2024-03-29T10:00:00
+      author: piranha
+      comment: 'Granular cache invalidation'
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: cache_invalidated_at
+                  type: ${timestamp_type}
+                  remarks: 'An invalidation time that can supersede cache_config.invalidated_at'
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-04-09T15:55:23
+      author: piranha
+      comment: Backfill query_field for native queries
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.BackfillQueryField"
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

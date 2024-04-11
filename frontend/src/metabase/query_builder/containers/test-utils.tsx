@@ -286,6 +286,8 @@ export const setup = async ({
   );
 
   await waitForLoadingRequests(getState);
+  await waitForLoaderToBeRemoved();
+  await waitForLoadingRequests(getState);
 
   return {
     container,

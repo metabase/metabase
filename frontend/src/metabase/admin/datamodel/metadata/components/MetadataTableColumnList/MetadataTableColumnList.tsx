@@ -65,7 +65,7 @@ const MetadataTableColumnList = ({
   const isHidden = visibility_type != null;
 
   const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 0 },
+    activationConstraint: { distance: 15 },
   });
 
   const sortedFields = useMemo(
@@ -92,12 +92,12 @@ const MetadataTableColumnList = ({
   );
 
   return (
-    <div id="ColumnsList" className={cx("mt3", { disabled: isHidden })}>
-      <div className={cx(CS.textUppercase, "text-medium py1")}>
+    <div id="ColumnsList" className={cx(CS.mt3, { disabled: isHidden })}>
+      <div className={cx(CS.textUppercase, CS.textMedium, CS.py1)}>
         <div className={CS.relative}>
           <div
             style={{ minWidth: 420 }}
-            className="float-left px1"
+            className={cx(CS.floatLeft, CS.px1)}
           >{t`Column`}</div>
           <div className={CS.flex}>
             <div className={cx(CS.flexHalf, CS.pl3)}>{t`Visibility`}</div>
@@ -145,12 +145,12 @@ const TableFieldOrderDropdown = ({
     <TippyPopoverWithTrigger
       triggerContent={
         <span
-          className={cx("text-brand", CS.textBold)}
+          className={cx(CS.textBrand, CS.textBold)}
           style={{ textTransform: "none", letterSpacing: 0 }}
           aria-label={t`Sort`}
         >
           <Icon
-            className="ml1"
+            className={CS.ml1}
             name="sort_arrows"
             size={14}
             style={{ transform: "translateY(2px)" }}
@@ -159,7 +159,7 @@ const TableFieldOrderDropdown = ({
       }
       popoverContent={({ closePopover }) => (
         <AccordionList
-          className="text-brand"
+          className={CS.textBrand}
           sections={ORDER_SECTIONS}
           alwaysExpanded
           itemIsSelected={({ value }: TableFieldOrderOption) =>

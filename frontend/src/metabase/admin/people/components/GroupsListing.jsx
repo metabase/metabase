@@ -122,7 +122,7 @@ function ActionsPopover({
   return (
     <PopoverWithTrigger
       className={CS.block}
-      triggerElement={<Icon className="text-light" name="ellipsis" />}
+      triggerElement={<Icon className={CS.textLight} name="ellipsis" />}
     >
       <ul className={cx(AdminS.UserActionsSelect, CS.py1)}>
         <EditGroupButton onClick={onEditGroupClicked.bind(null, group)}>
@@ -212,13 +212,13 @@ function GroupRow({
           to={"/admin/people/groups/" + group.id}
           className={cx(CS.link, CS.flex, CS.alignCenter)}
         >
-          <span className="text-white">
+          <span className={CS.textWhite}>
             <UserAvatar
               user={{ first_name: getGroupNameLocalized(group) }}
               bg={backgroundColor}
             />
           </span>
-          <span className={cx("ml2", CS.textBold)}>
+          <span className={cx(CS.ml2, CS.textBold)}>
             {getGroupNameLocalized(group)}
           </span>
         </Link>
@@ -246,7 +246,7 @@ const ApiKeyCount = ({ apiKeys }) => {
     return null;
   }
   return (
-    <span className="text-light">
+    <span className={CS.textLight}>
       {apiKeys.length === 1
         ? t` (includes 1 API key)`
         : t` (includes ${apiKeys.length} API keys)`}

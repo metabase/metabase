@@ -1,4 +1,5 @@
 :global(.transition-color),
-.transition-color {
+.transition-color,
+.transitionColor {
   transition: color 0.3s linear;
 }

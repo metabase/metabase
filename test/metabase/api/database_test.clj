@@ -82,7 +82,8 @@
              (select-keys table [:active :created_at :db_id :description :display_name :entity_type
                                  :id :name :rows :schema :updated_at :visibility_type :initial_sync_status]))
       (update :entity_type #(when % (str "entity/" (name %))))
-      (update :visibility_type #(when % (name %)))))
+      (update :visibility_type #(when % (name %)))
+      (update :schema str)))
 
 (defn- expected-tables [db-or-id]
   (map table-details (t2/select Table
@@ -155,7 +156,14 @@
         (is (= {:tables [(table-details t1)
                          (table-details t2)]}
                (select-keys (mt/user-http-request :lucky :get 200 (format "database/%d?include=tables" (:id db)))
-                            [:tables]))))
+                            [:tables])))
+        (testing "Schemas are always empty strings, not nil"
+          (mt/with-temp [Database db  {:name "My DB" :engine ::test-driver}
+                         Table    {}  {:name "Table 1" :db_id (:id db) :schema nil}]
+            (is (= [""]
+                   (->> (mt/user-http-request :lucky :get 200 (format "database/%d?include=tables" (:id db)))
+                        :tables
+                        (map :schema)))))))
       (testing "`?include=tables.fields` -- should be able to include Tables and Fields"
         (letfn [(field-details* [field]
                   (assoc (into {} (t2/hydrate field [:target :has_field_values] :has_field_values))

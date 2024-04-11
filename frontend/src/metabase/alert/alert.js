@@ -60,7 +60,11 @@ export const createAlert = alert => {
       addUndo({
         message: () => (
           <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
-            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
+            <Icon
+              name="alert_confirm"
+              size="19"
+              className={cx(CS.mr2, CS.textSuccess)}
+            />
             {t`Your alert is all set up.`}
           </div>
         ),
@@ -100,7 +104,11 @@ export const updateAlert = alert => {
       addUndo({
         message: () => (
           <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
-            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
+            <Icon
+              name="alert_confirm"
+              size="19"
+              className={cx(CS.mr2, CS.textSuccess)}
+            />
             {t`Your alert was updated.`}
           </div>
         ),
@@ -148,7 +156,11 @@ export const deleteAlert = alertId => {
       addUndo({
         message: () => (
           <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
-            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
+            <Icon
+              name="alert_confirm"
+              size="19"
+              className={cx(CS.mr2, CS.textSuccess)}
+            />
             {t`The alert was successfully deleted.`}
           </div>
         ),

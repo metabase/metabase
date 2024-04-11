@@ -320,18 +320,16 @@
              (fn
                ([] 0)
                ([counter]
-                (log/info "Updated default schedules for %d databases" counter)
+                (log/infof "Updated default schedules for %d databases" counter)
                 counter)
                ([counter db]
                 (try
                   (t2/update! Database (u/the-id db)
-                    (sync.schedules/schedule-map->cron-strings
-                     (sync.schedules/default-randomized-schedule)))
+                              (sync.schedules/schedule-map->cron-strings
+                               (sync.schedules/default-randomized-schedule)))
                   (inc counter)
                   (catch Exception e
-                    (log/warnf e
-                               "Error updating database %d for randomized schedules"
-                               (u/the-id db))
+                    (log/warnf e "Error updating database %d for randomized schedules" (u/the-id db))
                     counter))))
              (mdb.query/reducible-query
               {:select [:id :details]

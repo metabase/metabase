@@ -140,7 +140,9 @@ function GroupMembersTable({
       )}
       {!hasMembers && (
         <div className={cx(CS.mt4, CS.pt4, CS.flex, CS.layoutCentered)}>
-          <h2 className="text-medium">{t`A group is only as good as its members.`}</h2>
+          <h2
+            className={CS.textMedium}
+          >{t`A group is only as good as its members.`}</h2>
         </div>
       )}
     </>
@@ -205,7 +207,7 @@ const UserRow = ({
           className={cx(CS.textRight, CS.cursorPointer)}
           onClick={() => onMembershipRemove(groupMembership?.membership_id)}
         >
-          <Icon name="close" className="text-light" size={16} />
+          <Icon name="close" className={CS.textLight} size={16} />
         </td>
       ) : null}
     </tr>
