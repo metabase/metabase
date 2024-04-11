@@ -100,14 +100,20 @@ const Users = createEntity({
       await SessionApi.forgot_password({ email });
       return { type: PASSWORD_RESET_EMAIL };
     },
-    resetPasswordManual: async ({ id }, password = generatePassword()) => {
-      MetabaseAnalytics.trackStructEvent(
-        "People Admin",
-        "Manual Password Reset",
-      );
-      await UserApi.update_password({ id, password });
-      return { type: PASSWORD_RESET_MANUAL, payload: { id, password } };
-    },
+    resetPasswordManual:
+      async ({ id }, password = generatePassword()) =>
+      async dispatch => {
+        MetabaseAnalytics.trackStructEvent(
+          "People Admin",
+          "Manual Password Reset",
+        );
+        await entityCompatibleQuery(
+          { id, password },
+          dispatch,
+          userApi.endpoints.updatePassword,
+        );
+        return { type: PASSWORD_RESET_MANUAL, payload: { id, password } };
+      },
     deactivate: async ({ id }) => {
       MetabaseAnalytics.trackStructEvent("People Admin", "User Removed");
       // TODO: move these APIs from services to this file
