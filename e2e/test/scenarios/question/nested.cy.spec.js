@@ -184,7 +184,7 @@ describe("scenarios > question > nested", () => {
       createNestedQuestion({ baseQuestionDetails, nestedQuestionDetails });
 
       cy.log("Reported failing since v0.35.2");
-      cy.get("[data-testid=cellData]").contains(metric.name);
+      cy.get("[data-testid=cell-data]").contains(metric.name);
     });
   });
 

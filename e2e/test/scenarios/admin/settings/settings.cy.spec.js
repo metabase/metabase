@@ -171,7 +171,7 @@ describe("scenarios > admin > settings", () => {
     openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
-    cy.get("[data-testid=cellData]")
+    cy.get("[data-testid=cell-data]")
       .should("contain", "Created At")
       .and("contain", "2025/2/11, 21:40");
 
@@ -188,7 +188,7 @@ describe("scenarios > admin > settings", () => {
     openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
-    cy.get("[data-testid=cellData]").and("contain", "2025/2/11, 9:40 PM");
+    cy.get("[data-testid=cell-data]").and("contain", "2025/2/11, 9:40 PM");
   });
 
   it("should show where to display the unit of currency (metabase#table-metadata-missing-38021 and update the formatting", () => {

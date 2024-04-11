@@ -108,7 +108,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     cy.log("check click on 1st row");
 
-    cy.get("[data-testid=cellData]").contains("37.65").realHover();
+    cy.get("[data-testid=cell-data]").contains("37.65").realHover();
     cy.findByTestId("detail-shortcut").findByRole("button").click();
 
     cy.findByTestId("object-detail").within(() => {
@@ -118,7 +118,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     cy.log("check click on 3rd row");
 
-    cy.get("[data-testid=cellData]").contains("52.72").realHover();
+    cy.get("[data-testid=cell-data]").contains("52.72").realHover();
     cy.findByTestId("detail-shortcut").findByRole("button").click();
 
     cy.findByTestId("object-detail").within(() => {
@@ -165,7 +165,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     // there should be a hover instead of click
     // but realHover is flaky
-    cy.get("[data-testid=cellData]").contains("4966277046676").click();
+    cy.get("[data-testid=cell-data]").contains("4966277046676").click();
 
     cy.findByTestId("detail-shortcut")
       .findByRole("button")

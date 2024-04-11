@@ -90,7 +90,7 @@ describe("issue 25374", () => {
     cy.findByText(questionDetails.name).click();
     cy.wait("@cardQuery");
 
-    cy.get("[data-testid=cellData]")
+    cy.get("[data-testid=cell-data]")
       .should("contain", "COUNT(*)")
       .and("contain", "3");
 

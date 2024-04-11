@@ -66,7 +66,7 @@ describe("filtering based on the remapped column name should result in a correct
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Today").should("not.exist");
 
-    cy.get("[data-testid=cellData]")
+    cy.get("[data-testid=cell-data]")
       .should("have.length", 4)
       .and("contain", "Created At");
   });
@@ -81,7 +81,7 @@ describe("filtering based on the remapped column name should result in a correct
 
     cy.wait("@dataset");
 
-    cy.get("[data-testid=cellData]")
+    cy.get("[data-testid=cell-data]")
       .should("have.length", 4)
       .and("contain", "Created At");
   });

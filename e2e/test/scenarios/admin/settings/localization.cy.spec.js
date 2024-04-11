@@ -119,7 +119,7 @@ describe("scenarios > admin > localization", () => {
 
     cy.get("@resultTable").within(() => {
       // The third cell in the first row (CREATED_AT_DAY)
-      cy.get("[data-testid=cellData]").eq(2).should("not.contain", "Sunday");
+      cy.get("[data-testid=cell-data]").eq(2).should("not.contain", "Sunday");
     });
   });
 

@@ -274,7 +274,7 @@ describe("scenarios > question > filter", () => {
       { visitQuestion: true },
     );
 
-    cy.get("[data-testid=cellData]").contains("Widget");
+    cy.get("[data-testid=cell-data]").contains("Widget");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 1 row");
   });
@@ -630,7 +630,7 @@ describe("scenarios > question > filter", () => {
       display: "table",
     });
 
-    cy.get("[data-testid=cellData]").contains("Count").click();
+    cy.get("[data-testid=cell-data]").contains("Count").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
     cy.findByPlaceholderText("Enter a number").type("42");
@@ -993,7 +993,7 @@ describe("scenarios > question > filter", () => {
       function assertOnTheResult() {
         // Filter name
         cy.findByTextEnsureVisible(`boolean is ${condition.toLowerCase()}`);
-        cy.get("[data-testid=cellData]").should(
+        cy.get("[data-testid=cell-data]").should(
           "contain",
           integerAssociatedWithCondition,
         );

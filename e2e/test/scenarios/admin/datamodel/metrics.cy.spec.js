@@ -64,7 +64,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       .first()
       .as("tableHeader")
       .within(() => {
-        cy.get("[data-testid=cellData]")
+        cy.get("[data-testid=cell-data]")
           .eq(1)
           .invoke("text")
           .should("eq", "Revenue");
@@ -74,7 +74,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       .last()
       .as("tableBody")
       .within(() => {
-        cy.get("[data-testid=cellData]")
+        cy.get("[data-testid=cell-data]")
           .eq(1)
           .invoke("text")
           .should("eq", "50,072.98");

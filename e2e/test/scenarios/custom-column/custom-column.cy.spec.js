@@ -473,7 +473,7 @@ describe("scenarios > question > custom column", () => {
       expect(response.body.error).to.not.exist;
     });
 
-    cy.get("[data-testid=cellData]").should("contain", "37.65");
+    cy.get("[data-testid=cell-data]").should("contain", "37.65");
     cy.findAllByTestId("header-cell").should("not.contain", CE_NAME);
   });
 

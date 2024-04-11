@@ -615,7 +615,7 @@ describeEE("formatting > sandboxes", () => {
               cy.log(
                 "It should show remapped Display Values instead of Product ID",
               );
-              cy.get("[data-testid=cellData]")
+              cy.get("[data-testid=cell-data]")
                 .contains("Awesome Concrete Shoes")
                 .click();
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

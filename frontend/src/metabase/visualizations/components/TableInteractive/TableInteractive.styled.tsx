@@ -4,8 +4,9 @@ import Draggable from "react-draggable";
 
 import Button from "metabase/core/components/Button";
 import { alpha, color, lighten } from "metabase/lib/colors";
-import TableS from "metabase/visualizations/components/TableInteractive/TableInteractive.module.css";
 import { TableRoot } from "metabase/visualizations/components/TableRoot";
+
+import TableS from "./TableInteractive.module.css";
 
 export const TableInteractiveRoot = styled(TableRoot)`
   .${TableS.TableInteractiveHeaderCellData} .${TableS.cellData} {

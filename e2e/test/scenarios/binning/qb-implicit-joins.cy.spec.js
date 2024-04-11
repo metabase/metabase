@@ -44,7 +44,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Month").click();
 
-      cy.get("[data-testid=cellData]")
+      cy.get("[data-testid=cell-data]")
         .should("contain", "April 1958")
         .and("contain", "37");
     });
@@ -111,7 +111,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Month").click();
 
-      cy.get("[data-testid=cellData]")
+      cy.get("[data-testid=cell-data]")
         .should("contain", "April 1958")
         .and("contain", "37");
     });
@@ -165,7 +165,7 @@ function assertQueryBuilderState({ title, mode = null, values } = {}) {
   mode === "notebook" ? visualize() : waitAndAssertOnRequest("@dataset");
 
   cy.findByText(title);
-  cy.get("[data-testid=cellData]")
+  cy.get("[data-testid=cell-data]")
     .should("contain", firstValue)
     .and("contain", lastValue);
 }

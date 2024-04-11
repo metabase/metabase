@@ -25,7 +25,7 @@ describe("scenarios > models > revision history", () => {
     cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
 
     cy.location("pathname").should("match", /^\/model\/\d+/);
-    cy.get("[data-testid=cellData]");
+    cy.get("[data-testid=cell-data]");
   });
 });
 

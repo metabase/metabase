@@ -94,6 +94,10 @@ describe("issue 29517 - nested question based on native model with remapped valu
   });
 
   it("click behavior to custom destination should work (metabase#29517-2)", () => {
+    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+
     visitDashboard("@dashboardId");
 
     cy
@@ -103,7 +107,10 @@ describe("issue 29517 - nested question based on native model with remapped valu
     cy.wait("@loadTargetDashboard");
 
     cy.location("pathname").should("eq", `/dashboard/${ORDERS_DASHBOARD_ID}`);
-    cy.get("[data-testid=cellData]").contains("37.65");
+
+    cy.wait("@dashcardQuery");
+
+    cy.get("[data-testid=cell-data]").contains("37.65");
   });
 });
 

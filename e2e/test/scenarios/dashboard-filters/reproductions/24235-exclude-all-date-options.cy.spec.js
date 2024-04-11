@@ -57,7 +57,7 @@ describe("issue 24235", () => {
     });
 
     cy.wait("@getCardQuery");
-    cy.get("[data-testid=cellData]").should(
+    cy.get("[data-testid=cell-data]").should(
       "contain",
       "Price, Schultz and Daniel",
     );
