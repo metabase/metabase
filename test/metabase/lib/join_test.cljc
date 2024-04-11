@@ -984,6 +984,76 @@
                     [:field {} #(contains? #{id-message-sender-id id-message-recipient-id} %)]]]
                   (lib/suggested-join-conditions query message))))))))
 
+(deftest ^:parallel suggested-join-conditions-transitive-fks-test
+  (testing "Implicitly joinable fields of joinable are ignored during suggested-joins-condition computation (#41202)"
+    (let [account-tab-id 10
+          organization-tab-id 20
+          contact-tab-id 30
+          account-f-id 100
+          organization-f-id 110
+          organization-f-account-id 120
+          contact-f-organization-id 130
+          account-card-id 1000
+          contact-card-id 1100
+          metadata-provider (lib.tu/mock-metadata-provider
+                             {:database meta/database
+                              :tables   [{:id   account-tab-id
+                                          :name "account"}
+                                         {:id   organization-tab-id
+                                          :name "organization"}
+                                         {:id   contact-tab-id
+                                          :name "contact"}]
+                              :fields   [{:id account-f-id
+                                          :name "account__id"
+                                          :table-id account-tab-id
+                                          :base-type :type/Integer}
+                                         {:id organization-f-id
+                                          :name "organization__id"
+                                          :table-id organization-tab-id
+                                          :base-type :type/Integer}
+                                         {:id organization-f-account-id
+                                          :name "organization__account_id"
+                                          :table-id organization-tab-id
+                                          :base-type :type/Integer
+                                          :semantic-type :type/FK
+                                          :fk-target-field-id account-f-id}
+                                         {:id contact-f-organization-id
+                                          :name "contact__organization_id"
+                                          :table-id contact-tab-id
+                                          :base-type :type/Integer
+                                          :semantic-type :type/FK
+                                          :fk-target-field-id organization-f-id}]
+                              :cards [{:id account-card-id
+                                       :name "Account Model"
+                                       :type :model
+                                       :lib/type :metadata/card
+                                       :database-id (:id meta/database)
+                                       :result-metadata [{:id account-f-id
+                                                          :name "account__id"
+                                                          :table-id account-tab-id
+                                                          :base-type :type/Integer}]
+                                       :dataset-query {:lib/type :mbql.stage/mbql
+                                                       :database (:id meta/database)
+                                                       :source-table account-tab-id}}
+                                      {:id contact-card-id
+                                       :name "Contact Model"
+                                       :type :model
+                                       :lib/type :metadata/card
+                                       :database-id (:id meta/database)
+                                       :result-metadata [{:id contact-f-organization-id
+                                                          :name "contact__organization_id"
+                                                          :table-id contact-tab-id
+                                                          :base-type :type/Integer
+                                                          :semantic-type :type/FK
+                                                          :fk-target-field-id organization-f-id}]
+                                       :dataset-query {:lib/type :mbql.stage/mbql
+                                                       :database (:id meta/database)
+                                                       :source-table contact-tab-id}}]})
+          account-card (lib.metadata/card metadata-provider account-card-id)
+          contact-card (lib.metadata/card metadata-provider contact-card-id)
+          query (lib/query metadata-provider account-card)]
+      (is (nil? (lib.join/suggested-join-conditions query contact-card))))))
+
 (deftest ^:parallel suggested-join-conditions-multiple-fks-to-different-columns-test
   (testing "when there are multiple FKs to a table, and they point to different columns, suggest multiple join conditions (#34184)"
     ;; let's pretend we live in crazy land and the PK for USER is ID + EMAIL (a composite PK) and ORDER has USER_ID
