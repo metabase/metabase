@@ -38,7 +38,7 @@ class FieldsToGroupBy extends Component {
               Object.values(fields).map((field, index, fields) => (
                 <FieldToGroupBy
                   key={field.id}
-                  className={cx(CS.px1, CS.mb1, CS.rounded, "bg-light-hover")}
+                  className={cx(CS.px1, CS.mb1, CS.rounded, CS.bgLightHover)}
                   iconClass={L.icon}
                   field={field}
                   metric={metric}

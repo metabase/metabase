@@ -7,6 +7,7 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import ColorS from "metabase/css/core/colors.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import * as dashboardActions from "metabase/dashboard/actions";
@@ -188,6 +189,7 @@ class PublicDashboardInner extends Component {
             [DashboardS.DashboardFullscreen]: isFullscreen,
             [DashboardS.DashboardNight]: isNightMode,
             [ParametersS.DashboardNight]: isNightMode,
+            [ColorS.DashboardNight]: isNightMode,
           })}
           loading={!dashboard}
         >

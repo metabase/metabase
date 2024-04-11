@@ -32,7 +32,7 @@ export default class CollectionOptionsButton extends Component {
           placement="bottom-end"
           popoverContent={({ closePopover }) => (
             <AccordionList
-              className="text-brand"
+              className={CS.textBrand}
               sections={[{ items }]}
               onChange={item => {
                 item.onClick(item);
