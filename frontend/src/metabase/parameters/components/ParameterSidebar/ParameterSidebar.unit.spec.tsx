@@ -97,7 +97,7 @@ describe("ParameterSidebar", () => {
       ],
     });
 
-    await userEvent.click(screen.getByRole("radio", { name: "Settings" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Filter settings" }));
     const labelInput = screen.getByLabelText("Label");
     await fillValue(labelInput, "Baz");
     // expect there to be an error message with the text "This label is already in use"
