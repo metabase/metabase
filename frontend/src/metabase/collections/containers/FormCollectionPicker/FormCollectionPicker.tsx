@@ -9,7 +9,7 @@ import {
 } from "metabase/collections/utils";
 import type {
   CollectionPickerItem,
-  type CollectionPickerOptions,
+  CollectionPickerOptions,
 } from "metabase/common/components/CollectionPicker";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
 import CollectionName from "metabase/containers/CollectionName";
