@@ -452,7 +452,7 @@ const AlertModalTitle = ({ text }) => (
         app/assets/img/alerts/alert-bell-confetti-illustration@2x.png 2x
       "
     />
-    <h1 className="text-dark">{text}</h1>
+    <h1 className={CS.textDark}>{text}</h1>
   </div>
 );
 
@@ -570,17 +570,17 @@ export function AlertEditSchedule({ alertType, schedule, onScheduleChange }) {
   return (
     <div>
       <h3 className={cx(CS.mt4, CS.mb3, CS.textDark)}>
-        How often should we check for results?
+        {t`How often should we check for results?`}
       </h3>
 
       <div className={cx(CS.bordered, CS.rounded, CS.mb2)}>
         {alertType === ALERT_TYPE_ROWS && <RawDataAlertTip />}
-        <div className={cx(CS.p3, "bg-light")}>
+        <div className={cx(CS.p3, CS.bgLight)}>
           <SchedulePicker
             schedule={schedule}
             scheduleOptions={["hourly", "daily", "weekly"]}
             onScheduleChange={onScheduleChange}
-            textBeforeInterval="Check"
+            textBeforeInterval={t`Check`}
           />
         </div>
       </div>
@@ -680,7 +680,7 @@ function RawDataAlertTipInner(props) {
           CS.mr2,
           CS.textMedium,
           CS.circle,
-          "bg-light",
+          CS.bgLight,
         )}
       >
         <Icon name="lightbulb" size="20" />

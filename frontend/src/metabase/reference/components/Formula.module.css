@@ -5,7 +5,7 @@
 }
 
 .formulaHeader {
-  composes: text-brand py1 px2 from "style";
+  composes: textBrand py1 px2 from "style";
   align-items: center;
   display: flex;
 }

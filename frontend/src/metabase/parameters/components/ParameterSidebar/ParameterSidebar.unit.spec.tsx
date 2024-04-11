@@ -97,7 +97,7 @@ describe("ParameterSidebar", () => {
       ],
     });
 
-    await userEvent.click(screen.getByRole("radio", { name: "Settings" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Filter settings" }));
     const labelInput = screen.getByLabelText("Label");
     await fillValue(labelInput, "Baz");
     // expect there to be an error message with the text "This label is already in use"
@@ -136,5 +136,49 @@ describe("ParameterSidebar", () => {
     expect(labelInput).toHaveValue("Foo");
     await clickNextParameterButton();
     expect(labelInput).toHaveValue("Bar");
+  });
+
+  describe("when parameter can't use link filters", () => {
+    it("resets tab to 'Filter settings' on parameter change", async () => {
+      const initialParameter = createMockUiParameter({
+        id: "id1",
+        name: "Foo",
+        slug: "foo",
+      });
+      const nextParameter = createMockUiParameter({
+        id: "id2",
+        name: "Bar",
+        slug: "Bar",
+        type: "date/single",
+      });
+
+      const { clickNextParameterButton } = setup({
+        initialParameter,
+        nextParameter,
+        otherParameters: [],
+      });
+
+      // switch tab
+      await userEvent.click(
+        screen.getByRole("tab", { name: "Linked filters" }),
+      );
+
+      await clickNextParameterButton();
+
+      // verify Linked filters tab is not rendered
+      expect(
+        screen.queryByRole("tab", { name: "Linked filters" }),
+      ).not.toBeInTheDocument();
+
+      // verify tab content corresponds to Filter settings
+      expect(
+        screen.queryByText("Limit this filter's choices"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("textbox", {
+          name: "Label",
+        }),
+      ).toHaveValue("Bar");
+    });
   });
 });

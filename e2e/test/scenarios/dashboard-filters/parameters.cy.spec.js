@@ -587,7 +587,7 @@ describe("scenarios > dashboard > parameters", () => {
     selectDashboardFilter(getDashboardCard(), "Vendor");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Linked filters").click();
-    sidebar().findByRole("switch").click();
+    sidebar().findByRole("switch").parent().get("label").click();
     saveDashboard();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

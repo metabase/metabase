@@ -236,7 +236,7 @@ export function DashCardVisualization({
         [CS.pointerEventsNone]: isEditingDashboardLayout,
       })}
       classNameWidgets={cx({
-        "text-light text-medium-hover": isEmbed,
+        [cx(CS.textLight, CS.textMediumHover)]: isEmbed,
       })}
       dashboard={dashboard}
       dashcard={dashcard}
