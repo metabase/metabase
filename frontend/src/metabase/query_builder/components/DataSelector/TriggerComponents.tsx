@@ -93,7 +93,7 @@ export function DatabaseTrigger({ database }: { database: Database }) {
     </span>
   ) : (
     <span
-      className={cx("text-medium", CS.noDecoration)}
+      className={cx(CS.textMedium, CS.noDecoration)}
     >{t`Select a database`}</span>
   );
 }
@@ -108,7 +108,7 @@ export function TableTrigger({ table }: { table: Table }) {
     </span>
   ) : (
     <span
-      className={cx("text-medium", CS.noDecoration)}
+      className={cx(CS.textMedium, CS.noDecoration)}
     >{t`Select a table`}</span>
   );
 }

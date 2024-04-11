@@ -7,6 +7,7 @@ import {
   popover,
   visitDashboard,
   addOrUpdateDashboardCard,
+  modal,
 } from "e2e/support/helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -64,7 +65,7 @@ function saveQuestion(name) {
   cy.findByText("Save").click();
   cy.findByLabelText("Name").type(name);
 
-  cy.get(".Modal").button("Save").click();
+  modal().button("Save").click();
 
   cy.findByText("Not now").click();
 

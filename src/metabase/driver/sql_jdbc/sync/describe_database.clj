@@ -144,7 +144,7 @@
       (fn [{schema :schema table :name ttype :type}]
         ;; driver/current-user-table-privileges does not return privileges for external table on redshift, and foreign
         ;; table on postgres, so we need to use the select method on them
-        (if (#{[:redshift "EXTERNAL TABLE"] [:postgres "FOREIGN TABLE"]}
+        (if (#{[:postgres "FOREIGN TABLE"]}
              [driver ttype])
           (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
           (contains? schema+table-with-select-privileges [schema table]))))

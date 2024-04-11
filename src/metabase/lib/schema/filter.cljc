@@ -21,9 +21,10 @@
       {:error/message "arguments should be comparable"}
       (fn [[_tag _opts & args]]
         (let [argv (vec args)]
-          (every? true? (map (fn [[i j]]
-                               (expression/comparable-expressions? (get argv i) (get argv j)))
-                             compared-position-pairs))))]]))
+          (or expression/*suppress-expression-type-check?*
+              (every? true? (map (fn [[i j]]
+                                   (expression/comparable-expressions? (get argv i) (get argv j)))
+                                 compared-position-pairs)))))]]))
 
 (doseq [op [:and :or]]
   (mbql-clause/define-catn-mbql-clause op :- :type/Boolean

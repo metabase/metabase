@@ -687,7 +687,6 @@
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
 
-;;; NOCOMMIT -- we need to document the new `:window-functions` feature.
 (defmethod driver/database-supports? [:sql :sql/window-functions.order-by-output-column-numbers]
   [_driver _feature _database]
   true)

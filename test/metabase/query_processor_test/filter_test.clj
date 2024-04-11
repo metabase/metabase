@@ -13,6 +13,7 @@
    [metabase.query-processor-test.timezones-test :as timezones-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -1020,6 +1021,22 @@
                              ;; WRONG => [[991 "2014-05-09T00:00:00-07:00"]]
                              (mt/formatted-rows [int str]
                                results))))))))))))))
+
+(deftest ^:parallel date-filter-on-datetime-column-test
+  (testing "Filtering a DATETIME expression by a DATE literal string should do something sane (#17807)"
+    (qp.store/with-metadata-provider (mt/id)
+      (let [people     (lib.metadata/table (qp.store/metadata-provider) (mt/id :people))
+            created-at (lib.metadata/field (qp.store/metadata-provider) (mt/id :people :created_at))
+            query      (as-> (lib/query (qp.store/metadata-provider) people) query
+                         (lib/expression query "CC Created At" created-at)
+                         (lib/filter query (lib/=
+                                            (lib/expression-ref query "CC Created At")
+                                            "2017-10-07"))
+                         (lib/aggregate query (lib/count)))]
+        (testing (str "\nquery =\n" (u/pprint-to-str query))
+          (mt/with-native-query-testing-context query
+            (is (= [[2]]
+                   (mt/rows (qp/process-query query))))))))))
 
 (deftest ^:parallel generate-in-filter-test
   (testing ":= with more than 2 args should get compiled to IN (#23101)"

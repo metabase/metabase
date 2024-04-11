@@ -1,4 +1,4 @@
-import type { EnabledSearchModelType } from "metabase-types/api";
+import type { EnabledSearchModel } from "metabase-types/api";
 
 export const SearchFilterKeys = {
   Type: "type",
@@ -10,7 +10,7 @@ export const SearchFilterKeys = {
   NativeQuery: "search_native_query",
 } as const;
 
-export const enabledSearchTypes: EnabledSearchModelType[] = [
+export const enabledSearchTypes: EnabledSearchModel[] = [
   "dashboard",
   "card",
   "dataset",

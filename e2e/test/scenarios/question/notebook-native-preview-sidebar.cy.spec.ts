@@ -52,7 +52,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.findByTestId("native-query-preview-sidebar").within(() => {
       cy.findByText("SQL for this question").should("exist");
       cy.get(".ace_content").should("not.exist");
-      cy.button("Convert this question to SQL").should("not.exist");
+      cy.button("Convert this question to SQL").should("be.disabled");
     });
   });
 

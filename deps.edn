@@ -37,7 +37,7 @@
                                                            org.slf4j/slf4j-api]}
   com.draines/postal                        {:mvn/version "2.0.5"}              ; SMTP library
   com.github.seancorfield/honeysql          {:mvn/version "2.6.1126"}           ; Honey SQL 2. SQL generation from Clojure data maps
-  com.github.seancorfield/next.jdbc         {:mvn/version "1.3.925" }           ; Talk to JDBC DBs
+  com.github.seancorfield/next.jdbc         {:mvn/version "1.3.925"}            ; Talk to JDBC DBs
   com.github.steffan-westcott/clj-otel-api  {:mvn/version "0.2.6"}              ; Telemetry library
   com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.4"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
   com.google.guava/guava                    {:mvn/version "33.1.0-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
@@ -76,7 +76,7 @@
   io.github.eerohele/pp                     {:git/tag "2024-01-04.60"           ; super fast pretty-printing library
                                              :git/sha "a428751"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.1.24"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.1.26"}             ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1" #_ "must be 1.7.1"} ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
@@ -307,7 +307,8 @@
 
   ;; alias for CI-specific options.
   :ci
-  {:jvm-opts ["-Xmx2g"
+  {:jvm-opts ["-Xmx12g"
+              "-Xms12g"
               ;; normally CircleCI sets `CI` as an env var, so this is mostly to replicate that locally. Hawk will not
               ;; print the progress bar in output when this is set. Progress bars aren't very CI friendly
               "-Dci=TRUE"]}
@@ -528,9 +529,7 @@
                ["metabase\\.driver\\.mysql.*"
                 "metabase\\.driver\\.postgres.*"]}
    ;; different port from `:test` so you can run it at the same time as `:test`.
-   :jvm-opts ["-Dmb.jetty.port=3002"
-              ;; default heap size is 1GB, we were getting OOM on CI so we need to bump this
-              "-Xmx4g"]}
+   :jvm-opts ["-Dmb.jetty.port=3002"]}
 
   ;; clj -T:cljfmt fix '{:paths ["src/metabase/events/view_log.clj"]}'
   :cljfmt
