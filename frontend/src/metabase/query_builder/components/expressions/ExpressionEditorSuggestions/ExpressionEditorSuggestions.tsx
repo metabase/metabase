@@ -96,8 +96,16 @@ export function ExpressionEditorSuggestions({
               onSuggestionMouseDown={onSuggestionMouseDown}
             />
             <ExpressionEditorSuggestionsListGroup
-              name="popular"
-              suggestions={groups.popular}
+              name="popularAggregations"
+              suggestions={groups.popularAggregations}
+              query={query}
+              stageIndex={stageIndex}
+              highlightedIndex={highlightedIndex}
+              onSuggestionMouseDown={onSuggestionMouseDown}
+            />
+            <ExpressionEditorSuggestionsListGroup
+              name="popularExpressions"
+              suggestions={groups.popularExpressions}
               query={query}
               stageIndex={stageIndex}
               highlightedIndex={highlightedIndex}
@@ -294,7 +302,8 @@ type Groups = {
 function group(suggestions: Suggestion[]): Groups {
   const groups: Groups = {
     _none: [],
-    popular: [],
+    popularAggregations: [],
+    popularExpressions: [],
   };
 
   suggestions.forEach(function (suggestion) {

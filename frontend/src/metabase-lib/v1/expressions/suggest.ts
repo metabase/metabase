@@ -44,8 +44,11 @@ const suggestionText = (func: MBQLClauseFunctionConfig) => {
 };
 
 export const GROUPS = {
-  popular: {
+  popularExpressions: {
     displayName: t`Most used functions`,
+  },
+  popularAggregations: {
+    displayName: t`Most used aggregations`,
   },
 } as const;
 
@@ -103,7 +106,7 @@ export function suggest({
     }
 
     suggestions.push(
-      ...Array.from(POPULAR_EXPRESSIONS.keys())
+      ...Array.from(POPULAR_EXPRESSIONS)
         .map((name: string): Suggestion | null => {
           const clause = MBQL_CLAUSES[name];
           if (!clause) {
@@ -132,7 +135,10 @@ export function suggest({
             index: targetOffset,
             icon: "function",
             order: 1,
-            group: "popular",
+            group:
+              startRule === "aggregation"
+                ? "popularAggregations"
+                : "popularExpressions",
             helpText: database
               ? getHelpText(name, database, reportTimezone)
               : undefined,
