@@ -22,7 +22,7 @@ import {
 } from "metabase/forms";
 import { PLUGIN_LDAP_FORM_FIELDS } from "metabase/plugins";
 import { Group, Radio, Stack } from "metabase/ui";
-import type { SettingValue } from "metabase-types/api";
+import type { SettingKey, Settings } from "metabase-types/api";
 
 const testParentheses: TestConfig<string | null | undefined> = {
   name: "test-parentheses",
@@ -43,7 +43,7 @@ const LDAP_SCHEMA = Yup.object({
   "ldap-group-membership-filter": Yup.string().nullable().test(testParentheses),
 });
 
-export type SettingValues = { [key: string]: SettingValue };
+export type SettingValues = Partial<Settings>;
 
 type LdapFormSettingElement = Omit<SettingElement, "key"> & {
   key: string; // ensuring key is required
@@ -114,7 +114,8 @@ export const SettingsLdapFormView = ({
       "ldap-sync-admin-group",
     ],
     [],
-  );
+  ) as SettingKey[];
+
   const attributeValues = useMemo(() => {
     return getAttributeValues(
       ldapAttributes,
@@ -125,10 +126,10 @@ export const SettingsLdapFormView = ({
   }, [settings, settingValues, ldapAttributes, defaultableAttrs]);
 
   const handleSubmit = useCallback(
-    values => {
+    (values: SettingValues) => {
       return onSubmit({
         ...values,
-        "ldap-port": values["ldap-port"]?.trim(),
+        "ldap-port": values["ldap-port"],
         "ldap-enabled": true,
       });
     },
@@ -220,7 +221,7 @@ export const SettingsLdapFormView = ({
 };
 
 const getAttributeValues = (
-  ldapAttributes: string[],
+  ldapAttributes: SettingKey[],
   settings: Record<string, LdapFormSettingElement>,
   values: SettingValues,
   defaultableAttrs: Set<string>,

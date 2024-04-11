@@ -232,8 +232,7 @@ describe("SettingsLdapForm", () => {
   it("should submit the correct payload", async () => {
     const { onSubmit } = setup({
       "ldap-enabled": true,
-      "ldap-group-membership-filter": null,
-      "ldap-sync-admin-group": null,
+      "ldap-group-membership-filter": "",
     });
 
     const ATTRS = {
