@@ -2,6 +2,10 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { QueryColumnInfoIcon as BaseQueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import {
+  HoverParent,
+  PopoverHoverTarget as BasePopoverHoverTarget,
+} from "metabase/components/MetadataInfo/InfoIcon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { alpha, color } from "metabase/lib/colors";
 
@@ -59,4 +63,15 @@ export const QueryColumnInfoIcon = styled(BaseQueryColumnInfoIcon)`
   padding: 0;
   margin-left: auto;
   padding: 0.3125rem 0;
+`;
+
+export const PopoverHoverTarget = styled(BasePopoverHoverTarget)`
+  padding: 0;
+  margin-left: auto;
+  padding: 0.3125rem 0;
+  visibility: hidden;
+
+  ${HoverParent}:hover & {
+    visibility: visible;
+  }
 `;
