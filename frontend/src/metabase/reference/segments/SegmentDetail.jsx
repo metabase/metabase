@@ -205,7 +205,7 @@ const SegmentDetail = props => {
                           <div>
                             <Link
                               className={cx(
-                                "text-brand",
+                                CS.textBrand,
                                 CS.textBold,
                                 CS.textParagraph,
                               )}

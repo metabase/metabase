@@ -2,7 +2,7 @@ import { useCallback, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { Radio, Stack, Text, TextInput } from "metabase/ui";
+import { Radio, Stack, Text, TextInput, Box } from "metabase/ui";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -20,8 +20,6 @@ import { ValuesSourceSettings } from "../ValuesSourceSettings";
 import {
   SettingLabel,
   SettingLabelError,
-  SettingSection,
-  SettingsRoot,
   SettingValueWidget,
 } from "./ParameterSettings.styled";
 
@@ -86,8 +84,8 @@ export const ParameterSettings = ({
   const isMultiValue = getIsMultiSelect(parameter) ? "multi" : "single";
 
   return (
-    <SettingsRoot>
-      <SettingSection>
+    <Box p="1.5rem 1rem">
+      <Box mb="xl">
         <SettingLabel>{t`Label`}</SettingLabel>
         <TextInput
           onChange={handleLabelChange}
@@ -96,20 +94,20 @@ export const ParameterSettings = ({
           error={labelError}
           aria-label={t`Label`}
         />
-      </SettingSection>
+      </Box>
       {canUseCustomSource(parameter) && (
-        <SettingSection>
+        <Box mb="xl">
           <SettingLabel>{t`How should people filter on this column?`}</SettingLabel>
           <ValuesSourceSettings
             parameter={parameter}
             onChangeQueryType={onChangeQueryType}
             onChangeSourceSettings={handleSourceSettingsChange}
           />
-        </SettingSection>
+        </Box>
       )}
 
       {isSingleOrMultiSelectable(parameter) && (
-        <SettingSection>
+        <Box mb="xl">
           <SettingLabel>{t`People can pick`}</SettingLabel>
           <Radio.Group
             value={isMultiValue}
@@ -128,10 +126,10 @@ export const ParameterSettings = ({
               />
             </Stack>
           </Radio.Group>
-        </SettingSection>
+        </Box>
       )}
 
-      <SettingSection>
+      <Box mb="lg">
         <SettingLabel>
           {t`Default value`}
           {parameter.required &&
@@ -176,8 +174,8 @@ export const ParameterSettings = ({
             </>
           }
         ></RequiredParamToggle>
-      </SettingSection>
-    </SettingsRoot>
+      </Box>
+    </Box>
   );
 };
 
