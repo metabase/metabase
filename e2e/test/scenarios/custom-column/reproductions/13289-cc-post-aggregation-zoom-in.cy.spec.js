@@ -47,7 +47,7 @@ describe("issue 13289", () => {
     cy.findByTestId("query-visualization-root").within(() => {
       lineChartCircle()
         .eq(5) // random circle in the graph (there is no specific reason for this index)
-        .click({ force: true });
+        .click();
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
