@@ -91,7 +91,8 @@ export const cronToScheduleSettings = (
       const day = parseInt(dayOfWeekParts[0]);
       schedule_day = DAY_OF_WEEK_OPTIONS[day - 1]?.value as ScheduleDayType;
       if (dayOfMonth === "*") {
-        schedule_frame = frameFromCron[dayOfWeekParts[1]];
+        const frameInCronFormat = dayOfWeekParts[1].replace(/^#/, "");
+        schedule_frame = frameFromCron[frameInCronFormat];
       } else {
         schedule_frame = frameFromCron[dayOfMonth];
       }

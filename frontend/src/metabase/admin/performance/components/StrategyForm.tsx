@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -181,7 +181,11 @@ const StrategyFormBody = ({
 
 const ScheduleStrategyFormFields = () => {
   const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
+
+  console.log('values.schedule', values.schedule);
   const initialSchedule = cronToScheduleSettings(values.schedule);
+
+  console.log('initialSchedule', initialSchedule);
   const [schedule, setSchedule] = useState<ScheduleSettings>(
     initialSchedule || {},
   );
@@ -254,8 +258,9 @@ export const FormButtons = () => {
 const StrategySelector = ({ targetId }: { targetId: number | null }) => {
   const { values } = useFormikContext<Strategy>();
 
-  const availableStrategies =
-    targetId === rootId ? _.omit(Strategies, "inherit") : Strategies;
+  const availableStrategies = useMemo(() => {
+    return targetId === rootId ? _.omit(Strategies, "inherit") : Strategies;
+  }, [targetId]);
 
   return (
     <section>

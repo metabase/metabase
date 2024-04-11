@@ -112,17 +112,6 @@ describe("cronToScheduleSettings", () => {
       const cron = "0 30 8 15 * ?";
       expect(cronToScheduleSettings(cron)?.schedule_type).toBe("monthly");
     });
-
-    it("converts 0 0 22 ? * 2#1 correctly", () => {
-      const cron = "0 0 22 ? * 2L";
-      expect(cronToScheduleSettings(cron)).toEqual({
-        schedule_type: "monthly",
-        schedule_minute: 0,
-        schedule_hour: 22,
-        schedule_day: "mon",
-        schedule_frame: "last",
-      });
-    });
   });
 
   describe("monthly schedule determination", () => {
@@ -193,6 +182,29 @@ describe("cronToScheduleSettings", () => {
           schedule_hour: 3,
         }),
       );
+    });
+  });
+
+  describe("specific cron strings", () => {
+    it("converts 0 0 22 ? * 2L correctly", () => {
+      const cron = "0 0 22 ? * 2L";
+      expect(cronToScheduleSettings(cron)).toEqual({
+        schedule_type: "monthly",
+        schedule_minute: 0,
+        schedule_hour: 22,
+        schedule_day: "mon",
+        schedule_frame: "last",
+      });
+    });
+    it("converts 0 0 6 ? * 6#1 correctly", () => {
+      const cron = "0 0 6 ? * 6#1";
+      expect(cronToScheduleSettings(cron)).toEqual({
+        schedule_type: "monthly",
+        schedule_minute: 0,
+        schedule_hour: 6,
+        schedule_day: "fri",
+        schedule_frame: "first",
+      });
     });
   });
 });

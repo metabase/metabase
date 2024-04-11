@@ -1,5 +1,5 @@
 import { c, t } from "ttag";
-import { times } from "underscore";
+import { pick, times } from "underscore";
 
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
@@ -12,6 +12,7 @@ import type {
   ScheduleSettings,
   ScheduleType,
 } from "metabase-types/api";
+import { useEffect, useRef } from "react";
 
 type HandleChangeProperty = (
   name: ScheduleProperty,
@@ -34,6 +35,7 @@ const optionNameTranslations = {
   // The context is needed because 'hourly' can be an adjective ('hourly rate') or adverb ('update hourly'). Same with 'daily', 'weekly', and 'monthly'.
   hourly: c("adverb").t`hourly`,
   daily: c("adverb").t`daily`,
+  //weekly: c("adverb").t`weekly`,
   weekly: c("adverb").t`weekly`,
   monthly: c("adverb").t`monthly`,
 };
@@ -111,52 +113,34 @@ export const Schedule = ({
       [name]: value,
     };
 
+    const defaults: Record<string, Partial<ScheduleSettings>> = {
+      hourly: {
+        schedule_day: null,
+        schedule_frame: null,
+        schedule_hour: null,
+        schedule_minute: 0,
+      },
+      daily: {
+        schedule_day: null,
+        schedule_frame: null,
+      },
+      weekly: {
+        schedule_day: DEFAULT_DAY,
+        schedule_frame: null,
+      },
+      monthly: {
+        schedule_frame: "first",
+        schedule_day: DEFAULT_DAY,
+      },
+    };
+
+    newSchedule = pick(newSchedule, val => val !== undefined);
+
     if (name === "schedule_type") {
-      // clear out other values than schedule_type for hourly schedule
-      if (value === "hourly") {
-        newSchedule = {
-          ...newSchedule,
-          schedule_day: null,
-          schedule_frame: null,
-          schedule_hour: null,
-          schedule_minute: 0,
-        };
-      }
-
-      // default to midnight for all schedules other than hourly
-      if (value !== "hourly") {
-        newSchedule = {
-          ...newSchedule,
-          schedule_hour: newSchedule.schedule_hour || 0,
-        };
-      }
-
-      // clear out other values than schedule_type and schedule_day for daily schedule
-      if (value === "daily") {
-        newSchedule = {
-          ...newSchedule,
-          schedule_day: null,
-          schedule_frame: null,
-        };
-      }
-
-      // default to Monday when user wants a weekly schedule + clear out schedule_frame
-      if (value === "weekly") {
-        newSchedule = {
-          ...newSchedule,
-          schedule_day: DEFAULT_DAY,
-          schedule_frame: null,
-        };
-      }
-
-      // default to First, Monday when user wants a monthly schedule
-      if (value === "monthly") {
-        newSchedule = {
-          ...newSchedule,
-          schedule_frame: "first",
-          schedule_day: DEFAULT_DAY,
-        };
-      }
+      newSchedule = {
+        ...defaults[value as ScheduleType],
+        ...newSchedule,
+      };
     } else if (name === "schedule_frame") {
       // when the monthly schedule frame is the 15th, clear out the schedule_day
       if (value === "mid") {
@@ -164,8 +148,8 @@ export const Schedule = ({
       } else {
         // first or last, needs a day of the week
         newSchedule = {
-          ...newSchedule,
           schedule_day: newSchedule.schedule_day || DEFAULT_DAY,
+          ...newSchedule,
         };
       }
     }
@@ -174,7 +158,12 @@ export const Schedule = ({
   };
 
   return (
-    <Box lh="41px" display="flex" style={{ flexWrap: "wrap", gap: ".5rem" }}>
+    <Box
+      ref={ref}
+      lh="41px"
+      display="flex"
+      style={{ flexWrap: "wrap", gap: ".5rem" }}
+    >
       <ScheduleBody
         schedule={schedule}
         handleChangeProperty={handleChangeProperty}
@@ -210,7 +199,9 @@ const ScheduleBody = ({
     scheduleOptions,
   };
 
-  const HowOften = () => <ScheduleTypeSelect {...scheduleTypeSelectProps} />;
+  const HowOften = () => (
+    <ScheduleTypeSelect key="how-often" {...scheduleTypeSelectProps} />
+  );
   const Day = () => <DayPicker {...itemProps} />;
   const Hour = () => (
     <HourPicker
@@ -241,7 +232,7 @@ const ScheduleBody = ({
         return (
           <>{
             // prettier-ignore
-            c("{0} is a verb like 'Send' (place at the start of the translation if possible), {1} is an adverb like 'hourly', {2} is a number of minutes").
+            c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes").
             jt`${verb} ${(<HowOften />)} at ${(<Minute />)} minutes past the hour`
           }</>
         );
@@ -249,7 +240,7 @@ const ScheduleBody = ({
         return (
           <>{
             // prettier-ignore
-            c("{0} is a verb like 'Send' (place at the start of the translation if possible), {1} is an adverb like 'hourly'").
+            c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'").
             jt`${verb} ${(<HowOften />)}`
           }</>
         );
@@ -258,20 +249,20 @@ const ScheduleBody = ({
       return (
         <>{
           // prettier-ignore
-          c("{0} is a verb like 'Send' (place at the start of the translation if possible), {1} is an adverb like 'hourly', {2} is a time like '12:00pm'").
+          c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'").
         jt`${verb} ${(<HowOften />)} at ${(<Hour />)}`
         }</>
       );
     case "weekly":
       return (
         <>{c(
-          "{0} is a verb like 'Send' (place at the start of the translation if possible), {1} is an adverb like 'hourly' or 'weekly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
+          "{0} is a verb like 'Send', {1} is an adverb like 'hourly' or 'weekly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
         ).jt`${verb} ${(<HowOften />)} on ${(<Day />)} at ${(<Hour />)}`}</>
       );
     case "monthly":
       return (
         <>{c(
-          "{0} is a verb like 'Send' (place at the start of the translation if possible), {1} is an adverb like 'hourly' or 'weekly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
+          "{0} is a verb like 'Send', {1} is an adverb like 'hourly' or 'weekly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
         ).jt`${verb} ${(<HowOften />)} on the ${(<Month />)} at ${(
           <Hour />
         )}`}</>
@@ -441,13 +432,16 @@ const AutoSizedSelect = (props: SelectProps) => {
     const label = typeof option === "string" ? option : option.label || "";
     return label.length > acc.length ? label : acc;
   }, "");
-  const maxWidth = longestLabel.length + 2 + "rem";
+  const maxWidth =
+    longestLabel.length > 10 ? "unset" : `${longestLabel.length + 0.75}rem`;
   return (
     <Select
-      className="data-tight"
       miw="5rem"
       maw={maxWidth}
-      styles={{ wrapper: { marginTop: 0 } }}
+      styles={{
+        wrapper: { paddingRight: 0, marginTop: 0 },
+        input: { paddingRight: 0 },
+      }}
       {...props}
     />
   );
