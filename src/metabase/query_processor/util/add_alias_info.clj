@@ -239,35 +239,34 @@
         (when-let [field-name (let [[_ id-or-name] field-clause]
                                 (when (string? id-or-name)
                                   id-or-name))]
-          (or
-           ;; Expressions or fields from the source query stage whose `::desired-alias` matches the name we're searching
-           ;; for.
-           (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
-                           (when (#{:expression :field} tag)
-                             (= desired-alias field-name)))
-                         all-exports)
-           ;; Expressions by exact name.
-           (m/find-first (fn [[_ expression-name :as _expression-clause]]
-                           (= expression-name field-name))
-                         (filter (partial mbql.u/is-clause? :expression) all-exports))
-           ;; aggregation clauses from the previous stage based on their `::desired-alias`. If THAT doesn't work, then
-           ;; try to match based on their `::source-alias` (not 100% sure why we're checking `::source-alias` at all TBH
-           ;; -- Cam)
-           (when-let [ag-clauses (seq (filter (partial mbql.u/is-clause? :aggregation-options) all-exports))]
-             (some (fn [k]
-                     (m/find-first (fn [[_tag _ag-clause opts :as _aggregation-options-clause]]
-                                     (= (get opts k) field-name))
-                                   ag-clauses))
-                   [::desired-alias ::source-alias]))
-           ;; look for a field referenced by the name in source-metadata
-           (when-let [column (m/find-first #(= (:name %) field-name) source-metadata)]
-             (let [signature (field-signature (:field_ref column))]
-               (or ;; First try to match with the join alias.
-                (m/find-first #(= (field-signature %) signature) field-exports)
-                ;; Then just the names, but if the match is ambiguous, warn and return nil.
-                (let [matches (filter #(= (second %) field-name) field-exports)]
-                  (when (= (count matches) 1)
-                    (first matches)))))))))))
+          (or ;; First, look for Expressions or fields from the source query stage whose `::desired-alias` matches the
+              ;; name we're searching for.
+              (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
+                              (when (#{:expression :field} tag)
+                                (= desired-alias field-name)))
+                            all-exports)
+              ;; Expressions by exact name.
+              (m/find-first (fn [[_ expression-name :as _expression-clause]]
+                              (= expression-name field-name))
+                            (filter (partial mbql.u/is-clause? :expression) all-exports))
+              ;; aggregation clauses from the previous stage based on their `::desired-alias`. If THAT doesn't work, then
+              ;; try to match based on their `::source-alias` (not 100% sure why we're checking `::source-alias` at all TBH
+              ;; -- Cam)
+              (when-let [ag-clauses (seq (filter (partial mbql.u/is-clause? :aggregation-options) all-exports))]
+                (some (fn [k]
+                        (m/find-first (fn [[_tag _ag-clause opts :as _aggregation-options-clause]]
+                                        (= (get opts k) field-name))
+                                      ag-clauses))
+                      [::desired-alias ::source-alias]))
+              ;; look for a field referenced by the name in source-metadata
+              (when-let [column (m/find-first #(= (:name %) field-name) source-metadata)]
+                (let [signature (field-signature (:field_ref column))]
+                  (or ;; First try to match with the join alias.
+                   (m/find-first #(= (field-signature %) signature) field-exports)
+                   ;; Then just the names, but if the match is ambiguous, warn and return nil.
+                   (let [matches (filter #(= (second %) field-name) field-exports)]
+                     (when (= (count matches) 1)
+                       (first matches)))))))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
