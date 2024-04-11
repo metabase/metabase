@@ -1,75 +1,22 @@
-import { c, t } from "ttag";
-import { pick, times } from "underscore";
+import { c } from "ttag";
+import { pick } from "underscore";
 
 import { capitalize } from "metabase/lib/formatting/strings";
-import { useSelector } from "metabase/lib/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
-import type { SelectProps } from "metabase/ui";
-import { Box, Group, SegmentedControl, Select } from "metabase/ui";
-import type {
-  ScheduleDayType,
-  ScheduleFrameType,
-  ScheduleSettings,
-  ScheduleType,
-} from "metabase-types/api";
+import { Box } from "metabase/ui";
+import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
-type HandleChangeProperty = (
-  name: ScheduleProperty,
-  value: ScheduleSettings[typeof name],
-) => void;
-
-const minutes = times(60, n => ({
-  label: n.toString(),
-  value: n.toString(),
-}));
-
-const hours = times(12, n => ({
-  label: c("This is a time like 12:00pm. {0} is the hour part of the time").t`${
-    n === 0 ? 12 : n
-  }:00`,
-  value: `${n}`,
-}));
-
-const optionNameTranslations = {
-  // The context is needed because 'hourly' can be an adjective ('hourly rate') or adverb ('update hourly'). Same with 'daily', 'weekly', and 'monthly'.
-  hourly: c("adverb").t`hourly`,
-  daily: c("adverb").t`daily`,
-  //weekly: c("adverb").t`weekly`,
-  weekly: c("adverb").t`weekly`,
-  monthly: c("adverb").t`monthly`,
-};
-
-export type DayOfWeek = {
-  label: string;
-  value: ScheduleDayType;
-};
-
-const daysOfTheWeek: DayOfWeek[] = [
-  { label: t`Sunday`, value: "sun" },
-  { label: t`Monday`, value: "mon" },
-  { label: t`Tuesday`, value: "tue" },
-  { label: t`Wednesday`, value: "wed" },
-  { label: t`Thursday`, value: "thu" },
-  { label: t`Friday`, value: "fri" },
-  { label: t`Saturday`, value: "sat" },
-];
-
-const amAndPM = [
-  { label: c("As in 9:00 AM").t`AM`, value: "0" },
-  { label: c("As in 9:00 PM").t`PM`, value: "1" },
-];
-
-const frames = [
-  { label: t`first`, value: "first" },
-  { label: t`last`, value: "last" },
-  { label: t`15th (midpoint)`, value: "mid" },
-];
+import {
+  AutoWidthSelect,
+  DayPicker,
+  HourPicker,
+  MinutePicker,
+  MonthlyPicker,
+} from "./components";
+import { defaultDay, optionNameTranslations } from "./constants";
+import type { HandleChangeProperty, ScheduleChangeProp } from "./types";
 
 const getOptionName = (option: ScheduleType) =>
   optionNameTranslations[option] || capitalize(option);
-
-type ScheduleProperty = keyof ScheduleSettings;
-type ScheduleChangeProp = { name: ScheduleProperty; value: unknown };
 
 export interface ScheduleProps {
   schedule: ScheduleSettings;
@@ -83,8 +30,6 @@ export interface ScheduleProps {
     change: ScheduleChangeProp,
   ) => void;
 }
-
-const DEFAULT_DAY = "mon";
 
 export const Schedule = ({
   schedule,
@@ -112,6 +57,7 @@ export const Schedule = ({
       [name]: value,
     };
 
+    // TODO: Not sure these nulls are needed
     const defaults: Record<string, Partial<ScheduleSettings>> = {
       hourly: {
         schedule_day: null,
@@ -124,12 +70,12 @@ export const Schedule = ({
         schedule_frame: null,
       },
       weekly: {
-        schedule_day: DEFAULT_DAY,
+        schedule_day: defaultDay,
         schedule_frame: null,
       },
       monthly: {
         schedule_frame: "first",
-        schedule_day: DEFAULT_DAY,
+        schedule_day: defaultDay,
       },
     };
 
@@ -147,7 +93,7 @@ export const Schedule = ({
       } else {
         // first or last, needs a day of the week
         newSchedule = {
-          schedule_day: newSchedule.schedule_day || DEFAULT_DAY,
+          schedule_day: newSchedule.schedule_day || defaultDay,
           ...newSchedule,
         };
       }
@@ -281,162 +227,13 @@ const ScheduleTypeSelect = ({
   }));
 
   return (
-    <AutoSizedSelect
+    <AutoWidthSelect
       display="flex"
       value={scheduleType}
       onChange={(value: ScheduleType) =>
         handleChangeProperty("schedule_type", value)
       }
       data={scheduleTypeOptions}
-    />
-  );
-};
-
-const MetabaseTimeZone = () => {
-  const applicationName = useSelector(getApplicationName);
-  return <>{t`your ${applicationName} timezone`}</>;
-};
-
-export const MonthlyPicker = ({
-  schedule,
-  handleChangeProperty,
-}: {
-  schedule: ScheduleSettings;
-  handleChangeProperty: HandleChangeProperty;
-}) => {
-  const DAY_OPTIONS = [
-    { label: t`calendar day`, value: "calendar-day" },
-    ...daysOfTheWeek,
-  ];
-
-  return (
-    <>
-      <AutoSizedSelect
-        value={schedule.schedule_frame}
-        onChange={(value: ScheduleFrameType) =>
-          handleChangeProperty("schedule_frame", value)
-        }
-        data={frames}
-      />
-      {schedule.schedule_frame !== "mid" && (
-        <AutoSizedSelect
-          value={schedule.schedule_day || "calendar-day"}
-          onChange={(value: ScheduleDayType | "calendar-day") =>
-            handleChangeProperty(
-              "schedule_day",
-              value === "calendar-day" ? null : value,
-            )
-          }
-          data={DAY_OPTIONS}
-        />
-      )}
-    </>
-  );
-};
-
-export const HourPicker = ({
-  schedule,
-  timezone,
-  textBeforeSendTime,
-  handleChangeProperty,
-}: {
-  schedule: ScheduleSettings;
-  timezone: string;
-  textBeforeSendTime?: string;
-  handleChangeProperty: HandleChangeProperty;
-}) => {
-  const hourOfDay = isNaN(schedule.schedule_hour as number)
-    ? 8
-    : schedule.schedule_hour || 0;
-
-  const hour = hourOfDay % 12;
-  const amPm = hourOfDay >= 12 ? 1 : 0;
-
-  return (
-    <>
-      <Group spacing="xs" style={{ lineHeight: "1rem" }}>
-        <AutoSizedSelect
-          value={hour.toString()}
-          data={hours}
-          onChange={(value: string) =>
-            handleChangeProperty("schedule_hour", Number(value) + amPm * 12)
-          }
-        />
-        <SegmentedControl
-          radius="sm"
-          value={amPm.toString()}
-          onChange={value =>
-            handleChangeProperty("schedule_hour", hour + Number(value) * 12)
-          }
-          data={amAndPM}
-          fullWidth
-        />
-        {textBeforeSendTime && (
-          <Box mt="1rem" color="text-medium">
-            {textBeforeSendTime} {hour === 0 ? 12 : hour}:00{" "}
-            {amPm ? "PM" : "AM"} {timezone}, <MetabaseTimeZone />.
-          </Box>
-        )}
-      </Group>
-    </>
-  );
-};
-
-export const DayPicker = ({
-  schedule,
-  handleChangeProperty,
-}: {
-  schedule: ScheduleSettings;
-  handleChangeProperty: HandleChangeProperty;
-}) => {
-  return (
-    <AutoSizedSelect
-      value={schedule.schedule_day}
-      onChange={(value: ScheduleDayType) =>
-        handleChangeProperty("schedule_day", value)
-      }
-      data={daysOfTheWeek}
-    />
-  );
-};
-
-export const MinutePicker = ({
-  schedule,
-  handleChangeProperty,
-}: {
-  schedule: ScheduleSettings;
-  handleChangeProperty: HandleChangeProperty;
-}) => {
-  const minuteOfHour = isNaN(schedule.schedule_minute as number)
-    ? 0
-    : schedule.schedule_minute;
-  return (
-    <AutoSizedSelect
-      value={(minuteOfHour || 0).toString()}
-      data={minutes}
-      onChange={(value: string) =>
-        handleChangeProperty("schedule_minute", Number(value))
-      }
-    />
-  );
-};
-
-const AutoSizedSelect = (props: SelectProps) => {
-  const longestLabel = props.data.reduce((acc, option) => {
-    const label = typeof option === "string" ? option : option.label || "";
-    return label.length > acc.length ? label : acc;
-  }, "");
-  const maxWidth =
-    longestLabel.length > 10 ? "unset" : `${longestLabel.length + 0.75}rem`;
-  return (
-    <Select
-      miw="5rem"
-      maw={maxWidth}
-      styles={{
-        wrapper: { paddingRight: 0, marginTop: 0 },
-        input: { paddingRight: 0 },
-      }}
-      {...props}
     />
   );
 };
