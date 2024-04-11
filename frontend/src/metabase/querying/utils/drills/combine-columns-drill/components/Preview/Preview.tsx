@@ -20,12 +20,13 @@ interface Props {
 
 export const Preview = ({ expressionClause, query, stageIndex }: Props) => {
   const datasets = useSelector(getQueryResults);
-  const queryResults = useMemo(() => {
-    return extractQueryResults(datasets).slice(0, PREVIEW_LINE_COLORS.length);
-  }, [datasets]);
+  const { columns, rows } = useMemo(() => {
+    const { columns, rows } = extractQueryResults(query, stageIndex, datasets);
+    return { columns, rows: rows.slice(0, PREVIEW_LINE_COLORS.length) };
+  }, [query, stageIndex, datasets]);
   const values = useMemo(
-    () => getPreview(query, stageIndex, expressionClause, queryResults),
-    [query, stageIndex, expressionClause, queryResults],
+    () => getPreview(query, stageIndex, expressionClause, columns, rows),
+    [query, stageIndex, expressionClause, columns, rows],
   );
 
   if (values.length === 0) {

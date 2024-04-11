@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import type { Dataset, DatasetColumn, RowValue } from "metabase-types/api";
+import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
 import type { ColumnAndSeparator, ColumnOption } from "./types";
 
@@ -60,37 +60,42 @@ export const formatSeparator = (separator: string) => {
 };
 
 export const extractQueryResults = (
+  query: Lib.Query,
+  stageIndex: number,
   datasets: Dataset[] | null,
 ): {
-  col: DatasetColumn | Lib.ColumnMetadata;
-  value: RowValue;
-}[][] => {
+  columns: Lib.ColumnMetadata[];
+  rows: RowValues[];
+} => {
   if (!datasets || datasets.length === 0) {
-    return [];
+    return { columns: [], rows: [] };
   }
 
   const data = datasets[0].data;
-  const columns = data.results_metadata.columns;
   const rows = data.rows;
 
-  return rows.map(row => {
-    return row.map((value, index) => {
-      return { value, col: columns[index] };
-    });
+  const columns = data.results_metadata.columns.map(column => {
+    return Lib.fromLegacyColumn(query, stageIndex, column);
   });
+
+  return { rows, columns };
 };
 
 export const getPreview = (
   query: Lib.Query,
   stageIndex: number,
   expressionClause: Lib.ExpressionClause,
-  results: {
-    col: DatasetColumn | Lib.ColumnMetadata;
-    value: RowValue;
-  }[][],
+  columns: Lib.ColumnMetadata[],
+  rows: RowValues[],
 ): RowValue[] => {
-  return results.map(result => {
-    return Lib.previewExpression(query, stageIndex, expressionClause, result);
+  return rows.map(row => {
+    return Lib.previewExpression(
+      query,
+      stageIndex,
+      expressionClause,
+      columns,
+      row,
+    );
   });
 };
 
