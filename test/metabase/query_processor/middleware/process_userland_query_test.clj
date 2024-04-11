@@ -6,7 +6,6 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.events :as events]
-   [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.process-userland-query
@@ -175,28 +174,36 @@
 
 (deftest save-field-usage-test
   (testing "execute a query will save field usages"
-    (qp.store/with-metadata-provider (mt/id)
-      (doseq [query-type [:mbql :mlv2]]
-        (let [;; randomize the binning so we can use it as the identifier for fieldusage down below
-              random-binning  (rand-int 13371337)
-              breakout-clause [:field (mt/id :products :price) {:binning {:num-bins  random-binning
-                                                                          :strategy  :num-bins
-                                                                          :bin-width random-binning}}]]
-          (testing (format "with source card is a %s query" query-type)
-            (mt/with-model-cleanup [:model/FieldUsage]
-              (mt/with-temp [:model/Card card {:dataset_query (cond->> (mt/mbql-query products {:breakout [breakout-clause]})
-                                                                (= :mlv2 query-type)
-                                                                (lib/query (qp.store/metadata-provider)))}]
-                (binding [process-userland-query/*save-execution-metadata-async* false]
-                  (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card)))
-                  (is (=? [{:filter_op                  nil
-                            :breakout_temporal_unit     nil
-                            :breakout_binning_strategy  :num-bins
-                            :breakout_binning_bin_width random-binning
-                            :breakout_binning_num_bins  random-binning
-                            :used_in                    :breakout
-                            :aggregation_function       nil
-                            :field_id                   (mt/id :products :price)
-                            :query_execution_id         (mt/malli=? pos-int?)}]
-                          (t2/select :model/FieldUsage :breakout_binning_num_bins random-binning
-                                     :breakout_binning_bin_width random-binning))))))))))))
+    (mt/with-model-cleanup [:model/FieldUsage]
+      (mt/with-temp [:model/Field {field-id :id} {:table_id (mt/id :products)
+                                                  :name     "very_interesting_field"}
+                     :model/Card card           {:dataset_query (mt/mbql-query products
+                                                                               {:filter [:> [:field field-id nil] 1]})}]
+        (binding [process-userland-query/*save-execution-metadata-async* false
+                  qp.pipeline/*execute*                                  (fn [_driver _query respond]
+                                                                           (respond {} []))]
+          (mt/user-http-request :crowberto :post 202 (format "/card/%d/query" (:id card)))
+          (is (=? [{:filter_op                  :>
+                    :breakout_temporal_unit     nil
+                    :breakout_binning_strategy  nil
+                    :breakout_binning_bin_width nil
+                    :breakout_binning_num_bins  nil
+                    :used_in                    :filter
+                    :aggregation_function       nil
+                    :field_id                   field-id
+                    :query_execution_id         (mt/malli=? pos-int?)}]
+                  (t2/select :model/FieldUsage
+                             :field_id field-id))))))))
+
+(deftest query-result-should-not-contains-preprocessed-query-test
+  (let [query (mt/mbql-query venues {:limit 1})]
+    (doseq [userland-query? [true false]]
+      (testing (format "executing %suserland query shouldn't return the preprocessed query"
+                       (if userland-query? "" "non "))
+        (is (true? (-> (if userland-query?
+                         (qp/userland-query query)
+                         query)
+                       qp/process-query
+                       :data
+                       (contains? :preprocessed_query)
+                       not)))))))

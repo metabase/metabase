@@ -8,14 +8,14 @@
   (:require
    [java-time.api :as t]
    [metabase.events :as events]
+   [metabase.lib.core :as lib]
    [metabase.models.field-usage :as field-usage]
    [metabase.models.query :as query]
    [metabase.models.query-execution
     :as query-execution
     :refer [QueryExecution]]
-   [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
-   [metabase.query-processor.middleware.normalize-query :as normalize]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -153,11 +153,10 @@
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})
 
-(defn- query->field-usages
-  [query]
-  (->> (normalize/normalize-preprocessing-middleware query)
-       fetch-source-query/resolve-source-cards
-       field-usage/pmbql->field-usages))
+(mu/defn userland-query? :- :boolean
+  "Returns true if the query is an userland query, else false."
+  [query :- ::qp.schema/qp]
+  (boolean (get-in query [:middleware :userland-query?])))
 
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.
@@ -172,13 +171,16 @@
   [qp :- ::qp.schema/qp]
   (mu/fn [query :- ::qp.schema/query
           rff   :- ::qp.schema/rff]
-    (if-not (get-in query [:middleware :userland-query?])
+    (if-not (userland-query? query)
       (qp query rff)
       (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
-            execution-info (query-execution-info query)
-            field-usages   (query->field-usages query)]
+            execution-info (query-execution-info query)]
         (letfn [(rff* [metadata]
-                  (let [result (rff metadata)]
+                  (let [preprocessed-query (:preprocessed_query metadata)
+                        ;; we only need the preprocessed query to find field usages, so make sure we don't return it
+                        result             (rff (dissoc metadata :preprocessed_query))
+                        field-usages       (field-usage/pmbql->field-usages
+                                            (lib/query (qp.store/metadata-provider) preprocessed-query))]
                     (add-and-save-execution-metadata-xform! execution-info field-usages result)))]
           (try
             (qp query rff*)
