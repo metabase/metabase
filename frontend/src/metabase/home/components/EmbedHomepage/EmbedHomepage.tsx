@@ -66,8 +66,8 @@ export const EmbedHomepage = () => {
     feedback,
     email,
   }: {
-    feedback: string;
-    email: string;
+    feedback?: string;
+    email?: string;
   }) => {
     dispatch(
       updateSetting({

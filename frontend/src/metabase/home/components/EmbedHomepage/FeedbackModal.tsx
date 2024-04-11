@@ -16,7 +16,7 @@ import {
 type FeedbackModalProps = {
   opened: boolean;
   onClose: () => void;
-  onSubmit: (feedback: { feedback: string; email: string }) => void;
+  onSubmit: (feedback: { feedback?: string; email?: string }) => void;
 };
 
 export const FeedbackModal = ({
@@ -26,7 +26,11 @@ export const FeedbackModal = ({
 }: FeedbackModalProps) => {
   const [feedback, setFeedback] = useState("");
   const [email, setEmail] = useState("");
-  const handleSubmit = () => onSubmit({ feedback, email });
+  const handleSubmit = () =>
+    onSubmit({
+      feedback: feedback.trim() || undefined,
+      email: email.trim() || undefined,
+    });
 
   return (
     <Modal
@@ -51,6 +55,7 @@ export const FeedbackModal = ({
 
         <TextInput
           label={t`Email`}
+          type="email"
           name="email"
           placeholder={t`Leave your email if you want us to follow up with you`}
           onChange={e => setEmail(e.currentTarget.value)}

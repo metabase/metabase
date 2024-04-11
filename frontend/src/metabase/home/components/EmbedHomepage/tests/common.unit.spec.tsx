@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { screen, waitForElementToBeRemoved } from "__support__/ui";
 
@@ -7,6 +6,7 @@ import {
   queryFeedbackModal,
   getLastHomepageSettingSettingCall,
   setup,
+  getLastFeedbackCall,
 } from "./setup";
 
 describe("EmbedHomepage (OSS)", () => {
@@ -96,11 +96,15 @@ describe("EmbedHomepage (OSS)", () => {
   });
 
   describe("Feedback modal", () => {
-    it("should ask for feedback when dismissing because of issues", async () => {
+    const setupForFeedbackModal = async () => {
       setup();
       await userEvent.hover(screen.getByText("Hide these"));
 
       await userEvent.click(screen.getByText("I ran into issues"));
+    };
+
+    it("should ask for feedback when dismissing because of issues", async () => {
+      await setupForFeedbackModal();
 
       expect(
         screen.getByText("How can we improve embedding?"),
@@ -108,10 +112,7 @@ describe("EmbedHomepage (OSS)", () => {
     });
 
     it("should display 'Skip' in the button when inputs are empty, 'Send' if any input has content", async () => {
-      setup();
-      await userEvent.hover(screen.getByText("Hide these"));
-
-      await userEvent.click(screen.getByText("I ran into issues"));
+      await setupForFeedbackModal();
 
       expect(screen.getByText("Skip")).toBeInTheDocument();
 
@@ -124,6 +125,7 @@ describe("EmbedHomepage (OSS)", () => {
       expect(screen.getByText("Send")).toBeInTheDocument();
 
       await userEvent.clear(screen.getByLabelText("Feedback"));
+      await userEvent.type(screen.getByLabelText("Feedback"), "   ");
       expect(screen.getByText("Skip")).toBeInTheDocument();
 
       await userEvent.type(
@@ -136,10 +138,7 @@ describe("EmbedHomepage (OSS)", () => {
     });
 
     it("should not dismiss the homepage when the user cancels the feedback modal", async () => {
-      setup();
-      await userEvent.hover(screen.getByText("Hide these"));
-
-      await userEvent.click(screen.getByText("I ran into issues"));
+      await setupForFeedbackModal();
 
       await userEvent.click(screen.getByText("Cancel"));
 
@@ -149,10 +148,7 @@ describe("EmbedHomepage (OSS)", () => {
     });
 
     it("should dismiss when submitting feedback - even if empty", async () => {
-      setup();
-      await userEvent.hover(screen.getByText("Hide these"));
-
-      await userEvent.click(screen.getByText("I ran into issues"));
+      await setupForFeedbackModal();
 
       await userEvent.click(screen.getByText("Skip"));
 
@@ -161,14 +157,17 @@ describe("EmbedHomepage (OSS)", () => {
       const body = await lastCall?.request?.json();
       expect(body).toEqual({ value: "dismiss-run-into-issues" });
 
+      const feedbackBody = await getLastFeedbackCall()?.request?.json();
+
+      expect(feedbackBody).toEqual({
+        source: "embedding-homepage-dismiss",
+      });
+
       await waitForElementToBeRemoved(() => queryFeedbackModal());
     });
 
     it("should send feedback when submitting the modal", async () => {
-      setup();
-      await userEvent.hover(screen.getByText("Hide these"));
-
-      await userEvent.click(screen.getByText("I ran into issues"));
+      await setupForFeedbackModal();
 
       await userEvent.type(
         screen.getByLabelText("Feedback"),
@@ -183,14 +182,7 @@ describe("EmbedHomepage (OSS)", () => {
       const body = await lastCall?.request?.json();
       expect(body).toEqual({ value: "dismiss-run-into-issues" });
 
-      const feedbackCall = fetchMock.lastCall(
-        "path:/api/util/product-feedback",
-        {
-          method: "POST",
-        },
-      );
-
-      const feedbackBody = await feedbackCall?.request?.json();
+      const feedbackBody = await getLastFeedbackCall()?.request?.json();
 
       expect(feedbackBody).toEqual({
         comments: "I had an issue with X",

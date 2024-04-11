@@ -60,5 +60,10 @@ export const getLastHomepageSettingSettingCall = () =>
     method: "PUT",
   });
 
+export const getLastFeedbackCall = () =>
+  fetchMock.lastCall("path:/api/util/product-feedback", {
+    method: "POST",
+  });
+
 export const queryFeedbackModal = () =>
   screen.queryByText("How can we improve embedding?");
