@@ -108,11 +108,11 @@ export const CombineColumnsDrill = ({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Card className={styles.card} maw="100vw" miw={340} p="lg">
+      <Card className={styles.card} maw="100vw" miw={474} p="lg">
         <Title
           mb="md"
           order={4}
-        >{jt`Combine ${columnInfo.displayName} with`}</Title>
+        >{jt`Combine “${columnInfo.displayName}” with other columns`}</Title>
 
         <Stack spacing="lg">
           <Stack spacing="sm">
