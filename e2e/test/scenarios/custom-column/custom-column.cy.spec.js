@@ -44,7 +44,7 @@ describe("scenarios > question > custom column", () => {
       },
       { visitQuestion: true },
     );
-    lineChartCircle().eq(5).click({ force: true });
+    lineChartCircle().eq(5).click();
     popover()
       .findByText(/Automatic Insights/i)
       .click();

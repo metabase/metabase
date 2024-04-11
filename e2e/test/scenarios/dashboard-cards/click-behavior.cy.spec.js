@@ -6,6 +6,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
+  chartPathWithColor,
   createDashboardWithTabs,
   dashboardHeader,
   editDashboard,
@@ -14,6 +15,7 @@ import {
   getHeadingCardDetails,
   getLinkCardDetails,
   getTextCardDetails,
+  lineChartCircle,
   modal,
   openStaticEmbeddingModal,
   popover,
@@ -2074,7 +2076,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     // test that normal values still work properly
     getDashboardCard().within(() => {
-      cy.get(".bar").eq(2).click();
+      chartPathWithColor("#88BF4D").eq(2).click();
     });
     cy.get("@targetDashboardId").then(targetDashboardId => {
       cy.location().should(({ pathname, search }) => {
@@ -2087,7 +2089,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     // test that null and "empty"s do not get passed through
     getDashboardCard().within(() => {
-      cy.get(".bar").eq(1).click();
+      chartPathWithColor("#88BF4D").eq(1).click();
     });
     cy.get("@targetDashboardId").then(targetDashboardId => {
       cy.location().should(({ pathname, search }) => {
@@ -2125,8 +2127,7 @@ const deserializeCardFromUrl = serialized =>
   JSON.parse(b64hash_to_utf8(serialized));
 
 const clickLineChartPoint = () => {
-  cy.findByTestId("dashcard")
-    .get("circle.dot")
+  lineChartCircle()
     .eq(POINT_INDEX)
     /**
      * calling .click() here will result in clicking both
