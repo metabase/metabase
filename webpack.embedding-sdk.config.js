@@ -7,7 +7,6 @@ const webpack = require("webpack");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
-const path = require("path");
 
 const mainConfig = require("./webpack.config");
 
@@ -63,16 +62,7 @@ module.exports = env => {
         },
         {
           test: /\.(eot|woff2?|ttf)$/,
-          type: "asset/resource",
-          resourceQuery: { not: [/component|source/] },
-          generator: {
-            publicPath: pathData => {
-              const filePath = pathData.module.rawRequest.replace(/\/[^\/]*$/, '');
-              return `http://localhost:3000/app/${filePath}/`;
-            },
-            filename: "[name][ext]",
-            emit: false,
-          },
+          use: "null-loader",
         },
         {
           test: /\.(svg|png)$/,
