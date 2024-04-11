@@ -12,6 +12,9 @@ export const getRowValuesByColumns = (row, cols) =>
     };
   }, {});
 
+/**
+ * @type {Object.<string, (value: string|number, clicked?: boolean) => string>}
+ */
 export const columnNameToUrl = {
   // No admin page for collections but still want to link to it
   collection_id: value => `/collection/${value}`,
