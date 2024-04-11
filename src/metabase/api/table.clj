@@ -554,11 +554,12 @@
                 :file     (get-in raw-params ["file" :tempfile])
                 :action   ::upload/replace}))
 
-(defn- delete-csv!
-  "This helper function exists to make testing the DELETE /api/table/:id endpoint easier."
-  [table-id]
+(api/defendpoint DELETE "/:id"
+  "Delete the given table from the database. This currently only supports deleting uploaded tables."
+  [id :as {_raw-params :params}]
+  {id ms/PositiveInt}
   (try
-    (let [table  (api/check-404 (t2/select-one :model/Table :id table-id))
+    (let [table  (api/check-404 (t2/select-one :model/Table :id id))
           result (upload/delete-upload! table)]
       {:status 200
        :body   (= :done result)})
@@ -567,11 +568,5 @@
                    500)
        :body   {:message (or (ex-message e)
                              (tru "There was an error deleting the table"))}})))
-
-(api/defendpoint DELETE "/:id"
-  "Delete the given table from the database. This currently only supports deleting uploaded tables."
-  [id :as {_raw-params :params}]
-  {id ms/PositiveInt}
-  (delete-csv! id))
 
 (api/define-routes)
