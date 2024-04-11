@@ -28,7 +28,7 @@ import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
 import { Preview } from "../Preview";
 
 /**
- * Required to not cut off outline on the "x" button.
+ * Required to not cut off the outline of focused "x" button
  */
 const OVERFLOW_SAFETY_MARGIN = 16;
 
