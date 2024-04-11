@@ -18,11 +18,9 @@
    [metabase.driver :as driver]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli :as mu]))
 
 ;;;; Pre-processing
 
@@ -69,9 +67,6 @@
 
 
 ;;;; Post-processing
-
-(mr/def ::replaced-indexes
-  [:set ::lib.schema.common/int-greater-than-or-equal-to-zero])
 
 (defn- partition-values [num-breakouts row]
   (when (> num-breakouts 1)
