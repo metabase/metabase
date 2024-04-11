@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.events :as events]
    [metabase.models
-    :refer [Card Dashboard DashboardCard Database LegacyMetric Revision Segment Table]]
+    :refer [Card Dashboard DashboardCard Database Revision Segment Table]]
    [metabase.models.dashboard :as dashboard]
    [metabase.test :as mt]
    [toucan2.core :as t2]
@@ -264,87 +264,6 @@
              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                             :model    "Dashboard"
                             :model_id dashboard-id))))))
-
-(deftest metric-create-test
-  (testing :event/metric-create
-    (t2.with-temp/with-temp [Database {database-id :id} {}
-                             Table    {:keys [id]}      {:db_id database-id}
-                             LegacyMetric   metric            {:table_id id, :definition {:a "b"}}]
-      (events/publish-event! :event/metric-create {:object metric :user-id (mt/user->id :rasta)})
-      (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
-                                    :model "Metric"
-                                    :model_id (:id metric))]
-        (is (= {:model        "Metric"
-                :user_id      (mt/user->id :rasta)
-                :object       {:name                    "Toucans in the rainforest"
-                               :description             "Lookin' for a blueberry"
-                               :entity_id               (:entity_id metric)
-                               :how_is_this_calculated  nil
-                               :show_in_getting_started false
-                               :caveats                 nil
-                               :points_of_interest      nil
-                               :archived                false
-                               :creator_id              (mt/user->id :rasta)
-                               :definition              {:a "b"}}
-                :is_reversion false
-                :is_creation  true
-                :message      nil}
-               (assoc revision :object (dissoc (:object revision) :id :table_id))))))))
-
-(deftest metric-update-test
-  (testing :event/metric-update
-   (t2.with-temp/with-temp [Database {database-id :id} {}
-                            Table    {:keys [id]}      {:db_id database-id}
-                            LegacyMetric   metric            {:table_id id, :definition {:a "b"}}]
-     (events/publish-event! :event/metric-update
-                            (assoc {:object metric}
-                                   :revision-message "updated"
-                                   :user-id (mt/user->id :crowberto)))
-     (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
-                                   :model "Metric"
-                                   :model_id (:id metric))]
-       (is (= {:model        "Metric"
-               :user_id      (mt/user->id :crowberto)
-               :object       {:name                    "Toucans in the rainforest"
-                              :description             "Lookin' for a blueberry"
-                              :entity_id               (:entity_id metric)
-                              :how_is_this_calculated  nil
-                              :show_in_getting_started false
-                              :caveats                 nil
-                              :points_of_interest      nil
-                              :archived                false
-                              :creator_id              (mt/user->id :rasta)
-                              :definition              {:a "b"}}
-               :is_reversion false
-               :is_creation  false
-               :message      "updated"}
-              (assoc revision :object (dissoc (:object revision) :id :table_id))))))))
-
-(deftest metric-delete-test
-  (testing ":metric-delete"
-    (t2.with-temp/with-temp [Database {database-id :id} {}
-                             Table    {:keys [id]}      {:db_id database-id}
-                             LegacyMetric   metric            {:table_id id, :definition {:a "b"}, :archived true}]
-      (events/publish-event! :event/metric-delete {:object metric :user-id (mt/user->id :rasta)})
-      (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
-                                    :model "Metric"
-                                    :model_id (:id metric))]
-        (is (= {:model        "Metric"
-                :user_id      (mt/user->id :rasta)
-                :object       {:name                    "Toucans in the rainforest"
-                               :description             "Lookin' for a blueberry"
-                               :how_is_this_calculated  nil
-                               :show_in_getting_started false
-                               :caveats                 nil
-                               :entity_id               (:entity_id metric)
-                               :points_of_interest      nil
-                               :archived                true
-                               :creator_id              (mt/user->id :rasta)
-                               :definition              {:a "b"}}
-                :is_reversion false
-                :is_creation  false
-                :message      nil}
-               (assoc revision :object (dissoc (:object revision) :id :table_id))))))))
 
 (deftest segment-create-test
   (testing :event/segment-create

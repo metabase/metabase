@@ -120,14 +120,6 @@
            (->> (mt/user-http-request :crowberto :get 200 (format "card/%s/related" card-id-a))
                 result-mask)))))
 
-(deftest related-metrics-test
-  (with-world
-    (is (= {:table    (mt/id :venues)
-            :metrics  [metric-id-b]
-            :segments (sort [segment-id-a segment-id-b])}
-           (->> (mt/user-http-request :crowberto :get 200 (format "legacy-metric/%s/related" metric-id-a))
-                result-mask)))))
-
 (deftest related-segments-test
   (with-world
     (is (= {:table       (mt/id :venues)
