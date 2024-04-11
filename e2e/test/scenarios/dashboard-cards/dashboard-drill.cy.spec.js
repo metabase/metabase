@@ -634,7 +634,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
         chartPathWithColor("#509EE3")
           .eq(14) // August 2023 (Total of 12 reviews, 9 unique days)
-          .click({ force: true });
+          .click();
 
         cy.wait("@cardQuery");
         cy.url().should("include", "2023-08");
@@ -671,7 +671,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         visitDashboard(dashboard_id);
 
         // click the first bar on the card's graph and do a zoom drill-through
-        chartPathWithColor("#509EE3").eq(0).click({ force: true });
+        chartPathWithColor("#509EE3").eq(0).click();
         cy.findByText("See this month by week").click();
 
         cy.wait("@dataset");
