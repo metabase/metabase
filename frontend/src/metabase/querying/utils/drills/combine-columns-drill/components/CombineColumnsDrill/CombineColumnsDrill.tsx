@@ -18,7 +18,7 @@ import {
 import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
 import { Preview } from "../Preview";
 
-import styles from "./CombineColumnsDrill.module.css";
+import S from "./CombineColumnsDrill.module.css";
 
 /**
  * Required to not cut off outline on the "x" button.
@@ -113,7 +113,7 @@ export const CombineColumnsDrill = ({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Card className={styles.card} maw="100vw" w={474} p="lg">
+      <Card className={S.card} maw="100vw" w={474} p="lg">
         <Title
           mb="lg"
           order={4}
@@ -122,7 +122,7 @@ export const CombineColumnsDrill = ({
         <Stack spacing="lg">
           <Stack spacing={12}>
             <Stack
-              className={styles.inputs}
+              className={S.inputs}
               m={-OVERFLOW_SAFETY_MARGIN}
               mah="50vh"
               p={OVERFLOW_SAFETY_MARGIN}
