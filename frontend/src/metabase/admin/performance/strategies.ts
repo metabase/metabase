@@ -145,6 +145,13 @@ export const translateConfig = (
   direction: "fromAPI" | "toAPI",
 ): Config => {
   const translated: Config = { ...config };
+
+  // If strategy type is unsupported, provide a fallback
+  if (!isValidStrategyName(translated.strategy.type)) {
+    translated.strategy.type =
+      translated.model_id === rootId ? "nocache" : "inherit";
+  }
+
   if (translated.strategy.type === "ttl") {
     if (direction === "fromAPI") {
       translated.strategy.min_duration_seconds = Math.ceil(
