@@ -985,7 +985,7 @@
                   (lib/suggested-join-conditions query message))))))))
 
 (deftest ^:parallel suggested-join-conditions-transitive-fks-test
-  (testing "Implicitly joinable fields of joinable are ignored during suggested-joins-condition computation (#41202)"
+  (testing "Implicitly joinable fields are ignored during suggested-joins-condition computation (#41202)"
     (let [account-tab-id 10
           organization-tab-id 20
           contact-tab-id 30
