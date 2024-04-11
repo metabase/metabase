@@ -7,6 +7,7 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import ColorS from "metabase/css/core/colors.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import * as dashboardActions from "metabase/dashboard/actions";
@@ -35,7 +36,7 @@ import {
 } from "metabase/services";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 
-import EmbedFrame from "../components/EmbedFrame";
+import EmbedFrame from "../../components/EmbedFrame";
 
 import { DashboardContainer } from "./PublicDashboard.styled";
 
@@ -60,7 +61,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-class PublicDashboard extends Component {
+class PublicDashboardInner extends Component {
   _initialize = async () => {
     const {
       initialize,
@@ -188,6 +189,7 @@ class PublicDashboard extends Component {
             [DashboardS.DashboardFullscreen]: isFullscreen,
             [DashboardS.DashboardNight]: isNightMode,
             [ParametersS.DashboardNight]: isNightMode,
+            [ColorS.DashboardNight]: isNightMode,
           })}
           loading={!dashboard}
         >
@@ -210,8 +212,8 @@ class PublicDashboard extends Component {
   }
 }
 
-export default _.compose(
+export const PublicDashboard = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   title(({ dashboard }) => dashboard && dashboard.name),
   DashboardControls,
-)(PublicDashboard);
+)(PublicDashboardInner);

@@ -620,7 +620,7 @@
             (add-column-info
              (lib.tu.macros/mbql-query venues
                {:aggregation [[:count]
-                              [:sum]
+                              [:sum $price]
                               [:count]
                               [:aggregation-options [:count] {:display-name "count_2"}]]})
              {:cols [{:name "count", :display_name "count", :base_type :type/Number}

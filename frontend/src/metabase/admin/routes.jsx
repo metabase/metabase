@@ -42,6 +42,7 @@ import {
   createAdminRouteGuard,
   createAdminRedirect,
 } from "metabase/admin/utils";
+import CS from "metabase/css/core/index.css";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
@@ -75,7 +76,7 @@ const UserCanAccessTools = connectedReduxRedirect({
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route
     path="/admin"
-    component={withBackground("bg-white")(CanAccessSettings)}
+    component={withBackground(CS.bgWhite)(CanAccessSettings)}
   >
     <Route title={t`Admin`} component={AdminApp}>
       <IndexRoute component={RedirectToAllowedSettings} />

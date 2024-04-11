@@ -153,7 +153,7 @@ export default class DatabaseList extends Component {
                 })}
               >
                 {isAddingSampleDatabase ? (
-                  <span className={cx("text-light", CS.noDecoration)}>
+                  <span className={cx(CS.textLight, CS.noDecoration)}>
                     {t`Restoring the sample database...`}
                   </span>
                 ) : (
