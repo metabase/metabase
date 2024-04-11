@@ -446,8 +446,8 @@
 (defmethod serdes/extract-query "Card" [_ opts]
   (serdes/extract-query-collections Card opts))
 
-(defn- export-result-metadata [card metadata]
-  (when (and (:dataset card) metadata)
+(defn- export-result-metadata [metadata]
+  (when metadata
     (for [m metadata]
       (-> m
           (m/update-existing :table_id  serdes/*export-table-fk*)
@@ -486,7 +486,7 @@
         (update :parameters             serdes/export-parameters)
         (update :parameter_mappings     serdes/export-parameter-mappings)
         (update :visualization_settings serdes/export-visualization-settings)
-        (update :result_metadata        (partial export-result-metadata card)))
+        (update :result_metadata        export-result-metadata))
     (catch Exception e
       (throw (ex-info "Failed to export Card" {:card card} e)))))
 
