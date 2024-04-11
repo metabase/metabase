@@ -138,7 +138,8 @@ export function suggest({
               : undefined,
           };
         })
-        .filter((suggestion): suggestion is Suggestion => Boolean(suggestion)),
+        .filter((suggestion): suggestion is Suggestion => Boolean(suggestion))
+        .slice(0, 5),
     );
 
     return { suggestions };
