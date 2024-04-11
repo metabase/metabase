@@ -1,8 +1,9 @@
 import { assocIn } from "icepick";
 
+import { userApi } from "metabase/api";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { GET } from "metabase/lib/api";
-import { createEntity } from "metabase/lib/entities";
+import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { generatePassword } from "metabase/lib/security";
 import MetabaseSettings from "metabase/lib/settings";
 import { UserSchema } from "metabase/schema";
@@ -37,6 +38,12 @@ const Users = createEntity({
   api: {
     list: ({ recipients = false, ...args }) =>
       recipients ? getRecipientsList() : getUserList(args),
+    create: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        userApi.endpoints.createUser,
+      ),
   },
 
   objectSelectors: {
