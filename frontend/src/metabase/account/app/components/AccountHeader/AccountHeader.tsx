@@ -17,7 +17,7 @@ import type { User } from "metabase-types/api";
 type AccountHeaderProps = {
   user: User;
   path?: string;
-  onChangeLocation?: (nextLocation: LocationDescriptor) => void;
+  onChangeLocation?: (nextLocation: Path) => void;
 };
 
 export const AccountHeader = ({
