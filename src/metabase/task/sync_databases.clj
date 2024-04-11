@@ -146,19 +146,22 @@
   [:map
    [:key                :keyword]
    [:db-schedule-column :keyword]
-   [:job-class          ::class]])
+   [:job-class          ::class]
+   [:name               :string]])
 
 (def ^:private sync-analyze-task-info
   {:key                :sync-and-analyze
    :db-schedule-column :metadata_sync_schedule
-   :job-class          SyncAndAnalyzeDatabase})
+   :job-class          SyncAndAnalyzeDatabase
+   :name               "Sync and Analyze"})
 
 (assert (mc/validate TaskInfo sync-analyze-task-info))
 
 (def ^:private field-values-task-info
   {:key                :update-field-values
    :db-schedule-column :cache_field_values_schedule
-   :job-class          UpdateFieldValues})
+   :job-class          UpdateFieldValues
+   :name               "Scan Field Values"})
 
 (assert (mc/validate TaskInfo field-values-task-info))
 
@@ -264,20 +267,29 @@
   (let [job                                 (task/job-info (job-key task-info))
         new-trigger                         (trigger database task-info)
         ;; there should be only one schedule per task per DB
-        existing-trigger-with-same-schedule (some #(when (and (= (:key %) (.. new-trigger getKey getName))
-                                                              (= (:schedule %) (cron-schedule database task-info)))
-                                                     %)
-                                                  (:triggers job))]
+        existing-trigger-with-same-schedule (when new-trigger
+                                              (some #(when (and (= (:key %) (.. new-trigger getKey getName))
+                                                                (= (:schedule %) (cron-schedule database task-info)))
+                                                       %)
+                                                    (:triggers job)))]
     (cond
      ;; no new schedule
      ;; delete the existing trigger
      (nil? new-trigger)
-     (delete-trigger! database task-info)
+     (do
+      (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed."
+                 (:name task-info)
+                 (:name database))
+      (delete-trigger! database task-info))
 
      ;; need to recreate the new trigger
      (and (some? new-trigger)
           (nil? existing-trigger-with-same-schedule))
      (do
+      (log/infof "Trigger for \"%s\" of Database \"%s\" is now \"%s\""
+                 (:name task-info)
+                 (:name database)
+                 (cron-schedule database task-info))
       ;; delete all existing triggers just to be sure
       (delete-trigger! database task-info)
       (task/add-trigger! new-trigger))

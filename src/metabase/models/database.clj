@@ -230,16 +230,11 @@
 (t2/define-before-update :model/Database
   [database]
   (let [database-with-changes                (mi/row-with-changes database)
-        {new-metadata-schedule    :metadata_sync_schedule,
-         new-fieldvalues-schedule :cache_field_values_schedule,
-         new-engine               :engine
+        {new-engine               :engine
          new-settings             :settings} database-with-changes
         {is-sample?               :is_sample
-         old-metadata-schedule    :metadata_sync_schedule
-         old-fieldvalues-schedule :cache_field_values_schedule
          existing-settings        :settings
-         existing-engine          :engine
-         existing-name            :name} (t2/original database)
+         existing-engine          :engine}   (t2/original database)
         new-engine                       (some-> new-engine keyword)]
     (if (and is-sample?
              new-engine
@@ -265,12 +260,6 @@
 
 (t2/define-after-update :model/Database
   [database]
-  #_(log/info
-     (format "%s Database '%s' sync/analyze schedules have changed!" existing-engine existing-name)
-     "\n"
-     (format "Sync metadata was: '%s' is now: '%s'" old-metadata-schedule new-metadata-schedule)
-     "\n"
-     (format "Cache FieldValues was: '%s', is now: '%s'" old-fieldvalues-schedule new-fieldvalues-schedule))
   (check-and-schedule-tasks-for-db! (t2.realize/realize database)))
 
 (t2/define-before-insert :model/Database

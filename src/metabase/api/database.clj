@@ -780,26 +780,31 @@
               (assoc :valid false))
       details)))
 
-(defn- db->schedule-map
+(defn- infer-db-schedules
   [& {:keys [user-control full-sync? on-demand? schedules]}]
-  (sync.schedules/schedule-map->cron-strings
-   (match [user-control full-sync? on-demand?]
-     [false _ _]
-     (sync.schedules/default-randomized-schedule)
+  (match [user-control full-sync? on-demand?]
+    [false _ _]
+    (sync.schedules/schedule-map->cron-strings
+     (sync.schedules/default-randomized-schedule))
 
-     ;; "Regularly on a schedule"
-     ;; -> sync both steps, schedule should be provided
-     [true true false]
-     (do
-      (assert (every? #(some? (% schedules)) [:cache_field_values :metadata_sync]))
-      (sync.schedules/scheduling schedules))
+    ;; "Regularly on a schedule"
+    ;; -> sync both steps, schedule should be provided
+    [true true false]
+    (do
+     (assert (every? #(some? (% schedules)) [:cache_field_values :metadata_sync]))
+     (sync.schedules/schedule-map->cron-strings schedules))
 
-     ;; "Only when adding a new filter" or "Never, I'll do it myself"
-     ;; -> Sync metadata only
-     [true false _]
-     ;; schedules should only contains metadata_sync, but FE might sending both
-     ;; so we just manually dissoc it here
-     (sync.schedules/scheduling (dissoc schedules :cache_field_values)))))
+    ;; "Only when adding a new filter" or "Never, I'll do it myself"
+    ;; -> Sync metadata only
+    [true false _]
+    ;; schedules should only contains metadata_sync, but FE might sending both
+    ;; so we just manually dissoc it here
+    (-> schedules
+        (sync.schedules/schedule-map->cron-strings)
+        ;; make sure the schedule for :cache_field_values_schedule is nil
+        ;; in case FE still send a schedule for it
+        (assoc :cache_field_values_schedule nil))))
+
 
 (api/defendpoint POST "/"
   "Add a new `Database`."
@@ -833,7 +838,7 @@
                                         :is_on_demand is_on_demand
                                         :cache_ttl    cache_ttl
                                         :creator_id   api/*current-user-id*}
-                                       (db->schedule-map
+                                       (infer-db-schedules
                                         :user-control (boolean (:let-user-control-scheduling details))
                                         :on-demand?   is_on_demand
                                         :full-sync?   is_full_sync
@@ -997,7 +1002,7 @@
                            ;; if the schedules doesn't change, it'll be no op
                            ;; see [metabase.task.sync-databases/update-db-task-trigger!]
                            (:let-user-control-scheduling details))
-                     (db->schedule-map
+                     (infer-db-schedules
                       :user-control (boolean (:let-user-control-scheduling details))
                       :on-demand?   (if (some? on-demand?) on-demand? (:is_on_demand existing-database))
                       :full-sync?   (if (some? full-sync?) full-sync? (:is_full_sync existing-database))
