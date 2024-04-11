@@ -5,6 +5,7 @@ export * from "./automagic-dashboards";
 export * from "./card";
 export * from "./collection";
 export * from "./database";
+export * from "./dashboard";
 export * from "./bookmark";
 export * from "./dataset";
 export * from "./field";

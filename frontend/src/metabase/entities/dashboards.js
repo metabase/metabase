@@ -1,14 +1,19 @@
 import { assocIn } from "icepick";
 import { t } from "ttag";
 
+import { dashboardApi } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import {
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
-import { POST, DELETE } from "metabase/lib/api";
+import { DELETE, POST } from "metabase/lib/api";
 import { color } from "metabase/lib/colors";
-import { createEntity, undo } from "metabase/lib/entities";
+import {
+  createEntity,
+  entityCompatibleQuery,
+  undo,
+} from "metabase/lib/entities";
 import {
   compose,
   withAction,
@@ -36,6 +41,13 @@ const Dashboards = createEntity({
   displayNameMany: t`dashboards`,
 
   api: {
+    get: (entityQuery, _options, dispatch) => {
+      return entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        dashboardApi.endpoints.getDashboard,
+      );
+    },
     favorite: POST("/api/dashboard/:id/favorite"),
     unfavorite: DELETE("/api/dashboard/:id/favorite"),
     save: POST("/api/dashboard/save"),
