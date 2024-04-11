@@ -440,7 +440,7 @@
     ::upload/int                      [:bigint]
     ;; identity(1, 1) defines an auto-increment column starting from 1
     ::upload/auto-incrementing-int-pk [:bigint [:identity 1 1]]
-    ::upload/float                    [:float]
+    ::upload/float                    [(keyword "double precision")]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
     ::upload/datetime                 [:timestamp]
@@ -504,3 +504,17 @@
 (defmethod driver.sql/default-database-role :redshift
   [_ _]
   "DEFAULT")
+
+(defmethod driver/add-columns! :redshift
+  [driver db-id table-name column-definitions & {:as settings}]
+  ;; Redshift doesn't support adding multiple columns at a time, so we break it up
+  (let [f (get-method driver/add-columns! :postgres)]
+    (doseq [[k v] column-definitions]
+      (f driver db-id table-name {k v} settings))))
+
+(defmethod driver/alter-columns! :redshift
+  [_driver _db-id _table-name column-definitions]
+  ;; TODO: redshift doesn't allow promotion of ints to floats using ALTER TABLE.
+  (let [[column-name type-and-constraints] (first column-definitions)
+        type (first type-and-constraints)]
+    (throw (ex-info (format "There's a value with the wrong type ('%s') in the '%s' column" (name type) (name column-name)) {}))))

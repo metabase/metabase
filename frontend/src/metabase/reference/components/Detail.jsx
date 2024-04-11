@@ -43,7 +43,7 @@ const Detail = ({
           </span>
         )}
         {isEditing && field.error && field.touched && (
-          <span className="text-error">{field.error}</span>
+          <span className={CS.textError}>{field.error}</span>
         )}
       </div>
     </div>
