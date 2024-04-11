@@ -113,7 +113,7 @@ class TableInteractive extends Component {
     isPivoted: false,
     hasMetadataPopovers: true,
     renderTableHeaderWrapper: children => (
-      <div className={TableS.cellData} data-testid="cellData">
+      <div className={TableS.cellData} data-testid="cell-data">
         {children}
       </div>
     ),
@@ -124,7 +124,7 @@ class TableInteractive extends Component {
           className={cx({
             [TableS.cellData]: hasChildren,
           })}
-          data-testid={hasChildren ? "cellData" : undefined}
+          data-testid={hasChildren ? "cell-data" : undefined}
         >
           {children}
         </div>
