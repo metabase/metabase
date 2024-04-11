@@ -258,7 +258,7 @@
         ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
         (cron/with-misfire-handling-instruction-do-nothing))))))
 
-(defn- update-db-triggers-if-needed!
+(defn- update-db-trigger-if-needed!
   "Replace or remove the existing trigger if the schedule changes, do nothing if schedule is the same."
   [database task-info]
   (let [job                                 (task/job-info (job-key task-info))
@@ -293,7 +293,7 @@
   (if (= perms/audit-db-id (:id database))
     (log/info (u/format-color :red "Not scheduling tasks for audit database"))
     (doseq [task all-tasks]
-      (update-db-triggers-if-needed! database task))))
+      (update-db-trigger-if-needed! database task))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              TASK INITIALIZATION                                               |

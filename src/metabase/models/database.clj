@@ -229,7 +229,7 @@
 
 (t2/define-before-update :model/Database
   [database]
-  (let [database-with-changes                (mi/pre-update-changes database)
+  (let [database-with-changes                (mi/row-with-changes database)
         {new-metadata-schedule    :metadata_sync_schedule,
          new-fieldvalues-schedule :cache_field_values_schedule,
          new-engine               :engine
@@ -254,9 +254,6 @@
                                 (not (driver/database-supports? (or new-engine existing-engine) :nested-field-columns database-with-changes)))
                      (update :details dissoc :json_unfolding))
                    handle-secrets-changes)
-        ;; TODO - this logic would make more sense in post-update if such a method existed
-        ;; if the sync operation schedules have changed, we need to reschedule this DB
-        #_(update-schedules-if-changes! (t2/original database-with-changes) (t2/changes database))
         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
         (when (and (:database-enable-actions (or new-settings existing-settings))

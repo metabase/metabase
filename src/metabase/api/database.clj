@@ -990,7 +990,7 @@
                                          (merge (:settings existing-database) settings))})))
                     ;; cache_field_values_schedule is nullable
                     (when (or
-                           ;; turned on advanced sync options
+                           ;; turn on advanced sync options
                            (and (get-in existing-database [:details :let-user-control-scheduling])
                                 (not (:failed-fingerprints details)))
                            ;; user's controling the schedules, then we'll always attempt to update the schedule
