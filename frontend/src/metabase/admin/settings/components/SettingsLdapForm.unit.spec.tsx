@@ -237,7 +237,7 @@ describe("SettingsLdapForm", () => {
 
     const ATTRS = {
       "ldap-host": "example.com",
-      "ldap-port": "123",
+      "ldap-port": 123,
       "ldap-security": "ssl",
       "ldap-user-base": "user-base",
       "ldap-user-filter": "(filter1)",
@@ -250,6 +250,7 @@ describe("SettingsLdapForm", () => {
       "ldap-group-sync": true,
       "ldap-group-base": "group-base",
       "ldap-group-membership-filter": "(filter2)",
+      "ldap-sync-admin-group": undefined,
     };
 
     await userEvent.type(
@@ -258,7 +259,7 @@ describe("SettingsLdapForm", () => {
     );
     await userEvent.type(
       await screen.findByRole("textbox", { name: /LDAP Port/ }),
-      ATTRS["ldap-port"],
+      ATTRS["ldap-port"].toString(),
     );
     await userEvent.click(screen.getByRole("radio", { name: /SSL/ }));
     await userEvent.type(

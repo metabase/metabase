@@ -23,11 +23,8 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
 
   const handleSubmit = useCallback(
     async (vals: { group_id: number | null; name: string }) => {
-      // bad
       if (vals.group_id !== null) {
-        await createApiKey({
-          ...vals,
-        } as CreateApiKeyRequest);
+        await createApiKey(vals as CreateApiKeyRequest);
         setModal("secretKey");
       }
     },
