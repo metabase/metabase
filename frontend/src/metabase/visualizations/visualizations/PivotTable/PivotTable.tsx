@@ -446,7 +446,7 @@ function PivotTable({
                     <Grid
                       width={width - leftHeaderWidth}
                       height={height}
-                      className="text-dark"
+                      className={CS.textDark}
                       rowCount={rowCount}
                       columnCount={columnCount}
                       rowHeight={CELL_HEIGHT}

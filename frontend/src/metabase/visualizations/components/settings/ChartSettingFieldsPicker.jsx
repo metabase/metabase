@@ -105,7 +105,7 @@ const ChartSettingFieldsPicker = ({
           </Droppable>
         </DragDropContext>
       ) : (
-        <span className="text-error">{t`error`}</span>
+        <span className={CS.textError}>{t`error`}</span>
       )}
       {addAnother && (
         <AddAnotherContainer>

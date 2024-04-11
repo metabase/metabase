@@ -63,7 +63,7 @@ export const createAlert = alert => {
             <Icon
               name="alert_confirm"
               size="19"
-              className={cx(CS.mr2, "text-success")}
+              className={cx(CS.mr2, CS.textSuccess)}
             />
             {t`Your alert is all set up.`}
           </div>
@@ -107,7 +107,7 @@ export const updateAlert = alert => {
             <Icon
               name="alert_confirm"
               size="19"
-              className={cx(CS.mr2, "text-success")}
+              className={cx(CS.mr2, CS.textSuccess)}
             />
             {t`Your alert was updated.`}
           </div>
@@ -159,7 +159,7 @@ export const deleteAlert = alertId => {
             <Icon
               name="alert_confirm"
               size="19"
-              className={cx(CS.mr2, "text-success")}
+              className={cx(CS.mr2, CS.textSuccess)}
             />
             {t`The alert was successfully deleted.`}
           </div>

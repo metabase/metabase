@@ -238,6 +238,7 @@
     "eslint-plugin-jest": "^27.2.0",
     "eslint-plugin-jest-dom": "^4.0.3",
     "eslint-plugin-no-only-tests": "^2.4.0",
+    "eslint-plugin-postcss-modules": "^2.0.0",
     "eslint-plugin-react": "^7.32.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-testing-library": "^5.11.0",
@@ -364,7 +365,7 @@
     "lint-prettier": "yarn && yarn lint-prettier-pure",
     "lint-prettier-pure": "prettier --check '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'",
     "lint-yaml": "yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}",
-    "precommit": "lint-staged",
+    "precommit": "lint-staged --shell",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prepare": "husky install",
     "prettier": "prettier --write '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'",
@@ -400,7 +401,7 @@
       "prettier --write"
     ],
     "+(frontend|enterprise/frontend)/**/*.{js,jsx,ts,tsx}": [
-      "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0 --fix",
+      "LINT_CSS_MODULES=true eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0 --fix",
       "prettier --write",
       "node ./bin/verify-doc-links"
     ],

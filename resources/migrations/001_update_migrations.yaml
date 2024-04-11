@@ -6137,6 +6137,14 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.CreateSampleContent"
 
+  - changeSet:
+      id: v50.2024-04-09T15:55:23
+      author: piranha
+      comment: Backfill query_field for native queries
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.BackfillQueryField"
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
