@@ -103,6 +103,8 @@ export function EntityPickerModal<
       trapFocus={trapFocus}
       zIndex={400} // needed to put this above the BulkActionsToast
       closeOnEscape={false} // we're doing this manually in useWindowEvent
+      xOffset="10vw"
+      yOffset="10dvh"
     >
       <Modal.Overlay />
       <ModalContent h="100%">
