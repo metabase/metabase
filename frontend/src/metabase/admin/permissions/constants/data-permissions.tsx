@@ -30,7 +30,7 @@ export const DATA_PERMISSION_OPTIONS = {
       </>
     ),
     value: DataPermissionValue.LEGACY_NO_SELF_SERVICE,
-    icon: "eye",
+    icon: "eye_crossed_out",
     iconColor: "accent5",
   },
   no: {

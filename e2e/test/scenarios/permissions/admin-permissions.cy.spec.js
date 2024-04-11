@@ -500,18 +500,63 @@ describe("scenarios > admin > permissions", () => {
   it("shows permissions help", () => {
     cy.visit("/admin/permissions");
 
-    // Data permissions
+    // Data permissions w/o `legacy-no-self-service` in graph
     cy.get("main").within(() => {
-      cy.findByText("Permission help").as("permissionHelpButton").click();
+      cy.findByText("Permissions help").as("permissionHelpButton").click();
+      cy.get("@permissionHelpButton").should("not.exist");
+    });
+
+    cy.findByLabelText("Permissions help reference").within(() => {
+      cy.findByText("Data permissions");
+
+      cy.findByText("Database ‘View data’ levels").click();
+      cy.findByTestId("database-view-data-level").should(
+        "not.contain",
+        /No self-service/,
+      );
+      cy.findByText("Database ‘View data’ levels").click();
+
+      cy.findByText(/Schema or table ‘View data’ levels/).click();
+      cy.findByTestId("schema-table-level").should(
+        "not.contain",
+        /No self-service/,
+      );
+      cy.findByText(/Schema or table ‘View data’ levels/).click();
+
+      cy.findByText("‘Create queries’ levels");
+
+      cy.findByLabelText("Close").click();
+    });
+
+    // Data permissions w/ `legacy-no-self-service` in graph
+    cy.visit("/admin/permissions");
+
+    cy.intercept("GET", `/api/permissions/graph/group/${ALL_USERS_GROUP}`, {
+      statusCode: 200,
+      body: {
+        revision: 1,
+        groups: {
+          1: {
+            1: {
+              "view-data": "legacy-no-self-service",
+              "create-queries": "query-builder-and-native",
+              download: { schemas: "full" },
+            },
+          },
+        },
+      },
+    });
+
+    cy.get("main").within(() => {
+      cy.findByText("Permissions help").as("permissionHelpButton").click();
       cy.get("@permissionHelpButton").should("not.exist");
     });
 
     cy.findByLabelText("Permissions help reference")
       .as("permissionsHelpContent")
       .within(() => {
-        cy.findByText("Data permissions");
-        cy.findByText("Database levels");
-        cy.findByText("Schema and table levels");
+        cy.findByText("Database ‘View data’ levels").click();
+        cy.findAllByText(/No self-service/);
         cy.findByLabelText("Close").click();
       });
 
