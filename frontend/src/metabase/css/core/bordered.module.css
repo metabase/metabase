@@ -13,7 +13,7 @@
   border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
-/* ensure that a border-top item inside of a bordred element won't double up */
+/* ensure that a border-top item inside of a bordered element won't double up */
 .bordered > .border-bottom:last-child {
   border-bottom: none;
 }
@@ -22,7 +22,7 @@
   border-top: var(--border-size) var(--border-style) var(--color-border);
 }
 
-/* ensure that a border-top item inside of a bordred element won't double up */
+/* ensure that a border-top item inside of a bordered element won't double up */
 .bordered > .border-top:first-child {
   border-top: none;
 }
