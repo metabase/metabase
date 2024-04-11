@@ -47,7 +47,7 @@ export const DataPermissionsHelp = () => {
           value="database-view-data-level"
           data-testid="database-view-data-level"
         >
-          <Accordion.Control>{t`Database 'View data' levels`}</Accordion.Control>
+          <Accordion.Control>{t`Database ‘View data’ levels`}</Accordion.Control>
           <Accordion.Panel>
             <Stack spacing="1rem" py="1rem">
               <PermissionHelpDescription
@@ -77,7 +77,7 @@ export const DataPermissionsHelp = () => {
                   icon="eye"
                   iconColor="accent5"
                   name={t`No self-service (Deprecated)`}
-                  description={t`The group can't use the query builder or drill through existing questions. They also can't see the data in the Browse data section. They can still view questions based on this data, if they have permissions to the relevant collection. 'Blocked', 'Impersonated' and 'Sandboxed' in another group will override 'No self-service'.`}
+                  description={t`The group can't use the query builder or drill through existing questions. They also can't see the data in the Browse data section. They can still view questions based on this data, if they have permissions to the relevant collection. ‘Blocked’, ‘Impersonated’ and ‘Sandboxed’ in another group will override ‘No self-service’.`}
                 />
               )}
 
@@ -96,7 +96,7 @@ export const DataPermissionsHelp = () => {
           value="schema-table-level"
           data-testid="schema-table-level"
         >
-          <Accordion.Control>{t`Schema or table 'View data' levels`}</Accordion.Control>
+          <Accordion.Control>{t`Schema or table ‘View data’ levels`}</Accordion.Control>
           <Accordion.Panel>
             <Stack spacing="1rem" py="1rem">
               <PermissionHelpDescription
@@ -130,7 +130,7 @@ export const DataPermissionsHelp = () => {
           value="create-queries-level"
           data-testid="create-queries-level"
         >
-          <Accordion.Control>{t`'Create queries' levels`}</Accordion.Control>
+          <Accordion.Control>{t`‘Create queries’ levels`}</Accordion.Control>
           <Accordion.Panel>
             <Stack spacing="1rem" py="1rem">
               <PermissionHelpDescription
@@ -185,7 +185,7 @@ export const DataPermissionsHelp = () => {
               <Text>
                 {jt`${(
                   <strong>{t`Manage Database (Pro):`}</strong>
-                )} The group can edit database settings for a given database in the "Database" tab of the Admin settings.`}{" "}
+                )} The group can edit database settings for a given database in the “Database” tab of the Admin settings.`}{" "}
                 {!isAdvancedPermissionsFeatureEnabled &&
                   getLimitedPermissionAvailabilityMessage()}
               </Text>

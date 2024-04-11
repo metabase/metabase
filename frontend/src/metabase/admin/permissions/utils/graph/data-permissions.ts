@@ -194,15 +194,16 @@ export function hasPermissionValueInGraph(
 ): boolean {
   function _hasPermissionValueInGraph(permissionsGraphSection: any) {
     for (const key in permissionsGraphSection) {
-      if (permissionsGraphSection[key] === permissionValue) {
+      const isMatch = permissionsGraphSection[key] === permissionValue;
+      if (isMatch) {
         return true;
-      } else if (
+      }
+
+      const isGraphObjWithMatch =
         typeof permissionsGraphSection[key] === "object" &&
-        hasPermissionValueInGraph(permissionsGraphSection[key], permissionValue)
-      ) {
+        _hasPermissionValueInGraph(permissionsGraphSection[key]);
+      if (isGraphObjWithMatch) {
         return true;
-      } else {
-        continue;
       }
     }
 
