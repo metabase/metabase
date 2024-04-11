@@ -1,6 +1,11 @@
-import type { LocationDescriptor } from "history";
+import type { Path } from "history";
 import { useMemo } from "react";
 import { t } from "ttag";
+
+import Radio from "metabase/core/components/Radio";
+import { getFullName } from "metabase/lib/user";
+import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
+import type { User } from "metabase-types/api";
 
 import {
   AccountHeaderRoot,
@@ -9,10 +14,6 @@ import {
   HeaderSubtitle,
   HeaderTitle,
 } from "./AccountHeader.styled";
-import Radio from "metabase/core/components/Radio";
-import { getFullName } from "metabase/lib/user";
-import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
-import type { User } from "metabase-types/api";
 
 type AccountHeaderProps = {
   user: User;
