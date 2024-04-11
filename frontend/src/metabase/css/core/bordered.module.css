@@ -70,6 +70,6 @@
   border: none !important;
 }
 
-:global(.border-medium) {
+.borderMedium {
   border-width: var(--border-size-medium);
 }
