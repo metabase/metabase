@@ -4,7 +4,7 @@ import {
   filterWidget,
   popover,
   getDashboardCard,
-  chartPathWithColor,
+  chartPathWithFillColor,
   echartsContainer,
 } from "e2e/support/helpers";
 
@@ -57,7 +57,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       cy.findByRole("heading", { name: nativeDashboardDetails.name });
       getDashboardCard().contains(nativeQuestionDetails.name);
 
-      chartPathWithColor("#509EE3").should("have.length", 49);
+      chartPathWithFillColor("#509EE3").should("have.length", 49);
 
       assertOnXYAxisLabels({ xLabel: "STATE", yLabel: "count" });
 
@@ -80,7 +80,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         .should("contain", "AK")
         .and("not.contain", "TX");
 
-      chartPathWithColor("#509EE3").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -101,7 +101,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?state=AK&city=Anchorage");
 
-      chartPathWithColor("#509EE3").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -128,7 +128,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       assertOnXYAxisLabels({ xLabel: "STATE", yLabel: "count" });
 
-      chartPathWithColor("#509EE3").should("have.length", 49);
+      chartPathWithFillColor("#509EE3").should("have.length", 49);
       echartsContainer()
         .get("text")
         .should("contain", "AK")
@@ -153,7 +153,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         .should("contain", "AK")
         .and("not.contain", "TX");
 
-      chartPathWithColor("#509EE3").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -177,7 +177,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?state=AK&city=Anchorage");
 
-      chartPathWithColor("#509EE3").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -199,7 +199,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       filterWidget().should("have.length", 2);
 
-      chartPathWithColor("#509EE3").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -220,7 +220,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?state=AK&city=Anchorage");
 
-      chartPathWithColor("#509EE3").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -241,7 +241,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         });
       });
 
-      chartPathWithColor("#509EE3").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -262,7 +262,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?state=AK&city=Anchorage");
 
-      chartPathWithColor("#509EE3").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");

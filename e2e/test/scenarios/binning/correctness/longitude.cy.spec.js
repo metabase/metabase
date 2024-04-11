@@ -4,7 +4,7 @@ import {
   openPeopleTable,
   summarize,
   echartsContainer,
-  chartPathWithColor,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 import { LONGITUDE_OPTIONS } from "./shared/constants";
@@ -33,7 +33,7 @@ describe("scenarios > binning > correctness > longitude", () => {
         cy.findByText("Done").click();
 
         getTitle(`Count by Longitude: ${selected}`);
-        chartPathWithColor("#509EE3");
+        chartPathWithFillColor("#509EE3");
 
         assertOnXYAxisLabels();
         assertOnXAxisTicks(representativeValues);

@@ -5,7 +5,7 @@ import {
   visitQuestionAdhoc,
   popover,
   visualize,
-  chartPathWithColor,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -48,6 +48,6 @@ describe("issue 30743", () => {
 
     visualize();
     // Check bars count
-    chartPathWithColor("#509EE3").should("have.length", 4);
+    chartPathWithFillColor("#509EE3").should("have.length", 4);
   });
 });

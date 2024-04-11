@@ -7,7 +7,7 @@ import {
   saveDashboard,
   setupSMTP,
   sendEmailAndAssert,
-  chartPathWithColor,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -59,8 +59,8 @@ describe("issue 21559", { tags: "@external" }, () => {
     });
 
     // Make sure visualization changed to bars
-    chartPathWithColor("#A989C5").should("have.length", 1);
-    chartPathWithColor("#88BF4D").should("have.length", 1);
+    chartPathWithFillColor("#A989C5").should("have.length", 1);
+    chartPathWithFillColor("#88BF4D").should("have.length", 1);
 
     saveDashboard();
 

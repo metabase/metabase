@@ -12,7 +12,7 @@ import {
   openOrdersTable,
   getNotebookStep,
   rightSidebar,
-  chartPathWithColor,
+  chartPathWithFillColor,
   lineChartCircle,
 } from "e2e/support/helpers";
 
@@ -285,7 +285,7 @@ describe("binning related reproductions", () => {
         toBinning: "10 bins",
       });
 
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
     });
 
     it("should work for notebook mode", () => {
@@ -306,7 +306,7 @@ describe("binning related reproductions", () => {
 
       visualize();
 
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
     });
   });
 
