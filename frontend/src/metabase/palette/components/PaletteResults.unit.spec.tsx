@@ -79,6 +79,7 @@ const recents_1 = createMockRecentItem({
   model: "dataset",
   model_object: createMockModelObject({
     ...model_1,
+    collection_id: null,
   }),
 });
 
