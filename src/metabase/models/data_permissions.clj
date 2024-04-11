@@ -654,7 +654,7 @@
                                                    :perm_type :perms/download-results
                                                    :db_id db-id
                                                    :group_id all-users-group-id)
-                                 (coalesce-most-restrictive :perms/create-queries))]
+                                 (coalesce-most-restrictive :perms/download-results))]
     (set-database-permission! group-or-id db-or-id :perms/view-data view-data-level)
     (set-database-permission! group-or-id db-or-id :perms/create-queries create-queries-level)
     (set-database-permission! group-or-id db-or-id :perms/download-results download-level)

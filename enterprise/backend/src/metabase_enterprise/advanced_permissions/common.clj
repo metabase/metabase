@@ -201,6 +201,8 @@
           (premium-features/enable-sandboxes?)
           (t2/exists? :model/GroupTableAccessPolicy
                       :group_id all-users-group-id
-                      :db_id db-id)))
+                      {:from [[:sandboxes :s]]
+                       :join [[:metabase_table :t] [:= :s.table_id :t.id]]
+                       :where [:= :t.db_id db-id]})))
       :blocked
       :unrestricted)))
