@@ -1,5 +1,6 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import type {
   ApiKey,
   Bookmark,
@@ -31,7 +32,6 @@ import {
   SEARCH_MODELS,
 } from "metabase-types/api";
 
-import { isVirtualDashCard } from "metabase/dashboard/utils";
 import type { TagType } from "./constants";
 import { TAG_TYPE_MAPPING } from "./constants";
 
@@ -82,51 +82,6 @@ export function provideApiKeyTags(apiKey: ApiKey): TagDescription<TagType>[] {
   return [idTag("api-key", apiKey.id)];
 }
 
-export function provideDatabaseCandidateListTags(
-  candidates: DatabaseCandidate[],
-): TagDescription<TagType>[] {
-  return [
-    listTag("schema"),
-    ...candidates.flatMap(provideDatabaseCandidateTags),
-  ];
-}
-
-export function provideDatabaseCandidateTags(
-  candidate: DatabaseCandidate,
-): TagDescription<TagType>[] {
-  return [idTag("schema", candidate.schema)];
-}
-
-export function provideDatabaseListTags(
-  databases: Database[],
-): TagDescription<TagType>[] {
-  return [listTag("database"), ...databases.flatMap(provideDatabaseTags)];
-}
-
-export function provideDatabaseTags(
-  database: Database,
-): TagDescription<TagType>[] {
-  return [
-    idTag("database", database.id),
-    ...(database.tables ? provideTableListTags(database.tables) : []),
-  ];
-}
-
-export function provideDashboardListTags(
-  dashboards: Dashboard[],
-): TagDescription<TagType>[] {
-  return [listTag("dashboard"), ...dashboards.flatMap(provideDashboardTags)];
-}
-
-export function provideDashboardTags(
-  dashboard: Dashboard,
-): TagDescription<TagType>[] {
-  const cards = dashboard.dashcards
-    .flatMap(dashcard => (isVirtualDashCard(dashcard) ? [] : [dashcard]))
-    .map(dashcard => dashcard.card);
-  return [idTag("dashboard", dashboard.id), ...provideCardListTags(cards)];
-}
-
 export function provideBookmarkListTags(
   bookmarks: Bookmark[],
 ): TagDescription<TagType>[] {
@@ -173,6 +128,51 @@ export function provideCollectionTags(
   collection: Collection,
 ): TagDescription<TagType>[] {
   return [idTag("collection", collection.id)];
+}
+
+export function provideDatabaseCandidateListTags(
+  candidates: DatabaseCandidate[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("schema"),
+    ...candidates.flatMap(provideDatabaseCandidateTags),
+  ];
+}
+
+export function provideDatabaseCandidateTags(
+  candidate: DatabaseCandidate,
+): TagDescription<TagType>[] {
+  return [idTag("schema", candidate.schema)];
+}
+
+export function provideDatabaseListTags(
+  databases: Database[],
+): TagDescription<TagType>[] {
+  return [listTag("database"), ...databases.flatMap(provideDatabaseTags)];
+}
+
+export function provideDatabaseTags(
+  database: Database,
+): TagDescription<TagType>[] {
+  return [
+    idTag("database", database.id),
+    ...(database.tables ? provideTableListTags(database.tables) : []),
+  ];
+}
+
+export function provideDashboardListTags(
+  dashboards: Dashboard[],
+): TagDescription<TagType>[] {
+  return [listTag("dashboard"), ...dashboards.flatMap(provideDashboardTags)];
+}
+
+export function provideDashboardTags(
+  dashboard: Dashboard,
+): TagDescription<TagType>[] {
+  const cards = dashboard.dashcards
+    .flatMap(dashcard => (isVirtualDashCard(dashcard) ? [] : [dashcard]))
+    .map(dashcard => dashcard.card);
+  return [idTag("dashboard", dashboard.id), ...provideCardListTags(cards)];
 }
 
 export function provideFieldListTags(
