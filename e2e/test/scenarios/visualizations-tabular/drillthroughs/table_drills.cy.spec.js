@@ -13,7 +13,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     openReviewsTable({ limit: 3 });
 
     // FK cell drills
-    cy.get("[data-tableFK]").findByText("1").first().click();
+    cy.get(".test-Table-FK").findByText("1").first().click();
     popover().within(() => {
       cy.findByText("View this Product's Reviews").should("be.visible");
       cy.findByText("View details").should("be.visible");
