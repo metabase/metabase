@@ -35,7 +35,7 @@
   border-bottom: none;
 }
 
-:global(.border-right) {
+.borderRight {
   border-right: var(--border-size) var(--border-style) var(--color-border);
 }
 
