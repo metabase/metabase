@@ -28,7 +28,7 @@ export class QueryDefinitionTooltip extends Component {
         </div>
         {object.definition && (
           <div className={CS.mt2}>
-            <FieldSet legend={t`Definition`} className="border-light">
+            <FieldSet legend={t`Definition`} className={CS.borderLight}>
               <QueryDefinition
                 className={QueryBuilderS.TooltipFilterList}
                 object={object}

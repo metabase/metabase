@@ -295,7 +295,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
       <RuleBackground
         rule={rule}
         className={cx(CS.mr2, CS.flexNoShrink, CS.rounded, {
-          bordered: rule.type === "range",
+          [CS.bordered]: rule.type === "range",
         })}
         style={{ width: 40, height: 40 }}
       />

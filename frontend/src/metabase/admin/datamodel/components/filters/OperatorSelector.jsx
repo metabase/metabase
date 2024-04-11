@@ -20,7 +20,7 @@ export default class OperatorSelector extends Component {
       <Select
         value={operator}
         onChange={e => onOperatorChange(e.target.value)}
-        className={cx("border-medium", CS.textDefault, className)}
+        className={cx(CS.borderMedium, CS.textDefault, className)}
         data-testid="operator-select"
       >
         {operators.map(o => (
