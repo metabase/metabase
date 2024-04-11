@@ -7,6 +7,7 @@ import type {
   Collection,
   CollectionItem,
   CollectionItemModel,
+  Dashboard,
   Database,
   DatabaseCandidate,
   Field,
@@ -30,6 +31,7 @@ import {
   SEARCH_MODELS,
 } from "metabase-types/api";
 
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import type { TagType } from "./constants";
 import { TAG_TYPE_MAPPING } from "./constants";
 
@@ -108,6 +110,21 @@ export function provideDatabaseTags(
     idTag("database", database.id),
     ...(database.tables ? provideTableListTags(database.tables) : []),
   ];
+}
+
+export function provideDashboardListTags(
+  dashboards: Dashboard[],
+): TagDescription<TagType>[] {
+  return [listTag("dashboard"), ...dashboards.flatMap(provideDashboardTags)];
+}
+
+export function provideDashboardTags(
+  dashboard: Dashboard,
+): TagDescription<TagType>[] {
+  const cards = dashboard.dashcards
+    .flatMap(dashcard => (isVirtualDashCard(dashcard) ? [] : [dashcard]))
+    .map(dashcard => dashcard.card);
+  return [idTag("dashboard", dashboard.id), ...provideCardListTags(cards)];
 }
 
 export function provideBookmarkListTags(
