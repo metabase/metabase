@@ -20,6 +20,11 @@ import { Preview } from "../Preview";
 
 import styles from "./CombineColumnsDrill.module.css";
 
+/**
+ * Required to not cut off outline on the "x" button.
+ */
+const OVERFLOW_SAFETY_MARGIN = 4;
+
 interface Props {
   column: Lib.ColumnMetadata;
   query: Lib.Query;
@@ -115,8 +120,14 @@ export const CombineColumnsDrill = ({
         >{jt`Combine “${columnInfo.displayName}” with other columns`}</Title>
 
         <Stack spacing="lg">
-          <Stack spacing="sm">
-            <Stack className={styles.inputs} mah="50vh" spacing="sm">
+          <Stack spacing={12}>
+            <Stack
+              className={styles.inputs}
+              m={-OVERFLOW_SAFETY_MARGIN}
+              mah="50vh"
+              p={OVERFLOW_SAFETY_MARGIN}
+              spacing="sm"
+            >
               {columnsAndSeparators.map(({ column, separator }, index) => (
                 <ColumnAndSeparatorRow
                   column={column}
@@ -152,7 +163,7 @@ export const CombineColumnsDrill = ({
                 variant="subtle"
                 onClick={handleAdd}
               >
-                {t`Add another column`}
+                {t`Add column`}
               </Button>
             </Flex>
           </Stack>
