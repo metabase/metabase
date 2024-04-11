@@ -257,7 +257,7 @@
 
 (defn- liquibase->url [^Liquibase liquibase]
   ;; Need to this cast to get access to the metadata. We currently only use JDBC app databases.
-  (let [conn ^JdbcConnection (.getConnection (-> liquibase (.getDatabase)))]
+  (let [conn ^JdbcConnection (.. liquibase getDatabase getConnection)]
     (-> conn .getMetaData .getURL)))
 
 (defn release-concurrent-locks!
