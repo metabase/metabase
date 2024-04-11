@@ -27,12 +27,10 @@
   border-top: none;
 }
 
-:global(.border-row-divider),
 .borderRowDivider {
   border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
-:global(.border-row-divider:last-child),
 .borderRowDivider:last-child {
   border-bottom: none;
 }
