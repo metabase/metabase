@@ -243,6 +243,13 @@ function isMetabaseUrl(url) {
     return false;
   }
 
+  /**
+   * We don't want to use client-side navigation for dynamic-dashboard redirects
+   */
+  if (pathNameWithoutSubPath.includes("/dynamic-dashboard")) {
+    return false;
+  }
+
   return isSameOrSiteUrlOrigin(url) && urlPath.startsWith(getSitePath());
 }
 
