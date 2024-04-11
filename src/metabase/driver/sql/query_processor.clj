@@ -715,8 +715,8 @@
   #2862 for more information as to why we do this. Example:
 
     OVER (
-      PARTITION BY created_at
-      ORDER BY 2
+      PARTITION BY city_name
+      ORDER BY created_at
       ROWS UNBOUNDED PRECEDING
     )"
   [driver expr]
