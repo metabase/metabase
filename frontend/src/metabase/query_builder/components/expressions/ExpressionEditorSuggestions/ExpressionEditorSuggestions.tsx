@@ -84,10 +84,7 @@ export function ExpressionEditorSuggestions({
       <Popover.Target>{children}</Popover.Target>
       <Popover.Dropdown>
         <DelayGroup>
-          <ExpressionList
-            data-testid="expression-suggestions-list"
-            className={CS.pb1}
-          >
+          <ExpressionList data-testid="expression-suggestions-list">
             <ExpressionEditorSuggestionsListGroup
               suggestions={groups._none}
               query={query}
