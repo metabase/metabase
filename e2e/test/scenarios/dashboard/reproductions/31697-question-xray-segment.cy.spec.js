@@ -46,7 +46,7 @@ describe("issue 31697", () => {
 
   it("should allow x-rays for questions with segments (metabase#31697)", () => {
     cy.get("@questionId").then(visitQuestion);
-    lineChartCircle().eq(0).click({ force: true });
+    lineChartCircle().eq(0).click();
     popover().findByText("Automatic insights…").click();
     popover().findByText("X-ray").click();
     cy.wait("@xrayDashboard");
