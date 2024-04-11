@@ -10,7 +10,9 @@
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -19,6 +21,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
+   [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -687,10 +690,6 @@
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
 
-(defmethod driver/database-supports? [:sql :sql/window-functions.order-by-output-column-numbers]
-  [_driver _feature _database]
-  true)
-
 (defn- format-rows-unbounded-preceding [_clause _args]
   ["ROWS UNBOUNDED PRECEDING"])
 
@@ -699,45 +698,48 @@
  #'format-rows-unbounded-preceding
  nil)
 
-(defn- over-rows-with-order-by-copying-expressions
-  "e.g.
+(defn- cumulative-aggregation-over-rows
+  "Generate an OVER (...) expression for stuff like cumulative sum or cumulative count.
 
-    OVER (ORDER BY date_trunc('month', my_column))"
+  For a single breakout the generate SQL will look something like:
+
+    OVER (
+      ORDER BY created_at
+      ROWS UNBOUNDED PRECEDING
+    )
+
+  Note that [[nest-breakouts-in-queries-with-cumulative-aggregations]] ensures we will always see a plain column
+  identifier here.
+
+  With more than one breakout, we `PARTITION BY` all breakouts except the last, then `ORDER BY` the last breakout. See
+  #2862 for more information as to why we do this. Example:
+
+    OVER (
+      PARTITION BY created_at
+      ORDER BY 2
+      ROWS UNBOUNDED PRECEDING
+    )"
   [driver expr]
-  (let [{:keys [group-by]} (apply-top-level-clause
-                            driver
-                            :breakout
-                            {}
-                            *inner-query*)]
+  (let [num-breakouts     (count (:breakout *inner-query*))
+        ;; sanity check: shouldn't be using this function if we don't have any breakouts, we should have just done
+        ;; `:count` or `:sum` (see `->honeysql` methods below)
+        _                 (assert (pos? num-breakouts)
+                                  "we should be compiling cumulative count/sum as regular count/sum, with no breakouts")
+        ;; Only calculate this if it's needed, it won't be for drivers that support ordering by col numbers when we only
+        ;; have one breakout.
+        group-bys         (:group-by (apply-top-level-clause driver :breakout {} *inner-query*))
+        partition-exprs   (when (> num-breakouts 1)
+                            (butlast group-bys))
+        order-expr        (last group-bys)]
     [:over
      [expr
-      {:order-by                  (mapv (fn [expr]
-                                          [expr :asc])
-                                        group-by)
-       ::rows-unbounded-preceding []}]]))
-
-;;; For databases that do something intelligent with ORDER BY 1, 2: we can take advantage of that functionality
-;;; implement the window function versions of cumulative sum and cumulative sum more simply.
-
-(defn- over-rows-with-order-by-output-column-numbers
-  "e.g.
-
-    OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING)"
-  [_driver expr]
-  [:over
-   [expr
-    {:order-by                  (mapv (fn [i]
-                                        [[:inline (inc i)] :asc])
-                                      (range (count (:breakout *inner-query*))))
-     ::rows-unbounded-preceding []}]])
-
-(defn- cumulative-aggregation-window-function [driver expr]
-  (let [over-rows-with-order-by (if (driver/database-supports? driver
-                                                               :sql/window-functions.order-by-output-column-numbers
-                                                               (lib.metadata/database (qp.store/metadata-provider)))
-                                  over-rows-with-order-by-output-column-numbers
-                                  over-rows-with-order-by-copying-expressions)]
-    (over-rows-with-order-by driver expr)))
+      (merge
+       (when (seq partition-exprs)
+         {:partition-by (mapv (fn [expr]
+                                [expr])
+                              partition-exprs)})
+       {:order-by                  [[order-expr :asc]]
+        ::rows-unbounded-preceding []})]]))
 
 ;;;    cum-count()
 ;;;
@@ -755,7 +757,7 @@
   ;; a cumulative count with no breakouts doesn't really mean anything, just compile it as a normal count.
   (if (empty? (:breakout *inner-query*))
     (->honeysql driver [:count expr-or-nil])
-    (cumulative-aggregation-window-function
+    (cumulative-aggregation-over-rows
      driver
      [:sum (if expr-or-nil
              [:count (->honeysql driver expr-or-nil)]
@@ -777,7 +779,7 @@
   ;; a cumulative sum with no breakouts doesn't really mean anything, just compile it as a normal sum.
   (if (empty? (:breakout *inner-query*))
     (->honeysql driver [:sum expr])
-    (cumulative-aggregation-window-function
+    (cumulative-aggregation-over-rows
      driver
      [:sum [:sum (->honeysql driver expr)]])))
 
@@ -1563,9 +1565,39 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+;;; This is a wrapper
+;;; around [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation]], which is
+;;; written for pMBQL, so we can use it with a legacy inner query. Once we rework the SQL QP to use pMBQL we can remove
+;;; this.
+(mu/defn ^:private nest-breakouts-in-queries-with-cumulative-aggregations :- mbql.s/MBQLQuery
+  [inner-query :- mbql.s/MBQLQuery]
+  (let [metadata-provider (qp.store/metadata-provider)
+        database-id       (u/the-id (lib.metadata/database (qp.store/metadata-provider)))]
+    (-> (lib.query/query-from-legacy-inner-query metadata-provider database-id inner-query)
+        qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation
+        lib.convert/->legacy-MBQL
+        :query)))
+
+;;; [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation]] already does
+;;; basically the same check, this is here mostly to avoid the performance hit of converting to pMBQL and back in
+;;; queries that have no cumulative aggregations at all. Once we convert the SQL QP to pMBQL we can remove this.
+(defn- has-cumulative-aggregations? [inner-query]
+  (or (lib.util.match/match (:aggregation inner-query)
+        #{:cum-sum :cum-count}
+        true)
+      (when-let [source-query (:source-query inner-query)]
+        (has-cumulative-aggregations? source-query))))
+
+(defn- maybe-nest-breakouts-in-queries-with-cumulative-aggregations [inner-query]
+  (cond-> inner-query
+    (has-cumulative-aggregations? inner-query) nest-breakouts-in-queries-with-cumulative-aggregations))
+
 (defmethod preprocess :sql
   [_driver inner-query]
-  (nest-query/nest-expressions (add/add-alias-info inner-query)))
+  (-> inner-query
+      add/add-alias-info
+      nest-query/nest-expressions
+      maybe-nest-breakouts-in-queries-with-cumulative-aggregations))
 
 (defn mbql->honeysql
   "Build the HoneySQL form we will compile to SQL and execute."
