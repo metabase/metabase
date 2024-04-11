@@ -67,6 +67,7 @@ describe("scenarios > dashboard > chained filter", () => {
         cy.findByText("City").click();
       });
 
+      cy.findAllByRole("tab").contains("Linked filters").click();
       // Link city to state
       cy.findByRole("tabpanel").within(() => {
         // turn on the switch, input has 0 width and height
