@@ -284,7 +284,6 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow sorting fields in the custom order", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
-      //moveField(0, 200);
       moveDnDKitElement(cy.findAllByTestId("grabber").first(), {
         vertical: 200,
       });
