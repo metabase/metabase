@@ -377,12 +377,13 @@
   "Determine the appropriate `::desired-alias` for a `field-clause`."
   {:arglists '([inner-query field-clause expensive-field-info])}
   [_inner-query
-   [_ _id-or-name {:keys [join-alias] ::keys [desired-alias]} :as _field-clause]
-   {:keys [field-name alias-from-join alias-from-source-query override-alias?]}]
+   [_ _id-or-name {:keys [join-alias], ::keys [desired-alias], explicit-name :name} :as _field-clause]
+   {:keys [field-name alias-from-join alias-from-source-query override-alias?], :as _expensive-field-info}]
   (cond
     join-alias              (prefix-field-alias join-alias (or alias-from-join field-name))
     ;; JSON fields and similar have to be aliased by the outer field name.
     override-alias?         field-name
+    explicit-name           explicit-name
     desired-alias           desired-alias
     alias-from-source-query alias-from-source-query
     :else                   field-name))

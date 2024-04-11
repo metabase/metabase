@@ -5,6 +5,7 @@ import { t } from "ttag";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import MetabaseSettings from "metabase/lib/settings";
 
 import {
@@ -32,7 +33,7 @@ export function ModelEducationalModal({ isOpen, onClose }) {
         <Content>
           <img
             width="520px"
-            className="mx1"
+            className={CS.mx1}
             src="app/assets/img/models-education.png"
             srcSet="
             app/assets/img/models-education.png    1x,

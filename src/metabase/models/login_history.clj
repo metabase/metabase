@@ -5,7 +5,7 @@
    [metabase.models.setting :refer [defsetting]]
    [metabase.server.request.util :as req.util]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.connection :as t2.conn]
@@ -93,7 +93,7 @@
           (let [[info] (human-friendly-infos [login-history])]
             (messages/send-login-from-new-device-email! info))
           (catch Throwable e
-            (log/error e (trs "Error sending ''login from new device'' notification email"))))))))
+            (log/error e "Error sending 'login from new device' notification email")))))))
 
 (t2/define-after-insert :model/LoginHistory
   [login-history]

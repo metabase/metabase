@@ -5,7 +5,7 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
-import type { SearchModelType, SearchResultId } from "metabase-types/api";
+import type { SearchModel, SearchResultId } from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
@@ -53,7 +53,7 @@ export interface EntityPickerModalProps<Model extends string, Item> {
 
 export function EntityPickerModal<
   Id extends SearchResultId,
-  Model extends SearchModelType,
+  Model extends SearchModel,
   Item extends TypeWithModel<Id, Model>,
 >({
   title = t`Choose an item`,

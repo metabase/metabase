@@ -64,7 +64,7 @@
       ;; create a new application DB and run migrations.
       (create-test-db!)
       (let [data-source (test-data-source)]
-        (mdb/migrate! :mysql data-source :up)
+        (mdb/migrate! data-source :up)
         (is (= {:character-set "utf8mb4", :collation "utf8mb4_unicode_ci"}
                (db-charset)
                (table-charset)

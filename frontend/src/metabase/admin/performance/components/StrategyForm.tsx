@@ -154,11 +154,11 @@ const StrategyFormBody = ({
               <>
                 <Field
                   title={t`Minimum query duration`}
-                  subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many milliseconds.`}
+                  subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
                 >
                   <PositiveNumberInput
                     strategyType="ttl"
-                    name="min_duration_ms"
+                    name="min_duration_seconds"
                   />
                 </Field>
                 <Field

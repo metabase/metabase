@@ -7,7 +7,6 @@
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.connection :as t2.connection]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -93,7 +92,7 @@
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
   [max-age-seconds]
   {:pre [(number? max-age-seconds)]}
-  (log/tracef "Purging old cache entries.")
+  (log/trace "Purging old cache entries.")
   (try
     (t2/delete! (t2/table-name QueryCache)
                 :updated_at [:<= (seconds-ago max-age-seconds)])
@@ -115,7 +114,7 @@
                                                :query_hash query-hash
                                                :results    results)))
     (catch Throwable e
-      (log/error e (trs "Error saving query results to cache."))))
+      (log/error e "Error saving query results to cache.")))
   nil)
 
 (defmethod i/cache-backend :db

@@ -47,6 +47,36 @@
   `(do-with-persist-models
     (fn [{:keys [~@bindings]}] ~@body)))
 
+(deftest refreshing-models-are-refreshed
+  ;; models might get stuck in "refreshing" mode and need to be "kicked". This is actually the case in the OSS
+  ;; version, but when [[metabase-enterprise.cache.config/refreshable-states]] was extracted, "refreshing" was not
+  ;; carried over.
+  ;;
+  ;; This affects mostly models that were refreshing when an instance was restarted.  both OSS and enterprise should
+  ;; behave this way. Don't know how to exercise both in the same jvm, but will let CI sort it out.
+  (let [two-hours-ago (t/minus (t/local-date-time) (t/hours 2))]
+    (mt/with-temp
+      [Database db {:settings {:persist-models-enabled true}}
+       Card          refreshing  {:type :model, :database_id (u/the-id db)}
+       PersistedInfo prefreshing {:card_id         (u/the-id refreshing)
+                                  :database_id     (u/the-id db)
+                                  :state           "refreshing"
+                                  :state_change_at two-hours-ago}]
+      (let [card-ids       (atom #{})
+            test-refresher (reify task.persist-refresh/Refresher
+                             (refresh! [_ _database _definition card]
+                               (swap! card-ids conj (:id card))
+                               {:state :success})
+                             (unpersist! [_ _database _persisted-info]))
+            current-state! (fn [] (t2/select-one-fn :state :model/PersistedInfo (u/the-id prefreshing)))]
+        ;; ensure ee path is taken
+        (mt/with-premium-features #{:cache-granular-controls}
+          (is (= "refreshing" (current-state!)))
+          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+          (testing "Doesn't refresh models that have state='off' or 'deletable' if :cache-granular-controls feature flag is enabled"
+            (is (= #{(u/the-id refreshing)} @card-ids)))
+          (is (= "persisted" (current-state!))))))))
+
 (deftest model-caching-granular-controls-test
   (mt/with-model-cleanup [TaskHistory]
     (testing "with :cache-granular-controls enabled, don't refresh any tables in an 'off' or 'deletable' state"
