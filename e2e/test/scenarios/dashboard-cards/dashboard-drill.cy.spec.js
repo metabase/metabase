@@ -19,6 +19,8 @@ import {
   visitDashboard,
   queryBuilderHeader,
   queryBuilderMain,
+  chartPathWithColor,
+  echartsContainer,
 } from "e2e/support/helpers";
 
 const {
@@ -630,16 +632,16 @@ describe("scenarios > dashboard > dashboard drill", () => {
           `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION_ID}/query`,
         ).as("cardQuery");
 
-        cy.get(".bar")
+        chartPathWithColor("#509EE3")
           .eq(14) // August 2023 (Total of 12 reviews, 9 unique days)
-          .click({ force: true });
+          .click();
 
         cy.wait("@cardQuery");
         cy.url().should("include", "2023-08");
-        cy.get(".bar").should("have.length", 1);
+        chartPathWithColor("#509EE3").should("have.length", 1);
         // Since hover doesn't work in Cypress we can't assert on the popover that's shown when one hovers the bar
         // But when this issue gets fixed, Y-axis should definitely show "12" (total count of reviews)
-        cy.get(".axis.y").contains("12");
+        echartsContainer().get("text").contains("12");
       });
     });
   });
@@ -669,13 +671,13 @@ describe("scenarios > dashboard > dashboard drill", () => {
         visitDashboard(dashboard_id);
 
         // click the first bar on the card's graph and do a zoom drill-through
-        cy.get(".bar").eq(0).click({ force: true });
+        chartPathWithColor("#509EE3").eq(0).click();
         cy.findByText("See this month by week").click();
 
         cy.wait("@dataset");
 
         // check that the display is still a bar chart by checking that a .bar element exists
-        cy.get(".bar").should("exist");
+        chartPathWithColor("#509EE3").should("exist");
       },
     );
   });
@@ -876,14 +878,14 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
           visitDashboard(DASHBOARD_ID);
 
-          cy.get(".bar").first().trigger("mousemove");
+          chartPathWithColor("#88BF4D").first().trigger("mousemove");
 
           popover().within(() => {
             testPairedTooltipValues("AXIS", "1");
             testPairedTooltipValues("VALUE", "5");
           });
 
-          cy.get(".bar").last().trigger("mousemove");
+          chartPathWithColor("#98D9D9").first().trigger("mousemove");
 
           popover().within(() => {
             testPairedTooltipValues("AXIS", "1");
