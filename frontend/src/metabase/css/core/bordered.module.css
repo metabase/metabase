@@ -59,7 +59,7 @@
   border-color: var(--color-brand) !important;
 }
 
-:global(.border-transparent) {
+.borderTransparent {
   border-color: transparent;
 }
 
