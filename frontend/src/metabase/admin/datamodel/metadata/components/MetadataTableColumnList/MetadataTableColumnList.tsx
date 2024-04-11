@@ -64,7 +64,7 @@ const MetadataTableColumnList = ({
   const isHidden = visibility_type != null;
 
   const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 0 },
+    activationConstraint: { distance: 15 },
   });
 
   const sortedFields = useMemo(
@@ -201,7 +201,12 @@ const SortableColumn = ({
   });
 
   const dragHandle = (
-    <Grabber style={{ width: 10 }} {...attributes} {...listeners} />
+    <Grabber
+      style={{ width: 10 }}
+      {...attributes}
+      {...listeners}
+      data-testid="grabber"
+    />
   );
 
   return (
