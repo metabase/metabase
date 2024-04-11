@@ -22,7 +22,11 @@ export interface ParameterSidebarProps {
   parameter: Parameter;
   otherParameters: Parameter[];
   onChangeName: (parameterId: ParameterId, name: string) => void;
-  onChangeType: (parameterId: ParameterId, nextType: string) => void;
+  onChangeType: (
+    parameterId: ParameterId,
+    nextType: string,
+    nextSectionId: string,
+  ) => void;
   onChangeDefaultValue: (parameterId: ParameterId, value: unknown) => void;
   onChangeIsMultiSelect: (
     parameterId: ParameterId,

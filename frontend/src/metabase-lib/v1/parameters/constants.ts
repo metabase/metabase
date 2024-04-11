@@ -102,6 +102,9 @@ export const PARAMETER_OPERATOR_TYPES = {
       operator: "all-options",
       name: t`Date Filter`,
       menuName: t`All Options`,
+      // TODO: this is a temp prop and after (metabase#41313)
+      // it should be removed
+      sidebarMenuName: t`Let the user choose`,
       description: t`Contains all of the above`,
     },
   ],

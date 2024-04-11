@@ -1,7 +1,11 @@
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
+import { checkNotNull } from "metabase/lib/types";
+import {
+  getDashboardParameterSections,
+  getDefaultOptionForParameterSection,
+} from "metabase/parameters/utils/dashboard-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { Radio, Stack, Text, TextInput, Box, Select } from "metabase/ui";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
@@ -28,7 +32,7 @@ export interface ParameterSettingsProps {
   parameter: Parameter;
   isParameterSlugUsed: (value: string) => boolean;
   onChangeName: (name: string) => void;
-  onChangeType: (type: string) => void;
+  onChangeType: (type: string, sectionId: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
   onChangeQueryType: (queryType: ValuesQueryType) => void;
@@ -38,8 +42,19 @@ export interface ParameterSettingsProps {
   embeddedParameterVisibility: EmbeddingParameterVisibility | null;
 }
 
+type SectionOption = {
+  sectionId: string;
+  type: string;
+  name: string;
+  operator: string;
+  menuName?: string;
+  sidebarMenuName?: string;
+  combinedName?: string | undefined;
+};
+
 const parameterSections = getDashboardParameterSections();
-const dataTypeSections = parameterSections.map(section => {
+const defaultOptionForSection = getDefaultOptionForParameterSection();
+const dataTypeSectionsData = parameterSections.map(section => {
   return {
     label: section.name,
     value: section.id,
@@ -85,44 +100,10 @@ export const ParameterSettings = ({
     }
   };
 
-  const handleDataTypeChange = (nextSectionId: string) => {
-    const section = parameterSections.find(
-      s => s.id === nextSectionId,
-    ) as typeof parameterSections[number];
-    const options = section.options;
+  const handleDataTypeChange = (sectionId: string) => {
+    const defaultOption = defaultOptionForSection[sectionId] as SectionOption;
 
-    let operator;
-
-    if (nextSectionId === "id") {
-      operator = options[0];
-    }
-
-    if (nextSectionId === "location") {
-      operator = options.find(o => o.name === "Is");
-    }
-
-    if (nextSectionId === "number") {
-      operator = options.find(o => o.name === "Between");
-    }
-
-    if (nextSectionId === "string") {
-      operator = options.find(o => o.name === "Is");
-    }
-
-    if (nextSectionId === "date") {
-      const dateOptions = options.concat([
-        {
-          name: "Default",
-          value: "Let user choose",
-          type: "default",
-          sectionId: "date",
-        },
-      ]);
-
-      operator = dateOptions.find(o => o.name === "Default");
-    }
-
-    onChangeType(operator.type, operator.sectionId);
+    onChangeType(defaultOption.type, sectionId);
   };
 
   const handleSourceSettingsChange = useCallback(
@@ -135,6 +116,22 @@ export const ParameterSettings = ({
 
   const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
   const isMultiValue = getIsMultiSelect(parameter) ? "multi" : "single";
+  const defaultOption = defaultOptionForSection[
+    sectionId as keyof typeof defaultOptionForSection
+  ] as SectionOption;
+
+  const filterOperatorData = useMemo(
+    () =>
+      checkNotNull(
+        parameterSections.find(section => section.id === sectionId),
+      ).options.map(option => {
+        return {
+          label: (option as SectionOption).sidebarMenuName ?? option.name,
+          value: (option as SectionOption).operator,
+        };
+      }),
+    [sectionId],
+  );
 
   return (
     <Box p="1.5rem 1rem">
@@ -151,11 +148,22 @@ export const ParameterSettings = ({
       <Box mb="xl">
         <SettingLabel>{t`Data type`}</SettingLabel>
         <Select
-          data={dataTypeSections}
+          disabled
+          data={dataTypeSectionsData}
           value={sectionId}
           onChange={handleDataTypeChange}
         />
       </Box>
+      {sectionId !== "id" && (
+        <Box mb="xl">
+          <SettingLabel>{t`Filter operator`}</SettingLabel>
+          <Select
+            disabled
+            data={filterOperatorData}
+            value={defaultOption.operator}
+          />
+        </Box>
+      )}
       {canUseCustomSource(parameter) && (
         <Box mb="xl">
           <SettingLabel>{t`How should people filter on this column?`}</SettingLabel>

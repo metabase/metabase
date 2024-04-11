@@ -42,3 +42,38 @@ export function getDashboardParameterSections() {
     },
   ];
 }
+
+export function getDefaultOptionForParameterSection() {
+  const sections = getDashboardParameterSections();
+
+  const map = Object.fromEntries(
+    sections.map(section => {
+      const { id: sectionId, options } = section;
+      let defaultOption;
+
+      if (sectionId === "id") {
+        defaultOption = options[0];
+      }
+
+      if (sectionId === "location") {
+        defaultOption = options.find(o => o.name === "Is");
+      }
+
+      if (sectionId === "number") {
+        defaultOption = options.find(o => o.name === "Between");
+      }
+
+      if (sectionId === "string") {
+        defaultOption = options.find(o => o.name === "Is");
+      }
+
+      if (sectionId === "date") {
+        defaultOption = options.find(o => o.name === "Date Filter");
+      }
+
+      return [sectionId, defaultOption];
+    }),
+  );
+
+  return map;
+}

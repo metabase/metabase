@@ -102,6 +102,7 @@ describe("ParameterSidebar", () => {
 const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
   const onChangeQueryType = jest.fn();
   const onChangeName = jest.fn();
+  const onChangeType = jest.fn();
 
   renderWithProviders(
     <ParameterSettings
@@ -109,6 +110,7 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
       parameter={parameter}
       isParameterSlugUsed={jest.fn()}
       onChangeName={onChangeName}
+      onChangeType={onChangeType}
       onChangeDefaultValue={jest.fn()}
       onChangeIsMultiSelect={jest.fn()}
       onChangeQueryType={onChangeQueryType}

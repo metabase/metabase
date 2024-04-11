@@ -169,7 +169,7 @@ export function formatDateValue(
   }, null);
 }
 
-// This should miror the logic in `metabase.shared.parameters.parameters`
+// This should mirror the logic in `metabase.shared.parameters.parameters`
 export function formatDateValueForType(
   value: string,
   type: string,

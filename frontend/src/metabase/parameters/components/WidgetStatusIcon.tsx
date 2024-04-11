@@ -7,9 +7,10 @@ import { Icon } from "metabase/ui";
 type Props = {
   name: "close" | "empty" | "chevrondown" | "time_history";
   onClick?: () => void;
+  size?: number;
 };
 
-export function WidgetStatusIcon({ name, onClick }: Props) {
+export function WidgetStatusIcon({ name, size, onClick }: Props) {
   const classes = cx(CS.flexAlignRight, CS.flexNoShrink, {
     [CS.cursorPointer]: ["close", "time_history"].includes(name),
   });
@@ -22,6 +23,11 @@ export function WidgetStatusIcon({ name, onClick }: Props) {
   };
 
   return (
-    <Icon name={name} onClick={handleOnClick} size={12} className={classes} />
+    <Icon
+      name={name}
+      onClick={handleOnClick}
+      size={size ?? 12}
+      className={classes}
+    />
   );
 }
