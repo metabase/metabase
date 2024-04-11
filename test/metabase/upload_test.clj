@@ -1188,7 +1188,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn create-upload-table!
-  "Creates a table and syncs it in the current test database, as if it were uploaded as a CSV upload. `col->upload-type` should be an ordered map of column names (keywords) to upload types.
+  "Creates a table and syncs it in the current test database, as if it were uploaded as a CSV upload.
+  `col->upload-type` should be an ordered map of column names (keywords) to upload types.
   `rows` should be a vector of vectors of values, one for each row.
   Returns the table.
 
@@ -1387,7 +1388,7 @@
                 (io/delete-file file)))))))))
 
 (deftest append-no-rows-test
-  (mt/test-driver (mt/normal-drivers-with-feature :uploads)
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append should succeed with a CSV with only the header"
         (let [csv-rows ["name"]]
@@ -1510,7 +1511,7 @@
             (io/delete-file file)))))))
 
 (deftest append-duplicate-header-csv-test
-  (mt/test-driver (mt/normal-drivers-with-feature :uploads)
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Append should fail if the CSV file contains duplicate column names"
       (with-upload-table! [table (create-upload-table!)]
         (let [csv-rows ["name,name" "Luke Skywalker,Darth Vader"]
@@ -1521,6 +1522,26 @@
                                               :table-id (:id table)}))))
           (testing "Check the data was not uploaded into the table"
             (is (= [[1 "Obi-Wan Kenobi"]]
+                   (rows-for-table table))))
+          (io/delete-file file))))))
+
+(deftest append-reorder-header-csv-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Append should handle the columns in the CSV file being reordered"
+      (with-upload-table! [table (create-upload-table!
+                                  :col->upload-type (ordered-map/ordered-map
+                                                     upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
+                                                     :name ::upload/varchar-255
+                                                     :shame ::upload/varchar-255)
+                                  :rows [["Obi-Wan Kenobi" "No one really knows me"]])]
+
+        (let [csv-rows ["shame,name" "Nothing - you can't prove it,Puke Nightstalker"]
+              file     (csv-file-with csv-rows (mt/random-name))]
+
+          (testing "The new row is inserted with the values correctly reordered"
+            (is (= {:row-count 1} (append-csv! {:file file, :table-id (:id table)})))
+            (is (= [[1 "Obi-Wan Kenobi" "No one really knows me"]
+                    [2 "Puke Nightstalker" "Nothing - you can't prove it"]]
                    (rows-for-table table))))
           (io/delete-file file))))))
 
