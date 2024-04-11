@@ -33,7 +33,7 @@ export const Preview = ({ error, preview }: Props) => {
   }
 
   return (
-    <Stack spacing="xs">
+    <Stack spacing="sm">
       <Text color="text-medium" lh={1} weight="bold">{t`Preview`}</Text>
 
       {error && <SmallGenericError message={getErrorMessage(error)} />}
