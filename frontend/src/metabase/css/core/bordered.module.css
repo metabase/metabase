@@ -46,7 +46,8 @@
   border-right: var(--border-size) var(--border-style) var(--color-border);
 }
 
-:global(.border-left) {
+:global(.border-left),
+.borderLeft {
   border-left: var(--border-size) var(--border-style) var(--color-border);
 }
 
@@ -55,7 +56,8 @@
 }
 
 :global(.border-error),
-.border-error {
+.border-error,
+.borderError {
   border-color: var(--color-error) !important;
 }
 

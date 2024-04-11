@@ -266,7 +266,7 @@ export function DashCardCardParameterMapper({
             <Icon
               name="info"
               size={16}
-              className="text-dark-hover"
+              className={CS.textDarkHover}
               tooltip={mappingInfoText}
             />
           </TextCardDefault>

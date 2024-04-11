@@ -229,7 +229,7 @@ const PeopleList = ({
           className={cx(CS.flex, CS.alignCenter, CS.justifyBetween, CS.p2)}
           data-testid="people-list-footer"
         >
-          <div className={cx("text-medium", CS.textBold)}>
+          <div className={cx(CS.textMedium, CS.textBold)}>
             {ngettext(
               msgid`${total} person found`,
               `${total} people found`,
