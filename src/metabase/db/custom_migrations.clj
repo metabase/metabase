@@ -1145,39 +1145,43 @@
                (no-user?)
                (no-db?))
       (let [table-name->raw-rows (load-edn "resources/sample-content.edn")
-            replace-temporals (fn [v]
-                                (if (isa? (type v) java.time.temporal.Temporal)
-                                  :%now
-                                  v))
-            table-name->rows (fn [table-name]
-                               (->> (table-name->raw-rows table-name)
+            replace-temporals    (fn [v]
+                                   (if (isa? (type v) java.time.temporal.Temporal)
+                                     :%now
+                                     v))
+            table-name->rows     (fn [table-name]
+                                   (->> (table-name->raw-rows table-name)
                                     ;; We sort the rows by id and remove them so that auto-incrementing ids are
                                     ;; generated in the same order. We can't insert the ids directly in H2 without
                                     ;; creating sequences for all the generated id columns.
-                                    (sort-by :id)
-                                    (map (fn [row]
-                                           (dissoc (update-vals row replace-temporals) :id)))))
-            dbs (table-name->rows :metabase_database)
-            _ (t2/query {:insert-into :metabase_database :values dbs})
-            db-ids (set (map :id (t2/query {:select :id :from :metabase_database})))
-            expected-db-ids #{1}]
+                                        (sort-by :id)
+                                        (map (fn [row]
+                                               (dissoc (update-vals row replace-temporals) :id)))))
+            dbs                  (table-name->rows :metabase_database)
+            _                    (t2/query {:insert-into :metabase_database :values dbs})
+            db-ids               (set (map :id (t2/query {:select :id :from :metabase_database})))
+            example-dashboard-id 1
+            expected-db-ids      #{example-dashboard-id}]
         ;; If that did not succeed in creating the metabase_database rows we could be reusing a database that
         ;; previously had rows in it even if there are no users. in this rare care we delete the metabase_database row
         ;; and do nothing else, to be safe.
         (if (not= db-ids expected-db-ids)
           (when (seq db-ids)
             (t2/query {:delete-from :metabase_database :where [:in :id db-ids]}))
-          (doseq [table-name [:collection
-                              :metabase_table
-                              :metabase_field
-                              :report_card
-                              :parameter_card
-                              :report_dashboard
-                              :dashboard_tab
-                              :report_dashboardcard
-                              :dashboardcard_series]]
-            (when-let [values (seq (table-name->rows table-name))]
-              (t2/query {:insert-into table-name :values values}))))))))
+          (do (doseq [table-name [:collection
+                                  :metabase_table
+                                  :metabase_field
+                                  :report_card
+                                  :parameter_card
+                                  :report_dashboard
+                                  :dashboard_tab
+                                  :report_dashboardcard
+                                  :dashboardcard_series]]
+                (when-let [values (seq (table-name->rows table-name))]
+                  (t2/query {:insert-into table-name :values values})))
+              (t2/query {:insert-into :setting
+                         :values      [{:key   "example-dashboard-id"
+                                        :value (str example-dashboard-id)}]})))))))
 
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
