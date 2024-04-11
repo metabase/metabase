@@ -110,7 +110,7 @@ export const CombineColumnsDrill = ({
     <form onSubmit={handleSubmit}>
       <Card className={styles.card} maw="100vw" miw={474} p="lg">
         <Title
-          mb="md"
+          mb="lg"
           order={4}
         >{jt`Combine “${columnInfo.displayName}” with other columns`}</Title>
 
@@ -124,7 +124,7 @@ export const CombineColumnsDrill = ({
                   key={index}
                   options={options}
                   separator={separator}
-                  showLabels={!isUsingDefaultSeparator && index === 0}
+                  showLabels={index === 0}
                   showRemove={columnsAndSeparators.length > 1}
                   showSeparator={!isUsingDefaultSeparator}
                   onChange={handleChange}
@@ -133,27 +133,33 @@ export const CombineColumnsDrill = ({
               ))}
             </Stack>
 
-            {isUsingDefaultSeparator && (
-              <Box>
-                <Button p={0} variant="subtle" onClick={handleEditSeparators}>
-                  {jt`Separated by ${formatSeparator(defaultSeparator)}`}
-                </Button>
-              </Box>
-            )}
+            <Flex
+              align="center"
+              gap="md"
+              justify={isUsingDefaultSeparator ? "space-between" : "end"}
+            >
+              {isUsingDefaultSeparator && (
+                <Box>
+                  <Button p={0} variant="subtle" onClick={handleEditSeparators}>
+                    {jt`Separated by ${formatSeparator(defaultSeparator)}`}
+                  </Button>
+                </Box>
+              )}
+
+              <Button
+                leftIcon={<Icon name="add" />}
+                p={0}
+                variant="subtle"
+                onClick={handleAdd}
+              >
+                {t`Add another column`}
+              </Button>
+            </Flex>
           </Stack>
 
           <Preview error={error} preview={preview} />
 
-          <Flex align="center" gap="md" justify="space-between">
-            <Button
-              leftIcon={<Icon name="add" />}
-              p={0}
-              variant="subtle"
-              onClick={handleAdd}
-            >
-              {t`Add another column`}
-            </Button>
-
+          <Flex align="center" gap="md" justify="end">
             <Button type="submit" variant="filled">
               {t`Done`}
             </Button>
