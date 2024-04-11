@@ -32,6 +32,7 @@ import type {
   TimeSeriesXAxisModel,
   NumericXAxisModel,
   ShowWarning,
+  NumericAxisScaleTransforms,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   computeTimeseriesDataInverval,
@@ -740,4 +741,19 @@ function getTimeSeriesXAxisInfo(
   }
 
   return { interval, timezone, intervalsCount, range, unit };
+}
+
+export function getScaledMinAndMax(
+  settings: ComputedVisualizationSettings,
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
+) {
+  const min = settings["graph.y_axis.min"];
+  const max = settings["graph.y_axis.max"];
+
+  const { toEChartsAxisValue } = yAxisScaleTransforms;
+
+  const customMin = min ? (toEChartsAxisValue(min) as number) : undefined;
+  const customMax = max ? (toEChartsAxisValue(max) as number) : undefined;
+
+  return { customMin, customMax };
 }

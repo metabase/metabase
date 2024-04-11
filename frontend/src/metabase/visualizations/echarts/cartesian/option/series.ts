@@ -607,7 +607,10 @@ export const buildEChartsSeries = (
 
   const seriesYAxisIndexByDataKey = chartModel.seriesModels.reduce(
     (acc, seriesModel) => {
-      acc[seriesModel.dataKey] = getSeriesYAxisIndex(seriesModel, chartModel);
+      acc[seriesModel.dataKey] = getSeriesYAxisIndex(
+        seriesModel.dataKey,
+        chartModel,
+      );
       return acc;
     },
     {} as Record<DataKey, number>,
