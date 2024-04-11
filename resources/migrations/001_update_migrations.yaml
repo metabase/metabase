@@ -6115,14 +6115,6 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.CreateInternalUser"
 
   - changeSet:
-      id: v50.2024-03-28T16:30:36
-      author: calherries
-      comment: Create sample content
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.CreateSampleContent"
-
-  - changeSet:
       id: v50.2024-03-29T10:00:00
       author: piranha
       comment: 'Granular cache invalidation'
@@ -6136,6 +6128,14 @@ databaseChangeLog:
                   remarks: 'An invalidation time that can supersede cache_config.invalidated_at'
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v50.2024-03-28T16:30:36
+      author: calherries
+      comment: Create sample content
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateSampleContent"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
