@@ -118,6 +118,13 @@ export function suggest({
             return null;
           }
 
+          const isSupported =
+            !database || database?.hasFeature(clause.requiresFeature);
+
+          if (!isSupported) {
+            return null;
+          }
+
           return {
             type: "functions",
             name: clause.displayName,
