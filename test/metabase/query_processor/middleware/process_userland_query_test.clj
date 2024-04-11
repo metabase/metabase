@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.events :as events]
+   [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.process-userland-query
@@ -54,16 +55,17 @@
 
 (defn- process-userland-query
   [query]
-  (let [query    (qp/userland-query query)
-        metadata {}
-        rows     []
-        qp       (process-userland-query/process-userland-query-middleware
-                  (fn [query rff]
-                    (binding [qp.pipeline/*execute* (fn [_driver _query respond]
-                                                      (respond metadata rows))]
-                      (qp.pipeline/*run* query rff))))]
-    (binding [driver/*driver* :h2]
-      (qp.store/with-metadata-provider (mt/id)
+  (qp.store/with-metadata-provider (mt/id)
+    (let [query    (qp/userland-query query)
+          ;; this is needed for field usage processing
+          metadata {:preprocessed_query (lib/query (qp.store/metadata-provider) (mt/mbql-query venues))}
+          rows     []
+          qp       (process-userland-query/process-userland-query-middleware
+                     (fn [query rff]
+                       (binding [qp.pipeline/*execute* (fn [_driver _query respond]
+                                                         (respond metadata rows))]
+                         (qp.pipeline/*run* query rff))))]
+      (binding [driver/*driver* :h2]
         (qp query qp.reducible/default-rff)))))
 
 (deftest success-test
