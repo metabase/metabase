@@ -249,9 +249,9 @@
               (m/find-first (fn [[_ expression-name :as _expression-clause]]
                               (= expression-name field-name))
                             (filter (partial mbql.u/is-clause? :expression) all-exports))
-              ;; aggregation clauses from the previous stage based on their `::desired-alias`. If THAT doesn't work, then
-              ;; try to match based on their `::source-alias` (not 100% sure why we're checking `::source-alias` at all TBH
-              ;; -- Cam)
+              ;; aggregation clauses from the previous stage based on their `::desired-alias`. If THAT doesn't work,
+              ;; then try to match based on their `::source-alias` (not 100% sure why we're checking `::source-alias` at
+              ;; all TBH -- Cam)
               (when-let [ag-clauses (seq (filter (partial mbql.u/is-clause? :aggregation-options) all-exports))]
                 (some (fn [k]
                         (m/find-first (fn [[_tag _ag-clause opts :as _aggregation-options-clause]]
