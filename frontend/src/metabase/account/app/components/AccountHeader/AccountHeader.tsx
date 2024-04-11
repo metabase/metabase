@@ -8,7 +8,7 @@ import {
   HeaderSection,
   HeaderSubtitle,
   HeaderTitle,
-} from "metabase/account/app/components/AccountHeader/AccountHeader.styled";
+} from "./AccountHeader.styled";
 import Radio from "metabase/core/components/Radio";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
