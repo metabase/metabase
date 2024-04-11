@@ -259,7 +259,7 @@ export const UnsubscribedListItem = () => (
   >
     <div
       className={cx(
-        "circle",
+        CS.circle,
         CS.flex,
         CS.alignCenter,
         CS.justifyCenter,
