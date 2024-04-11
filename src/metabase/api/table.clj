@@ -57,6 +57,7 @@
   "Get all `Tables` visible to the current user which were created by uploading a file."
   []
   (as-> (t2/select Table, :active true, :is_upload true, {:order-by [[:name :asc]]}) tables
+        ;; See https://github.com/metabase/metabase/issues/41023
         (map #(update % :schema str) tables)
         (filterv mi/can-read? tables)))
 
