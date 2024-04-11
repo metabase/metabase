@@ -43,7 +43,7 @@
                            :effective-type ((some-fn :effective-type :base-type) opts)}]))
    ;; build map of field ID -> <info from DB>
    (when-let [field-ids (not-empty (into #{}
-                                         (comp (map last)
+                                         (comp (map peek)
                                                (filter integer?))
                                          unbucketed-fields))]
      (into {} (for [{id :id, :as field} (try
@@ -74,7 +74,7 @@
                               (catch Throwable e
                                 (log/errorf e "Error calculating expression type: %s" (ex-message e))
                                 nil))]
-         (isa?  expr-type :type/Boolean))))
+         (isa? expr-type :type/Boolean))))
 
 (mu/defn ^:private simple-filter-clause?
   [query      :- ::lib.schema/query
@@ -115,7 +115,7 @@
     ;; do not auto-bucket fields inside a `:time-interval` filter: it already supplies its own unit
     ;; do not auto-bucket fields inside a `:datetime-diff` clause: the precise timestamp is needed for the difference
     (mbql.u/is-clause? #{:time-interval :datetime-diff} x)
-    :do-not-bucket-reason/datetime-diff-or-time-interval
+    :do-not-bucket-reason/bucketed-or-precise-operation
 
     ;; do not autobucket Fields that already have a temporal unit, or have a binning strategy
     (and (mbql.u/is-clause? :field x)
