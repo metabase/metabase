@@ -73,7 +73,7 @@ describe("StrategyEditorForDatabases", () => {
     expect(await getSaveButton()).toBeInTheDocument();
 
     await act(async () => {
-      await changeInput(/minimum query duration/i, 60, 70);
+      await changeInput(/minimum query duration/i, 1, 5);
       await changeInput(/multiplier/i, 10, 3);
     });
 
@@ -136,7 +136,7 @@ describe("StrategyEditorForDatabases", () => {
     expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
 
     await act(async () => {
-      await changeInput(/minimum query duration/i, 60, 70);
+      await changeInput(/minimum query duration/i, 1, 5);
       await changeInput(/multiplier/i, 10, 3);
     });
 
