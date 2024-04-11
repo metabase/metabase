@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 
+import { useEmbeddingContext } from "embedding-sdk/context";
 import { useSearchListQuery } from "metabase/common/hooks";
-
-import { useEmbeddingContext } from "../../context";
 
 export const useQuestionSearch = (searchQuery?: string) => {
   const { isInitialized, isLoggedIn } = useEmbeddingContext();
