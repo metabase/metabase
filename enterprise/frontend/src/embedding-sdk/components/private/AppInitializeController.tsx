@@ -2,11 +2,11 @@ import type * as React from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { FontWrapper } from "embedding-sdk/components/private/FontWrapper";
 import { DEFAULT_FONT } from "embedding-sdk/config";
 import { EmbeddingContext } from "embedding-sdk/context";
 import { useInitData } from "embedding-sdk/hooks";
 import type { SDKConfigType } from "embedding-sdk/types";
+import { FontWrapper } from "metabase/styled-components/FontWrapper";
 
 import { SdkContentWrapper } from "./SdkContentWrapper";
 

@@ -1,8 +1,8 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-export const FontWrapper = styled.div<{ baseUrl: string }>`
-  ${({ baseUrl }) => css`
+export const FontWrapper = styled.div<{ baseUrl?: string }>`
+  ${({ baseUrl = "" }) => css`
     /* lato-regular - latin */
     @font-face {
       font-family: Lato;
