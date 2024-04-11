@@ -306,6 +306,7 @@
     metabase.models.timeline                                      timeline
     metabase.models.timeline-event                                timeline-event
     metabase.native-query-analyzer                                query-analyzer
+    metabase.native-query-analyzer.parameter-substitution         nqa.sub
     metabase.plugins.initialize                                   plugins.init
     metabase.public-settings                                      public-settings
     metabase.public-settings.premium-features                     premium-features

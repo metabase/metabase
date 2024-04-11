@@ -2,6 +2,7 @@ import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -23,6 +24,7 @@ import {
   modal,
   pickEntity,
   hovercard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -320,6 +322,35 @@ describe("scenarios > question > new", () => {
     });
 
     cy.get("header").findByText(NEW_COLLECTION);
+  });
+
+  it("should preserve the original question name (metabase#41196)", () => {
+    const originalQuestionName = "Foo";
+    const modifiedQuestionName = `${originalQuestionName} - Modified`;
+    const originalDescription = "Lorem ipsum dolor sit amet";
+
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+      name: originalQuestionName,
+      description: originalDescription,
+    });
+
+    visitQuestion(ORDERS_COUNT_QUESTION_ID);
+    cy.findByDisplayValue(originalQuestionName).should("exist");
+
+    cy.log("Change anything about this question to make it dirty");
+    cy.findByTestId("header-cell").should("have.text", "Count").click();
+    popover().icon("arrow_down").click();
+
+    cy.findByTestId("qb-header-action-panel").button("Save").click();
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByText("Save as new question").click();
+
+      cy.findByLabelText("Name").should("have.value", modifiedQuestionName);
+      cy.findByLabelText("Description").should(
+        "have.value",
+        originalDescription,
+      );
+    });
   });
 
   describe("add to a dashboard", () => {

@@ -20,7 +20,7 @@ import { columnNameToUrl } from "../audit_app/lib/mode";
 function idxToUrl(resRow, resCols, nameToResCol, colName) {
   const idVal = resRow[nameToResCol[colName]];
   const urlVal = colName && idVal ? columnNameToUrl[colName](idVal) : "";
-  const linkClass = urlVal === "" ? "" : "text-brand";
+  const linkClass = urlVal === "" ? "" : CS.textBrand;
   return [urlVal, linkClass];
 }
 
@@ -121,7 +121,7 @@ function ErrorDetailDisplay(props) {
           CS.textDark,
           CS.textMonospace,
           CS.textSmall,
-          "bg-light",
+          CS.bgLight,
         )}
       >
         {resRow[nameToResCol.error_str]}
