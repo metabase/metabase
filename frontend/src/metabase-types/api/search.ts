@@ -97,6 +97,7 @@ export interface SearchResult<
   table_id: TableId;
   bookmark: boolean | null;
   database_id: DatabaseId;
+  database_name: string | null;
   pk_ref: FieldReference | null;
   table_schema: string | null;
   collection_authority_level: "official" | null;
