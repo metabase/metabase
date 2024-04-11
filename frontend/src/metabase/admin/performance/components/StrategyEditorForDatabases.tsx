@@ -158,13 +158,11 @@ const StrategyEditorForDatabases_Base = ({
   } = useVerticallyOverflows();
 
   const shouldAllowInvalidation = useMemo(() => {
-    if (targetId === null) {
-      return false;
-    }
-    if (targetId === rootId) {
-      return false;
-    }
-    if (savedStrategy?.type === "nocache") {
+    if (
+      targetId === null ||
+      targetId === rootId ||
+      savedStrategy?.type === "nocache"
+    ) {
       return false;
     }
     const inheritingRootStrategy = ["inherit", undefined].includes(
