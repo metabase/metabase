@@ -242,8 +242,9 @@
           (or
            ;; Expressions or fields from the source query stage whose `::desired-alias` matches the name we're searching
            ;; for.
-           (m/find-first (fn [[_tag _expression-name {::keys [desired-alias], :as _opts} :as _expression-clause]]
-                           (= desired-alias field-name))
+           (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
+                           (when (#{:expression :field} tag)
+                             (= desired-alias field-name)))
                          all-exports)
            ;; Expressions by exact name.
            (m/find-first (fn [[_ expression-name :as _expression-clause]]
