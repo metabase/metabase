@@ -34,13 +34,6 @@
   fill: currentColor;
 }
 
-.Dashboard.DashboardNight :global(.border-top),
-.Dashboard.DashboardNight :global(.border-left),
-.Dashboard.DashboardNight :global(.border-bottom),
-.Dashboard.DashboardNight :global(.border-right) {
-  border-color: var(--color-bg-dark);
-}
-
 /* Night mode transition */
 .Dashboard.DashboardFullscreen,
 .Dashboard.DashboardFullscreen .DashCard .Card {
