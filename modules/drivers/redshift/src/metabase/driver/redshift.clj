@@ -517,4 +517,4 @@
   ;; TODO: redshift doesn't allow promotion of ints to floats using ALTER TABLE.
   (let [[column-name type-and-constraints] (first column-definitions)
         type (first type-and-constraints)]
-    (throw (ex-info (format "Uploaded a value with type '%s' to the '%s' column" (name type) (name column-name)) {}))))
+    (throw (ex-info (format "There's a value with the wrong type ('%s') in the '%s' column" (name type) (name column-name)) {}))))
