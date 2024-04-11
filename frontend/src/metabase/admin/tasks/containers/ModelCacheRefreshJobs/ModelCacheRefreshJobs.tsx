@@ -11,6 +11,7 @@ import PaginationControls from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import PersistedModels from "metabase/entities/persisted-models";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { capitalize } from "metabase/lib/formatting";
