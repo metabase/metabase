@@ -20,3 +20,13 @@ export function lineChartCircle() {
     .find(`path[d="${CIRCLE_PATH}"]`)
     .should("be.visible");
 }
+
+export function lineChartCircleWithColor(color) {
+  return echartsContainer()
+    .find(`path[d="${CIRCLE_PATH}"][stroke="${color}"]`)
+    .should("be.visible");
+}
+
+export function lineChartCircleWithColors(colors) {
+  return colors.map(color => lineChartCircleWithColor(color));
+}
