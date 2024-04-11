@@ -854,4 +854,8 @@
   :export?    false
   :type       :integer
   :setter     :none
+  :getter     (fn []
+                (let [id (setting/get-value-of-type :integer :example-dashboard-id)]
+                  (when (t2/exists? :model/Dashboard id)
+                    id)))
   :doc        false)
