@@ -1044,12 +1044,8 @@
 ;;; |                                          DELETE /api/table/:id
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- delete-csv! [table-id]
-  (@#'api.table/delete-csv! table-id))
-
-(defn- delete-csv-via-api! [table-id]
-  (mt/with-current-user (mt/user->id :crowberto)
-    (delete-csv! table-id)))
+(defn- table-url [table]
+  (str "table/" (:id table)))
 
 (deftest delete-csv-test
   (mt/test-driver :h2
@@ -1057,10 +1053,9 @@
      (testing "Happy path"
        (let [table (create-csv!)]
          (mt/with-temporary-setting-values [uploads-enabled true]
-           (is (= {:status 200, :body true}
-                  (delete-csv-via-api! (:id table)))))))
+           (is (= true (mt/user-http-request :crowberto :delete 200 (table-url table)))))))
      (testing "Failure paths return an appropriate status code and a message in the body"
        (let [table (create-csv!)]
          (mt/with-temporary-setting-values [uploads-enabled false]
-           (is (= {:status 422, :body {:message "Uploads are not enabled."}}
-                  (delete-csv-via-api! (:id table))))))))))
+           (is (= {:message "Uploads are not enabled."}
+                  (mt/user-http-request :crowberto :delete 422 (table-url table))))))))))

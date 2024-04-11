@@ -9,7 +9,6 @@
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
-   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sync :as driver.s]
@@ -613,37 +612,6 @@
 ;;; |  public interface for updating an uploaded table
 ;;; +--------------------------------------------------
 
-(def ^:private table-referencing-models
-  (remove nil?
-          [:model/Field
-           :model/DataPermissions
-           ;; We delete the directly connected cards, for example the initially created model.
-           ;; More complex cards are left behind, their usage of this table may be incidental.
-           ;; Perhaps in future we'll also want to delete the native queries that only reference this table.
-           :model/Card
-           :model/Segment
-           :model/LegacyMetric
-           ;; Both of these would have leaked otherwise, might as well clean them up.
-           :model/DataPermissions
-           (when config/ee-available?
-             :model/GroupTableAccessPolicy)
-           ;; will get cleaned up on next sync, but no hard in doing it pre-emptively
-           :model/TablePrivileges]))
-
-(defn- delete-table-from-app-db! [{table-id :id table-name :name}]
-  ;; Related instances will be permanently orphaned, so we might as well clean them up.
-  ;; We descend transitive relations and delete from the bottom up.
-  (when-let [field-ids (seq (map :id (t2/select :model/Field :id :table_id table-id)))]
-    (doseq [child-model [:model/FieldValues
-                         :model/Dimension
-                         :model/QueryField
-                         :model/LegacyMetricImportantField]]
-      (t2/delete! child-model :field_id [:in field-ids])))
-  (doseq [model table-referencing-models]
-    (t2/delete! model :table_id table-id))
-
-  (t2/delete! :model/Table :name table-name))
-
 (defn delete-upload!
   "Delete the given table from both the app-db and the customer database."
   [table]
@@ -651,8 +619,15 @@
         driver     (driver.u/database->driver database)
         table-name (table-identifier table)]
     (check-can-delete database table)
+
+    ;; Archive our application data around the table (WIP)
+    (t2/update! :model/Table :id (:id table) {:active false})
+
+    ;; This doesn't do much of the useful stuff you'd expect, like clean up fields ¯_(ツ)/¯
+    #_(sync/sync-table! (assoc table :active false))
+
+    ;; Delete the table itself from the customer database
     (driver/drop-table! driver (:id database) table-name)
-    (delete-table-from-app-db! table)
     :done))
 
 (def update-action-schema

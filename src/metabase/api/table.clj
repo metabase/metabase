@@ -567,8 +567,8 @@
        :body   {:message (or (ex-message e)
                              (tru "There was an error deleting the table"))}})))
 
-(api/defendpoint ^:multipart DELETE "/:id"
-  "Delete the given table from the database."
+(api/defendpoint DELETE "/:id"
+  "Delete the given table from the database. This currently only supports deleting uploaded tables."
   [id :as {_raw-params :params}]
   {id ms/PositiveInt}
   (delete-csv! id))

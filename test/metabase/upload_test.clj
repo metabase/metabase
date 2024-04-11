@@ -1760,12 +1760,6 @@
       :row_count
       pos?))
 
-(defn- referencing-models []
-  (->> (t2/select :information_schema.columns :column_name "table_id")
-       (map :table_name)
-       (remove #(str/starts-with? % "v_"))
-       (map keyword)))
-
 (deftest delete-upload!-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-upload-table! [table (create-upload-table!
@@ -1774,28 +1768,23 @@
                                                    :number_1 int-type
                                                    :number_2 int-type)
                                 :rows [[1, 1]])]
-      (let [referncing-models (referencing-models)]
 
-        (testing "The upload table and the expected application data are created"
-          (is (upload-table-exists? table))
-          (is (seq (t2/select :model/Table :id (:id table))))
-          (is (seq (t2/select :model/Field :table_id (:id table))))
-          ;; there may be some other miscellaneous children
-          ;; at the time of writing the only other instances are in v_fields, and only locally - not in CI
-          ;; it would be good to populate more of them, as far as it is cheap and simple.
-          #_(is (some #(seq (t2/select % :table_id (:id table)))
-                      (remove #{"metabase_field"} referncing-models)))
-          (is (= (set referncing-models)
-                 (set (map t2/table-name @#'upload/table-referencing-models)))))
+      (testing "The upload table and the expected application data are created"
+        (is (upload-table-exists? table))
+        (is (seq (t2/select :model/Table :id (:id table))))
+        (is (seq (t2/select :model/Field :table_id (:id table))))
+        ;; it would be good to have all the possible child resources populated, in order to
+        #_(is (every? #(seq (t2/select % :table_id (:id table)))
+                      (remove #{"metabase_field"} referencing-models))))
 
-        (upload/delete-upload! table)
+      (upload/delete-upload! table)
 
-        (testing "The upload table and related application data are deleted\n"
-          (is (not (upload-table-exists? table)))
-          (is (empty? (t2/select :model/Table :id (:id table))))
-          (is (empty? (t2/select :model/Field :table_id (:id table))))
-          ;; there are no obvious child instances remaining
-          (doseq [model referncing-models]
+      (testing "The upload table and related application data are deleted\n"
+        (is (not (upload-table-exists? table)))
+        (is (= [false] (mapv :active (t2/select :model/Table :id (:id table)))))
+        ;; Do we want to clean up any of the child resources?
+        #_(is (empty? (t2/select :model/Field :table_id (:id table))))
+        #_(doseq [model referencing-models]
             ;; if this fails due to new related models being added, make sure to clean up their children too
             (testing (format "And there are no more related %s instances\n" model)
-              (is (empty? (t2/select model :table_id (:id table)))))))))))
+              (is (empty? (t2/select model :table_id (:id table))))))))))
