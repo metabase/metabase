@@ -1,6 +1,6 @@
 import type { LocationDescriptorObject } from "history";
 import { useKBar } from "kbar";
-import type { MouseEvent } from "react";
+import type { ChangeEvent, MouseEvent } from "react";
 import { useEffect, useCallback, useRef, useState, useMemo } from "react";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
@@ -83,7 +83,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
     setActive();
   }, [setActive]);
 
-  const onTextChange = useCallback(e => {
+  const onTextChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setSearchText(e.target.value);
   }, []);
 
@@ -159,7 +159,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   }, [onChangeLocation, previousLocation, searchFilters, searchText]);
 
   const handleInputKeyPress = useCallback(
-    e => {
+    (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && hasSearchText) {
         goToSearchApp();
       }
