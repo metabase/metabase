@@ -1070,6 +1070,20 @@
                                            :from   [:revision]
                                            :where  [:= :model "Card"]})))))
 
+(define-migration DeleteScanFieldValuesTriggerForDBThatTurnItOff
+  (let [dbs-without-scan-field-values (filter #(and (-> % :details :let-user-control-scheduling)
+                                                    (false? (:is_full_sync %)))
+                                              (t2/select :model/Database))]
+    (when (seq dbs)
+      (classloader/the-classloader)
+      (set-jdbc-backend-properties!)
+      (let [scheduler (qs/initialize)]
+        (qs/start scheduler)
+        (doseq [db dbs]
+          (qs/delete-trigger scheduler (triggers/key (format "metabase.task.update-field-values.trigger.%d" (:id db)))))
+        (t2/update! :model/Database :id [:in (map :id dbs)] {:cache_field_values_schedule nil})
+        (qs/shutdown scheduler)))))
+
 (defn- hash-bcrypt
   "Hashes a given plaintext password using bcrypt.  Should be used to hash
    passwords included in stored user credentials that are to be later verified
