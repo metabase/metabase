@@ -126,7 +126,7 @@ export function DashCardCardParameterMapper({
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
 
   const handleChangeTarget = useCallback(
-    target => {
+    (target: ParameterTarget | null) => {
       if (editingParameter) {
         setParameterMapping(editingParameter.id, dashcard.id, card.id, target);
       }
