@@ -97,13 +97,17 @@ function SeparatorInput({
       <TextInput
         className={styles.separator}
         label={t`Separator`}
-        placeholder={value === "" ? "  (empty)" : t`Separator`}
+        placeholder={value === "" ? " (empty)" : ""}
         value={value}
         w={110}
         onChange={event => onChange(event.target.value)}
       />
       {value && formatSeparator(value) !== value && (
-        <Text color="text-light" className={styles.placeholder}>
+        <Text
+          color="text-light"
+          className={styles.placeholder}
+          style={{ fontFamily: "Monaco, monospace" }}
+        >
           {formatSeparator(value)}
         </Text>
       )}

@@ -1,5 +1,9 @@
 .separator {
   flex: 0 0 auto;
+
+  input {
+    font-family: Monaco, monospace;
+  }
 }
 
 .column {
@@ -20,6 +24,6 @@
 .placeholder {
   position: absolute;
   bottom: 0.5rem;
-  left: 1.1rem;
+  left: 1.25rem;
   pointer-events: none;
 }
