@@ -162,7 +162,7 @@
   [database f]
   (fn []
     (driver/sync-in-context (driver.u/database->driver database) database
-                            f)))
+      f)))
 
 ;; TODO: future, expand this to `driver` level, where the drivers themselves can add to the
 ;; list of exception classes (like, driver-specific exceptions)
@@ -215,7 +215,7 @@
        (with-start-and-finish-logging message
          (with-db-logging-disabled
            (sync-in-context database
-                            (partial do-with-error-handling (format "Error in sync step %s" message) f))))))))
+             (partial do-with-error-handling (format "Error in sync step %s" message) f))))))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things
