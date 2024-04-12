@@ -1,6 +1,10 @@
 type Model = "root" | "database" | "collection" | "dashboard" | "question";
 
-export type StrategyType = "nocache" | "adaptive" | "duration" | "inherit";
+export type StrategyType =
+  | "nocache"
+  | "ttl" // aka Adaptive
+  | "duration"
+  | "inherit";
 
 interface StrategyBase {
   type: StrategyType;
@@ -14,7 +18,7 @@ export enum DurationUnit {
 }
 
 export interface AdaptiveStrategy extends StrategyBase {
-  type: "adaptive";
+  type: "ttl";
   multiplier: number;
   min_duration_ms: number;
   min_duration_seconds?: number;

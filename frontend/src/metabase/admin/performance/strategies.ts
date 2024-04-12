@@ -35,7 +35,7 @@ export const doNotCacheStrategyValidationSchema = Yup.object({
 
 export const defaultMinDurationMs = 1000;
 export const adaptiveStrategyValidationSchema = Yup.object({
-  type: Yup.string().equals(["adaptive"]),
+  type: Yup.string().equals(["ttl"]),
   min_duration_ms: positiveInteger.default(defaultMinDurationMs),
   min_duration_seconds: positiveInteger.default(
     Math.ceil(defaultMinDurationMs / 1000),
@@ -94,8 +94,8 @@ export const Strategies: Record<StrategyType, StrategyData> = {
     validateWith: durationStrategyValidationSchema,
     shortLabel: t`Duration`,
   },
-  adaptive: {
-    label: t`Adaptive: the longer the query takes the longer the cached results persist`,
+  ttl: {
+    label: t`Adaptive: the longer the query takes the longer the cached results persist`,
     shortLabel: t`Adaptive`,
     validateWith: adaptiveStrategyValidationSchema,
   },
@@ -152,7 +152,7 @@ export const translateConfig = (
       translated.model_id === rootId ? "nocache" : "inherit";
   }
 
-  if (translated.strategy.type === "adaptive") {
+  if (translated.strategy.type === "ttl") {
     if (direction === "fromAPI") {
       translated.strategy.min_duration_seconds = Math.ceil(
         translated.strategy.min_duration_ms / 1000,

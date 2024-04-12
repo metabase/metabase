@@ -119,16 +119,11 @@ const StrategyFormBody = ({
     >
       {targetDatabase && (
         <Box lh="1rem" px="lg" py="xs" color="text-medium">
-          <Group spacing="lg">
-            <Group spacing="sm">
-              <FixedSizeIcon name="database" color="inherit" />
-              <Text fw="bold" py="1rem">
-                {targetDatabase.displayName()}
-              </Text>
-            </Group>
-            {shouldAllowInvalidation && targetId && (
-              <PLUGIN_CACHING.InvalidateNowButton targetId={targetId} />
-            )}
+          <Group spacing="sm">
+            <FixedSizeIcon name="database" color="inherit" />
+            <Text fw="bold" py="1rem">
+              {targetDatabase.displayName()}
+            </Text>
           </Group>
         </Box>
       )}
@@ -150,7 +145,7 @@ const StrategyFormBody = ({
         >
           <Stack maw="27.5rem" p="lg" spacing="xl">
             <StrategySelector targetId={targetId} />
-            {selectedStrategyType === "adaptive" && (
+            {selectedStrategyType === "ttl" && (
               <>
                 <Field
                   title={t`Minimum query duration`}
@@ -165,7 +160,10 @@ const StrategyFormBody = ({
                   title={t`Cache time-to-live (TTL) multiplier`}
                   subtitle={<MultiplierFieldSubtitle />}
                 >
-                  <PositiveNumberInput strategyType="adaptive" name="multiplier" />
+                  <PositiveNumberInput
+                    strategyType="adaptive"
+                    name="multiplier"
+                  />
                 </Field>
               </>
             )}
@@ -182,44 +180,60 @@ const StrategyFormBody = ({
             )}
           </Stack>
         </Box>
-        <FormButtons />
+        <FormButtons
+          targetId={targetId}
+          shouldAllowInvalidation={shouldAllowInvalidation}
+        />
       </Form>
     </div>
   );
 };
 
-export const FormButtons = () => {
+export const FormButtons = ({
+  targetId,
+  shouldAllowInvalidation,
+}: {
+  targetId: number | null;
+  shouldAllowInvalidation: boolean;
+}) => {
   const { dirty } = useFormikContext<Strategy>();
   const { status } = useFormContext();
 
   const isFormPending = status === "pending";
   const [wasFormRecentlyPending] = useRecentlyTrue(isFormPending, 500);
 
-  const shouldShowButtons = dirty || isFormPending || wasFormRecentlyPending;
+  const isSavingPossible = dirty || isFormPending || wasFormRecentlyPending;
 
-  if (!shouldShowButtons) {
-    return null;
-  }
+  const InvalidateNowButton = () =>
+    shouldAllowInvalidation && targetId ? (
+      <PLUGIN_CACHING.InvalidateNowButton targetId={targetId} />
+    ) : null;
 
   return (
     <Group p="md" px="lg" spacing="md" bg="white">
-      <Button
-        disabled={!dirty || isFormPending}
-        type="reset"
-      >{t`Discard changes`}</Button>
-      <FormSubmitButton
-        miw="10rem"
-        h="40px"
-        label={t`Save changes`}
-        successLabel={
-          <Group spacing="xs">
-            <Icon name="check" /> {t`Saved`}
-          </Group>
-        }
-        activeLabel={<LoaderInButton size=".8rem" />}
-        variant="filled"
-        data-testid="strategy-form-submit-button"
-      />
+      {isSavingPossible ? (
+        <>
+          <Button
+            disabled={!dirty || isFormPending}
+            type="reset"
+          >{t`Discard changes`}</Button>
+          <FormSubmitButton
+            miw="10rem"
+            h="40px"
+            label={t`Save changes`}
+            successLabel={
+              <Group spacing="xs">
+                <Icon name="check" /> {t`Saved`}
+              </Group>
+            }
+            activeLabel={<LoaderInButton size=".8rem" />}
+            variant="filled"
+            data-testid="strategy-form-submit-button"
+          />
+        </>
+      ) : (
+        <InvalidateNowButton />
+      )}
     </Group>
   );
 };
