@@ -119,7 +119,7 @@ const Users = createEntity({
       ({ id }) =>
       async dispatch => {
         MetabaseAnalytics.trackStructEvent("People Admin", "User Removed");
-        // TODO: move these APIs from services to this file
+
         await entityCompatibleQuery(
           { id },
           dispatch,
@@ -131,7 +131,7 @@ const Users = createEntity({
       ({ id }) =>
       async dispatch => {
         MetabaseAnalytics.trackStructEvent("People Admin", "User Reactivated");
-        // TODO: move these APIs from services to this file
+
         const user = await entityCompatibleQuery(
           { id },
           dispatch,
