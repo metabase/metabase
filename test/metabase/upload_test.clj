@@ -10,6 +10,7 @@
    [java-time.api :as t]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Field]]
@@ -542,22 +543,20 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
-          [table (let [table-name (mt/random-name)]
+          [table (let [table-name        (ddl.i/format-name driver/*driver* (mt/random-name))
+                       schema            (sql.tx/session-schema driver/*driver*)
+                       schema+table-name (#'upload/table-identifier {:schema schema :name table-name})]
                    (@#'upload/load-from-csv!
                     driver/*driver*
                     (mt/id)
-                    table-name
+                    schema+table-name
                     (csv-file-with ["id    ,nulls,string ,bool ,number       ,date      ,datetime"
                                     "2\t   ,,          a ,true ,1.1\t        ,2022-01-01,2022-01-01T00:00:00"
                                     "\" 3\",,           b,false,\"$ 1,000.1\",2022-02-01,2022-02-01T00:00:00"]))
-                   (sync-upload-test-table! :database (mt/db) :table-name table-name))]
+                   (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema))]
           (testing "Table and Fields exist after sync"
             (is (=? {:name          #"(?i)_mb_row_id"
-                     :semantic_type (if (= driver/*driver* :redshift)
-                                        ;; TODO: there is a bug in the redshift driver where the semantic_type is not set
-                                        ;; to type/PK even if the column is a PK
-                                      :type/Category
-                                      :type/PK)
+                     :semantic_type :type/PK
                      :base_type     :type/BigInteger}
                     (t2/select-one Field :database_position 0 :table_id (:id table))))
             (is (=? {:name          #"(?i)id"
@@ -1195,7 +1194,7 @@
 
   Defaults to a table with an auto-incrementing integer ID column, and a name column."
   [& {:keys [schema-name table-name col->upload-type rows]
-      :or {table-name       (mt/random-name)
+      :or {table-name       (ddl.i/format-name driver/*driver* (mt/random-name))
            schema-name      (sql.tx/session-schema driver/*driver*)
            col->upload-type (ordered-map/ordered-map
                              upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
@@ -1669,7 +1668,7 @@
         ;; inserted rows are rolled back
         (binding [driver/*insert-chunk-rows* 1]
           (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
-                  [{:upload-type ::upload/int,     :uncoerced "2.1", :fail-msg "'2.1' is not an integer"}
+                  [{:upload-type ::upload/int,     :uncoerced "2.1",        :fail-msg "'2.1' is not an integer"}
                    {:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2}
                    {:upload-type ::upload/float,   :uncoerced "2",          :coerced 2.0}
                    {:upload-type ::upload/boolean, :uncoerced "0",          :coerced false}
