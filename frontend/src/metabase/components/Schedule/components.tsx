@@ -1,10 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  addZeroesToHour,
-  hourToTwelveHourFormat,
-} from "metabase/admin/performance/utils";
+import { hourToTwelveHourFormat } from "metabase/admin/performance/utils";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import type { SelectProps } from "metabase/ui";
@@ -16,6 +13,7 @@ import type {
 } from "metabase-types/api";
 
 import {
+  addZeroesToHour,
   amAndPM,
   defaultHour,
   frames,
