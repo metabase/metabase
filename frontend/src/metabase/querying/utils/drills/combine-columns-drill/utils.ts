@@ -89,7 +89,49 @@ export const getPreview = (
   column: Lib.ColumnMetadata,
   columnsAndSeparators: ColumnAndSeparator[],
 ): string => {
-  return "asd";
+  return [
+    getColumnPreview(column),
+    ...columnsAndSeparators.flatMap(({ column, separator }) => [
+      separator,
+      getColumnPreview(column),
+    ]),
+  ].join("");
+};
+
+const getColumnPreview = (column: Lib.ColumnMetadata): string => {
+  if (Lib.isURL(column)) {
+    return "https://www.example.com";
+  }
+
+  if (Lib.isEmail(column)) {
+    return "email@example.com";
+  }
+
+  if (Lib.isID(column)) {
+    return "12345";
+  }
+
+  if (Lib.isNumeric(column)) {
+    return "123.45678901234567";
+  }
+
+  if (Lib.isDateWithoutTime(column)) {
+    return "2042-01-01";
+  }
+
+  if (Lib.isDate(column)) {
+    return "2042-01-01 12:34:56.789";
+  }
+
+  if (Lib.isTime(column)) {
+    return "12:34:56.789";
+  }
+
+  if (Lib.isLatitude(column) || Lib.isLongitude(column)) {
+    return "-12.34567";
+  }
+
+  return "example";
 };
 
 export const getDefaultSeparator = (column: Lib.ColumnMetadata): string => {
