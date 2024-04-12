@@ -142,14 +142,19 @@ const Users = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === DEACTIVATE && !error) {
-      return assocIn(state, [payload.id, "is_active"], false);
-    } else if (type === REACTIVATE && !error) {
-      return assocIn(state, [payload.id, "is_active"], true);
-    } else if (type === PASSWORD_RESET_MANUAL && !error) {
-      return assocIn(state, [payload.id, "password"], payload.password);
+    if (error) {
+      return state;
     }
-    return state;
+    switch (type) {
+      case DEACTIVATE:
+        return assocIn(state, [payload.id, "is_active"], false);
+      case REACTIVATE:
+        return assocIn(state, [payload.id, "is_active"], true);
+      case PASSWORD_RESET_MANUAL:
+        return assocIn(state, [payload.id, "password"], payload.password);
+      default:
+        return state;
+    }
   },
 });
 
