@@ -15,7 +15,7 @@ import Detail from "metabase/reference/components/Detail";
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy";
-import Formula from "metabase/reference/components/Formula";
+import { Formula } from "metabase/reference/components/Formula";
 import * as actions from "metabase/reference/reference";
 import { getMetadata } from "metabase/selectors/metadata";
 

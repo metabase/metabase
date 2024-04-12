@@ -23,8 +23,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli :as mu]))
 
 (def ^:private Col
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
@@ -35,7 +34,7 @@
    [:name         :string]
    [:display_name :string]
    ;; type of the Field. For Native queries we look at the values in the first 100 rows to make an educated guess
-   [:base_type    ms/FieldType]
+   [:base_type    ::lib.schema.common/base-type]
    ;; effective_type, coercion, etc don't go here. probably best to rename base_type to effective type in the return
    ;; from the metadata but that's for another day
    ;; where this column came from in the original query.
@@ -105,7 +104,7 @@
 
 (mu/defn ^:private join-with-alias :- [:maybe mbql.s/Join]
   [{:keys [joins source-query]} :- :map
-   join-alias                   :- ms/NonBlankString]
+   join-alias                   :- ::lib.schema.common/non-blank-string]
   (or (some
        (fn [{:keys [alias], :as join}]
          (when (= alias join-alias)
@@ -496,7 +495,7 @@
       cols)))
 
 (defn- restore-cumulative-aggregations
-  [{aggregations :aggregation breakouts :breakout :as inner-query} replaced-indices]
+  [{aggregations :aggregation breakouts :breakout :as inner-query} replaced-indexes]
   (let [offset   (count breakouts)
         restored (reduce (fn [aggregations index]
                            (lib.util.match/replace-in aggregations [(- index offset)]
@@ -504,15 +503,15 @@
                              [:count field] [:cum-count field]
                              [:sum field]   [:cum-sum field]))
                          (vec aggregations)
-                         replaced-indices)]
+                         replaced-indexes)]
     (assoc inner-query :aggregation restored)))
 
 (defmethod column-info :query
   [{inner-query :query,
-    replaced-indices :metabase.query-processor.middleware.cumulative-aggregations/replaced-indices}
+    replaced-indexes :metabase.query-processor.middleware.cumulative-aggregations/replaced-indexes}
    results]
   (u/prog1 (mbql-cols (cond-> inner-query
-                        replaced-indices (restore-cumulative-aggregations replaced-indices))
+                        replaced-indexes (restore-cumulative-aggregations replaced-indexes))
                       results)
     (check-correct-number-of-columns-returned <> results)))
 

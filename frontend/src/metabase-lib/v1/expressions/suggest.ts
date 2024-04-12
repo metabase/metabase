@@ -31,6 +31,7 @@ export type Suggestion = {
   order: number;
   range?: [number, number];
   column?: Lib.ColumnMetadata;
+  helpText?: HelpText;
 };
 
 const suggestionText = (func: MBQLClauseFunctionConfig) => {
@@ -69,13 +70,13 @@ export function suggest({
 
   const partialSource = source.slice(0, targetOffset);
   const matchPrefix = partialMatch(partialSource);
+  const database = getDatabase(query, metadata);
 
   if (!matchPrefix || _.last(matchPrefix) === "]") {
     // no keystroke to match? show help text for the enclosing function
     const functionDisplayName = enclosingFunction(partialSource);
     if (functionDisplayName) {
       const name = getMBQLName(functionDisplayName);
-      const database = getDatabase(query, metadata);
 
       if (name && database) {
         const helpText = getHelpText(name, database, reportTimezone);
@@ -111,7 +112,6 @@ export function suggest({
     },
   );
 
-  const database = getDatabase(query, metadata);
   if (_.first(matchPrefix) !== "[") {
     suggestions.push({
       type: "functions",
@@ -257,7 +257,6 @@ export function suggest({
     const { icon } = suggestions[0];
     if (icon === "function") {
       const name = getMBQLName(matchPrefix);
-      const database = getDatabase(query, metadata);
 
       if (name && database) {
         const helpText = getHelpText(name, database, reportTimezone);
@@ -267,6 +266,19 @@ export function suggest({
         }
       }
     }
+  }
+
+  if (database) {
+    suggestions = suggestions.map(suggestion => {
+      const name = getMBQLName(suggestion.name);
+      if (!name) {
+        return suggestion;
+      }
+      return {
+        ...suggestion,
+        helpText: getHelpText(name, database, reportTimezone),
+      };
+    });
   }
 
   return { suggestions };

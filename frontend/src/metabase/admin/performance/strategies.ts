@@ -146,7 +146,7 @@ export const translateConfig = (
 ): Config => {
   const translated: Config = { ...config };
 
-  // If strategy type is unsupported, provide a fallback
+  // If strategy type is unsupported, use a fallback
   if (!isValidStrategyName(translated.strategy.type)) {
     translated.strategy.type =
       translated.model_id === rootId ? "nocache" : "inherit";

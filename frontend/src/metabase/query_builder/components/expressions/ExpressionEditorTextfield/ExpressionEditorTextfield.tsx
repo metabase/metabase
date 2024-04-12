@@ -28,7 +28,7 @@ import type { Expression } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { ExpressionEditorHelpText } from "../ExpressionEditorHelpText";
-import ExpressionEditorSuggestions from "../ExpressionEditorSuggestions";
+import { ExpressionEditorSuggestions } from "../ExpressionEditorSuggestions";
 import ExpressionMode from "../ExpressionMode";
 
 import {
@@ -131,6 +131,7 @@ class ExpressionEditorTextfield extends React.Component<
 > {
   input = React.createRef<AceEditor>();
   suggestionTarget = React.createRef<HTMLDivElement>();
+  helpTextTarget = React.createRef<HTMLDivElement>();
 
   static defaultProps = {
     expression: "",
@@ -567,7 +568,7 @@ class ExpressionEditorTextfield extends React.Component<
   ];
 
   render() {
-    const { helpTextTarget, width, query, stageIndex } = this.props;
+    const { width, query, stageIndex } = this.props;
     const {
       source,
       suggestions,
@@ -579,49 +580,49 @@ class ExpressionEditorTextfield extends React.Component<
     } = this.state;
 
     return (
-      <React.Fragment>
-        <EditorContainer
-          isFocused={isFocused}
-          hasError={Boolean(errorMessage)}
-          ref={this.suggestionTarget}
-          data-testid="expression-editor-textfield"
+      <div ref={this.helpTextTarget}>
+        <ExpressionEditorSuggestions
+          query={query}
+          stageIndex={stageIndex}
+          suggestions={suggestions}
+          onSuggestionMouseDown={this.onSuggestionSelected}
+          highlightedIndex={highlightedSuggestionIndex}
         >
-          <EditorEqualsSign>=</EditorEqualsSign>
-          <AceEditor
-            commands={this.commands}
-            mode="text"
-            ref={this.input}
-            value={source}
-            markers={this.errorAsMarkers(errorMessage)}
-            focus={true}
-            highlightActiveLine={false}
-            wrapEnabled={true}
-            fontSize={12}
-            onBlur={this.handleInputBlur}
-            onFocus={this.handleFocus}
-            setOptions={ACE_OPTIONS}
-            onChange={this.handleExpressionChange}
-            onCursorChange={this.handleCursorChange}
-            width="100%"
-          />
-          <ExpressionEditorSuggestions
-            query={query}
-            stageIndex={stageIndex}
-            target={this.suggestionTarget.current}
-            suggestions={suggestions}
-            onSuggestionMouseDown={this.onSuggestionSelected}
-            highlightedIndex={highlightedSuggestionIndex}
-          />
-        </EditorContainer>
+          <EditorContainer
+            isFocused={isFocused}
+            hasError={Boolean(errorMessage)}
+            ref={this.suggestionTarget}
+            data-testid="expression-editor-textfield"
+          >
+            <EditorEqualsSign>=</EditorEqualsSign>
+            <AceEditor
+              commands={this.commands}
+              mode="text"
+              ref={this.input}
+              value={source}
+              markers={this.errorAsMarkers(errorMessage)}
+              focus={true}
+              highlightActiveLine={false}
+              wrapEnabled={true}
+              fontSize={12}
+              onBlur={this.handleInputBlur}
+              onFocus={this.handleFocus}
+              setOptions={ACE_OPTIONS}
+              onChange={this.handleExpressionChange}
+              onCursorChange={this.handleCursorChange}
+              width="100%"
+            />
+          </EditorContainer>
+        </ExpressionEditorSuggestions>
         {errorMessage && hasChanges && (
           <ErrorMessageContainer>{errorMessage.message}</ErrorMessageContainer>
         )}
         <ExpressionEditorHelpText
-          target={helpTextTarget}
+          target={this.helpTextTarget}
           helpText={helpText}
           width={width}
         />
-      </React.Fragment>
+      </div>
     );
   }
 }

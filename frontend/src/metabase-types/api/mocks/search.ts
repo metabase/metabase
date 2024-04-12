@@ -28,6 +28,7 @@ export const createMockSearchResult = (
     table_name: null,
     bookmark: null,
     database_id: 1,
+    database_name: "test-data",
     pk_ref: null,
     table_schema: null,
     collection_authority_level: null,

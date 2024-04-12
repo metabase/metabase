@@ -728,14 +728,16 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
 
     // Try to auto-complete Tax
-    cy.get(".ace_text-input").type("Ta");
+    cy.get(".ace_text-input").type("Disc");
+
+    // the text here is split up so we try and find the suffix
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tax");
+    cy.findByText("ount");
 
     // Esc closes the suggestion popover
     cy.realPress("{esc}");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tax").should("not.exist");
+    cy.findByText("ount").should("not.exist");
   });
 
   it("should work on twice summarized questions and preserve both summaries (metabase#15620)", () => {

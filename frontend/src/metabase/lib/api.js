@@ -32,7 +32,9 @@ const DEFAULT_OPTIONS = {
 export class Api extends EventEmitter {
   basename = "";
   apiKey = "";
-  sessionToken = "";
+  sessionToken;
+
+  onBeforeRequest;
 
   GET;
   POST;
@@ -60,6 +62,10 @@ export class Api extends EventEmitter {
       };
 
       return async (rawData, invocationOptions = {}) => {
+        if (this.onBeforeRequest) {
+          await this.onBeforeRequest();
+        }
+
         const options = { ...defaultOptions, ...invocationOptions };
         let url = urlTemplate;
         const data = { ...rawData };
