@@ -93,16 +93,13 @@ function ExpressionEditorSuggestionsListItem({
   const { normal, highlighted } = colorForIcon(icon);
 
   const ref = useRef<HTMLLIElement>(null);
-  useEffect(
-    function () {
-      if (!isHighlighted || !ref.current || !isObscured(ref.current)) {
-        return;
-      }
+  useEffect(() => {
+    if (!isHighlighted || !ref.current || !isObscured(ref.current)) {
+      return;
+    }
 
-      ref.current.scrollIntoView({ block: "nearest" });
-    },
-    [isHighlighted],
-  );
+    ref.current.scrollIntoView({ block: "nearest" });
+  }, [isHighlighted]);
 
   const handleMouseDown = useCallback(
     function (event) {
