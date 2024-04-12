@@ -63,10 +63,6 @@ module.exports = env => {
           use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
         },
         {
-          test: /\.(eot|woff2?|ttf)$/,
-          use: "null-loader",
-        },
-        {
           test: /\.(svg|png)$/,
           type: "asset/inline",
           resourceQuery: { not: [/component|source/] },
