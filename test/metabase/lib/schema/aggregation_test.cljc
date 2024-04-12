@@ -3,7 +3,6 @@
    [clojure.test :refer [are deftest testing]]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.schema]))
 
 (comment metabase.lib.schema/keep-me)

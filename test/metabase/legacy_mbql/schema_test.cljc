@@ -155,6 +155,6 @@
 
 (deftest ^:parallel relative-datetime-temporal-arithmetic-test
   (are [schema x] (not (me/humanize (mc/explain schema x)))
-    ::mbql.s/Addable [:relative-datetime -1 :month]
-    ::mbql.s/Addable [:interval -2 :month]
-    ::mbql.s/+       [:+ [:relative-datetime -1 :month] [:interval -2 :month]]))
+    ::mbql.s/PlusOrMinusExpressionArg [:relative-datetime -1 :month]
+    ::mbql.s/PlusOrMinusExpressionArg [:interval -2 :month]
+    ::mbql.s/+                        [:+ [:relative-datetime -1 :month] [:interval -2 :month]]))
