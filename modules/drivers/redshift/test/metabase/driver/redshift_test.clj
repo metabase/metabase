@@ -234,7 +234,8 @@
              qual-tbl-nm
              qual-view-nm)
             ;; sync the schema again to pick up the new view (and table, though we aren't checking that)
-            (sync/sync-database! database {:scan :schema})
+            (binding [sync-util/*log-exceptions-and-continue?* false]
+              (sync/sync-database! database {:scan :schema}))
             (is (contains?
                  (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced
                  view-nm))
