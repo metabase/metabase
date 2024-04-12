@@ -9,6 +9,7 @@ import type * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
 import type { Expression } from "metabase-types/api";
 
+import { CombineColumns } from "./CombineColumns/CombineColumns";
 import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
 import {
   ActionButtonsWrapper,
@@ -77,6 +78,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     initialClause ?? null,
   );
   const [error, setError] = useState<string | null>(null);
+  const [isCombiningColumns, setIsCombiningColumns] = useState(false);
 
   const isValidName = withName ? name.trim().length > 0 : true;
   const isValidExpression = isNotNull(expression) && isExpression(expression);
@@ -116,6 +118,23 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     setClause(clause);
     setError(null);
   };
+
+  if (isCombiningColumns) {
+    const handleSubmit = (name: string, clause: Lib.ExpressionClause) => {
+      setIsCombiningColumns(false);
+      setClause(clause);
+      setName(name);
+      setError(null);
+    };
+
+    return (
+      <CombineColumns
+        query={query}
+        stageIndex={stageIndex}
+        onSubmit={handleSubmit}
+      />
+    );
+  }
 
   return (
     <Container data-testid="expression-editor">
@@ -161,6 +180,9 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
 
       <Footer>
         <ActionButtonsWrapper>
+          <Button onClick={() => setIsCombiningColumns(true)}>
+            Combine {/* TODO: use the dropdown suggestions for this */}
+          </Button>
           {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
           <Button
             variant={isValid ? "filled" : "default"}
