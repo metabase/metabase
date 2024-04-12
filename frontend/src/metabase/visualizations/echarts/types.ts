@@ -10,6 +10,7 @@ export type EChartsSeriesMouseEvent = ElementEvent & {
   seriesId?: string;
   name?: string;
   value: any;
+  seriesType: string;
 };
 
 export type EChartsSeriesBrushEndEvent = EChartsSeriesMouseEvent & {

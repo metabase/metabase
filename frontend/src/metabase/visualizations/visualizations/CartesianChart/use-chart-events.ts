@@ -16,10 +16,7 @@ import type {
   EChartsSeriesBrushEndEvent,
   EChartsSeriesMouseEvent,
 } from "metabase/visualizations/echarts/types";
-import type {
-  ClickObject,
-  VisualizationProps,
-} from "metabase/visualizations/types";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 import {
   canBrush,
@@ -52,7 +49,7 @@ export const useChartEvents = (
     onDeselectTimelineEvents,
     hovered,
   }: VisualizationProps,
-): ClickObject => {
+) => {
   const isBrushing = useRef<boolean>();
 
   const onOpenQuestion = useCallback(
@@ -99,6 +96,16 @@ export const useChartEvents = (
             const eventData = getGoalLineHoverData(settings, event);
 
             onHoverChange?.(eventData);
+            return;
+          }
+
+          const hoveredData = getSeriesHoverData(chartModel, settings, event);
+
+          const isSameDatumHovered =
+            hoveredData?.index === hovered?.index &&
+            hoveredData?.datumIndex === hovered?.datumIndex;
+
+          if (isSameDatumHovered) {
             return;
           }
 
@@ -164,6 +171,7 @@ export const useChartEvents = (
       chartModel,
       onOpenQuestion,
       rawSeries,
+      hovered,
       selectedTimelineEventIds,
       settings,
       timelineEventsModel,
