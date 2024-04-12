@@ -6,7 +6,7 @@ import {
   modifyPermission,
 } from "e2e/support/helpers";
 
-const NATIVE_QUERIES_PERMISSION_INDEX = 1;
+const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
 describe("scenarios > admin > permissions > create queries > no", () => {
   beforeEach(() => {
@@ -21,7 +21,7 @@ describe("scenarios > admin > permissions > create queries > no", () => {
 
     modifyPermission("Sample Database", NATIVE_QUERIES_PERMISSION_INDEX, "No");
 
-    assertPermissionTable([["Sample Database", "Can view", "No"]]);
+    assertPermissionTable([["Sample Database", "No"]]);
 
     cy.button("Save changes").click();
 
@@ -30,19 +30,19 @@ describe("scenarios > admin > permissions > create queries > no", () => {
       cy.button("Yes").click();
     });
 
-    assertPermissionTable([["Sample Database", "Can view", "No"]]);
+    assertPermissionTable([["Sample Database", "No"]]);
 
     cy.findByTextEnsureVisible("Sample Database").click();
 
     assertPermissionTable([
-      ["Accounts", "Can view", "No"],
-      ["Analytic Events", "Can view", "No"],
-      ["Feedback", "Can view", "No"],
-      ["Invoices", "Can view", "No"],
-      ["Orders", "Can view", "No"],
-      ["People", "Can view", "No"],
-      ["Products", "Can view", "No"],
-      ["Reviews", "Can view", "No"],
+      ["Accounts", "No"],
+      ["Analytic Events", "No"],
+      ["Feedback", "No"],
+      ["Invoices", "No"],
+      ["Orders", "No"],
+      ["People", "No"],
+      ["Products", "No"],
+      ["Reviews", "No"],
     ]);
   });
 });

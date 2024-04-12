@@ -24,14 +24,22 @@ export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
 
 // these are all the permission levels ordered by level of access
 const PERM_LEVELS = [
-  "write",
-  "read",
-  "all",
+  DataPermissionValue.ALL,
+  DataPermissionValue.YES,
+  DataPermissionValue.UNRESTRICTED,
+  DataPermissionValue.FULL,
   DataPermissionValue.IMPERSONATED,
   DataPermissionValue.CONTROLLED,
-  DataPermissionValue.NO,
+  DataPermissionValue.SANDBOXED,
   DataPermissionValue.BLOCKED,
+  DataPermissionValue.LEGACY_NO_SELF_SERVICE,
+  DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+  DataPermissionValue.QUERY_BUILDER,
+  DataPermissionValue.LIMITED,
+  DataPermissionValue.NO,
+  DataPermissionValue.NONE,
 ];
+
 function hasGreaterPermissions(
   a: DataPermissionValue,
   b: DataPermissionValue,
@@ -54,7 +62,7 @@ export function getPermissionWarning(
   entityType: string | null,
   defaultGroup: Group,
   groupId: Group["id"],
-  descendingPermissions?: string[],
+  descendingPermissions?: DataPermissionValue[],
 ) {
   if (!defaultGroup || groupId === defaultGroup.id) {
     return null;
@@ -66,9 +74,15 @@ export function getPermissionWarning(
   ) {
     return t`The "${defaultGroup.name}" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
   }
+
+  if (value === DataPermissionValue.LEGACY_NO_SELF_SERVICE) {
+    return t`In a future release, if a group's View data access for a database (or any of its schemas or tables) is still set to No self-service (Deprecated), Metabase will automatically change that group's View data access for the entire database to Blocked. We'll be defaulting to Blocked, the least permissive View data access, to prevent any unintended access to data.`;
+  }
+
   if (hasGreaterPermissions(defaultGroupValue, value, descendingPermissions)) {
     return getDefaultGroupHasHigherAccessText(defaultGroup);
   }
+
   return null;
 }
 
@@ -78,7 +92,7 @@ export function getPermissionWarningModal(
   entityType: string | null,
   defaultGroup: Group,
   groupId: Group["id"],
-  descendingPermissions?: string[],
+  descendingPermissions?: DataPermissionValue[],
 ) {
   const permissionWarning = getPermissionWarning(
     value,

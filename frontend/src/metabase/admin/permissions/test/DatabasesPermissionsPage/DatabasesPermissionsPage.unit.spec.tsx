@@ -21,7 +21,7 @@ import { PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES } from "metabase/plugins";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-const NATIVE_QUERIES_PERMISSION_INDEX = 1;
+const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
 const TEST_DATABASE = createSampleDatabase();
 
@@ -80,6 +80,7 @@ describe("DatabasesPermissionsPage", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
+
   describe("rendering", () => {
     it("should show 'Cancel' and 'Save Changes' when user makes changes to permissions", async () => {
       await setup();

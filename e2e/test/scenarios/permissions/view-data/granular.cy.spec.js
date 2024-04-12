@@ -7,7 +7,6 @@ import {
   selectSidebarItem,
   modifyPermission,
   assertPermissionTable,
-  isPermissionDisabled,
   setTokenFeatures,
   restore,
 } from "e2e/support/helpers";
@@ -17,36 +16,22 @@ const { ALL_USERS_GROUP } = USER_GROUPS;
 
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 
-describe(
-  "scenarios > admin > permissions > view data > granular",
-  { tags: "@OSS" },
-  () => {
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-    });
+describe("scenarios > admin > permissions > view data > granular", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
 
-    it("should not allow making permissions granular in the either database or group focused view", () => {
-      cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
+  it("should not allow making permissions granular in the either database or group focused view", () => {
+    cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
-      cy.get("main")
-        .findByText("All Users")
-        .closest("tr")
-        .within(() => {
-          isPermissionDisabled(DATA_ACCESS_PERMISSION_INDEX, "Can view", true);
-        });
+    cy.get("main").findByText("View data").should("not.exist");
 
-      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
-      cy.get("main")
-        .findByText("Sample Database")
-        .closest("tr")
-        .within(() => {
-          isPermissionDisabled(DATA_ACCESS_PERMISSION_INDEX, "Can view", true);
-        });
-    });
-  },
-);
+    cy.get("main").findByText("View data").should("not.exist");
+  });
+});
 
 describeEE("scenarios > admin > permissions > view data > granular", () => {
   beforeEach(() => {

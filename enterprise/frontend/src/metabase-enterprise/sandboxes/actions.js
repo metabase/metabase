@@ -1,7 +1,10 @@
+import _ from "lodash";
+
 import {
   updateDataPermission,
   SAVE_DATA_PERMISSIONS,
   LOAD_DATA_PERMISSIONS,
+  UPDATE_DATA_PERMISSION,
 } from "metabase/admin/permissions/permissions";
 import {
   DataPermission,
@@ -73,6 +76,27 @@ const groupTableAccessPolicies = handleActions(
           ...state,
           [key]: payload,
         };
+      },
+    },
+    [UPDATE_DATA_PERMISSION]: {
+      next: (state, { payload }) => {
+        if (payload.entityId.tableId === undefined) {
+          return state;
+        }
+
+        const key = getPolicyKeyFromParams({
+          groupId: payload.groupId,
+          tableId: payload.entityId.tableId,
+        });
+
+        const isSandboxed = key in state;
+        const isUnsandboxing = payload.value !== DataPermissionValue.SANDBOXED;
+
+        if (isSandboxed && isUnsandboxing) {
+          return _.omit(state, key);
+        }
+
+        return state;
       },
     },
   },

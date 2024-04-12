@@ -97,7 +97,7 @@ const buildAccessPermission = (
   return {
     permission: DataPermission.VIEW_DATA,
     type: DataPermissionType.ACCESS,
-    isDisabled: isAdmin || (!isAdmin && options.length <= 1),
+    isDisabled: isAdmin,
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
     isHighlighted: isAdmin,
     value: accessPermissionValue,
@@ -134,13 +134,21 @@ const buildNativePermission = (
     entityId,
     DataPermission.CREATE_QUERIES,
   );
-  const nativePermissionWarning = getPermissionWarning(
-    value,
-    defaultGroupNativePermissionValue,
-    null,
-    defaultGroup,
-    groupId,
+
+  const disabledTooltip = getNativePermissionDisabledTooltip(
+    isAdmin,
+    accessPermissionValue,
   );
+
+  const nativePermissionWarning = disabledTooltip
+    ? ""
+    : getPermissionWarning(
+        value,
+        defaultGroupNativePermissionValue,
+        null,
+        defaultGroup,
+        groupId,
+      );
 
   const nativePermissionConfirmations = (newValue: DataPermissionValue) => [
     getPermissionWarningModal(
@@ -152,11 +160,6 @@ const buildNativePermission = (
     ),
     getRawQueryWarningModal(permissions, groupId, entityId, newValue),
   ];
-
-  const disabledTooltip = getNativePermissionDisabledTooltip(
-    isAdmin,
-    accessPermissionValue,
-  );
 
   return {
     permission: DataPermission.CREATE_QUERIES,
@@ -207,8 +210,10 @@ export const buildSchemasPermissions = (
     accessPermission.value,
   );
 
-  return [
-    accessPermission,
+  const hasAnyAccessOptions = accessPermission.options.length > 1;
+
+  return _.compact([
+    hasAnyAccessOptions && accessPermission,
     nativePermission,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
       entityId,
@@ -219,5 +224,5 @@ export const buildSchemasPermissions = (
       defaultGroup,
       "schemas",
     ),
-  ];
+  ]);
 };

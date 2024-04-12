@@ -147,16 +147,16 @@ const buildNativePermission = (
     DataPermission.CREATE_QUERIES,
   );
 
+  const disabledTooltip = getNativePermissionDisabledTooltip(
+    isAdmin,
+    accessPermissionValue,
+  );
+
   return {
     permission: DataPermission.CREATE_QUERIES,
     type: DataPermissionType.NATIVE,
-    isDisabled:
-      isAdmin ||
-      (!isAdmin && accessPermissionValue === DataPermissionValue.BLOCKED),
-    disabledTooltip: getNativePermissionDisabledTooltip(
-      isAdmin,
-      accessPermissionValue,
-    ),
+    isDisabled: !!disabledTooltip,
+    disabledTooltip,
     isHighlighted: isAdmin,
     value,
     options: _.compact([
@@ -195,8 +195,10 @@ export const buildFieldsPermissions = (
     accessPermission.value,
   );
 
-  return [
-    accessPermission,
+  const hasAnyAccessOptions = accessPermission.options.length > 1;
+
+  return _.compact([
+    hasAnyAccessOptions && accessPermission,
     nativePermission,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
       entityId,
@@ -207,5 +209,5 @@ export const buildFieldsPermissions = (
       defaultGroup,
       "fields",
     ),
-  ];
+  ]);
 };

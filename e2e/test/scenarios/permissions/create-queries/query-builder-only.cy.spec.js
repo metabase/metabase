@@ -6,7 +6,7 @@ import {
   selectSidebarItem,
 } from "e2e/support/helpers";
 
-const NATIVE_QUERIES_PERMISSION_INDEX = 1;
+const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
 describe("scenarios > admin > permissions > create queries > query builder only", () => {
   beforeEach(() => {
@@ -19,20 +19,20 @@ describe("scenarios > admin > permissions > create queries > query builder only"
 
     selectSidebarItem("collection");
 
-    assertPermissionTable([["Sample Database", "Can view", "No"]]);
+    assertPermissionTable([["Sample Database", "No"]]);
 
     // Drill down to tables permissions
     cy.findByTextEnsureVisible("Sample Database").click();
 
     assertPermissionTable([
-      ["Accounts", "Can view", "No"],
-      ["Analytic Events", "Can view", "No"],
-      ["Feedback", "Can view", "No"],
-      ["Invoices", "Can view", "No"],
-      ["Orders", "Can view", "No"],
-      ["People", "Can view", "No"],
-      ["Products", "Can view", "No"],
-      ["Reviews", "Can view", "No"],
+      ["Accounts", "No"],
+      ["Analytic Events", "No"],
+      ["Feedback", "No"],
+      ["Invoices", "No"],
+      ["Orders", "No"],
+      ["People", "No"],
+      ["Products", "No"],
+      ["Reviews", "No"],
     ]);
 
     // Navigate back
@@ -44,22 +44,20 @@ describe("scenarios > admin > permissions > create queries > query builder only"
       "Query builder only",
     );
 
-    assertPermissionTable([
-      ["Sample Database", "Can view", "Query builder only"],
-    ]);
+    assertPermissionTable([["Sample Database", "Query builder only"]]);
 
     // Drill down to tables permissions
     cy.findByTextEnsureVisible("Sample Database").click();
 
     const finalTablePermissions = [
-      ["Accounts", "Can view", "Query builder only"],
-      ["Analytic Events", "Can view", "Query builder only"],
-      ["Feedback", "Can view", "Query builder only"],
-      ["Invoices", "Can view", "Query builder only"],
-      ["Orders", "Can view", "Query builder only"],
-      ["People", "Can view", "Query builder only"],
-      ["Products", "Can view", "Query builder only"],
-      ["Reviews", "Can view", "Query builder only"],
+      ["Accounts", "Query builder only"],
+      ["Analytic Events", "Query builder only"],
+      ["Feedback", "Query builder only"],
+      ["Invoices", "Query builder only"],
+      ["Orders", "Query builder only"],
+      ["People", "Query builder only"],
+      ["Products", "Query builder only"],
+      ["Reviews", "Query builder only"],
     ];
 
     assertPermissionTable(finalTablePermissions);
@@ -69,7 +67,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     modal().within(() => {
       cy.findByText("Save permissions?");
       cy.contains(
-        "collection will now be able to read or write native queries for Sample Database.",
+        "collection will only be able to use the query builder for Sample Database.",
       );
       cy.button("Yes").click();
     });
@@ -100,7 +98,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
 
     selectSidebarItem("collection");
 
-    assertPermissionTable([["Sample Database", "Can view", "No"]]);
+    assertPermissionTable([["Sample Database", "No"]]);
 
     modifyPermission(
       "Sample Database",
@@ -112,14 +110,14 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     cy.findByTextEnsureVisible("Sample Database").click();
 
     assertPermissionTable([
-      ["Accounts", "Can view", "Query builder and native"],
-      ["Analytic Events", "Can view", "Query builder and native"],
-      ["Feedback", "Can view", "Query builder and native"],
-      ["Invoices", "Can view", "Query builder and native"],
-      ["Orders", "Can view", "Query builder and native"],
-      ["People", "Can view", "Query builder and native"],
-      ["Products", "Can view", "Query builder and native"],
-      ["Reviews", "Can view", "Query builder and native"],
+      ["Accounts", "Query builder and native"],
+      ["Analytic Events", "Query builder and native"],
+      ["Feedback", "Query builder and native"],
+      ["Invoices", "Query builder and native"],
+      ["Orders", "Query builder and native"],
+      ["People", "Query builder and native"],
+      ["Products", "Query builder and native"],
+      ["Reviews", "Query builder and native"],
     ]);
 
     modifyPermission(
@@ -129,30 +127,28 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     );
 
     const finalTablePermissions = [
-      ["Accounts", "Can view", "Query builder only"],
-      ["Analytic Events", "Can view", "Query builder only"],
-      ["Feedback", "Can view", "Query builder only"],
-      ["Invoices", "Can view", "Query builder only"],
-      ["Orders", "Can view", "Query builder only"],
-      ["People", "Can view", "Query builder only"],
-      ["Products", "Can view", "Query builder only"],
-      ["Reviews", "Can view", "Query builder only"],
+      ["Accounts", "Query builder only"],
+      ["Analytic Events", "Query builder only"],
+      ["Feedback", "Query builder only"],
+      ["Invoices", "Query builder only"],
+      ["Orders", "Query builder only"],
+      ["People", "Query builder only"],
+      ["Products", "Query builder only"],
+      ["Reviews", "Query builder only"],
     ];
 
     assertPermissionTable(finalTablePermissions);
 
     // Navigate back
     selectSidebarItem("collection");
-    assertPermissionTable([
-      ["Sample Database", "Can view", "Query builder only"],
-    ]);
+    assertPermissionTable([["Sample Database", "Query builder only"]]);
 
     cy.button("Save changes").click();
 
     modal().within(() => {
       cy.findByText("Save permissions?");
       cy.contains(
-        "collection will now be able to read or write native queries for Sample Database.",
+        "collection will only be able to use the query builder for Sample Database.",
       );
       cy.button("Yes").click();
     });
@@ -171,20 +167,20 @@ describe("scenarios > admin > permissions > create queries > query builder only"
 
     selectSidebarItem("collection");
 
-    assertPermissionTable([["Sample Database", "Can view", "No"]]);
+    assertPermissionTable([["Sample Database", "No"]]);
 
     // Drill down to tables permissions
     cy.findByTextEnsureVisible("Sample Database").click();
 
     assertPermissionTable([
-      ["Accounts", "Can view", "No"],
-      ["Analytic Events", "Can view", "No"],
-      ["Feedback", "Can view", "No"],
-      ["Invoices", "Can view", "No"],
-      ["Orders", "Can view", "No"],
-      ["People", "Can view", "No"],
-      ["Products", "Can view", "No"],
-      ["Reviews", "Can view", "No"],
+      ["Accounts", "No"],
+      ["Analytic Events", "No"],
+      ["Feedback", "No"],
+      ["Invoices", "No"],
+      ["Orders", "No"],
+      ["People", "No"],
+      ["Products", "No"],
+      ["Reviews", "No"],
     ]);
 
     // Navigate back
@@ -196,22 +192,20 @@ describe("scenarios > admin > permissions > create queries > query builder only"
       "Query builder only",
     );
 
-    assertPermissionTable([
-      ["Sample Database", "Can view", "Query builder only"],
-    ]);
+    assertPermissionTable([["Sample Database", "Query builder only"]]);
 
     // Drill down to tables permissions
     cy.findByTextEnsureVisible("Sample Database").click();
 
     const finalTablePermissions = [
-      ["Accounts", "Can view", "Query builder only"],
-      ["Analytic Events", "Can view", "Query builder only"],
-      ["Feedback", "Can view", "Query builder only"],
-      ["Invoices", "Can view", "Query builder only"],
-      ["Orders", "Can view", "Query builder only"],
-      ["People", "Can view", "Query builder only"],
-      ["Products", "Can view", "Query builder only"],
-      ["Reviews", "Can view", "Query builder only"],
+      ["Accounts", "Query builder only"],
+      ["Analytic Events", "Query builder only"],
+      ["Feedback", "Query builder only"],
+      ["Invoices", "Query builder only"],
+      ["Orders", "Query builder only"],
+      ["People", "Query builder only"],
+      ["Products", "Query builder only"],
+      ["Reviews", "Query builder only"],
     ];
 
     assertPermissionTable(finalTablePermissions);
@@ -221,7 +215,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     modal().within(() => {
       cy.findByText("Save permissions?");
       cy.contains(
-        "collection will now be able to read or write native queries for Sample Database.",
+        "collection will only be able to use the query builder for Sample Database.",
       );
       cy.button("Yes").click();
     });
@@ -258,12 +252,12 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     selectSidebarItem("Sample Database");
 
     assertPermissionTable([
-      ["Administrators", "Can view", "Query builder and native"],
-      ["All Users", "Can view", "No"],
-      ["collection", "Can view", "No"],
-      ["data", "Can view", "Query builder and native"],
-      ["nosql", "Can view", "Query builder only"],
-      ["readonly", "Can view", "No"],
+      ["Administrators", "Query builder and native"],
+      ["All Users", "No"],
+      ["collection", "No"],
+      ["data", "Query builder and native"],
+      ["nosql", "Query builder only"],
+      ["readonly", "No"],
     ]);
 
     modifyPermission(
@@ -273,12 +267,12 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     );
 
     const finalPermissions = [
-      ["Administrators", "Can view", "Query builder and native"],
-      ["All Users", "Can view", "No"],
-      ["collection", "Can view", "No"],
-      ["data", "Can view", "Query builder and native"],
-      ["nosql", "Can view", "Query builder only"],
-      ["readonly", "Can view", "Query builder only"],
+      ["Administrators", "Query builder and native"],
+      ["All Users", "No"],
+      ["collection", "No"],
+      ["data", "Query builder and native"],
+      ["nosql", "Query builder only"],
+      ["readonly", "Query builder only"],
     ];
     assertPermissionTable(finalPermissions);
 
@@ -294,7 +288,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     modal().within(() => {
       cy.findByText("Save permissions?");
       cy.contains(
-        "readonly will now be able to read or write native queries for Sample Database.",
+        "readonly will only be able to use the query builder for Sample Database.",
       );
       cy.button("Yes").click();
     });
