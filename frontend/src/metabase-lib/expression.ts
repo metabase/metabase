@@ -1,5 +1,4 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { RowValue, RowValues } from "metabase-types/api";
 
 import type {
   AggregationClause,
@@ -98,21 +97,5 @@ export function diagnoseExpression(
     expressionMode,
     mbql,
     expressionPosition,
-  );
-}
-
-export function previewExpression(
-  query: Query,
-  stageIndex: number,
-  expressionClause: ExpressionClause,
-  columns: ColumnMetadata[],
-  row: RowValues,
-): RowValue {
-  return ML.preview_expression(
-    query,
-    stageIndex,
-    expressionClause,
-    columns,
-    row,
   );
 }
