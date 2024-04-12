@@ -14,7 +14,6 @@ import {
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { usePreview } from "../../hooks";
 import type { ColumnAndSeparator } from "../../types";
 import {
   formatSeparator,
@@ -23,6 +22,7 @@ import {
   getDrillExpressionClause,
   getExpressionName,
   getNextColumnAndSeparator,
+  getPreview,
 } from "../../utils";
 import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
 import { Preview } from "../Preview";
@@ -67,11 +67,9 @@ export const CombineColumnsDrill = ({
     () => getDrillExpressionClause(column, columnsAndSeparators),
     [column, columnsAndSeparators],
   );
-  const { error, preview } = usePreview(
-    originalQuery,
-    originalStageIndex,
-    expressionClause,
-  );
+  const preview = useMemo(() => {
+    return getPreview(column, columnsAndSeparators);
+  }, [column, columnsAndSeparators]);
 
   const handleChange = (index: number, change: Partial<ColumnAndSeparator>) => {
     setColumnsAndSeparators(value => [
@@ -173,7 +171,7 @@ export const CombineColumnsDrill = ({
             </Flex>
           </Stack>
 
-          <Preview error={error} preview={preview} />
+          <Preview preview={preview} />
 
           <Flex align="center" gap="md" justify="end">
             <Button type="submit" variant="filled">
