@@ -1,8 +1,9 @@
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { Radio, Stack, Text, TextInput, Box } from "metabase/ui";
+import { Radio, Stack, Text, TextInput, Box, Select } from "metabase/ui";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -36,6 +37,21 @@ export interface ParameterSettingsProps {
   embeddedParameterVisibility: EmbeddingParameterVisibility | null;
 }
 
+type SectionOption = {
+  sectionId: string;
+  type: string;
+  name: string;
+  operator: string;
+  menuName?: string;
+  combinedName?: string | undefined;
+};
+
+const parameterSections = getDashboardParameterSections();
+const dataTypeSectionsData = parameterSections.map(section => ({
+  label: section.name,
+  value: section.id,
+}));
+
 export const ParameterSettings = ({
   parameter,
   isParameterSlugUsed,
@@ -49,6 +65,9 @@ export const ParameterSettings = ({
   embeddedParameterVisibility,
 }: ParameterSettingsProps): JSX.Element => {
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
+  // TODO: sectionId should always be present, but current type definition presumes it's optional in the parameter.
+  // so we might want to remove all checks related to absence of it
+  const sectionId = parameter.sectionId;
 
   useLayoutEffect(() => {
     setTempLabelValue(parameter.name);
@@ -83,6 +102,27 @@ export const ParameterSettings = ({
   const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
   const isMultiValue = getIsMultiSelect(parameter) ? "multi" : "single";
 
+  const filterOperatorData = useMemo(() => {
+    if (!sectionId) {
+      return [];
+    }
+
+    const currentSection = parameterSections.find(
+      section => section.id === sectionId,
+    );
+
+    if (!currentSection) {
+      return [];
+    }
+
+    const options = currentSection.options as SectionOption[];
+
+    return options.map(option => ({
+      label: option.name,
+      value: option.type,
+    }));
+  }, [sectionId]);
+
   return (
     <Box p="1.5rem 1rem">
       <Box mb="xl">
@@ -95,6 +135,25 @@ export const ParameterSettings = ({
           aria-label={t`Label`}
         />
       </Box>
+      {sectionId && (
+        <>
+          <Box mb="xl">
+            <SettingLabel>{t`Filter type`}</SettingLabel>
+            <Select disabled data={dataTypeSectionsData} value={sectionId} />
+          </Box>
+          {filterOperatorData.length > 1 && (
+            <Box mb="xl">
+              <SettingLabel>{t`Filter operator`}</SettingLabel>
+              <Select
+                disabled
+                data={filterOperatorData}
+                value={parameter.type}
+              />
+            </Box>
+          )}
+        </>
+      )}
+
       {canUseCustomSource(parameter) && (
         <Box mb="xl">
           <SettingLabel>{t`How should people filter on this column?`}</SettingLabel>
