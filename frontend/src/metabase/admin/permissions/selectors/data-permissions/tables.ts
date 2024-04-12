@@ -24,6 +24,7 @@ import {
   getControlledDatabaseWarningModal,
   getPermissionWarning,
   getPermissionWarningModal,
+  getWillRevokeNativeAccessWarningModal,
 } from "../confirmations";
 
 const buildAccessPermission = (
@@ -150,6 +151,9 @@ const buildNativePermission = (
     postActions: {
       controlled: () => navigateToGranularPermissions(groupId, entityId),
     },
+    confirmations: () => [
+      getWillRevokeNativeAccessWarningModal(permissions, groupId, entityId),
+    ],
   };
 };
 

@@ -8,6 +8,7 @@ import {
 import {
   getFieldsPermission,
   getSchemasPermission,
+  hasPermissionValueInGraph,
 } from "metabase/admin/permissions/utils/graph";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -86,6 +87,14 @@ export function getPermissionWarning(
   return null;
 }
 
+function getEntityTypeFromId(entityId: EntityId): [string, string] {
+  return isTableEntityId(entityId)
+    ? [t`table`, t`tables`]
+    : isSchemaEntityId(entityId)
+    ? [t`schema`, t`schemas`]
+    : [t`entity`, t`entities`];
+}
+
 export function getPermissionWarningModal(
   value: DataPermissionValue,
   defaultGroupValue: DataPermissionValue,
@@ -123,14 +132,64 @@ export function getControlledDatabaseWarningModal(
   entityId: EntityId,
 ) {
   if (currDbPermissionValue !== DataPermissionValue.CONTROLLED) {
-    const [entityType, entityTypePlural] = isTableEntityId(entityId)
-      ? [t`table`, t`tables`]
-      : isSchemaEntityId(entityId)
-      ? [t`schema`, t`schemas`]
-      : [t`entity`, t`entities`];
+    const [entityType, entityTypePlural] = getEntityTypeFromId(entityId);
     return {
-      title: t`Change access to this database to granular?`,
+      title: t`Change access to this database to “Granular”?`,
       message: t`Just letting you know that changing the permission setting on this ${entityType} will also update the database permission setting to “Granular” to reflect that some of the database’s ${entityTypePlural} have different permission settings.`,
+      confirmButtonText: t`Change`,
+      cancelButtonText: t`Cancel`,
+    };
+  }
+}
+
+export function getSandboxedTableWarningModal(
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: EntityId,
+  value: DataPermissionValue,
+) {
+  // if the user is sandboxing the table while there is create-queries permissions set to
+  // query builder and native for that group's access to the database being modified, we
+  // should prompt them that we will have to remove native access for all tables/schemas
+  if (
+    value === DataPermissionValue.SANDBOXED &&
+    hasPermissionValueInGraph(
+      permissions[groupId][entityId.databaseId],
+      DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+    )
+  ) {
+    return {
+      title: t`Change access to this database to sandboxed?`,
+      message: t`As part of providing sandboxing we will also have to remove this group's native querying permissions from all tables and schemas in this database.`,
+      confirmButtonText: t`Change`,
+      cancelButtonText: t`Cancel`,
+    };
+  }
+}
+
+export function getWillRevokeNativeAccessWarningModal(
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: EntityId,
+) {
+  // if the db is set to query builder and native for this group
+  // then warn the user that the change will downgrade native permissions
+  const currDbCreateQueriesPermission = getSchemasPermission(
+    permissions,
+    groupId,
+    { databaseId: entityId.databaseId },
+    DataPermission.CREATE_QUERIES,
+  );
+
+  if (
+    currDbCreateQueriesPermission ===
+    DataPermissionValue.QUERY_BUILDER_AND_NATIVE
+  ) {
+    const [entityType] = getEntityTypeFromId(entityId);
+
+    return {
+      title: t`Change access to this database to “Granular”?`,
+      message: t`As part of providing granular permissions for this one ${entityType}, we will also have to remove this group's native querying permissions from all tables and schemas in this database.`,
       confirmButtonText: t`Change`,
       cancelButtonText: t`Cancel`,
     };

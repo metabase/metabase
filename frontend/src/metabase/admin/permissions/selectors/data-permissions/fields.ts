@@ -29,6 +29,8 @@ import {
   getPermissionWarningModal,
   getControlledDatabaseWarningModal,
   getRevokingAccessToAllTablesWarningModal,
+  getSandboxedTableWarningModal,
+  getWillRevokeNativeAccessWarningModal,
 } from "../confirmations";
 
 const buildAccessPermission = (
@@ -84,6 +86,7 @@ const buildAccessPermission = (
       groupId,
     ),
     getControlledDatabaseWarningModal(currDbPermissionValue, entityId),
+    getSandboxedTableWarningModal(permissions, groupId, entityId, newValue),
     getRevokingAccessToAllTablesWarningModal(
       database,
       permissions,
@@ -165,6 +168,9 @@ const buildNativePermission = (
       DATA_PERMISSION_OPTIONS.queryBuilder,
       DATA_PERMISSION_OPTIONS.no,
     ]),
+    confirmations: () => [
+      getWillRevokeNativeAccessWarningModal(permissions, groupId, entityId),
+    ],
   };
 };
 
