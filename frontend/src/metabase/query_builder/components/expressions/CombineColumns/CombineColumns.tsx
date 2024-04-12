@@ -7,8 +7,10 @@ import { Card, Title, Stack, Flex, Button, Box, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ColumnAndSeparatorRow } from "./ColumnAndSeparatorRow";
+import { Example } from "./Example";
 import type { ColumnAndSeparator } from "./util";
 import {
+  getExample,
   getDefaultSeparator,
   getColumnOptions,
   formatSeparator,
@@ -146,6 +148,11 @@ export function CombineColumns({
     isNotNull(column),
   );
 
+  const example = useMemo(
+    () => getExample(state.columnsAndSeparators),
+    [state.columnsAndSeparators],
+  );
+
   return (
     <form onSubmit={handleSubmit}>
       <Card maw="100vw" w={474} p="lg">
@@ -194,6 +201,8 @@ export function CombineColumns({
               </Button>
             </Flex>
           </Stack>
+
+          <Example example={example} />
 
           <Flex align="center" gap="md" justify="end">
             <Button type="submit" variant="filled" disabled={!isValid}>

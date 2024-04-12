@@ -120,3 +120,51 @@ export const getExpressionName = (
   );
   return t`Combined ${names.join(", ")}`;
 };
+
+export const getExample = (
+  columnsAndSeparators: ColumnAndSeparator[],
+): string => {
+  return columnsAndSeparators
+    .flatMap(({ column, separator }) => [separator, getColumnExample(column)])
+    .join("");
+};
+
+const getColumnExample = (column: Lib.ColumnMetadata | null): string => {
+  if (!column) {
+    return "";
+  }
+
+  if (Lib.isURL(column)) {
+    return "https://www.example.com";
+  }
+
+  if (Lib.isEmail(column)) {
+    return "email@example.com";
+  }
+
+  if (Lib.isID(column)) {
+    return "12345";
+  }
+
+  if (Lib.isNumeric(column)) {
+    return "123.45678901234567";
+  }
+
+  if (Lib.isDateWithoutTime(column)) {
+    return "2042-01-01";
+  }
+
+  if (Lib.isDate(column)) {
+    return "2042-01-01 12:34:56.789";
+  }
+
+  if (Lib.isTime(column)) {
+    return "12:34:56.789";
+  }
+
+  if (Lib.isLatitude(column) || Lib.isLongitude(column)) {
+    return "-12.34567";
+  }
+
+  return "text";
+};
