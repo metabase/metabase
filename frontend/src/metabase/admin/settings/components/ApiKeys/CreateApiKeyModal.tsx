@@ -26,7 +26,7 @@ export const CreateApiKeyModal = ({
   const [secretKey, setSecretKey] = useState<string>("");
 
   const handleSubmit = useCallback(
-    async vals => {
+    async (vals: { group_id: number | null; name: string }) => {
       const response = await ApiKeysApi.create(vals);
       setSecretKey(response.unmasked_key);
       setModal("secretKey");
@@ -49,7 +49,7 @@ export const CreateApiKeyModal = ({
         title={t`Create a new API Key`}
       >
         <FormProvider
-          initialValues={{ name: "", group_id: "" }}
+          initialValues={{ name: "", group_id: null }}
           validationSchema={API_KEY_VALIDATION_SCHEMA}
           onSubmit={handleSubmit}
         >

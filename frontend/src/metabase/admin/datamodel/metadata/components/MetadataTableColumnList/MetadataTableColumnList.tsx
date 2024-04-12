@@ -11,6 +11,7 @@ import _ from "underscore";
 import Grabber from "metabase/components/Grabber";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
+import type { DragEndEvent } from "metabase/core/components/Sortable";
 import { SortableList } from "metabase/core/components/Sortable";
 import Tables from "metabase/entities/tables";
 import { Icon } from "metabase/ui";
@@ -73,8 +74,8 @@ const MetadataTableColumnList = ({
   );
 
   const handleSortEnd = useCallback(
-    ({ itemIds: fieldOrder }) => {
-      onUpdateFieldOrder(table, fieldOrder);
+    ({ itemIds: fieldOrder }: DragEndEvent) => {
+      onUpdateFieldOrder(table, fieldOrder as number[]);
     },
     [table, onUpdateFieldOrder],
   );

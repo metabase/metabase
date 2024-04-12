@@ -44,9 +44,12 @@ export function CustomURLPicker({
     linkTemplate: url,
   });
 
-  const handleLinkTemplateChange = useCallback(e => {
-    setUrl(e.currentTarget.value);
-  }, []);
+  const handleLinkTemplateChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setUrl(e.currentTarget.value);
+    },
+    [],
+  );
 
   const handleSubmit = useCallback(() => {
     updateSettings({
