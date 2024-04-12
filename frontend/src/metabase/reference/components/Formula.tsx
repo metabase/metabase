@@ -33,13 +33,18 @@ export const Formula = ({
       {isExpanded && (
         <CSSTransition
           key="formulaDefinition"
-          classNames="formulaDefinition"
+          classNames={{
+            enter: S.formulaDefinitionEnter,
+            enterActive: S.formulaDefinitionEnterActive,
+            exit: S.formulaDefinitionExit,
+            exitActive: S.formulaDefinitionExitActive,
+          }}
           timeout={{
             enter: 300,
             exit: 300,
           }}
         >
-          <div className="formulaDefinition">
+          <div className={S.formulaDefinition}>
             <QueryDefinition
               className={S.formulaDefinitionInner}
               object={entity}
