@@ -22,7 +22,7 @@
        (testing "Requires at least one id"
          (mt/with-temporary-setting-values [uploads-enabled true]
            (is (=? {:id #(str/starts-with? (first %) "invalid type")}
-                   (:specific-errors (mt/user-http-request :crowberto :delete 200 delete-url))))))
+                   (:specific-errors (mt/user-http-request :crowberto :delete 400 delete-url))))))
 
        (mt/with-temporary-setting-values [uploads-enabled true]
          (testing "Happy path - single"
