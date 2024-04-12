@@ -1628,7 +1628,7 @@
   (-> inner-query
       maybe-nest-breakouts-in-queries-with-window-fn-aggregations
       add/add-alias-info
-      #_nest-query/nest-expressions))
+      nest-query/nest-expressions))
 
 (defn mbql->honeysql
   "Build the HoneySQL form we will compile to SQL and execute."

@@ -144,13 +144,21 @@
                                 (assoc join :qp/refs (:qp/refs query)))
                               joins))))))
 
+(defn- expressions-in-breakouts?
+  "we only need to rewrite things if we have expression references inside breakouts"
+  [inner-query]
+  (some (fn [breakout]
+          (lib.util.match/match-one breakout
+            :expression))
+        (:breakout inner-query)))
+
 (defn nest-expressions
   "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a
   `:source-query` and updates `:expression` references and `:field` clauses with `:join-alias`es accordingly. See
   tests for examples. This is used by the SQL QP to make sure expressions happen in a subselect."
   [query]
   (let [{:keys [expressions], :as query} (m/update-existing query :source-query nest-expressions)]
-    (if (empty? expressions)
+    (if-not (expressions-in-breakouts? query)
       query
       (let [{:keys [source-query], :as query} (nest-source query)
             query                             (rewrite-fields-and-expressions query)
