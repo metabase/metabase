@@ -35,8 +35,8 @@ export const GlobalStyles = (): JSX.Element => {
       `,
     )}
 
-    ${aceEditorStyles}
-    ${saveDomImageStyles}
+      ${aceEditorStyles}
+      ${saveDomImageStyles}
   `;
 
   return <Global styles={styles} />;
