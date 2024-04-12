@@ -118,6 +118,11 @@
     param))
 
 (defn- classify-params-as-keep-or-remove
+  "Classifies the params in the `dashboard-or-card-params` seq and the param slugs in `embedding-params` map according to:
+  Parameters in `dashboard-or-card-params` whose slugs are NOT in the `embedding-params` map must be removed.
+  Parameter slugs in `embedding-params` with the value 'enabled' are kept, 'disabled' or 'locked' are not kept.
+
+  The resulting classification is returned as a map with keys :keep and :remove whose values are sets of parameter slugs."
   [dashboard-or-card-params embedding-params]
   (let [param-slugs                   (map #(keyword (:slug %)) dashboard-or-card-params)
         grouped-param-slugs           {:remove (remove (fn [k] (contains? embedding-params k)) param-slugs)}
@@ -125,7 +130,7 @@
                                           (update-keys {true :keep false :remove})
                                           (update-vals #(into #{} (map first) %)))]
     (merge-with (comp set concat)
-                {:keep [] :remove []}
+                {:keep #{} :remove #{}}
                 grouped-param-slugs
                 grouped-embedding-param-slugs)))
 
@@ -280,14 +285,15 @@
                                           (into {})))))
 
 (defn- remove-locked-parameters [dashboard embedding-params]
-  (let [{params-to-remove :remove
-         params-to-keep   :keep}  (classify-params-as-keep-or-remove (:parameters dashboard) embedding-params)
-        param-ids-to-remove       (set (for [parameter (:parameters dashboard)
-                                             :when     (contains? params-to-remove (keyword (:slug parameter)))]
-                                         (:id parameter)))
-        param-ids-to-keep         (set (for [parameter (:parameters dashboard)
-                                             :when     (contains? params-to-keep (keyword (:slug parameter)))]
-                                         (:id parameter)))
+  (let [params                    (:parameters dashboard)
+        {params-to-remove :remove
+         params-to-keep   :keep}  (classify-params-as-keep-or-remove params embedding-params)
+        param-ids-to-remove       (set (keep (fn [{:keys [slug id]}]
+                                               (when (contains? params-to-remove (keyword slug)) id))
+                                             params))
+        param-ids-to-keep         (set (keep (fn [{:keys [slug id]}]
+                                               (when (contains? params-to-keep (keyword slug)) id))
+                                             params))
         field-ids-to-maybe-remove (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-remove))
         field-ids-to-keep         (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-keep))
         field-ids-to-remove       (set/difference field-ids-to-maybe-remove field-ids-to-keep)
