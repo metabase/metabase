@@ -886,9 +886,9 @@
    [:offset      offset]
    [:ref         Field]
    [::mc/default [:fn
-                  {:error/fn (fn [{:keys [value]} _]
+                  {:error/fn (fn [{x :value} _]
                                (str "invalid expression: "
-                                    (pr-str value)
+                                    (pr-str x)
                                     " is not a valid " ::Expression))}
                   (constantly false)]]])
 

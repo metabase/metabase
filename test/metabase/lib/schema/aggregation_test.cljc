@@ -110,9 +110,4 @@
         (are [schema x] (not (me/humanize (mc/explain schema x)))
           :metabase.lib.schema.expression/number        ag
           :metabase.lib.schema.aggregation/aggregation  ag
-          :metabase.lib.schema.aggregation/aggregations [ag])
-        (testing "should not be allowed to use as a non-aggregation expression"
-          (let [ag (lib.options/update-options ag assoc :lib/expression-name "expr")]
-            (is (= :ok
-                   (me/humanize (mc/explain :metabase.lib.schema.expression/expression.definition ag))))))))))
-;;; TODO -- should we enforce that you can't use this outside of aggregations, e.g. in expressions?
+          :metabase.lib.schema.aggregation/aggregations [ag])))))

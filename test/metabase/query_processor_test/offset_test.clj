@@ -3,12 +3,9 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [malli.core :as mc]
-   [malli.error :as me]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.test-metadata :as meta]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 

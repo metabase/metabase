@@ -337,7 +337,7 @@
                          (= k :effective-type))))
          m)))
 
-(defn- aggregation->legacy-MBQL [[tag options & args :as clause]]
+(defn- aggregation->legacy-MBQL [[tag options & args]]
   (let [inner (into [tag] (map ->legacy-MBQL) args)
         ;; the default value of the :case expression is in the options
         ;; in legacy MBQL
