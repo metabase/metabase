@@ -53,7 +53,7 @@
   "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema.
   If the driver doesn't support [[metabase.driver/describe-fks]] it uses [[driver/describe-table-fks]] instead.
   This will be deprecated in "
-  [database :- i/DatabaseInstance & {:keys [schema-names table-names]}]
+  [database :- i/DatabaseInstance & {:as args}]
   (let [driver (driver.u/database->driver database)]
     (when (driver/database-supports? driver :foreign-keys database)
       (let [describe-fks-fn (if (driver/database-supports? driver :describe-fks database)
@@ -61,7 +61,7 @@
                               ;; In version 52 we'll remove [[driver/describe-table-fks]]
                               ;; and we'll just use [[driver/describe-fks]] here
                               backwards-compatible-describe-fks)]
-        (cond->> (describe-fks-fn (driver.u/database->driver database) database :schema-names schema-names :table-names table-names)
+        (cond->> (describe-fks-fn (driver.u/database->driver database) database args)
           ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
           (mu.fn/instrument-ns? *ns*)
           (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %))))))))
