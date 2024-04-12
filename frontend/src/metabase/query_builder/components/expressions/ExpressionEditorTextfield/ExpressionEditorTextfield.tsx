@@ -131,6 +131,7 @@ class ExpressionEditorTextfield extends React.Component<
 > {
   input = React.createRef<AceEditor>();
   suggestionTarget = React.createRef<HTMLDivElement>();
+  helpTextTarget = React.createRef<HTMLDivElement>();
 
   static defaultProps = {
     expression: "",
@@ -579,7 +580,7 @@ class ExpressionEditorTextfield extends React.Component<
     } = this.state;
 
     return (
-      <React.Fragment>
+      <div ref={this.helpTextTarget}>
         <ExpressionEditorSuggestions
           query={query}
           stageIndex={stageIndex}
@@ -617,11 +618,11 @@ class ExpressionEditorTextfield extends React.Component<
           <ErrorMessageContainer>{errorMessage.message}</ErrorMessageContainer>
         )}
         <ExpressionEditorHelpText
-          target={helpTextTarget}
+          target={this.helpTextTarget}
           helpText={helpText}
           width={width}
         />
-      </React.Fragment>
+      </div>
     );
   }
 }

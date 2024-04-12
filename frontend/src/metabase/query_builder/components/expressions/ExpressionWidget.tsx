@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -78,8 +78,6 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   );
   const [error, setError] = useState<string | null>(null);
 
-  const helpTextTargetRef = useRef(null);
-
   const isValidName = withName ? name.trim().length > 0 : true;
   const isValidExpression = isNotNull(expression) && isExpression(expression);
   const isValidExpressionClause = isNotNull(clause);
@@ -127,23 +125,20 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           {t`Expression`}
           <ExpressionWidgetInfo />
         </FieldLabel>
-        <div ref={helpTextTargetRef}>
-          <ExpressionEditorTextfield
-            helpTextTarget={helpTextTargetRef.current}
-            expression={expression}
-            expressionPosition={expressionPosition}
-            clause={clause}
-            startRule={startRule}
-            name={name}
-            query={query}
-            stageIndex={stageIndex}
-            reportTimezone={reportTimezone}
-            textAreaId="expression-content"
-            onChange={handleExpressionChange}
-            onCommit={handleCommit}
-            onError={(errorMessage: string) => setError(errorMessage)}
-          />
-        </div>
+        <ExpressionEditorTextfield
+          expression={expression}
+          expressionPosition={expressionPosition}
+          clause={clause}
+          startRule={startRule}
+          name={name}
+          query={query}
+          stageIndex={stageIndex}
+          reportTimezone={reportTimezone}
+          textAreaId="expression-content"
+          onChange={handleExpressionChange}
+          onCommit={handleCommit}
+          onError={(errorMessage: string) => setError(errorMessage)}
+        />
       </ExpressionFieldWrapper>
       {withName && (
         <FieldWrapper>
