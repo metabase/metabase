@@ -1,13 +1,13 @@
-import { DAY_OF_WEEK_OPTIONS } from "metabase/lib/date-time";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
   ScheduleSettings,
   ScheduleType,
 } from "metabase-types/api";
+import { daysOfTheWeek } from "metabase/components/Schedule/constants";
 
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
-  const index = DAY_OF_WEEK_OPTIONS.findIndex(o => o.value === day);
+  const index = daysOfTheWeek.findIndex(o => o.value === day);
   if (index === -1) {
     throw new Error(`Invalid day: ${day}`);
   }
@@ -89,7 +89,7 @@ export const cronToScheduleSettings = (
       // Split on transition from number to non-number
       const dayOfWeekParts = dayOfWeek.split(/(?<=\d)(?=\D)/);
       const day = parseInt(dayOfWeekParts[0]);
-      schedule_day = DAY_OF_WEEK_OPTIONS[day - 1]?.value as ScheduleDayType;
+      schedule_day = daysOfTheWeek[day - 1]?.value as ScheduleDayType;
       if (dayOfMonth === "*") {
         const frameInCronFormat = dayOfWeekParts[1].replace(/^#/, "");
         schedule_frame = frameFromCron[frameInCronFormat];
@@ -101,7 +101,7 @@ export const cronToScheduleSettings = (
     if (dayOfWeek === "*") {
       schedule_day = undefined;
     } else {
-      schedule_day = DAY_OF_WEEK_OPTIONS[parseInt(dayOfWeek) - 1]
+      schedule_day = daysOfTheWeek[parseInt(dayOfWeek) - 1]
         ?.value as ScheduleDayType;
     }
   }

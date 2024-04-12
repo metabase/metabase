@@ -14,6 +14,7 @@ import {
 } from "./components";
 import { defaultDay, optionNameTranslations } from "./constants";
 import type { HandleChangeProperty, ScheduleChangeProp } from "./types";
+import { memo, useCallback } from "react";
 
 const getOptionName = (option: ScheduleType) =>
   optionNameTranslations[option] || capitalize(option);
@@ -31,91 +32,107 @@ export interface ScheduleProps {
   ) => void;
 }
 
-export const Schedule = ({
-  schedule,
-  scheduleOptions,
-  timezone,
-  textBeforeInterval: verb,
-  textBeforeSendTime,
-  minutesOnHourPicker,
-  onScheduleChange,
-}: {
-  schedule: ScheduleSettings;
-  scheduleOptions: ScheduleType[];
-  timezone?: string;
-  textBeforeInterval?: string;
-  textBeforeSendTime?: string;
-  minutesOnHourPicker?: boolean;
-  onScheduleChange: (
-    nextSchedule: ScheduleSettings,
-    change: ScheduleChangeProp,
-  ) => void;
-}) => {
-  const handleChangeProperty: HandleChangeProperty = (name, value) => {
-    let newSchedule: ScheduleSettings = {
-      ...schedule,
-      [name]: value,
+export const Schedule = memo(
+  ({
+    schedule,
+    scheduleOptions,
+    timezone,
+    textBeforeInterval: verb,
+    textBeforeSendTime,
+    minutesOnHourPicker,
+    onScheduleChange,
+  }: {
+    schedule: ScheduleSettings;
+    scheduleOptions: ScheduleType[];
+    timezone?: string;
+    textBeforeInterval?: string;
+    textBeforeSendTime?: string;
+    minutesOnHourPicker?: boolean;
+    onScheduleChange: (
+      nextSchedule: ScheduleSettings,
+      change: ScheduleChangeProp,
+    ) => void;
+  }) => {
+    const props = {
+      schedule,
+      scheduleOptions,
+      timezone,
+      textBeforeInterval: verb,
+      textBeforeSendTime,
+      minutesOnHourPicker,
+      onScheduleChange,
     };
+    console.log("props", { ...props });
 
-    // TODO: Not sure these nulls are needed
-    const defaults: Record<string, Partial<ScheduleSettings>> = {
-      hourly: {
-        schedule_day: null,
-        schedule_frame: null,
-        schedule_hour: null,
-        schedule_minute: 0,
-      },
-      daily: {
-        schedule_day: null,
-        schedule_frame: null,
-      },
-      weekly: {
-        schedule_day: defaultDay,
-        schedule_frame: null,
-      },
-      monthly: {
-        schedule_frame: "first",
-        schedule_day: defaultDay,
-      },
-    };
-
-    newSchedule = pick(newSchedule, val => val !== undefined);
-
-    if (name === "schedule_type") {
-      newSchedule = {
-        ...defaults[value as ScheduleType],
-        ...newSchedule,
-      };
-    } else if (name === "schedule_frame") {
-      // when the monthly schedule frame is the 15th, clear out the schedule_day
-      if (value === "mid") {
-        newSchedule = { ...newSchedule, schedule_day: null };
-      } else {
-        // first or last, needs a day of the week
-        newSchedule = {
-          schedule_day: newSchedule.schedule_day || defaultDay,
-          ...newSchedule,
+    const handleChangeProperty: HandleChangeProperty = useCallback(
+      (name, value) => {
+        let newSchedule: ScheduleSettings = {
+          ...schedule,
+          [name]: value,
         };
-      }
-    }
 
-    onScheduleChange(newSchedule, { name, value });
-  };
+        // TODO: Not sure these nulls are needed
+        const defaults: Record<string, Partial<ScheduleSettings>> = {
+          hourly: {
+            schedule_day: null,
+            schedule_frame: null,
+            schedule_hour: null,
+            schedule_minute: 0,
+          },
+          daily: {
+            schedule_day: null,
+            schedule_frame: null,
+          },
+          weekly: {
+            schedule_day: defaultDay,
+            schedule_frame: null,
+          },
+          monthly: {
+            schedule_frame: "first",
+            schedule_day: defaultDay,
+          },
+        };
 
-  return (
-    <Box lh="41px" display="flex" style={{ flexWrap: "wrap", gap: ".5rem" }}>
-      <ScheduleBody
-        schedule={schedule}
-        handleChangeProperty={handleChangeProperty}
-        scheduleOptions={scheduleOptions}
-        timezone={timezone}
-        textBeforeInterval={verb}
-        textBeforeSendTime={textBeforeSendTime}
-        minutesOnHourPicker={minutesOnHourPicker}
-      />
-    </Box>
-  );
-};
+        newSchedule = pick(newSchedule, val => val !== undefined);
+
+        if (name === "schedule_type") {
+          newSchedule = {
+            ...defaults[value as ScheduleType],
+            ...newSchedule,
+          };
+        } else if (name === "schedule_frame") {
+          // when the monthly schedule frame is the 15th, clear out the schedule_day
+          if (value === "mid") {
+            newSchedule = { ...newSchedule, schedule_day: null };
+          } else {
+            // first or last, needs a day of the week
+            newSchedule = {
+              schedule_day: newSchedule.schedule_day || defaultDay,
+              ...newSchedule,
+            };
+          }
+        }
+
+        onScheduleChange(newSchedule, { name, value });
+      },
+      [onScheduleChange, schedule],
+    );
+
+    return (
+      <Box lh="41px" display="flex" style={{ flexWrap: "wrap", gap: ".5rem" }}>
+        <ScheduleBody
+          schedule={schedule}
+          handleChangeProperty={handleChangeProperty}
+          scheduleOptions={scheduleOptions}
+          timezone={timezone}
+          textBeforeInterval={verb}
+          textBeforeSendTime={textBeforeSendTime}
+          minutesOnHourPicker={minutesOnHourPicker}
+        />
+      </Box>
+    );
+  },
+);
 
 const ScheduleBody = ({
   schedule,
@@ -128,6 +145,7 @@ const ScheduleBody = ({
 }: Omit<ScheduleProps, "onScheduleChange"> & {
   handleChangeProperty: HandleChangeProperty;
 }) => {
+  console.log("ScheduleBody rendered");
   const itemProps = {
     schedule,
     handleChangeProperty,
@@ -139,7 +157,7 @@ const ScheduleBody = ({
     scheduleOptions,
   };
 
-  const HowOften = () => (
+  const Frequency = () => (
     <ScheduleTypeSelect key="how-often" {...scheduleTypeSelectProps} />
   );
   const Day = () => <DayPicker {...itemProps} />;
@@ -173,7 +191,7 @@ const ScheduleBody = ({
           <>{
             // prettier-ignore
             c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes").
-            jt`${verb} ${(<HowOften />)} at ${(<Minute />)} minutes past the hour`
+            jt`${verb} ${(<Frequency />)} at ${(<Minute />)} minutes past the hour`
           }</>
         );
       } else {
@@ -181,7 +199,7 @@ const ScheduleBody = ({
           <>{
             // prettier-ignore
             c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'").
-            jt`${verb} ${(<HowOften />)}`
+            jt`${verb} ${(<Frequency />)}`
           }</>
         );
       }
@@ -190,25 +208,27 @@ const ScheduleBody = ({
         <>{
           // prettier-ignore
           c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'").
-        jt`${verb} ${(<HowOften />)} at ${(<Hour />)}`
+          jt`${verb} ${(<Frequency />)} at ${(<Hour />)}`
         }</>
       );
     case "weekly":
       return (
-        <>{c(
-          "{0} is a verb like 'Send', {1} is an adverb like 'hourly' or 'weekly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
-        ).jt`${verb} ${(<HowOften />)} on ${(<Day />)} at ${(<Hour />)}`}</>
+        <>{
+          // prettier-ignore
+          c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'")
+          .jt`${verb} ${(<Frequency />)} on ${(<Day />)} at ${(<Hour />)}`
+        }</>
       );
     case "monthly":
       return (
-        <>{c(
-          "{0} is a verb like 'Send', {1} is an adverb like 'hourly' or 'weekly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
-        ).jt`${verb} ${(<HowOften />)} on the ${(<Month />)} at ${(
-          <Hour />
-        )}`}</>
+        <>{
+          // prettier-ignore
+          c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'")
+          .jt`${verb} ${(<Frequency />)} on the ${(<Month />)} at ${(<Hour />)}`
+        }</>
       );
     default:
-      return <></>;
+      return null;
   }
 };
 

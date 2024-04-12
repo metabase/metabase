@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -39,6 +39,7 @@ import { DurationUnit } from "metabase-types/api";
 import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
 import { rootId, Strategies, strategyValidationSchema } from "../strategies";
 import { cronToScheduleSettings, scheduleSettingsToCron } from "../utils";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 export const StrategyForm = ({
   targetId,
@@ -181,31 +182,27 @@ const StrategyFormBody = ({
 
 const ScheduleStrategyFormFields = () => {
   const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
-
-  console.log('values.schedule', values.schedule);
   const initialSchedule = cronToScheduleSettings(values.schedule);
-
-  console.log('initialSchedule', initialSchedule);
+  console.log("form fields rendered");
   const [schedule, setSchedule] = useState<ScheduleSettings>(
     initialSchedule || {},
   );
   if (!initialSchedule) {
-    // Show custom cron input
-    return (
-      <>
-        (Show custom cron input here since we can&apos;t convert the expression)
-      </>
-    );
+    return <LoadingAndErrorWrapper error="Error: Cannot interpret schedule" />;
   }
+  const onScheduleChange = useCallback(
+    (nextSchedule: ScheduleSettings) => {
+      setSchedule(nextSchedule);
+      const cron = scheduleSettingsToCron(nextSchedule);
+      setFieldValue("schedule", cron);
+    },
+    [setFieldValue, setSchedule, schedule, initialSchedule],
+  );
   return (
     <Schedule
       schedule={schedule}
       scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
-      onScheduleChange={(nextSchedule: ScheduleSettings) => {
-        setSchedule(nextSchedule);
-        const cron = scheduleSettingsToCron(nextSchedule);
-        setFieldValue("schedule", cron);
-      }}
+      onScheduleChange={onScheduleChange}
       textBeforeInterval={t`Invalidate`}
     />
   );
