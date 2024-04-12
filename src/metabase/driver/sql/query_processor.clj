@@ -700,7 +700,7 @@
         ;; sanity check: shouldn't be using this function if we don't have any breakouts, we should have just done
         ;; `:count` or `:sum` (see `->honeysql` methods below)
          _                 (assert (pos? num-breakouts)
-                                   "we should be compiling cumulative count/sum as regular count/sum, with no breakouts")
+                                   "these window functions require a breakout")
         ;; Only calculate this if it's needed, it won't be for drivers that support ordering by col numbers when we only
         ;; have one breakout.
          group-bys         (:group-by (apply-top-level-clause driver :breakout {} *inner-query*))
@@ -795,6 +795,11 @@
 (defmethod ->honeysql [:sql :offset]
   [driver [_offset _opts expr n]]
   {:pre [(integer? n) ((some-fn pos-int? neg-int?) n)]} ; offset not allowed to be zero
+  ;; this is a temporary thing, I am planning on adding support for `Offset()` as a plain expression, without a
+  ;; breakout, in the next week or so -- Cam 4/12/2024
+  (when (empty? (:brekaout *inner-query*))
+    (throw (ex-info (tru "Offset() currently requires a breakout")
+                    {:type qp.error-type/invalid-query})))
   (window-aggregation-over-rows
    driver
    (let [[f n]     (if (pos? n)
