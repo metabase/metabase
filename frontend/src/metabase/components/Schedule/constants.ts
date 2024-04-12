@@ -24,12 +24,12 @@ export const optionNameTranslations = {
   monthly: c("adverb").t`monthly`,
 };
 
-export type DayOfWeek = {
+export type Weekday = {
   label: string;
   value: ScheduleDayType;
 };
 
-export const daysOfTheWeek: DayOfWeek[] = [
+export const weekdays: Weekday[] = [
   { label: t`Sunday`, value: "sun" },
   { label: t`Monday`, value: "mon" },
   { label: t`Tuesday`, value: "tue" },

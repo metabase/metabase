@@ -8,10 +8,11 @@ import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
 import {
   AutoWidthSelect,
-  DayPicker,
-  HourPicker,
-  MinutePicker,
-  MonthlyPicker,
+  SelectWeekday,
+  SelectHour,
+  SelectMinute,
+  SelectFrame,
+  SelectWeekdayOfMonth,
 } from "./components";
 import { defaultDay, optionNameTranslations } from "./constants";
 import type { HandleChangeProperty, ScheduleChangeProp } from "./types";
@@ -81,7 +82,7 @@ export const Schedule = ({
         },
       };
 
-      newSchedule = pick(newSchedule, val => val !== undefined);
+      newSchedule = pick(newSchedule, val => val);
 
       if (name === "schedule_type") {
         newSchedule = {
@@ -143,30 +144,21 @@ const ScheduleBody = ({
     scheduleOptions,
   };
 
-  const Frequency = () => (
+  const Frequency = (
     <ScheduleTypeSelect key="how-often" {...scheduleTypeSelectProps} />
   );
-  const Day = () => <DayPicker {...itemProps} />;
-  const Hour = () => (
-    <HourPicker
+  const Weekday = <SelectWeekday {...itemProps} />;
+  const Hour = (
+    <SelectHour
       schedule={schedule}
+      handleChangeProperty={handleChangeProperty}
       timezone={timezone || "UTC"}
       textBeforeSendTime={textBeforeSendTime}
-      handleChangeProperty={handleChangeProperty}
     />
   );
-  const Minute = () => (
-    <MinutePicker
-      schedule={schedule}
-      handleChangeProperty={handleChangeProperty}
-    />
-  );
-  const Month = () => (
-    <MonthlyPicker
-      schedule={schedule}
-      handleChangeProperty={handleChangeProperty}
-    />
-  );
+  const Minute = <SelectMinute {...itemProps} />;
+  const Frame = <SelectFrame {...itemProps} />;
+  const WeekdayOfMonth = <SelectWeekdayOfMonth {...itemProps} />;
 
   const scheduleType = schedule.schedule_type;
 
@@ -177,7 +169,7 @@ const ScheduleBody = ({
           <>{
             // prettier-ignore
             c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes").
-            jt`${verb} ${(<Frequency />)} at ${(<Minute />)} minutes past the hour`
+            jt`${verb} ${Frequency} at ${Minute} minutes past the hour`
           }</>
         );
       } else {
@@ -185,7 +177,7 @@ const ScheduleBody = ({
           <>{
             // prettier-ignore
             c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'").
-            jt`${verb} ${(<Frequency />)}`
+            jt`${verb} ${Frequency}`
           }</>
         );
       }
@@ -194,7 +186,7 @@ const ScheduleBody = ({
         <>{
           // prettier-ignore
           c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'").
-          jt`${verb} ${(<Frequency />)} at ${(<Hour />)}`
+          jt`${verb} ${Frequency} at ${Hour}`
         }</>
       );
     case "weekly":
@@ -202,17 +194,27 @@ const ScheduleBody = ({
         <>{
           // prettier-ignore
           c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'")
-          .jt`${verb} ${(<Frequency />)} on ${(<Day />)} at ${(<Hour />)}`
+          .jt`${verb} ${Frequency} on ${Weekday} at ${Hour}`
         }</>
       );
     case "monthly":
-      return (
-        <>{
-          // prettier-ignore
-          c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'")
-          .jt`${verb} ${(<Frequency />)} on the ${(<Month />)} at ${(<Hour />)}`
-        }</>
-      );
+      if (schedule.schedule_frame === "mid") {
+        return (
+          <>{
+            // prettier-ignore
+            c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is the noun '15th' (as in 'the 15th of the month'), {3} is a time like '12:00pm'")
+          .jt`${verb} ${Frequency} on the ${Frame} at ${Hour}`
+          }</>
+        );
+      } else {
+        return (
+          <>{
+            // prettier-ignore
+            c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'")
+            .jt`${verb} ${Frequency} on the ${Frame} ${WeekdayOfMonth} at ${Hour}`
+          }</>
+        );
+      }
     default:
       return null;
   }

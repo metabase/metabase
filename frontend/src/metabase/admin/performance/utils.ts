@@ -1,13 +1,13 @@
+import { weekdays } from "metabase/components/Schedule/constants";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
   ScheduleSettings,
   ScheduleType,
 } from "metabase-types/api";
-import { daysOfTheWeek } from "metabase/components/Schedule/constants";
 
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
-  const index = daysOfTheWeek.findIndex(o => o.value === day);
+  const index = weekdays.findIndex(o => o.value === day);
   if (index === -1) {
     throw new Error(`Invalid day: ${day}`);
   }
@@ -55,27 +55,25 @@ export const cronToScheduleSettings = (
   }
 
   // Simplify
-  cron = cron.replace("?", "*");
+  const allQuestionMarks = /\?/g;
+  const ALL = "*";
+  cron = cron.replace(allQuestionMarks, ALL);
 
-  const [_second, minute, hour, dayOfMonth, month, dayOfWeek] = cron.split(" ");
+  const [_second, minute, hour, dayOfMonth, month, weekday] = cron.split(" ");
 
-  if (month !== "*") {
+  if (month !== ALL) {
     return null;
   }
   let schedule_type: ScheduleType | undefined;
-  if (dayOfMonth === "*") {
-    if (dayOfWeek === "*") {
-      if (hour === "*") {
-        schedule_type = "hourly";
-      } else {
-        schedule_type = "daily";
-      }
+  if (dayOfMonth === ALL) {
+    if (weekday === ALL) {
+      schedule_type = hour === ALL ? "hourly" : "daily";
     } else {
-      if (dayOfWeek.match(/[#L]/)) {
-        schedule_type = "monthly";
-      } else {
-        schedule_type = "weekly";
-      }
+      // If the weekday part of the cron expression means 'first Monday',
+      // 'second Tuesday', etc., or 'last Monday', 'last Tuesday', etc.,
+      // then the frequency is monthly
+      const oneWeekPerMonth = weekday.match(/[#L]/);
+      schedule_type = oneWeekPerMonth ? "monthly" : "weekly";
     }
   } else {
     schedule_type = "monthly";
@@ -83,26 +81,23 @@ export const cronToScheduleSettings = (
   let schedule_frame: ScheduleFrameType | undefined;
   let schedule_day: ScheduleDayType | undefined;
   if (schedule_type === "monthly") {
-    if (dayOfWeek === "*") {
+    if (weekday === ALL) {
       schedule_frame = frameFromCron[dayOfMonth];
     } else {
       // Split on transition from number to non-number
-      const dayOfWeekParts = dayOfWeek.split(/(?<=\d)(?=\D)/);
-      const day = parseInt(dayOfWeekParts[0]);
-      schedule_day = daysOfTheWeek[day - 1]?.value as ScheduleDayType;
-      if (dayOfMonth === "*") {
-        const frameInCronFormat = dayOfWeekParts[1].replace(/^#/, "");
+      const weekdayParts = weekday.split(/(?<=\d)(?=\D)/);
+      const day = parseInt(weekdayParts[0]);
+      schedule_day = weekdays[day - 1]?.value as ScheduleDayType;
+      if (dayOfMonth === ALL) {
+        const frameInCronFormat = weekdayParts[1].replace(/^#/, "");
         schedule_frame = frameFromCron[frameInCronFormat];
       } else {
         schedule_frame = frameFromCron[dayOfMonth];
       }
     }
   } else {
-    if (dayOfWeek === "*") {
-      schedule_day = undefined;
-    } else {
-      schedule_day = daysOfTheWeek[parseInt(dayOfWeek) - 1]
-        ?.value as ScheduleDayType;
+    if (weekday !== ALL) {
+      schedule_day = weekdays[parseInt(weekday) - 1]?.value as ScheduleDayType;
     }
   }
   return {

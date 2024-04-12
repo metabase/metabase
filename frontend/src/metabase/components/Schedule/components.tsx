@@ -11,48 +11,33 @@ import type {
   ScheduleFrameType,
 } from "metabase-types/api";
 
-import { daysOfTheWeek, amAndPM, frames, hours, minutes } from "./constants";
+import { weekdays, amAndPM, frames, hours, minutes } from "./constants";
 import type { HandleChangeProperty } from "./types";
 
 const dayOptions = [
   { label: t`calendar day`, value: "calendar-day" },
-  ...daysOfTheWeek,
+  ...weekdays,
 ];
 
-export const MonthlyPicker = ({
+export const SelectFrame = ({
   schedule,
   handleChangeProperty,
 }: {
   schedule: ScheduleSettings;
   handleChangeProperty: HandleChangeProperty;
 }) => {
-  // TODO: Separate these two pickers since they can appear in different order depending on the localization
   return (
-    <>
-      <AutoWidthSelect
-        value={schedule.schedule_frame}
-        onChange={(value: ScheduleFrameType) =>
-          handleChangeProperty("schedule_frame", value)
-        }
-        data={frames}
-      />
-      {schedule.schedule_frame !== "mid" && (
-        <AutoWidthSelect
-          value={schedule.schedule_day || "calendar-day"}
-          onChange={(value: ScheduleDayType | "calendar-day") =>
-            handleChangeProperty(
-              "schedule_day",
-              value === "calendar-day" ? null : value,
-            )
-          }
-          data={dayOptions}
-        />
-      )}
-    </>
+    <AutoWidthSelect
+      value={schedule.schedule_frame}
+      onChange={(value: ScheduleFrameType) =>
+        handleChangeProperty("schedule_frame", value)
+      }
+      data={frames}
+    />
   );
 };
 
-export const HourPicker = ({
+export const SelectHour = ({
   schedule,
   timezone,
   textBeforeSendTime,
@@ -100,7 +85,7 @@ export const HourPicker = ({
   );
 };
 
-export const DayPicker = ({
+export const SelectWeekday = ({
   schedule,
   handleChangeProperty,
 }: {
@@ -113,12 +98,33 @@ export const DayPicker = ({
       onChange={(value: ScheduleDayType) =>
         handleChangeProperty("schedule_day", value)
       }
-      data={daysOfTheWeek}
+      data={weekdays}
     />
   );
 };
 
-export const MinutePicker = ({
+/** Selects the weekday of the month, e.g. the first Monday of the month
+  "First" is selected via SelectFrame. This component provides the weekday */
+export const SelectWeekdayOfMonth = ({
+  schedule,
+  handleChangeProperty,
+}: {
+  schedule: ScheduleSettings;
+  handleChangeProperty: HandleChangeProperty;
+}) => (
+  <AutoWidthSelect
+    value={schedule.schedule_day || "calendar-day"}
+    onChange={(value: ScheduleDayType | "calendar-day") =>
+      handleChangeProperty(
+        "schedule_day",
+        value === "calendar-day" ? null : value,
+      )
+    }
+    data={dayOptions}
+  />
+);
+
+export const SelectMinute = ({
   schedule,
   handleChangeProperty,
 }: {
