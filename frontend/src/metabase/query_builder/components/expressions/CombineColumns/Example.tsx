@@ -22,7 +22,9 @@ export const Example = ({ example }: Props) => {
         shadow="none"
         withBorder
       >
-        <Text size="sm">{example}</Text>
+        <Text size="sm" style={{ fontFamily: "Monaco, monospace" }}>
+          {example}
+        </Text>
       </Card>
     </Stack>
   );
