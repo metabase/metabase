@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { c } from "ttag";
 import { pick } from "underscore";
 
@@ -14,12 +15,32 @@ import {
 } from "./components";
 import { defaultDay, optionNameTranslations } from "./constants";
 import type { HandleChangeProperty, ScheduleChangeProp } from "./types";
-import { memo, useCallback } from "react";
 
 const getOptionName = (option: ScheduleType) =>
   optionNameTranslations[option] || capitalize(option);
 
 export interface ScheduleProps {
+  schedule: ScheduleSettings;
+  scheduleOptions: ScheduleType[];
+  onScheduleChange: (
+    nextSchedule: ScheduleSettings,
+    change: ScheduleChangeProp,
+  ) => void;
+  timezone?: string;
+  textBeforeInterval?: string;
+  textBeforeSendTime?: string;
+  minutesOnHourPicker?: boolean;
+}
+
+export const Schedule = ({
+  schedule,
+  scheduleOptions,
+  timezone,
+  textBeforeInterval: verb,
+  textBeforeSendTime,
+  minutesOnHourPicker,
+  onScheduleChange,
+}: {
   schedule: ScheduleSettings;
   scheduleOptions: ScheduleType[];
   timezone?: string;
@@ -30,109 +51,75 @@ export interface ScheduleProps {
     nextSchedule: ScheduleSettings,
     change: ScheduleChangeProp,
   ) => void;
-}
+}) => {
+  const handleChangeProperty: HandleChangeProperty = useCallback(
+    (name, value) => {
+      let newSchedule: ScheduleSettings = {
+        ...schedule,
+        [name]: value,
+      };
 
-export const Schedule = memo(
-  ({
-    schedule,
-    scheduleOptions,
-    timezone,
-    textBeforeInterval: verb,
-    textBeforeSendTime,
-    minutesOnHourPicker,
-    onScheduleChange,
-  }: {
-    schedule: ScheduleSettings;
-    scheduleOptions: ScheduleType[];
-    timezone?: string;
-    textBeforeInterval?: string;
-    textBeforeSendTime?: string;
-    minutesOnHourPicker?: boolean;
-    onScheduleChange: (
-      nextSchedule: ScheduleSettings,
-      change: ScheduleChangeProp,
-    ) => void;
-  }) => {
-    const props = {
-      schedule,
-      scheduleOptions,
-      timezone,
-      textBeforeInterval: verb,
-      textBeforeSendTime,
-      minutesOnHourPicker,
-      onScheduleChange,
-    };
-    console.log("props", { ...props });
+      // TODO: Not sure these nulls are needed
+      const defaults: Record<string, Partial<ScheduleSettings>> = {
+        hourly: {
+          schedule_day: null,
+          schedule_frame: null,
+          schedule_hour: null,
+          schedule_minute: 0,
+        },
+        daily: {
+          schedule_day: null,
+          schedule_frame: null,
+        },
+        weekly: {
+          schedule_day: defaultDay,
+          schedule_frame: null,
+        },
+        monthly: {
+          schedule_frame: "first",
+          schedule_day: defaultDay,
+        },
+      };
 
-    const handleChangeProperty: HandleChangeProperty = useCallback(
-      (name, value) => {
-        let newSchedule: ScheduleSettings = {
-          ...schedule,
-          [name]: value,
+      newSchedule = pick(newSchedule, val => val !== undefined);
+
+      if (name === "schedule_type") {
+        newSchedule = {
+          ...defaults[value as ScheduleType],
+          ...newSchedule,
         };
-
-        // TODO: Not sure these nulls are needed
-        const defaults: Record<string, Partial<ScheduleSettings>> = {
-          hourly: {
-            schedule_day: null,
-            schedule_frame: null,
-            schedule_hour: null,
-            schedule_minute: 0,
-          },
-          daily: {
-            schedule_day: null,
-            schedule_frame: null,
-          },
-          weekly: {
-            schedule_day: defaultDay,
-            schedule_frame: null,
-          },
-          monthly: {
-            schedule_frame: "first",
-            schedule_day: defaultDay,
-          },
-        };
-
-        newSchedule = pick(newSchedule, val => val !== undefined);
-
-        if (name === "schedule_type") {
+      } else if (name === "schedule_frame") {
+        // when the monthly schedule frame is the 15th, clear out the schedule_day
+        if (value === "mid") {
+          newSchedule = { ...newSchedule, schedule_day: null };
+        } else {
+          // first or last, needs a day of the week
           newSchedule = {
-            ...defaults[value as ScheduleType],
+            schedule_day: newSchedule.schedule_day || defaultDay,
             ...newSchedule,
           };
-        } else if (name === "schedule_frame") {
-          // when the monthly schedule frame is the 15th, clear out the schedule_day
-          if (value === "mid") {
-            newSchedule = { ...newSchedule, schedule_day: null };
-          } else {
-            // first or last, needs a day of the week
-            newSchedule = {
-              schedule_day: newSchedule.schedule_day || defaultDay,
-              ...newSchedule,
-            };
-          }
         }
+      }
 
-        onScheduleChange(newSchedule, { name, value });
-      },
-      [onScheduleChange, schedule],
-    );
+      onScheduleChange(newSchedule, { name, value });
+    },
+    [onScheduleChange, schedule],
+  );
 
-    return (
-      <Box lh="41px" display="flex" style={{ flexWrap: "wrap", gap: ".5rem" }}>
-        <ScheduleBody
-          schedule={schedule}
-          handleChangeProperty={handleChangeProperty}
-          scheduleOptions={scheduleOptions}
-          timezone={timezone}
-          textBeforeInterval={verb}
-          textBeforeSendTime={textBeforeSendTime}
-          minutesOnHourPicker={minutesOnHourPicker}
-        />
-      </Box>
-    );
-  },
-);
+  return (
+    <Box lh="41px" display="flex" style={{ flexWrap: "wrap", gap: ".5rem" }}>
+      <ScheduleBody
+        schedule={schedule}
+        handleChangeProperty={handleChangeProperty}
+        scheduleOptions={scheduleOptions}
+        timezone={timezone}
+        textBeforeInterval={verb}
+        textBeforeSendTime={textBeforeSendTime}
+        minutesOnHourPicker={minutesOnHourPicker}
+      />
+    </Box>
+  );
+};
 
 const ScheduleBody = ({
   schedule,
@@ -145,7 +132,6 @@ const ScheduleBody = ({
 }: Omit<ScheduleProps, "onScheduleChange"> & {
   handleChangeProperty: HandleChangeProperty;
 }) => {
-  console.log("ScheduleBody rendered");
   const itemProps = {
     schedule,
     handleChangeProperty,
