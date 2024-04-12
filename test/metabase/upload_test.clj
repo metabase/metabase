@@ -486,9 +486,10 @@
 (defn do-with-upload-table! [table thunk]
   (try (thunk table)
        (finally
-         (driver/drop-table! driver/*driver*
-                             (:db_id table)
-                             (#'upload/table-identifier table)))))
+         (when (not= driver/*driver* :redshift) ; don't drop redshift tables until the end of the session because they cause flakes
+           (driver/drop-table! (driver/*driver*)
+                               (:db_id table)
+                               (#'upload/table-identifier table))))))
 
 (defn- table->card [table]
   (t2/select-one :model/Card :table_id (:id table)))
@@ -1233,7 +1234,7 @@
                              :file     file})
                (finally
                  ;; Drop the table in the testdb if a new one was created.
-                 (when new-table
+                 (when (and new-table (not= driver/*driver* :redshift)) ; don't drop redshift tables until the end of the session because they cause flakes
                    (driver/drop-table! driver/*driver*
                                        (mt/id)
                                        (#'upload/table-identifier new-table))))))))))
