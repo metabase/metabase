@@ -6,7 +6,7 @@ import CS from "metabase/css/core/index.css";
 import type { updateQuestion } from "metabase/query_builder/actions";
 import type Question from "metabase-lib/v1/Question";
 
-import QuestionDataSelector from "../../QuestionDataSelector";
+import QuestionDataSelector from "../../QuestionDataSelector/QuestionDataSelector";
 
 type Props = {
   question: Question;

@@ -2,6 +2,8 @@
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import * as Lib from "metabase-lib";
 
+import QuestionDataSelectorS from "./QuestionDataSelector.module.css";
+
 export default function QuestionDataSelector({
   question,
   updateQuestion,
@@ -17,7 +19,7 @@ export default function QuestionDataSelector({
 
   return (
     <DataSourceSelector
-      containerClassName="DataPopoverContainer"
+      containerClassName={QuestionDataSelectorS.DataPopoverContainer}
       hasTableSearch
       databaseQuery={{ saved: true }}
       setSourceTableFn={handleTableChange}
