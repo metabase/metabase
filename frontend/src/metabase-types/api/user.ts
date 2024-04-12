@@ -116,3 +116,17 @@ export type UpdatePasswordRequest = {
   password: string;
   old_password?: string;
 };
+
+export type ListUsersRequest = {
+  status?: "deactivated" | "all";
+  query?: string;
+  group_id?: number;
+  include_deactivated?: boolean;
+};
+
+export type ListUsersResponse = {
+  data: User[];
+  total: number;
+  limit: number | null;
+  offset: number | null;
+};

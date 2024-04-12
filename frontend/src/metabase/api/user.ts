@@ -1,6 +1,8 @@
 import type {
   CreateUserResponse,
   CreateUserRequest,
+  ListUsersRequest,
+  ListUsersResponse,
   UpdatePasswordRequest,
 } from "metabase-types/api";
 
@@ -9,6 +11,21 @@ import { Api } from "./api";
 
 export const userApi = Api.injectEndpoints({
   endpoints: builder => ({
+    listUsers: builder.query<ListUsersResponse, ListUsersRequest | null>({
+      query: body => ({
+        method: "GET",
+        url: "/api/user",
+        body,
+      }),
+      // FIXME: providesTags is needed
+    }),
+    listUserRecipients: builder.query({
+      query: () => ({
+        method: "GET",
+        url: "/api/user/recipients",
+      }),
+      // FIXME: is providesTags needed ??
+    }),
     createUser: builder.mutation<CreateUserResponse, CreateUserRequest>({
       query: body => ({
         method: "POST",
@@ -28,4 +45,9 @@ export const userApi = Api.injectEndpoints({
   }),
 });
 
-export const { useCreateUserMutation, useUpdatePasswordMutation } = userApi;
+export const {
+  useListUsersQuery,
+  useListUserRecipientsQuery,
+  useCreateUserMutation,
+  useUpdatePasswordMutation,
+} = userApi;

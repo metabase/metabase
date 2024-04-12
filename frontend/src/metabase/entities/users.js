@@ -2,7 +2,6 @@ import { assocIn } from "icepick";
 
 import { userApi } from "metabase/api";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { GET } from "metabase/lib/api";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { generatePassword } from "metabase/lib/security";
 import MetabaseSettings from "metabase/lib/settings";
@@ -22,8 +21,10 @@ function loadMemberships() {
   return require("metabase/admin/people/people").loadMemberships();
 }
 
-const getUserList = GET("/api/user");
-const getRecipientsList = GET("/api/user/recipients");
+const getUserList = (query = {}, dispatch) =>
+  entityCompatibleQuery(query, dispatch, userApi.endpoints.listUsers);
+const getRecipientsList = dispatch =>
+  entityCompatibleQuery({}, dispatch, userApi.endpoints.listUserRecipients);
 
 /**
  * @deprecated use "metabase/api" instead
@@ -36,8 +37,10 @@ const Users = createEntity({
   path: "/api/user",
 
   api: {
-    list: ({ recipients = false, ...args }) =>
-      recipients ? getRecipientsList() : getUserList(args),
+    list:
+      ({ recipients = false, ...args }) =>
+      dispatch =>
+        recipients ? getRecipientsList(dispatch) : getUserList(args, dispatch),
     create: (entityQuery, dispatch) =>
       entityCompatibleQuery(
         entityQuery,
