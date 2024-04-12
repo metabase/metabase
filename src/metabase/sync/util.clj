@@ -343,8 +343,8 @@
   (t2/reducible-select :model/Table
                        :db_id (u/the-id database-or-id)
                        {:where [:and sync-tables-clause
-                                (when schema-names [:in :schema schema-names])
-                                (when table-names [:in :name table-names])]}))
+                                (when (seq schema-names) [:in :schema schema-names])
+                                (when (seq table-names) [:in :name table-names])]}))
 
 (defn db->sync-schemas
   "Returns all the Schemas that have their metadata sync'd for `database-or-id`."
