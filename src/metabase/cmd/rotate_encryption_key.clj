@@ -14,7 +14,7 @@
   [to-key]
   (when-not (mdb/db-is-set-up?)
     (log/warnf "Database not found. Metabase will create a new database at %s and proceeed encrypting." "2")
-    (mdb/setup-db!))
+    (mdb/setup-db! :create-sample-content? true))
   (log/infof "Connected to: %s | %s" (mdb/db-type) (mdb/db-file))
   (let [make-encrypt-fn  (fn [maybe-encrypt-fn]
                            (if to-key

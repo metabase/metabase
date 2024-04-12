@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.api.permissions :as api.permissions]
    [metabase.api.permissions-test-util :as perm-test-util]
+   [metabase.config :as config]
    [metabase.models
     :refer [Database
             Permissions
@@ -319,7 +320,8 @@
                                                           [:user_id          ms/PositiveInt]
                                                           [:is_group_manager :boolean]]]]
                     result))
-        (is (= (t2/select-fn-set :id 'User) (set (keys result))))))))
+        (is (= (t2/select-fn-set :id 'User)
+               (conj (set (keys result)) config/internal-mb-user-id)))))))
 
 (deftest add-group-membership-test
   (testing "POST /api/permissions/membership"
