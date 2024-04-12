@@ -37,10 +37,8 @@ const Users = createEntity({
   path: "/api/user",
 
   api: {
-    list:
-      ({ recipients = false, ...args }) =>
-      dispatch =>
-        recipients ? getRecipientsList(dispatch) : getUserList(args, dispatch),
+    list: ({ recipients = false, ...args }, dispatch) =>
+      recipients ? getRecipientsList(dispatch) : getUserList(args, dispatch),
     create: (entityQuery, dispatch) =>
       entityCompatibleQuery(
         entityQuery,
