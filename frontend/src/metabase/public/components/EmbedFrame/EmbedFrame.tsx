@@ -35,7 +35,9 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import "./EmbedFrame.module.css";
+import ParameterValueWidgetS from "../../../parameters/components/ParameterValueWidget.module.css";
+
+import EmbedFrameS from "./EmbedFrame.module.css";
 import type { FooterVariant } from "./EmbedFrame.styled";
 import {
   ActionButtonsContainer,
@@ -84,7 +86,7 @@ type Props = OwnProps &
 interface HashOptions {
   bordered?: boolean;
   titled?: boolean;
-  theme?: string;
+  theme?: "night" | "transparent";
   hide_parameters?: string;
   hide_download_button?: boolean;
 }
@@ -94,6 +96,20 @@ function mapStateToProps(state: State) {
     hasEmbedBranding: !getSetting(state, "hide-embed-branding?"),
   };
 }
+
+const EMBED_THEME_CLASSES = (theme: HashOptions["theme"]) => {
+  if (!theme) {
+    return null;
+  }
+
+  if (theme === "night") {
+    return cx(ParameterValueWidgetS.ThemeNight, EmbedFrameS.ThemeNight);
+  }
+
+  if (theme === "transparent") {
+    return EmbedFrameS.ThemeTransparent;
+  }
+};
 
 function EmbedFrame({
   className,
@@ -175,14 +191,16 @@ function EmbedFrame({
     <Root
       hasScroll={hasFrameScroll}
       isBordered={bordered}
-      className={cx("EmbedFrame", className, {
-        [`Theme--${theme}`]: !!theme,
-      })}
+      className={cx(
+        EmbedFrameS.EmbedFrame,
+        className,
+        theme ? EMBED_THEME_CLASSES(theme) : null,
+      )}
       data-testid="embed-frame"
     >
       <ContentContainer>
         {hasHeader && (
-          <Header className="EmbedFrame-header">
+          <Header className={EmbedFrameS.EmbedFrameHeader}>
             {finalName && (
               <TitleAndDescriptionContainer>
                 <FixedWidthContainer
@@ -244,7 +262,10 @@ function EmbedFrame({
         <Body>{children}</Body>
       </ContentContainer>
       {showFooter && (
-        <Footer className="EmbedFrame-footer" variant={footerVariant}>
+        <Footer
+          className={EmbedFrameS.EmbedFrameFooter}
+          variant={footerVariant}
+        >
           {hasEmbedBranding && (
             <LogoBadge variant={footerVariant} dark={theme === "night"} />
           )}
