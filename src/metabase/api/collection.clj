@@ -420,7 +420,7 @@
                      [:= :c.type (h2x/literal "metric")]
 
                      [:= :c.type (h2x/literal "question")])]}
-      (cond-> (= :dataset card-type)
+      (cond-> (= :model card-type)
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
       (sql.helpers/where (pinned-state->clause pinned-state))))
