@@ -51,6 +51,7 @@ export default class LegendItem extends Component {
 
     return (
       <span
+        data-testid="legend-item"
         className={cx(
           className,
           LegendS.LegendItem,
