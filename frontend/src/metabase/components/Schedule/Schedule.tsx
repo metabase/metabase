@@ -198,9 +198,12 @@ const ScheduleBody = ({
   } else if (scheduleType === "daily") {
     // e.g. "Send daily at 12:00pm"
     return (
-      <>{c(
-        "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'",
-      ).jt`${verb} ${Frequency} at ${Hour}`}</>
+      <>
+        {c(
+          "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'",
+        ).jt`${verb} ${Frequency} at ${Hour}`}
+        <TimeDetails />
+      </>
     );
   } else if (scheduleType === "weekly") {
     const Weekday = <SelectWeekday key="weekday" {...itemProps} />;
