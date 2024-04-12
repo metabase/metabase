@@ -18,6 +18,8 @@ import {
   useFormContext,
 } from "metabase/forms";
 import { color } from "metabase/lib/colors";
+import { useSelector } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
 import {
   Button,
   Group,
@@ -155,6 +157,9 @@ const ScheduleStrategyFormFields = () => {
   const [schedule, setSchedule] = useState<ScheduleSettings>(
     initialSchedule || {},
   );
+  const timezone = useSelector(state =>
+    getSetting(state, "report-timezone-short"),
+  );
   const onScheduleChange = useCallback(
     (nextSchedule: ScheduleSettings) => {
       setSchedule(nextSchedule);
@@ -171,7 +176,8 @@ const ScheduleStrategyFormFields = () => {
       schedule={schedule}
       scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
       onScheduleChange={onScheduleChange}
-      textBeforeInterval={t`Invalidate`}
+      verb={t`Invalidate`}
+      timezone={timezone}
     />
   );
 };

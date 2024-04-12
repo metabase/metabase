@@ -37,11 +37,13 @@ export const SelectHour = ({
   timezone,
   textBeforeSendTime,
   updateSchedule,
+  showTimezone = true,
 }: {
   schedule: ScheduleSettings;
   timezone: string;
   textBeforeSendTime?: string;
   updateSchedule: UpdateSchedule;
+  showTimezone?: boolean;
 }) => {
   const hourOfDay = isNaN(schedule.schedule_hour as number)
     ? 8
@@ -69,12 +71,13 @@ export const SelectHour = ({
           data={amAndPM}
           fullWidth
         />
-        {textBeforeSendTime && (
-          <Box mt="1rem" color="text-medium">
-            {textBeforeSendTime} {hour === 0 ? 12 : hour}:00{" "}
-            {amPm ? "PM" : "AM"} {timezone}, <MetabaseTimeZone />.
-          </Box>
-        )}
+        {textBeforeSendTime ||
+          (showTimezone && (
+            <Box mt="1rem" color="text-medium">
+              {textBeforeSendTime} {hour === 0 ? 12 : hour}:00{" "}
+              {amPm ? "PM" : "AM"} {timezone}, <MetabaseTimeZone />.
+            </Box>
+          ))}
       </Group>
     </>
   );
