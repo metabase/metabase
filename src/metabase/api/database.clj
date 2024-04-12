@@ -797,14 +797,11 @@
     ;; "Only when adding a new filter" or "Never, I'll do it myself"
     ;; -> Sync metadata only
     [true false _]
-    ;; schedules should only contains metadata_sync, but FE might sending both
-    ;; so we just manually dissoc it here
     (-> schedules
         (sync.schedules/schedule-map->cron-strings)
-        ;; make sure the schedule for :cache_field_values_schedule is nil
-        ;; in case FE still send a schedule for it
+        ;; schedules should only contains metadata_sync, but FE might sending both
+        ;; so we just manually nullify it here
         (assoc :cache_field_values_schedule nil))))
-
 
 (api/defendpoint POST "/"
   "Add a new `Database`."

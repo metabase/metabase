@@ -268,16 +268,18 @@
         new-trigger                         (trigger database task-info)
         ;; there should be only one schedule per task per DB
         existing-trigger-with-same-schedule (when new-trigger
-                                              (some #(when (and (= (:key %) (.. new-trigger getKey getName))
-                                                                (= (:schedule %) (cron-schedule database task-info)))
-                                                       %)
-                                                    (:triggers job)))]
+                                              (let [trigger-key   (.. new-trigger getKey getName)
+                                                    task-schedule (cron-schedule database task-info)]
+                                                (some #(when (and (= (:key %) trigger-key)
+                                                                  (= (:schedule %) task-schedule))
+                                                         %)
+                                                      (:triggers job))))]
     (cond
      ;; no new schedule
      ;; delete the existing trigger
      (nil? new-trigger)
      (do
-      (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed."
+      (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed. No new schedule is created."
                  (:name task-info)
                  (:name database))
       (delete-trigger! database task-info))
@@ -286,12 +288,15 @@
      (and (some? new-trigger)
           (nil? existing-trigger-with-same-schedule))
      (do
-      (log/infof "Trigger for \"%s\" of Database \"%s\" is now \"%s\""
-                 (:name task-info)
-                 (:name database)
-                 (cron-schedule database task-info))
-      ;; delete all existing triggers just to be sure
-      (delete-trigger! database task-info)
+      (if (delete-trigger! database task-info)
+        (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed. The new schedule is now: \"%s\""
+                   (:name task-info)
+                   (:name database)
+                   (cron-schedule database task-info))
+        (log/infof "A trigger for \"%s\" of Database \"%s\" has been screated with schedule: \"%s\""
+                   (:name task-info)
+                   (:name database)
+                   (cron-schedule database task-info)))
       (task/add-trigger! new-trigger))
 
      ;; don't need to do anything as the existing trigger matches the new schedule

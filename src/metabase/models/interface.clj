@@ -470,7 +470,7 @@
 
 ;; --- helper fns
 (defn row-with-changes
-  "The object merged with the changes in pre-update hooks.
+  "The row merged with the changes in pre-update hooks.
   This is to match the input of pre-update for toucan1 methods"
   [row]
   (t2.protocols/with-current row (merge (t2.model/primary-key-values-map row)
