@@ -2,9 +2,10 @@ import styled from "@emotion/styled";
 
 import { alpha, color } from "metabase/lib/colors";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
+import { defaultFontFiles } from "metabase/styled-components/fonts";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
-export const SdkContentWrapper = styled.div<{ font: string }>`
+export const SdkContentWrapper = styled.div<{ font: string; baseUrl?: string }>`
   --default-font-family: "${({ font }) => font}";
   --color-brand: ${color("brand")};
   --color-brand-alpha-04: ${alpha("brand", 0.04)};
@@ -31,4 +32,6 @@ export const SdkContentWrapper = styled.div<{ font: string }>`
 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  ${({ baseUrl }) => defaultFontFiles({ baseUrl })}
 `;

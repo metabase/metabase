@@ -3,6 +3,7 @@ import { css, Global } from "@emotion/react";
 import { alpha, color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
+import { defaultFontFiles } from "metabase/styled-components/fonts";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
 import { getFont, getFontFiles } from "../../selectors";
@@ -19,6 +20,8 @@ export const GlobalStyles = (): JSX.Element => {
       --color-brand-alpha-88: ${alpha("brand", 0.88)};
       --color-focus: ${color("focus")};
     }
+
+    ${defaultFontFiles()}
 
     ${fontFiles?.map(
       file => css`

@@ -6,7 +6,6 @@ import { DEFAULT_FONT } from "embedding-sdk/config";
 import { EmbeddingContext } from "embedding-sdk/context";
 import { useInitData } from "embedding-sdk/hooks";
 import type { SDKConfigType } from "embedding-sdk/types";
-import { FontWrapper } from "metabase/styled-components/FontWrapper";
 
 import { SdkContentWrapper } from "./SdkContentWrapper";
 
@@ -34,10 +33,11 @@ export const AppInitializeController = ({
         setFont,
       }}
     >
-      <SdkContentWrapper font={config.font ?? DEFAULT_FONT}>
-        <FontWrapper baseUrl={config.metabaseInstanceUrl}>
-          {!isInitialized ? <div>{t`Loading…`}</div> : children}
-        </FontWrapper>
+      <SdkContentWrapper
+        baseUrl={config.metabaseInstanceUrl}
+        font={config.font ?? DEFAULT_FONT}
+      >
+        {!isInitialized ? <div>{t`Loading…`}</div> : children}
       </SdkContentWrapper>
     </EmbeddingContext.Provider>
   );
