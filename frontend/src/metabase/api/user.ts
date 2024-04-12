@@ -4,6 +4,7 @@ import type {
   ListUsersRequest,
   ListUsersResponse,
   UpdatePasswordRequest,
+  UserId,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -42,6 +43,12 @@ export const userApi = Api.injectEndpoints({
       }),
       // FIXME: invalidatesTags is maybe needed?
     }),
+    deactivateUser: builder.query<void, { id: UserId }>({
+      query: ({ id }) => ({
+        method: "DELETE",
+        url: `/api/user/${id}`,
+      }),
+    }),
   }),
 });
 
@@ -50,4 +57,5 @@ export const {
   useListUserRecipientsQuery,
   useCreateUserMutation,
   useUpdatePasswordMutation,
+  useDeactivateUserQuery,
 } = userApi;

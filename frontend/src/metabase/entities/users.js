@@ -115,12 +115,18 @@ const Users = createEntity({
         );
         dispatch({ type: PASSWORD_RESET_MANUAL, payload: { id, password } });
       },
-    deactivate: async ({ id }) => {
-      MetabaseAnalytics.trackStructEvent("People Admin", "User Removed");
-      // TODO: move these APIs from services to this file
-      await UserApi.delete({ userId: id });
-      return { type: DEACTIVATE, payload: { id } };
-    },
+    deactivate:
+      ({ id }) =>
+      async dispatch => {
+        MetabaseAnalytics.trackStructEvent("People Admin", "User Removed");
+        // TODO: move these APIs from services to this file
+        await entityCompatibleQuery(
+          { id },
+          dispatch,
+          userApi.endpoints.deactivateUser,
+        );
+        dispatch({ type: DEACTIVATE, payload: { id } });
+      },
     reactivate: async ({ id }) => {
       MetabaseAnalytics.trackStructEvent("People Admin", "User Reactivated");
       // TODO: move these APIs from services to this file
