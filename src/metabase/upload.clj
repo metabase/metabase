@@ -614,18 +614,18 @@
 
 (defn delete-upload!
   "Delete the given table from both the app-db and the customer database."
-  [table]
+  [table & {:keys [archive-cards?]}]
   (let [database   (table/database table)
         driver     (driver.u/database->driver database)
         table-name (table-identifier table)]
     (check-can-delete database table)
-
-    ;; Archive our application data around the table (WIP)
+    ;; Archive our app-db table
     (t2/update! :model/Table :id (:id table) {:active false})
-
-    ;; This doesn't do much of the useful stuff you'd expect, like clean up fields ¯_(ツ)/¯
-    #_(sync/sync-table! (assoc table :active false))
-
+    ;; Archive cards if the option is set. For now we only deactivate cards where this is the primary table.
+    (when archive-cards?
+      (t2/update! :model/Card {:table_id (:id table)} {:active false}))
+    ;; This currently isn't wired up to do anything interesting with inactive cards (yet?) - but be future-proof.
+    (sync/sync-table! (assoc table :active false))
     ;; Delete the table itself from the customer database
     (driver/drop-table! driver (:id database) table-name)
     :done))

@@ -10,11 +10,12 @@
 
 (api/defendpoint DELETE "/table/:id"
   "Delete the given uploaded table from the database."
-  [id :as {_raw-params :params}]
-  {id ms/PositiveInt}
+  [id archive-cards :as {_raw-params :params}]
+  {id            ms/PositiveInt
+   archive-cards [:maybe {:default false} ms/BooleanValue]}
   (try
     (let [table  (api/check-404 (t2/select-one :model/Table :id id))
-          result (upload/delete-upload! table)]
+          result (upload/delete-upload! table :archive-cards? archive-cards)]
       {:status 200
        :body   (= :done result)})
     (catch Throwable e
