@@ -623,7 +623,7 @@
     (t2/update! :model/Table :id (:id table) {:active false})
     ;; Archive cards if the option is set. For now we only deactivate cards where this is the primary table.
     (when archive-cards?
-      (t2/update! :model/Card {:table_id (:id table)} {:active false}))
+      (t2/update! :model/Card {:table_id (:id table)} {:archived true}))
     ;; This currently isn't wired up to do anything interesting with inactive cards (yet?) - but be future-proof.
     (sync/sync-table! (assoc table :active false))
     ;; Delete the table itself from the customer database
