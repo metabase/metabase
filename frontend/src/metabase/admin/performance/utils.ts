@@ -1,3 +1,5 @@
+import { c } from "ttag";
+
 import { weekdays } from "metabase/components/Schedule/constants";
 import type {
   ScheduleDayType,
@@ -115,3 +117,8 @@ const defaultSchedule: ScheduleSettings = {
 };
 
 export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
+
+export const addZeroesToHour = (hour: number) =>
+  c("This is a time like 12:00pm. {0} is the hour part of the time").t`${
+    hour || 12
+  }:00`;

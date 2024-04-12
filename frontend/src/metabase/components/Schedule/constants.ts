@@ -1,6 +1,7 @@
 import { c, t } from "ttag";
 import { times } from "underscore";
 
+import { addZeroesToHour } from "metabase/admin/performance/utils";
 import type { ScheduleDayType } from "metabase-types/api";
 
 export const minutes = times(60, n => ({
@@ -9,9 +10,7 @@ export const minutes = times(60, n => ({
 }));
 
 export const hours = times(12, n => ({
-  label: c("This is a time like 12:00pm. {0} is the hour part of the time").t`${
-    n === 0 ? 12 : n
-  }:00`,
+  label: addZeroesToHour(n),
   value: `${n}`,
 }));
 

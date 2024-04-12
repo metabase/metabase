@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { hourToTwelveHourFormat } from "metabase/admin/performance/utils";
+import {
+  addZeroesToHour,
+  hourToTwelveHourFormat,
+} from "metabase/admin/performance/utils";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import type { SelectProps } from "metabase/ui";
@@ -86,10 +89,12 @@ export const DisplayTimeDetails = ({
   textBeforeSendTime?: string;
 }) => {
   const applicationName = useSelector(getApplicationName);
+  const time = addZeroesToHour(hourToTwelveHourFormat(hour));
+  const amOrPM = amAndPM[amPm].label;
   return (
     <Text w="100%" mt="xs" size="sm" fw="bold" color="text-light">
-      {textBeforeSendTime} {hourToTwelveHourFormat(hour)}:00{" "}
-      {amAndPM[amPm].label} {timezone}, {t`your ${applicationName} timezone`}
+      {textBeforeSendTime} {time} {amOrPM} {timezone},{" "}
+      {t`your ${applicationName} timezone`}
     </Text>
   );
 };
