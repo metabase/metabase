@@ -1,4 +1,4 @@
-import { weekdays } from "metabase/components/Schedule/constants";
+import { Cron, weekdays } from "metabase/components/Schedule/constants";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -24,26 +24,37 @@ const frameFromCron: Record<string, ScheduleFrameType> = {
 };
 
 export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
-  const minute = settings.schedule_minute?.toString() ?? "*";
-  const hour = settings.schedule_hour?.toString() ?? "*";
+  const minute = settings.schedule_minute?.toString() ?? Cron.AllValues;
+  const hour = settings.schedule_hour?.toString() ?? Cron.AllValues;
   let dayOfWeek = settings.schedule_day
     ? dayToCron(settings.schedule_day).toString()
-    : "?";
-  const month = "*";
-  let dayOfMonth = settings.schedule_day ? "?" : "*";
+    : Cron.NoSpecificValue;
+  const month = Cron.AllValues;
+  let dayOfMonth: string = settings.schedule_day
+    ? Cron.NoSpecificValue
+    : Cron.AllValues;
   if (settings.schedule_type === "monthly" && settings.schedule_frame) {
     if (settings.schedule_day) {
-      const cronifiedFrame = frameToCron(settings.schedule_frame).replace(
+      const frameInCronFormat = frameToCron(settings.schedule_frame).replace(
         /^1$/,
         "#1",
       );
-      const cronifiedDay = dayToCron(settings.schedule_day);
-      dayOfWeek = `${cronifiedDay}${cronifiedFrame}`;
+      const dayInCronFormat = dayToCron(settings.schedule_day);
+      dayOfWeek = `${dayInCronFormat}${frameInCronFormat}`;
     } else {
       dayOfMonth = frameToCron(settings.schedule_frame);
     }
   }
-  return `0 ${minute} ${hour} ${dayOfMonth} ${month} ${dayOfWeek}`;
+  const second = "0";
+  const cronExpression = [
+    second,
+    minute,
+    hour,
+    dayOfMonth,
+    month,
+    dayOfWeek,
+  ].join(" ");
+  return cronExpression;
 };
 
 // A return value of null means we couldn't convert the cron to a ScheduleSettings object
@@ -54,20 +65,19 @@ export const cronToScheduleSettings = (
     return defaultSchedule;
   }
 
-  // Simplify
-  const allQuestionMarks = /\?/g;
-  const ALL = "*";
-  cron = cron.replace(allQuestionMarks, ALL);
+  // The Quartz cron library used in the backend distinguishes between 'no specific value' and 'all values',
+  // but for simplicity we can treat them as the same here
+  cron = cron.replace(new RegExp(Cron.NoSpecificValue, "g"), Cron.AllValues);
 
   const [_second, minute, hour, dayOfMonth, month, weekday] = cron.split(" ");
 
-  if (month !== ALL) {
+  if (month !== Cron.AllValues) {
     return null;
   }
   let schedule_type: ScheduleType | undefined;
-  if (dayOfMonth === ALL) {
-    if (weekday === ALL) {
-      schedule_type = hour === ALL ? "hourly" : "daily";
+  if (dayOfMonth === Cron.AllValues) {
+    if (weekday === Cron.AllValues) {
+      schedule_type = hour === Cron.AllValues ? "hourly" : "daily";
     } else {
       // If the weekday part of the cron expression means 'first Monday',
       // 'second Tuesday', etc., or 'last Monday', 'last Tuesday', etc.,
@@ -81,14 +91,14 @@ export const cronToScheduleSettings = (
   let schedule_frame: ScheduleFrameType | undefined;
   let schedule_day: ScheduleDayType | undefined;
   if (schedule_type === "monthly") {
-    if (weekday === ALL) {
+    if (weekday === Cron.AllValues) {
       schedule_frame = frameFromCron[dayOfMonth];
     } else {
       // Split on transition from number to non-number
       const weekdayParts = weekday.split(/(?<=\d)(?=\D)/);
       const day = parseInt(weekdayParts[0]);
       schedule_day = weekdays[day - 1]?.value as ScheduleDayType;
-      if (dayOfMonth === ALL) {
+      if (dayOfMonth === Cron.AllValues) {
         const frameInCronFormat = weekdayParts[1].replace(/^#/, "");
         schedule_frame = frameFromCron[frameInCronFormat];
       } else {
@@ -96,7 +106,7 @@ export const cronToScheduleSettings = (
       }
     }
   } else {
-    if (weekday !== ALL) {
+    if (weekday !== Cron.AllValues) {
       schedule_day = weekdays[parseInt(weekday) - 1]?.value as ScheduleDayType;
     }
   }

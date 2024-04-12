@@ -1,11 +1,9 @@
-import styled from "@emotion/styled";
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { SettingSelect } from "metabase/admin/settings/components/widgets/SettingSelect";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Schedule } from "metabase/components/Schedule/Schedule";
 import type { FormTextInputProps } from "metabase/forms";
@@ -69,11 +67,6 @@ export const StrategyForm = ({
     </FormProvider>
   );
 };
-
-export const StyledSettingSelect = styled(SettingSelect)`
-  width: 125px;
-  margin-top: 12px;
-`;
 
 const StrategyFormBody = ({
   targetId,
@@ -153,7 +146,8 @@ const StrategyFormBody = ({
 
 const ScheduleStrategyFormFields = () => {
   const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
-  const initialSchedule = cronToScheduleSettings(values.schedule);
+  const { schedule: scheduleInCronFormat } = values;
+  const initialSchedule = cronToScheduleSettings(scheduleInCronFormat);
   const [schedule, setSchedule] = useState<ScheduleSettings>(
     initialSchedule || {},
   );
@@ -169,7 +163,11 @@ const ScheduleStrategyFormFields = () => {
     [setFieldValue, setSchedule],
   );
   if (!initialSchedule) {
-    return <LoadingAndErrorWrapper error="Error: Cannot interpret schedule" />;
+    return (
+      <LoadingAndErrorWrapper
+        error={t`Error: Cannot interpret schedule: ${scheduleInCronFormat}`}
+      />
+    );
   }
   return (
     <Schedule

@@ -55,3 +55,8 @@ export const frames = [
 
 export const defaultDay = "mon";
 export const defaultHour = 8;
+
+export enum Cron {
+  AllValues = "*",
+  NoSpecificValue = "?",
+}
