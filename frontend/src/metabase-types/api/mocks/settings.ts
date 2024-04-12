@@ -167,6 +167,7 @@ export const createMockSettings = (
   "enable-public-sharing": false,
   "enable-xrays": false,
   engines: createMockEngines(),
+  "example-dashboard-id": 1,
   "has-user-setup": true,
   "hide-embed-branding?": true,
   "show-static-embed-terms": true,

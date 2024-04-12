@@ -14,7 +14,7 @@ export const EmbedHomepage = () => {
   const dispatch = useDispatch();
   const embeddingAutoEnabled = useSetting("setup-embedding-autoenabled");
   const licenseActiveAtSetup = useSetting("setup-license-active-at-setup");
-  const exampleDashboardId = undefined; // will come from a setting
+  const exampleDashboardId = useSetting("example-dashboard-id");
 
   const interactiveEmbeddingQuickStartUrl = useSelector(state =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
