@@ -11,6 +11,7 @@
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
+   [metabase.models.metric :refer [LegacyMetric]]
    [metabase.models.query :refer [Query]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
@@ -46,6 +47,10 @@
   especially context-bearing forms."
   {:arglists '([instance])}
   mi/model)
+
+(defmethod definition LegacyMetric
+  [metric]
+  (-> metric :definition ((juxt :aggregation :filter))))
 
 (defmethod definition Card
   [card]
@@ -107,6 +112,12 @@
   (filter-visible (t2/select Card
                     :table_id (:id table)
                     :type :metric
+                    :archived false)))
+
+(defn- legacy-metrics-for-table
+  [table]
+  (filter-visible (t2/select LegacyMetric
+                    :table_id (:id table)
                     :archived false)))
 
 (defn- segments-for-table
@@ -237,6 +248,19 @@
 (defmethod related Query
   [query]
   (related (mi/instance Card query)))
+
+(defmethod related LegacyMetric
+  [metric]
+  (let [table (t2/select-one Table :id (:table_id metric))]
+    {:table    table
+     :metrics  (->> table
+                    legacy-metrics-for-table
+                    (rank-by-similarity metric)
+                    interesting-mix)
+     :segments (->> table
+                    segments-for-table
+                    (rank-by-similarity metric)
+                    interesting-mix)}))
 
 (defmethod related Segment
   [segment]
