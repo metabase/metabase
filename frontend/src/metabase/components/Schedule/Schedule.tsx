@@ -8,15 +8,17 @@ import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
 import {
   AutoWidthSelect,
-  SelectWeekday,
-  SelectTime,
-  SelectMinute,
-  SelectFrame,
-  SelectWeekdayOfMonth,
   DisplayTimeDetails,
+  SelectFrame,
+  SelectMinute,
+  SelectTime,
+  SelectWeekday,
+  SelectWeekdayOfMonth,
 } from "./components";
 import { defaultDay, optionNameTranslations } from "./constants";
-import type { UpdateSchedule, ScheduleChangeProp } from "./types";
+import type { ScheduleChangeProp, UpdateSchedule } from "./types";
+
+type ScheduleProperty = keyof ScheduleSettings;
 
 const getOptionName = (option: ScheduleType) =>
   optionNameTranslations[option] || capitalize(option);
@@ -76,7 +78,7 @@ export const Schedule = ({
   ) => void;
 }) => {
   const updateSchedule: UpdateSchedule = useCallback(
-    (field, value) => {
+    (field: ScheduleProperty, value: ScheduleSettings[typeof field]) => {
       let newSchedule: ScheduleSettings = {
         ...schedule,
         [field]: value,
