@@ -17,16 +17,19 @@ const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
 const frameToCron = (frame: ScheduleFrameType) =>
   ({ first: "1", last: "L", mid: "15" }[frame]);
 
-const frameFromCron: Record<string, ScheduleFrameType> = {
-  "15": "mid",
-  "1": "first",
-  L: "last",
+const frameFromCron = (frameInCronFormat: string) => {
+  const map: Record<string, ScheduleFrameType> = {
+    "15": "mid",
+    "1": "first",
+    L: "last",
+  };
+  return map[frameInCronFormat];
 };
 
 export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
   const minute = settings.schedule_minute?.toString() ?? Cron.AllValues;
   const hour = settings.schedule_hour?.toString() ?? Cron.AllValues;
-  let dayOfWeek = settings.schedule_day
+  let weekday = settings.schedule_day
     ? dayToCron(settings.schedule_day).toString()
     : Cron.NoSpecificValue;
   const month = Cron.AllValues;
@@ -40,7 +43,7 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
         "#1",
       );
       const dayInCronFormat = dayToCron(settings.schedule_day);
-      dayOfWeek = `${dayInCronFormat}${frameInCronFormat}`;
+      weekday = `${dayInCronFormat}${frameInCronFormat}`;
     } else {
       dayOfMonth = frameToCron(settings.schedule_frame);
     }
@@ -52,12 +55,12 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
     hour,
     dayOfMonth,
     month,
-    dayOfWeek,
+    weekday,
   ].join(" ");
   return cronExpression;
 };
 
-// A return value of null means we couldn't convert the cron to a ScheduleSettings object
+/** Returns null if we can't convert the cron expression to a ScheduleSettings object */
 export const cronToScheduleSettings = (
   cron: string | null | undefined,
 ): ScheduleSettings | null => {
@@ -79,9 +82,8 @@ export const cronToScheduleSettings = (
     if (weekday === Cron.AllValues) {
       schedule_type = hour === Cron.AllValues ? "hourly" : "daily";
     } else {
-      // If the weekday part of the cron expression means 'first Monday',
-      // 'second Tuesday', etc., or 'last Monday', 'last Tuesday', etc.,
-      // then the frequency is monthly
+      // If the weekday part of the cron expression is something like '1#1' (first Monday),
+      // or '2L' (last Tuesday), then the frequency is monthly
       const oneWeekPerMonth = weekday.match(/[#L]/);
       schedule_type = oneWeekPerMonth ? "monthly" : "weekly";
     }
@@ -92,7 +94,7 @@ export const cronToScheduleSettings = (
   let schedule_day: ScheduleDayType | undefined;
   if (schedule_type === "monthly") {
     if (weekday === Cron.AllValues) {
-      schedule_frame = frameFromCron[dayOfMonth];
+      schedule_frame = frameFromCron(dayOfMonth);
     } else {
       // Split on transition from number to non-number
       const weekdayParts = weekday.split(/(?<=\d)(?=\D)/);
@@ -100,9 +102,9 @@ export const cronToScheduleSettings = (
       schedule_day = weekdays[day - 1]?.value as ScheduleDayType;
       if (dayOfMonth === Cron.AllValues) {
         const frameInCronFormat = weekdayParts[1].replace(/^#/, "");
-        schedule_frame = frameFromCron[frameInCronFormat];
+        schedule_frame = frameFromCron(frameInCronFormat);
       } else {
-        schedule_frame = frameFromCron[dayOfMonth];
+        schedule_frame = frameFromCron(dayOfMonth);
       }
     }
   } else {
