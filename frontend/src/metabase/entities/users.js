@@ -6,7 +6,7 @@ import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { generatePassword } from "metabase/lib/security";
 import MetabaseSettings from "metabase/lib/settings";
 import { UserSchema } from "metabase/schema";
-import { UserApi, SessionApi } from "metabase/services";
+import { SessionApi } from "metabase/services";
 
 export const DEACTIVATE = "metabase/entities/users/DEACTIVATE";
 export const REACTIVATE = "metabase/entities/users/REACTIVATE";
@@ -14,7 +14,6 @@ export const PASSWORD_RESET_EMAIL =
   "metabase/entities/users/PASSWORD_RESET_EMAIL";
 export const PASSWORD_RESET_MANUAL =
   "metabase/entities/users/RESET_PASSWORD_MANUAL";
-export const RESEND_INVITE = "metabase/entities/users/RESEND_INVITE";
 
 // TODO: It'd be nice to import loadMemberships, but we need to resolve a circular dependency
 function loadMemberships() {
@@ -56,7 +55,6 @@ const Users = createEntity({
     REACTIVATE,
     PASSWORD_RESET_EMAIL,
     PASSWORD_RESET_MANUAL,
-    RESEND_INVITE,
   },
 
   actionDecorators: {
@@ -88,11 +86,6 @@ const Users = createEntity({
   },
 
   objectActions: {
-    resentInvite: async ({ id }) => {
-      MetabaseAnalytics.trackStructEvent("People Admin", "Resent Invite");
-      await UserApi.send_invite({ id });
-      return { type: RESEND_INVITE };
-    },
     resetPasswordEmail: async ({ email }) => {
       MetabaseAnalytics.trackStructEvent(
         "People Admin",
