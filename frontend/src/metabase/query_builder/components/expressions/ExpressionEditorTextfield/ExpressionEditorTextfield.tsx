@@ -568,7 +568,7 @@ class ExpressionEditorTextfield extends React.Component<
   ];
 
   render() {
-    const { helpTextTarget, width, query, stageIndex } = this.props;
+    const { width, query, stageIndex } = this.props;
     const {
       source,
       suggestions,

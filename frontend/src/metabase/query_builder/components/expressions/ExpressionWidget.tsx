@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input/Input";
 import { isNotNull } from "metabase/lib/types";
+import { Button } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
 import type { Expression } from "metabase-types/api";
@@ -163,7 +163,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
         <ActionButtonsWrapper>
           {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
           <Button
-            primary={isValid}
+            variant={isValid ? "filled" : "default"}
             disabled={!isValid}
             onClick={() => handleCommit(expression, clause)}
           >
