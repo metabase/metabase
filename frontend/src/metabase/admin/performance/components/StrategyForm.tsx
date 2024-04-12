@@ -1,6 +1,6 @@
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -108,90 +108,106 @@ const StrategyFormBody = ({
     }
   }, [selectedStrategyType, values, setFieldValue]);
 
+  const invalidateFormContainerRef = useRef<HTMLDivElement>(null);
+
   return (
-    <div
-      style={{
-        height: "100%",
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      {targetDatabase && (
-        <Box lh="1rem" px="lg" py="xs" color="text-medium">
-          <Group spacing="sm">
-            <FixedSizeIcon name="database" color="inherit" />
-            <Text fw="bold" py="1rem">
-              {targetDatabase.displayName()}
-            </Text>
-          </Group>
-        </Box>
-      )}
-      <Form
+    <>
+      <div
         style={{
+          height: "100%",
+          position: "relative",
           display: "flex",
           flexDirection: "column",
-          flexGrow: 1,
-          overflow: "auto",
         }}
       >
-        <Box
+        {targetDatabase && (
+          <Box lh="1rem" px="lg" py="xs" color="text-medium">
+            <Group spacing="sm">
+              <FixedSizeIcon name="database" color="inherit" />
+              <Text fw="bold" py="1rem">
+                {targetDatabase.displayName()}
+              </Text>
+            </Group>
+          </Box>
+        )}
+        <Form
           style={{
-            borderTop: `1px solid ${color("border")}`,
-            borderBottom: `1px solid ${color("border")}`,
-            overflow: "auto",
+            display: "flex",
+            flexDirection: "column",
             flexGrow: 1,
+            overflow: "auto",
           }}
         >
-          <Stack maw="27.5rem" p="lg" spacing="xl">
-            <StrategySelector targetId={targetId} />
-            {selectedStrategyType === "ttl" && (
-              <>
-                <Field
-                  title={t`Minimum query duration`}
-                  subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
-                >
-                  <PositiveNumberInput
-                    strategyType="ttl"
-                    name="min_duration_seconds"
-                  />
-                </Field>
-                <Field
-                  title={t`Cache time-to-live (TTL) multiplier`}
-                  subtitle={<MultiplierFieldSubtitle />}
-                >
-                  <PositiveNumberInput strategyType="ttl" name="multiplier" />
-                </Field>
-              </>
-            )}
-            {selectedStrategyType === "duration" && (
-              <>
-                <Field title={t`Cache results for this many hours`}>
-                  <PositiveNumberInput
-                    strategyType="duration"
-                    name="duration"
-                  />
-                </Field>
-                <input type="hidden" name="unit" />
-              </>
-            )}
-          </Stack>
-        </Box>
-        <FormButtons
+          <Box
+            style={{
+              borderTop: `1px solid ${color("border")}`,
+              borderBottom: `1px solid ${color("border")}`,
+              overflow: "auto",
+              flexGrow: 1,
+            }}
+          >
+            <Stack maw="27.5rem" p="lg" spacing="xl">
+              <StrategySelector targetId={targetId} />
+              {selectedStrategyType === "ttl" && (
+                <>
+                  <Field
+                    title={t`Minimum query duration`}
+                    subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
+                  >
+                    <PositiveNumberInput
+                      strategyType="ttl"
+                      name="min_duration_seconds"
+                    />
+                  </Field>
+                  <Field
+                    title={t`Cache time-to-live (TTL) multiplier`}
+                    subtitle={<MultiplierFieldSubtitle />}
+                  >
+                    <PositiveNumberInput strategyType="ttl" name="multiplier" />
+                  </Field>
+                </>
+              )}
+              {selectedStrategyType === "duration" && (
+                <>
+                  <Field title={t`Cache results for this many hours`}>
+                    <PositiveNumberInput
+                      strategyType="duration"
+                      name="duration"
+                    />
+                  </Field>
+                  <input type="hidden" name="unit" />
+                </>
+              )}
+            </Stack>
+          </Box>
+          <FormButtons
+            targetId={targetId}
+            shouldAllowInvalidation={shouldAllowInvalidation}
+            invalidateFormContainerRef={invalidateFormContainerRef}
+          />
+        </Form>
+      </div>
+      {
+        // The 'Invalidate cache now' button is inserted into the FormButtons component
+        // via createPortal, to avoid nesting a form inside a form
+        shouldAllowInvalidation && (
+        <PLUGIN_CACHING.InvalidateNowButton
           targetId={targetId}
-          shouldAllowInvalidation={shouldAllowInvalidation}
+          containerRef={invalidateFormContainerRef}
         />
-      </Form>
-    </div>
+      )}
+    </>
   );
 };
 
 export const FormButtons = ({
   targetId,
   shouldAllowInvalidation,
+  invalidateFormContainerRef,
 }: {
   targetId: number | null;
   shouldAllowInvalidation: boolean;
+  invalidateFormContainerRef: React.RefObject<HTMLDivElement>;
 }) => {
   const { dirty } = useFormikContext<Strategy>();
   const { status } = useFormContext();
@@ -207,17 +223,12 @@ export const FormButtons = ({
     return null;
   }
 
-  const InvalidateNowButton = () =>
-    shouldAllowInvalidation ? (
-      <PLUGIN_CACHING.InvalidateNowButton targetId={targetId} />
-    ) : null;
-
   return (
     <Group p="md" px="lg" spacing="md" bg="white">
       {isSavingPossible ? (
         <SaveAndDiscardButtons dirty={dirty} isFormPending={isFormPending} />
       ) : (
-        <InvalidateNowButton />
+        <div ref={invalidateFormContainerRef} />
       )}
     </Group>
   );
@@ -347,7 +358,6 @@ const getDefaultValueForField = (
   strategyType: StrategyType,
   fieldName?: string,
 ) => {
-  console.log("strategyType", strategyType);
   return fieldName
     ? Strategies[strategyType].validateWith.cast({})[fieldName]
     : "";
