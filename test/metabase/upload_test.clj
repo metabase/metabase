@@ -14,6 +14,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Field]]
    [metabase.models.data-permissions :as data-perms]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -1045,14 +1046,14 @@
 
 (defn update-csv-with-defaults!
   "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
-  [action & {:keys [uploads-enabled user-id file table-id is-upload]}
-      :or {uploads-enabled true
-           user-id         (mt/user->id :crowberto)
-           file            (csv-file-with
-                            ["name"
-                             "Luke Skywalker"
-                             "Darth Vader"])
-           is-upload       true}]
+  [action & {:keys [uploads-enabled user-id file table-id is-upload]
+             :or {uploads-enabled true
+                  user-id         (mt/user->id :crowberto)
+                  file            (csv-file-with
+                                   ["name"
+                                    "Luke Skywalker"
+                                    "Darth Vader"])
+                  is-upload       true}}]
   (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
     (mt/with-current-user user-id
       (mt/with-model-cleanup [:model/Table]
