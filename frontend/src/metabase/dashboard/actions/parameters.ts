@@ -43,7 +43,6 @@ import {
   getDashboard,
   getDashboardId,
   getDashCardById,
-  getDashcards,
   getDraftParameterValues,
   getIsAutoApplyFilters,
   getParameters,
@@ -187,55 +186,6 @@ export const setParameterMapping = createThunkAction(
           },
         }),
       );
-    };
-  },
-);
-
-export const RESET_PARAMETER_MAPPINGS =
-  "metabase/dashboard/RESET_PARAMETER_MAPPINGS";
-export const resetParameterMapping = createThunkAction(
-  SET_PARAMETER_MAPPING,
-  (parameterId: ParameterId) => {
-    return (dispatch, getState) => {
-      const dashboard = getDashboard(getState());
-
-      if (!dashboard || !dashboard.parameters) {
-        return;
-      }
-
-      const allDashcards = getDashcards(getState());
-
-      const dashcards = dashboard.dashcards.map(
-        dashcardId => allDashcards[dashcardId],
-      );
-
-      for (const dashcard of dashcards) {
-        if (!dashcard.parameter_mappings?.length) {
-          continue;
-        }
-
-        const isDashcardMappedToParameter = dashcard.parameter_mappings.some(
-          mapping => mapping.parameter_id === parameterId,
-        );
-
-        if (!isDashcardMappedToParameter) {
-          continue;
-        }
-
-        const parameterMappingsWithoutParameterId =
-          dashcard.parameter_mappings.filter(
-            mapping => mapping.parameter_id !== parameterId,
-          );
-
-        dispatch(
-          setDashCardAttributes({
-            id: dashcard.id,
-            attributes: {
-              parameter_mappings: parameterMappingsWithoutParameterId,
-            },
-          }),
-        );
-      }
     };
   },
 );
