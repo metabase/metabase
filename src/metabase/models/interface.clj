@@ -469,7 +469,7 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 
 ;; --- helper fns
-(defn row-with-changes
+(defn changes-with-pk
   "The row merged with the changes in pre-update hooks.
   This is to match the input of pre-update for toucan1 methods"
   [row]

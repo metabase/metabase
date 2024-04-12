@@ -75,7 +75,8 @@
   ([{driver :engine, :as db}]
    (merge
     (mt/object-defaults Database)
-    (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version])
+    (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version
+                     :metadata_sync_schedule :cache_field_values_schedule])
     {:engine (u/qualified-name (:engine db))
      :features (map u/qualified-name (driver.u/features driver db))
      :initial_sync_status "complete"})))
@@ -604,8 +605,7 @@
 
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (mt/object-defaults Database) :details)
-                  (select-keys (mt/db) [:created_at :id :updated_at :timezone :initial_sync_status :dbms_version])
+    (is (= (merge (dissoc (db-details) :details)
                   {:engine        "h2"
                    :name          "test-data"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -1177,6 +1177,7 @@
                                                         :cache_field_values schedule-map-for-last-friday-at-11pm}
                                           :is_full_sync true
                                           :is_on_demand false})]
+            (def db db)
             (is (not= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                       (:metadata_sync_schedule db)))
             (is (not= (u.cron/schedule-map->cron-string schedule-map-for-last-friday-at-11pm)
@@ -1256,7 +1257,8 @@
 
 (deftest fetch-db-with-expanded-schedules
   (testing "If we FETCH a database will it have the correct 'expanded' schedules?"
-    (t2.with-temp/with-temp [Database db {:metadata_sync_schedule      "0 0 * ? * 6 *"
+    (t2.with-temp/with-temp [Database db {:details                     {:let-user-control-scheduling true}
+                                          :metadata_sync_schedule      "0 0 * ? * 6 *"
                                           :cache_field_values_schedule "0 0 23 ? * 6L *"}]
       (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
               :metadata_sync_schedule      "0 0 * ? * 6 *"

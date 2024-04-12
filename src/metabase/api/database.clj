@@ -1,7 +1,6 @@
 (ns metabase.api.database
   "/api/database endpoints."
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.string :as str]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
@@ -780,29 +779,6 @@
               (assoc :valid false))
       details)))
 
-(defn- infer-db-schedules
-  [& {:keys [user-control full-sync? on-demand? schedules]}]
-  (match [user-control full-sync? on-demand?]
-    [false _ _]
-    (sync.schedules/schedule-map->cron-strings
-     (sync.schedules/default-randomized-schedule))
-
-    ;; "Regularly on a schedule"
-    ;; -> sync both steps, schedule should be provided
-    [true true false]
-    (do
-     (assert (every? #(some? (% schedules)) [:cache_field_values :metadata_sync]))
-     (sync.schedules/schedule-map->cron-strings schedules))
-
-    ;; "Only when adding a new filter" or "Never, I'll do it myself"
-    ;; -> Sync metadata only
-    [true false _]
-    (-> schedules
-        (sync.schedules/schedule-map->cron-strings)
-        ;; schedules should only contains metadata_sync, but FE might sending both
-        ;; so we just manually nullify it here
-        (assoc :cache_field_values_schedule nil))))
-
 (api/defendpoint POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]} :body}]
@@ -835,11 +811,8 @@
                                         :is_on_demand is_on_demand
                                         :cache_ttl    cache_ttl
                                         :creator_id   api/*current-user-id*}
-                                       (infer-db-schedules
-                                        :user-control (boolean (:let-user-control-scheduling details))
-                                        :on-demand?   is_on_demand
-                                        :full-sync?   is_full_sync
-                                        :schedules    schedules)
+                                       (when schedules
+                                         (sync.schedules/schedule-map->cron-strings schedules))
                                        (when (some? auto_run_queries)
                                          {:auto_run_queries auto_run_queries})))))
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
@@ -980,7 +953,7 @@
                        :details            details
                        :refingerprint      refingerprint
                        :is_full_sync       full-sync?
-                       :is_on_demand       (boolean is_on_demand)
+                       :is_on_demand       on-demand?
                        :description        description
                        :caveats            caveats
                        :points_of_interest points_of_interest
@@ -990,20 +963,9 @@
                         {:settings (into {}
                                          (remove (fn [[_k v]] (nil? v)))
                                          (merge (:settings existing-database) settings))})))
-                    ;; cache_field_values_schedule is nullable
-                    (when (or
-                           ;; turn on advanced sync options
-                           (and (get-in existing-database [:details :let-user-control-scheduling])
-                                (not (:failed-fingerprints details)))
-                           ;; user's controling the schedules, then we'll always attempt to update the schedule
-                           ;; if the schedules doesn't change, it'll be no op
-                           ;; see [metabase.task.sync-databases/update-db-task-trigger!]
-                           (:let-user-control-scheduling details))
-                     (infer-db-schedules
-                      :user-control (boolean (:let-user-control-scheduling details))
-                      :on-demand?   (if (some? on-demand?) on-demand? (:is_on_demand existing-database))
-                      :full-sync?   (if (some? full-sync?) full-sync? (:is_full_sync existing-database))
-                      :schedules    schedules))))
+                    ;; cache_field_values_schedule can be nil
+                    (when schedules
+                      (sync.schedules/schedule-map->cron-strings schedules))))
        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
        ;; with the advanced-config feature enabled.
        (when (premium-features/enable-cache-granular-controls?)
