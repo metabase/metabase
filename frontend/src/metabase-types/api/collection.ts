@@ -52,7 +52,7 @@ export interface Collection {
   authority_level?: "official" | null;
   type?: "instance-analytics" | null;
 
-  parent_id?: CollectionId;
+  parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
   is_personal?: boolean;
 

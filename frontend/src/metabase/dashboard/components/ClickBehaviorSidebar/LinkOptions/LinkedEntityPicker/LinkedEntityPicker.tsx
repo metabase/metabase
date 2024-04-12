@@ -141,7 +141,7 @@ export function LinkedEntityPicker({
   const { PickerComponent, getModalTitle } = LINK_TARGETS[linkType];
 
   const handleSelectLinkTargetEntityId = useCallback(
-    targetId => {
+    (targetId: CardId | DashboardId) => {
       const isNewTargetEntity = targetId !== clickBehavior.targetId;
 
       if (!isNewTargetEntity) {
@@ -163,7 +163,7 @@ export function LinkedEntityPicker({
           ...clickBehavior,
           targetId,
           parameterMapping: {},
-        });
+        } as EntityCustomDestinationClickBehavior);
       }
     },
     [clickBehavior, updateSettings],
