@@ -1074,14 +1074,14 @@
   (let [dbs-without-scan-field-values (filter #(and (-> % :details :let-user-control-scheduling)
                                                     (false? (:is_full_sync %)))
                                               (t2/select :model/Database))]
-    (when (seq dbs)
+    (when (seq dbs-without-scan-field-values)
       (classloader/the-classloader)
       (set-jdbc-backend-properties!)
       (let [scheduler (qs/initialize)]
         (qs/start scheduler)
-        (doseq [db dbs]
+        (doseq [db dbs-without-scan-field-values]
           (qs/delete-trigger scheduler (triggers/key (format "metabase.task.update-field-values.trigger.%d" (:id db)))))
-        (t2/update! :model/Database :id [:in (map :id dbs)] {:cache_field_values_schedule nil})
+        (t2/update! :model/Database :id [:in (map :id dbs-without-scan-field-values)] {:cache_field_values_schedule nil})
         (qs/shutdown scheduler)))))
 
 (defn- hash-bcrypt
