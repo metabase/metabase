@@ -43,7 +43,6 @@ type SectionOption = {
   name: string;
   operator: string;
   menuName?: string;
-  sidebarMenuName?: string;
   combinedName?: string | undefined;
 };
 
@@ -119,7 +118,7 @@ export const ParameterSettings = ({
     const options = currentSection.options as SectionOption[];
 
     return options.map(option => ({
-      label: option.sidebarMenuName ?? option.name,
+      label: option.name,
       value: option.type,
     }));
   }, [sectionId]);
