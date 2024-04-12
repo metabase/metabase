@@ -2,7 +2,7 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
-   [compojure.core :refer [GET POST PUT DELETE]]
+   [compojure.core :refer [GET POST PUT]]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.db.query :as mdb.query]
@@ -553,20 +553,5 @@
   (update-csv! {:table-id id
                 :file     (get-in raw-params ["file" :tempfile])
                 :action   ::upload/replace}))
-
-(api/defendpoint DELETE "/:id"
-  "Delete the given table from the database. This currently only supports deleting uploaded tables."
-  [id :as {_raw-params :params}]
-  {id ms/PositiveInt}
-  (try
-    (let [table  (api/check-404 (t2/select-one :model/Table :id id))
-          result (upload/delete-upload! table)]
-      {:status 200
-       :body   (= :done result)})
-    (catch Throwable e
-      {:status (or (-> e ex-data :status-code)
-                   500)
-       :body   {:message (or (ex-message e)
-                             (tru "There was an error deleting the table"))}})))
 
 (api/define-routes)

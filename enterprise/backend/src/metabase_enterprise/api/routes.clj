@@ -16,6 +16,7 @@
    [metabase-enterprise.llm.api :as llm.api]
    [metabase-enterprise.sandbox.api.routes :as sandbox]
    [metabase-enterprise.serialization.api :as api.serialization]
+   [metabase-enterprise.uploads.api :as api.uploads]
    [metabase.api.common :refer [context defroutes]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -47,4 +48,7 @@
     (ee.api.common/+require-premium-feature :serialization (deferred-tru "Serialization") api.serialization/routes))
    (context
     "/autodescribe" []
-    (ee.api.common/+require-premium-feature :llm-autodescription (deferred-tru "LLM Auto-description") llm.api/routes))))
+    (ee.api.common/+require-premium-feature :llm-autodescription (deferred-tru "LLM Auto-description") llm.api/routes))
+   (context
+    "/uploads" []
+    (ee.api.common/+require-premium-feature :uploads (deferred-tru "Uploads") api.uploads/routes))))

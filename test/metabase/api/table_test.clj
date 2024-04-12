@@ -965,7 +965,7 @@
 ;;; |                                          POST /api/table/:id/append-csv                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- create-csv! []
+(defn create-csv! []
   (mt/with-current-user (mt/user->id :rasta)
     (upload-test/create-upload-table!)))
 
@@ -1039,23 +1039,3 @@
                            :table-id (:id table)
                            :file     file}))
            (is (not (.exists file)) "File should be deleted after replace-csv!")))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          DELETE /api/table/:id
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- table-url [table]
-  (str "table/" (:id table)))
-
-(deftest delete-csv-test
-  (mt/test-driver :h2
-    (mt/with-empty-db
-     (testing "Happy path"
-       (let [table (create-csv!)]
-         (mt/with-temporary-setting-values [uploads-enabled true]
-           (is (= true (mt/user-http-request :crowberto :delete 200 (table-url table)))))))
-     (testing "Failure paths return an appropriate status code and a message in the body"
-       (let [table (create-csv!)]
-         (mt/with-temporary-setting-values [uploads-enabled false]
-           (is (= {:message "Uploads are not enabled."}
-                  (mt/user-http-request :crowberto :delete 422 (table-url table))))))))))
