@@ -17,12 +17,7 @@ import { useCacheConfigs } from "../hooks/useCacheConfigs";
 import { useConfirmOnRouteLeave } from "../hooks/useConfirmOnRouteLeave";
 import { useVerticallyOverflows } from "../hooks/useVerticallyOverflows";
 import type { UpdateTargetId } from "../strategies";
-import {
-  getFieldsForStrategyType,
-  rootId,
-  Strategies,
-  translateConfigToAPI,
-} from "../strategies";
+import { getFieldsForStrategyType, rootId, Strategies } from "../strategies";
 
 import { Panel, TabWrapper } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
@@ -142,8 +137,7 @@ const StrategyEditorForDatabases_Base = ({
           strategy: validatedStrategy,
         };
 
-        const translatedConfig = translateConfigToAPI(newConfig);
-        await CacheConfigApi.update(translatedConfig);
+        await CacheConfigApi.update(newConfig);
         setConfigs([...otherConfigs, newConfig]);
       }
     },
