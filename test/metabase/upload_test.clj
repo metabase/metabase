@@ -1010,31 +1010,6 @@
      (~macro-fn ~@body)
      ~@body))
 
-(defn update-csv-with-defaults!
-  "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
-  [action & {:keys [uploads-enabled user-id file table-id is-upload]
-      :or {uploads-enabled true
-           user-id         (mt/user->id :crowberto)
-           file            (csv-file-with
-                            ["name"
-                             "Luke Skywalker"
-                             "Darth Vader"])
-           is-upload       true}}]
-  (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
-    (mt/with-current-user user-id
-      (mt/with-model-cleanup [:model/Table]
-        (let [new-table (when (nil? table-id)
-                          (create-upload-table!))
-              table-id (or table-id (:id new-table))]
-          (t2/update! :model/Table table-id {:is_upload is-upload})
-          (try (update-csv! action {:table-id table-id, :file file})
-               (finally
-                 ;; Drop the table in the testdb if a new one was created.
-                 (when new-table
-                   (driver/drop-table! driver/*driver*
-                                       (mt/id)
-                                       (#'upload/table-identifier new-table))))))))))
-
 (defn catch-ex-info* [f]
   (try
     (f)
@@ -1067,6 +1042,31 @@
        (case action
          ::upload/append (into initial added)
          ::upload/replace added)))
+
+(defn update-csv-with-defaults!
+  "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
+  [action & {:keys [uploads-enabled user-id file table-id is-upload]
+      :or {uploads-enabled true
+           user-id         (mt/user->id :crowberto)
+           file            (csv-file-with
+                            ["name"
+                             "Luke Skywalker"
+                             "Darth Vader"])
+           is-upload       true}}]
+  (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
+    (mt/with-current-user user-id
+      (mt/with-model-cleanup [:model/Table]
+        (let [new-table (when (nil? table-id)
+                          (create-upload-table!))
+              table-id (or table-id (:id new-table))]
+          (t2/update! :model/Table table-id {:is_upload is-upload})
+          (try (update-csv! action {:table-id table-id, :file file})
+               (finally
+                 ;; Drop the table in the testdb if a new one was created.
+                 (when (and new-table (not= driver/*driver* :redshift)) ; redshift tests flake when tables are dropped
+                   (driver/drop-table! driver/*driver*
+                                       (mt/id)
+                                       (#'upload/table-identifier new-table))))))))))
 
 (deftest can-update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)

@@ -167,6 +167,7 @@ export const createMockSettings = (
   "enable-public-sharing": false,
   "enable-xrays": false,
   engines: createMockEngines(),
+  "example-dashboard-id": 1,
   "has-user-setup": true,
   "hide-embed-branding?": true,
   "show-static-embed-terms": true,
@@ -181,6 +182,8 @@ export const createMockSettings = (
   "jwt-configured": false,
   "ldap-configured?": false,
   "ldap-enabled": false,
+  "ldap-port": 389, // default value from API
+  "ldap-group-membership-filter": "(member={dn})",
   "loading-message": "doing-science",
   "map-tile-server-url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   "openai-api-key": null,

@@ -584,7 +584,7 @@
 (deftest block-sso-provisioning-if-instance-not-set-up
   (testing "SSO users should not be created if an admin user has not already been created (metabase-private#201)"
     (schema-migrations-test.impl/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db!)
+      (mdb/setup-db! :create-sample-content? true)
       (is (thrown-with-msg?
            Exception
            #"Instance has not been initialized"

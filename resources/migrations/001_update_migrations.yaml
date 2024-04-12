@@ -6130,6 +6130,14 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: v50.2024-04-09T15:55:22
+      author: calherries
+      comment: Create sample content
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateSampleContent"
+
+  - changeSet:
       id: v50.2024-04-09T15:55:23
       author: piranha
       comment: Backfill query_field for native queries
