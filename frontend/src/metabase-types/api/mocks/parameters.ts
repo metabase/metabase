@@ -5,6 +5,7 @@ export const createMockParameter = (opts?: Partial<Parameter>): Parameter => ({
   name: "text",
   type: "string/=",
   slug: "text",
+  sectionId: "string",
   ...opts,
 });
 

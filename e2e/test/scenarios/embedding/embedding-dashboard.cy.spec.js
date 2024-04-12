@@ -27,6 +27,7 @@ import {
   setEmbeddingParameter,
   assertEmbeddingParameter,
 } from "e2e/support/helpers";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
@@ -406,21 +407,21 @@ describe("scenarios > embedding > dashboard parameters", () => {
       },
     };
 
-    const dashboardCategoryParameter = {
+    const dashboardCategoryParameter = createMockParameter({
       name: "Category",
       slug: "category",
       id: "9cd1ee78",
       type: "string/=",
       sectionId: "string",
       values_query_type: "none",
-    };
-    const dashboardCreatedAtParameter = {
+    });
+    const dashboardCreatedAtParameter = createMockParameter({
       name: "Created At",
       slug: "createdAt",
       id: "98831577",
       type: "date/month-year",
       sectionId: "date",
-    };
+    });
     const dashboardDetails = {
       name: "dashboard with parameters",
       parameters: [dashboardCategoryParameter, dashboardCreatedAtParameter],
@@ -554,12 +555,12 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
   });
 
   it("should not rerender the static embed preview unnecessarily (metabase#38271)", () => {
-    const textFilter = {
+    const textFilter = createMockParameter({
       id: "3",
       name: "Text filter",
       slug: "filter-text",
       type: "string/contains",
-    };
+    });
 
     const dashboardDetails = {
       name: "dashboard name",

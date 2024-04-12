@@ -1,7 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { checkNotNull } from "metabase/lib/types";
 import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { Radio, Stack, Text, TextInput, Box, Select } from "metabase/ui";
@@ -67,6 +66,8 @@ export const ParameterSettings = ({
   embeddedParameterVisibility,
 }: ParameterSettingsProps): JSX.Element => {
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
+  // TODO: sectionId should always present, but current type definition presumes it's optional in the parameter.
+  // so we might want to remove all checks related to absence of it
   const sectionId = parameter.sectionId;
 
   useLayoutEffect(() => {
@@ -103,9 +104,18 @@ export const ParameterSettings = ({
   const isMultiValue = getIsMultiSelect(parameter) ? "multi" : "single";
 
   const filterOperatorData = useMemo(() => {
-    const currentSection = checkNotNull(
-      parameterSections.find(section => section.id === sectionId),
+    if (!sectionId) {
+      return [];
+    }
+
+    const currentSection = parameterSections.find(
+      section => section.id === sectionId,
     );
+
+    if (!currentSection) {
+      return [];
+    }
+
     const options = currentSection.options as SectionOption[];
 
     return options.map(option => ({
@@ -126,16 +136,25 @@ export const ParameterSettings = ({
           aria-label={t`Label`}
         />
       </Box>
-      <Box mb="xl">
-        <SettingLabel>{t`Data type`}</SettingLabel>
-        <Select disabled data={dataTypeSectionsData} value={sectionId} />
-      </Box>
-      {filterOperatorData.length > 1 && (
-        <Box mb="xl">
-          <SettingLabel>{t`Filter operator`}</SettingLabel>
-          <Select disabled data={filterOperatorData} value={parameter.type} />
-        </Box>
+      {sectionId && (
+        <>
+          <Box mb="xl">
+            <SettingLabel>{t`Data type`}</SettingLabel>
+            <Select disabled data={dataTypeSectionsData} value={sectionId} />
+          </Box>
+          {filterOperatorData.length > 1 && (
+            <Box mb="xl">
+              <SettingLabel>{t`Filter operator`}</SettingLabel>
+              <Select
+                disabled
+                data={filterOperatorData}
+                value={parameter.type}
+              />
+            </Box>
+          )}
+        </>
       )}
+
       {canUseCustomSource(parameter) && (
         <Box mb="xl">
           <SettingLabel>{t`How should people filter on this column?`}</SettingLabel>
