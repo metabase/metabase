@@ -36,7 +36,7 @@ export function CombineColumns({
     columnsAndSeparators: [
       {
         column: null,
-        separator: " ",
+        separator: "",
       },
       {
         column: null,
@@ -133,10 +133,9 @@ export function CombineColumns({
 
     const expression = Lib.expressionClause(
       "concat",
-      columnsAndSeparators.flatMap(({ column, separator }) => [
-        separator,
-        column,
-      ]),
+      columnsAndSeparators
+        .flatMap(({ column, separator }) => [separator, column])
+        .slice(1),
     );
 
     onSubmit(name, expression);
