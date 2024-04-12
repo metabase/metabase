@@ -560,6 +560,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
       name: "Text filter",
       slug: "filter-text",
       type: "string/contains",
+      sectionId: "string",
     });
 
     const dashboardDetails = {
