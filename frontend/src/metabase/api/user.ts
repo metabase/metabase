@@ -49,6 +49,12 @@ export const userApi = Api.injectEndpoints({
         url: `/api/user/${id}`,
       }),
     }),
+    reactivateUser: builder.query<CreateUserResponse, { id: UserId }>({
+      query: ({ id }) => ({
+        method: "PUT",
+        url: `/api/user/${id}/reactivate`,
+      }),
+    }),
   }),
 });
 
@@ -58,4 +64,5 @@ export const {
   useCreateUserMutation,
   useUpdatePasswordMutation,
   useDeactivateUserQuery,
+  useReactivateUserQuery,
 } = userApi;

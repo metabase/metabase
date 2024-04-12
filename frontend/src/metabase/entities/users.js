@@ -127,12 +127,18 @@ const Users = createEntity({
         );
         dispatch({ type: DEACTIVATE, payload: { id } });
       },
-    reactivate: async ({ id }) => {
-      MetabaseAnalytics.trackStructEvent("People Admin", "User Reactivated");
-      // TODO: move these APIs from services to this file
-      const user = await UserApi.reactivate({ userId: id });
-      return { type: REACTIVATE, payload: user };
-    },
+    reactivate:
+      ({ id }) =>
+      async dispatch => {
+        MetabaseAnalytics.trackStructEvent("People Admin", "User Reactivated");
+        // TODO: move these APIs from services to this file
+        const user = await entityCompatibleQuery(
+          { id },
+          dispatch,
+          userApi.endpoints.reactivateUser,
+        );
+        dispatch({ type: REACTIVATE, payload: user });
+      },
   },
 
   reducer: (state = {}, { type, payload, error }) => {
