@@ -4,11 +4,17 @@ import _ from "underscore";
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { GroupsPermissions, ConcreteTableId } from "metabase-types/api";
+import type {
+  GroupsPermissions,
+  GroupPermissions,
+  DatabasePermissions,
+  ConcreteTableId,
+} from "metabase-types/api";
 
 import type {
   DatabaseEntityId,
   EntityId,
+  EntityWithGroupId,
   SchemaEntityId,
   TableEntityId,
 } from "../../types";
@@ -50,6 +56,27 @@ function getOmittedPermissionValue(
   permission: DataPermission,
 ): DataPermissionValue {
   return omittedDefaultValues[permission] ?? DataPermissionValue.NO;
+}
+
+// returns portion of the graph that might be undefined,
+// purposefully does not try to determine the entity's value from its parent
+function getRawPermissionsGraphValue(
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: EntityId,
+  permission: DataPermission,
+) {
+  const nestedPath = [
+    entityId.schemaName === null ? "" : entityId.schemaName,
+    entityId.tableId,
+  ].filter((x): x is number | string => x !== undefined);
+  const path = getPermissionPath(
+    groupId,
+    entityId.databaseId,
+    permission,
+    nestedPath,
+  );
+  return getIn(permissions, path);
 }
 
 interface GetPermissionParams {
@@ -188,10 +215,44 @@ export const getFieldsPermission = (
   }
 };
 
-export function hasPermissionValueInGraph(
+const getEntityPermission = (
   permissions: GroupsPermissions,
+  groupId: number,
+  entityId: EntityId,
+  permission: DataPermission,
+): DataPermissionValue => {
+  if (entityId.tableId !== undefined) {
+    return getFieldsPermission(
+      permissions,
+      groupId,
+      entityId as TableEntityId,
+      permission,
+    );
+  } else if (entityId.schemaName !== undefined) {
+    return getTablesPermission(
+      permissions,
+      groupId,
+      entityId as SchemaEntityId,
+      permission,
+    );
+  } else {
+    return getSchemasPermission(permissions, groupId, entityId, permission);
+  }
+};
+
+// return boolean if able to find if a value is present in all or a portion of the permissions graph
+export function hasPermissionValueInGraph(
+  permissions:
+    | GroupsPermissions
+    | GroupPermissions
+    | DatabasePermissions
+    | DataPermissionValue,
   permissionValue: DataPermissionValue,
 ): boolean {
+  if (permissions === permissionValue) {
+    return true;
+  }
+
   function _hasPermissionValueInGraph(permissionsGraphSection: any) {
     for (const key in permissionsGraphSection) {
       const isMatch = permissionsGraphSection[key] === permissionValue;
@@ -211,6 +272,39 @@ export function hasPermissionValueInGraph(
   }
 
   return _hasPermissionValueInGraph(permissions);
+}
+
+// return boolean if able to find if a value is present in any of the specified portions of the graph
+// useful for ignoring certain parts of the graphy you don't care to check
+export function hasPermissionValueInEntityGraphs(
+  permissions: GroupsPermissions,
+  entityIds: EntityWithGroupId[],
+  permission: DataPermission,
+  permissionValue: DataPermissionValue,
+): boolean {
+  return entityIds.some(entityId => {
+    // try to get the raw section of the graph so we can crawl it's children if it has them
+    const permissionPortion = getRawPermissionsGraphValue(
+      permissions,
+      entityId.groupId,
+      entityId,
+      permission,
+    );
+
+    if (permissionPortion !== undefined) {
+      return hasPermissionValueInGraph(permissionPortion, permissionValue);
+    }
+
+    // the above may be undefined since the entity's value is determined from a parent entity in the graph,
+    // so we figure that out here and check if it matches what we're looking for
+    const entityPermission = getEntityPermission(
+      permissions,
+      entityId.groupId,
+      entityId,
+      permission,
+    );
+    return entityPermission === permissionValue;
+  });
 }
 
 // Ideally this would live in downgradeNativePermissionsIfNeeded, but originally that function was

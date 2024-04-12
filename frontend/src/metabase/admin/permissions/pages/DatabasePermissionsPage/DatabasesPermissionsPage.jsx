@@ -7,6 +7,8 @@ import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PermissionsApi } from "metabase/services";
 import { Loader, Center } from "metabase/ui";
@@ -151,6 +153,13 @@ function DatabasesPermissionsPage({
           onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}
           onChange={handlePermissionChange}
           onAction={handleAction}
+          warnings={() => (
+            <>
+              {permissionEditor.deprecatedPermsInGraph.has(
+                DataPermissionValue.LEGACY_NO_SELF_SERVICE,
+              ) && <PermissionsEditorLegacyNoSelfServiceWarning />}
+            </>
+          )}
         />
       )}
 

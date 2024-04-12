@@ -23,13 +23,14 @@ import type {
   PermissionSectionConfig,
   EntityId,
 } from "../../types";
-import { DataPermission } from "../../types";
+import { DataPermissionValue, DataPermission } from "../../types";
 import {
   getTableEntityId,
   getSchemaEntityId,
   getDatabaseEntityId,
   getPermissionSubject,
 } from "../../utils/data-entity-id";
+import { hasPermissionValueInEntityGraphs } from "../../utils/graph";
 
 import type { EditorBreadcrumb } from "./breadcrumbs";
 import {
@@ -80,7 +81,7 @@ const getRouteParams = (
   };
 };
 
-const getDataPermissions = (state: State) =>
+export const getDataPermissions = (state: State) =>
   state.admin.permissions.dataPermissions;
 
 const getOriginalDataPermissions = (state: State) =>
@@ -280,6 +281,17 @@ export const getDatabasesPermissionEditor = createSelector(
     const breadcrumbs = getDatabasesEditorBreadcrumbs(params, metadata, group);
     const title = t`Permissions for the `;
 
+    const deprecatedPermsInGraph = new Set(
+      _.compact([
+        hasPermissionValueInEntityGraphs(
+          permissions,
+          entities.map((entity: any) => ({ groupId, ...entity.entityId })),
+          DataPermission.VIEW_DATA,
+          DataPermissionValue.LEGACY_NO_SELF_SERVICE,
+        ) && DataPermissionValue.LEGACY_NO_SELF_SERVICE,
+      ]),
+    );
+
     return {
       title,
       breadcrumbs,
@@ -294,6 +306,7 @@ export const getDatabasesPermissionEditor = createSelector(
       filterPlaceholder: getFilterPlaceholder(params, hasSingleSchema),
       columns,
       entities,
+      deprecatedPermsInGraph,
     };
   },
 );
@@ -416,12 +429,27 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
         ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
       ]);
 
+      const deprecatedPermsInGraph = new Set(
+        _.compact([
+          hasPermissionValueInEntityGraphs(
+            permissions,
+            entities.map((entity: any) => ({
+              groupId: entity.id,
+              ...entity.entityId,
+            })),
+            DataPermission.VIEW_DATA,
+            DataPermissionValue.LEGACY_NO_SELF_SERVICE,
+          ) && DataPermissionValue.LEGACY_NO_SELF_SERVICE,
+        ]),
+      );
+
       return {
         title: t`Permissions for`,
         filterPlaceholder: t`Search for a group`,
         breadcrumbs: getGroupsDataEditorBreadcrumbs(params, metadata),
         columns,
         entities,
+        deprecatedPermsInGraph,
       };
     },
   );
