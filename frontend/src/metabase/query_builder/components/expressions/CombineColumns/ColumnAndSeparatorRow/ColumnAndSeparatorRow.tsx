@@ -1,10 +1,15 @@
 import { t } from "ttag";
 
-import { Button, Flex, Icon, Select, TextInput } from "metabase/ui";
+import { Button, Flex, Icon, Select, TextInput, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import type { ColumnOption } from "../util";
-import { fromSelectValue, toSelectValue, label } from "../util";
+import {
+  fromSelectValue,
+  toSelectValue,
+  label,
+  formatSeparator,
+} from "../util";
 
 import styles from "./ColumnAndSeparatorRow.module.css";
 
@@ -34,21 +39,14 @@ export const ColumnAndSeparatorRow = ({
   onRemove,
 }: Props) => {
   return (
-    <Flex align="flex-end" gap={12}>
-      {showSeparator && (
-        <TextInput
-          className={styles.separator}
-          label={t`Separator`}
-          placeholder={t`Separator`}
-          value={separator}
-          w={110}
-          onChange={event => {
-            const separator = event.target.value;
-            onChange(index, column, separator);
-          }}
-        />
-      )}
-
+    <Flex align="flex-end" gap={12} pos="relative">
+      <SeparatorInput
+        showSeparator={showSeparator}
+        value={separator}
+        onChange={separator => {
+          onChange(index, column, separator);
+        }}
+      />
       <Select
         className={styles.column}
         classNames={{
@@ -80,3 +78,35 @@ export const ColumnAndSeparatorRow = ({
     </Flex>
   );
 };
+
+function SeparatorInput({
+  showSeparator,
+  value,
+  onChange,
+}: {
+  value: string;
+  showSeparator: boolean;
+  onChange: (value: string) => void;
+}) {
+  if (!showSeparator) {
+    return null;
+  }
+
+  return (
+    <>
+      <TextInput
+        className={styles.separator}
+        label={t`Separator`}
+        placeholder={value === "" ? "  (empty)" : t`Separator`}
+        value={value}
+        w={110}
+        onChange={event => onChange(event.target.value)}
+      />
+      {value && formatSeparator(value) !== value && (
+        <Text color="text-light" className={styles.placeholder}>
+          {formatSeparator(value)}
+        </Text>
+      )}
+    </>
+  );
+}

@@ -16,3 +16,10 @@
     margin-top: 0;
   }
 }
+
+.placeholder {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 1.1rem;
+  pointer-events: none;
+}
