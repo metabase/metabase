@@ -121,17 +121,29 @@ export const getExpressionName = (
   return t`Combined ${names.join(", ")}`;
 };
 
+export const flatten = (
+  columnsAndSeparators: ColumnAndSeparator[],
+): (string | Lib.ColumnMetadata)[] => {
+  return columnsAndSeparators
+    .flatMap(({ column, separator }) => [separator, column])
+    .slice(1)
+    .filter(element => element && element !== "");
+};
+
 export const getExample = (
   columnsAndSeparators: ColumnAndSeparator[],
 ): string => {
-  return columnsAndSeparators
-    .flatMap(({ column, separator }) => [separator, getColumnExample(column)])
-    .join("");
+  return flatten(columnsAndSeparators).map(getColumnExample).join("");
 };
 
-const getColumnExample = (column: Lib.ColumnMetadata | null): string => {
+const getColumnExample = (
+  column: Lib.ColumnMetadata | string | null,
+): string => {
   if (!column) {
     return "";
+  }
+  if (typeof column === "string") {
+    return column;
   }
 
   if (Lib.isURL(column)) {

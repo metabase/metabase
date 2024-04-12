@@ -15,6 +15,7 @@ import {
   getColumnOptions,
   formatSeparator,
   getExpressionName,
+  flatten,
 } from "./util";
 
 interface Props {
@@ -135,10 +136,7 @@ export function CombineColumns({
 
     const expression = Lib.expressionClause(
       "concat",
-      columnsAndSeparators
-        .flatMap(({ column, separator }) => [separator, column])
-        .slice(1)
-        .filter(element => element !== ""),
+      flatten(columnsAndSeparators),
     );
 
     onSubmit(name, expression);
