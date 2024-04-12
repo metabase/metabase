@@ -138,7 +138,7 @@ export const ParameterSettings = ({
       {sectionId && (
         <>
           <Box mb="xl">
-            <SettingLabel>{t`Data type`}</SettingLabel>
+            <SettingLabel>{t`Filter type`}</SettingLabel>
             <Select disabled data={dataTypeSectionsData} value={sectionId} />
           </Box>
           {filterOperatorData.length > 1 && (
