@@ -1,12 +1,11 @@
 import { assocIn } from "icepick";
 
-import { userApi } from "metabase/api";
+import { userApi, sessionApi } from "metabase/api";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { generatePassword } from "metabase/lib/security";
 import MetabaseSettings from "metabase/lib/settings";
 import { UserSchema } from "metabase/schema";
-import { SessionApi } from "metabase/services";
 
 export const DEACTIVATE = "metabase/entities/users/DEACTIVATE";
 export const REACTIVATE = "metabase/entities/users/REACTIVATE";
@@ -86,14 +85,20 @@ const Users = createEntity({
   },
 
   objectActions: {
-    resetPasswordEmail: async ({ email }) => {
-      MetabaseAnalytics.trackStructEvent(
-        "People Admin",
-        "Trigger User Password Reset",
-      );
-      await SessionApi.forgot_password({ email });
-      return { type: PASSWORD_RESET_EMAIL };
-    },
+    resetPasswordEmail:
+      ({ email }) =>
+      async dispatch => {
+        MetabaseAnalytics.trackStructEvent(
+          "People Admin",
+          "Trigger User Password Reset",
+        );
+        await await entityCompatibleQuery(
+          { email },
+          dispatch,
+          sessionApi.endpoints.forgotPassword,
+        );
+        dispatch({ type: PASSWORD_RESET_EMAIL });
+      },
     resetPasswordManual:
       async ({ id }, password = generatePassword()) =>
       async dispatch => {
