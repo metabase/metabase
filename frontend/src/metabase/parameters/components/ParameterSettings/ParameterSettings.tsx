@@ -1,9 +1,19 @@
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { resetParameterMapping } from "metabase/dashboard/actions";
+import { useDispatch } from "metabase/lib/redux";
 import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { Radio, Stack, Text, TextInput, Box, Select } from "metabase/ui";
+import {
+  Radio,
+  Stack,
+  Text,
+  TextInput,
+  Box,
+  Select,
+  Button,
+} from "metabase/ui";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -64,6 +74,7 @@ export const ParameterSettings = ({
   onChangeRequired,
   embeddedParameterVisibility,
 }: ParameterSettingsProps): JSX.Element => {
+  const dispatch = useDispatch();
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
   // TODO: sectionId should always be present, but current type definition presumes it's optional in the parameter.
   // so we might want to remove all checks related to absence of it
@@ -124,7 +135,7 @@ export const ParameterSettings = ({
   }, [sectionId]);
 
   return (
-    <Box p="1.5rem 1rem">
+    <Box p="1.5rem 1rem 0.5rem">
       <Box mb="xl">
         <SettingLabel>{t`Label`}</SettingLabel>
         <TextInput
@@ -233,6 +244,16 @@ export const ParameterSettings = ({
             </>
           }
         ></RequiredParamToggle>
+      </Box>
+
+      <Box>
+        <Button
+          variant="subtle"
+          pl={0}
+          onClick={() => {
+            dispatch(resetParameterMapping(parameter.id));
+          }}
+        >{t`Disconnect from cards`}</Button>
       </Box>
     </Box>
   );
