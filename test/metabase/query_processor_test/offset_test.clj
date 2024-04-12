@@ -35,8 +35,39 @@
         (is (= [[#t "2016-01-01"  42156.94 nil]
                 [#t "2017-01-01" 205256.40 42156.94]
                 [#t "2018-01-01" 510043.47 205256.40]]
-               (mt/formatted-rows [->local-date 2.0 2.0]
-                 (qp/process-query query))))))))
+               (mt/formatted-rows
+                [->local-date 2.0 2.0]
+                (qp/process-query query))))))))
+
+(deftest ^:parallel offset-no-breakout-test
+  (testing "Should be able to use an offset as a plain expression (not an aggregation) and use top-level order-by"
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            orders            (lib.metadata/table metadata-provider (mt/id :orders))
+            orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
+            orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+            orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
+            query             (as-> (-> (lib/query metadata-provider orders)
+                                        (lib/expression "offset_total" (lib/offset orders-total -1))
+                                        (lib/limit 3)) query
+                                (lib/with-fields query [orders-id
+                                                        orders-total
+                                                        (lib/expression-ref query "offset_total")]))]
+        (doseq [[message query] {"order by a plain field" (lib/order-by query orders-id)
+                                 "order by an expression" (as-> query query
+                                                            (lib/expression query "id_plus_1" (lib/+ orders-id 1))
+                                                            (lib/order-by query (lib/expression-ref query "id_plus_1")))
+                                 "order by date bucketed" (-> query
+                                                              (lib/order-by orders-id)
+                                                              (lib/order-by (lib/with-temporal-bucket orders-created-at :month)))}]
+          (testing message
+            (mt/with-native-query-testing-context query
+              (is (= [[1 39.72  nil]
+                      [2 117.03 39.72]
+                      [3 49.2   117.03]]
+                     (mt/formatted-rows
+                      [int 2.0 2.0]
+                      (qp/process-query query)))))))))))
 
 (deftest ^:parallel offset-aggregation-test
   (testing "yearly growth (this year sales vs last year sales) (#5606)"

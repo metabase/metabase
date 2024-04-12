@@ -50,4 +50,4 @@
                                         1]]
                                       [:cum-count {}]]]
                        :limit       3}]}
-            (nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation query)))))
+            (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation query)))))

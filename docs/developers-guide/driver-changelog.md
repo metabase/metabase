@@ -45,7 +45,7 @@ title: Driver interface changelog
   ```
 
   Non-SQL drivers can use
-  `metabase.query-processor.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation`
+  `metabase.query-processor.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation`
   if they want to leverage the same query transformation. See the default `:sql` implementation of
   `metabase.driver.sql.query-processor/preprocess` for an example of using this transformation when needed.
 
