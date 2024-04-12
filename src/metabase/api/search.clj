@@ -239,7 +239,6 @@
                              [:= :query_action.action_id :action.id])
       (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
 
-
 (defmethod search-query-for-model "card"
   [_model search-ctx]
   (shared-card-impl "card" search-ctx))
@@ -320,10 +319,10 @@
 (defmethod search-query-for-model "table"
   [model {:keys [current-user-perms table-db-id], :as search-ctx}]
   (when (seq current-user-perms)
-    (let [base-query (base-query-for-model model search-ctx)]
-      (add-table-db-id-clause
-       base-query
-       table-db-id))))
+
+    (-> (base-query-for-model model search-ctx)
+        (add-table-db-id-clause table-db-id)
+        (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
 
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
@@ -478,7 +477,6 @@
      :offset           (:offset-int search-ctx)
      :table_db_id      (:table-db-id search-ctx)
      :models           (:models search-ctx)}))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |

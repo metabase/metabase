@@ -204,7 +204,7 @@ const LinkedParameter = ({
   onExpandedChange,
 }: LinkedParameterProps): JSX.Element => {
   const handleFilterToggle: ChangeEventHandler<HTMLInputElement> = useCallback(
-    e => {
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       onFilterChange(otherParameter, e.target.checked);
     },
     [otherParameter, onFilterChange],

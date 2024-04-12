@@ -11,14 +11,12 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.execute.diagnostic
-    :as sql-jdbc.execute.diagnostic]
+   [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.expression.temporal
-    :as lib.schema.expression.temporal]
-   [metabase.lib.schema.literal.jvm :as lib.schema.literal.jvm]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -253,7 +251,7 @@
         (seq more)
         (recur more)))))
 
-(mu/defn do-with-resolved-connection-data-source :- (lib.schema.literal.jvm/instance-of DataSource)
+(mu/defn do-with-resolved-connection-data-source :- (lib.schema.common/instance-of-class DataSource)
   "Part of the default implementation for [[do-with-connection-with-options]]: get an appropriate `java.sql.DataSource`
   for `db-or-id-or-spec`. Not for use with a JDBC spec wrapping a `java.sql.Connection` (a spec with the key
   `:connection`), since we do not have control over its lifecycle and would thus not be able to use [[with-open]] with
@@ -340,7 +338,7 @@
   {:added "0.47.0"}
   [driver                                                 :- :keyword
    db-or-id-or-spec
-   ^Connection conn                                       :- (lib.schema.literal.jvm/instance-of Connection)
+   ^Connection conn                                       :- (lib.schema.common/instance-of-class Connection)
    {:keys [^String session-timezone write?], :as options} :- ConnectionOptions]
   (when-not (recursive-connection?)
     (log/tracef "Setting default connection options with options %s" (pr-str options))

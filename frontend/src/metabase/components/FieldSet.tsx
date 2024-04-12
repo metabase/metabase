@@ -12,7 +12,7 @@ interface FieldSetProps {
 }
 
 export function FieldSet({
-  className = "border-brand",
+  className = CS.borderBrand,
   legend,
   required = false,
   noPadding = false,
