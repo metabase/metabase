@@ -33,7 +33,7 @@ type State = {
   resultError?: Dataset | string | null;
 };
 
-export const QueryVisualizationSdk = ({
+export const StaticQuestion = ({
   questionId,
   showVisualizationSelector,
 }: QueryVisualizationProps): JSX.Element | null => {
