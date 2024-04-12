@@ -49,7 +49,7 @@
   feedback from hitting the endpoint."
   []
   (if config/is-prod?
-    "https://store-api.metabase.com/api/v1/crm/product-feedback"
+    "https://prod-feedback.metabase.com/api/v1/crm/product-feedback"
     (env :mb-product-feedback-url)))
 
 (mu/defn send-feedback!
