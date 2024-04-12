@@ -15,7 +15,7 @@ import {
   SelectWeekdayOfMonth,
 } from "./components";
 import { defaultDay, optionNameTranslations } from "./constants";
-import type { HandleChangeProperty, ScheduleChangeProp } from "./types";
+import type { UpdateSchedule, ScheduleChangeProp } from "./types";
 
 const getOptionName = (option: ScheduleType) =>
   optionNameTranslations[option] || capitalize(option);
@@ -28,16 +28,37 @@ export interface ScheduleProps {
     change: ScheduleChangeProp,
   ) => void;
   timezone?: string;
-  textBeforeInterval?: string;
+  verb?: string;
   textBeforeSendTime?: string;
   minutesOnHourPicker?: boolean;
 }
+
+const defaults: Record<string, Partial<ScheduleSettings>> = {
+  hourly: {
+    schedule_day: null,
+    schedule_frame: null,
+    schedule_hour: null,
+    schedule_minute: 0,
+  },
+  daily: {
+    schedule_day: null,
+    schedule_frame: null,
+  },
+  weekly: {
+    schedule_day: defaultDay,
+    schedule_frame: null,
+  },
+  monthly: {
+    schedule_frame: "first",
+    schedule_day: defaultDay,
+  },
+};
 
 export const Schedule = ({
   schedule,
   scheduleOptions,
   timezone,
-  textBeforeInterval: verb,
+  verb,
   textBeforeSendTime,
   minutesOnHourPicker,
   onScheduleChange,
@@ -45,7 +66,7 @@ export const Schedule = ({
   schedule: ScheduleSettings;
   scheduleOptions: ScheduleType[];
   timezone?: string;
-  textBeforeInterval?: string;
+  verb?: string;
   textBeforeSendTime?: string;
   minutesOnHourPicker?: boolean;
   onScheduleChange: (
@@ -53,43 +74,21 @@ export const Schedule = ({
     change: ScheduleChangeProp,
   ) => void;
 }) => {
-  const handleChangeProperty: HandleChangeProperty = useCallback(
-    (name, value) => {
+  const updateSchedule: UpdateSchedule = useCallback(
+    (field, value) => {
       let newSchedule: ScheduleSettings = {
         ...schedule,
-        [name]: value,
-      };
-
-      // TODO: Not sure these nulls are needed
-      const defaults: Record<string, Partial<ScheduleSettings>> = {
-        hourly: {
-          schedule_day: null,
-          schedule_frame: null,
-          schedule_hour: null,
-          schedule_minute: 0,
-        },
-        daily: {
-          schedule_day: null,
-          schedule_frame: null,
-        },
-        weekly: {
-          schedule_day: defaultDay,
-          schedule_frame: null,
-        },
-        monthly: {
-          schedule_frame: "first",
-          schedule_day: defaultDay,
-        },
+        [field]: value,
       };
 
       newSchedule = pick(newSchedule, val => val);
 
-      if (name === "schedule_type") {
+      if (field === "schedule_type") {
         newSchedule = {
           ...defaults[value as ScheduleType],
           ...newSchedule,
         };
-      } else if (name === "schedule_frame") {
+      } else if (field === "schedule_frame") {
         // when the monthly schedule frame is the 15th, clear out the schedule_day
         if (value === "mid") {
           newSchedule = { ...newSchedule, schedule_day: null };
@@ -102,131 +101,107 @@ export const Schedule = ({
         }
       }
 
-      onScheduleChange(newSchedule, { name, value });
+      onScheduleChange(newSchedule, { name: field, value });
     },
     [onScheduleChange, schedule],
   );
 
   return (
     <Box lh="41px" display="flex" style={{ flexWrap: "wrap", gap: ".5rem" }}>
-      <ScheduleBody
-        schedule={schedule}
-        handleChangeProperty={handleChangeProperty}
-        scheduleOptions={scheduleOptions}
-        timezone={timezone}
-        textBeforeInterval={verb}
-        textBeforeSendTime={textBeforeSendTime}
-        minutesOnHourPicker={minutesOnHourPicker}
-      />
+      {getScheduleBody({
+        schedule,
+        updateSchedule,
+        scheduleOptions,
+        timezone,
+        verb,
+        textBeforeSendTime,
+        minutesOnHourPicker,
+      })}
     </Box>
   );
 };
 
-const ScheduleBody = ({
+const getScheduleBody = ({
   schedule,
-  handleChangeProperty,
+  updateSchedule,
   scheduleOptions,
   timezone,
-  textBeforeInterval: verb,
+  verb,
   textBeforeSendTime,
   minutesOnHourPicker,
 }: Omit<ScheduleProps, "onScheduleChange"> & {
-  handleChangeProperty: HandleChangeProperty;
+  updateSchedule: UpdateSchedule;
 }) => {
   const itemProps = {
     schedule,
-    handleChangeProperty,
-  };
-
-  const scheduleTypeSelectProps = {
-    ...itemProps,
-    scheduleType: schedule.schedule_type,
-    scheduleOptions,
+    updateSchedule,
   };
 
   const Frequency = (
-    <ScheduleTypeSelect key="how-often" {...scheduleTypeSelectProps} />
+    <ScheduleTypeSelect
+      key="frequency"
+      {...itemProps}
+      scheduleType={schedule.schedule_type}
+      scheduleOptions={scheduleOptions}
+    />
   );
-  const Weekday = <SelectWeekday {...itemProps} />;
   const Hour = (
     <SelectHour
+      key="hour"
       schedule={schedule}
-      handleChangeProperty={handleChangeProperty}
+      updateSchedule={updateSchedule}
       timezone={timezone || "UTC"}
       textBeforeSendTime={textBeforeSendTime}
     />
   );
-  const Minute = <SelectMinute {...itemProps} />;
-  const Frame = <SelectFrame {...itemProps} />;
-  const WeekdayOfMonth = <SelectWeekdayOfMonth {...itemProps} />;
 
   const scheduleType = schedule.schedule_type;
 
-  switch (scheduleType) {
-    case "hourly":
-      if (minutesOnHourPicker) {
-        return (
-          <>{
-            // prettier-ignore
-            c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes").
-            jt`${verb} ${Frequency} at ${Minute} minutes past the hour`
-          }</>
-        );
-      } else {
-        return (
-          <>{
-            // prettier-ignore
-            c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'").
-            jt`${verb} ${Frequency}`
-          }</>
-        );
-      }
-    case "daily":
-      return (
-        <>{
-          // prettier-ignore
-          c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'").
-          jt`${verb} ${Frequency} at ${Hour}`
-        }</>
+  if (scheduleType === "hourly") {
+    if (minutesOnHourPicker) {
+      const Minute = <SelectMinute {...itemProps} />;
+      return c(
+        "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes",
+      ).jt`${verb} ${Frequency} at ${Minute} minutes past the hour`;
+    } else {
+      return c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'")
+        .jt`${verb} ${Frequency}`;
+    }
+  } else if (scheduleType === "daily") {
+    return c(
+      "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'",
+    ).jt`${verb} ${Frequency} at ${Hour}`;
+  } else if (scheduleType === "weekly") {
+    const Weekday = <SelectWeekday key="weekday" {...itemProps} />;
+    return c(
+      "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
+    ).jt`${verb} ${Frequency} on ${Weekday} at ${Hour}`;
+  } else if (scheduleType === "monthly") {
+    const Frame = <SelectFrame key="frame" {...itemProps} />;
+    if (schedule.schedule_frame === "mid") {
+      return c(
+        "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is the noun '15th' (as in 'the 15th of the month'), {3} is a time like '12:00pm'",
+      ).jt`${verb} ${Frequency} on the ${Frame} at ${Hour}`;
+    } else {
+      const WeekdayOfMonth = (
+        <SelectWeekdayOfMonth key="weekday-of-month" {...itemProps} />
       );
-    case "weekly":
-      return (
-        <>{
-          // prettier-ignore
-          c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'")
-          .jt`${verb} ${Frequency} on ${Weekday} at ${Hour}`
-        }</>
-      );
-    case "monthly":
-      if (schedule.schedule_frame === "mid") {
-        return (
-          <>{
-            // prettier-ignore
-            c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is the noun '15th' (as in 'the 15th of the month'), {3} is a time like '12:00pm'")
-          .jt`${verb} ${Frequency} on the ${Frame} at ${Hour}`
-          }</>
-        );
-      } else {
-        return (
-          <>{
-            // prettier-ignore
-            c("{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'")
-            .jt`${verb} ${Frequency} on the ${Frame} ${WeekdayOfMonth} at ${Hour}`
-          }</>
-        );
-      }
-    default:
-      return null;
+      return c(
+        "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'",
+      ).jt`${verb} ${Frequency} on the ${Frame} ${WeekdayOfMonth} at ${Hour}`;
+    }
+  } else {
+    return null;
   }
 };
 
 const ScheduleTypeSelect = ({
   scheduleType,
-  handleChangeProperty,
+  updateSchedule,
   scheduleOptions,
 }: {
   scheduleType?: ScheduleType | null;
-  handleChangeProperty: HandleChangeProperty;
+  updateSchedule: UpdateSchedule;
   scheduleOptions: ScheduleType[];
 }) => {
   const scheduleTypeOptions = scheduleOptions.map(option => ({
@@ -238,9 +213,7 @@ const ScheduleTypeSelect = ({
     <AutoWidthSelect
       display="flex"
       value={scheduleType}
-      onChange={(value: ScheduleType) =>
-        handleChangeProperty("schedule_type", value)
-      }
+      onChange={(value: ScheduleType) => updateSchedule("schedule_type", value)}
       data={scheduleTypeOptions}
     />
   );

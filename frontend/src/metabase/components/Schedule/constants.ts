@@ -47,7 +47,7 @@ export const amAndPM = [
 export const frames = [
   { label: t`first`, value: "first" },
   { label: t`last`, value: "last" },
-  { label: t`15th (midpoint)`, value: "mid" },
+  { label: t`15th`, value: "mid" },
 ];
 
 export const defaultDay = "mon";

@@ -12,25 +12,20 @@ import type {
 } from "metabase-types/api";
 
 import { weekdays, amAndPM, frames, hours, minutes } from "./constants";
-import type { HandleChangeProperty } from "./types";
-
-const dayOptions = [
-  { label: t`calendar day`, value: "calendar-day" },
-  ...weekdays,
-];
+import type { UpdateSchedule } from "./types";
 
 export const SelectFrame = ({
   schedule,
-  handleChangeProperty,
+  updateSchedule,
 }: {
   schedule: ScheduleSettings;
-  handleChangeProperty: HandleChangeProperty;
+  updateSchedule: UpdateSchedule;
 }) => {
   return (
     <AutoWidthSelect
       value={schedule.schedule_frame}
       onChange={(value: ScheduleFrameType) =>
-        handleChangeProperty("schedule_frame", value)
+        updateSchedule("schedule_frame", value)
       }
       data={frames}
     />
@@ -41,12 +36,12 @@ export const SelectHour = ({
   schedule,
   timezone,
   textBeforeSendTime,
-  handleChangeProperty,
+  updateSchedule,
 }: {
   schedule: ScheduleSettings;
   timezone: string;
   textBeforeSendTime?: string;
-  handleChangeProperty: HandleChangeProperty;
+  updateSchedule: UpdateSchedule;
 }) => {
   const hourOfDay = isNaN(schedule.schedule_hour as number)
     ? 8
@@ -62,14 +57,14 @@ export const SelectHour = ({
           value={hour.toString()}
           data={hours}
           onChange={(value: string) =>
-            handleChangeProperty("schedule_hour", Number(value) + amPm * 12)
+            updateSchedule("schedule_hour", Number(value) + amPm * 12)
           }
         />
         <SegmentedControl
           radius="sm"
           value={amPm.toString()}
           onChange={value =>
-            handleChangeProperty("schedule_hour", hour + Number(value) * 12)
+            updateSchedule("schedule_hour", hour + Number(value) * 12)
           }
           data={amAndPM}
           fullWidth
@@ -87,16 +82,16 @@ export const SelectHour = ({
 
 export const SelectWeekday = ({
   schedule,
-  handleChangeProperty,
+  updateSchedule,
 }: {
   schedule: ScheduleSettings;
-  handleChangeProperty: HandleChangeProperty;
+  updateSchedule: UpdateSchedule;
 }) => {
   return (
     <AutoWidthSelect
       value={schedule.schedule_day}
       onChange={(value: ScheduleDayType) =>
-        handleChangeProperty("schedule_day", value)
+        updateSchedule("schedule_day", value)
       }
       data={weekdays}
     />
@@ -107,29 +102,26 @@ export const SelectWeekday = ({
   "First" is selected via SelectFrame. This component provides the weekday */
 export const SelectWeekdayOfMonth = ({
   schedule,
-  handleChangeProperty,
+  updateSchedule,
 }: {
   schedule: ScheduleSettings;
-  handleChangeProperty: HandleChangeProperty;
+  updateSchedule: UpdateSchedule;
 }) => (
   <AutoWidthSelect
     value={schedule.schedule_day || "calendar-day"}
     onChange={(value: ScheduleDayType | "calendar-day") =>
-      handleChangeProperty(
-        "schedule_day",
-        value === "calendar-day" ? null : value,
-      )
+      updateSchedule("schedule_day", value === "calendar-day" ? null : value)
     }
-    data={dayOptions}
+    data={[{ label: t`calendar day`, value: "calendar-day" }, ...weekdays]}
   />
 );
 
 export const SelectMinute = ({
   schedule,
-  handleChangeProperty,
+  updateSchedule,
 }: {
   schedule: ScheduleSettings;
-  handleChangeProperty: HandleChangeProperty;
+  updateSchedule: UpdateSchedule;
 }) => {
   const minuteOfHour = isNaN(schedule.schedule_minute as number)
     ? 0
@@ -139,7 +131,7 @@ export const SelectMinute = ({
       value={(minuteOfHour || 0).toString()}
       data={minutes}
       onChange={(value: string) =>
-        handleChangeProperty("schedule_minute", Number(value))
+        updateSchedule("schedule_minute", Number(value))
       }
     />
   );
