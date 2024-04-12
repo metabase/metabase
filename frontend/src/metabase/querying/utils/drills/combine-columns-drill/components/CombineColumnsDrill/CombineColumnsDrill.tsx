@@ -20,12 +20,12 @@ import {
   getColumnOptions,
   getDefaultSeparator,
   getDrillExpressionClause,
+  getExample,
   getExpressionName,
   getNextColumnAndSeparator,
-  getPreview,
 } from "../../utils";
 import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
-import { Preview } from "../Preview";
+import { Example } from "../Example";
 
 /**
  * Required to not cut off the outline of focused "x" button
@@ -67,8 +67,8 @@ export const CombineColumnsDrill = ({
     () => getDrillExpressionClause(column, columnsAndSeparators),
     [column, columnsAndSeparators],
   );
-  const preview = useMemo(() => {
-    return getPreview(column, columnsAndSeparators);
+  const example = useMemo(() => {
+    return getExample(column, columnsAndSeparators);
   }, [column, columnsAndSeparators]);
 
   const handleChange = (index: number, change: Partial<ColumnAndSeparator>) => {
@@ -171,7 +171,7 @@ export const CombineColumnsDrill = ({
             </Flex>
           </Stack>
 
-          <Preview preview={preview} />
+          <Example example={example} />
 
           <Flex align="center" gap="md" justify="end">
             <Button type="submit" variant="filled">

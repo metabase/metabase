@@ -2,16 +2,16 @@ import { t } from "ttag";
 
 import { Card, ScrollArea, Stack, Text } from "metabase/ui";
 
-import S from "./Preview.module.css";
+import S from "./Example.module.css";
 
 interface Props {
-  preview: string;
+  example: string;
 }
 
-export const Preview = ({ preview }: Props) => {
+export const Example = ({ example }: Props) => {
   return (
     <Stack spacing="sm">
-      <Text color="text-medium" lh={1} weight="bold">{t`Preview`}</Text>
+      <Text color="text-medium" lh={1} weight="bold">{t`Example`}</Text>
 
       <Card
         bg="bg-light"
@@ -22,7 +22,7 @@ export const Preview = ({ preview }: Props) => {
         shadow="none"
         withBorder
       >
-        <Text size="sm">{preview}</Text>
+        <Text size="sm">{example}</Text>
       </Card>
     </Stack>
   );

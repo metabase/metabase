@@ -85,20 +85,20 @@ export const extractQueryResults = (
   return { rows, columns };
 };
 
-export const getPreview = (
+export const getExample = (
   column: Lib.ColumnMetadata,
   columnsAndSeparators: ColumnAndSeparator[],
 ): string => {
   return [
-    getColumnPreview(column),
+    getColumnExample(column),
     ...columnsAndSeparators.flatMap(({ column, separator }) => [
       separator,
-      getColumnPreview(column),
+      getColumnExample(column),
     ]),
   ].join("");
 };
 
-const getColumnPreview = (column: Lib.ColumnMetadata): string => {
+const getColumnExample = (column: Lib.ColumnMetadata): string => {
   if (Lib.isURL(column)) {
     return "https://www.example.com";
   }
