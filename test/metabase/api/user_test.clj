@@ -1204,7 +1204,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                  Other Endpoints -- PUT /api/user/:id/qpnewb, POST /api/user/:id/send_invite                   |
+;;; |                                              Other Endpoints                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest update-user-modal-test
@@ -1232,12 +1232,6 @@
                                      (format "user/%d/modal/%s"
                                              (mt/user->id :trashbird)
                                              endpoint))))))))
-
-(deftest send-invite-test
-  (testing "POST /api/user/:id/send_invite"
-    (testing "Check that non-superusers are denied access to resending invites"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 (format "user/%d/send_invite" (mt/user->id :crowberto))))))))
 
 (deftest user-activate-deactivate-event-test
   (testing "User Deactivate/Reactivate events via the API are recorded in the audit log"

@@ -448,7 +448,6 @@ export const UserApi = {
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
   delete: DELETE("/api/user/:userId"),
   reactivate: PUT("/api/user/:userId/reactivate"),
-  send_invite: POST("/api/user/:id/send_invite"),
 };
 
 export const UtilApi = {

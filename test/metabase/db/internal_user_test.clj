@@ -30,8 +30,7 @@
                                            [:put "user/:id" 400]
                                            [:put "user/:id/reactivate" 400]
                                            [:delete "user/:id" 400]
-                                           [:put "user/:id/modal/qbnewb" 400]
-                                           [:post "user/:id/send_invite" 400]]]
+                                           [:put "user/:id/modal/qbnewb" 400]]]
       (let [endpoint (str/replace endpoint #":id" (str config/internal-mb-user-id))
             testing-details-string (str/join " " [(u/upper-case-en (name method))
                                                   endpoint

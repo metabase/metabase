@@ -10,7 +10,6 @@
    [metabase.api.ldap :as api.ldap]
    [metabase.api.session :as api.session]
    [metabase.config :as config]
-   [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.models.collection :as collection :refer [Collection]]
@@ -534,7 +533,7 @@
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                  Other Endpoints -- PUT /api/user/:id/qpnewb, POST /api/user/:id/send_invite                   |
+;;; |                                              Other Endpoints                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
@@ -551,19 +550,6 @@
                               {:modal modal
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
     (api/check-500 (pos? (t2/update! User id {:type :personal} {k false}))))
-  {:success true})
-
-(api/defendpoint POST "/:id/send_invite"
-  "Resend the user invite email for a given user."
-  [id]
-  {id ms/PositiveInt}
-  (api/check-superuser)
-  (check-not-internal-user id)
-  (when-let [user (t2/select-one User :id id, :is_active true, :type :personal)]
-    (let [reset-token (user/set-password-reset-token! id)
-          ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
-          join-url    (str (user/form-password-reset-url reset-token) "#new")]
-      (messages/send-new-user-email! user @api/*current-user* join-url false)))
   {:success true})
 
 (api/define-routes)
