@@ -135,7 +135,8 @@ export function CombineColumns({
       "concat",
       columnsAndSeparators
         .flatMap(({ column, separator }) => [separator, column])
-        .slice(1),
+        .slice(1)
+        .filter(element => element !== ""),
     );
 
     onSubmit(name, expression);
