@@ -72,6 +72,26 @@
           (lib/query mp (:dataset-query source-metric))
           (metrics/expand query)))))
 
+(deftest ^:parallel expand-join-test
+  (let [[source-metric mp] (mock-metric)
+        query (-> (lib/query mp source-metric)
+                  (lib/join (-> (lib/join-clause (meta/table-metadata :orders)
+                                                 [(lib/=
+                                                   (meta/field-metadata :products :id)
+                                                   (meta/field-metadata :orders :product-id))])
+                                (lib/with-join-fields :all))))]
+    (is (=?
+         {:stages [{:source-table (meta/id :products)
+                    :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]
+                    :joins [{:stages
+                             [{:source-table (meta/id :orders)}],
+                             :conditions
+                             [[:= {}
+                               [:field {} (meta/id :products :id)]
+                               [:field {:join-alias "Orders"} (meta/id :orders :product-id)]]],
+                             :alias "Orders"}]}]}
+         (metrics/expand query)))))
+
 (deftest ^:parallel expand-expression-test
   (let [[source-metric mp] (mock-metric (lib/expression (basic-metric-query) "source" (lib/+ 1 1)))
         query (-> (lib/query mp source-metric)

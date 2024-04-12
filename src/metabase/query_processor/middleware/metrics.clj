@@ -27,7 +27,7 @@
   [query]
   (lib.walk/walk-stages
    query
-   (fn [_query _path {:keys [source-card filters aggregation expressions breakout order-by] :as stage}]
+   (fn [_query _path {:keys [source-card joins filters aggregation expressions breakout order-by] :as stage}]
      (let [source-metadata (some->> source-card (lib.metadata/card query))]
        (if (= (:type source-metadata) :metric)
          (let [source-query (expand (-> query
@@ -41,6 +41,7 @@
                                             (get-in &match [1 :lib/uuid])))]
            (as-> source-query $q
              (lib.util/update-query-stage $q -1 dissoc :aggregation :breakout :order-by :fields)
+             (reduce lib/join $q joins)
              (reduce lib/filter $q filters)
              (reduce lib/breakout $q breakout)
              (reduce lib/aggregate $q new-aggregations)
