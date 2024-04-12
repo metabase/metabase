@@ -12,7 +12,7 @@ const Template: ComponentStory<typeof Schedule> = args => {
   const [
     {
       schedule,
-      scheduleOptions = ["daily", "weekly", "monthly"],
+      scheduleOptions = ["hourly", "daily", "weekly", "monthly"],
       timezone = "UTC",
     },
     updateArgs,
@@ -37,5 +37,5 @@ Default.args = {
     schedule_hour: 0,
     schedule_type: "daily",
   },
-  textBeforeInterval: "Deliver",
+  verb: "Deliver",
 };
