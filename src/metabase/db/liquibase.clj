@@ -270,7 +270,7 @@
       (let [url (liquibase->url liquibase)]
         (doseq [instance instances]
           (when (= url (liquibase->url instance))
-            (log/warnf "Releasing liquibase lock on %s before migrations finished" url)
+            (log/warn "Releasing liquibase lock before migrations finished")
             (release-lock-if-needed! liquibase)))))))
 
 (def ^:private ^:dynamic *lock-depth* 0)
