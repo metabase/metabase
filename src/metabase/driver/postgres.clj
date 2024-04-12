@@ -63,6 +63,7 @@
                               :persist-models           true
                               :table-privileges         true
                               :schemas                  true
+                              :uploads                  true
                               :connection-impersonation true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
@@ -73,7 +74,6 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
-                 :uploads
                  :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
@@ -638,7 +638,7 @@
    (keyword "time without time zone")     :type/Time
    ;; TODO postgres also supports `timestamp(p) with time zone` where p is the precision
    ;; maybe we should switch this to use `sql-jdbc.sync/pattern-based-database-type->base-type`
-   (keyword "timestamp with time zone")    :type/DateTimeWithTZ
+   (keyword "timestamp with time zone")    :type/DateTimeWithLocalTZ
    (keyword "timestamp without time zone") :type/DateTime})
 
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
