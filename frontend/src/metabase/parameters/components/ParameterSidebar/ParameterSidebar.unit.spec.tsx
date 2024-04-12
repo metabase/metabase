@@ -11,12 +11,14 @@ interface SetupOpts {
   initialParameter: UiParameter;
   nextParameter?: UiParameter;
   otherParameters: UiParameter[];
+  hasMapping?: boolean;
 }
 
 const setup = ({
   initialParameter,
   nextParameter,
   otherParameters,
+  hasMapping,
 }: SetupOpts): {
   clickNextParameterButton: () => Promise<void>;
 } => {
@@ -26,6 +28,7 @@ const setup = ({
     initialParameter,
     nextParameter,
     otherParameters,
+    hasMapping = false,
   }: SetupOpts) => {
     const [parameter, setParameter] = useState(initialParameter);
 
@@ -56,6 +59,7 @@ const setup = ({
           onClose={jest.fn()}
           onChangeRequired={jest.fn()}
           getEmbeddedParameterVisibility={() => null}
+          hasMapping={hasMapping}
         />
       </div>
     );
@@ -66,6 +70,7 @@ const setup = ({
       initialParameter={initialParameter}
       nextParameter={nextParameter}
       otherParameters={otherParameters}
+      hasMapping={hasMapping}
     />,
   );
 
@@ -185,6 +190,44 @@ describe("ParameterSidebar", () => {
           name: "Label",
         }),
       ).toHaveValue("Bar");
+    });
+  });
+
+  describe("disconnect from cards", () => {
+    it("renders button when there is mapping", () => {
+      const initialParameter = createMockUiParameter({
+        id: "id1",
+        name: "Foo",
+        slug: "foo",
+        sectionId: "string",
+      });
+
+      setup({
+        initialParameter,
+        otherParameters: [],
+        hasMapping: true,
+      });
+
+      expect(screen.getByText("Disconnect from cards")).toBeInTheDocument();
+    });
+
+    it("doesn't render button when there is no mapping", () => {
+      const initialParameter = createMockUiParameter({
+        id: "id1",
+        name: "Foo",
+        slug: "foo",
+        sectionId: "string",
+      });
+
+      setup({
+        initialParameter,
+        otherParameters: [],
+        hasMapping: false,
+      });
+
+      expect(
+        screen.queryByText("Disconnect from cards"),
+      ).not.toBeInTheDocument();
     });
   });
 });

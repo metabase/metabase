@@ -36,6 +36,7 @@ import {
 
 export interface ParameterSettingsProps {
   parameter: Parameter;
+  hasMapping: boolean;
   isParameterSlugUsed: (value: string) => boolean;
   onChangeName: (name: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
@@ -73,6 +74,7 @@ export const ParameterSettings = ({
   onChangeSourceConfig,
   onChangeRequired,
   embeddedParameterVisibility,
+  hasMapping,
 }: ParameterSettingsProps): JSX.Element => {
   const dispatch = useDispatch();
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
@@ -246,15 +248,17 @@ export const ParameterSettings = ({
         ></RequiredParamToggle>
       </Box>
 
-      <Box>
-        <Button
-          variant="subtle"
-          pl={0}
-          onClick={() => {
-            dispatch(resetParameterMapping(parameter.id));
-          }}
-        >{t`Disconnect from cards`}</Button>
-      </Box>
+      {hasMapping && (
+        <Box>
+          <Button
+            variant="subtle"
+            pl={0}
+            onClick={() => {
+              dispatch(resetParameterMapping(parameter.id));
+            }}
+          >{t`Disconnect from cards`}</Button>
+        </Box>
+      )}
     </Box>
   );
 };
