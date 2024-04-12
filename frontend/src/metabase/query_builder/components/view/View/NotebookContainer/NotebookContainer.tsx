@@ -4,7 +4,7 @@ import type { ResizeCallbackData, ResizableBoxProps } from "react-resizable";
 import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
-import { color } from "metabase/lib/colors";
+import { color, darken } from "metabase/lib/colors";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import {
   setNotebookNativePreviewSidebarWidth,
@@ -64,31 +64,35 @@ export const NotebookContainer = ({
 
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
-  const Handle = forwardRef<HTMLDivElement, Partial<ResizableBoxProps>>(
-    function Handle(props, ref) {
-      const handleWidth = 10;
-      const borderWidth = 1;
-      const left = rem(-((handleWidth + borderWidth) / 2));
+  const Handle = forwardRef<
+    HTMLDivElement,
+    Partial<ResizableBoxProps> & { onResize: any } //Mantine and react-resizeable have different opinions on what onResize should be
+  >(function Handle(props, ref) {
+    const handleWidth = 6;
+    const borderWidth = 1;
+    const left = rem(-((handleWidth + borderWidth) / 2));
 
-      return (
-        <Box
-          data-testid="notebook-native-preview-resize-handle"
-          ref={ref}
-          {...props}
-          pos="absolute"
-          top={0}
-          bottom={0}
-          m="auto 0"
-          w={rem(handleWidth)}
-          left={left}
-          style={{
-            zIndex: 5,
-            cursor: "ew-resize",
-          }}
-        ></Box>
-      );
-    },
-  );
+    return (
+      <Box
+        data-testid="notebook-native-preview-resize-handle"
+        ref={ref}
+        {...props}
+        pos="absolute"
+        top={0}
+        bottom={0}
+        m="auto 0"
+        h={rem(100)}
+        w={rem(handleWidth)}
+        left={left}
+        bg={darken("border", 0.03)}
+        style={{
+          zIndex: 5,
+          cursor: "ew-resize",
+          borderRadius: rem(8),
+        }}
+      ></Box>
+    );
+  });
 
   return (
     <Flex

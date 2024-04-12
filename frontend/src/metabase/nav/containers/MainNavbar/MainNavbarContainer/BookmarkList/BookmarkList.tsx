@@ -129,6 +129,10 @@ const BookmarkList = ({
     activationConstraint: { distance: 15 },
   });
 
+  const onToggleBookmarks = useCallback((isVisible: boolean) => {
+    localStorage.setItem("shouldDisplayBookmarks", String(isVisible));
+  }, []);
+
   const handleSortStart = useCallback(() => {
     document.body.classList.add(GrabberS.grabbing);
     setIsSorting(true);
