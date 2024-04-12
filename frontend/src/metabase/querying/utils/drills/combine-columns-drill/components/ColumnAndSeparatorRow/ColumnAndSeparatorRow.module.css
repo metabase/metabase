@@ -16,3 +16,8 @@
     margin-top: 0;
   }
 }
+
+.whitespacePlaceholder {
+  pointer-events: none;
+  user-select: none;
+}

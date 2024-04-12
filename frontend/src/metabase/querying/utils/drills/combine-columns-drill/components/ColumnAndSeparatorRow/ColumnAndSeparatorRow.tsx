@@ -1,12 +1,13 @@
+import { useState } from "react";
 import { t } from "ttag";
 
-import { Button, Flex, Icon, Select, TextInput } from "metabase/ui";
+import { Box, Button, Flex, Icon, Select, Text, TextInput } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import type { ColumnAndSeparator, ColumnOption } from "../../types";
 import { formatSeparator, fromSelectValue, toSelectValue } from "../../utils";
 
-import styles from "./ColumnAndSeparatorRow.module.css";
+import S from "./ColumnAndSeparatorRow.module.css";
 
 interface Props {
   column: Lib.ColumnMetadata;
@@ -31,26 +32,47 @@ export const ColumnAndSeparatorRow = ({
   onChange,
   onRemove,
 }: Props) => {
+  const [isFocused, setIsFocused] = useState(false);
+
   return (
     <Flex align="flex-end" gap={12}>
       {showSeparator && (
-        <TextInput
-          className={styles.separator}
-          label={showLabels ? t`Separator` : undefined}
-          placeholder={formatSeparator("")}
-          value={separator}
-          w={110}
-          onChange={event => {
-            const separator = event.target.value;
-            onChange(index, { separator });
-          }}
-        />
+        <Box pos="relative">
+          <TextInput
+            className={S.separator}
+            label={showLabels ? t`Separator` : undefined}
+            placeholder={formatSeparator("")}
+            value={separator}
+            w={110}
+            onChange={event => {
+              const separator = event.target.value;
+              onChange(index, { separator });
+            }}
+            onBlur={() => setIsFocused(false)}
+            onFocus={() => setIsFocused(true)}
+          />
+
+          {separator === " " && !isFocused && (
+            <Text
+              bottom={8} // using bottom instead of top because the input does not always have a label
+              className={S.whitespacePlaceholder}
+              color="text-light"
+              left={1} // account for TextInput border
+              pos="absolute"
+              px="0.6875rem" // same as TextInput
+              size="md"
+              unselectable="on"
+            >
+              {formatSeparator(separator)}
+            </Text>
+          )}
+        </Box>
       )}
 
       <Select
-        className={styles.column}
+        className={S.column}
         classNames={{
-          wrapper: styles.wrapper,
+          wrapper: S.wrapper,
         }}
         data={options}
         label={showLabels ? t`Column` : undefined}
@@ -65,7 +87,7 @@ export const ColumnAndSeparatorRow = ({
       {showRemove && (
         <Button
           classNames={{
-            root: styles.remove,
+            root: S.remove,
           }}
           aria-label={t`Remove column`}
           leftIcon={<Icon name="close" />}
