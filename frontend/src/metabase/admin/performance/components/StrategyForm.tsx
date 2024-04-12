@@ -152,7 +152,7 @@ const StrategyFormBody = ({
                   subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
                 >
                   <PositiveNumberInput
-                    strategyType="adaptive"
+                    strategyType="ttl"
                     name="min_duration_seconds"
                   />
                 </Field>
@@ -160,10 +160,7 @@ const StrategyFormBody = ({
                   title={t`Cache time-to-live (TTL) multiplier`}
                   subtitle={<MultiplierFieldSubtitle />}
                 >
-                  <PositiveNumberInput
-                    strategyType="adaptive"
-                    name="multiplier"
-                  />
+                  <PositiveNumberInput strategyType="ttl" name="multiplier" />
                 </Field>
               </>
             )}
@@ -199,42 +196,60 @@ export const FormButtons = ({
   const { dirty } = useFormikContext<Strategy>();
   const { status } = useFormContext();
 
+  shouldAllowInvalidation &&= targetId !== rootId;
+
   const isFormPending = status === "pending";
   const [wasFormRecentlyPending] = useRecentlyTrue(isFormPending, 500);
 
   const isSavingPossible = dirty || isFormPending || wasFormRecentlyPending;
 
+  if (!isSavingPossible && !shouldAllowInvalidation) {
+    return null;
+  }
+
   const InvalidateNowButton = () =>
-    shouldAllowInvalidation && targetId ? (
+    shouldAllowInvalidation ? (
       <PLUGIN_CACHING.InvalidateNowButton targetId={targetId} />
     ) : null;
 
   return (
     <Group p="md" px="lg" spacing="md" bg="white">
       {isSavingPossible ? (
-        <>
-          <Button
-            disabled={!dirty || isFormPending}
-            type="reset"
-          >{t`Discard changes`}</Button>
-          <FormSubmitButton
-            miw="10rem"
-            h="40px"
-            label={t`Save changes`}
-            successLabel={
-              <Group spacing="xs">
-                <Icon name="check" /> {t`Saved`}
-              </Group>
-            }
-            activeLabel={<LoaderInButton size=".8rem" />}
-            variant="filled"
-            data-testid="strategy-form-submit-button"
-          />
-        </>
+        <SaveAndDiscardButtons dirty={dirty} isFormPending={isFormPending} />
       ) : (
         <InvalidateNowButton />
       )}
     </Group>
+  );
+};
+
+const SaveAndDiscardButtons = ({
+  dirty,
+  isFormPending,
+}: {
+  dirty: boolean;
+  isFormPending: boolean;
+}) => {
+  return (
+    <>
+      <Button
+        disabled={!dirty || isFormPending}
+        type="reset"
+      >{t`Discard changes`}</Button>
+      <FormSubmitButton
+        miw="10rem"
+        h="40px"
+        label={t`Save changes`}
+        successLabel={
+          <Group spacing="xs">
+            <Icon name="check" /> {t`Saved`}
+          </Group>
+        }
+        activeLabel={<LoaderInButton size=".8rem" />}
+        variant="filled"
+        data-testid="strategy-form-submit-button"
+      />
+    </>
   );
 };
 
@@ -331,8 +346,12 @@ const Field = ({
 const getDefaultValueForField = (
   strategyType: StrategyType,
   fieldName?: string,
-) =>
-  fieldName ? Strategies[strategyType].validateWith.cast({})[fieldName] : "";
+) => {
+  console.log("strategyType", strategyType);
+  return fieldName
+    ? Strategies[strategyType].validateWith.cast({})[fieldName]
+    : "";
+};
 
 const MultiplierFieldSubtitle = () => (
   <div>

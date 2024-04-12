@@ -8,7 +8,7 @@ import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { CacheConfigApi } from "metabase/services";
-import { Text, Tooltip } from "metabase/ui";
+import { Group, Text, Tooltip } from "metabase/ui";
 
 import { StyledInvalidateNowButton } from "./InvalidateNowButton.styled";
 
@@ -49,8 +49,12 @@ export const InvalidateNowButton = ({ targetId }: { targetId: number }) => {
           position="bottom"
         >
           <StyledInvalidateNowButton
-            variant="subtle"
-            label={<IconInButton color={color("white")} name="trash" />}
+            label={
+              <Group spacing="sm">
+                <IconInButton color={color("danger")} name="trash" />
+                <Text>Invalidate cache now</Text>
+              </Group>
+            }
             activeLabel={<LoaderInDarkButton size="1rem" />}
             successLabel={<IconInButton name="check" color="white" />}
             failedLabel={
