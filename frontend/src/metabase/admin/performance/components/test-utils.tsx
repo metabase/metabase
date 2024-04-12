@@ -14,7 +14,7 @@ import {
   createMockCacheConfig,
   createMockCacheConfigWithDoNotCacheStrategy,
   createMockCacheConfigWithDurationStrategy,
-  createMockCacheConfigWithTTLStrategy,
+  createMockCacheConfigWithAdaptiveStrategy,
 } from "metabase-types/api/mocks/performance";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
@@ -44,7 +44,7 @@ export const setup = ({
   }
 
   const cacheConfigs = [
-    createMockCacheConfigWithTTLStrategy({ model_id: 1 }),
+    createMockCacheConfigWithAdaptiveStrategy({ model_id: 1 }),
     createMockCacheConfigWithDoNotCacheStrategy({ model_id: 2 }),
     createMockCacheConfigWithDurationStrategy({ model_id: 3 }),
     createMockCacheConfig({

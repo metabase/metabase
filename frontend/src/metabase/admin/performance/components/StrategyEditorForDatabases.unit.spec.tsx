@@ -3,14 +3,14 @@ import { act, screen } from "__support__/ui";
 import { changeInput, getSaveButton, setup } from "./test-utils";
 
 describe("StrategyEditorForDatabases", () => {
-  it("lets user change the default policy from Duration to TTL to No caching", async () => {
+  it("lets user change the default policy from Duration to Adaptive to No caching", async () => {
     setup();
     expect(
       screen.queryByRole("button", { name: "Save changes" }),
     ).not.toBeInTheDocument();
 
     const ttlStrategyRadioButton = await screen.findByRole("radio", {
-      name: /TTL/i,
+      name: /Adaptive/i,
     });
     ttlStrategyRadioButton.click();
 

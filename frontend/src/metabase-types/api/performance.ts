@@ -1,6 +1,6 @@
 type Model = "root" | "database" | "collection" | "dashboard" | "question";
 
-export type StrategyType = "nocache" | "ttl" | "duration" | "inherit";
+export type StrategyType = "nocache" | "adaptive" | "duration" | "inherit";
 
 interface StrategyBase {
   type: StrategyType;
@@ -13,8 +13,8 @@ export enum DurationUnit {
   Days = "days",
 }
 
-export interface TTLStrategy extends StrategyBase {
-  type: "ttl";
+export interface AdaptiveStrategy extends StrategyBase {
+  type: "adaptive";
   multiplier: number;
   min_duration_ms: number;
   min_duration_seconds?: number;
@@ -37,7 +37,7 @@ export interface InheritStrategy extends StrategyBase {
 /** Cache invalidation strategy */
 export type Strategy =
   | DoNotCacheStrategy
-  | TTLStrategy
+  | AdaptiveStrategy
   | DurationStrategy
   | InheritStrategy;
 

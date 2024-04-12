@@ -150,14 +150,14 @@ const StrategyFormBody = ({
         >
           <Stack maw="27.5rem" p="lg" spacing="xl">
             <StrategySelector targetId={targetId} />
-            {selectedStrategyType === "ttl" && (
+            {selectedStrategyType === "adaptive" && (
               <>
                 <Field
                   title={t`Minimum query duration`}
                   subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
                 >
                   <PositiveNumberInput
-                    strategyType="ttl"
+                    strategyType="adaptive"
                     name="min_duration_seconds"
                   />
                 </Field>
@@ -165,7 +165,7 @@ const StrategyFormBody = ({
                   title={t`Cache time-to-live (TTL) multiplier`}
                   subtitle={<MultiplierFieldSubtitle />}
                 >
-                  <PositiveNumberInput strategyType="ttl" name="multiplier" />
+                  <PositiveNumberInput strategyType="adaptive" name="multiplier" />
                 </Field>
               </>
             )}

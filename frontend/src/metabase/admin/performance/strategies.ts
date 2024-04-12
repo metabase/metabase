@@ -1,4 +1,4 @@
-import { c, t } from "ttag";
+import { t } from "ttag";
 import type { AnySchema } from "yup";
 import * as Yup from "yup";
 import type { SchemaObjectDescription } from "yup/lib/schema";
@@ -34,8 +34,8 @@ export const doNotCacheStrategyValidationSchema = Yup.object({
 });
 
 export const defaultMinDurationMs = 1000;
-export const ttlStrategyValidationSchema = Yup.object({
-  type: Yup.string().equals(["ttl"]),
+export const adaptiveStrategyValidationSchema = Yup.object({
+  type: Yup.string().equals(["adaptive"]),
   min_duration_ms: positiveInteger.default(defaultMinDurationMs),
   min_duration_seconds: positiveInteger.default(
     Math.ceil(defaultMinDurationMs / 1000),
@@ -89,15 +89,15 @@ export const strategyValidationSchema = Yup.object().test(
 
 /** Cache invalidation strategies and related metadata */
 export const Strategies: Record<StrategyType, StrategyData> = {
-  ttl: {
-    label: t`TTL: When the time-to-live (TTL) expires`,
-    shortLabel: c("'TTL' is short for 'time-to-live'").t`TTL`,
-    validateWith: ttlStrategyValidationSchema,
-  },
   duration: {
     label: t`Duration: after a specific number of hours`,
     validateWith: durationStrategyValidationSchema,
     shortLabel: t`Duration`,
+  },
+  adaptive: {
+    label: t`Adaptive: the longer the query takes the longer the cached results persist`,
+    shortLabel: t`Adaptive`,
+    validateWith: adaptiveStrategyValidationSchema,
   },
   nocache: {
     label: t`Don't cache results`,
@@ -152,7 +152,7 @@ export const translateConfig = (
       translated.model_id === rootId ? "nocache" : "inherit";
   }
 
-  if (translated.strategy.type === "ttl") {
+  if (translated.strategy.type === "adaptive") {
     if (direction === "fromAPI") {
       translated.strategy.min_duration_seconds = Math.ceil(
         translated.strategy.min_duration_ms / 1000,

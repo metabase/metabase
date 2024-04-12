@@ -5,15 +5,15 @@ export const createMockCacheConfig = (
 ): CacheConfig => ({
   model: "database",
   model_id: 1,
-  strategy: { type: "ttl", multiplier: 1, min_duration_ms: 1 },
+  strategy: { type: "adaptive", multiplier: 1, min_duration_ms: 1 },
   ...opts,
 });
 
-export const createMockCacheConfigWithTTLStrategy = (
+export const createMockCacheConfigWithAdaptiveStrategy = (
   opts?: Partial<CacheConfig>,
 ): CacheConfig =>
   createMockCacheConfig({
-    strategy: { type: "ttl", multiplier: 1, min_duration_ms: 1 },
+    strategy: { type: "adaptive", multiplier: 1, min_duration_ms: 1 },
     ...opts,
   });
 
