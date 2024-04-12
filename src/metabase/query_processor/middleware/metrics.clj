@@ -26,21 +26,25 @@
    "
   [query]
   (lib.walk/walk-stages
-    query
-    (fn [_query _path {:keys [source-card filters aggregation expressions breakout order-by] :as stage}]
-      (let [source-metadata (some->> source-card (lib.metadata/card query))]
-        (if (= (:type source-metadata) :metric)
-          (let [source-query (expand (lib/query query (:dataset-query source-metadata)))
-                source-aggregations (lib/aggregations source-query)
-                new-aggregations (->> (lib.util.match/replace aggregation
-                                                              [:metric {} source-card] (first source-aggregations))
-                                      lib.util/fresh-uuids)]
-            (as-> source-query $q
-              (lib.util/update-query-stage $q -1 dissoc :aggregation :breakout :order-by :fields)
-              (reduce lib/filter $q filters)
-              (reduce lib/breakout $q breakout)
-              (reduce lib/order-by $q order-by)
-              (reduce expression-with-name-from-source $q expressions)
-              (reduce lib/aggregate $q new-aggregations)
-              (:stages $q)))
-          stage)))))
+   query
+   (fn [_query _path {:keys [source-card filters aggregation expressions breakout order-by] :as stage}]
+     (let [source-metadata (some->> source-card (lib.metadata/card query))]
+       (if (= (:type source-metadata) :metric)
+         (let [source-query (expand (-> query
+                                        (lib/query (:dataset-query source-metadata))
+                                        lib.util/fresh-query-instance))
+               metric-aggregation (-> source-query lib/aggregations first)
+               new-aggregations (lib.util.match/replace aggregation
+                                  [:metric {} source-card]
+                                  (assoc-in (lib.util/fresh-uuids metric-aggregation)
+                                            [1 :lib/uuid]
+                                            (get-in &match [1 :lib/uuid])))]
+           (as-> source-query $q
+             (lib.util/update-query-stage $q -1 dissoc :aggregation :breakout :order-by :fields)
+             (reduce lib/filter $q filters)
+             (reduce lib/breakout $q breakout)
+             (reduce lib/aggregate $q new-aggregations)
+             (reduce expression-with-name-from-source $q expressions)
+             (reduce lib/order-by $q order-by)
+             (:stages $q)))
+         stage)))))

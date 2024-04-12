@@ -46,6 +46,21 @@
                                    [:+ {} [:avg {} [:field {} (meta/id :products :rating)]] 1]]}]}
           (metrics/expand query)))))
 
+(deftest ^:parallel expand-aggregation-metric-ordering-test
+  (let [[source-metric mp] (mock-metric)
+        query (-> (lib/query mp source-metric)
+                  (lib/aggregate (lib/+ (lib.options/ensure-uuid [:metric {} (:id source-metric)]) 1)))]
+    (doseq [agg-ref (map lib.options/uuid (lib/aggregations query))
+            :let [ordered (lib/order-by query (lib.options/ensure-uuid [:aggregation {} agg-ref]))
+                  expanded (metrics/expand ordered)]]
+      (is (=? {:stages
+               [{:aggregation
+                 [[:avg {} [:field {} (meta/id :products :rating)]]
+                  [:+ {} [:avg {} [:field {} (meta/id :products :rating)]] 1]]
+                 :order-by
+                 [[:asc {} [:aggregation {} agg-ref]]]}]}
+              expanded)))))
+
 (deftest ^:parallel expand-basic-test
   (let [[source-metric mp] (mock-metric)
         query (-> (lib/query mp source-metric))]
