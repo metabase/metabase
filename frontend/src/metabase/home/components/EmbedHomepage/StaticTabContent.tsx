@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { t, jt } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { isNotNull } from "metabase/lib/types";
 import { Anchor, Button, Icon, Text, List } from "metabase/ui";
 
 import type { EmbedHomepageViewProps } from "./EmbedHomepageView";
@@ -31,7 +32,7 @@ export const StaticTabContent = ({
           </List.Item>
         )}
         <List.Item>{jt`${
-          exampleDashboardId != null ? t`Select` : `Create`
+          isNotNull(exampleDashboardId) ? t`Select` : `Create`
         } a question or dashboard to embed. Then click ${(
           <strong key="bold">{t`share`}</strong>
         )}`}</List.Item>
@@ -41,7 +42,7 @@ export const StaticTabContent = ({
         <List.Item>{t`Embed the dashboard into your app using an iframe, the URL and the signed token. `}</List.Item>
       </List>
 
-      {exampleDashboardId && (
+      {isNotNull(exampleDashboardId) && (
         <Link to={`/dashboard/${exampleDashboardId}`}>
           <Button
             variant="filled"
