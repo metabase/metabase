@@ -722,7 +722,8 @@
 
              :else
              (throw (ex-info (tru "Window function requires either breakouts or order by in the query")
-                             {:type qp.error-type/invalid-query})))
+                             {:type  qp.error-type/invalid-query
+                              :query *inner-query*})))
          m (f driver *inner-query*)]
      (-> [:over [expr (merge m additional-hsql)]]
          (h2x/with-database-type-info (h2x/database-type expr))))))
@@ -745,7 +746,7 @@
       ROWS UNBOUNDED PRECEDING
     )
 
-  Note that [[nest-breakouts-in-queries-with-cumulative-aggregations]] ensures we will always see a plain column
+  Note that [[nest-breakouts-in-queries-with-window-fn-aggregations]] ensures we will always see a plain column
   identifier here.
 
   With more than one breakout, we `PARTITION BY` all breakouts except the last, then `ORDER BY` the last breakout. See
@@ -1197,7 +1198,7 @@
   [:or
    [:and mbql.s/value
     [:fn {:error/message "string value"} #(string? (second %))]]
-   ::mbql.s/Expression])
+   ::mbql.s/FieldOrExpressionDef])
 
 (mu/defn ^:private generate-pattern
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
@@ -1599,7 +1600,7 @@
 ;;; around [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation]], which is
 ;;; written for pMBQL, so we can use it with a legacy inner query. Once we rework the SQL QP to use pMBQL we can remove
 ;;; this.
-(mu/defn ^:private nest-breakouts-in-queries-with-cumulative-aggregations :- mbql.s/MBQLQuery
+(mu/defn ^:private nest-breakouts-in-queries-with-window-fn-aggregations :- mbql.s/MBQLQuery
   [inner-query :- mbql.s/MBQLQuery]
   (let [metadata-provider (qp.store/metadata-provider)
         database-id       (u/the-id (lib.metadata/database (qp.store/metadata-provider)))]
@@ -1618,14 +1619,14 @@
       (when-let [source-query (:source-query inner-query)]
         (has-window-function-aggregations? source-query))))
 
-(defn- maybe-nest-breakouts-in-queries-with-cumulative-aggregations [inner-query]
+(defn- maybe-nest-breakouts-in-queries-with-window-fn-aggregations [inner-query]
   (cond-> inner-query
-    (has-window-function-aggregations? inner-query) nest-breakouts-in-queries-with-cumulative-aggregations))
+    (has-window-function-aggregations? inner-query) nest-breakouts-in-queries-with-window-fn-aggregations))
 
 (defmethod preprocess :sql
   [_driver inner-query]
   (-> inner-query
-      maybe-nest-breakouts-in-queries-with-cumulative-aggregations
+      maybe-nest-breakouts-in-queries-with-window-fn-aggregations
       add/add-alias-info
       #_nest-query/nest-expressions))
 

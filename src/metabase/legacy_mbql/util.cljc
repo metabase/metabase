@@ -9,24 +9,18 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    #?@(:clj
        [[metabase.models.dispatch :as models.dispatch]])))
-
-(defn qualified-name
-  "Like `name`, but if `x` is a namespace-qualified keyword, returns that a string including the namespace."
-  [x]
-  (if (and (keyword? x) (namespace x))
-    (str (namespace x) "/" (name x))
-    (name x)))
 
 (mu/defn normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- schema.helpers/KeywordOrString]
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (-> (qualified-name token)
+  (-> (u/qualified-name token)
       str/lower-case
       (str/replace #"_" "-")
       keyword))
@@ -37,7 +31,7 @@
   [x]
   (and (sequential? x)
        (not (map-entry? x))
-       (keyword? (first x))))
+       (simple-keyword? (first x))))
 
 (defn is-clause?
   "If `x` is an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
@@ -304,16 +298,16 @@
     [:/ x y z & more]
     (recur (into [:/ [:/ x y]] (cons z more)))))
 
-(mu/defn desugar-expression :- ::mbql.s/Expression
+(mu/defn desugar-expression :- ::mbql.s/FieldOrExpressionDef
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
   to compile."
-  [expression :- ::mbql.s/Expression]
+  [expression :- ::mbql.s/FieldOrExpressionDef]
   (-> expression
       desugar-divide-with-extra-args))
 
 (defn- maybe-desugar-expression [clause]
   (cond-> clause
-    (mbql.preds/Expression? clause) desugar-expression))
+    (mbql.preds/FieldOrExpressionDef? clause) desugar-expression))
 
 (mu/defn desugar-filter-clause :- mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
@@ -434,10 +428,10 @@
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 
-(mu/defn expression-with-name :- ::mbql.s/Expression
-  "Return the `Expression` referenced by a given `expression-name`."
+(mu/defn expression-with-name :- ::mbql.s/FieldOrExpressionDef
+  "Return the expression referenced by a given `expression-name`."
   [inner-query expression-name :- [:or :keyword ::lib.schema.common/non-blank-string]]
-  (let [allowed-names [(qualified-name expression-name) (keyword expression-name)]]
+  (let [allowed-names [(u/qualified-name expression-name) (keyword expression-name)]]
     (loop [{:keys [expressions source-query]} inner-query, found #{}]
       (or
        ;; look for either string or keyword version of `expression-name` in `expressions`
@@ -448,7 +442,7 @@
            (recur source-query found)
            ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
            ;; were
-           (throw (ex-info (i18n/tru "No expression named ''{0}''" (qualified-name expression-name))
+           (throw (ex-info (i18n/tru "No expression named ''{0}''" (u/qualified-name expression-name))
                            {:type            :invalid-query
                             :expression-name expression-name
                             :tried           allowed-names

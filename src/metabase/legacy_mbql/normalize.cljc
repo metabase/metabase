@@ -101,7 +101,7 @@
   ;; For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string.
   [[_ expression-name opts]]
   (let [expression [:expression (if (keyword? expression-name)
-                                  (mbql.u/qualified-name expression-name)
+                                  (u/qualified-name expression-name)
                                   expression-name)]
         opts (->> opts
                   normalize-ref-opts
@@ -132,7 +132,7 @@
   [[_ field-name field-type]]
   [:field-literal
    (if (keyword? field-name)
-     (mbql.u/qualified-name field-name)
+     (u/qualified-name field-name)
      field-name)
    (keyword field-type)])
 
@@ -251,7 +251,7 @@
    normalize the definitions as normal."
   [expressions-clause]
   (into {} (for [[expression-name definition] expressions-clause]
-             [(mbql.u/qualified-name expression-name)
+             [(u/qualified-name expression-name)
               (normalize-tokens definition :ignore-path)])))
 
 (defn- normalize-order-by-tokens
@@ -305,7 +305,7 @@
   (into
    {}
    (map (fn [[tag-name tag-definition]]
-          (let [tag-name (mbql.u/qualified-name tag-name)]
+          (let [tag-name (u/qualified-name tag-name)]
             [tag-name
              (-> (normalize-template-tag-definition tag-definition)
                  (assoc :name tag-name))])))
@@ -315,7 +315,7 @@
   "Normalize a parameter in the query `:parameters` list."
   [{param-type :type, :keys [target id values_source_config], :as param}]
   (cond-> param
-    id                   (update :id mbql.u/qualified-name)
+    id                   (update :id u/qualified-name)
     ;; some things that get ran thru here, like dashcard param targets, do not have :type
     param-type           (update :type maybe-normalize-token)
     target               (update :target #(normalize-tokens % :ignore-path))
@@ -342,7 +342,7 @@
       (update :fields maybe-normalize-token)
 
       join-alias
-      (update :alias mbql.u/qualified-name))))
+      (update :alias u/qualified-name))))
 
 (declare canonicalize-mbql-clauses)
 

@@ -809,3 +809,20 @@
                                             -1]]}))
       {:lib/uuid "d5149080-5e1c-4643-9264-bf4a82116abd"}
       {:lib/uuid "d5149080-5e1c-4643-9264-bf4a82116abd", :name "my_offset"})))
+
+(deftest ^:parallel cumulative-count-test
+  (is (=? {:query {:aggregation [[:aggregation-options
+                                  [:cum-count [:field 48400 {:base-type :type/BigInteger}]]
+                                  {:name "count"}]]}}
+          (lib.convert/->legacy-MBQL
+           {:lib/type :mbql/query
+            :database 48001
+            :stages   [{:lib/type     :mbql.stage/mbql
+                        :source-table 48040
+                        :aggregation  [[:cum-count
+                                        {:lib/uuid "4b4c18e3-5a8c-4735-9476-815eb910cb0a", :name "count"}
+                                        [:field
+                                         {:base-type      :type/BigInteger,
+                                          :effective-type :type/BigInteger,
+                                          :lib/uuid       "8d07e5d2-4806-44c2-ba89-cdf1cfd6c3b3"}
+                                         48400]]]}]}))))

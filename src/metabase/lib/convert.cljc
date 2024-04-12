@@ -337,7 +337,13 @@
                          (= k :effective-type))))
          m)))
 
-(defn- aggregation->legacy-MBQL [[tag options & args]]
+(defmulti ^:private aggregation->legacy-MBQL
+  {:arglists '([aggregation-clause])}
+  lib.dispatch/dispatch-value
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod aggregation->legacy-MBQL :default
+  [[tag options & args]]
   (let [inner (into [tag] (map ->legacy-MBQL) args)
         ;; the default value of the :case expression is in the options
         ;; in legacy MBQL
@@ -347,6 +353,10 @@
     (if-let [aggregation-opts (not-empty (options->legacy-MBQL options))]
       [:aggregation-options inner aggregation-opts]
       inner)))
+
+(defmethod aggregation->legacy-MBQL :offset
+  [clause]
+  (->legacy-MBQL clause))
 
 (defn- clause-with-options->legacy-MBQL [[k options & args]]
   (if (map? options)
@@ -501,7 +511,7 @@
             (-> stage
                 disqualify
                 source-card->legacy-source-table
-                (m/update-existing :aggregation #(mapv ->legacy-MBQL %))
+                (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
                 (m/update-existing :expressions (fn [expressions]
                                                   (into {}
                                                         (for [expression expressions

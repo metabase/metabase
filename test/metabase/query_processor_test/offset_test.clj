@@ -55,6 +55,9 @@
                                                         (lib/expression-ref query "offset_total")]))]
         (doseq [[message query] {"order by a plain field" (lib/order-by query orders-id)
                                  "order by an expression" (as-> query query
+                                                            ;; TODO -- we should try this with something that compiles
+                                                            ;; to a parameterized expression -- something with a literal
+                                                            ;; value that gets compiled as `?`, like a String
                                                             (lib/expression query "id_plus_1" (lib/+ orders-id 1))
                                                             (lib/order-by query (lib/expression-ref query "id_plus_1")))
                                  "order by date bucketed" (-> query
