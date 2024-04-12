@@ -171,7 +171,8 @@
   ltrim
   rtrim
   upper
-  lower]
+  lower
+  offset]
  [lib.fe-util
   dependent-metadata
   expression-clause

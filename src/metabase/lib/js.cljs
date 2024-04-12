@@ -1980,7 +1980,7 @@
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [expr (js->clj legacy-expression :keywordize-keys true)
           expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
-      (lib.convert/->pMBQL expr))))
+      (lib.core/normalize (lib.convert/->pMBQL expr)))))
 
 (defn ^:export legacy-expression-for-expression-clause
   "Convert `an-expression-clause` into a legacy expression.
@@ -2015,11 +2015,14 @@
   then several of these functions for dealing with legacy can be removed."
   [a-query stage-number expression-mode legacy-expression expression-position]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [expr (js->clj legacy-expression :keywordize-keys true)
-          expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
+    (let [expr (as-> legacy-expression expr
+                 (js->clj expr :keywordize-keys true)
+                 (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))
+                 (lib.convert/->pMBQL expr)
+                 (lib.core/normalize expr))]
       (-> (lib.expression/diagnose-expression a-query stage-number
                                               (keyword expression-mode)
-                                              (lib.convert/->pMBQL expr)
+                                              expr
                                               expression-position)
           clj->js))))
 

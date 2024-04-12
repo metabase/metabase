@@ -304,16 +304,16 @@
     [:/ x y z & more]
     (recur (into [:/ [:/ x y]] (cons z more)))))
 
-(mu/defn desugar-expression :- ::mbql.s/FieldOrExpressionDef
+(mu/defn desugar-expression :- ::mbql.s/Expression
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
   to compile."
-  [expression :- ::mbql.s/FieldOrExpressionDef]
+  [expression :- ::mbql.s/Expression]
   (-> expression
       desugar-divide-with-extra-args))
 
 (defn- maybe-desugar-expression [clause]
   (cond-> clause
-    (mbql.preds/FieldOrExpressionDef? clause) desugar-expression))
+    (mbql.preds/Expression? clause) desugar-expression))
 
 (mu/defn desugar-filter-clause :- mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
@@ -434,7 +434,7 @@
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 
-(mu/defn expression-with-name :- ::mbql.s/FieldOrExpressionDef
+(mu/defn expression-with-name :- ::mbql.s/Expression
   "Return the `Expression` referenced by a given `expression-name`."
   [inner-query expression-name :- [:or :keyword ::lib.schema.common/non-blank-string]]
   (let [allowed-names [(qualified-name expression-name) (keyword expression-name)]]
@@ -454,7 +454,7 @@
                             :tried           allowed-names
                             :found           found}))))))))
 
-(mu/defn aggregation-at-index :- mbql.s/Aggregation
+(mu/defn aggregation-at-index :- ::mbql.s/Aggregation
   "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
    This also handles nested queries, which could be potentially ambiguous if multiple levels had aggregations. To
    support nested queries, you'll need to keep tract of how many `:source-query`s deep you've traveled; pass in this
@@ -638,7 +638,7 @@
   Most often, `aggregation->name-fn` will be something like `annotate/aggregation-name`, but for purposes of keeping
   the `metabase.legacy-mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
   [aggregation->name-fn :- fn?
-   aggregations         :- [:sequential mbql.s/Aggregation]]
+   aggregations         :- [:sequential ::mbql.s/Aggregation]]
   (lib.util.match/replace aggregations
     [:aggregation-options _ (_ :guard :name)]
     &match
@@ -653,7 +653,7 @@
   "Wrap every aggregation clause in a `:named` clause with a unique name. Combines `pre-alias-aggregations` with
   `uniquify-named-aggregations`."
   [aggregation->name-fn :- fn?
-   aggregations         :- [:sequential mbql.s/Aggregation]]
+   aggregations         :- [:sequential ::mbql.s/Aggregation]]
   (-> (pre-alias-aggregations aggregation->name-fn aggregations)
       uniquify-named-aggregations))
 

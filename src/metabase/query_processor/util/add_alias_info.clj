@@ -87,6 +87,7 @@
                         :unique-alias-fn (fn [original suffix]
                                            (driver/escape-alias driver/*driver* (str original \_ suffix))))]
     (fn unique-alias-fn [position original-alias]
+      {:pre (string? original-alias)}
       (unique-name-fn position (driver/escape-alias driver/*driver* original-alias)))))
 
 ;; TODO -- this should probably limit the resulting alias, and suffix a short hash as well if it gets too long. See also
@@ -147,6 +148,10 @@
       (map-indexed
        (fn [i ag]
          (lib.util.match/replace ag
+           ;; :offset is a special case since it doesn't NEED to get wrapped in aggregation options.
+           [:offset _opts _expr _n]
+           [:aggregation i]
+
            [:aggregation-options wrapped opts]
            [:aggregation i]
 
@@ -435,14 +440,29 @@
      ::position      position}))
 
 (defn- add-info-to-aggregation-definition
-  [inner-query unique-alias-fn [_ wrapped-ag-clause {original-ag-name :name, :as opts}, :as _ag-clause] ag-index]
-  (let [position     (clause->position inner-query [:aggregation ag-index])
-        unique-alias (unique-alias-fn position original-ag-name)]
-    [:aggregation-options wrapped-ag-clause (assoc opts
-                                                   :name           unique-alias
-                                                   ::source-alias  original-ag-name
-                                                   ::position      position
-                                                   ::desired-alias unique-alias)]))
+  [inner-query unique-alias-fn ag-clause ag-index]
+  (lib.util.match/replace ag-clause
+    [:offset opts expr n]
+    (let [position         (clause->position inner-query [:aggregation ag-index])
+          original-ag-name (:name opts)
+          unique-alias     (unique-alias-fn position original-ag-name)]
+      [:offset (assoc opts
+                      :name           unique-alias
+                      ::source-alias  original-ag-name
+                      ::position      position
+                      ::desired-alias unique-alias)
+       expr
+       n])
+
+    [:aggregation-options wrapped-ag-clause opts, :as _ag-clause]
+    (let [position         (clause->position inner-query [:aggregation ag-index])
+          original-ag-name (:name opts)
+          unique-alias     (unique-alias-fn position original-ag-name)]
+      [:aggregation-options wrapped-ag-clause (assoc opts
+                                                     :name           unique-alias
+                                                     ::source-alias  original-ag-name
+                                                     ::position      position
+                                                     ::desired-alias unique-alias)])))
 
 (defn- add-info-to-aggregation-definitions [{aggregations :aggregation, :as inner-query} unique-alias-fn]
   (cond-> inner-query

@@ -204,6 +204,11 @@
   [[_ value info]]
   [:value value info])
 
+(defmethod normalize-mbql-clause-tokens :offset
+  [[_tag opts expr n, :as clause]]
+  {:pre [(= (count clause) 4)]}
+  [:offset (or opts {}) (normalize-tokens expr :ignore-path) n])
+
 (defmethod normalize-mbql-clause-tokens :default
   ;; MBQL clauses by default are recursively normalized.
   ;; This includes the clause name (e.g. `[\"COUNT\" ...]` becomes `[:count ...]`) and args.
@@ -659,6 +664,11 @@
          (if (= 0 start) 1 (canonicalize-mbql-clause start))]
         (map canonicalize-mbql-clause more)))
 
+(defmethod canonicalize-mbql-clause :offset
+  [[_tag opts expr n, :as clause]]
+  {:pre [(= (count clause) 4)]}
+  [:offset (or opts {}) (canonicalize-mbql-clause expr) n])
+
 ;;; top-level key canonicalization
 
 (defn- canonicalize-mbql-clauses
@@ -886,11 +896,29 @@
     (when (seq m)
       m)))
 
-(defn- remove-empty-clauses-in-sequence [xs path]
+(defn- remove-empty-clauses-in-sequence* [xs path]
   (let [xs (mapv #(remove-empty-clauses % (conj path ::sequence))
                  xs)]
     (when (some some? xs)
       xs)))
+
+(defmulti ^:private remove-empty-clauses-in-mbql-clause
+  {:arglists '([clause path])}
+  (fn [[tag] _path]
+    tag))
+
+(defmethod remove-empty-clauses-in-mbql-clause :default
+  [clause path]
+  (remove-empty-clauses-in-sequence* clause path))
+
+(defmethod remove-empty-clauses-in-mbql-clause :offset
+  [[_tag opts expr n] path]
+  [:offset opts (remove-empty-clauses expr (conj path :offset)) n])
+
+(defn- remove-empty-clauses-in-sequence [x path]
+  (if (mbql-clause? x)
+    (remove-empty-clauses-in-mbql-clause x path)
+    (remove-empty-clauses-in-sequence* x path)))
 
 (defn- remove-empty-clauses-in-join [join]
   (remove-empty-clauses join [:query]))

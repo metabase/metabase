@@ -351,7 +351,7 @@
 (def ^:private LegacyMetricSegmentDefinition
   [:map
    [:filter      {:optional true} [:maybe mbql.s/Filter]]
-   [:aggregation {:optional true} [:maybe [:sequential mbql.s/Aggregation]]]])
+   [:aggregation {:optional true} [:maybe [:sequential ::mbql.s/Aggregation]]]])
 
 (def ^:private ^{:arglists '([definition])} validate-legacy-metric-segment-definition
   (let [explainer (mr/explainer LegacyMetricSegmentDefinition)]

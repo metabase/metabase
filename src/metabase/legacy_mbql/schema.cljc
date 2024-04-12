@@ -12,6 +12,7 @@
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
+   [metabase.lib.schema.expression.window :as lib.schema.expression.window]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.literal :as lib.schema.literal]
@@ -342,6 +343,7 @@
    {:doc/title "`:field` or `:expression` ref"}
    (one-of expression field)])
 
+;;; TODO -- the name for this is terrible, we really should change it to FieldOrExpressionRef or something.
 (def Field
   "Schema for either a `:field` clause (reference to a Field) or an `:expression` clause (reference to an expression)."
   [:ref ::Field])
@@ -373,18 +375,19 @@
   "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
   [:ref ::Reference])
 
+(defclause ^{:added "0.50.0"} offset
+  opts [:ref ::lib.schema.common/options]
+  expr [:or [:ref ::Expression] [:ref ::UnnamedAggregation]]
+  n    ::lib.schema.expression.window/offset.n)
+
 
 ;;; -------------------------------------------------- Expressions ---------------------------------------------------
 
 ;; Expressions are "calculated column" definitions, defined once and then used elsewhere in the MBQL query.
 
 (def string-functions
-  "Functions that return string values. Should match [[StringExpression]]."
+  "Functions that return string values. Should match `::StringExpression`."
   #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case})
-
-(def ^:private StringExpression
-  "Schema for the definition of an string expression."
-  [:ref ::StringExpression])
 
 (mr/def ::StringExpressionArg
   [:multi
@@ -392,12 +395,11 @@
                 (cond
                   (string? x)                     :string
                   (is-clause? string-functions x) :string-expression
-                  (is-clause? :value x)           :value
-                  :else                           :else))}
+                  (is-clause? :value x)           :value))}
    [:string            :string]
-   [:string-expression StringExpression]
+   [:string-expression [:ref ::StringExpression]]
    [:value             value]
-   [:else              Field]])
+   [::mc/default       Field]])
 
 (def ^:private StringExpressionArg
   [:ref ::StringExpressionArg])
@@ -416,7 +418,7 @@
 
 (def ^:private aggregations
   #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
-    :metric :aggregation-options :count})
+    :metric :aggregation-options :count :offset})
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
@@ -434,10 +436,6 @@
   "Schema for the definition of a date function expression."
   [:ref ::DatetimeExpression])
 
-(def Aggregation
-  "Schema for anything that is a valid `:aggregation` clause."
-  [:ref ::Aggregation])
-
 (mr/def ::NumericExpressionArg
   [:multi
    {:error/message "numeric expression argument"
@@ -446,13 +444,12 @@
                        (number? x)                      :number
                        (is-clause? numeric-functions x) :numeric-expression
                        (is-clause? aggregations x)      :aggregation
-                       (is-clause? :value x)            :value
-                       :else                            :field))}
+                       (is-clause? :value x)            :value))}
    [:number             number?]
    [:numeric-expression NumericExpression]
-   [:aggregation        Aggregation]
+   [:aggregation        [:ref ::Aggregation]]
    [:value              value]
-   [:field              Field]])
+   [::mc/default        Field]])
 
 (def ^:private NumericExpressionArg
   [:ref ::NumericExpressionArg])
@@ -464,12 +461,11 @@
                      (cond
                        (is-clause? aggregations x)       :aggregation
                        (is-clause? :value x)             :value
-                       (is-clause? datetime-functions x) :datetime-expression
-                       :else                             :else))}
-   [:aggregation         Aggregation]
+                       (is-clause? datetime-functions x) :datetime-expression))}
+   [:aggregation         [:ref ::Aggregation]]
    [:value               value]
    [:datetime-expression DatetimeExpression]
-   [:else                [:or [:ref ::DateOrDatetimeLiteral] Field]]])
+   [::mc/default         [:or [:ref ::DateOrDatetimeLiteral] Field]]])
 
 (def ^:private DateTimeExpressionArg
   [:ref ::DateTimeExpressionArg])
@@ -479,47 +475,47 @@
    {:error/message "expression argument"
     :dispatch      (fn [x]
                      (cond
-                       (number? x)                       :number
-                       (boolean? x)                      :boolean
-                       (is-clause? boolean-functions x)  :boolean-expression
-                       (is-clause? numeric-functions x)  :numeric-expression
-                       (is-clause? datetime-functions x) :datetime-expression
-                       (string? x)                       :string
-                       (is-clause? string-functions x)   :string-expression
-                       (is-clause? :value x)             :value
-                       :else                             :else))}
+                       (number? x)                          :number
+                       (boolean? x)                         :boolean
+                       (is-clause? boolean-functions x)     :boolean-expression
+                       (is-clause? numeric-functions x)     :numeric-expression
+                       (is-clause? datetime-functions x)    :datetime-expression
+                       (string? x)                          :string
+                       (is-clause? string-functions x)      :string-expression
+                       (is-clause? :value x)                :value
+                       (is-clause? :offset x)               :offset
+                       (is-clause? #{:field :expression} x) :ref))}
    [:number              number?]
    [:boolean             :boolean]
    [:boolean-expression  BooleanExpression]
-   [:numeric-expression  NumericExpression]
    [:datetime-expression DatetimeExpression]
    [:string              :string]
-   [:string-expression   StringExpression]
+   [:string-expression   [:ref ::StringExpression]]
    [:value               value]
-   [:else                Field]])
+   [::mc/default         Field]])
 
 (def ^:private ExpressionArg
   [:ref ::ExpressionArg])
 
-(mr/def ::Addable
-  [:or
-   {:error/message "numeric expression arg or interval"}
-   DateTimeExpressionArg
-   interval
-   NumericExpressionArg])
-
-(def ^:private Addable
-  [:ref ::Addable])
+(mr/def ::PlusOrMinusExpressionArg
+  [:multi
+   {:error/message "numeric expression arg or interval"
+    :dispatch      (fn [x]
+                     (when (is-clause? :interval x)
+                       :interval))}
+   [:interval    interval]
+   [::mc/default [:or
+                  DateTimeExpressionArg
+                  NumericExpressionArg]]])
 
 (mr/def ::IntGreaterThanZeroOrNumericExpression
   [:multi
    {:error/message "int greater than zero or numeric expression"
     :dispatch      (fn [x]
-                     (if (number? x)
-                       :number
-                       :else))}
-   [:number PositiveInt]
-   [:else   NumericExpression]])
+                     (when (number? x)
+                       :number))}
+   [:number      PositiveInt]
+   [::mc/default NumericExpression]])
 
 (def ^:private IntGreaterThanZeroOrNumericExpression
   [:ref ::IntGreaterThanZeroOrNumericExpression])
@@ -558,10 +554,10 @@
   s StringExpressionArg, pattern :string)
 
 (defclause ^{:requires-features #{:expressions}} +
-  x Addable, y Addable, more (rest Addable))
+  x [:ref ::PlusOrMinusExpressionArg], y [:ref ::PlusOrMinusExpressionArg], more (rest [:ref ::PlusOrMinusExpressionArg]))
 
 (defclause ^{:requires-features #{:expressions}} -
-  x NumericExpressionArg, y Addable, more (rest Addable))
+  x NumericExpressionArg, y [:ref ::PlusOrMinusExpressionArg], more (rest [:ref ::PlusOrMinusExpressionArg]))
 
 (defclause ^{:requires-features #{:expressions}} /, x NumericExpressionArg, y NumericExpressionArg, more (rest NumericExpressionArg))
 
@@ -686,11 +682,14 @@
    {:error/message ":field or :expression reference or :relative-datetime"
     :error/fn      (constantly ":field or :expression reference or :relative-datetime")
     :dispatch      (fn [x]
-                     (if (is-clause? :relative-datetime x)
-                       :relative-datetime
-                       :else))}
+                     (cond
+                       (is-clause? :relative-datetime x)    :relative-datetime
+                       (is-clause? #{:field :expression} x) :field))}
    [:relative-datetime relative-datetime]
-   [:else              Field]])
+   [:field             Field]
+   [::mc/default       [:fn
+                        {:error/message "Invalid field or expression ref, or relative-datetime"}
+                        (constantly false)]]])
 
 (mr/def ::EqualityComparable
   [:maybe
@@ -712,16 +711,15 @@
   [:multi
    {:error/message "order comparable"
     :dispatch      (fn [x]
-                     (if (is-clause? :value x)
-                       :value
-                       :else))}
-   [:value value]
-   [:else [:or
-           number?
-           :string
-           [:ref ::TemporalLiteral]
-           ExpressionArg
-           FieldOrExpressionRefOrRelativeDatetime]]])
+                     (when (is-clause? :value x)
+                       :value))}
+   [:value       value]
+   [::mc/default [:or
+                  number?
+                  :string
+                  [:ref ::TemporalLiteral]
+                  ExpressionArg
+                  FieldOrExpressionRefOrRelativeDatetime]]])
 
 (def ^:private OrderComparable
   "Schema for things that make sense in a filter like `>` or `<`, i.e. things that can be sorted."
@@ -831,31 +829,31 @@
                        (is-clause? datetime-functions x) :datetime
                        (is-clause? numeric-functions x)  :numeric
                        (is-clause? string-functions x)   :string
-                       (is-clause? boolean-functions x)  :boolean
-                       :else                             :else))}
-   [:datetime DatetimeExpression]
-   [:numeric  NumericExpression]
-   [:string   StringExpression]
-   [:boolean  BooleanExpression]
-   [:else    (one-of
-              ;; filters drivers must implement
-              and or not = != < > <= >= between starts-with ends-with contains
-              ;; SUGAR filters drivers do not need to implement
-              does-not-contain inside is-empty not-empty is-null not-null time-interval segment)]])
+                       (is-clause? boolean-functions x)  :boolean))}
+   [:datetime    DatetimeExpression]
+   [:numeric     NumericExpression]
+   [:string      [:ref ::StringExpression]]
+   [:boolean     BooleanExpression]
+   [::mc/default (one-of
+                   ;; filters drivers must implement
+                   and or not = != < > <= >= between starts-with ends-with contains
+                   ;; SUGAR filters drivers do not need to implement
+                   does-not-contain inside is-empty not-empty is-null not-null time-interval segment)]])
 
-(def ^:private CaseClause
+(mr/def ::CaseClause
   [:tuple {:error/message ":case subclause"} Filter ExpressionArg])
 
-(def ^:private CaseClauses
-  [:maybe [:sequential CaseClause]])
+(mr/def ::CaseClauses
+  [:maybe [:sequential ::CaseClause]])
 
-(def ^:private CaseOptions
+(mr/def ::CaseOptions
   [:map
    {:error/message ":case options"}
    [:default {:optional true} ExpressionArg]])
 
 (defclause ^{:requires-features #{:basic-aggregations}} case
-  clauses CaseClauses, options (optional CaseOptions))
+  clauses ::CaseClauses
+  options (optional ::CaseOptions))
 
 (mr/def ::NumericExpression
   (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case datetime-diff
@@ -865,26 +863,34 @@
 (mr/def ::StringExpression
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case))
 
-(mr/def ::FieldOrExpressionDef
-  "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
+(mr/def ::Expression
+  "Schema for anything that is accepted as a top-level expression definition, e.g. an arithmetic expression such as a
   `:+` clause or a `:field` clause."
   [:multi
-   {:error/message ":field or :expression reference or expression"
+   {:error/message "any expression"
     :doc/title     "expression definition"
     :dispatch      (fn [x]
                      (cond
-                       (is-clause? numeric-functions x)  :numeric
-                       (is-clause? string-functions x)   :string
-                       (is-clause? boolean-functions x)  :boolean
-                       (is-clause? datetime-functions x) :datetime
-                       (is-clause? :case x)              :case
-                       :else                             :else))}
-   [:numeric  NumericExpression]
-   [:string   StringExpression]
-   [:boolean  BooleanExpression]
-   [:datetime DatetimeExpression]
-   [:case     case]
-   [:else     Field]])
+                       (is-clause? numeric-functions x)      :numeric
+                       (is-clause? string-functions x)       :string
+                       (is-clause? boolean-functions x)      :boolean
+                       (is-clause? datetime-functions x)     :datetime
+                       (is-clause? :case x)                  :case
+                       (is-clause? :offset x)                :offset
+                       (is-clause? #{:field :expresssion} x) :ref))}
+   [:numeric     NumericExpression]
+   [:string      [:ref ::StringExpression]]
+   [:boolean     BooleanExpression]
+   [:datetime    DatetimeExpression]
+   [:case        case]
+   [:offset      offset]
+   [:ref         Field]
+   [::mc/default [:fn
+                  {:error/fn (fn [{:keys [value]} _]
+                               (str "invalid expression: "
+                                    (pr-str value)
+                                    " is not a valid " ::Expression))}
+                  (constantly false)]]])
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
 
@@ -903,15 +909,15 @@
 ;;
 ;;    SUM(field_1 + field_2)
 
-(defclause ^{:requires-features #{:basic-aggregations}} avg,      field-or-expression [:ref ::FieldOrExpressionDef])
-(defclause ^{:requires-features #{:basic-aggregations}} cum-sum,  field-or-expression [:ref ::FieldOrExpressionDef])
-(defclause ^{:requires-features #{:basic-aggregations}} distinct, field-or-expression [:ref ::FieldOrExpressionDef])
-(defclause ^{:requires-features #{:basic-aggregations}} sum,      field-or-expression [:ref ::FieldOrExpressionDef])
-(defclause ^{:requires-features #{:basic-aggregations}} min,      field-or-expression [:ref ::FieldOrExpressionDef])
-(defclause ^{:requires-features #{:basic-aggregations}} max,      field-or-expression [:ref ::FieldOrExpressionDef])
+(defclause ^{:requires-features #{:basic-aggregations}} avg,      field-or-expression [:ref ::Expression])
+(defclause ^{:requires-features #{:basic-aggregations}} cum-sum,  field-or-expression [:ref ::Expression])
+(defclause ^{:requires-features #{:basic-aggregations}} distinct, field-or-expression [:ref ::Expression])
+(defclause ^{:requires-features #{:basic-aggregations}} sum,      field-or-expression [:ref ::Expression])
+(defclause ^{:requires-features #{:basic-aggregations}} min,      field-or-expression [:ref ::Expression])
+(defclause ^{:requires-features #{:basic-aggregations}} max,      field-or-expression [:ref ::Expression])
 
 (defclause ^{:requires-features #{:basic-aggregations}} sum-where
-  field-or-expression [:ref ::FieldOrExpressionDef], pred Filter)
+  field-or-expression [:ref ::Expression], pred Filter)
 
 (defclause ^{:requires-features #{:basic-aggregations}} count-where
   pred Filter)
@@ -920,16 +926,16 @@
   pred Filter)
 
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev
-  field-or-expression [:ref ::FieldOrExpressionDef])
+  field-or-expression [:ref ::Expression])
 
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} [ag:var var]
-  field-or-expression [:ref ::FieldOrExpressionDef])
+  field-or-expression [:ref ::Expression])
 
 (defclause ^{:requires-features #{:percentile-aggregations}} median
-  field-or-expression [:ref ::FieldOrExpressionDef])
+  field-or-expression [:ref ::Expression])
 
 (defclause ^{:requires-features #{:percentile-aggregations}} percentile
-  field-or-expression [:ref ::FieldOrExpressionDef], percentile NumericExpressionArg)
+  field-or-expression [:ref ::Expression], percentile NumericExpressionArg)
 
 
 ;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
@@ -937,11 +943,8 @@
 ;;
 ;; METRICS WITH STRING IDS, e.g. `[:metric "ga:sessions"]`, are Google Analytics metrics, not Metabase metrics! They
 ;; pass straight thru to the GA query processor.
-(def ^:private MetricID
-  [:ref ::lib.schema.id/legacy-metric])
-
 (defclause metric
-  metric-id [:or MetricID ::lib.schema.common/non-blank-string])
+  metric-id [:or [:ref ::lib.schema.id/legacy-metric] ::lib.schema.common/non-blank-string])
 
 ;; the following are definitions for expression aggregations, e.g.
 ;;
@@ -951,19 +954,14 @@
   [:multi
    {:error/message "unnamed aggregation clause or numeric expression"
     :dispatch      (fn [x]
-                     (if (is-clause? numeric-functions x)
-                       :numeric-expression
-                       :else))}
+                     (when (is-clause? numeric-functions x)
+                       :numeric-expression))}
    [:numeric-expression NumericExpression]
-   [:else (one-of avg cum-sum distinct stddev sum min max metric share count-where
-                  sum-where case median percentile ag:var
-                  ;; SUGAR clauses
-                  cum-count count)]])
+   [::mc/default        (one-of avg cum-sum distinct stddev sum min max metric share count-where
+                                sum-where case median percentile ag:var
+                                cum-count count offset)]])
 
-(def ^:private UnnamedAggregation
-  ::UnnamedAggregation)
-
-(def ^:private AggregationOptions
+(mr/def ::AggregationOptions
   "Additional options for any aggregation clause when wrapping it in `:aggregation-options`."
   [:map
    {:error/message ":aggregation-options options"}
@@ -973,10 +971,11 @@
    [:display-name {:optional true} ::lib.schema.common/non-blank-string]])
 
 (defclause aggregation-options
-  aggregation UnnamedAggregation
-  options     AggregationOptions)
+  aggregation [:ref ::UnnamedAggregation]
+  options     [:ref ::AggregationOptions])
 
 (mr/def ::Aggregation
+  "Schema for anything that is a valid `:aggregation` clause."
   [:multi
    {:error/message "aggregation clause or numeric expression"
     :dispatch      (fn [x]
@@ -984,7 +983,7 @@
                        :aggregation-options
                        :unnamed-aggregation))}
    [:aggregation-options aggregation-options]
-   [:unnamed-aggregation UnnamedAggregation]])
+   [:unnamed-aggregation [:ref ::UnnamedAggregation]]])
 
 
 ;;; ---------------------------------------------------- Order-By ----------------------------------------------------
@@ -1387,9 +1386,9 @@
    [:map
     [:source-query    {:optional true} SourceQuery]
     [:source-table    {:optional true} SourceTable]
-    [:aggregation     {:optional true} [:sequential {:min 1} Aggregation]]
+    [:aggregation     {:optional true} [:sequential {:min 1} [:ref ::Aggregation]]]
     [:breakout        {:optional true} [:sequential {:min 1} Field]]
-    [:expressions     {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
+    [:expressions     {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::Expression]]]
     [:fields          {:optional true} Fields]
     [:filter          {:optional true} Filter]
     [:limit           {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]

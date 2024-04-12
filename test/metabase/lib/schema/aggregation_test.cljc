@@ -3,6 +3,7 @@
    [clojure.test :refer [are deftest testing]]
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema]))
 
 (comment metabase.lib.schema/keep-me)
@@ -52,36 +53,66 @@
 (deftest ^:parallel arithmetic-expression-test
   (testing "valid"
     (are [clause] (not (me/humanize (mc/explain :metabase.lib.schema.aggregation/aggregation clause)))
-         ;; DIY average
-         [:/ {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-           [:sum {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-            [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]]
-           [:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
-         ;; Count, but rounded
-         [:round {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-          [:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
-         ;; Estimated monthly count based on month-to-date
-         [:round {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-          [:* {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-           ;; Daily rate
-           [:/ {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-            [:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]
-            [:get-day {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-             [:now {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]]
-           ;; Times 30 days
-           30]]))
+      ;; DIY average
+      [:/ {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+       [:sum {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+        [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]]
+       [:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
+      ;; Count, but rounded
+      [:round {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+       [:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
+      ;; Estimated monthly count based on month-to-date
+      [:round {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+       [:* {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+        ;; Daily rate
+        [:/ {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+         [:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]
+         [:get-day {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+          [:now {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]]
+        ;; Times 30 days
+        30]]
+      [:/ {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+       [:sum {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+        [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]]
+       [:offset
+        {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+        [:sum {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+         [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]]
+        -1]]))
   (testing "invalid - no aggregation inside"
     (are [clause] (me/humanize (mc/explain :metabase.lib.schema.aggregation/aggregation clause))
+      [:get-day {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+       [:now {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
+      [:+ {:lib/uuid "00000000-0000-0000-0000-000000000000"} 7 8]
+      ;; And the big example from above, but with the count swapped for a field.
+      [:round {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+       [:* {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+        ;; Daily rate
+        [:/ {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+         [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 12]
          [:get-day {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-          [:now {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
-         [:+ {:lib/uuid "00000000-0000-0000-0000-000000000000"} 7 8]
-         ;; And the big example from above, but with the count swapped for a field.
-         [:round {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-          [:* {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-           ;; Daily rate
-           [:/ {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-            [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 12]
-            [:get-day {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-             [:now {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]]
-           ;; Times 30 days
-           30]])))
+          [:now {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]]
+        ;; Times 30 days
+        30]])))
+
+(deftest ^:parallel offset-test
+  (let [sum    [:sum {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Float} 1]]
+        offset [:offset
+                {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                [:sum {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]]
+                -1]]
+    (doseq [[x y] [#_[sum offset]
+                   [offset sum]]
+            :let  [ag [:/ {:lib/uuid "00000000-0000-0000-0000-000000000000"} x y]]]
+      (testing (pr-str ag)
+        (are [schema x] (not (me/humanize (mc/explain schema x)))
+          :metabase.lib.schema.expression/number        ag
+          :metabase.lib.schema.aggregation/aggregation  ag
+          :metabase.lib.schema.aggregation/aggregations [ag])
+        (testing "should not be allowed to use as a non-aggregation expression"
+          (let [ag (lib.options/update-options ag assoc :lib/expression-name "expr")]
+            (is (= :ok
+                   (me/humanize (mc/explain :metabase.lib.schema.expression/expression.definition ag))))))))))
+;;; TODO -- should we enforce that you can't use this outside of aggregations, e.g. in expressions?

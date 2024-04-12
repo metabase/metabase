@@ -44,7 +44,7 @@
     (temporal-extract-clause :guard mbql.preds/DatetimeExpression?)
     (mbql.u/desugar-temporal-extract temporal-extract-clause)
 
-    (expression :guard mbql.preds/FieldOrExpressionDef?)
+    (expression :guard mbql.preds/Expression?)
     (mbql.u/desugar-expression expression)))
 
 (mu/defn desugar :- mbql.s/Query

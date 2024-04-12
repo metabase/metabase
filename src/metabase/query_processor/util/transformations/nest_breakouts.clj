@@ -13,7 +13,7 @@
 
 (defn- stage-has-cumulative-aggregation? [stage]
   (lib.util.match/match (:aggregation stage)
-    #{:cum-sum :cum-count}))
+    #{:cum-sum :cum-count :offset}))
 
 (defn- stage-has-breakout? [stage]
   (seq (:breakout stage)))

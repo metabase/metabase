@@ -790,3 +790,22 @@
                                     [:relative-datetime {} -2 :month]
                                     [:relative-datetime {} 0 :month]]]}]}
               (lib.convert/->pMBQL legacy))))))
+
+(deftest ^:parallel offset-test
+  (testing "Preserve complete options map when converting :offset to legacy, do not wrap in aggregation-options"
+    (are [options-map] (=? {:aggregation [[:offset options-map
+                                           [:sum
+                                            [:field 16890 {:base-type :type/Float}]]
+                                           -1]]}
+                           (lib.convert/->legacy-MBQL
+                            {:lib/type :mbql.stage/mbql
+                             :aggregation [[:offset options-map
+                                            [:sum
+                                             {:lib/uuid "c88914b9-56d3-48c4-bfaf-1600dd973076"}
+                                             [:field
+                                              {:lib/uuid "aabe0b60-6b0e-44d9-92e1-dce499b7e9ce"
+                                               :base-type :type/Float}
+                                              16890]]
+                                            -1]]}))
+      {:lib/uuid "d5149080-5e1c-4643-9264-bf4a82116abd"}
+      {:lib/uuid "d5149080-5e1c-4643-9264-bf4a82116abd", :name "my_offset"})))

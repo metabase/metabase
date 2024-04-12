@@ -11,7 +11,7 @@ import {
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { useShorthands, adjustCase, adjustOptions } from "./recursive-parser";
+import { useShorthands, adjustCase, adjustOptions, adjustOffset } from "./recursive-parser";
 import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
 import { tokenize, TOKEN, OPERATOR } from "./tokenizer";
 import type { ErrorWithMessage } from "./types";
@@ -139,20 +139,26 @@ export function diagnose({
   const expressionMode: Lib.ExpressionMode =
     startRuleToExpressionModeMapping[startRule] ?? startRule;
 
-  const possibleError = Lib.diagnoseExpression(
-    query,
-    stageIndex,
-    expressionMode,
-    mbqlOrError,
-    expressionPosition,
-  );
+  try {
+    const possibleError = Lib.diagnoseExpression(
+      query,
+      stageIndex,
+      expressionMode,
+      mbqlOrError,
+      expressionPosition,
+    );
 
-  if (possibleError) {
-    console.warn("diagnostic error", possibleError.message);
+    if (possibleError) {
+      console.warn("diagnostic error", possibleError);
 
-    // diagnoseExpression should return a user friendly message, which we'll be
-    // able to return directly
-    return { message: t`Invalid expression` };
+      // diagnoseExpression should return a user friendly message, which we'll be
+      // able to return directly
+      return { message: t`Invalid expression` };
+    }
+  } catch (e) {
+    console.warn("error checking expression for errors", e);
+
+    return { message: t`Invalid expression [OOPS] ${e}` };
   }
 
   return null;
@@ -224,6 +230,7 @@ function prattCompiler({
       adjustOptions,
       useShorthands,
       adjustCase,
+      adjustOffset,
       expression =>
         resolve({
           expression,

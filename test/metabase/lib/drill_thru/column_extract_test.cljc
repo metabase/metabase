@@ -11,7 +11,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]
-   #?@(:clj  ([metabase.test :as mt])
+   #?@(:clj  (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt])
        :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))

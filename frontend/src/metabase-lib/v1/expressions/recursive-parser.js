@@ -306,6 +306,18 @@ export const adjustCase = tree =>
     return node;
   });
 
+export const adjustOffset = tree =>
+  modify(tree, node => {
+    if (Array.isArray(node)) {
+      const [tag, expr, n] = node;
+      if (tag === "offset") {
+        const opts = {};
+        return withAST([tag, opts, expr, n], node);
+      }
+    }
+    return node;
+  });
+
 export const adjustBooleans = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
@@ -360,4 +372,5 @@ export const parse = pipe(
   adjustOptions,
   useShorthands,
   adjustCase,
+  adjustOffset,
 );

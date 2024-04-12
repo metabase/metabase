@@ -286,6 +286,12 @@
   [[_tag field n unit options]]
   (lib.options/ensure-uuid [:time-interval (or options {}) (->pMBQL field) n unit]))
 
+;; `:offset` is the same in legacy and pMBQL, but we need to update the expr it wraps.
+(defmethod ->pMBQL :offset
+  [[tag opts expr n, :as clause]]
+  {:pre [(= (count clause) 4)]}
+  [tag opts (->pMBQL expr) n])
+
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
   like [[metabase.legacy-mbql.normalize/normalize]], and then probably to [[->pMBQL]]."
@@ -331,7 +337,7 @@
                          (= k :effective-type))))
          m)))
 
-(defn- aggregation->legacy-MBQL [[tag options & args]]
+(defn- aggregation->legacy-MBQL [[tag options & args :as clause]]
   (let [inner (into [tag] (map ->legacy-MBQL) args)
         ;; the default value of the :case expression is in the options
         ;; in legacy MBQL
@@ -455,6 +461,12 @@
     ;; empty.
     [:value value opts]))
 
+;; `:offset` is the same in legacy and pMBQL, but we need to update the expr it wraps.
+(defmethod ->legacy-MBQL :offset
+  [[tag opts expr n, :as clause]]
+  {:pre [(= (count clause) 4)]}
+  [tag opts (->legacy-MBQL expr) n])
+
 (defn- update-list->legacy-boolean-expression
   [m pMBQL-key legacy-key]
   (cond-> m
@@ -489,7 +501,7 @@
             (-> stage
                 disqualify
                 source-card->legacy-source-table
-                (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
+                (m/update-existing :aggregation #(mapv ->legacy-MBQL %))
                 (m/update-existing :expressions (fn [expressions]
                                                   (into {}
                                                         (for [expression expressions

@@ -285,6 +285,7 @@
 (lib.common/defop rtrim [s])
 (lib.common/defop upper [s])
 (lib.common/defop lower [s])
+(lib.common/defop offset [x n])
 
 (mu/defn ^:private expression-metadata :- lib.metadata/ColumnMetadata
   [query                 :- ::lib.schema/query

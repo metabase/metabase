@@ -21,6 +21,6 @@
   "Is this a valid DatetimeExpression clause?"
   (mr/validator mbql.s/DatetimeExpression))
 
-(def ^{:arglists '([field-clause])} FieldOrExpressionDef?
+(def ^{:arglists '([field-clause])} Expression?
   "Is this a something that is valid as a top-level expression definition?"
-  (mr/validator ::mbql.s/FieldOrExpressionDef))
+  (mr/validator ::mbql.s/Expression))

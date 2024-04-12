@@ -289,15 +289,16 @@
                                   ;; 3. cumulative sum of order total
                                   (lib/aggregate (lib/cum-sum orders-total))
                                   ;; 4. cumulative average order total (cumulative sum of total / cumulative count)
-                                  (lib/aggregate (lib// (lib/cum-sum orders-total)
-                                                        (lib/cum-count)))
+                                  (lib/aggregate (lib/+ (lib// (lib/cum-sum orders-total)
+                                                               (lib/cum-count))
+                                                        1.0))
                                   (lib/limit 3)
                                   (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
           ;;       1               2  3       4
-          (is (= [[#t "2016-04-01" 1  52.76   52.76]
-                  [#t "2016-05-01" 20 1318.49 65.92]
-                  [#t "2016-06-01" 57 3391.41 59.50]]
+          (is (= [[#t "2016-04-01" 1  52.76   53.76]
+                  [#t "2016-05-01" 20 1318.49 66.92]
+                  [#t "2016-06-01" 57 3391.41 60.50]]
                  (mt/formatted-rows [->local-date int 2.0 2.0]
                    (qp/process-query query)))))))))
 

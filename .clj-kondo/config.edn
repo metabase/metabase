@@ -706,7 +706,10 @@
      metabase.test/with-temp {:message "Don't use application database inside MLv2 code"}}
 
     :discouraged-namespace
-    {metabase.util.malli.schema {:message "Prefer metabase.lib.schema schemas in MLv2 code"}
+    {metabase.driver            {:message "MLv2 code should be independent of driver code/methods"}
+     metabase.test              {:message "MLv2 tests should only use MLv2 test helpers"}
+     metabase.test.data         {:message "MLv2 tests should only use MLv2 test helpers"}
+     metabase.util.malli.schema {:message "Prefer metabase.lib.schema schemas in MLv2 code"}
      toucan.db                  {:message "Don't use application database inside MLv2 code"}
      toucan.models              {:message "Don't use application database inside MLv2 code"}
      toucan.util.test           {:message "Don't use application database inside MLv2 code"}

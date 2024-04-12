@@ -684,7 +684,9 @@
                         {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
 
 (mu/defn ^:private handle-aggregation
-  [query-type ag-clause :- mbql.s/Aggregation druid-query]
+  [query-type
+   ag-clause :- ::mbql.s/Aggregation
+   druid-query]
   (let [output-name               (annotate/aggregation-name *query* ag-clause)
         [ag-type ag-field & args] (lib.util.match/match-one ag-clause
                                     [:aggregation-options ag & _] #_:clj-kondo/ignore (recur ag)

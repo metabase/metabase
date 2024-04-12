@@ -17,6 +17,7 @@ import {
   isMetric,
   isSegment,
   isCase,
+  isOffset,
   formatMetricName,
   formatSegmentName,
   formatLegacyDimensionName,
@@ -58,6 +59,8 @@ export function format(mbql: any, options: Options): string {
     return formatStringLiteral(mbql, options);
   } else if (isOperator(mbql)) {
     return formatOperator(mbql, options);
+  } else if (isOffset(mbql)) {
+    return formatOffset(mbql, options);
   } else if (isFunction(mbql)) {
     return formatFunction(mbql, options);
   } else if (isDimension(mbql)) {
@@ -290,6 +293,13 @@ function formatCase([_, clauses, caseOptions = {}]: any[], options: Options) {
   return `${formattedName}(${formattedClauses}${defaultExpression})`;
 }
 
+function formatOffset([_tag, _opts, expr, n]: any[], options) {
+  const formattedName = getExpressionName("offset");
+  const formattedExpr = format(expr, options);
+
+  return `${formattedName}(${formattedExpr}, ${n})`;
+}
+
 const NEGATIVE_FILTERS: Record<string, string> = {
   "does-not-contain": "contains",
   "not-empty": "is-empty",
@@ -297,6 +307,10 @@ const NEGATIVE_FILTERS: Record<string, string> = {
 };
 
 function isNegativeFilter(expr: Filter) {
+  if (!Array.isArray(expr)) {
+    return false;
+  }
+
   const [fn, ...args] = expr;
   return typeof NEGATIVE_FILTERS[fn] === "string" && args.length >= 1;
 }
