@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.db :as mdb]
+   [metabase.public-settings :as public-settings]
    [metabase.setup :as setup]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -33,7 +34,7 @@
     ;; create a new completely empty database.
     (mt/with-temp-empty-app-db [_conn :h2]
       ;; make sure the DB is setup (e.g., run all the Liquibase migrations)
-      (mdb/setup-db!)
+      (mdb/setup-db! :create-sample-content? true)
       (t2/with-call-count [call-count]
         (dotimes [_ 5]
           (is (= false
@@ -46,3 +47,21 @@
       (is (= true
              (setup/has-user-setup)))
       (is (zero? (call-count))))))
+
+(deftest has-example-dashboard-id-setting-test
+  (testing "The example-dashboard-id setting should be set if the example content is loaded"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? true)
+      (is (= 1
+             (public-settings/example-dashboard-id)))))
+  (testing "The example-dashboard-id setting should be nil if the example content isn't loaded"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (is (nil? (public-settings/example-dashboard-id)))))
+  (testing "The example-dashboard-id setting should be reset to nil if the example dashboard is archived"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? true)
+      (is (= 1
+             (public-settings/example-dashboard-id)))
+      (t2/update! :model/Dashboard 1 {:archived true})
+      (is (nil? (public-settings/example-dashboard-id))))))

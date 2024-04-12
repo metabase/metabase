@@ -72,7 +72,7 @@
         data-source       (mdb.data-source/raw-connection-string->DataSource connection-string)]
     ;; DB should stay open as long as `conn` is held open.
     (with-open [_conn (.getConnection data-source)]
-      (with-db data-source (mdb/setup-db!))
+      (with-db data-source (mdb/setup-db! :create-sample-content? false)) ; skip sample content for speedy tests. this doesn't reflect production
       (f data-source))))
 
 (defn do-with-dbs

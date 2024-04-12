@@ -83,7 +83,7 @@ export const ChartSettingOrderedSimple = ({
     [onChangeSeriesColor],
   );
 
-  const getId = useCallback(item => item.key, []);
+  const getId = useCallback((item: SortableItem) => item.key, []);
 
   return (
     <ChartSettingOrderedSimpleRoot>
