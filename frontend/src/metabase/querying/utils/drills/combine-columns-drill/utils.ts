@@ -131,7 +131,7 @@ const getColumnPreview = (column: Lib.ColumnMetadata): string => {
     return "-12.34567";
   }
 
-  return "example";
+  return "text";
 };
 
 export const getDefaultSeparator = (column: Lib.ColumnMetadata): string => {
