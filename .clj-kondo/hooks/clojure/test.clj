@@ -179,6 +179,48 @@
                                                    "Split it up into smaller tests! 🥰")
                                      :type :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests)))))))
 
+;;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
+;;; middleware or compilation behavior with just H2 since it's the default.
+(def driver-keywords
+  #{#_:h2
+    :postgres
+    :mysql
+    :athena
+    :bigquery-cloud-sdk
+    :druid
+    :googleanalytics
+    :mongo
+    :oracle
+    :presto-jdbc
+    :redshift
+    :snowflake
+    :sparksql
+    :sqlite
+    :sqlserver
+    :vertica})
+
+(defn deftest-check-no-driver-keywords [node]
+  ;; fail fast after we see the first error, where we see one hardcoded driver name there are likely several more and we
+  ;; don't need multiple warnings for a single test.
+  (letfn [(f [node]
+            (when (and (hooks/keyword-node? node)
+                       (driver-keywords (hooks/sexpr node)))
+              (hooks/reg-finding! (assoc (meta node)
+                                         :message (format "Do not hardcode driver name %s in driver tests! [:metabase/disallow-hardcoded-driver-names-in-tests]"
+                                                          (hooks/sexpr node))
+                                         :type    :metabase/disallow-hardcoded-driver-names-in-tests))
+              ::error))
+          (walk [node]
+            (if (= (f node) ::error)
+              ::error
+              (reduce
+               (fn [_acc child]
+                 (when (= (walk child) ::error)
+                   (reduced ::error)))
+               nil
+               (:children node))))]
+    (walk node)))
+
 (defn deftest [{:keys [node cljc lang]}]
   ;; run [[deftest-check-parallel]] only once... if this is a `.cljc` file only run it for the `:clj` analysis, no point
   ;; in running it twice.
@@ -186,6 +228,7 @@
             (= lang :clj))
     (deftest-check-parallel node))
   (deftest-check-not-horrifically-long node)
+  (deftest-check-no-driver-keywords node)
   {:node node})
 
 ;;; this is a hacky way to determine whether these namespaces are required in the `ns` form or not... basically `:ns`
@@ -222,18 +265,9 @@
 
               nil)))))))
 
-(defn- warn-about-schema= [{[_is assertion-node] :children, :as _is-node}]
-  (let [{[assertion-symb-node] :children} assertion-node]
-    (when (and (hooks/token-node? assertion-symb-node)
-               (= (hooks/sexpr assertion-symb-node) 'schema=))
-      (hooks/reg-finding! (assoc (meta assertion-symb-node)
-                                 :message "Use =? or malli= instead of schema="
-                                 :type :metabase/warn-about-schema=)))))
-
 (defn is [{:keys [node lang]}]
   (when (= lang :cljs)
     (warn-about-missing-test-expr-requires-in-cljs node))
-  (warn-about-schema= node)
   {:node node})
 
 (defn use-fixtures [{:keys [node]}]

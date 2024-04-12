@@ -25,7 +25,6 @@
   :metabase/test-helpers-use-non-thread-safe-functions                 {:level :warning}
   :metabase/validate-deftest                                           {:level :warning}
   :metabase/validate-logging                                           {:level :warning}
-  :metabase/warn-about-schema=                                         {:level :warning}
 
   ;;
   ;; disabled linters
@@ -657,7 +656,12 @@
   ;; `metabase.driver.*`, excluding `-test` namespaces.
   ;;
   {:pattern "metabase(?:(?:(?:-enterprise\\.sandbox)?\\.query-processor\\.)|(?:\\.driver\\.)).*(?<!-test)$"
-   :name    qp-and-driver-source-namespaces}]
+   :name    qp-and-driver-source-namespaces}
+  ;; general QP tests are ones that run across multiple drivers. Anything `metabase.query-processor*-test`,
+  ;; `metabase.driver.sql*-test` (excluding SQLServer and SQLite), or
+  ;; `metabase-enterprise.sandbox.query-processor*-test`
+  {:pattern "^metabase(?:((?:-enterprise\\.sandbox)?\\.query-processor)|(?:\\.driver\\.sql(?!server)(?!ite))).*-test$"
+   :name    general-qp-and-driver-test-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -725,4 +729,8 @@
     {medley.core/map-keys              {:message "Use clojure.core/update-keys"}
      medley.core/map-vals              {:message "Use clojure.core/update-vals"}
      metabase.db.query/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     metabase.db.query/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}}}
+     metabase.db.query/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}
+
+  general-qp-and-driver-test-namespaces
+  {:linters
+   {:metabase/disallow-hardcoded-driver-names-in-tests {:level :warning}}}}}

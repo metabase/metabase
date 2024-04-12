@@ -1,19 +1,8 @@
 (ns hooks.clojure.core
   (:require
    [clj-kondo.hooks-api :as hooks]
-   [clojure.string :as str]))
-
-(defn- node->qualified-symbol [node]
-  (try
-   (when (hooks/token-node? node)
-     (let [sexpr (hooks/sexpr node)]
-       (when (symbol? sexpr)
-         (let [resolved (hooks/resolve {:name sexpr})]
-           (when-not (= :clj-kondo/unknown-namespace (:ns resolved))
-             (symbol (name (:ns resolved)) (name (:name resolved))))))))
-   ;; some symbols like `*count/Integer` aren't resolvable.
-   (catch Exception _
-     nil)))
+   [clojure.string :as str]
+   [hooks.common]))
 
 (def ^:private white-card-symbols
   '#{;; these toucan methods might actually set global values if it's used outside of a transaction,
@@ -157,7 +146,7 @@
               (doseq [child (:children form)]
                 (walk f child)))]
       (walk (fn [form]
-              (when-let [qualified-symbol (node->qualified-symbol form)]
+              (when-let [qualified-symbol (hooks.common/node->qualified-symbol form)]
                 (when (and (not (contains? white-card-symbols qualified-symbol))
                            (end-with-exclamation? qualified-symbol))
                   (hooks/reg-finding! (assoc (meta form-name)

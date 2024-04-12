@@ -332,9 +332,9 @@
            (sort-by
             first
             (mt/rows (mt/dataset yyyymmddhhss-binary-times
-                                 (qp/process-query
-                                  (assoc (mt/mbql-query times)
-                                         :middleware {:format-rows? false})))))))))
+                       (qp/process-query
+                        (assoc (mt/mbql-query times)
+                               :middleware {:format-rows? false})))))))))
 
 (deftest ^:parallel yyyymmddhhmmss-dates
   (mt/test-drivers #{:mongo :oracle :postgres :h2 :mysql :bigquery-cloud-sdk :snowflake :redshift :sqlserver}
