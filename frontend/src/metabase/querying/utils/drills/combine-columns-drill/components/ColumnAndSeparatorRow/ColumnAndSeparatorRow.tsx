@@ -4,7 +4,7 @@ import { Button, Flex, Icon, Select, TextInput } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import type { ColumnAndSeparator, ColumnOption } from "../../types";
-import { fromSelectValue, toSelectValue } from "../../utils";
+import { formatSeparator, fromSelectValue, toSelectValue } from "../../utils";
 
 import styles from "./ColumnAndSeparatorRow.module.css";
 
@@ -37,7 +37,7 @@ export const ColumnAndSeparatorRow = ({
         <TextInput
           className={styles.separator}
           label={showLabels ? t`Separator` : undefined}
-          placeholder={t`Separator`}
+          placeholder={formatSeparator("")}
           value={separator}
           w={110}
           onChange={event => {

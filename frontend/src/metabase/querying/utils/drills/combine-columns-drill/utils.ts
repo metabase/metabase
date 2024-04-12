@@ -52,7 +52,7 @@ export const getNextColumnAndSeparator = (
 };
 
 export const formatSeparator = (separator: string) => {
-  if (separator) {
+  if (separator.length === 0) {
     return `(${t`empty`})`;
   }
 
