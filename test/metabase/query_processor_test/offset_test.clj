@@ -158,12 +158,3 @@
                   [#t "2016-07-01" 3734.72 8695.37]]
                  (mt/formatted-rows [->local-date 2.0 2.0]
                    (qp/process-query query)))))))))
-
-
-(defn x []
-  )
-
-(let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                (lib/expression "x" (lib/count)))]
-  (or (me/humanize (mc/explain :metabase.lib.schema/query query))
-      query))
