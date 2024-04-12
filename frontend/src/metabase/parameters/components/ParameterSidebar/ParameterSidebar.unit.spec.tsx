@@ -87,12 +87,14 @@ describe("ParameterSidebar", () => {
         id: "id2",
         name: "Foo",
         slug: "foo",
+        sectionId: "string",
       }),
       otherParameters: [
         createMockUiParameter({
           id: "id1",
           name: "Baz",
           slug: "baz",
+          sectionId: "string",
         }),
       ],
     });
@@ -120,11 +122,13 @@ describe("ParameterSidebar", () => {
       id: "id1",
       name: "Foo",
       slug: "foo",
+      sectionId: "string",
     });
     const nextParameter = createMockUiParameter({
       id: "id1",
       name: "Bar",
       slug: "Bar",
+      sectionId: "string",
     });
     const { clickNextParameterButton } = setup({
       initialParameter,
@@ -144,12 +148,14 @@ describe("ParameterSidebar", () => {
         id: "id1",
         name: "Foo",
         slug: "foo",
+        sectionId: "string",
       });
       const nextParameter = createMockUiParameter({
         id: "id2",
         name: "Bar",
         slug: "Bar",
         type: "date/single",
+        sectionId: "date",
       });
 
       const { clickNextParameterButton } = setup({
