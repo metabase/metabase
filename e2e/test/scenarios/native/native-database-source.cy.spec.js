@@ -11,6 +11,7 @@ const PG_DB_ID = 2;
 const mongoName = "QA Mongo";
 const postgresName = "QA Postgres12";
 const additionalPG = "New Database";
+const ADDITIONAL_PG_DB_ID = 3;
 
 const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
 
@@ -141,7 +142,7 @@ describe(
     });
 
     describe("permissions", () => {
-      it("users with 'No self-service' data permissions should be able to choose only the databases they can query against", () => {
+      it("users should be able to choose the databases they can run native queries against", () => {
         cy.signIn("nodata");
 
         startNativeQuestion();
@@ -156,6 +157,14 @@ describe(
         cy.signInAsAdmin();
 
         addPostgresDatabase(additionalPG);
+        cy.updatePermissionsGraph({
+          [ALL_USERS_GROUP]: {
+            [ADDITIONAL_PG_DB_ID]: {
+              "view-data": "unrestricted",
+              "create-queries": "query-builder-and-native",
+            },
+          },
+        });
 
         cy.signIn("nodata");
         startNativeQuestion();
