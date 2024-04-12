@@ -113,7 +113,7 @@ const Users = createEntity({
           dispatch,
           userApi.endpoints.updatePassword,
         );
-        return { type: PASSWORD_RESET_MANUAL, payload: { id, password } };
+        dispatch({ type: PASSWORD_RESET_MANUAL, payload: { id, password } });
       },
     deactivate: async ({ id }) => {
       MetabaseAnalytics.trackStructEvent("People Admin", "User Removed");
