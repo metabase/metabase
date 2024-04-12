@@ -1,3 +1,5 @@
+import { assocIn } from "icepick";
+
 import type { State } from "metabase-types/store";
 
 import { DataPermission, DataPermissionValue } from "../../types";
@@ -10,26 +12,18 @@ const stateWithoutLegacyValues = mockState as unknown as State;
 
 // adding legacy no self-service in the graph will prevent getGroupsDataPermissionEditor
 // from omitting the view data permission options in the case there's only one option
-const stateWithLegacyValues = {
-  ...mockState,
-  admin: {
-    ...mockState.admin,
-    permissions: {
-      ...mockState.admin.permissions,
-      originalDataPermissions: {
-        ...mockState.admin.permissions.originalDataPermissions,
-        "1": {
-          ...mockState.admin.permissions.originalDataPermissions["1"],
-          "3": {
-            ...mockState.admin.permissions.originalDataPermissions["1"]["3"],
-            [DataPermission.VIEW_DATA]:
-              DataPermissionValue.LEGACY_NO_SELF_SERVICE,
-          },
-        },
-      },
-    },
-  },
-} as unknown as State;
+const stateWithLegacyValues = assocIn(
+  mockState,
+  [
+    "admin",
+    "permissions",
+    "originalDataPermissions",
+    "1",
+    "3",
+    DataPermission.VIEW_DATA,
+  ],
+  DataPermissionValue.LEGACY_NO_SELF_SERVICE,
+) as unknown as State;
 
 describe("getGroupsDataPermissionEditor", () => {
   it("returns data for permission editor header", () => {

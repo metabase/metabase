@@ -21,6 +21,7 @@ import type {
   DataRouteParams,
   RawGroupRouteParams,
   PermissionSectionConfig,
+  EntityId,
 } from "../../types";
 import { DataPermission } from "../../types";
 import {
@@ -145,6 +146,14 @@ const hasViewDataOptions = (entities: any[]) => {
   );
 };
 
+type EntityWithPermissions = {
+  id: string | number;
+  name: string;
+  entityId: EntityId;
+  canSelect?: boolean;
+  permissions: PermissionSectionConfig[];
+};
+
 export const getDatabasesPermissionEditor = createSelector(
   getMetadataWithHiddenTables,
   getGroupRouteParams,
@@ -179,7 +188,7 @@ export const getDatabasesPermissionEditor = createSelector(
       databaseId != null &&
       metadata.database(databaseId)?.getSchemas().length === 1;
 
-    let entities: any = [];
+    let entities: EntityWithPermissions[] = [];
 
     const database = metadata?.database(databaseId);
 
@@ -209,7 +218,7 @@ export const getDatabasesPermissionEditor = createSelector(
           };
         });
     } else if (databaseId != null) {
-      entities = metadata
+      const maybeDbEntities = metadata
         ?.database(databaseId)
         ?.getSchemas()
         .sort((a, b) => a.name.localeCompare(b.name))
@@ -230,6 +239,9 @@ export const getDatabasesPermissionEditor = createSelector(
             ),
           };
         });
+      if (maybeDbEntities) {
+        entities = maybeDbEntities;
+      }
     } else if (groupId != null) {
       entities = metadata
         .databasesList({ savedQuestions: false })
