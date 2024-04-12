@@ -8,19 +8,29 @@ import type { Metric, Segment } from "metabase-types/api";
 
 import S from "./Formula.module.css";
 
+type FormulaEntityProps =
+  | {
+      type: "segment";
+      entity: Segment;
+    }
+  | {
+      type: "metric";
+      entity: Metric;
+    };
+
+type FormulaProps = FormulaEntityProps & {
+  isExpanded: boolean;
+  expandFormula: () => void;
+  collapseFormula: () => void;
+};
+
 export const Formula = ({
   type,
   entity,
   isExpanded,
   expandFormula,
   collapseFormula,
-}: {
-  type: "segment" | "metric";
-  entity: Segment | Metric;
-  isExpanded: boolean;
-  expandFormula: () => void;
-  collapseFormula: () => void;
-}) => (
+}: FormulaProps) => (
   <div
     className={cx(S.formula)}
     onClick={isExpanded ? collapseFormula : expandFormula}
