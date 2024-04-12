@@ -11,7 +11,6 @@
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [LegacyMetric]]
    [metabase.models.query :refer [Query]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
@@ -55,10 +54,6 @@
       :query
       ((juxt :breakout :aggregation :expressions :fields))))
 
-(defmethod definition LegacyMetric
-  [metric]
-  (-> metric :definition ((juxt :aggregation :filter))))
-
 (defmethod definition Segment
   [segment]
   (-> segment :definition :filter))
@@ -77,9 +72,11 @@
    subset of the more specific one."
   [a b]
   (let [context-a (-> a definition collect-context-bearing-forms)
-        context-b (-> b definition collect-context-bearing-forms)]
-    (/ (count (set/intersection context-a context-b))
-       (max (min (count context-a) (count context-b)) 1))))
+        context-b (-> b definition collect-context-bearing-forms)
+        overlap (set/intersection context-a context-b)
+        min-overlap (min (count context-a) (count context-b))]
+    (/ (count overlap)
+       (max min-overlap 1))))
 
 (defn- rank-by-similarity
   [reference entities]
@@ -107,8 +104,9 @@
 
 (defn- metrics-for-table
   [table]
-  (filter-visible (t2/select LegacyMetric
+  (filter-visible (t2/select Card
                     :table_id (:id table)
+                    :type :metric
                     :archived false)))
 
 (defn- segments-for-table
@@ -159,20 +157,21 @@
   [card]
   (->> (t2/select Card
          :table_id (:table_id card)
+         :type [:in [:model :question]]
          :archived false)
        filter-visible
        (rank-by-similarity card)
        (filter (comp pos? :similarity))))
 
-(defn- canonical-metric
+(defn- similar-metrics
   [card]
-  (->> (t2/select LegacyMetric
+  (->> (t2/select Card
          :table_id (:table_id card)
+         :type :metric
          :archived false)
        filter-visible
-       (m/find-first (comp #{(-> card :dataset_query :query :aggregation)}
-                           :aggregation
-                           :definition))))
+       (rank-by-similarity card)
+       (filter (comp pos? :similarity))))
 
 (defn- recently-modified-dashboards
   []
@@ -221,19 +220,17 @@
 (defmethod related Card
   [card]
   (let [table             (t2/select-one Table :id (:table_id card))
-        similar-questions (similar-questions card)]
+        similar-questions (similar-questions card)
+        similar-metrics   (similar-metrics card)]
     {:table             table
-     :metrics           (->> table
-                             metrics-for-table
-                             (rank-by-similarity card)
-                             interesting-mix)
+     :metrics           (interesting-mix similar-metrics)
      :segments          (->> table
                              segments-for-table
                              (rank-by-similarity card)
                              interesting-mix)
      :dashboard-mates   (cards-sharing-dashboard card)
      :similar-questions (interesting-mix similar-questions)
-     :canonical-metric  (canonical-metric card)
+     :canonical-metric  (first similar-metrics)
      :dashboards        (recommended-dashboards similar-questions)
      :collections       (recommended-collections similar-questions)}))
 
@@ -241,27 +238,11 @@
   [query]
   (related (mi/instance Card query)))
 
-(defmethod related LegacyMetric
-  [metric]
-  (let [table (t2/select-one Table :id (:table_id metric))]
-    {:table    table
-     :metrics  (->> table
-                    metrics-for-table
-                    (rank-by-similarity metric)
-                    interesting-mix)
-     :segments (->> table
-                    segments-for-table
-                    (rank-by-similarity metric)
-                    interesting-mix)}))
-
 (defmethod related Segment
   [segment]
   (let [table (t2/select-one Table :id (:table_id segment))]
     {:table       table
-     :metrics     (->> table
-                       metrics-for-table
-                       (rank-by-similarity segment)
-                       interesting-mix)
+     :metrics     (metrics-for-table table)
      :segments    (->> table
                        segments-for-table
                        (rank-by-similarity segment)

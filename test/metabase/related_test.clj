@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models
-    :refer [Card Collection Dashboard DashboardCard LegacyMetric Revision Segment]]
+    :refer [Card Collection Dashboard DashboardCard Revision Segment]]
    [metabase.related :as related]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -45,14 +45,15 @@
 
 (defn- do-with-world [f]
   (mt/with-temp [Collection {collection-id :id} {}
-                 LegacyMetric     {metric-id-a :id} (mt/$ids venues
-                                                       {:table_id   $$venues
-                                                        :definition {:source-table $$venues
-                                                                     :aggregation  [[:sum $price]]}})
-                 LegacyMetric     {metric-id-b :id} (mt/$ids venues
-                                                       {:table_id   $$venues
-                                                        :definition {:source-table $$venues
-                                                                     :aggregation  [[:count]]}})
+                 Card       {metric-id-a :id} {:table_id      (mt/id :venues)
+                                               :collection_id collection-id
+                                               :type          :metric
+                                               :dataset_query (mt/mbql-query venues {:aggregation [[:sum $price]]})}
+                 Card       {metric-id-b :id} {:table_id      (mt/id :venues)
+                                               :collection_id collection-id
+                                               :type          :metric
+                                               :dataset_query (mt/mbql-query venues {:aggregation [[:count]]
+                                                                                     :breakout    [$category_id]})}
                  Segment    {segment-id-a :id} (mt/$ids venues
                                                         {:table_id   $$venues
                                                          :definition {:source-table $$venues
