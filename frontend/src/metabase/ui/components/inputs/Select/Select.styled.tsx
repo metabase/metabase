@@ -65,8 +65,7 @@ export const getSelectInputOverrides = (
       ref: getStylesRef("wrapper"),
       color: theme.fn.themeColor("text-dark"),
       "&:not(:only-child)": {
-        // TODO: Restore this but not for the select in SchedulePicker
-        //marginTop: theme.spacing.xs,
+        marginTop: theme.spacing.xs,
       },
       [`&:has(.${getStylesRef("input")}[data-disabled])`]: {
         opacity: 1,

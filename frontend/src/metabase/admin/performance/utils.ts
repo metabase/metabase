@@ -113,3 +113,5 @@ const defaultSchedule: ScheduleSettings = {
   schedule_type: "hourly",
   schedule_minute: 0,
 };
+
+export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;

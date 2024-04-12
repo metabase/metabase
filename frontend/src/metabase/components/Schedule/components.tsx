@@ -1,17 +1,25 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { hourToTwelveHourFormat } from "metabase/admin/performance/utils";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import type { SelectProps } from "metabase/ui";
-import { Box, Select, Group, SegmentedControl } from "metabase/ui";
+import { Group, SegmentedControl, Select, Text } from "metabase/ui";
 import type {
-  ScheduleSettings,
   ScheduleDayType,
   ScheduleFrameType,
+  ScheduleSettings,
 } from "metabase-types/api";
 
-import { weekdays, amAndPM, frames, hours, minutes } from "./constants";
+import {
+  amAndPM,
+  defaultHour,
+  frames,
+  hours,
+  minutes,
+  weekdays,
+} from "./constants";
 import type { UpdateSchedule } from "./types";
 
 export const SelectFrame = ({
@@ -32,54 +40,57 @@ export const SelectFrame = ({
   );
 };
 
-export const SelectHour = ({
+export const SelectTime = ({
   schedule,
-  timezone,
-  textBeforeSendTime,
   updateSchedule,
-  showTimezone = true,
 }: {
   schedule: ScheduleSettings;
+  updateSchedule: UpdateSchedule;
+}) => {
+  const hourIn24HourFormat =
+    schedule.schedule_hour && !isNaN(schedule.schedule_hour)
+      ? schedule.schedule_hour
+      : defaultHour;
+  const hour = hourToTwelveHourFormat(hourIn24HourFormat);
+  const amPm = hourIn24HourFormat >= 12 ? 1 : 0;
+  return (
+    <Group spacing="xs">
+      <AutoWidthSelect
+        value={hour.toString()}
+        data={hours}
+        onChange={(value: string) =>
+          updateSchedule("schedule_hour", Number(value) + amPm * 12)
+        }
+      />
+      <SegmentedControl
+        radius="sm"
+        value={amPm.toString()}
+        onChange={value =>
+          updateSchedule("schedule_hour", hour + Number(value) * 12)
+        }
+        data={amAndPM}
+      />
+    </Group>
+  );
+};
+
+export const DisplayTimeDetails = ({
+  hour,
+  amPm,
+  timezone,
+  textBeforeSendTime,
+}: {
+  hour: number;
+  amPm: number;
   timezone: string;
   textBeforeSendTime?: string;
-  updateSchedule: UpdateSchedule;
-  showTimezone?: boolean;
 }) => {
-  const hourOfDay = isNaN(schedule.schedule_hour as number)
-    ? 8
-    : schedule.schedule_hour || 0;
-
-  const hour = hourOfDay % 12;
-  const amPm = hourOfDay >= 12 ? 1 : 0;
-
+  const applicationName = useSelector(getApplicationName);
   return (
-    <>
-      <Group spacing="xs" style={{ lineHeight: "1rem" }}>
-        <AutoWidthSelect
-          value={hour.toString()}
-          data={hours}
-          onChange={(value: string) =>
-            updateSchedule("schedule_hour", Number(value) + amPm * 12)
-          }
-        />
-        <SegmentedControl
-          radius="sm"
-          value={amPm.toString()}
-          onChange={value =>
-            updateSchedule("schedule_hour", hour + Number(value) * 12)
-          }
-          data={amAndPM}
-          fullWidth
-        />
-        {textBeforeSendTime ||
-          (showTimezone && (
-            <Box mt="1rem" color="text-medium">
-              {textBeforeSendTime} {hour === 0 ? 12 : hour}:00{" "}
-              {amPm ? "PM" : "AM"} {timezone}, <MetabaseTimeZone />.
-            </Box>
-          ))}
-      </Group>
-    </>
+    <Text w="100%" mt="xs" size="sm" fw="bold" color="text-light">
+      {textBeforeSendTime} {hourToTwelveHourFormat(hour)}:00{" "}
+      {amAndPM[amPm].label} {timezone}, {t`your ${applicationName} timezone`}
+    </Text>
   );
 };
 
@@ -156,15 +167,14 @@ export const AutoWidthSelect = (props: SelectProps) => {
       miw="5rem"
       maw={maxWidth}
       styles={{
-        wrapper: { paddingRight: 0, marginTop: 0 },
+        wrapper: {
+          paddingRight: 0,
+          marginTop: 0,
+          "&:not(:only-child)": { marginTop: "0" },
+        },
         input: { paddingRight: 0 },
       }}
       {...props}
     />
   );
-};
-
-const MetabaseTimeZone = () => {
-  const applicationName = useSelector(getApplicationName);
-  return <>{t`your ${applicationName} timezone`}</>;
 };
