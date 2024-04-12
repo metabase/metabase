@@ -59,4 +59,5 @@ export const defaultHour = 8;
 export enum Cron {
   AllValues = "*",
   NoSpecificValue = "?",
+  NoSpecificValue_Escaped = "\\?",
 }

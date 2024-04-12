@@ -70,7 +70,10 @@ export const cronToScheduleSettings = (
 
   // The Quartz cron library used in the backend distinguishes between 'no specific value' and 'all values',
   // but for simplicity we can treat them as the same here
-  cron = cron.replace(new RegExp(Cron.NoSpecificValue, "g"), Cron.AllValues);
+  cron = cron.replace(
+    new RegExp(Cron.NoSpecificValue_Escaped, "g"),
+    Cron.AllValues,
+  );
 
   const [_second, minute, hour, dayOfMonth, month, weekday] = cron.split(" ");
 
