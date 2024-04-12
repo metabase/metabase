@@ -798,6 +798,12 @@ describeEE("formatting > sandboxes", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sandboxed").click();
       cy.button("Change").click();
+
+      modal().within(() => {
+        cy.findByText("Change access to this database to “Sandboxed”?");
+        cy.button("Change").click();
+      });
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Use a saved question to create a custom view for this table",

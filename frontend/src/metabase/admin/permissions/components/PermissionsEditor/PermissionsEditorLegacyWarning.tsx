@@ -1,17 +1,16 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import Alert from "metabase/core/components/Alert";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { colors } from "metabase/lib/colors";
-import { Anchor, Text, Box } from "metabase/ui";
+import { Icon, Alert, Anchor, Text, Box } from "metabase/ui";
 
 export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
   const [isExpanded, { toggle }] = useToggle(false);
 
   return (
-    <Box my="md" mr="2.5rem">
-      <Alert icon="warning" variant="warning">
+    <Box mt="md" mb="sm" mr="2.5rem">
+      <Alert icon={<Icon name="warning" size={16} />} color="accent5">
         <Text fw="bold">
           {t`The No self-service access level for View data is going away.`}
           {!isExpanded && (

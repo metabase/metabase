@@ -49,6 +49,11 @@ describe("scenarios > admin > permissions > create queries > granular", () => {
     // should allow setting a granular value for one table
     modifyPermission("Orders", NATIVE_QUERIES_PERMISSION_INDEX, "No");
 
+    modal().within(() => {
+      cy.findByText("Change access to this database to “Granular”?");
+      cy.findByText("Change").click();
+    });
+
     // should also remove native permissions for all other tables
     assertPermissionTable([
       ["Accounts", "Query builder only"],
