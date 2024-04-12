@@ -61,7 +61,6 @@
 ;; new function that will execute the original in whatever context or with whatever side effects appropriate for that
 ;; step.
 
-
 ;; This looks something like {:sync #{1 2}, :cache #{2 3}} when populated.
 ;; Key is a type of sync operation, e.g. `:sync` or `:cache`; vals are sets of DB IDs undergoing that operation.
 ;;
@@ -100,10 +99,10 @@
              (keyword (or (namespace event-name-prefix) "event")
                       (str (name prefix) suffix)))]
      (with-sync-events
-      (event-keyword event-name-prefix "-begin")
-      (event-keyword event-name-prefix "-end")
-      database-or-id
-      f)))
+       (event-keyword event-name-prefix "-begin")
+       (event-keyword event-name-prefix "-end")
+       database-or-id
+       f)))
 
   ([begin-event-name :- Topic
     end-event-name   :- Topic
@@ -129,8 +128,8 @@
         _          (log-fn (u/format-color 'magenta "STARTING: %s" message))
         result     (f)]
     (log-fn (u/format-color 'magenta "FINISHED: %s (%s)"
-              message
-              (u/format-nanoseconds (- (System/nanoTime) start-time))))
+                            message
+                            (u/format-nanoseconds (- (System/nanoTime) start-time))))
     result))
 
 (defn- with-start-and-finish-logging
@@ -163,7 +162,7 @@
   [database f]
   (fn []
     (driver/sync-in-context (driver.u/database->driver database) database
-      f)))
+                            f)))
 
 ;; TODO: future, expand this to `driver` level, where the drivers themselves can add to the
 ;; list of exception classes (like, driver-specific exceptions)
@@ -216,7 +215,7 @@
        (with-start-and-finish-logging message
          (with-db-logging-disabled
            (sync-in-context database
-             (partial do-with-error-handling (format "Error in sync step %s" message) f))))))))
+                            (partial do-with-error-handling (format "Error in sync step %s" message) f))))))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things
@@ -225,7 +224,6 @@
   {:style/indent 3}
   [operation database message & body]
   `(do-sync-operation ~operation ~database ~message (fn [] ~@body)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              EMOJI PROGRESS METER                                              |
@@ -341,8 +339,12 @@
 
 (defn db->reducible-sync-tables
   "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`."
-  [database-or-id]
-  (t2/reducible-select :model/Table, :db_id (u/the-id database-or-id), {:where sync-tables-clause}))
+  [database-or-id & {:keys [schema-names table-names]}]
+  (t2/reducible-select :model/Table
+                       :db_id (u/the-id database-or-id)
+                       {:where [:and sync-tables-clause
+                                (when schema-names [:in :schema schema-names])
+                                (when table-names [:in :name table-names])]}))
 
 (defn db->sync-schemas
   "Returns all the Schemas that have their metadata sync'd for `database-or-id`."
@@ -362,7 +364,7 @@
   mi/model)
 
 (defmethod name-for-logging :model/Database
-  [{database-name :name, id :id, engine :engine,}]
+  [{database-name :name, id :id, engine :engine}]
   (format "%s Database %s ''%s''" (name engine) (str (or id "")) database-name))
 
 (defn table-name-for-logging
@@ -495,7 +497,7 @@
                                    "# %s\n"
                                    "# %s\n"
                                    (when log-summary-fn
-                                       (format "# %s\n" (log-summary-fn step-info))))
+                                     (format "# %s\n" (log-summary-fn step-info))))
                        [(format "Completed step ''%s''" step-name)
                         (format "Start: %s" (u.date/format start-time))
                         (format "End: %s" (u.date/format end-time))
