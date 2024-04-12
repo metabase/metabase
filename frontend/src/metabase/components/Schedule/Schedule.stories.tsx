@@ -1,7 +1,7 @@
 import { useArgs } from "@storybook/addons";
 import type { ComponentStory } from "@storybook/react";
 
-import Schedule from "./Schedule";
+import { Schedule } from "./Schedule";
 
 export default {
   title: "Components/Schedule",
