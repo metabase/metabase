@@ -58,8 +58,8 @@
     (when (driver/database-supports? driver :foreign-keys database)
       (let [describe-fks-fn (if (driver/database-supports? driver :describe-fks database)
                               driver/describe-fks
-                                           ;; In version 52 we'll remove [[driver/describe-table-fks]]
-                                           ;; and we'll just use [[driver/describe-fks]] here
+                              ;; In version 52 we'll remove [[driver/describe-table-fks]]
+                              ;; and we'll just use [[driver/describe-fks]] here
                               backwards-compatible-describe-fks)]
         (cond->> (describe-fks-fn (driver.u/database->driver database) database :schema-names schema-names :table-names table-names)
           ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
