@@ -487,7 +487,7 @@
   (try (thunk table)
        (finally
          (when (not= driver/*driver* :redshift) ; don't drop redshift tables until the end of the session because they cause flakes
-           (driver/drop-table! (driver/*driver*)
+           (driver/drop-table! driver/*driver*
                                (:db_id table)
                                (#'upload/table-identifier table))))))
 
