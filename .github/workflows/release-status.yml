@@ -2,8 +2,6 @@ name: Release Status Check
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 13 * * *' # every day at 8am US eastern time
 
 jobs:
   check-release-status:
