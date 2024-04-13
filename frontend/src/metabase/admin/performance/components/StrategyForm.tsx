@@ -108,7 +108,7 @@ const StrategyFormBody = ({
         justifyContent: "space-between",
       }}
     >
-      <Stack p="lg" spacing="xl" maw="27.5rem">
+      <Stack p="lg" spacing="xl" maw="35rem">
         <StrategySelector targetId={targetId} />
         {selectedStrategyType === "ttl" && (
           <>

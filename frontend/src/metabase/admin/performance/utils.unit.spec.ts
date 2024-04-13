@@ -3,7 +3,7 @@ import type { ScheduleSettings } from "metabase-types/api";
 import {
   cronToScheduleSettings,
   hourToTwelveHourFormat,
-  removeFalsyValues,
+  removeNilValues,
   scheduleSettingsToCron,
 } from "./utils";
 
@@ -240,10 +240,10 @@ describe("removeFalsyValues", () => {
       g: undefined,
     };
     const truthyObj = { a: 1, f: "some string" };
-    expect(removeFalsyValues(obj)).toEqual(truthyObj);
+    expect(removeNilValues(obj)).toEqual(truthyObj);
   });
   it("keeps truthy values", () => {
     const obj = { a: 1, b: true, c: "string", d: [], e: {} };
-    expect(removeFalsyValues(obj)).toEqual(obj);
+    expect(removeNilValues(obj)).toEqual(obj);
   });
 });

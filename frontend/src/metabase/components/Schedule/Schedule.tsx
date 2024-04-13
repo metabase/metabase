@@ -1,21 +1,30 @@
-import { useCallback } from "react";
+import type { ReactNode } from "react";
+import { useCallback, Children, isValidElement } from "react";
 import { c } from "ttag";
 
-import { removeFalsyValues } from "metabase/admin/performance/utils";
+import {
+  getLongestSelectLabel,
+  removeNilValues,
+} from "metabase/admin/performance/utils";
 import { capitalize } from "metabase/lib/formatting/strings";
-import { Box } from "metabase/ui";
+import { Box, Group } from "metabase/ui";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
 import {
   AutoWidthSelect,
-  TimeDetails,
   SelectFrame,
   SelectMinute,
   SelectTime,
   SelectWeekday,
   SelectWeekdayOfMonth,
 } from "./components";
-import { defaultDay, optionNameTranslations } from "./constants";
+import {
+  defaultDay,
+  defaultHour,
+  frames,
+  optionNameTranslations,
+  weekdayOfMonthOptions,
+} from "./constants";
 import type { ScheduleChangeProp, UpdateSchedule } from "./types";
 
 type ScheduleProperty = keyof ScheduleSettings;
@@ -46,14 +55,18 @@ const defaults: Record<string, Partial<ScheduleSettings>> = {
   daily: {
     schedule_day: null,
     schedule_frame: null,
+    schedule_hour: defaultHour,
+    schedule_minute: 0,
   },
   weekly: {
     schedule_day: defaultDay,
     schedule_frame: null,
+    schedule_minute: 0,
   },
   monthly: {
     schedule_frame: "first",
     schedule_day: defaultDay,
+    schedule_minute: 0,
   },
 };
 
@@ -84,12 +97,12 @@ export const Schedule = ({
         [field]: value,
       };
 
-      newSchedule = removeFalsyValues(newSchedule);
+      newSchedule = removeNilValues(newSchedule);
 
       if (field === "schedule_type") {
         newSchedule = {
-          ...defaults[value as ScheduleType],
           ...newSchedule,
+          ...defaults[value as ScheduleType],
         };
       } else if (field === "schedule_frame") {
         // when the monthly schedule frame is the 15th, clear out the schedule_day
@@ -110,7 +123,14 @@ export const Schedule = ({
   );
 
   return (
-    <Box lh="41px" display="flex" style={{ flexWrap: "wrap", gap: ".5rem" }}>
+    <Box
+      lh="40px"
+      display="grid"
+      style={{
+        gridTemplateColumns: "fit-content(100%) auto",
+        gap: ".5rem",
+      }}
+    >
       <ScheduleBody
         schedule={schedule}
         updateSchedule={updateSchedule}
@@ -130,7 +150,6 @@ const ScheduleBody = ({
   scheduleOptions,
   timezone,
   verb,
-  textBeforeSendTime,
   minutesOnHourPicker,
 }: Omit<ScheduleProps, "onScheduleChange"> & {
   updateSchedule: UpdateSchedule;
@@ -139,7 +158,6 @@ const ScheduleBody = ({
     schedule,
     updateSchedule,
   };
-
   const frequencyProps = {
     ...itemProps,
     key: "frequency",
@@ -148,6 +166,7 @@ const ScheduleBody = ({
   };
   const timeProps = {
     ...itemProps,
+    timezone,
     key: "time",
   };
   const minuteProps = {
@@ -161,84 +180,72 @@ const ScheduleBody = ({
   const frameProps = {
     ...itemProps,
     key: "frame",
+    longestLabel: getLongestSelectLabel(frames),
   };
   const weekdayOfMonthProps = {
     ...itemProps,
     key: "weekday-of-month",
-  };
-  const timeDetailsProps = {
-    key: "time-details",
-    hour: schedule.schedule_hour ?? null,
-    amPm: schedule.schedule_hour
-      ? schedule.schedule_hour >= 12
-        ? 1
-        : 0
-      : null,
-    timezone: timezone ?? null,
-    textBeforeSendTime,
+    longestLabel: getLongestSelectLabel(weekdayOfMonthOptions),
   };
 
   const scheduleType = schedule.schedule_type;
-
   if (scheduleType === "hourly") {
     if (minutesOnHourPicker) {
       // e.g. "Send hourly at 15 minutes past the hour"
       return (
-        <>{c(
+        <TwoColumns>{c(
           "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes",
         ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} at ${(
           <SelectMinute {...minuteProps} />
-        )} minutes past the hour`}</>
+        )} minutes past the hour`}</TwoColumns>
       );
     } else {
       // e.g. "Send hourly"
       return (
-        <>
-          {verb} <SelectFrequency {...frequencyProps} />
-        </>
+        <TwoColumns>
+          {c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'")
+            .jt`${verb} ${(<SelectFrequency {...frequencyProps} />)}`}
+        </TwoColumns>
       );
     }
   } else if (scheduleType === "daily") {
     // e.g. "Send daily at 12:00pm"
     return (
-      <>
+      <TwoColumns>
         {c(
           "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'",
         ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} at ${(
           <SelectTime {...timeProps} />
         )}`}
-        <TimeDetails {...timeDetailsProps} />
-      </>
+      </TwoColumns>
     );
   } else if (scheduleType === "weekly") {
     // e.g. "Send weekly on Tuesday at 12:00pm"
     return (
-      <>
+      <TwoColumns>
         {c(
           "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
         ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} on ${(
           <SelectWeekday {...weekdayProps} />
         )} at ${(<SelectTime {...timeProps} />)}`}
-        <TimeDetails {...timeDetailsProps} />
-      </>
+      </TwoColumns>
     );
   } else if (scheduleType === "monthly") {
     // e.g. "Send monthly on the 15th at 12:00pm"
     if (schedule.schedule_frame === "mid") {
       return (
-        <>
+        <TwoColumns>
           {c(
             "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is the noun '15th' (as in 'the 15th of the month'), {3} is a time like '12:00pm'",
           ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} on the ${(
             <SelectFrame {...frameProps} />
-          )} at ${(<SelectTime {...timeProps} />)} `}
-          <TimeDetails {...timeDetailsProps} />
-        </>
+          )} at ${(<SelectTime {...timeProps} />)}`}
+        </TwoColumns>
       );
     } else {
       // e.g. "Send monthly on the first Tuesday at 12:00pm"
       return (
-        <>
+        <TwoColumns>
           {c(
             "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'",
           ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} on the ${(
@@ -246,12 +253,58 @@ const ScheduleBody = ({
           )} ${(<SelectWeekdayOfMonth {...weekdayOfMonthProps} />)} at ${(
             <SelectTime {...timeProps} />
           )}`}
-        </>
+        </TwoColumns>
       );
     }
   } else {
     return null;
   }
+};
+
+/** Arrange Schedule components into two columns. */
+const TwoColumns = ({ children }: { children: ReactNode }) => {
+  const kids = Children.toArray(children).filter(
+    child => !(typeof child === "string" && !child.trim()),
+  );
+  const result: ReactNode[] = [];
+  const addBlank = () => result.push(<Box></Box>);
+  for (let c = 0; c < kids.length; c++) {
+    const curr = kids[c];
+    const next = kids[c + 1];
+    const isLastItemString = c === kids.length - 1 && typeof curr === "string";
+    if (isLastItemString) {
+      addBlank();
+      result.push(<Box mt="-.5rem">{curr}</Box>);
+    } else {
+      const isFirstItemString = c === 0 && typeof curr !== "string";
+      if (isFirstItemString) {
+        addBlank();
+      }
+      if (typeof curr === "string") {
+        const wrappedCurr = <Box style={{ textAlign: "end" }}>{curr}</Box>;
+        result.push(wrappedCurr);
+      } else {
+        result.push(curr);
+      }
+    }
+    // Insert blank nodes between adjacent Selects unless they can fit on one line
+    if (isValidElement(curr) && isValidElement(next)) {
+      const canSelectsProbablyFitOnOneLine =
+        curr.props.longestLabel.length + next.props.longestLabel.length < 19;
+      if (canSelectsProbablyFitOnOneLine) {
+        result[c] = (
+          <Group spacing="xs">
+            {result[c]}
+            {next}
+          </Group>
+        );
+        c++;
+      } else {
+        addBlank();
+      }
+    }
+  }
+  return <>{result}</>;
 };
 
 /** A Select that changes the schedule frequency (e.g., daily, hourly, monthly, etc.),
