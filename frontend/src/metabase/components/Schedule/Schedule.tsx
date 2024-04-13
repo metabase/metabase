@@ -193,8 +193,9 @@ const ScheduleBody = ({
     } else {
       // e.g. "Send hourly"
       return (
-        <>{c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'")
-          .jt`${verb} ${(<SelectFrequency {...frequencyProps} />)}`}</>
+        <>
+          {verb} <SelectFrequency {...frequencyProps} />
+        </>
       );
     }
   } else if (scheduleType === "daily") {
