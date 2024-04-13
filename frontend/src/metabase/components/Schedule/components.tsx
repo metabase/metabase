@@ -75,18 +75,21 @@ export const SelectTime = ({
   );
 };
 
-export const DisplayTimeDetails = ({
+export const TimeDetails = ({
   hour,
   amPm,
   timezone,
   textBeforeSendTime,
 }: {
-  hour: number;
-  amPm: number;
-  timezone: string;
+  hour: number | null;
+  amPm: number | null;
+  timezone: string | null;
   textBeforeSendTime?: string;
 }) => {
   const applicationName = useSelector(getApplicationName);
+  if (hour === null || amPm === null || !timezone) {
+    return null;
+  }
   const time = addZeroesToHour(hourToTwelveHourFormat(hour));
   const amOrPM = amAndPM[amPm].label;
   return (

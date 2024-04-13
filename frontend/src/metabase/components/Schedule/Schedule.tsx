@@ -1,14 +1,14 @@
 import { useCallback } from "react";
 import { c } from "ttag";
-import { pick } from "underscore";
 
+import { removeFalsyValues } from "metabase/admin/performance/utils";
 import { capitalize } from "metabase/lib/formatting/strings";
 import { Box } from "metabase/ui";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
 import {
   AutoWidthSelect,
-  DisplayTimeDetails,
+  TimeDetails,
   SelectFrame,
   SelectMinute,
   SelectTime,
@@ -84,7 +84,7 @@ export const Schedule = ({
         [field]: value,
       };
 
-      newSchedule = pick(newSchedule, val => val);
+      newSchedule = removeFalsyValues(newSchedule);
 
       if (field === "schedule_type") {
         newSchedule = {
@@ -140,61 +140,61 @@ const ScheduleBody = ({
     updateSchedule,
   };
 
-  const Frequency = (
-    <ScheduleTypeSelect
-      key="frequency"
-      {...itemProps}
-      scheduleType={schedule.schedule_type}
-      scheduleOptions={scheduleOptions}
-    />
-  );
-  const Hour = (
-    <SelectTime
-      key="hour"
-      schedule={schedule}
-      updateSchedule={updateSchedule}
-    />
-  );
-
-  const TimeDetails = () => {
-    // eslint-disable-next-line react/prop-types
-    schedule.schedule_hour ??= null;
-    // eslint-disable-next-line react/prop-types
-    if (schedule.schedule_hour === null) {
-      return null;
-    }
-    if (!timezone) {
-      return null;
-    }
-    return (
-      <DisplayTimeDetails
-        key="time-details"
-        // eslint-disable-next-line react/prop-types
-        hour={schedule.schedule_hour}
-        // eslint-disable-next-line react/prop-types
-        amPm={schedule.schedule_hour >= 12 ? 1 : 0}
-        timezone={timezone}
-        textBeforeSendTime={textBeforeSendTime}
-      />
-    );
+  const frequencyProps = {
+    ...itemProps,
+    key: "frequency",
+    scheduleType: schedule.schedule_type,
+    scheduleOptions,
+  };
+  const timeProps = {
+    ...itemProps,
+    key: "time",
+  };
+  const minuteProps = {
+    ...itemProps,
+    key: "minute",
+  };
+  const weekdayProps = {
+    ...itemProps,
+    key: "weekday",
+  };
+  const frameProps = {
+    ...itemProps,
+    key: "frame",
+  };
+  const weekdayOfMonthProps = {
+    ...itemProps,
+    key: "weekday-of-month",
+  };
+  const timeDetailsProps = {
+    key: "time-details",
+    hour: schedule.schedule_hour ?? null,
+    amPm: schedule.schedule_hour
+      ? schedule.schedule_hour >= 12
+        ? 1
+        : 0
+      : null,
+    timezone: timezone ?? null,
+    textBeforeSendTime,
   };
 
   const scheduleType = schedule.schedule_type;
 
   if (scheduleType === "hourly") {
     if (minutesOnHourPicker) {
-      const Minute = <SelectMinute {...itemProps} />;
       // e.g. "Send hourly at 15 minutes past the hour"
       return (
         <>{c(
           "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes",
-        ).jt`${verb} ${Frequency} at ${Minute} minutes past the hour`}</>
+        ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} at ${(
+          <SelectMinute {...minuteProps} />
+        )} minutes past the hour`}</>
       );
     } else {
       // e.g. "Send hourly"
       return (
         <>{c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'")
-          .jt`${verb} ${Frequency}`}</>
+          .jt`${verb} ${(<SelectFrequency {...frequencyProps} />)}`}</>
       );
     }
   } else if (scheduleType === "daily") {
@@ -203,44 +203,48 @@ const ScheduleBody = ({
       <>
         {c(
           "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'",
-        ).jt`${verb} ${Frequency} at ${Hour}`}
-        <TimeDetails />
+        ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} at ${(
+          <SelectTime {...timeProps} />
+        )}`}
+        <TimeDetails {...timeDetailsProps} />
       </>
     );
   } else if (scheduleType === "weekly") {
-    const Weekday = <SelectWeekday key="weekday" {...itemProps} />;
     // e.g. "Send weekly on Tuesday at 12:00pm"
     return (
       <>
         {c(
           "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
-        ).jt`${verb} ${Frequency} on ${Weekday} at ${Hour}`}
-        <TimeDetails />
+        ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} on ${(
+          <SelectWeekday {...weekdayProps} />
+        )} at ${(<SelectTime {...timeProps} />)}`}
+        <TimeDetails {...timeDetailsProps} />
       </>
     );
   } else if (scheduleType === "monthly") {
-    const Frame = <SelectFrame key="frame" {...itemProps} />;
     // e.g. "Send monthly on the 15th at 12:00pm"
     if (schedule.schedule_frame === "mid") {
       return (
         <>
           {c(
             "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is the noun '15th' (as in 'the 15th of the month'), {3} is a time like '12:00pm'",
-          ).jt`${verb} ${Frequency} on the ${Frame} at ${Hour}`}
-          <TimeDetails />
+          ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} on the ${(
+            <SelectFrame {...frameProps} />
+          )} at ${(<SelectTime {...timeProps} />)} `}
+          <TimeDetails {...timeDetailsProps} />
         </>
       );
     } else {
-      const WeekdayOfMonth = (
-        <SelectWeekdayOfMonth key="weekday-of-month" {...itemProps} />
-      );
       // e.g. "Send monthly on the first Tuesday at 12:00pm"
       return (
         <>
           {c(
             "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'",
-          )
-            .jt`${verb} ${Frequency} on the ${Frame} ${WeekdayOfMonth} at ${Hour}`}
+          ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} on the ${(
+            <SelectFrame {...frameProps} />
+          )} ${(<SelectWeekdayOfMonth {...weekdayOfMonthProps} />)} at ${(
+            <SelectTime {...timeProps} />
+          )}`}
         </>
       );
     }
@@ -249,7 +253,9 @@ const ScheduleBody = ({
   }
 };
 
-const ScheduleTypeSelect = ({
+/** A Select that changes the schedule frequency (e.g., daily, hourly, monthly, etc.),
+ * also known as the schedule 'type'. */
+const SelectFrequency = ({
   scheduleType,
   updateSchedule,
   scheduleOptions,

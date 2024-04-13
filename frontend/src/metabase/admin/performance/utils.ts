@@ -1,3 +1,5 @@
+import { pick } from "underscore";
+
 import { Cron, weekdays } from "metabase/components/Schedule/constants";
 import type {
   ScheduleDayType,
@@ -14,19 +16,19 @@ const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
   return index + 1;
 };
 
-const frameToCron = (frame: ScheduleFrameType) =>
-  ({ first: "1", last: "L", mid: "15" }[frame]);
+const frameToCronMap = { first: "1", last: "L", mid: "15" };
+const frameToCron = (frame: ScheduleFrameType) => frameToCronMap[frame];
 
-const frameFromCron = (frameInCronFormat: string) => {
-  const map: Record<string, ScheduleFrameType> = {
-    "15": "mid",
-    "1": "first",
-    L: "last",
-  };
-  return map[frameInCronFormat];
+const frameFromCronMap: Record<string, ScheduleFrameType> = {
+  "15": "mid",
+  "1": "first",
+  L: "last",
 };
+const frameFromCron = (frameInCronFormat: string) =>
+  frameFromCronMap[frameInCronFormat];
 
 export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
+  const second = "0";
   const minute = settings.schedule_minute?.toString() ?? Cron.AllValues;
   const hour = settings.schedule_hour?.toString() ?? Cron.AllValues;
   let weekday = settings.schedule_day
@@ -37,7 +39,11 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
     ? Cron.NoSpecificValue
     : Cron.AllValues;
   if (settings.schedule_type === "monthly" && settings.schedule_frame) {
+    // There are two kinds of monthly schedule:
+    // - weekday-based (e.g. "on the first Monday of the month")
+    // - date-based (e.g. "on the 15th of the month")
     if (settings.schedule_day) {
+      // Handle weekday-based monthly schedule
       const frameInCronFormat = frameToCron(settings.schedule_frame).replace(
         /^1$/,
         "#1",
@@ -45,10 +51,10 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
       const dayInCronFormat = dayToCron(settings.schedule_day);
       weekday = `${dayInCronFormat}${frameInCronFormat}`;
     } else {
+      // Handle date-based monthly schedule
       dayOfMonth = frameToCron(settings.schedule_frame);
     }
   }
-  const second = "0";
   const cronExpression = [
     second,
     minute,
@@ -130,3 +136,5 @@ const defaultSchedule: ScheduleSettings = {
 };
 
 export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
+
+export const removeFalsyValues = (obj: any) => pick(obj, val => val);
