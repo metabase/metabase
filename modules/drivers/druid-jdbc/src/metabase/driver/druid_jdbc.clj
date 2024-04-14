@@ -189,7 +189,7 @@
                            (get "version"))
                [maj-min maj min] (re-find #"^(\d+)\.(\d+)" version)
                semantic (mapv #(Integer/parseInt %) [maj min])]
-           {:vesrion maj-min
+           {:version maj-min
             :semantic-version semantic})
          (catch Throwable _
            (log/warn "Unable to get dbms version. Using 0 fallback.")
