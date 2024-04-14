@@ -85,11 +85,6 @@
       (cond-> o
         (string? o) (str/replace  #"^\"|\"$" "")))))
 
-;; TODO: Following currently has no effect. Find a way how to set start of week for Druid JDBC!
-(defmethod driver/db-start-of-week :druid
-  [_]
-  :sunday)
-
 ;; TODO: Verify literal use if fine here.
 (defn- date-trunc [unit expr] [:date_trunc (h2x/literal unit) expr])
 
@@ -179,6 +174,7 @@
     "COMPLEX<json>"  :type/SerializedJSON
     nil))
 
+;; TODO: Make this dependent on database features only, not the application state.
 (defmethod driver/database-supports? [:druid-jdbc :nested-field-columns]
   [_driver _feat db]
   (driver.common/json-unfolding-default db))
