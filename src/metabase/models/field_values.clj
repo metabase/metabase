@@ -29,6 +29,7 @@
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.plugins.classloader :as classloader]
@@ -241,9 +242,12 @@
     (let [{base-type        :base_type
            visibility-type  :visibility_type
            has-field-values :has_field_values} field-or-field-id
-          ;; TODO: Find a way how to get engine without db roundtrips.
+          ;; TODO: Find a way how to get engine without db roundtrips. Database could be bound in toplevel sync code.
+          ;;       That should be done if the performance hit for db calls in this function is significant as that
+          ;;       approach makes things harder to debug.
+          ;; TODO: Reduce the following to just one database call at least!
           table (t2/select-one 'Table :id (:table_id field-or-field-id))
-          engine (:engine (t2/select-one 'Database :id (:db_id table)))]
+          engine (driver.u/database->driver (t2/select-one 'Database :id (:db_id table)))]
       (boolean
        (and
         (driver/field-values-compatible? engine field-or-field-id)
