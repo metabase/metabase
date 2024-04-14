@@ -27,26 +27,31 @@
 
 (driver/register! :druid-jdbc :parent :sql-jdbc)
 
-;; TODO: remove support of sql and sql-jdbc features for now!
 (doseq [[feature supported?] {:set-timezone            true
+                              ;; TODO: Verify that :expression-aggregations are tested.
                               :expression-aggregations true}]
-  (defmethod driver/database-supports? [:druid feature] [_driver _feature _db] supported?))
-
-;; TODO: Double check this driver does not have to implement the following method.
-#_(defmethod driver/describe-database :druid-jdbc
-    [_ database]
-    #_{:tables #{{:name "checkins", :schema "druid", :description nil}}}
-  ;; should be -- or is the druid schema correct? -- probably
-    #_{:tables #{{:schema nil, :name "checkins"}}}
-    (sql-jdbc.sync/describe-database :druid-jdbc database))
+  (defmethod driver/database-supports? [:druid-jdbc feature] [_driver _feature _db] supported?))
 
 ;; TODO: Verify we do not need `;transparent_reconnection=true` parameter! If parameter is left out it seems
 ;;       connections can not be acquired!
+;; TODO: Add source for report-timezone usage!
 (defmethod sql-jdbc.conn/connection-details->spec :druid-jdbc
   [_driver {:keys [host port] :as _db-details}]
-  {:classname   "org.apache.calcite.avatica.remote.Driver"
-   :subprotocol "avatica:remote"
-   :subname     (str "url=http://" host ":" port "/druid/v2/sql/avatica/;transparent_reconnection=true")})
+  (merge {:classname   "org.apache.calcite.avatica.remote.Driver"
+          :subprotocol "avatica:remote"
+          :subname     (str "url=http://" host ":" port "/druid/v2/sql/avatica/;transparent_reconnection=true")}
+         (when (some? (driver/report-timezone))
+           {:sqlTimeZone (driver/report-timezone)})))
+
+;; TODO: Add source!
+(defmethod driver/db-default-timezone :druid-jdbc
+  [_driver _database]
+  "UTC")
+
+;; TODO: Add source!
+(defmethod driver/db-start-of-week :druid-
+  [_]
+  :monday)
 
 ;; TODO: Implement COMPLEX type handling!
 (defmethod sql-jdbc.sync/database-type->base-type :druid-jdbc
