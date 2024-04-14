@@ -25,7 +25,7 @@
    {:error/message "Instance of a java.time.temporal.Temporal"}
    (partial instance? Temporal)])
 
-(defn- add-zone-to-local
+(defn add-zone-to-local
   "Converts a temporal type without timezone info to one with zone info (i.e., a `ZonedDateTime`)."
   [t timezone-id]
   (condp instance? t
