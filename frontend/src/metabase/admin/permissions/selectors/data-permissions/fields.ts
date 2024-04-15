@@ -10,6 +10,7 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
@@ -29,7 +30,6 @@ import {
   getPermissionWarningModal,
   getControlledDatabaseWarningModal,
   getRevokingAccessToAllTablesWarningModal,
-  getSandboxedTableWarningModal,
   getWillRevokeNativeAccessWarningModal,
 } from "../confirmations";
 
@@ -86,7 +86,9 @@ const buildAccessPermission = (
       groupId,
     ),
     getControlledDatabaseWarningModal(currDbPermissionValue, entityId),
-    getSandboxedTableWarningModal(permissions, groupId, entityId, newValue),
+    ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.map(confirmation =>
+      confirmation(permissions, groupId, entityId, newValue),
+    ),
     getRevokingAccessToAllTablesWarningModal(
       database,
       permissions,

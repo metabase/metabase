@@ -15,12 +15,14 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import sandboxingReducer from "./actions";
 import { LoginAttributesWidget } from "./components/LoginAttributesWidget";
+import { getSandboxedTableWarningModal } from "./confirmations";
 import EditSandboxingModal from "./containers/EditSandboxingModal";
 import { getDraftPolicies, hasPolicyChanges } from "./selectors";
 
@@ -77,6 +79,10 @@ if (hasPremiumFeature("sandboxes")) {
     actionCreator: (entityId, groupId, view) =>
       push(getEditSegementedAccessUrl(entityId, groupId, view)),
   });
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.push(
+    (permissions, groupId, entityId, newValue) =>
+      getSandboxedTableWarningModal(permissions, groupId, entityId, newValue),
+  );
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[OPTION_SEGMENTED.value] =
     getEditSegmentedAccessPostAction;
 
