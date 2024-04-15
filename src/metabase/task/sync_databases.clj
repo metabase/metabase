@@ -279,7 +279,7 @@
      ;; delete the existing trigger
      (nil? new-trigger)
      (do
-      (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed. No new schedule is created."
+      (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed. It will no longer run on a schedule."
                  (:name task-info)
                  (:name database))
       (delete-trigger! database task-info))
@@ -289,11 +289,11 @@
           (nil? existing-trigger-with-same-schedule))
      (do
       (if (delete-trigger! database task-info)
-        (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed. The new schedule is now: \"%s\""
+        (log/infof "Trigger for \"%s\" of Database \"%s\" has been updated. The new schedule is: \"%s\""
                    (:name task-info)
                    (:name database)
                    (cron-schedule database task-info))
-        (log/infof "A trigger for \"%s\" of Database \"%s\" has been screated with schedule: \"%s\""
+        (log/infof "A trigger for \"%s\" of Database \"%s\" has been enabled with schedule: \"%s\""
                    (:name task-info)
                    (:name database)
                    (cron-schedule database task-info)))
