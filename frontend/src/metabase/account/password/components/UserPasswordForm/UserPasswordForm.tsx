@@ -55,7 +55,11 @@ export const UserPasswordForm = ({
   const handleSubmit = useCallback(
     async (data: UserPasswordData) => {
       const { old_password, password } = data;
-      return await updatePassword({ id: user.id, old_password, password });
+      return await updatePassword({
+        id: user.id,
+        old_password,
+        password,
+      }).unwrap();
     },
     [user, updatePassword],
   );
