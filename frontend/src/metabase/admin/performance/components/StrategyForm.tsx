@@ -1,9 +1,11 @@
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { Schedule } from "metabase/components/Schedule/Schedule";
 import type { FormTextInputProps } from "metabase/forms";
 import {
   Form,
@@ -14,7 +16,9 @@ import {
   useFormContext,
 } from "metabase/forms";
 import { color } from "metabase/lib/colors";
+import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
+import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
   Button,
@@ -28,11 +32,17 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Strategy, StrategyType } from "metabase-types/api";
+import type {
+  ScheduleSettings,
+  ScheduleStrategy,
+  Strategy,
+  StrategyType,
+} from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
 import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
 import { rootId, Strategies, strategyValidationSchema } from "../strategies";
+import { cronToScheduleSettings, scheduleSettingsToCron } from "../utils";
 
 import { LoaderInButton } from "./StrategyForm.styled";
 
@@ -178,6 +188,9 @@ const StrategyFormBody = ({
                   <input type="hidden" name="unit" />
                 </>
               )}
+              {selectedStrategyType === "schedule" && (
+                <ScheduleStrategyFormFields />
+              )}
             </Stack>
           </Box>
           <FormButtons
@@ -191,11 +204,12 @@ const StrategyFormBody = ({
         // The 'Invalidate cache now' button is inserted into the FormButtons component
         // via createPortal, to avoid nesting a form inside a form
         shouldAllowInvalidation && (
-        <PLUGIN_CACHING.InvalidateNowButton
-          targetId={targetId}
-          containerRef={invalidateFormContainerRef}
-        />
-      )}
+          <PLUGIN_CACHING.InvalidateNowButton
+            targetId={targetId}
+            containerRef={invalidateFormContainerRef}
+          />
+        )
+      }
     </>
   );
 };
@@ -234,6 +248,42 @@ export const FormButtons = ({
   );
 };
 
+const ScheduleStrategyFormFields = () => {
+  const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
+  const { schedule: scheduleInCronFormat } = values;
+  const initialSchedule = cronToScheduleSettings(scheduleInCronFormat);
+  const [schedule, setSchedule] = useState<ScheduleSettings>(
+    initialSchedule || {},
+  );
+  const timezone = useSelector(state =>
+    getSetting(state, "report-timezone-short"),
+  );
+  const onScheduleChange = useCallback(
+    (nextSchedule: ScheduleSettings) => {
+      setSchedule(nextSchedule);
+      const cron = scheduleSettingsToCron(nextSchedule);
+      setFieldValue("schedule", cron);
+    },
+    [setFieldValue, setSchedule],
+  );
+  if (!initialSchedule) {
+    return (
+      <LoadingAndErrorWrapper
+        error={t`Error: Cannot interpret schedule: ${scheduleInCronFormat}`}
+      />
+    );
+  }
+  return (
+    <Schedule
+      schedule={schedule}
+      scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
+      onScheduleChange={onScheduleChange}
+      verb={t`Invalidate`}
+      timezone={timezone}
+    />
+  );
+};
+
 const SaveAndDiscardButtons = ({
   dirty,
   isFormPending,
@@ -267,8 +317,9 @@ const SaveAndDiscardButtons = ({
 const StrategySelector = ({ targetId }: { targetId: number | null }) => {
   const { values } = useFormikContext<Strategy>();
 
-  const availableStrategies =
-    targetId === rootId ? _.omit(Strategies, "inherit") : Strategies;
+  const availableStrategies = useMemo(() => {
+    return targetId === rootId ? _.omit(Strategies, "inherit") : Strategies;
+  }, [targetId]);
 
   return (
     <section>

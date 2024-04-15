@@ -53,6 +53,11 @@ export const durationStrategyValidationSchema = Yup.object({
   ),
 });
 
+export const scheduleStrategyValidationSchema = Yup.object({
+  type: Yup.string().equals(["schedule"]),
+  schedule: Yup.string().required(t`A cron expression is required`),
+});
+
 export const strategyValidationSchema = Yup.object().test(
   "strategy-validation",
   "The object must match one of the strategy validation schemas",
@@ -89,14 +94,19 @@ export const strategyValidationSchema = Yup.object().test(
 
 /** Cache invalidation strategies and related metadata */
 export const Strategies: Record<StrategyType, StrategyData> = {
+  schedule: {
+    label: t`Schedule: at regular intervals`,
+    shortLabel: t`Schedule`,
+    validateWith: scheduleStrategyValidationSchema,
+  },
   duration: {
     label: t`Duration: after a specific number of hours`,
     validateWith: durationStrategyValidationSchema,
     shortLabel: t`Duration`,
   },
   ttl: {
-    label: t`Adaptive: the longer the query takes the longer the cached results persist`,
-    shortLabel: t`Adaptive`,
+    label: t`Query duration multiplier: the longer the query takes the longer the cached results persist`,
+    shortLabel: t`Query duration multiplier`,
     validateWith: adaptiveStrategyValidationSchema,
   },
   nocache: {

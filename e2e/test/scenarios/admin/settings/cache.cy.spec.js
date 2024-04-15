@@ -98,7 +98,7 @@ function saveQuestion(name) {
 }
 
 function getCellText() {
-  return cy.get(".cellData").eq(-1).invoke("text");
+  return cy.get("[data-testid=cell-data]").eq(-1).invoke("text");
 }
 
 function refresh() {

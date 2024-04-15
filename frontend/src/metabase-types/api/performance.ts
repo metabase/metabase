@@ -4,6 +4,7 @@ export type StrategyType =
   | "nocache"
   | "ttl" // aka Adaptive
   | "duration"
+  | "schedule"
   | "inherit";
 
 interface StrategyBase {
@@ -38,12 +39,18 @@ export interface InheritStrategy extends StrategyBase {
   type: "inherit";
 }
 
+export interface ScheduleStrategy extends StrategyBase {
+  type: "schedule";
+  schedule: string;
+}
+
 /** Cache invalidation strategy */
 export type Strategy =
   | DoNotCacheStrategy
   | AdaptiveStrategy
   | DurationStrategy
-  | InheritStrategy;
+  | InheritStrategy
+  | ScheduleStrategy;
 
 /** Cache invalidation configuration */
 export interface Config {

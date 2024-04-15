@@ -1118,7 +1118,7 @@
 (defn- load-edn
   "Loads edn from an EDN file. Parses values tagged with #t into the appropriate `java.time` class"
   [file-name]
-  (with-open [r (io/reader file-name)]
+  (with-open [r (io/reader (io/resource file-name))]
     (edn/read {:readers {'t u.date/parse}} (java.io.PushbackReader. r))))
 
 (defn- no-user?
@@ -1144,7 +1144,7 @@
                (not (config/config-bool :mb-enable-test-endpoints)) ; skip sample content for e2e tests to avoid coupling the tests to the contents
                (no-user?)
                (no-db?))
-      (let [table-name->raw-rows (load-edn "resources/sample-content.edn")
+      (let [table-name->raw-rows (load-edn "sample-content.edn")
             replace-temporals    (fn [v]
                                    (if (isa? (type v) java.time.temporal.Temporal)
                                      :%now
