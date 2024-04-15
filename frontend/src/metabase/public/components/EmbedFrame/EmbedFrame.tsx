@@ -194,13 +194,17 @@ function EmbedFrame({
       className={cx(
         EmbedFrameS.EmbedFrame,
         className,
-        theme ? EMBED_THEME_CLASSES(theme) : null,
+        EMBED_THEME_CLASSES(theme),
       )}
       data-testid="embed-frame"
+      data-embed-theme={theme}
     >
       <ContentContainer>
         {hasHeader && (
-          <Header className={EmbedFrameS.EmbedFrameHeader}>
+          <Header
+            className={EmbedFrameS.EmbedFrameHeader}
+            data-testid="embed-frame-header"
+          >
             {finalName && (
               <TitleAndDescriptionContainer>
                 <FixedWidthContainer

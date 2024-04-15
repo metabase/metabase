@@ -1,9 +1,13 @@
+import cx from "classnames";
 import d3 from "d3";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
 import { clipPathReference, moveToFront } from "metabase/lib/dom";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import LineAreaBarChartS from "metabase/visualizations/components/LineAreaBarChart.module.css";
 
 import { adjustYAxisTicksIfNeeded } from "./apply_axis";
 import { onRenderValueLabels } from "./chart_values";
@@ -154,8 +158,22 @@ function onRenderEnableDots(chart) {
     chart
       .svg()
       .select(`.sub._${index}`)
-      .classed("enable-dots", enableDots)
-      .classed("enable-dots-onhover", !enableDots);
+      .classed(
+        cx(
+          DashboardS.enableDots,
+          EmbedFrameS.enableDots,
+          LineAreaBarChartS.enableDots,
+        ),
+        enableDots,
+      )
+      .classed(
+        cx(
+          DashboardS.enableDotsOnHover,
+          EmbedFrameS.enableDotsOnHover,
+          LineAreaBarChartS.enableDotsOnHover,
+        ),
+        !enableDots,
+      );
   }
 }
 
