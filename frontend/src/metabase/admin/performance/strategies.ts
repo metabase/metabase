@@ -100,17 +100,17 @@ export const Strategies: Record<StrategyType, StrategyData> = {
     validateWith: scheduleStrategyValidationSchema,
   },
   duration: {
-    label: t`Duration: after a specific number of hours`,
+    label: t`Hours: after a specific number of hours`,
     validateWith: durationStrategyValidationSchema,
-    shortLabel: t`Duration`,
+    shortLabel: t`Hours`,
   },
   ttl: {
-    label: t`Query duration multiplier: the longer the query takes the longer the cached results persist`,
+    label: t`Query duration multiplier: the longer the query takes the longer its cached results persist`,
     shortLabel: t`Query duration multiplier`,
     validateWith: adaptiveStrategyValidationSchema,
   },
   nocache: {
-    label: t`Don't cache results`,
+    label: t`Don’t cache results`,
     validateWith: doNotCacheStrategyValidationSchema,
     shortLabel: t`No caching`,
   },
