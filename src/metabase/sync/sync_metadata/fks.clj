@@ -3,6 +3,8 @@
   (:require
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -94,7 +96,9 @@
   "Sync the foreign keys for a `database`."
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
-    (let [schema-names (sync-util/db->sync-schemas database)
+    (let [driver       (driver.u/database->driver database)
+          schema-names (when (driver/database-supports? driver :schemas database)
+                         (sync-util/db->sync-schemas database))
           fk-metadata  (fetch-metadata/fk-metadata database :schema-names schema-names)]
       (transduce (map (fn [x]
                         (let [[updated failed] (try [(mark-fk! database x) 0]
@@ -118,7 +122,9 @@
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging table))
-     (let [fk-metadata (into [] (fetch-metadata/fk-metadata database :schema-names [(:schema table)] :table-names [(:name table)]))]
+     (let [schema-names (when (driver/database-supports? (driver.u/database->driver database) :schemas database)
+                          [(:schema table)])
+           fk-metadata (into [] (fetch-metadata/fk-metadata database :schema-names schema-names :table-names [(:name table)]))]
        {:total-fks   (count fk-metadata)
         :updated-fks (sync-util/sum-numbers #(mark-fk! database %) fk-metadata)}))))
 
