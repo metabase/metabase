@@ -347,9 +347,10 @@ class ExpressionEditorTextfield extends React.Component<
         // clicking on the autocomplete
         setTimeout(() => editor.moveCursorTo(row, caretPos));
       } else {
-        const newExpression = source + suggestion.text;
-        this.handleExpressionChange(newExpression);
-        editor.moveCursorTo(row, newExpression.length);
+        const updatedExpression = source + suggestion.text;
+        this.handleExpressionChange(updatedExpression);
+        const caretPos = updatedExpression.length;
+        setTimeout(() => editor.moveCursorTo(row, caretPos));
       }
     }
   };
