@@ -560,7 +560,7 @@ export const STANDARD_AGGREGATIONS = new Set([
   "median",
 ]);
 
-export const POPULAR_FUNCTIONS = new Set([
+export const POPULAR_FUNCTIONS = [
   "case",
   "concat",
   "contains",
@@ -571,9 +571,9 @@ export const POPULAR_FUNCTIONS = new Set([
   "interval",
   "substring",
   "lower",
-]);
+];
 
-export const POPULAR_AGGREGATIONS = new Set([
+export const POPULAR_AGGREGATIONS = [
   "count",
   "distinct",
   "count-where",
@@ -584,10 +584,10 @@ export const POPULAR_AGGREGATIONS = new Set([
   "sum-where",
   "min",
   "median",
-]);
+];
 
 // "popular" expressions to suggest initially.
-export const POPULAR_EXPRESSIONS = new Set([
+export const POPULAR_EXPRESSIONS = [
   ...POPULAR_FUNCTIONS,
   ...POPULAR_AGGREGATIONS,
-]);
+];
