@@ -163,8 +163,9 @@ export function getWillRevokeNativeAccessWarningModal(
 
     return {
       title: t`Change access to this database to “Granular”?`,
-      message: t`As part of providing granular permissions for this one ${entityType}, we will also have to remove this group's native querying permissions from all tables and schemas in this database.`,
-      confirmButtonText: t`Change`,
+      message: t`As part of providing granular permissions for this one ${entityType}, this group's native querying permissions will also be removed from all tables and schemas in this database.`,
+      confirmButtonText: c("This is a verb, for a confirmation button")
+        .t`Change`,
       cancelButtonText: t`Cancel`,
     };
   }

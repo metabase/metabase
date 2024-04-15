@@ -8,7 +8,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import { PermissionsApi } from "metabase/services";
 import { Loader, Center } from "metabase/ui";
@@ -175,9 +174,9 @@ function GroupsPermissionsPage({
           onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}
           warnings={() => (
             <>
-              {permissionEditor.deprecatedPermsInGraph.has(
-                DataPermissionValue.LEGACY_NO_SELF_SERVICE,
-              ) && <PermissionsEditorLegacyNoSelfServiceWarning />}
+              {permissionEditor.hasLegacyNoSelfServiceValueInPermissionGraph && (
+                <PermissionsEditorLegacyNoSelfServiceWarning />
+              )}
             </>
           )}
         />
