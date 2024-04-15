@@ -23,6 +23,8 @@ import {
   addOrUpdateDashboardCard,
   createQuestion,
   queryBuilderMain,
+  editDashboard,
+  setFilter,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -143,11 +145,9 @@ describe("scenarios > question > download", () => {
 
       cy.icon("pencil").click();
 
-      cy.icon("filter").click();
+      editDashboard();
 
-      popover().within(() => {
-        cy.contains("ID").click();
-      });
+      setFilter("ID");
 
       cy.findByTestId("dashcard-container").contains("Select…").click();
       popover().contains("ID").eq(0).click();

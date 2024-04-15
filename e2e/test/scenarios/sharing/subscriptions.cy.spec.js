@@ -24,7 +24,10 @@ import {
   openPublicLinkPopoverFromMenu,
   openEmbedModalFromMenu,
   getEmbedModalSharingPane,
+  setFilter,
 } from "e2e/support/helpers";
+
+import { editDashboard } from "../../../support/helpers/e2e-dashboard-helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { admin, normal } = USERS;
@@ -781,13 +784,9 @@ function openRecipientsWithUserVisibilitySetting(setting) {
 }
 
 function addParametersToDashboard() {
-  // edit dashboard
-  cy.icon("pencil").click();
+  editDashboard();
 
-  // add Category > Dropdown "Name" filter
-  cy.icon("filter").click();
-  cy.findByText("Text or Category").click();
-  cy.findByText("Is").click();
+  setFilter("Text or Category", "Is");
 
   cy.findByText("Select…").click();
   popover().within(() => {
@@ -800,10 +799,8 @@ function addParametersToDashboard() {
   popover().findByText("Corbin Mertz").click();
   popover().contains("Add filter").click();
 
-  // add Category > Dropdown "Category" filter
-  cy.icon("filter").click();
-  cy.findByText("Text or Category").click();
-  cy.findByText("Is").click();
+  setFilter("Text or Category", "Is");
+
   cy.findByText("Select…").click();
   popover().within(() => {
     cy.findByText("Category").click();
