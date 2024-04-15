@@ -126,6 +126,11 @@ describe("scenarios > admin > permissions > create queries > query builder only"
       "Query builder only",
     );
 
+    modal().within(() => {
+      cy.findByText("Change access to this database to “Granular”?");
+      cy.findByText("Change").click();
+    });
+
     const finalTablePermissions = [
       ["Accounts", "Query builder only"],
       ["Analytic Events", "Query builder only"],

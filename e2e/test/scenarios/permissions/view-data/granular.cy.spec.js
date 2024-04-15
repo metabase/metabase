@@ -168,7 +168,7 @@ function makeOrdersSandboxed() {
   modifyPermission("Orders", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
 
   modal().within(() => {
-    cy.findByText("Change access to this database to granular?");
+    cy.findByText("Change access to this database to “Granular”?");
     cy.button("Change").click();
   });
 

@@ -37,6 +37,8 @@ export type TableEntityId = SchemaEntityId & {
 export type EntityId = DatabaseEntityId &
   Partial<Omit<TableEntityId, "databaseId">>;
 
+export type EntityWithGroupId = EntityId & { groupId: number };
+
 export enum DataPermission {
   VIEW_DATA = "view-data",
   CREATE_QUERIES = "create-queries",

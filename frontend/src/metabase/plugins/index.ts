@@ -87,6 +87,14 @@ export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS = {
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS = [];
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS = [] as Array<
+  (
+    _permissions: GroupsPermissions,
+    _groupId: number,
+    _entityId: EntityId,
+    _value: DataPermissionValue,
+  ) => any
+>;
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS = {
   sandboxed: [],
 };
