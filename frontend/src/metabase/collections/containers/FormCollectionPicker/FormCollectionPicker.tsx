@@ -31,6 +31,8 @@ export interface FormCollectionPickerProps
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 function ItemName({
@@ -72,7 +74,7 @@ function FormCollectionPicker({
   }, []);
 
   const renderTrigger = useCallback(
-    ({ onClick: handleShowPopover }) => (
+    ({ onClick: handleShowPopover }: { onClick: () => void }) => (
       <FormField
         className={className}
         style={style}

@@ -122,7 +122,7 @@ function PivotTable({
   const topHeaderRef = useRef(null);
 
   const getColumnTitle = useCallback(
-    function (columnIndex) {
+    function (columnIndex: number) {
       const column = data.cols.filter(col => !isPivotGroupColumn(col))[
         columnIndex
       ];

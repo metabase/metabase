@@ -66,7 +66,8 @@ export function LinkOptions({
   const hasSelectedLinkType = clickBehavior.linkType != null;
 
   const handleSelectLinkType = useCallback(
-    type => updateSettings({ type: clickBehavior.type, linkType: type }),
+    (type: CustomDestinationClickBehaviorLinkType) =>
+      updateSettings({ type: clickBehavior.type, linkType: type }),
     [clickBehavior, updateSettings],
   );
 

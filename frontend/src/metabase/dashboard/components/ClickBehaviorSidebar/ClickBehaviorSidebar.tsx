@@ -75,7 +75,7 @@ export function ClickBehaviorSidebar({
   >(null);
 
   const [originalColumnVizSettings, setOriginalColumnVizSettings] = useState<
-    VizSettings | undefined | null
+    Partial<ClickBehavior> | undefined | null
   >(null);
 
   const previousDashcard = usePrevious(dashcard);
@@ -110,7 +110,7 @@ export function ClickBehaviorSidebar({
   );
 
   const handleChangeSettings = useCallback(
-    nextClickBehavior => {
+    (nextClickBehavior: Partial<ClickBehavior> | undefined | null) => {
       const { id } = dashcard;
 
       if (selectedColumn == null) {
@@ -142,7 +142,7 @@ export function ClickBehaviorSidebar({
   );
 
   const handleColumnSelected = useCallback(
-    column => {
+    (column: DatasetColumn) => {
       const originalColumnVizSettings = getClickBehaviorForColumn(
         dashcard,
         column,

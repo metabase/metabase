@@ -18,6 +18,14 @@ const COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE = [
   "actionMenu",
 ];
 
+type ColumnGroup = [
+  ClickBehaviorType,
+  {
+    column: DatasetColumn;
+    clickBehavior: ClickBehavior | undefined;
+  }[],
+];
+
 function explainClickBehaviorType(
   type: ClickBehaviorType,
   dashcard: QuestionDashboardCard,
@@ -63,10 +71,10 @@ export function TableClickBehaviorView({
     return _.sortBy(pairs, ([type]) =>
       COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE.indexOf(type),
     );
-  }, [columns, getClickBehaviorForColumn]);
+  }, [columns, getClickBehaviorForColumn]) as unknown as ColumnGroup[]; // _.groupby swallows the ClickAction type
 
   const renderColumn = useCallback(
-    ({ column, clickBehavior }, index) => {
+    ({ column, clickBehavior }, index: number) => {
       return (
         <Column
           key={index}
@@ -80,7 +88,7 @@ export function TableClickBehaviorView({
   );
 
   const renderColumnGroup = useCallback(
-    group => {
+    (group: ColumnGroup) => {
       const [clickBehaviorType, columnsWithClickBehavior] = group;
       return (
         <div key={clickBehaviorType} className="mb2 px4">

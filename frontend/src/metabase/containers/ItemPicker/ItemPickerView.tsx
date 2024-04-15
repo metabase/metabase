@@ -39,7 +39,9 @@ interface Props<TId> {
   style?: React.CSSProperties;
   onChange: (item: PickerItem<TId>) => void;
   onSearchStringChange: (searchString: string) => void;
-  onOpenCollectionChange: (collectionId: PickerItem<TId>["id"]) => void;
+  onOpenCollectionChange: (
+    collectionId: CollectionPickerItem<TId>["id"],
+  ) => void;
   checkCollectionMaybeHasChildren: (
     collection: CollectionPickerItem<TId>,
   ) => boolean;
@@ -74,9 +76,9 @@ function ItemPickerView<TId>({
   const canFetch = (isPickingNotCollection || searchString) && allowFetch;
 
   const handleSearchInputKeyPress = useCallback(
-    e => {
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
-        onSearchStringChange(e.target.value);
+        onSearchStringChange(e.currentTarget.value);
       }
     },
     [onSearchStringChange],

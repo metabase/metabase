@@ -149,7 +149,7 @@ export function TableCell({
   const isClickable = !isLink;
 
   const onClick = useCallback(
-    e => {
+    (e: React.MouseEvent) => {
       if (checkIsVisualizationClickable(clicked)) {
         onVisualizationClick?.({
           ...clicked,

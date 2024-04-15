@@ -71,7 +71,7 @@ export const SMTPConnectionForm = ({
   );
 
   const handleSendTestEmail = useCallback(
-    async e => {
+    async (e: React.MouseEvent) => {
       e.preventDefault();
 
       setSendingEmail("working");

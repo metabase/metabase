@@ -234,6 +234,8 @@ export interface Settings {
   "jwt-configured"?: boolean;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
+  "ldap-port": number;
+  "ldap-group-membership-filter": string;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
   "openai-api-key": string | null;

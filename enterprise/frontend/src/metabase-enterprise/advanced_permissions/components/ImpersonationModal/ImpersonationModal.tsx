@@ -20,7 +20,7 @@ import type {
 import { getImpersonatedDatabaseId } from "metabase-enterprise/advanced_permissions/utils";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
-import type { Impersonation } from "metabase-types/api";
+import type { Impersonation, UserAttribute } from "metabase-types/api";
 
 import { ImpersonationModalView } from "./ImpersonationModalView";
 
@@ -87,7 +87,7 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
   }, [dispatch, route]);
 
   const handleSave = useCallback(
-    attribute => {
+    (attribute: UserAttribute) => {
       dispatch(
         updateDataPermission({
           groupId,
