@@ -651,6 +651,52 @@
                      :parameter_mappings
                      count))))))))
 
+(deftest locked-params-removes-values-fields-when-not-used-in-enabled-params
+  (testing "check that locked params are not removed in parameter mappings, param_values, and param_fields when an enabled param uses them (#37914)"
+    (with-embedding-enabled-and-new-secret-key
+      (t2.with-temp/with-temp [Dashboard     dashboard     {:enable_embedding true
+                                                            :embedding_params {:venue_name   "locked"
+                                                                               :venue_name_2 "enabled"}
+                                                            :name             "Test Dashboard"
+                                                            :parameters       [{:name      "venue_name"
+                                                                                :slug      "venue_name"
+                                                                                :id        "foo"
+                                                                                :type      :string/=
+                                                                                :sectionId "string"}
+                                                                               {:name      "venue_name_2"
+                                                                                :slug      "venue_name_2"
+                                                                                :id        "bar"
+                                                                                :type      :string/=
+                                                                                :sectionId "string"}]}
+                               Card          {card-id :id} {:name "Dashboard Test Card"}
+                               DashboardCard {_ :id}       {:dashboard_id       (:id dashboard)
+                                                            :card_id            card-id
+                                                            :parameter_mappings [{:card_id      card-id
+                                                                                  :slug         "venue_name"
+                                                                                  :parameter_id "foo"
+                                                                                  :target       [:dimension
+                                                                                                 [:field (mt/id :venues :name) nil]]}
+                                                                                 {:card_id      card-id
+                                                                                  :slug         "venue_name_2"
+                                                                                  :parameter_id "bar"
+                                                                                  :target       [:dimension
+                                                                                                 [:field (mt/id :venues :name) nil]]}]}]
+        (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
+          (is (some?
+               (-> embedding-dashboard
+                   :param_values
+                   (get (mt/id :venues :name)))))
+          (is (some?
+               (-> embedding-dashboard
+                   :param_fields
+                   (get (mt/id :venues :name)))))
+          (is (= 1
+                 (-> embedding-dashboard
+                     :dashcards
+                     first
+                     :parameter_mappings
+                     count))))))))
+
 (deftest linked-param-to-locked-removes-param-values-test
   (testing "Check that a linked parameter to a locked params we remove the param_values."
     (with-embedding-enabled-and-new-secret-key

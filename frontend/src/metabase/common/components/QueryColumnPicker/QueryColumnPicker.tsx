@@ -170,7 +170,7 @@ export function QueryColumnPicker({
   );
 
   const renderItemExtra = useCallback(
-    item => (
+    (item: ColumnListItem) => (
       <QueryColumnInfoIcon
         query={query}
         stageIndex={stageIndex}

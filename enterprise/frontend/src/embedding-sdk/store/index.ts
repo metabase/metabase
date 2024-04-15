@@ -1,4 +1,4 @@
-import type { Store } from "@reduxjs/toolkit";
+import type { AnyAction, Store } from "@reduxjs/toolkit";
 
 import { tokenReducer } from "embedding-sdk/store/reducer";
 import type { SdkState } from "embedding-sdk/store/types";
@@ -10,4 +10,8 @@ const SDK_REDUCERS = {
   embeddingSessionToken: tokenReducer,
 };
 
-export const store = getStore(SDK_REDUCERS) as unknown as Store<SdkState>;
+export const store = getStore(SDK_REDUCERS, null, {
+  embed: {
+    isEmbeddingSdk: true,
+  },
+}) as unknown as Store<SdkState, AnyAction>;

@@ -43,7 +43,10 @@ function ActionParametersInputForm({
   }, [mappedParameters, action.visualization_settings?.fields]);
 
   const handleSubmit = useCallback(
-    async (parameters, actions) => {
+    async (
+      parameters: ParametersForActionExecution,
+      actions: FormikHelpers<ParametersForActionExecution>,
+    ) => {
       actions.setSubmitting(true);
       const { success, error } = await onSubmit(parameters);
       if (success) {

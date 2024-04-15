@@ -63,6 +63,10 @@
   [_ _]
   "1.0")
 
+(defmethod driver/describe-database ::test-driver
+  [_ _]
+  {:tables []})
+
 (defn- db-details
   "Return default column values for a database (either the test database, via `(mt/db)`, or optionally passed in)."
   ([]

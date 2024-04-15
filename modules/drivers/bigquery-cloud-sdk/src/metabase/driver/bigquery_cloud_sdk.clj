@@ -455,18 +455,17 @@
 ;;; |                                           Other Driver Method Impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:convert-timezone                                    true
-                              :datetime-diff                                       true
-                              :expressions                                         true
-                              :foreign-keys                                        true
-                              :now                                                 true
-                              :percentile-aggregations                             true
+(doseq [[feature supported?] {:convert-timezone        true
+                              :datetime-diff           true
+                              :expressions             true
+                              :foreign-keys            true
+                              :now                     true
+                              :percentile-aggregations true
                               ;; BigQuery uses timezone operators and arguments on calls like extract() and
                               ;; timezone_trunc() rather than literally using SET TIMEZONE, but we need to flag it as
                               ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
                               ;; tests expect the converted values.
-                              :set-timezone                                        true
-                              :sql/window-functions.order-by-output-column-numbers false}]
+                              :set-timezone            true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC

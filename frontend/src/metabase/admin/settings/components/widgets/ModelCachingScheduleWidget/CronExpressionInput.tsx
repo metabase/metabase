@@ -61,12 +61,14 @@ function Input({
   ...props
 }: InputProps) {
   const handleChange = useCallback(
-    event => onChange(event.target.value),
+    (event: React.ChangeEvent<HTMLInputElement>) =>
+      onChange(event.target.value),
     [onChange],
   );
 
   const handleBlur = useCallback(
-    event => onBlurChange(event.target.value),
+    (event: React.FocusEvent<HTMLInputElement>) =>
+      onBlurChange(event.target.value),
     [onBlurChange],
   );
 
