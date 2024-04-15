@@ -203,8 +203,14 @@ const ScheduleBody = ({
       // e.g. "Send hourly"
       return (
         <TwoColumns>
-          {c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'")
-            .jt`${verb} ${(<SelectFrequency {...frequencyProps} />)}`}
+          {
+            // We cannot use a string with only placeholders as a msgid.
+            // So, as a workaround, we include square brackets in the msgid and then remove them
+            removeBracketsFromTranslation(
+              c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'.")
+                .jt`[${verb} ${(<SelectFrequency {...frequencyProps} />)}]`,
+            )
+          }
         </TwoColumns>
       );
     }
@@ -331,4 +337,9 @@ const SelectFrequency = ({
       data={scheduleTypeOptions}
     />
   );
+};
+
+const removeBracketsFromTranslation = (translation: string | string[]) => {
+  const arr = typeof translation === "string" ? [translation] : translation;
+  return arr.map(t => t.replace(/^\[/, "").replace(/\]$/, ""));
 };
