@@ -32811,6 +32811,11 @@ msgctxt "{0} is a verb like 'Send', {1} is an adverb like 'hourly'"
 msgid "{0} {1}"
 msgstr "{1} {0}"
 
+#: frontend/src/metabase/components/Schedule/Schedule.tsx:200
+msgctxt "{0} is a verb like 'Send', {1} is an adverb like 'hourly'"
+msgid "[{0} {1}]"
+msgstr "[{1} {0}]"
+
 #: frontend/src/metabase/components/Schedule/Schedule.tsx:209
 msgctxt ""
 "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time "
