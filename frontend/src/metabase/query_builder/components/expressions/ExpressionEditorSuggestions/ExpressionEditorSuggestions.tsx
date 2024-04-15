@@ -44,7 +44,7 @@ type WithIndex<T> = T & {
 export function ExpressionEditorSuggestions({
   query,
   stageIndex,
-  suggestions: _suggestions = [],
+  suggestions = [],
   onSuggestionMouseDown,
   highlightedIndex,
   children,
@@ -56,12 +56,12 @@ export function ExpressionEditorSuggestions({
   highlightedIndex: number;
   children: ReactNode;
 }) {
-  const withIndex = _suggestions.map((suggestion, index) => ({
+  const withIndex = suggestions.map((suggestion, index) => ({
     ...suggestion,
     index,
   }));
 
-  const suggestions = withIndex.filter(
+  const items = withIndex.filter(
     (suggestion): suggestion is WithIndex<Suggestion> =>
       !("footer" in suggestion),
   );
@@ -71,7 +71,7 @@ export function ExpressionEditorSuggestions({
       "footer" in suggestion,
   );
 
-  const groups = group(suggestions);
+  const groups = group(items);
 
   return (
     <Popover
