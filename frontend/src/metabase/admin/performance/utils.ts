@@ -1,6 +1,7 @@
 import { pick } from "underscore";
 
 import { Cron, weekdays } from "metabase/components/Schedule/constants";
+import type { SelectProps } from "metabase/ui";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -136,5 +137,14 @@ const defaultSchedule: ScheduleSettings = {
 };
 
 export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
+export const hourTo24HourFormat = (hour: number, amPm: number) =>
+  hour + amPm * 12;
 
-export const removeFalsyValues = (obj: any) => pick(obj, val => val);
+export const removeNilValues = (obj: any) =>
+  pick(obj, val => val !== undefined && val !== null);
+
+export const getLongestSelectLabel = (data: SelectProps["data"]) =>
+  data.reduce((acc, option) => {
+    const label = typeof option === "string" ? option : option.label || "";
+    return label.length > acc.length ? label : acc;
+  }, "");
