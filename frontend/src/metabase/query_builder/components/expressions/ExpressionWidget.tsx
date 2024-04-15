@@ -20,6 +20,7 @@ import {
   Footer,
   RemoveLink,
 } from "./ExpressionWidget.styled";
+import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
 
 export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
@@ -132,12 +133,18 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     };
 
     return (
-      <CombineColumns
-        query={query}
-        stageIndex={stageIndex}
-        onSubmit={handleSubmit}
-        onCancel={handleCancel}
-      />
+      <Container>
+        <ExpressionWidgetHeader
+          title={t`Select columns to combine`}
+          onBack={handleCancel}
+        />
+        <CombineColumns
+          query={query}
+          stageIndex={stageIndex}
+          onSubmit={handleSubmit}
+          onCancel={handleCancel}
+        />
+      </Container>
     );
   }
 
