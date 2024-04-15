@@ -107,7 +107,7 @@ export function suggest({
       }
     }
 
-    let popular = [];
+    let popular: string[] = [];
     if (startRule === "expression") {
       popular = POPULAR_FUNCTIONS;
     }
