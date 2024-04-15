@@ -70,7 +70,7 @@ const getYAxisTicksWidth = (
     let value = rawValue;
     if (isPercent) {
       value = roundToHundredth(rawValue);
-    } else if (areDecimalTicksExpected) {
+    } else if (!areDecimalTicksExpected) {
       value = Math.round(rawValue);
     }
 
