@@ -97,4 +97,5 @@ export const {
   useUpdatePasswordMutation,
   useDeactivateUserMutation,
   useReactivateUserMutation,
+  useUpdateUserMutation,
 } = userApi;
