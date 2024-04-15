@@ -150,7 +150,7 @@ function ExpressionEditorSuggestionsListGroup({
       )}
       {suggestions.map((suggestion: SuggestionWithIndex) => (
         <ExpressionEditorSuggestionsListItem
-          key={`suggesion-${suggestion.index}`}
+          key={`suggestion-${suggestion.index}`}
           query={query}
           stageIndex={stageIndex}
           suggestion={suggestion}
