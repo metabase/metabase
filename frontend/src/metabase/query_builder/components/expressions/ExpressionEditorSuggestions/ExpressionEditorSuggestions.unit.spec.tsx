@@ -120,7 +120,7 @@ describe("ExpressionEditorSuggestions", () => {
     ).toBe(true);
   });
 
-  it("should  functions when first opened", async () => {
+  it("should show functions when first opened", async () => {
     setup({ startRule: "expression" });
     expect(screen.getByText("Most used functions")).toBeInTheDocument();
   });
