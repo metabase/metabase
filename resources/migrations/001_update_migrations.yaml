@@ -6188,6 +6188,25 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.BackfillQueryField"
 
+  - changeSet:
+      id: v50.2024-04-12T12:33:09
+      author: piranha
+      comment: 'Copy old cache configurations to cache_config table'
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: custom_sql/fill_cache_config.pg.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: custom_sql/fill_cache_config.my.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: custom_sql/fill_cache_config.h2.sql
+            relativeToChangelogFile: true
+      rollback: # no rollback necessary, we're not removing the columns yet
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.api.cache :as api.cache]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -12,7 +13,6 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.query :as query]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -38,11 +38,10 @@
 
 (defn- cache-strategy
   [card dashboard-id]
-  (when (public-settings/enable-query-caching)
-    (or (granular-cache-strategy card dashboard-id)
-        {:type            :ttl
-         :multiplier      (public-settings/query-caching-ttl-ratio)
-         :min_duration_ms (long (* (public-settings/query-caching-min-ttl) 1000))})))
+  (or (granular-cache-strategy card dashboard-id)
+      (some-> (t2/select-one :model/CacheConfig :model "root" :model_id 0 :strategy :ttl)
+              api.cache/row->config)))
+
 
 (defn- enrich-strategy [strategy query]
   (case (:type strategy)
@@ -211,7 +210,7 @@
                    (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
         card     (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :collection_id
                                                  :type :result_metadata :visualization_settings
-                                                 :cache_ttl :cache_invalidated_at]
+                                                 :cache_invalidated_at]
                                                 :id card-id))
         query    (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                      (update :viz-settings (fn [viz] (merge viz dash-viz)))

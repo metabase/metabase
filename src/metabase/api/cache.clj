@@ -3,6 +3,7 @@
    [clojure.walk :as walk]
    [compojure.core :refer [GET]]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.db.query :as mdb.query]
@@ -18,10 +19,13 @@
 
 (defn row->config
   "Transform from how cache config is stored to how it's used/exposed in the API"
-  [row]
+  [row & [card]]
   {:model    (:model row)
    :model_id (:model_id row)
-   :strategy (assoc (:config row) :type (:strategy row))})
+   :strategy (-> (:config row)
+                 (assoc :type (:strategy row))
+                 (m/assoc-some :invalidated-at (t/max (:invalidated_at row)
+                                                      (:cache_invalidated_at card))))})
 
 (defn config->row
   "Transform cache config from API form into db storage from"
