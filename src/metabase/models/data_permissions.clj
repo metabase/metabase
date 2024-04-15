@@ -643,18 +643,20 @@
   [group-or-id db-or-id all-users-group-id]
   (let [db-id                (u/the-id db-or-id)
         view-data-level      (new-group-view-data-permission-level db-id)
-        create-queries-level (->> (t2/select-fn-set :value
-                                                    [:model/DataPermissions [:perm_value :value]]
-                                                    :perm_type :perms/create-queries
-                                                    :db_id db-id
-                                                    :group_id all-users-group-id)
-                                  (coalesce-most-restrictive :perms/create-queries))
-        download-level      (->> (t2/select-fn-set :value
-                                                   [:model/DataPermissions [:perm_value :value]]
-                                                   :perm_type :perms/download-results
-                                                   :db_id db-id
-                                                   :group_id all-users-group-id)
-                                 (coalesce-most-restrictive :perms/download-results))]
+        create-queries-level (or (->> (t2/select-fn-set :value
+                                                        [:model/DataPermissions [:perm_value :value]]
+                                                        :perm_type :perms/create-queries
+                                                        :db_id db-id
+                                                        :group_id all-users-group-id)
+                                      (coalesce-most-restrictive :perms/create-queries))
+                                 :query-builder-and-native)
+        download-level      (or (->> (t2/select-fn-set :value
+                                                       [:model/DataPermissions [:perm_value :value]]
+                                                       :perm_type :perms/download-results
+                                                       :db_id db-id
+                                                       :group_id all-users-group-id)
+                                     (coalesce-most-restrictive :perms/download-results))
+                                :one-million-rows)]
     (set-database-permission! group-or-id db-or-id :perms/view-data view-data-level)
     (set-database-permission! group-or-id db-or-id :perms/create-queries create-queries-level)
     (set-database-permission! group-or-id db-or-id :perms/download-results download-level)
