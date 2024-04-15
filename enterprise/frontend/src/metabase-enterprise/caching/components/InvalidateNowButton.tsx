@@ -59,9 +59,9 @@ export const InvalidateNowButton = ({
             </Group>
           }
           activeLabel={<Loader size="1rem" />}
-          successLabel={<IconInButton name="check" color="white" />}
+          successLabel={<IconInButton name="check" color={color("success")} />}
           failedLabel={
-            <Text fw="bold" lh="1" color="white">
+            <Text fw="bold" lh="1">
               Error
             </Text>
           }

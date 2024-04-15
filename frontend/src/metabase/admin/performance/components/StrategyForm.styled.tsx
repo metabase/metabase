@@ -11,7 +11,3 @@ export const IconInButton = styled(FixedSizeIcon)`
   position: relative;
   top: 1px;
 `;
-
-export const LoaderInDarkButton = styled(LoaderInButton)`
-  filter: brightness(100);
-`;
