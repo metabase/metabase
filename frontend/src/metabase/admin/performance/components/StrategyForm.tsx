@@ -210,6 +210,7 @@ const StrategyFormBody = ({
         <PLUGIN_CACHING.InvalidateNowButton
           targetId={targetId}
           containerRef={invalidateFormContainerRef}
+          databaseName={targetDatabase?.displayName()}
         />
       }
     </>
