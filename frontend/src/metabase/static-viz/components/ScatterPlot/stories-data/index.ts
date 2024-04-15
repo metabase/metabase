@@ -1,3 +1,4 @@
+import autoYAxisExcludeZeroWithGoal from "./auto-y-axis-exclude-zero-with-goal.json";
 import bubbleSize from "./bubble-size.json";
 import customYAxisRange from "./custom-y-axis-range.json";
 import defaultData from "./default.json";
@@ -28,4 +29,5 @@ export const data = {
   timeseriesXScale,
   customYAxisRange,
   goalLine,
+  autoYAxisExcludeZeroWithGoal,
 };

@@ -32,6 +32,7 @@ import {
   getIsYAxisLabelEnabledDefault,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
+  getYAxisAutoRangeIncludeZero,
   isStackingValueValid,
   isXAxisScaleValid,
   getDefaultLegendIsReversed,
@@ -530,6 +531,12 @@ export const GRAPH_AXIS_SETTINGS = {
       ],
     },
     default: true,
+  },
+  "graph.y_axis.auto_range_include_zero": {
+    hidden: true,
+    getDefault: series => {
+      return getYAxisAutoRangeIncludeZero(series[0].card.display);
+    },
   },
   "graph.y_axis.auto_range": {
     section: t`Axes`,

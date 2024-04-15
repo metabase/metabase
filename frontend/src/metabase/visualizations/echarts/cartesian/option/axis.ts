@@ -35,15 +35,11 @@ export const getAxisNameGap = (ticksWidth: number): number => {
   return ticksWidth + CHART_STYLE.axisNameMargin;
 };
 
-const getCustomAxisRange = ({
-  axisExtent,
-  customMin,
-  customMax,
-}: {
-  axisExtent: Extent;
-  customMin: number | null | undefined;
-  customMax: number | null | undefined;
-}) => {
+const getCustomAxisRange = (
+  axisExtent: Extent,
+  customMin: number | null,
+  customMax: number | null,
+) => {
   const [extentMin, extentMax] = axisExtent;
   // if min/max are not specified or within series extents return `undefined`
   // so that ECharts compute a rounded range automatically
@@ -72,9 +68,7 @@ export const getYAxisRange = (
     yAxisScaleTransforms,
   );
 
-  return axisModel.extent
-    ? getCustomAxisRange({ axisExtent: axisModel.extent, customMin, customMax })
-    : {};
+  return getCustomAxisRange(axisModel.extent, customMin, customMax);
 };
 
 export const getAxisNameDefaultOption = (
@@ -360,6 +354,7 @@ export const buildMetricAxis = (
   const range = getYAxisRange(axisModel, yAxisScaleTransforms, settings);
 
   return {
+    scale: !settings["graph.y_axis.auto_range_include_zero"],
     type: "value",
     ...range,
     ...getAxisNameDefaultOption(
