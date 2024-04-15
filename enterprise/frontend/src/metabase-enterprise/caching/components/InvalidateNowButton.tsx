@@ -1,16 +1,14 @@
-import {
-  IconInButton,
-  LoaderInDarkButton,
-} from "metabase/admin/performance/components/StrategyForm.styled";
+import { createPortal } from "react-dom";
+
+import { IconInButton } from "metabase/admin/performance/components/StrategyForm.styled";
 import { isErrorWithMessage } from "metabase/admin/performance/strategies";
 import { Form, FormProvider } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { CacheConfigApi } from "metabase/services";
-import { Group, Text } from "metabase/ui";
+import { Group, Loader, Text } from "metabase/ui";
 
-import { createPortal } from "react-dom";
 import { StyledInvalidateNowButton } from "./InvalidateNowButton.styled";
 
 const delay = (milliseconds: number) =>
@@ -60,7 +58,7 @@ export const InvalidateNowButton = ({
               <Text>Invalidate cache now</Text>
             </Group>
           }
-          activeLabel={<LoaderInDarkButton size="1rem" />}
+          activeLabel={<Loader size="1rem" />}
           successLabel={<IconInButton name="check" color="white" />}
           failedLabel={
             <Text fw="bold" lh="1" color="white">
