@@ -269,8 +269,11 @@ class ExpressionEditorTextfield extends React.Component<
       const mode = new ExpressionMode() as unknown as Ace.SyntaxMode;
 
       // HACK: manually register the keypress event for the enter key,
-      // since ACE doesn ot seem to call the event handlers in time for
+      // since ACE does not seem to call the event handlers in time for
       // them to do certain things, like window.open.
+      //
+      // Without this hack, popups get blocked since they are not
+      // considered by the browser to be in response to a user action.
       this.textarea()?.addEventListener("keypress", this.handleKeypress);
 
       editor.getSession().setMode(mode);
