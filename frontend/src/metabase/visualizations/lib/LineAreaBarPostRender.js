@@ -158,6 +158,7 @@ function onRenderEnableDots(chart) {
     chart
       .svg()
       .select(`.sub._${index}`)
+      .attr("data-enable-dots", enableDots)
       .classed(
         cx(
           DashboardS.enableDots,
@@ -453,6 +454,9 @@ function onRender(
     onDeselectTimelineEvents,
   },
 ) {
+  chart.svg().attr("data-testid", "chart");
+  chart.selectAll(`.sub`).attr("data-testid", `chart-series`);
+
   onRenderRemoveClipPath(chart);
   onRenderMoveContentToTop(chart);
   onRenderReorderCharts(chart);
