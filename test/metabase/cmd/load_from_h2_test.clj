@@ -66,7 +66,7 @@
 (defn- create-current-database
   [db-type db-def data-source]
   (tx/create-db! db-type db-def)
-  (mdb.setup/setup-db! db-type data-source true))
+  (mdb.setup/setup-db! db-type data-source true false))
 
 (defn- dump-filename
   [h2-filename version]

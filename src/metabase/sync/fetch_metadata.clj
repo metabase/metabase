@@ -8,29 +8,43 @@
    [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]))
+
+(defmacro log-if-error
+  "Logs an error message if an exception is thrown while executing the body."
+  {:style/indent 1}
+  [function-name & body]
+  `(try
+     ~@body
+     (catch Throwable e#
+       (log/errorf e# "Error while fetching metdata with '%s'" ~function-name)
+       (throw e#))))
 
 (mu/defn db-metadata :- i/DatabaseMetadata
   "Get basic Metadata about a `database` and its Tables. Doesn't include information about the Fields."
   [database :- i/DatabaseInstance]
-  (driver/describe-database (driver.u/database->driver database) database))
+  (log-if-error "db-metadata"
+    (driver/describe-database (driver.u/database->driver database) database)))
 
 (mu/defn fields-metadata
   "Effectively a wrapper for [[metabase.driver/describe-fields]] that also validates the output against the schema."
   [database :- i/DatabaseInstance & {:as args}]
-  (cond->> (driver/describe-fields (driver.u/database->driver database) database args)
-    ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
-    (mu.fn/instrument-ns? *ns*)
-    (eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %)))))
+  (log-if-error "fields-metadata"
+    (cond->> (driver/describe-fields (driver.u/database->driver database) database args)
+      ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
+      (mu.fn/instrument-ns? *ns*)
+      (eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %))))))
 
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
   "Get more detailed information about a `table` belonging to `database`. Includes information about the Fields."
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
-  (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
-    (set (fields-metadata database :table-names [(:name table)] :schema-names [(:schema table)]))
-    (:fields (driver/describe-table (driver.u/database->driver database) database table))))
+  (log-if-error "table-fields-metadata"
+    (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
+      (set (fields-metadata database :table-names [(:name table)] :schema-names [(:schema table)]))
+      (:fields (driver/describe-table (driver.u/database->driver database) database table)))))
 
 (defn backwards-compatible-describe-fks
   "Replaces [[metabase.driver/describe-fks]] for drivers that haven't implemented it. Uses [[driver/describe-table-fks]]
@@ -54,28 +68,31 @@
   If the driver doesn't support [[metabase.driver/describe-fks]] it uses [[driver/describe-table-fks]] instead.
   This will be deprecated in "
   [database :- i/DatabaseInstance & {:as args}]
-  (let [driver (driver.u/database->driver database)]
-    (when (driver/database-supports? driver :foreign-keys database)
-      (let [describe-fks-fn (if (driver/database-supports? driver :describe-fks database)
-                              driver/describe-fks
-                              ;; In version 52 we'll remove [[driver/describe-table-fks]]
-                              ;; and we'll just use [[driver/describe-fks]] here
-                              backwards-compatible-describe-fks)]
-        (cond->> (describe-fks-fn (driver.u/database->driver database) database args)
-          ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
-          (mu.fn/instrument-ns? *ns*)
-          (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %))))))))
+  (log-if-error "fk-metadata"
+    (let [driver (driver.u/database->driver database)]
+      (when (driver/database-supports? driver :foreign-keys database)
+        (let [describe-fks-fn (if (driver/database-supports? driver :describe-fks database)
+                                driver/describe-fks
+                                ;; In version 52 we'll remove [[driver/describe-table-fks]]
+                                ;; and we'll just use [[driver/describe-fks]] here
+                                backwards-compatible-describe-fks)]
+          (cond->> (describe-fks-fn (driver.u/database->driver database) database args)
+            ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
+            (mu.fn/instrument-ns? *ns*)
+            (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %)))))))))
 
 (mu/defn nfc-metadata :- [:maybe [:set i/TableMetadataField]]
   "Get information about the nested field column fields within `table`."
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
-  (let [driver (driver.u/database->driver database)]
-    (when (driver/database-supports? driver :nested-field-columns database)
-      (sql-jdbc.sync/describe-nested-field-columns driver database table))))
+  (log-if-error "nfc-metadata"
+    (let [driver (driver.u/database->driver database)]
+      (when (driver/database-supports? driver :nested-field-columns database)
+        (sql-jdbc.sync/describe-nested-field-columns driver database table)))))
 
 (mu/defn index-metadata :- [:maybe i/TableIndexMetadata]
   "Get information about the indexes belonging to `table`."
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
-  (driver/describe-table-indexes (driver.u/database->driver database) database table))
+  (log-if-error "index-metadata"
+    (driver/describe-table-indexes (driver.u/database->driver database) database table)))

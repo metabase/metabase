@@ -53,6 +53,11 @@ export const durationStrategyValidationSchema = Yup.object({
   ),
 });
 
+export const scheduleStrategyValidationSchema = Yup.object({
+  type: Yup.string().equals(["schedule"]),
+  schedule: Yup.string().required(t`A cron expression is required`),
+});
+
 export const strategyValidationSchema = Yup.object().test(
   "strategy-validation",
   "The object must match one of the strategy validation schemas",
@@ -93,6 +98,11 @@ export const Strategies: Record<StrategyType, StrategyData> = {
     label: t`TTL: When the time-to-live (TTL) expires`,
     shortLabel: c("'TTL' is short for 'time-to-live'").t`TTL`,
     validateWith: ttlStrategyValidationSchema,
+  },
+  schedule: {
+    label: t`Schedule: at regular intervals`,
+    shortLabel: t`Schedule`,
+    validateWith: scheduleStrategyValidationSchema,
   },
   duration: {
     label: t`Duration: after a specific number of hours`,
