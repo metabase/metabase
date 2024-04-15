@@ -370,6 +370,7 @@ const buildEChartsLineAreaSeries = (
       lineStyle: {
         opacity: blurOpacity,
       },
+      areaStyle: { opacity: CHART_STYLE.opacity.area },
     },
     z: CHART_STYLE.series.zIndexLineArea,
     id: seriesModel.dataKey,

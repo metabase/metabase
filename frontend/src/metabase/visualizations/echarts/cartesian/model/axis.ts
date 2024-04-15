@@ -752,8 +752,8 @@ export function getScaledMinAndMax(
 
   const { toEChartsAxisValue } = yAxisScaleTransforms;
 
-  const customMin = min ? (toEChartsAxisValue(min) as number) : undefined;
-  const customMax = max ? (toEChartsAxisValue(max) as number) : undefined;
+  const customMin = min ? (toEChartsAxisValue(min) as number) : null;
+  const customMax = max ? (toEChartsAxisValue(max) as number) : null;
 
   return { customMin, customMax };
 }
