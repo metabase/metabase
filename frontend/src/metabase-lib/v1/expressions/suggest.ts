@@ -107,51 +107,53 @@ export function suggest({
       }
     }
 
-    let popular: string[] = [];
-    if (startRule === "expression") {
-      popular = POPULAR_FUNCTIONS;
+    if (source === "") {
+      let popular: string[] = [];
+      if (startRule === "expression") {
+        popular = POPULAR_FUNCTIONS;
+      }
+      if (startRule === "boolean") {
+        popular = POPULAR_FILTERS;
+      }
+      if (startRule === "aggregation") {
+        popular = POPULAR_AGGREGATIONS;
+      }
+
+      suggestions.push(
+        ...popular
+          .map((name: string): Suggestion | null => {
+            const clause = MBQL_CLAUSES[name];
+            if (!clause) {
+              return null;
+            }
+
+            const isSupported =
+              !database || database?.hasFeature(clause.requiresFeature);
+
+            if (!isSupported) {
+              return null;
+            }
+
+            return {
+              type: "functions",
+              name: clause.displayName,
+              text: suggestionText(clause),
+              index: targetOffset,
+              icon: "function",
+              order: 1,
+              group:
+                startRule === "aggregation"
+                  ? "popularAggregations"
+                  : "popularExpressions",
+              helpText: database
+                ? getHelpText(name, database, reportTimezone)
+                : undefined,
+            };
+          })
+          .filter((suggestion): suggestion is Suggestion => Boolean(suggestion))
+          .slice(0, 5),
+      );
     }
-    if (startRule === "boolean") {
-      popular = POPULAR_FILTERS;
-    }
-    if (startRule === "aggregation") {
-      popular = POPULAR_AGGREGATIONS;
-    }
-
-    suggestions.push(
-      ...popular
-        .map((name: string): Suggestion | null => {
-          const clause = MBQL_CLAUSES[name];
-          if (!clause) {
-            return null;
-          }
-
-          const isSupported =
-            !database || database?.hasFeature(clause.requiresFeature);
-
-          if (!isSupported) {
-            return null;
-          }
-
-          return {
-            type: "functions",
-            name: clause.displayName,
-            text: suggestionText(clause),
-            index: targetOffset,
-            icon: "function",
-            order: 1,
-            group:
-              startRule === "aggregation"
-                ? "popularAggregations"
-                : "popularExpressions",
-            helpText: database
-              ? getHelpText(name, database, reportTimezone)
-              : undefined,
-          };
-        })
-        .filter((suggestion): suggestion is Suggestion => Boolean(suggestion))
-        .slice(0, 5),
-    );
 
     return { suggestions };
   }
