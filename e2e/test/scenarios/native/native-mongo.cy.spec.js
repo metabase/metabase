@@ -11,6 +11,7 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     restore("mongo-5");
+    cy.signInAsAdmin();
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
         [MONGO_DB_ID]: {
