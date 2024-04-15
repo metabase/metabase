@@ -1,4 +1,5 @@
-import { createEntity } from "metabase/lib/entities";
+import { taskApi } from "metabase/api";
+import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -17,5 +18,13 @@ export default createEntity({
     delete: () => {
       throw new TypeError("Tasks.api.delete is not supported");
     },
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(entityQuery, dispatch, taskApi.endpoints.listTasks),
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery.id,
+        dispatch,
+        taskApi.endpoints.getTask,
+      ),
   },
 });
