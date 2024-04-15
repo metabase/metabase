@@ -566,11 +566,15 @@ export const POPULAR_FUNCTIONS = [
   "contains",
   "between",
   "coalesce",
-  "now",
-  "replace",
+];
+
+export const POPULAR_FILTERS = [
+  "contains",
+  "case",
+  "between",
   "interval",
-  "substring",
-  "lower",
+  "concat",
+  "round",
 ];
 
 export const POPULAR_AGGREGATIONS = [
@@ -579,15 +583,4 @@ export const POPULAR_AGGREGATIONS = [
   "count-where",
   "sum",
   "avg",
-  "percentile",
-  "share",
-  "sum-where",
-  "min",
-  "median",
-];
-
-// "popular" expressions to suggest initially.
-export const POPULAR_EXPRESSIONS = [
-  ...POPULAR_FUNCTIONS,
-  ...POPULAR_AGGREGATIONS,
 ];

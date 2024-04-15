@@ -12,7 +12,9 @@ import {
   EXPRESSION_FUNCTIONS,
   getMBQLName,
   MBQL_CLAUSES,
-  POPULAR_EXPRESSIONS,
+  POPULAR_AGGREGATIONS,
+  POPULAR_FILTERS,
+  POPULAR_FUNCTIONS,
 } from "metabase-lib/v1/expressions/config";
 import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import type {
@@ -105,44 +107,48 @@ export function suggest({
       }
     }
 
+    let popular = [];
+    if (startRule === "expression") {
+      popular = POPULAR_FUNCTIONS;
+    }
+    if (startRule === "boolean") {
+      popular = POPULAR_FILTERS;
+    }
+    if (startRule === "aggregation") {
+      popular = POPULAR_AGGREGATIONS;
+    }
+
     suggestions.push(
-      ...POPULAR_EXPRESSIONS.map((name: string): Suggestion | null => {
-        const clause = MBQL_CLAUSES[name];
-        if (!clause) {
-          return null;
-        }
+      ...popular
+        .map((name: string): Suggestion | null => {
+          const clause = MBQL_CLAUSES[name];
+          if (!clause) {
+            return null;
+          }
 
-        // only allow aggregation functions when we're aggregating
-        if (
-          (startRule === "aggregation" && clause.type !== "aggregation") ||
-          (startRule !== "aggregation" && clause.type === "aggregation")
-        ) {
-          return null;
-        }
+          const isSupported =
+            !database || database?.hasFeature(clause.requiresFeature);
 
-        const isSupported =
-          !database || database?.hasFeature(clause.requiresFeature);
+          if (!isSupported) {
+            return null;
+          }
 
-        if (!isSupported) {
-          return null;
-        }
-
-        return {
-          type: "functions",
-          name: clause.displayName,
-          text: suggestionText(clause),
-          index: targetOffset,
-          icon: "function",
-          order: 1,
-          group:
-            startRule === "aggregation"
-              ? "popularAggregations"
-              : "popularExpressions",
-          helpText: database
-            ? getHelpText(name, database, reportTimezone)
-            : undefined,
-        };
-      })
+          return {
+            type: "functions",
+            name: clause.displayName,
+            text: suggestionText(clause),
+            index: targetOffset,
+            icon: "function",
+            order: 1,
+            group:
+              startRule === "aggregation"
+                ? "popularAggregations"
+                : "popularExpressions",
+            helpText: database
+              ? getHelpText(name, database, reportTimezone)
+              : undefined,
+          };
+        })
         .filter((suggestion): suggestion is Suggestion => Boolean(suggestion))
         .slice(0, 5),
     );

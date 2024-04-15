@@ -563,6 +563,7 @@ describe("metabase/lib/expression/suggest", () => {
         suggest_({
           source: "",
           ...expressionOpts,
+          startRule: "expression",
           query: createQuery({
             metadata,
             query: DEFAULT_QUERY,
@@ -590,6 +591,42 @@ describe("metabase/lib/expression/suggest", () => {
         }),
         expect.objectContaining({
           name: "coalesce",
+          group: "popularExpressions",
+        }),
+      ]);
+
+      expect(
+        suggest_({
+          source: "",
+          ...expressionOpts,
+          startRule: "boolean",
+          query: createQuery({
+            metadata,
+            query: DEFAULT_QUERY,
+          }),
+          stageIndex: -1,
+          metadata,
+          getColumnIcon: () => "icon",
+        }).suggestions,
+      ).toEqual([
+        expect.objectContaining({
+          name: "contains",
+          group: "popularExpressions",
+        }),
+        expect.objectContaining({
+          name: "case",
+          group: "popularExpressions",
+        }),
+        expect.objectContaining({
+          name: "between",
+          group: "popularExpressions",
+        }),
+        expect.objectContaining({
+          name: "timeSpan",
+          group: "popularExpressions",
+        }),
+        expect.objectContaining({
+          name: "concat",
           group: "popularExpressions",
         }),
       ]);
