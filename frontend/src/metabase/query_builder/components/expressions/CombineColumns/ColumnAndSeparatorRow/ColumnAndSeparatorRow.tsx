@@ -1,3 +1,4 @@
+import { type FocusEvent, useState } from "react";
 import { t } from "ttag";
 
 import { Button, Flex, Icon, Select, TextInput, Text } from "metabase/ui";
@@ -88,8 +89,20 @@ function SeparatorInput({
   showSeparator: boolean;
   onChange: (value: string) => void;
 }) {
+  const [hasFocus, setHasFocus] = useState(false);
+
   if (!showSeparator) {
     return null;
+  }
+
+  function handleFocus(evt: FocusEvent<HTMLInputElement>) {
+    setHasFocus(true);
+    evt.target.selectionStart = 0;
+    evt.target.selectionEnd = evt.target.value.length;
+  }
+
+  function handleBlur() {
+    setHasFocus(false);
   }
 
   return (
@@ -97,17 +110,14 @@ function SeparatorInput({
       <TextInput
         className={styles.separator}
         label={t`Separator`}
-        placeholder={value === "" ? " (empty)" : ""}
         value={value}
         w={110}
         onChange={event => onChange(event.target.value)}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
       />
-      {value && formatSeparator(value) !== value && (
-        <Text
-          color="text-light"
-          className={styles.placeholder}
-          style={{ fontFamily: "Monaco, monospace" }}
-        >
+      {!hasFocus && formatSeparator(value) !== value && (
+        <Text color="text-light" className={styles.placeholder}>
           {formatSeparator(value)}
         </Text>
       )}

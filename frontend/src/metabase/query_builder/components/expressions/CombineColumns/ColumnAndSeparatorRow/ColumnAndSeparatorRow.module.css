@@ -24,6 +24,6 @@
 .placeholder {
   position: absolute;
   bottom: 0.5rem;
-  left: 1.25rem;
+  left: 0.75rem;
   pointer-events: none;
 }
