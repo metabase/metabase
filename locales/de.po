@@ -13862,7 +13862,7 @@ msgstr "Fehler beim Planen der Aufgaben für Datenbank {0}"
 msgid "All elements must be distinct."
 msgstr "Jedes Element muss eindeutig sein."
 
-#:
+#: 
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Wähle die Spalten aus, die Du einbeziehen möchtest."
@@ -18332,12 +18332,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#:
+#: 
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Pulses werden ausgemustert"
 
-#:
+#: 
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Sie können jetzt stattdessen {0} einrichten. Wir werden Pulse in einer zukünftigen Version entfernen und Ihnen bei der Migration von Pulsen helfen, die Sie noch haben."
@@ -18346,7 +18346,7 @@ msgstr "Sie können jetzt stattdessen {0} einrichten. Wir werden Pulse in einer 
 msgid "dashboard subscriptions"
 msgstr "dashboard abonnements"
 
-#:
+#: 
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} Diagramme in deinem Abonnement sehen nicht so aus wie in deinem Dashboard. {1}"
 
@@ -18494,7 +18494,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Quelldatenbank {0} einrichten und Migrationen ausführen..."
 
 #. make sure the dest DB is up-to-date
-#.
+#. 
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:388
 msgid "Set up {0} target database and run migrations..."
@@ -26454,12 +26454,12 @@ msgstr "Die Beispieldatenbank konnte nicht in das Plugins-Verzeichnis extrahiert
 msgid "Metabase config files require a Premium token with the :advanced-config feature."
 msgstr "Metabase-Konfigurationsdateien erfordern ein Premium-Token mit der Funktion :advanced-config."
 
-#:
+#: 
 msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
 msgid "Charts in subscriptions may look slightly different from charts in dashboards."
 msgstr "Diagramme in Abonnements können etwas anders aussehen als Diagramme in Dashboards."
 
-#:
+#: 
 msgctxt "Seen when creating a new dashboard subscription."
 msgid "Recipients will see this data just as you see it, regardless of their permissions."
 msgstr "Die Empfänger sehen diese Daten genauso wie Sie, unabhängig von deren Berechtigungen."
@@ -32806,85 +32806,3 @@ msgstr "Halten Sie die Optionstaste gedrückt, um unformatierte Ergebnisse herun
 msgid "Hold the Alt key to download unformatted results"
 msgstr "Halten Sie die Alt-Taste gedrückt, um unformatierte Ergebnisse herunterzuladen."
 
-#: frontend/src/metabase/components/Schedule/Schedule.tsx:200
-msgctxt "{0} is a verb like 'Send', {1} is an adverb like 'hourly'"
-msgid "{0} {1}"
-msgstr "{1} {0}"
-
-#: frontend/src/metabase/components/Schedule/Schedule.tsx:209
-msgctxt ""
-"{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time "
-"like '12:00pm'"
-msgid "{0} {1} at {2}"
-msgstr "{1} um {2} {0}"
-
-#: frontend/src/metabase/components/Schedule/Schedule.tsx:222
-msgctxt ""
-"{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day "
-"like 'Tuesday', {3} is a time like '12:00pm'"
-msgid "{0} {1} on {2} at {3}"
-msgstr "{1} am {2} um {3} {0}"
-
-#: frontend/src/metabase/components/Schedule/Schedule.tsx:236
-msgctxt ""
-"{0} is a verb like 'Send', {1} is an adverb like 'hourly', "
-"{2} is the noun '15th' (as in 'the 15th of the month'), "
-"{3} is a time like '12:00pm'"
-msgid "{0} {1} on the {2} at {3}"
-msgstr "{1} am {2} um {3} {0}"
-
-#: frontend/src/metabase/components/Schedule/Schedule.tsx:249
-msgctxt ""
-"{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an "
-"adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'"
-msgid "{0} {1} on the {2} {3} at {4}"
-msgstr "{1} am {2} {3} um {4} {0}"
-
-#: frontend/src/metabase/components/Schedule/Schedule.tsx:237
-msgctxt ""
-"{0} is a verb like 'Send', {1} is an adverb like 'hourly', "
-"{2} is the noun '15th' (as in 'the 15th of the month'), "
-"{3} is a time like '12:00pm'"
-msgid "{0} {1} on the {2} at {3}"
-msgstr "{1} am {2} um {3} {0}"
-
-#: frontend/src/metabase/components/Schedule/constants.ts:23
-msgctxt "adverb"
-msgid "hourly"
-msgstr "Stündlich"
-
-#: frontend/src/metabase/components/Schedule/constants.ts:24
-msgctxt "adverb"
-msgid "daily"
-msgstr "Täglich"
-
-#: frontend/src/metabase/components/Schedule/constants.ts:25
-msgctxt "adverb"
-msgid "weekly"
-msgstr "Wöchentlich"
-
-#: frontend/src/metabase/components/Schedule/constants.ts:26
-msgctxt "adverb"
-msgid "monthly"
-msgstr "Monatlich"
-
-#: frontend/src/metabase/components/Schedule/constants.ts:1
-msgctxt "Appears in contexts like 'Monthly on the first Monday'"
-msgid "first"
-msgstr "ersten"
-
-#: frontend/src/metabase/components/Schedule/constants.ts:1
-msgctxt "Appears in contexts like 'Monthly on the last Monday'"
-msgid "last"
-msgstr "letzten"
-
-#: frontend/src/metabase/components/Schedule/constants.ts:1
-msgctxt ""
-"This is a noun meaning 'the fifteenth of the month', not an adjective. "
-"It appears in the phrase 'Monthly on the 15th'"
-msgid "15th"
-msgstr "15."
-
-#: frontend/src/metabase/admin/performance/components/StrategyForm.tsx:344
-msgid "Invalidate"
-msgstr "ungültig machen"
