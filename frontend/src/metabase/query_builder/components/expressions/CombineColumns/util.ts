@@ -127,7 +127,9 @@ export const flatten = (
   return columnsAndSeparators
     .flatMap(({ column, separator }) => [separator, column])
     .slice(1)
-    .filter(element => element && element !== "");
+    .filter(
+      (element): element is string | Lib.ColumnMetadata => element !== "",
+    );
 };
 
 export const getExample = (
