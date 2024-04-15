@@ -150,7 +150,7 @@ export const ParameterSettings = ({
     const options = currentSection.options as SectionOption[];
 
     return options.map(option => ({
-      label: option.name,
+      label: option.menuName ?? option.name,
       value: option.type,
     }));
   }, [sectionId]);
