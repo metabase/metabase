@@ -64,10 +64,11 @@ const getYAxisTicksWidth = (
   );
 
   const measuredValues = valuesToMeasure.map(rawValue => {
-    const colSettings = settings.column?.(axisModel.column) ?? {};
+    const isPercent =
+      settings.column?.(axisModel.column).number_style === "percent";
 
     let value = rawValue;
-    if (colSettings.number_style === "percent") {
+    if (isPercent) {
       value = roundToHundredth(rawValue);
     } else if (areDecimalTicksExpected) {
       value = Math.round(rawValue);
@@ -77,8 +78,7 @@ const getYAxisTicksWidth = (
     return measureText(formattedValue, fontStyle);
   });
 
-  const ret = Math.max(...measuredValues);
-  return ret;
+  return Math.max(...measuredValues);
 };
 
 const getXAxisTicksWidth = (
