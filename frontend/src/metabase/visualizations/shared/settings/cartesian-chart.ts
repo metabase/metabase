@@ -131,6 +131,9 @@ export const getIsYAxisLabelEnabledDefault = () => true;
 
 export const getYAxisAutoRangeDefault = () => true;
 
+export const getYAxisAutoRangeIncludeZero = (display: string) =>
+  display !== "scatter";
+
 export const getDefaultXAxisTitle = (
   dimensionColumn: DatasetColumn | undefined,
 ) => {
