@@ -5,6 +5,7 @@ import type {
   ListUsersResponse,
   UpdatePasswordRequest,
   UserId,
+  UpdateUserRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -58,6 +59,15 @@ export const userApi = Api.injectEndpoints({
       query: ({ id }) => ({
         method: "PUT",
         url: `/api/user/${id}/reactivate`,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("user"), idTag("user", id)]),
+    }),
+    updateUser: builder.mutation<User, UpdateUserRequest>({
+      query: ({ id, ...body }) => ({
+        method: "PUT",
+        url: `/api/user/${id}`,
+        body,
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
