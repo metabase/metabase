@@ -14,8 +14,8 @@ export const sessionApi = Api.injectEndpoints({
         body: { token },
       }),
     }),
-    forgotPassword: builder.query<void, { email: string }>({
-      query: ({ email }) => ({
+    forgotPassword: builder.query<void, string>({
+      query: email => ({
         method: "POST",
         url: "/api/session/forgot_password",
         body: { email },

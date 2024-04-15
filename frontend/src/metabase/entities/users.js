@@ -93,7 +93,7 @@ const Users = createEntity({
           "Trigger User Password Reset",
         );
         await await entityCompatibleQuery(
-          { email },
+          email,
           dispatch,
           sessionApi.endpoints.forgotPassword,
         );
