@@ -23,7 +23,7 @@ class SnippetRowInner extends Component {
     return (
       <div
         className={cx(
-          { "border-transparent": !isOpen },
+          { [CS.borderTransparent]: !isOpen },
           CS.borderBottom,
           CS.borderTop,
         )}

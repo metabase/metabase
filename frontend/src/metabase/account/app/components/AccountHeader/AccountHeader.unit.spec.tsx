@@ -1,16 +1,18 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
+import { createMockUser } from "metabase-types/api/mocks";
 
-import AccountHeader from "./AccountHeader";
+import { AccountHeader } from "./AccountHeader";
 
-const getUser = () => ({
-  id: 1,
-  first_name: "John",
-  last_name: "Doe",
-  email: "john@metabase.test",
-  google_auth: true,
-});
+const getUser = () =>
+  createMockUser({
+    id: 1,
+    first_name: "John",
+    last_name: "Doe",
+    email: "john@metabase.test",
+    google_auth: true,
+  });
 
 describe("AccountHeader", () => {
   const ORIGINAL_PLUGIN_IS_PASSWORD_USER = [...PLUGIN_IS_PASSWORD_USER];

@@ -68,7 +68,7 @@ export const SettingsJWTForm = ({
   }, [settings, settingValues]);
 
   const handleSubmit = useCallback(
-    values => {
+    (values: SettingValues) => {
       return onSubmit({ ...values, "jwt-enabled": true });
     },
     [onSubmit],

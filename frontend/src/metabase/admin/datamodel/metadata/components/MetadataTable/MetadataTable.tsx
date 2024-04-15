@@ -251,7 +251,7 @@ const TableVisibilitySection = ({
         </MetadataVisibilityBadge>
 
         {table.visibility_type && (
-          <span id="VisibilitySubTypes" className={cx("border-left", CS.mx2)}>
+          <span id="VisibilitySubTypes" className={cx(CS.borderLeft, CS.mx2)}>
             <span
               className={cx(CS.mx2, CS.textUppercase, CS.textMedium)}
             >{t`Why Hide?`}</span>
