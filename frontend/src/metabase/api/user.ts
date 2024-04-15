@@ -8,24 +8,26 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-// import { listTag, invalidateTags } from "./tags";
+import { idTag, listTag, invalidateTags, provideUserListTags } from "./tags";
 
 export const userApi = Api.injectEndpoints({
   endpoints: builder => ({
-    listUsers: builder.query<ListUsersResponse, ListUsersRequest | null>({
+    listUsers: builder.query<ListUsersResponse, ListUsersRequest | void>({
       query: body => ({
         method: "GET",
         url: "/api/user",
         body,
       }),
-      // FIXME: providesTags is needed
+      providesTags: response =>
+        response ? provideUserListTags(response.data) : [],
     }),
-    listUserRecipients: builder.query({
+    listUserRecipients: builder.query<ListUsersResponse, void>({
       query: () => ({
         method: "GET",
         url: "/api/user/recipients",
       }),
-      // FIXME: is providesTags needed ??
+      providesTags: response =>
+        response ? provideUserListTags(response.data) : [],
     }),
     createUser: builder.mutation<CreateUserResponse, CreateUserRequest>({
       query: body => ({
@@ -33,7 +35,7 @@ export const userApi = Api.injectEndpoints({
         url: "/api/user",
         body,
       }),
-      // FIXME: invalidatesTags is needed
+      invalidatesTags: (_, error) => invalidateTags(error, [listTag("user")]),
     }),
     updatePassword: builder.mutation<void, UpdatePasswordRequest>({
       query: ({ id, old_password, password }) => ({
@@ -41,19 +43,24 @@ export const userApi = Api.injectEndpoints({
         url: `/api/user/${id}/password`,
         body: { old_password, password },
       }),
-      // FIXME: invalidatesTags is maybe needed?
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
-    deactivateUser: builder.query<void, { id: UserId }>({
+    deactivateUser: builder.mutation<void, { id: UserId }>({
       query: ({ id }) => ({
         method: "DELETE",
         url: `/api/user/${id}`,
       }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
-    reactivateUser: builder.query<CreateUserResponse, { id: UserId }>({
+    reactivateUser: builder.mutation<CreateUserResponse, { id: UserId }>({
       query: ({ id }) => ({
         method: "PUT",
         url: `/api/user/${id}/reactivate`,
       }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
   }),
 });
@@ -63,6 +70,6 @@ export const {
   useListUserRecipientsQuery,
   useCreateUserMutation,
   useUpdatePasswordMutation,
-  useDeactivateUserQuery,
-  useReactivateUserQuery,
+  useDeactivateUserMutation,
+  useReactivateUserMutation,
 } = userApi;
