@@ -37,8 +37,8 @@ export const userApi = Api.injectEndpoints({
       providesTags: response =>
         response ? provideUserListTags(response.data) : [],
     }),
-    getUser: builder.query<User, { id: UserId }>({
-      query: ({ id }) => ({
+    getUser: builder.query<User, UserId>({
+      query: id => ({
         method: "GET",
         url: `/api/user/${id}`,
       }),
@@ -61,20 +61,20 @@ export const userApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
-    deactivateUser: builder.mutation<void, { id: UserId }>({
-      query: ({ id }) => ({
+    deactivateUser: builder.mutation<void, UserId>({
+      query: id => ({
         method: "DELETE",
         url: `/api/user/${id}`,
       }),
-      invalidatesTags: (_, error, { id }) =>
+      invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
-    reactivateUser: builder.mutation<CreateUserResponse, { id: UserId }>({
-      query: ({ id }) => ({
+    reactivateUser: builder.mutation<CreateUserResponse, UserId>({
+      query: id => ({
         method: "PUT",
         url: `/api/user/${id}/reactivate`,
       }),
-      invalidatesTags: (_, error, { id }) =>
+      invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
     updateUser: builder.mutation<User, UpdateUserRequest>({
