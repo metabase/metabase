@@ -8,8 +8,6 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models :refer [LegacyMetric  LegacyMetricImportantField Table]]
    [metabase.models.interface :as mi]
-   [metabase.models.revision :as revision]
-   [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -132,30 +130,5 @@
    (trs "DELETE /api/legacy-metric/:id is deprecated. Instead, change its `archived` value via PUT /api/legacy-metric/:id."))
   (write-check-and-update-metric! id {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
-
-(api/defendpoint GET "/:id/revisions"
-  "Fetch `Revisions` for `LegacyMetric` with ID."
-  [id]
-  {id ms/PositiveInt}
-  (api/read-check LegacyMetric id)
-  (revision/revisions+details LegacyMetric id))
-
-(api/defendpoint POST "/:id/revert"
-  "Revert a `LegacyMetric` to a prior `Revision`."
-  [id :as {{:keys [revision_id]} :body}]
-  {id          ms/PositiveInt
-   revision_id ms/PositiveInt}
-  (api/write-check LegacyMetric id)
-  (revision/revert!
-   {:entity      LegacyMetric
-    :id          id
-    :user-id     api/*current-user-id*
-    :revision-id revision_id}))
-
-(api/defendpoint GET "/:id/related"
-  "Return related entities."
-  [id]
-  {id ms/PositiveInt}
-  (-> (t2/select-one LegacyMetric :id id) api/read-check related/related))
 
 (api/define-routes)

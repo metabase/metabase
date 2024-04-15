@@ -31,7 +31,7 @@
 
   (testing "optional filters will return intersection of support models and provided models\n"
     (testing "created by"
-      (is (= #{"dashboard" "dataset" "action" "card"}
+      (is (= #{"dashboard" "dataset" "action" "card" "metric"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-by #{1}}))))
@@ -43,7 +43,7 @@
                       :created-by #{1}})))))
 
     (testing "created at"
-      (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card"}
+      (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))
@@ -55,7 +55,7 @@
                       :created-at "past3days"})))))
 
     (testing "verified"
-      (is (= #{"dataset" "card"}
+      (is (= #{"dataset" "card" "metric"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:verified true}))))
@@ -91,7 +91,7 @@
                      :last-edited-at "past3days"})))))
 
    (testing "search native query"
-     (is (= #{"dataset" "action" "card"}
+     (is (= #{"dataset" "action" "card" "metric"}
             (search.filter/search-context->applicable-models
              (merge default-search-ctx
                     {:search-native-query true})))))))

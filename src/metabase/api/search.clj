@@ -254,7 +254,9 @@
 
 (defmethod search-query-for-model "metric"
   [_model search-ctx]
-  (shared-card-impl :metric search-ctx))
+  (-> (shared-card-impl :metric search-ctx)
+      (update :select (fn [columns]
+                        (cons [(h2x/literal "metric") :model] (rest columns))))))
 
 (defmethod search-query-for-model "collection"
   [_model search-ctx]
