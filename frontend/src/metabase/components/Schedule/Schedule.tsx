@@ -341,5 +341,9 @@ const SelectFrequency = ({
 
 const removeBracketsFromTranslation = (translation: string | string[]) => {
   const arr = typeof translation === "string" ? [translation] : translation;
-  return arr.map(t => t.replace(/^\[/, "").replace(/\]$/, ""));
+  return arr.map(child =>
+    typeof child === "string"
+      ? child.replace(/^\[/, "").replace(/\]$/, "")
+      : child,
+  );
 };
