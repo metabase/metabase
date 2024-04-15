@@ -149,7 +149,7 @@ describeEE("formatting > sandboxes", () => {
         visitQuestion("@questionId");
 
         cy.log("Make sure user is initially sandboxed");
-        cy.get(".TableInteractive-cellWrapper--firstColumn").should(
+        cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
           "have.length",
           11,
         );
@@ -166,7 +166,7 @@ describeEE("formatting > sandboxes", () => {
 
         visualize();
         cy.log("Make sure user is still sandboxed");
-        cy.get(".TableInteractive-cellWrapper--firstColumn").should(
+        cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
           "have.length",
           7,
         );
@@ -176,8 +176,11 @@ describeEE("formatting > sandboxes", () => {
     describe("table sandboxed on a saved parameterized SQL question", () => {
       it("should show filtered categories", () => {
         openPeopleTable();
-        cy.get(".TableInteractive-headerCellData").should("have.length", 4);
-        cy.get(".TableInteractive-cellWrapper--firstColumn").should(
+        cy.get(".test-TableInteractive-headerCellData").should(
+          "have.length",
+          4,
+        );
+        cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
           "have.length",
           2,
         );
@@ -612,7 +615,9 @@ describeEE("formatting > sandboxes", () => {
               cy.log(
                 "It should show remapped Display Values instead of Product ID",
               );
-              cy.get(".cellData").contains("Awesome Concrete Shoes").click();
+              cy.get("[data-testid=cell-data]")
+                .contains("Awesome Concrete Shoes")
+                .click();
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText(/View details/i).click();
 

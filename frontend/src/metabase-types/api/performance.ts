@@ -1,6 +1,11 @@
 type Model = "root" | "database" | "collection" | "dashboard" | "question";
 
-export type StrategyType = "nocache" | "ttl" | "duration" | "inherit";
+export type StrategyType =
+  | "nocache"
+  | "ttl"
+  | "duration"
+  | "schedule"
+  | "inherit";
 
 interface StrategyBase {
   type: StrategyType;
@@ -34,12 +39,18 @@ export interface InheritStrategy extends StrategyBase {
   type: "inherit";
 }
 
+export interface ScheduleStrategy extends StrategyBase {
+  type: "schedule";
+  schedule: string;
+}
+
 /** Cache invalidation strategy */
 export type Strategy =
   | DoNotCacheStrategy
   | TTLStrategy
   | DurationStrategy
-  | InheritStrategy;
+  | InheritStrategy
+  | ScheduleStrategy;
 
 /** Cache invalidation configuration */
 export interface Config {

@@ -283,6 +283,8 @@ interface PublicSettings {
   "is-metabot-enabled": boolean;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
+  "ldap-port": number;
+  "ldap-group-membership-filter": string;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!

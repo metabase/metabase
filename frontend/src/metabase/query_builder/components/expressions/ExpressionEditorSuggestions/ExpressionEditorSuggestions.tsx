@@ -102,7 +102,7 @@ function ExpressionEditorSuggestionsListItem({
   }, [isHighlighted]);
 
   const handleMouseDown = useCallback(
-    function (event) {
+    function (event: React.MouseEvent) {
       event.preventDefault();
       event.stopPropagation();
       onMouseDown?.(index);

@@ -846,3 +846,16 @@
                   (if-not (pos-int? value)
                     20
                     value))))
+
+;; This is used by the embedding homepage
+(defsetting example-dashboard-id
+  (deferred-tru "The ID of the example dashboard.")
+  :visibility :authenticated
+  :export?    false
+  :type       :integer
+  :setter     :none
+  :getter     (fn []
+                (let [id (setting/get-value-of-type :integer :example-dashboard-id)]
+                  (when (and id (t2/exists? :model/Dashboard :id id :archived false))
+                    id)))
+  :doc        false)

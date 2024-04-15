@@ -34,7 +34,8 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version])
+   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version
+                         :cache_field_values_schedule :metadata_sync_schedule])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false
@@ -44,8 +45,6 @@
     :caveats                     nil
     :points_of_interest          nil
     :features                    (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
-    :cache_field_values_schedule "0 50 0 * * ? *"
-    :metadata_sync_schedule      "0 50 * * * ? *"
     :refingerprint               nil
     :auto_run_queries            true
     :settings                    nil
@@ -412,7 +411,10 @@
 (deftest update-table-sync-test
   (testing "PUT /api/table/:id"
     (testing "Table should get synced when it gets unhidden"
-      (t2.with-temp/with-temp [Table table]
+      (t2.with-temp/with-temp [Database db    {:details (:details (mt/db))}
+                               Table    table (-> (t2/select-one :model/Table (mt/id :venues))
+                                                  (dissoc :id)
+                                                  (assoc :db_id (:id db)))]
         (let [called (atom 0)
               ;; original is private so a var will pick up the redef'd. need contents of var before
               original (var-get #'api.table/sync-unhidden-tables)]

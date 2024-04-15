@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, JSX } from "react";
 import { memo } from "react";
 import { Provider } from "react-redux";
 
