@@ -5,7 +5,7 @@ import { useDatabaseListQuery } from "metabase/common/hooks";
 import { CacheConfigApi } from "metabase/services";
 import type { CacheConfigAPIResponse, Config } from "metabase-types/api";
 
-import { rootId } from "../strategies";
+import { rootId, translateConfigFromAPI } from "../strategies";
 
 import { useRecentlyTrue } from "./useRecentlyTrue";
 
@@ -28,7 +28,9 @@ export const useCacheConfigs = ({
           })) as CacheConfigAPIResponse
         ).data
       : [];
-    const configs = [...rootConfigsFromAPI, ...dbConfigsFromAPI];
+    const configs = [...rootConfigsFromAPI, ...dbConfigsFromAPI].map(config =>
+      translateConfigFromAPI(config),
+    );
     return configs;
   }, []);
 

@@ -59,7 +59,7 @@ export class GuiQueryEditor extends Component {
       CS.textBold,
       CS.flex,
       CS.alignCenter,
-      "text-medium-hover",
+      CS.textMediumHover,
       CS.cursorPointer,
       CS.noDecoration,
       CS.transitionColor,

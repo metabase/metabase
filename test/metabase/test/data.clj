@@ -269,5 +269,5 @@
      ;; since the actual group defs are not dynamic, we need with-redefs to change them here
      (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-group-name)
                    perms-group/admin     (#'perms-group/magic-group perms-group/admin-group-name)]
-       (mdb/setup-db!)
+       (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
        ~@body)))

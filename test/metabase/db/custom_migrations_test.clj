@@ -21,6 +21,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
+   [metabase.native-query-analyzer :as query-analyzer]
    [metabase.task :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -1597,3 +1598,34 @@
           (is (contains? model-revision-object "dataset"))
           (is (not (contains? card-revision-object "type")))
           (is (not (contains? model-revision-object "type"))))))))
+
+(deftest backfill-query-field-test
+  (impl/test-migrations "v50.2024-04-09T15:55:23" [migrate!]
+    (let [user-id     (:id (new-instance-with-default :core_user))
+          ;; it is already `false`, but binding it anyway to indicate it's important
+          card-id     (binding [query-analyzer/*parse-queries-in-test?* false]
+                        (:id (new-instance-with-default
+                              :report_card
+                              {:creator_id    user-id
+                               :database_id   (mt/id)
+                               :query_type    "native"
+                               :dataset_query (json/generate-string (mt/native-query {:query "SELECT id FROM venues"}))})))
+          archived-id (binding [query-analyzer/*parse-queries-in-test?* false]
+                        (:id (new-instance-with-default
+                              :report_card
+                              {:archived      true
+                               :creator_id    user-id
+                               :database_id   (mt/id)
+                               :query_type    "native"
+                               :dataset_query (json/generate-string (mt/native-query {:query "SELECT id FROM venues"}))})))
+          ;; (first (vals %)) are necessary since h2 generates :count(id) as name for column
+          get-count   #(t2/select-one-fn (comp first vals) [:model/QueryField [[:count :id]]] :card_id %)]
+      (testing "QueryField is empty - queries weren't analyzed"
+        (is (zero? (get-count card-id)))
+        (is (zero? (get-count archived-id))))
+      (binding [query-analyzer/*parse-queries-in-test?* true]
+        (migrate!))
+      (testing "QueryField is filled now"
+        (is (pos? (get-count card-id)))
+        (testing "but not for archived card"
+          (is (zero? (get-count archived-id))))))))

@@ -49,12 +49,11 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:connection-impersonation                            true
-                              :connection-impersonation-requires-role              true
-                              :convert-timezone                                    true
-                              :datetime-diff                                       true
-                              :now                                                 true
-                              :sql/window-functions.order-by-output-column-numbers false}]
+(doseq [[feature supported?] {:connection-impersonation               true
+                              :connection-impersonation-requires-role true
+                              :convert-timezone                       true
+                              :datetime-diff                          true
+                              :now                                    true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake

@@ -59,13 +59,13 @@ const QueryDownloadPopover = ({
 }: QueryDownloadPopoverProps) => {
   const [isHoldingAltKey, setHoldingAltKey] = useState(false);
 
-  const handleKeyDown = useCallback(event => {
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.key === "Alt") {
       setHoldingAltKey(true);
     }
   }, []);
 
-  const handleKeyUp = useCallback(event => {
+  const handleKeyUp = useCallback((event: KeyboardEvent) => {
     if (event.key === "Alt") {
       setHoldingAltKey(false);
     }

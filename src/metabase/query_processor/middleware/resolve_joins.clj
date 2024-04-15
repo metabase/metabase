@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.store :as qp.store]
@@ -46,14 +47,18 @@
 
 (mu/defn ^:private resolve-fields! :- :nil
   [joins :- Joins]
-  (qp.store/bulk-metadata :metadata/column (lib.util.match/match joins [:field (id :guard integer?) _] id))
+  (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider)
+                                       :metadata/column
+                                       (lib.util.match/match joins [:field (id :guard integer?) _] id))
   nil)
 
 (mu/defn ^:private resolve-tables! :- :nil
   "Add Tables referenced by `:joins` to the Query Processor Store. This is only really needed for implicit joins,
   because their Table references are added after `resolve-source-tables` runs."
   [joins :- Joins]
-  (qp.store/bulk-metadata :metadata/table (remove nil? (map :source-table joins)))
+  (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider)
+                                       :metadata/table
+                                       (remove nil? (map :source-table joins)))
   nil)
 
 
