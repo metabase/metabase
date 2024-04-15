@@ -14,6 +14,7 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
+import { getGridSizeAdjustedSettings } from "./utils";
 
 function _CartesianChart(props: VisualizationProps) {
   // The width and height from props reflect the dimensions of the entire container which includes legend,
@@ -22,8 +23,9 @@ function _CartesianChart(props: VisualizationProps) {
 
   const {
     rawSeries,
-    settings,
+    settings: originalSettings,
     card,
+    gridSize,
     width,
     showTitle,
     headerIcon,
@@ -34,10 +36,17 @@ function _CartesianChart(props: VisualizationProps) {
     onChangeCardAndRun,
     onHoverChange,
   } = props;
+
+  const settings = useMemo(
+    () => getGridSizeAdjustedSettings(originalSettings, gridSize),
+    [originalSettings, gridSize],
+  );
+
   const { chartModel, timelineEventsModel, option } = useModelsAndOption({
     ...props,
     width: chartSize.width,
     height: chartSize.height,
+    settings,
   });
   useChartDebug({ isQueryBuilder, rawSeries, option });
 
