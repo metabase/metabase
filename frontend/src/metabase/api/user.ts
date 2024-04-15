@@ -5,11 +5,18 @@ import type {
   ListUsersResponse,
   UpdatePasswordRequest,
   UserId,
+  User,
   UpdateUserRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, listTag, invalidateTags, provideUserListTags } from "./tags";
+import {
+  idTag,
+  listTag,
+  invalidateTags,
+  provideUserTags,
+  provideUserListTags,
+} from "./tags";
 
 export const userApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -29,6 +36,13 @@ export const userApi = Api.injectEndpoints({
       }),
       providesTags: response =>
         response ? provideUserListTags(response.data) : [],
+    }),
+    getUser: builder.query<void, { id: UserId }>({
+      query: ({ id }) => ({
+        method: "GET",
+        url: `/api/user/${id}`,
+      }),
+      providesTags: user => (user ? provideUserTags(user) : []),
     }),
     createUser: builder.mutation<CreateUserResponse, CreateUserRequest>({
       query: body => ({
@@ -78,6 +92,7 @@ export const userApi = Api.injectEndpoints({
 export const {
   useListUsersQuery,
   useListUserRecipientsQuery,
+  useGetUserQuery,
   useCreateUserMutation,
   useUpdatePasswordMutation,
   useDeactivateUserMutation,

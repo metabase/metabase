@@ -43,9 +43,8 @@ const Users = createEntity({
         dispatch,
         userApi.endpoints.createUser,
       ),
-    get: () => {
-      throw new TypeError("Users.api.get is not supported");
-    },
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(entityQuery, dispatch, userApi.endpoints.getUser),
     update: (entityQuery, dispatch) =>
       entityCompatibleQuery(
         entityQuery,
