@@ -182,7 +182,7 @@ function EmbedFrame({
     >
       <ContentContainer>
         {hasHeader && (
-          <Header className="EmbedFrame-header">
+          <Header className="EmbedFrame-header" data-testid="embedframe-header">
             {finalName && (
               <TitleAndDescriptionContainer>
                 <FixedWidthContainer
