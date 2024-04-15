@@ -6,6 +6,8 @@ import type { SchemaObjectDescription } from "yup/lib/schema";
 import type { Config, Strategy, StrategyType } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
+import { getFrequencyFromCron } from "./utils";
+
 export type UpdateTargetId = (
   newTargetId: number | null,
   isFormDirty: boolean,
@@ -96,7 +98,7 @@ export const strategyValidationSchema = Yup.object().test(
 export const Strategies: Record<StrategyType, StrategyData> = {
   schedule: {
     label: t`Schedule: at regular intervals`,
-    shortLabel: t`Schedule`,
+    shortLabel: t`Scheduled`,
     validateWith: scheduleStrategyValidationSchema,
   },
   duration: {
@@ -129,7 +131,13 @@ export const getShortStrategyLabel = (strategy?: Strategy) => {
     return null;
   }
   const type = Strategies[strategy.type];
-  return type.shortLabel ?? type.label;
+  const mainLabel = type.shortLabel ?? type.label;
+  if (strategy.type === "schedule") {
+    const frequency = getFrequencyFromCron(strategy.schedule);
+    return `${mainLabel}: ${frequency}`;
+  } else {
+    return mainLabel;
+  }
 };
 
 export const getFieldsForStrategyType = (strategyType: StrategyType) => {
