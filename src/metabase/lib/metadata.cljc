@@ -9,8 +9,6 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-;;; TODO -- deprecate all the schemas below, and just use the versions in [[lib.schema.metadata]] instead.
-
 ;;; Column vs Field?
 ;;;
 ;;; Lately I've been using `Field` to only mean a something that lives in the application database, i.e. something
