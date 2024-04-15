@@ -685,6 +685,7 @@ class ExpressionEditorTextfield extends React.Component<
           suggestions={suggestions}
           onSuggestionMouseDown={this.onSuggestionSelected}
           highlightedIndex={highlightedSuggestionIndex}
+          open={isFocused}
         >
           <EditorContainer
             isFocused={isFocused}

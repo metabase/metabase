@@ -46,6 +46,7 @@ export function ExpressionEditorSuggestions({
   stageIndex,
   suggestions = [],
   onSuggestionMouseDown,
+  open,
   highlightedIndex,
   children,
 }: {
@@ -53,6 +54,7 @@ export function ExpressionEditorSuggestions({
   stageIndex: number;
   suggestions?: (Suggestion | SuggestionFooter)[];
   onSuggestionMouseDown: (index: number) => void;
+  open: boolean;
   highlightedIndex: number;
   children: ReactNode;
 }) {
@@ -76,7 +78,7 @@ export function ExpressionEditorSuggestions({
   return (
     <Popover
       position="bottom-start"
-      opened={suggestions.length > 0}
+      opened={open && suggestions.length > 0}
       radius="xs"
       withinPortal
       zIndex={300}
