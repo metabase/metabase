@@ -88,9 +88,9 @@ export function CombineColumns({
           columnAndSeparator => ({
             ...columnAndSeparator,
             separator: defaultSeparator,
-            defaultSeparator,
           }),
         );
+        updated.defaultSeparator = defaultSeparator;
       }
 
       return updated;
