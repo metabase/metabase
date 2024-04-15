@@ -10,7 +10,7 @@ export type RegularCollectionId = number;
 
 export type CollectionId = RegularCollectionId | "root" | "personal" | "users";
 
-export type CollectionContentModel = "card" | "dataset" | "metric";
+export type CollectionContentModel = "card" | "dataset";
 
 export type CollectionAuthorityLevel = "official" | null;
 

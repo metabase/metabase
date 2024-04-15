@@ -5,8 +5,7 @@ import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/sa
 import type { DataPickerValue } from "./types";
 
 function cleanDatabaseValue({ type, databaseId }: Partial<DataPickerValue>) {
-  const isUsingVirtualTables =
-    type === "models" || type === "questions" || type === "metrics";
+  const isUsingVirtualTables = type === "models" || type === "questions";
   if (isUsingVirtualTables) {
     return SAVED_QUESTIONS_VIRTUAL_DB_ID;
   }
@@ -33,8 +32,7 @@ function cleanCollectionValue({
   databaseId,
   collectionId,
 }: Partial<DataPickerValue>) {
-  const isUsingVirtualTables =
-    type === "models" || type === "questions" || type === "metrics";
+  const isUsingVirtualTables = type === "models" || type === "questions";
   if (isUsingVirtualTables && databaseId === SAVED_QUESTIONS_VIRTUAL_DB_ID) {
     return collectionId;
   }

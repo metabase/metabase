@@ -21,7 +21,7 @@ import {
 
 const ROOT_COLLECTION_MODEL_VIRTUAL_SCHEMA_ID = getCollectionVirtualSchemaId(
   ROOT_COLLECTION,
-  { isDatasets: true, isMetrics: false },
+  { isDatasets: true },
 );
 
 describe("DataPicker — picking models", () => {
@@ -144,7 +144,6 @@ describe("DataPicker — picking models", () => {
       databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
       schemaId: getCollectionVirtualSchemaId(SAMPLE_COLLECTION, {
         isDatasets: true,
-        isMetrics: false,
       }),
       collectionId: SAMPLE_COLLECTION.id,
       tableIds: [],
@@ -206,7 +205,6 @@ describe("DataPicker — picking models", () => {
       databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
       schemaId: getCollectionVirtualSchemaId(SAMPLE_COLLECTION, {
         isDatasets: true,
-        isMetrics: false,
       }),
       collectionId: SAMPLE_MODEL.collection_id,
       tableIds: [getQuestionVirtualTableId(SAMPLE_MODEL.id)],
@@ -234,7 +232,6 @@ describe("DataPicker — picking models", () => {
       databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
       schemaId: getCollectionVirtualSchemaId(SAMPLE_COLLECTION, {
         isDatasets: true,
-        isMetrics: false,
       }),
       collectionId: SAMPLE_MODEL.collection_id,
       tableIds: [getQuestionVirtualTableId(SAMPLE_MODEL.id)],

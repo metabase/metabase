@@ -330,7 +330,6 @@ export const MetabaseApi = {
   db_schemas: GET("/api/database/:dbId/schemas"),
   db_syncable_schemas: GET("/api/database/:dbId/syncable_schemas"),
   db_schema_tables: GET("/api/database/:dbId/schema/:schemaName"),
-  db_virtual_metric_tables: GET("/api/database/:dbId/metrics/:schemaName"),
   db_virtual_dataset_tables: GET("/api/database/:dbId/datasets/:schemaName"),
   //db_tables:   GET("/api/database/:dbId/tables"),
   db_fields: GET("/api/database/:dbId/fields"),

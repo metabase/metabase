@@ -7,15 +7,15 @@ import {
 import type { DataTypeInfoItem } from "./types";
 
 export function getDataTypes({
-  hasMetrics,
   hasModels,
   hasNestedQueriesEnabled,
   hasSavedQuestions,
+  hasMetrics,
 }: {
-  hasMetrics: boolean;
   hasModels: boolean;
   hasNestedQueriesEnabled: boolean;
   hasSavedQuestions: boolean;
+  hasMetrics: boolean;
 }): DataTypeInfoItem[] {
   const dataTypes: DataTypeInfoItem[] = [];
 

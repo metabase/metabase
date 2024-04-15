@@ -71,10 +71,6 @@ function DataPickerViewContent({
     return <CardPicker {...props} targetModel="question" />;
   }
 
-  if (value.type === "metrics") {
-    return <CardPicker {...props} targetModel="metric" />;
-  }
-
   return null;
 }
 

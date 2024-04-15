@@ -34,7 +34,7 @@ export function buildCollectionTree({
   collections: Collection[];
   rootCollection: Collection | undefined;
   currentUser: User;
-  targetModel?: "model" | "question" | "metric";
+  targetModel?: "model" | "question";
 }) {
   const preparedCollections: Collection[] = [];
   const userPersonalCollections = currentUserPersonalCollections(
@@ -63,7 +63,10 @@ export function buildCollectionTree({
     }
   }
 
-  const modelFilter = getModelFilter(targetModel);
+  const modelFilter =
+    targetModel === "model"
+      ? (model: CollectionContentModel) => model === "dataset"
+      : (model: CollectionContentModel) => model === "card";
 
   const tree = _buildCollectionTree(preparedCollections, modelFilter);
 
@@ -73,15 +76,3 @@ export function buildCollectionTree({
 
   return tree;
 }
-
-const getModelFilter = (targetModel: "model" | "question" | "metric") => {
-  if (targetModel === "model") {
-    return (model: CollectionContentModel) => model === "dataset";
-  }
-
-  if (targetModel === "metric") {
-    return (model: CollectionContentModel) => model === "metric";
-  }
-
-  return (model: CollectionContentModel) => model === "card";
-};

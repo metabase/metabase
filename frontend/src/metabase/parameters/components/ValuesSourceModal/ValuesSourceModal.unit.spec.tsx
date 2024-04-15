@@ -84,9 +84,7 @@ describe("ValuesSourceModal", () => {
         screen.queryByRole("radio", { name: "From connected fields" }),
       ).not.toBeInTheDocument();
       expect(
-        screen.getByRole("radio", {
-          name: "From another model, question, or metric",
-        }),
+        screen.getByRole("radio", { name: "From another model or question" }),
       ).toBeChecked();
     });
 
@@ -100,9 +98,7 @@ describe("ValuesSourceModal", () => {
         screen.queryByRole("radio", { name: "From connected fields" }),
       ).toBeChecked();
       expect(
-        screen.getByRole("radio", {
-          name: "From another model, question, or metric",
-        }),
+        screen.getByRole("radio", { name: "From another model or question" }),
       ).toBeInTheDocument();
     });
 
@@ -282,18 +278,14 @@ describe("ValuesSourceModal", () => {
       });
 
       userEvent.click(
-        screen.getByRole("radio", {
-          name: "From another model, question, or metric",
-        }),
+        screen.getByRole("radio", { name: "From another model or question" }),
       );
       userEvent.click(
-        screen.getByRole("button", {
-          name: /Pick model, question, or a metric…/,
-        }),
+        screen.getByRole("button", { name: /Pick a model or question…/ }),
       );
 
       expect(
-        screen.getByPlaceholderText("Search for question, model, or a metric"),
+        screen.getByPlaceholderText("Search for a question or model"),
       ).toBeInTheDocument();
     });
 

@@ -14,7 +14,7 @@ import type { DataPickerSelectedItem } from "../types";
 
 import { StyledSelectList } from "./CardPicker.styled";
 
-type TargetModel = "model" | "question" | "metric";
+type TargetModel = "model" | "question";
 
 interface CardPickerViewProps {
   collectionTree: ITreeNodeItem[];
@@ -37,16 +37,7 @@ function getTableIcon({
   if (isSelected) {
     return "check";
   }
-
-  if (targetModel === "model") {
-    return "model";
-  }
-
-  if (targetModel === "metric") {
-    return "metric";
-  }
-
-  return "table2";
+  return targetModel === "model" ? "model" : "table2";
 }
 
 function TableSelectListItem({
@@ -56,7 +47,7 @@ function TableSelectListItem({
   onSelect,
 }: {
   table: Table;
-  targetModel: TargetModel;
+  targetModel: "model" | "question";
   isSelected: boolean;
   onSelect: (id: Table["id"]) => void;
 }) {
