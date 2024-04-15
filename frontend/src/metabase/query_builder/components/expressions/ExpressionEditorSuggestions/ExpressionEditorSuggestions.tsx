@@ -109,14 +109,14 @@ export function ExpressionEditorSuggestions({
               onSuggestionMouseDown={onSuggestionMouseDown}
             />
           </ExpressionList>
+          {footers.map(suggestion => (
+            <Footer
+              key={suggestion.index}
+              suggestion={suggestion}
+              highlightedIndex={highlightedIndex}
+            />
+          ))}
         </DelayGroup>
-        {footers.map(suggestion => (
-          <Footer
-            key={suggestion.index}
-            suggestion={suggestion}
-            highlightedIndex={highlightedIndex}
-          />
-        ))}
       </Popover.Dropdown>
     </Popover>
   );

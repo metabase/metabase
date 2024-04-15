@@ -11,8 +11,6 @@ import { Icon } from "metabase/ui";
 
 export const ExpressionList = styled.ul`
   min-width: 250px;
-  max-height: 300px;
-  overflow-y: auto;
 `;
 
 export const SuggestionMatch = styled.span`
@@ -47,6 +45,9 @@ export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
   height: 2rem;
   font-weight: bold;
   color: ${color("text-medium")};
+
+  position: sticky;
+  bottom: 0;
 
   display: flex;
   align-items: center;
