@@ -75,8 +75,9 @@ module.exports = env => {
           ],
         },
         {
-          test: /\.svg$/i,
-          use: "null-loader",
+          test: /\.svg$/,
+          type: "asset/resource",
+          resourceQuery: { not: [/component|source/] },
         },
       ],
     },
