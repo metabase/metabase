@@ -1,6 +1,10 @@
-import { pick } from "underscore";
+import { memoize, pick } from "underscore";
 
-import { Cron, weekdays } from "metabase/components/Schedule/constants";
+import {
+  Cron,
+  optionNameTranslations,
+  weekdays,
+} from "metabase/components/Schedule/constants";
 import type { SelectProps } from "metabase/ui";
 import type {
   ScheduleDayType,
@@ -68,7 +72,7 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
 };
 
 /** Returns null if we can't convert the cron expression to a ScheduleSettings object */
-export const cronToScheduleSettings = (
+const cronToScheduleSettings_unmemoized = (
   cron: string | null | undefined,
 ): ScheduleSettings | null => {
   if (!cron) {
@@ -130,6 +134,9 @@ export const cronToScheduleSettings = (
     schedule_frame,
   };
 };
+export const cronToScheduleSettings = memoize(
+  cronToScheduleSettings_unmemoized,
+);
 
 const defaultSchedule: ScheduleSettings = {
   schedule_type: "hourly",
@@ -140,11 +147,23 @@ export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
 export const hourTo24HourFormat = (hour: number, amPm: number) =>
   hour + amPm * 12;
 
-export const removeNilValues = (obj: any) =>
-  pick(obj, val => val !== undefined && val !== null);
+export const removeNilValues = (obj: any) => pick(obj, val => !isNil(val));
+
+type Nil = null | undefined;
+export const isNil = (value: any): value is Nil =>
+  value === undefined || value === null;
 
 export const getLongestSelectLabel = (data: SelectProps["data"]) =>
   data.reduce((acc, option) => {
     const label = typeof option === "string" ? option : option.label || "";
     return label.length > acc.length ? label : acc;
   }, "");
+
+export const getFrequencyFromCron = (cron: string) => {
+  const scheduleType = cronToScheduleSettings(cron)?.schedule_type;
+  if (isNil(scheduleType)) {
+    return "";
+  } else {
+    return optionNameTranslations[scheduleType];
+  }
+};
