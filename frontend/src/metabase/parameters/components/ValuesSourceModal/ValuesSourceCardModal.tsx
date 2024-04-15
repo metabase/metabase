@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { QuestionPickerItem } from "metabase/common/components/QuestionPicker";
+import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
 import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
 import { useQuestionQuery } from "metabase/common/hooks";
 import type Question from "metabase-lib/v1/Question";
@@ -28,7 +28,7 @@ export const ValuesSourceCardModal = ({
   const initialValue = getInitialValue(question);
 
   const handleSubmit = useCallback(
-    newQuestion => {
+    (newQuestion: QuestionPickerValueItem) => {
       onChangeSourceConfig({ card_id: newQuestion.id });
       onSubmit();
     },
@@ -47,7 +47,7 @@ export const ValuesSourceCardModal = ({
 
 const getInitialValue = (
   question?: Question,
-): Pick<QuestionPickerItem, "id" | "model"> | undefined => {
+): Pick<QuestionPickerValueItem, "id" | "model"> | undefined => {
   if (!question) {
     return undefined;
   }
