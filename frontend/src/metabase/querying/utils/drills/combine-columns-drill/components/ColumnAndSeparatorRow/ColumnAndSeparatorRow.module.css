@@ -11,12 +11,6 @@
   border-color: transparent !important;
 }
 
-.wrapper {
-  &:not(:only-child) {
-    margin-top: 0;
-  }
-}
-
 .whitespacePlaceholder {
   pointer-events: none;
   user-select: none;

@@ -1,0 +1,5 @@
+.wrapper {
+  &:not(:only-child) {
+    margin-top: 0;
+  }
+}

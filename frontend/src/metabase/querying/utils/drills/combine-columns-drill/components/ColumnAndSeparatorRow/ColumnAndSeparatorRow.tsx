@@ -6,6 +6,7 @@ import type * as Lib from "metabase-lib";
 
 import type { ColumnAndSeparator, ColumnOption } from "../../types";
 import { formatSeparator, fromSelectValue, toSelectValue } from "../../utils";
+import { ColumnPicker } from "../ColumnPicker";
 
 import S from "./ColumnAndSeparatorRow.module.css";
 
@@ -69,11 +70,20 @@ export const ColumnAndSeparatorRow = ({
         </Box>
       )}
 
-      <Select
+      <Box className={S.column}>
+        <ColumnPicker
+          label={showLabels ? t`Column` : undefined}
+          options={options}
+          value={toSelectValue(options, column)}
+          onChange={value => {
+            const column = fromSelectValue(options, value);
+            onChange(index, { column });
+          }}
+        />
+      </Box>
+
+      {/* <Select
         className={S.column}
-        classNames={{
-          wrapper: S.wrapper,
-        }}
         data={options}
         label={showLabels ? t`Column` : undefined}
         placeholder={t`Column`}
@@ -82,7 +92,7 @@ export const ColumnAndSeparatorRow = ({
           const column = fromSelectValue(options, value);
           onChange(index, { column });
         }}
-      />
+      /> */}
 
       {showRemove && (
         <Button
