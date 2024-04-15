@@ -1,5 +1,5 @@
 import { useFormikContext } from "formik";
-import type { ReactNode } from "react";
+import type { DispatchWithoutAction, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -15,6 +15,7 @@ import {
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
+import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
@@ -120,6 +121,8 @@ const StrategyFormBody = ({
 
   const invalidateFormContainerRef = useRef<HTMLDivElement>(null);
 
+  const forceUpdate = useForceUpdate();
+
   return (
     <>
       <div
@@ -197,18 +200,17 @@ const StrategyFormBody = ({
             targetId={targetId}
             shouldAllowInvalidation={shouldAllowInvalidation}
             invalidateFormContainerRef={invalidateFormContainerRef}
+            forceFormUpdate={forceUpdate}
           />
         </Form>
       </div>
       {
         // The 'Invalidate cache now' button is inserted into the FormButtons component
         // via createPortal, to avoid nesting a form inside a form
-        shouldAllowInvalidation && (
-          <PLUGIN_CACHING.InvalidateNowButton
-            targetId={targetId}
-            containerRef={invalidateFormContainerRef}
-          />
-        )
+        <PLUGIN_CACHING.InvalidateNowButton
+          targetId={targetId}
+          containerRef={invalidateFormContainerRef}
+        />
       }
     </>
   );
@@ -218,10 +220,12 @@ export const FormButtons = ({
   targetId,
   shouldAllowInvalidation,
   invalidateFormContainerRef,
+  forceFormUpdate,
 }: {
   targetId: number | null;
   shouldAllowInvalidation: boolean;
   invalidateFormContainerRef: React.RefObject<HTMLDivElement>;
+  forceFormUpdate: DispatchWithoutAction;
 }) => {
   const { dirty } = useFormikContext<Strategy>();
   const { status } = useFormContext();
@@ -230,6 +234,13 @@ export const FormButtons = ({
 
   const isFormPending = status === "pending";
   const [wasFormRecentlyPending] = useRecentlyTrue(isFormPending, 500);
+
+  useEffect(() => {
+    // Force a form update after the timeout to ensure that the form is re-rendered
+    if (!wasFormRecentlyPending) {
+      forceFormUpdate();
+    }
+  }, [wasFormRecentlyPending, forceFormUpdate]);
 
   const isSavingPossible = dirty || isFormPending || wasFormRecentlyPending;
 
