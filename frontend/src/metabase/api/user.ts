@@ -1,5 +1,4 @@
 import type {
-  CreateUserResponse,
   CreateUserRequest,
   ListUsersRequest,
   ListUsersResponse,
@@ -44,7 +43,7 @@ export const userApi = Api.injectEndpoints({
       }),
       providesTags: user => (user ? provideUserTags(user) : []),
     }),
-    createUser: builder.mutation<CreateUserResponse, CreateUserRequest>({
+    createUser: builder.mutation<User, CreateUserRequest>({
       query: body => ({
         method: "POST",
         url: "/api/user",
@@ -69,7 +68,7 @@ export const userApi = Api.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
-    reactivateUser: builder.mutation<CreateUserResponse, UserId>({
+    reactivateUser: builder.mutation<User, UserId>({
       query: id => ({
         method: "PUT",
         url: `/api/user/${id}/reactivate`,

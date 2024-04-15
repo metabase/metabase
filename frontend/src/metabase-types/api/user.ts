@@ -80,36 +80,13 @@ export type UserLoginHistoryItem = {
 
 export type UserLoginHistory = UserLoginHistoryItem[];
 
-export type CreateUserRequest = Pick<
-  User,
-  | "email"
-  | "first_name"
-  | "last_name"
-  | "user_group_memberships"
-  | "login_attributes"
->;
-
-export type CreateUserResponse =
-  | Pick<
-      User,
-      | "common_name"
-      | "date_joined"
-      | "email"
-      | "first_name"
-      | "id"
-      | "is_active"
-      | "is_superuser"
-      | "is_qbnewb"
-      | "last_name"
-      | "last_login"
-      | "locale"
-      | "login_attributes"
-      | "sso_source"
-      | "user_group_memberships"
-    >
-  | {
-      updated_at: string;
-    };
+export type CreateUserRequest = {
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  user_group_memberships?: { id: number; is_group_manager: boolean }[];
+  login_attributes?: Record<UserAttribute, UserAttribute>;
+};
 
 export type UpdatePasswordRequest = {
   id: UserId;
