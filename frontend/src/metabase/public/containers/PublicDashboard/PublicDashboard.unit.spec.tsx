@@ -33,13 +33,13 @@ describe("PublicDashboard", () => {
     await setup({ hash: "titled=false", numberOfTabs: 1 });
 
     expect(screen.queryByText("Tab 1")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("embedframe-header")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("embed-frame-header")).not.toBeInTheDocument();
   });
 
   it("should display the header if title is enabled and there is only one tab", async () => {
     await setup({ numberOfTabs: 1, hash: "titled=true" });
 
-    expect(screen.getByTestId("embedframe-header")).toBeInTheDocument();
+    expect(screen.getByTestId("embed-frame-header")).toBeInTheDocument();
     expect(screen.queryByText("Tab 1")).not.toBeInTheDocument();
   });
 });
