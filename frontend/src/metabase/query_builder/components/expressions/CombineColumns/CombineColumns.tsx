@@ -111,13 +111,17 @@ export function CombineColumns({
   };
 
   const handleRowAdd = () => {
-    setState(state => ({
-      ...state,
-      columnsAndSeparators: [
-        ...state.columnsAndSeparators,
-        { column: null, separator: state.defaultSeparator },
-      ],
-    }));
+    setState(state => {
+      const lastSeparator =
+        state.columnsAndSeparators.at(-1)?.separator ?? state.defaultSeparator;
+      return {
+        ...state,
+        columnsAndSeparators: [
+          ...state.columnsAndSeparators,
+          { column: null, separator: lastSeparator },
+        ],
+      };
+    });
   };
 
   const handleEditSeparators = () => {
