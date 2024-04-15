@@ -632,7 +632,7 @@ class ExpressionEditorTextfield extends React.Component<
   }
 
   commands: ICommand[] = [
-    // Note: Enter is handled manually (see componentDidUpdate)
+    // Note: Enter is handled manually (see componentDidMount)
     {
       name: "arrowDown",
       bindKey: { win: "Down", mac: "Down" },
