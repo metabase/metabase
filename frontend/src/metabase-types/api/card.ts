@@ -149,7 +149,7 @@ export type VisualizationSettings = {
   // Y-axis
   "graph.y_axis.title_text"?: string;
   "graph.y_axis.scale"?: YAxisScale;
-  "graph.y_axis.axis_enabled"?: true;
+  "graph.y_axis.axis_enabled"?: boolean;
 
   "graph.y_axis.min"?: number;
   "graph.y_axis.max"?: number;
