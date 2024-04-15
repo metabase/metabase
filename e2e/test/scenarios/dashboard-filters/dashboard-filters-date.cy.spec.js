@@ -143,10 +143,13 @@ describe("scenarios > dashboard > filters > date", () => {
 
   it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.icon("pencil").click();
+    cy.icon("filter").click();
 
-    editDashboard();
-
-    setFilter("Time", "All Options");
+    popover().within(() => {
+      cy.findByText("Time").click();
+      cy.findByText("All Options").click();
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No default").click();
@@ -178,9 +181,14 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     visitDashboard(ORDERS_DASHBOARD_ID);
-    editDashboard();
+    // we can't use helpers as they use english words
+    cy.icon("pencil").click();
+    cy.icon("filter").click();
 
-    setFilter("Heure", "Toutes les options");
+    popover().within(() => {
+      cy.findByText("Heure").click(); // "Time"
+      cy.findByText("Toutes les options").click(); // "All Options"
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sélectionner...").click(); // "Select…"

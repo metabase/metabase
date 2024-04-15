@@ -143,8 +143,6 @@ describe("scenarios > question > download", () => {
 
       assertOrdersExport(18760);
 
-      cy.icon("pencil").click();
-
       editDashboard();
 
       setFilter("ID");
