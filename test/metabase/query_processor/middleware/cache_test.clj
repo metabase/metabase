@@ -248,11 +248,10 @@
       (mt/wait-for-result save-chan)
       (is (= :cached (run-query))))))
 
-#_
 (deftest min-ttl-test
   (testing "if the cache takes less than the min TTL to execute, it shouldn't be cached"
     (with-mock-cache [save-chan]
-      (mt/with-temporary-setting-values [query-caching-min-ttl 60]
+      (mt/with-temporary-setting-values [query-caching-min-ttl 1000]
         (run-query)
         (is (= :metabase.test.util.async/timed-out
                (mt/wait-for-result save-chan)))
@@ -262,11 +261,10 @@
   (testing "...but if it takes *longer* than the min TTL, it should be cached"
     (with-mock-cache [save-chan]
       (mt/with-temporary-setting-values [query-caching-min-ttl 0.1]
-        (binding [*query-execution-delay-ms* 120]
-          (run-query)
-          (mt/wait-for-result save-chan)
-          (is (= :cached
-                 (run-query))))))))
+        (run-query)
+        (mt/wait-for-result save-chan)
+        (is (= :cached
+               (run-query)))))))
 
 (deftest invalid-cache-entry-test
   (testing "We should handle invalid cache entries gracefully"

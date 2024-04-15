@@ -22,20 +22,22 @@
      "card"      [Card
                   :id :name :collection_id :description :display
                   :dataset_query :type :archived
-                  :collection.authority_level]
+                  :collection.authority_level [:collection.name :collection_name]]
      "dashboard" [Dashboard
                   :id :name :collection_id :description
                   :archived
-                  :collection.authority_level]
+                  :collection.authority_level [:collection.name :collection_name]]
      "table"     [Table
                   :id :name :db_id
                   :display_name :initial_sync_status
-                  :visibility_type])
+                  :visibility_type [:metabase_database.name :database_name]])
    (let [model-symb (symbol (str/capitalize model))
          self-qualify #(mdb.query/qualify model-symb %)]
      (cond-> {:where [:in (self-qualify :id) ids]}
        (not= model "table")
-       (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})))))
+       (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})
+       (= model "table")
+       (merge {:left-join [:metabase_database [:= :metabase_database.id (self-qualify :db_id)]]})))))
 
 (defn- select-items! [model ids]
   (when (seq ids)
@@ -187,8 +189,8 @@
 (defn- order-items
   [items]
   (when (seq items)
-      (let [groups (group-by :model items)]
-        (mapcat #(get groups %) model-precedence))))
+    (let [groups (group-by :model items)]
+      (mapcat #(get groups %) model-precedence))))
 
 (api/defendpoint GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it

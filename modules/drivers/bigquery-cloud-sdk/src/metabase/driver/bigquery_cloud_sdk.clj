@@ -21,10 +21,9 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -93,7 +92,7 @@
   ;; check whether we can connect by seeing whether listing datasets succeeds
   (let [[success? datasets] (try [true (list-datasets details)]
                                  (catch Exception e
-                                   (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
+                                   (log/error e "Exception caught in :bigquery-cloud-sdk can-connect?")
                                    [false nil]))]
     (cond
       (not success?)
@@ -109,11 +108,11 @@
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
 
-(mu/defn ^:private get-table :- (ms/InstanceOfClass Table)
+(mu/defn ^:private get-table :- (lib.schema.common/instance-of-class Table)
   (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
    (get-table (database-details->client (:details database)) project-id dataset-id table-id))
 
-  (^Table [^BigQuery client :- (ms/InstanceOfClass BigQuery)
+  (^Table [^BigQuery client :- (lib.schema.common/instance-of-class BigQuery)
            project-id       :- [:maybe ::lib.schema.common/non-blank-string]
            dataset-id       :- ::lib.schema.common/non-blank-string
            table-id         :- ::lib.schema.common/non-blank-string]
@@ -179,7 +178,7 @@
       :type/*)))
 
 (mu/defn ^:private table-schema->metabase-field-info
-  [^Schema schema :- (ms/InstanceOfClass Schema)]
+  [^Schema schema :- (lib.schema.common/instance-of-class Schema)]
   (for [[idx ^Field field] (m/indexed (.getFields schema))]
     (let [type-name (.. field getType name)
           f-mode    (.getMode field)]
@@ -242,9 +241,8 @@
                        method      (get-method bigquery.qp/parse-result-of-type column-type)]
                    (when (= method default-parser)
                      (let [column-name (.getName field)]
-                       (log/warn (trs "Warning: missing type mapping for parsing BigQuery results column {0} of type {1}."
-                                      column-name
-                                      column-type))))
+                       (log/warnf "Warning: missing type mapping for parsing BigQuery results column %s of type %s."
+                                  column-name column-type)))
                    (partial method column-type column-mode bigquery.common/*bigquery-timezone-id*))))
           (.getFields schema))))
 
@@ -344,7 +342,7 @@
       (when cancel-chan
         (future                       ; this needs to run in a separate thread, because the <!! operation blocks forever
           (when (a/<!! cancel-chan)
-            (log/debugf "Received a message on the cancel channel; attempting to stop the BigQuery query execution")
+            (log/debug "Received a message on the cancel channel; attempting to stop the BigQuery query execution")
             (reset! cancel-requested? true) ; signal the page iteration fn to stop
             (if-not (or (future-cancelled? res-fut) (future-done? res-fut))
               ;; somehow, even the FIRST page hasn't come back yet (i.e. the .query call above), so cancel the future to
@@ -457,15 +455,16 @@
 ;;; |                                           Other Driver Method Impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:percentile-aggregations true
+(doseq [[feature supported?] {:convert-timezone        true
+                              :datetime-diff           true
                               :expressions             true
                               :foreign-keys            true
-                              :datetime-diff           true
                               :now                     true
-                              :convert-timezone        true
-                              ;; BigQuery uses timezone operators and arguments on calls like extract() and timezone_trunc() rather than literally
-                              ;; using SET TIMEZONE, but we need to flag it as supporting set-timezone anyway so that reporting timezones are
-                              ;; returned and used, and tests expect the converted values.
+                              :percentile-aggregations true
+                              ;; BigQuery uses timezone operators and arguments on calls like extract() and
+                              ;; timezone_trunc() rather than literally using SET TIMEZONE, but we need to flag it as
+                              ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
+                              ;; tests expect the converted values.
                               :set-timezone            true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
@@ -492,8 +491,8 @@
   Returns the passed `database` parameter with the aformentioned changes having been made and persisted."
   [database dataset-id]
   (let [db-id (u/the-id database)]
-    (log/infof (trs "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
-                    (pr-str db-id)))
+    (log/infof "DB %s had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
+               (pr-str db-id))
     (try
       (t2/query-one {:update (t2/table-name :model/Table)
                      :set    {:schema dataset-id}

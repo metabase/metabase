@@ -18,22 +18,6 @@ export const ActivityApi = {
   ),
 };
 
-export const BookmarkApi = {
-  card: {
-    create: POST("/api/bookmark/card/:id"),
-    delete: DELETE("/api/bookmark/card/:id"),
-  },
-  collection: {
-    create: POST("/api/bookmark/collection/:id"),
-    delete: DELETE("/api/bookmark/collection/:id"),
-  },
-  dashboard: {
-    create: POST("/api/bookmark/dashboard/:id"),
-    delete: DELETE("/api/bookmark/dashboard/:id"),
-  },
-  reorder: PUT("/api/bookmark/ordering"),
-};
-
 // only available with token loaded
 export const GTAPApi = {
   list: GET("/api/mt/gtap"),
@@ -220,13 +204,8 @@ export const DashboardApi = {
   ),
 };
 
-export const SearchApi = {
-  list: GET("/api/search"),
-};
-
 export const CollectionsApi = {
   list: GET("/api/collection"),
-  listItems: GET("/api/collection/:collectionId/items"),
   create: POST("/api/collection"),
   get: GET("/api/collection/:id"),
   // Temporary route for getting things not in a collection
@@ -388,15 +367,6 @@ export const PulseApi = {
   unsubscribe: DELETE("/api/pulse/:id/subscription"),
 };
 
-export const AlertApi = {
-  list: GET("/api/alert"),
-  list_for_question: GET("/api/alert/question/:questionId"),
-  get: GET("/api/alert/:id"),
-  create: POST("/api/alert"),
-  update: PUT("/api/alert/:id"),
-  unsubscribe: DELETE("/api/alert/:id/subscription"),
-};
-
 export const SegmentApi = {
   list: GET("/api/segment"),
   create: POST("/api/segment"),
@@ -472,11 +442,8 @@ export const SetupApi = {
 };
 
 export const UserApi = {
-  create: POST("/api/user"),
   list: GET("/api/user/recipients"),
   current: GET("/api/user/current"),
-  // get:                         GET("/api/user/:userId"),
-  update: PUT("/api/user/:id"),
   update_password: PUT("/api/user/:id/password"),
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
   delete: DELETE("/api/user/:userId"),

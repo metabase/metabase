@@ -10,7 +10,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
@@ -29,7 +28,7 @@
   [_ value]
   ;; it's better return a slightly broken SQL query with a probably incorrect string representation of the value than
   ;; to have the entire QP run fail because of an unknown type.
-  (log/warn (trs "Don''t know how to unprepare values of class {0}" (.getName (class value))))
+  (log/warnf "Don't know how to unprepare values of class %s" (.getName (class value)))
   (str value))
 
 (defmethod unprepare-value [:sql nil]

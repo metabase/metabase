@@ -10,6 +10,7 @@ import { updateLdapSettings } from "metabase/admin/settings/settings";
 import type { SettingElement } from "metabase/admin/settings/types";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { FormSection } from "metabase/containers/FormikForm";
+import CS from "metabase/css/core/index.css";
 import {
   Form,
   FormErrorMessage,
@@ -21,7 +22,7 @@ import {
 } from "metabase/forms";
 import { PLUGIN_LDAP_FORM_FIELDS } from "metabase/plugins";
 import { Group, Radio, Stack } from "metabase/ui";
-import type { SettingValue } from "metabase-types/api";
+import type { SettingKey, Settings } from "metabase-types/api";
 
 const testParentheses: TestConfig<string | null | undefined> = {
   name: "test-parentheses",
@@ -42,7 +43,11 @@ const LDAP_SCHEMA = Yup.object({
   "ldap-group-membership-filter": Yup.string().nullable().test(testParentheses),
 });
 
-export type SettingValues = { [key: string]: SettingValue };
+export type SettingValues = Partial<Settings>;
+
+type LdapFormValues = Omit<SettingValues, "ldap-port"> & {
+  "ldap-port"?: string;
+};
 
 type LdapFormSettingElement = Omit<SettingElement, "key"> & {
   key: string; // ensuring key is required
@@ -113,7 +118,8 @@ export const SettingsLdapFormView = ({
       "ldap-sync-admin-group",
     ],
     [],
-  );
+  ) as SettingKey[];
+
   const attributeValues = useMemo(() => {
     return getAttributeValues(
       ldapAttributes,
@@ -124,10 +130,10 @@ export const SettingsLdapFormView = ({
   }, [settings, settingValues, ldapAttributes, defaultableAttrs]);
 
   const handleSubmit = useCallback(
-    values => {
+    (values: LdapFormValues) => {
       return onSubmit({
         ...values,
-        "ldap-port": values["ldap-port"]?.trim(),
+        "ldap-port": parseInt(values["ldap-port"]?.trim() || ""),
         "ldap-enabled": true,
       });
     },
@@ -144,7 +150,7 @@ export const SettingsLdapFormView = ({
       {({ dirty }) => (
         <Form m="0 1rem" maw="32.5rem">
           <Breadcrumbs
-            className="mb3"
+            className={CS.mb3}
             crumbs={[
               [t`Authentication`, "/admin/settings/authentication"],
               [t`LDAP`],
@@ -219,11 +225,11 @@ export const SettingsLdapFormView = ({
 };
 
 const getAttributeValues = (
-  ldapAttributes: string[],
+  ldapAttributes: SettingKey[],
   settings: Record<string, LdapFormSettingElement>,
   values: SettingValues,
   defaultableAttrs: Set<string>,
-) => {
+): LdapFormValues => {
   return Object.fromEntries(
     ldapAttributes.map(key => [
       key,

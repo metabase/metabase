@@ -59,6 +59,10 @@
   line-height: 1.5em;
 }
 
+.textUnspaced {
+  line-height: normal;
+}
+
 .textSmall {
   font-size: 0.875em;
 }

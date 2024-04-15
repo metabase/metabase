@@ -62,7 +62,7 @@ function FormFieldView({
                 standAlone={standAloneLabel}
               >
                 {title}
-                {error && <span className="text-error">: {error}</span>}
+                {error && <span className={CS.textError}>: {error}</span>}
               </Label>
             )}
             {info && (
@@ -77,13 +77,16 @@ function FormFieldView({
             )}
           </FieldRow>
           {description && descriptionPosition === "top" && (
-            <FormFieldDescription className="mb1" description={description} />
+            <FormFieldDescription
+              className={CS.mb1}
+              description={description}
+            />
           )}
         </FieldContainer>
       )}
       {align !== "left" && <InputContainer>{children}</InputContainer>}
       {description && descriptionPosition === "bottom" && (
-        <FormFieldDescription className="mt1" description={description} />
+        <FormFieldDescription className={CS.mt1} description={description} />
       )}
     </div>
   );

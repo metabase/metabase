@@ -71,7 +71,7 @@ export default class Revision extends Component {
             <UserAvatar user={revision.user} bg={userColor} />
           </div>
           <div
-            className={cx(CS.flexFull, CS.my1, "border-left")}
+            className={cx(CS.flexFull, CS.my1, CS.borderLeft)}
             style={{ borderWidth: 2 }}
           />
         </div>

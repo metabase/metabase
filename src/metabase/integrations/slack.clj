@@ -116,7 +116,8 @@
       (when (slack-token-valid?) (messages/send-slack-token-error-emails!))
       (slack-token-valid?! false))
     (when invalid-token?
-      (log/warn (u/pprint-to-str 'red (trs "🔒 Your Slack authorization token is invalid or has been revoked. Please update your integration in Admin Settings -> Slack."))))
+      (log/warn (u/colorize :red (str "🔒 Your Slack authorization token is invalid or has been revoked. Please"
+                                      " update your integration in Admin Settings -> Slack."))))
     (throw (ex-info message error))))
 
 (defn- handle-response [{:keys [status body]}]
@@ -133,7 +134,7 @@
                   (slack-token))]
     (when token
       (let [url     (str "https://slack.com/api/" (name endpoint))
-            _       (log/trace "Slack API request: %s %s" (pr-str url) (pr-str request))
+            _       (log/tracef "Slack API request: %s %s" (pr-str url) (pr-str request))
             request (m/deep-merge
                      {:headers        {:authorization (str "Bearer\n" token)}
                       :as             :stream
@@ -338,7 +339,7 @@
                            (POST "files.upload" request))
                        (throw e))))]
     (u/prog1 (get-in response [:file :url_private])
-      (log/debug (trs "Uploaded image") <>))))
+      (log/debug "Uploaded image" <>))))
 
 (mu/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. `attachments` should be serialized

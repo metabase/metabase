@@ -53,8 +53,12 @@
 
 (defn setup-db!
   "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending
-  database migrations. If DB is already set up, this function will no-op. Thread-safe."
-  []
+  database migrations. If DB is already set up, this function will no-op. Thread-safe.
+  Callers must explicitly decide whether or not to create sample content during migrations with the
+  `create-sample-content?` keyword argument. This should usually be `true` but is `false` for load-from-h2,
+  serialization imports, and in some tests because the sample content makes tests slow enough to cause timeouts."
+  [& {:keys [create-sample-content?]}]
+  {:pre [(some? create-sample-content?)]}
   (when-not (db-is-set-up?)
     ;; It doesn't really matter too much what we lock on, as long as the lock is per-application-DB e.g. so we can run
     ;; setup for DIFFERENT application DBs at the same time, but CAN NOT run it for the SAME application DB. We can just
@@ -65,7 +69,7 @@
         (let [db-type       (db-type)
               data-source   (data-source)
               auto-migrate? (config/config-bool :mb-db-automigrate)]
-          (mdb.setup/setup-db! db-type data-source auto-migrate?))
+          (mdb.setup/setup-db! db-type data-source auto-migrate? create-sample-content?))
         (reset! (:status mdb.connection/*application-db*) ::setup-finished))))
   :done)
 
@@ -79,7 +83,6 @@
                       (apply f args)))]
     (fn [& args]
       (apply f* (unique-identifier) args))))
-
 
 (defn increment-app-db-unique-indentifier!
   "Increment the [[unique-identifier]] for the Metabase application DB. This effectively flushes all caches using it as

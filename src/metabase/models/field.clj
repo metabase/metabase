@@ -18,7 +18,7 @@
     :as premium-features
     :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -77,7 +77,7 @@
              ancestor-types)
           k
           (do
-            (log/warn (trs "Invalid Field {0} {1}: falling back to {2}" column-name k fallback-type))
+            (log/warnf "Invalid Field %s %s: falling back to %s" column-name k fallback-type)
             fallback-type))))))
 
 (def ^:private transform-field-base-type

@@ -226,13 +226,15 @@ describeEE("formatting > sandboxes", () => {
 
       popover().within(() => {
         // Collapse "Order/s/" in order to bring "User" into view (trick to get around virtualization - credits: @flamber)
-        cy.get(".List-section-header")
+        cy.get("[data-element-id=list-section-header]")
           .contains(/Orders?/)
           .click();
 
-        cy.get(".List-section-header").contains("User").click();
+        cy.get("[data-element-id=list-section-header]")
+          .contains("User")
+          .click();
 
-        cy.get(".List-item").contains("ID").click();
+        cy.get("[data-element-id=list-item]").contains("ID").click();
       });
 
       visualize();
@@ -785,7 +787,7 @@ describeEE("formatting > sandboxes", () => {
         expect(response.statusCode).to.eq(400);
         expect(response.body.message).to.eq(ERROR_MESSAGE);
       });
-      cy.get(".Modal").scrollTo("bottom");
+      modal().scrollTo("bottom");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(ERROR_MESSAGE);
     });

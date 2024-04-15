@@ -1,6 +1,7 @@
 # Embedding SDK
 
 ## Build
+
 ```
 $ yarn build-embedding-sdk
 ```
@@ -12,24 +13,19 @@ Build results are located at `<root>/resources/embedding-sdk`
 Run dev build in watch mode:
 
 ```
-$ yarn build:cljs
+$ yarn build-release:cljs
 ```
-```
-$ yarn embedding-sdk:generate-package
-```
+
 ```
 $ yarn build-embedding-sdk:watch
 ```
 
-Then in `<root>/resources/embedding-sdk` run
-```
-$ yarn link
-```
-
-In the host app:
+Then target `<root>/resources/embedding-sdk` folder as a file dependency in a host application:
 
 ```
-$ yarn link @metabase/embedding-sdk-react
+"dependencies": {
+    "@metabase/embedding-sdk-react": "file:../../metabase/resources/embedding-sdk"
+}
 ```
 
 ## Release

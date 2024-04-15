@@ -67,21 +67,21 @@ describe("issue 32231", () => {
     cy.wait("@seriesQuery");
 
     cy.findByTestId("add-series-modal").within(() => {
-      cy.get(".LineAreaBarChart").should("exist");
+      cy.get("[data-element-id=line-area-bar-chart]").should("exist");
       cy.findByText(issue32231Error).should("not.exist");
       cy.findByText(multipleSeriesError).should("not.exist");
       cy.findByText(defaultError).should("not.exist");
 
       cy.findByLabelText(incompleteQuestion.name).click();
 
-      cy.get(".LineAreaBarChart").should("not.exist");
+      cy.get("[data-element-id=line-area-bar-chart]").should("not.exist");
       cy.findByText(issue32231Error).should("not.exist");
       cy.findByText(multipleSeriesError).should("exist");
       cy.findByText(defaultError).should("not.exist");
 
       cy.findByLabelText(incompleteQuestion.name).click();
 
-      cy.get(".LineAreaBarChart").should("exist");
+      cy.get("[data-element-id=line-area-bar-chart]").should("exist");
       cy.findByText(issue32231Error).should("not.exist");
       cy.findByText(multipleSeriesError).should("not.exist");
       cy.findByText(defaultError).should("not.exist");
@@ -115,7 +115,7 @@ describe("issue 32231", () => {
     cy.wait("@seriesQuery");
 
     cy.findByTestId("add-series-modal").within(() => {
-      cy.get(".LineAreaBarChart").should("not.exist");
+      cy.get("[data-element-id=line-area-bar-chart]").should("not.exist");
       cy.findByText(issue32231Error).should("not.exist");
       cy.findByText(multipleSeriesError).should("not.exist");
       cy.findByText(defaultError).should("exist");

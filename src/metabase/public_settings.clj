@@ -170,7 +170,7 @@
                 (try
                   (some-> (setting/get-value-of-type :string :site-url) normalize-site-url)
                   (catch clojure.lang.ExceptionInfo e
-                    (log/error e (trs "site-url is invalid; returning nil for now. Will be reset on next request.")))))
+                    (log/error e "site-url is invalid; returning nil for now. Will be reset on next request."))))
   :setter     (fn [new-value]
                 (let [new-value (some-> new-value normalize-site-url)
                       https?    (some-> new-value (str/starts-with?  "https:"))]
@@ -846,3 +846,16 @@
                   (if-not (pos-int? value)
                     20
                     value))))
+
+;; This is used by the embedding homepage
+(defsetting example-dashboard-id
+  (deferred-tru "The ID of the example dashboard.")
+  :visibility :authenticated
+  :export?    false
+  :type       :integer
+  :setter     :none
+  :getter     (fn []
+                (let [id (setting/get-value-of-type :integer :example-dashboard-id)]
+                  (when (and id (t2/exists? :model/Dashboard :id id :archived false))
+                    id)))
+  :doc        false)

@@ -208,7 +208,7 @@
     x
     (u/prog1 (substitute param->value (params.parse/parse x false))
       (when-not (= x <>)
-        (log/debug (tru "Substituted {0} -> {1}" (pr-str x) (pr-str <>)))))))
+        (log/debugf "Substituted %s -> %s" (pr-str x) (pr-str <>))))))
 
 (defn substitute-native-parameters
   "Implementation of [[metabase.driver/substitute-native-parameters]] for MongoDB."

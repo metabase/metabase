@@ -57,7 +57,7 @@ const PeopleListRow = ({
             user={user}
           />
         </span>{" "}
-        <span className={cx("ml2", CS.textBold)}>{getName(user)}</span>
+        <span className={cx(CS.ml2, CS.textBold)}>{getName(user)}</span>
       </td>
       <td>
         {user.google_auth ? (

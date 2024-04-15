@@ -5,7 +5,7 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
-import type { SearchModelType, SearchResultId } from "metabase-types/api";
+import type { SearchModel, SearchResultId } from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
@@ -53,7 +53,7 @@ export interface EntityPickerModalProps<Model extends string, Item> {
 
 export function EntityPickerModal<
   Id extends SearchResultId,
-  Model extends SearchModelType,
+  Model extends SearchModel,
   Item extends TypeWithModel<Id, Model>,
 >({
   title = t`Choose an item`,
@@ -103,6 +103,8 @@ export function EntityPickerModal<
       trapFocus={trapFocus}
       zIndex={400} // needed to put this above the BulkActionsToast
       closeOnEscape={false} // we're doing this manually in useWindowEvent
+      xOffset="10vw"
+      yOffset="10dvh"
     >
       <Modal.Overlay />
       <ModalContent h="100%">

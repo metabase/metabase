@@ -310,11 +310,6 @@
   white-space: pre-wrap;
 }
 
-:global(.List-item:not(.List-item--disabled):hover) .FieldListGroupingTrigger,
-:global(.List-item--selected) .FieldListGroupingTrigger {
-  visibility: visible;
-}
-
 .QuestionTooltipTarget {
   color: var(--color-text-light);
   border: 2px solid currentColor;

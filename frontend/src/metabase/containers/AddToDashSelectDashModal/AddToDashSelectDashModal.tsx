@@ -8,6 +8,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
 import { CreateDashboardModalConnected } from "metabase/dashboard/containers/CreateDashboardModal";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -141,7 +142,7 @@ const AddToDashSelectDashModal = ({
       {showCreateNewDashboardOption && (
         <Link onClick={() => setShouldCreateDashboard(true)} to="">
           <LinkContent>
-            <Icon name="add" className="mx1" />
+            <Icon name="add" className={CS.mx1} />
             <h4>{t`Create a new dashboard`}</h4>
           </LinkContent>
         </Link>
