@@ -204,6 +204,7 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
       parameter={parameter}
       isParameterSlugUsed={jest.fn()}
       onChangeName={onChangeName}
+      onChangeType={jest.fn()}
       onChangeDefaultValue={jest.fn()}
       onChangeIsMultiSelect={jest.fn()}
       onChangeQueryType={onChangeQueryType}
