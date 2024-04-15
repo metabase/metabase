@@ -115,7 +115,11 @@ This action doesn't affect email distribution lists that are managed outside of 
 
 ## Default user accounts
 
-Metabase includes default user accounts to handle various activities. Metabase will exclude these user accounts from the **Admin settings** > **People** tab, so we're documenting the accounts here so you know they're legitimate accounts and not someone trying to spy on your Metabase.
+Metabase includes default user accounts to handle various activities. We're documenting the accounts here so you know they're legitimate accounts and not someone trying to spy on your Metabase. Some things to know about them:
+
+- Customers are not charged for these accounts.
+- No one can log in to these user accounts.
+- Metabase excludes these user accounts from the **Admin settings** > **People** tab.
 
 ### Anonymous user account
 
@@ -124,7 +128,7 @@ Metabase includes default user accounts to handle various activities. Metabase w
 - Last name: User
 - Email: null
 
-Metabase uses this anonymous user account to log anonymous views, for example views of a [public question or dashboard](../questions/sharing/public-links.md). You'll see this account show up in [usage analytics](../usage-and-performance-tools/usage-analytics.md).
+Metabase uses this anonymous user account to identify anonymous views, for example views of a [public question or dashboard](../questions/sharing/public-links.md). This account is a virtual user: the account doesn't exist in the application database. You'll see this account show up in [usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
 ### Metabase internal account
 
@@ -133,7 +137,7 @@ Metabase uses this anonymous user account to log anonymous views, for example vi
 - Last name: Metabase
 - Email: internal@metabase.com
 
-The [Pro](https://www.metabase.com/pro) and [Enterprise](https://www.metabase.com/enterprise) editions include a user account called "Metabase Internal". Metabase uses this account to load the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection into your Metabase. You may see this `internal@metabase.com` account in the logs.
+Metabase uses this account to load content into Metabase (like the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection). You may see this `internal@metabase.com` account in the logs.
 
 ## Groups
 
