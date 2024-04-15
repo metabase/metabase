@@ -21,8 +21,8 @@ function loadMemberships() {
 
 const getUserList = (query = {}, dispatch) =>
   entityCompatibleQuery(query, dispatch, userApi.endpoints.listUsers);
-const getRecipientsList = dispatch =>
-  entityCompatibleQuery({}, dispatch, userApi.endpoints.listUserRecipients);
+const getRecipientsList = (query = {}, dispatch) =>
+  entityCompatibleQuery(query, dispatch, userApi.endpoints.listUserRecipients);
 
 /**
  * @deprecated use "metabase/api" instead
@@ -36,7 +36,9 @@ const Users = createEntity({
 
   api: {
     list: ({ recipients = false, ...args }, dispatch) =>
-      recipients ? getRecipientsList(dispatch) : getUserList(args, dispatch),
+      recipients
+        ? getRecipientsList({}, dispatch)
+        : getUserList(args, dispatch),
     create: (entityQuery, dispatch) =>
       entityCompatibleQuery(
         entityQuery,
