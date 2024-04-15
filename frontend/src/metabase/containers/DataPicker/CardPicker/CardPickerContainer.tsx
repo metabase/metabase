@@ -18,7 +18,7 @@ import CardPickerView from "./CardPickerView";
 import { buildCollectionTree } from "./utils";
 
 interface CardPickerOwnProps extends DataPickerProps {
-  targetModel: "model" | "question";
+  targetModel: "model" | "question" | "metric";
   isMultiSelect?: boolean;
   onBack?: () => void;
 }
@@ -108,6 +108,7 @@ function CardPickerContainer({
       if (collection) {
         const schemaId = getCollectionVirtualSchemaId(collection, {
           isDatasets: targetModel === "model",
+          isMetrics: targetModel === "metric",
         });
         onChange({ ...value, schemaId, collectionId: id, tableIds: [] });
       }

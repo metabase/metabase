@@ -12,7 +12,7 @@ import {
   getRootCollectionVirtualSchemaId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { DatabaseId } from "metabase-types/api";
+import type { DatabaseId, SearchResult } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { DataPickerContextProvider, useDataPicker } from "./DataPickerContext";
@@ -30,6 +30,7 @@ interface DataPickerStateProps {
 }
 
 interface DatabaseListLoaderProps {
+  metrics: SearchResult<"metric">[] | undefined;
   databases: Database[];
 }
 
@@ -53,6 +54,7 @@ function DataPicker({
   value,
   databases: allDatabases,
   search: modelLookupResult,
+  metrics,
   filters: customFilters = {},
   hasNestedQueriesEnabled,
   hasDataAccess,
@@ -78,19 +80,28 @@ function DataPicker({
   const dataTypes = useMemo(
     () =>
       getDataTypes({
+        hasMetrics: metrics != null && metrics.length > 0,
         hasModels: modelLookupResult.length > 0,
         hasSavedQuestions: allDatabases.some(
           database => database.is_saved_questions,
         ),
         hasNestedQueriesEnabled,
       }).filter(type => filters.types(type.id)),
-    [allDatabases, filters, modelLookupResult, hasNestedQueriesEnabled],
+    [
+      allDatabases,
+      filters,
+      metrics,
+      modelLookupResult,
+      hasNestedQueriesEnabled,
+    ],
   );
 
   const handleDataTypeChange = useCallback(
     (type: DataPickerDataType) => {
       const isModels = type === "models";
-      const isUsingVirtualTables = isModels || type === "questions";
+      const isMetrics = type === "metrics";
+      const isUsingVirtualTables =
+        isModels || type === "questions" || isMetrics;
 
       let databaseId: DatabaseId | undefined = undefined;
 
@@ -103,7 +114,7 @@ function DataPicker({
       }
 
       const schemaId = isUsingVirtualTables
-        ? getRootCollectionVirtualSchemaId({ isModels })
+        ? getRootCollectionVirtualSchemaId({ isModels, isMetrics })
         : undefined;
       const collectionId = isUsingVirtualTables ? "root" : undefined;
 
@@ -161,6 +172,14 @@ const DataPickerContainer = _.compose(
       models: "dataset",
       limit: 1,
     },
+  }),
+  Search.loadList({
+    query: {
+      models: "metric",
+      limit: 1,
+    },
+    listName: "metrics",
+    loadingAndErrorWrapper: false,
   }),
 
   connect(mapStateToProps),

@@ -301,9 +301,11 @@ const CardSourceModal = ({
           />
         </ModalSection>
         <ModalSection>
-          <ModalLabel>{t`Model or question to supply the values`}</ModalLabel>
+          <ModalLabel>{t`Model, question, or metric to supply the values`}</ModalLabel>
           <SelectButton onClick={onChangeCard}>
-            {question ? question.displayName() : t`Pick a model or question…`}
+            {question
+              ? question.displayName()
+              : t`Pick model, question, or a metric…`}
           </SelectButton>
         </ModalSection>
         {question && (
@@ -326,7 +328,7 @@ const CardSourceModal = ({
             ) : (
               <ModalErrorMessage>
                 {getErrorMessage(question)}{" "}
-                {t`Please pick a different model or question.`}
+                {t`Please pick a different model, question, or metric.`}
               </ModalErrorMessage>
             )}
           </ModalSection>
@@ -334,7 +336,7 @@ const CardSourceModal = ({
       </ModalPane>
       <ModalMain>
         {!question ? (
-          <ModalEmptyState>{t`Pick a model or question`}</ModalEmptyState>
+          <ModalEmptyState>{t`Pick model, question, or a metric`}</ModalEmptyState>
         ) : !selectedField ? (
           <ModalEmptyState>{t`Pick a column`}</ModalEmptyState>
         ) : isError ? (
@@ -356,6 +358,10 @@ const getErrorMessage = (question: Question) => {
 
   if (type === "model") {
     return t`This model doesn’t have any text columns.`;
+  }
+
+  if (type === "metric") {
+    return t`This metric doesn’t have any text columns.`;
   }
 
   throw new Error(`Unsupported or unknown question.type(): ${type}`);
@@ -445,7 +451,7 @@ const getSourceTypeOptions = (
     ...(hasFields(parameter)
       ? [{ name: t`From connected fields`, value: null }]
       : []),
-    { name: t`From another model or question`, value: "card" },
+    { name: t`From another model, question, or metric`, value: "card" },
     { name: t`Custom list`, value: "static-list" },
   ];
 };

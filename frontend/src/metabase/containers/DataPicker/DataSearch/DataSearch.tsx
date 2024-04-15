@@ -23,16 +23,17 @@ type TableSearchResult = {
   database_id: number;
   table_schema: string;
   table_id: number;
-  model: "table" | "dataset" | "card";
+  model: "table" | "dataset" | "card" | "metric";
   collection: Collection | null;
 };
 
-type SearchModel = "card" | "dataset" | "table";
+type SearchModel = "card" | "dataset" | "table" | "metric";
 
 const DATA_TYPE_SEARCH_MODEL_MAP: Record<DataPickerDataType, SearchModel> = {
   "raw-data": "table",
   models: "dataset",
   questions: "card",
+  metrics: "metric",
 };
 
 function getDataTypeForSearchResult(
@@ -45,6 +46,8 @@ function getDataTypeForSearchResult(
       return "questions";
     case "dataset":
       return "models";
+    case "metric":
+      return "metrics";
   }
 }
 
@@ -62,6 +65,7 @@ function getValueForVirtualTable(table: TableSearchResult): DataPickerValue {
   const type = getDataTypeForSearchResult(table);
   const schemaId = getCollectionVirtualSchemaId(table.collection, {
     isDatasets: type === "models",
+    isMetrics: type === "metrics",
   });
   return {
     type,
@@ -74,7 +78,8 @@ function getValueForVirtualTable(table: TableSearchResult): DataPickerValue {
 
 function getNextValue(table: TableSearchResult): DataPickerValue {
   const type = getDataTypeForSearchResult(table);
-  const isVirtualTable = type === "models" || type === "questions";
+  const isVirtualTable =
+    type === "models" || type === "questions" || type === "metrics";
   return isVirtualTable
     ? getValueForVirtualTable(table)
     : getValueForRawTable(table);

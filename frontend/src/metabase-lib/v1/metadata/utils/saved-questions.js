@@ -15,17 +15,23 @@ export function getCollectionVirtualSchemaName(collection) {
     : collection.schemaName || collection.name;
 }
 
-export function getCollectionVirtualSchemaId(collection, { isDatasets } = {}) {
+export function getCollectionVirtualSchemaId(
+  collection,
+  { isDatasets, isMetrics } = {},
+) {
   const collectionName = getCollectionVirtualSchemaName(collection);
   return generateSchemaId(
     SAVED_QUESTIONS_VIRTUAL_DB_ID,
     collectionName,
-    isDatasets ? { isDatasets } : undefined,
+    isDatasets ? { isDatasets } : isMetrics ? { isMetrics } : undefined,
   );
 }
 
-export function getRootCollectionVirtualSchemaId({ isModels }) {
-  return getCollectionVirtualSchemaId(null, { isDatasets: isModels });
+export function getRootCollectionVirtualSchemaId({ isModels, isMetrics }) {
+  return getCollectionVirtualSchemaId(null, {
+    isDatasets: isModels,
+    isMetrics,
+  });
 }
 
 export function getQuestionVirtualTableId(id) {

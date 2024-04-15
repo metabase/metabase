@@ -12,8 +12,8 @@ export function setFilterQuestionSource({ question, field }) {
   cy.findByText("Edit").click();
 
   modal().within(() => {
-    cy.findByText("From another model or question").click();
-    cy.findByText("Pick a model or question…").click();
+    cy.findByText("From another model, question, or metric").click();
+    cy.findByText("Pick model, question, or a metric…").click();
   });
 
   modal().within(() => {

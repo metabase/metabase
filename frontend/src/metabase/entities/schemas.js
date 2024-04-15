@@ -51,6 +51,12 @@ export default createEntity({
             schemaName,
             ...args,
           })
+        : opts?.isMetrics
+        ? await MetabaseApi.db_virtual_metric_tables({
+            dbId,
+            schemaName,
+            ...args,
+          })
         : await MetabaseApi.db_schema_tables({ dbId, schemaName, ...args });
       return {
         id,
@@ -71,6 +77,7 @@ export default createEntity({
       if (question) {
         const schema = getCollectionVirtualSchemaId(question.collection, {
           isDatasets: question.type === "model",
+          isMetrics: question.type === "metric",
         });
         if (!state[schema]) {
           return state;
@@ -92,6 +99,7 @@ export default createEntity({
       const { question: card } = payload;
       const virtualSchemaId = getCollectionVirtualSchemaId(card.collection, {
         isDatasets: card.type === "model",
+        isMetrics: card.type === "metric",
       });
       const virtualSchemaName = getCollectionVirtualSchemaName(card.collection);
       const virtualQuestionId = getQuestionVirtualTableId(card.id);

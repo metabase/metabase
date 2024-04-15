@@ -191,6 +191,7 @@ describe("DataPicker — picking questions", () => {
         databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
         schemaId: getCollectionVirtualSchemaId(SAMPLE_COLLECTION, {
           isDatasets: true,
+          isMetrics: false,
         }),
         collectionId: "root",
         tableIds: [getQuestionVirtualTableId(SAMPLE_MODEL.id)],

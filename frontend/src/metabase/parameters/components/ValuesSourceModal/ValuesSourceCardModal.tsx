@@ -42,7 +42,7 @@ import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 
 const DATA_PICKER_FILTERS = {
   types: (type: DataPickerDataType) =>
-    type === "questions" || type === "models",
+    type === "questions" || type === "models" || type === "metrics",
 };
 
 interface ModalOwnProps {
@@ -144,7 +144,7 @@ const DataPickerSearchInput = () => {
     <SearchInputContainer>
       <Input
         value={query}
-        placeholder={t`Search for a question or model`}
+        placeholder={t`Search for question, model, or a metric`}
         leftIcon="search"
         fullWidth
         onChange={handleChange}
@@ -164,6 +164,7 @@ const getInitialValue = (
       type: getInitialTypeValue(question),
       schemaId: getCollectionVirtualSchemaId(collection, {
         isDatasets: question.type() === "model",
+        isMetrics: question.type() === "metric",
       }),
       collectionId: collection?.id,
       tableIds: [getQuestionVirtualTableId(id)],
@@ -180,6 +181,10 @@ const getInitialTypeValue = (question: Question) => {
 
   if (type === "model") {
     return "models";
+  }
+
+  if (type === "metric") {
+    return "metrics";
   }
 
   throw new Error(`Unsupported or unknown question.type(): ${type}`);
