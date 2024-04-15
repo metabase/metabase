@@ -7,11 +7,11 @@ import {
   visitDashboard,
   sidebar,
   getDashboardCard,
-  addOrUpdateDashboardCard,
+  updateDashboardCards,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
+const { PEOPLE, PEOPLE_ID, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > filters > management", () => {
   beforeEach(() => {
@@ -37,40 +37,61 @@ describe("scenarios > dashboard > filters > management", () => {
         sectionId: "string",
       });
 
-      const questionDetails = {
+      const peopleQuestionDetails = {
         query: { "source-table": PEOPLE_ID, limit: 5 },
       };
+      const ordersQuestionDetails = {
+        query: { "source-table": ORDERS_ID, limit: 5 },
+      };
 
-      cy.createQuestionAndDashboard({
-        questionDetails,
+      cy.createDashboardWithQuestions({
         dashboardDetails: {
           parameters: [locationFilter, textFilter],
         },
-      }).then(({ body: { card_id, dashboard_id } }) => {
-        addOrUpdateDashboardCard({
-          card_id,
-          dashboard_id,
-          card: {
-            parameter_mappings: [
-              {
-                parameter_id: locationFilter.id,
-                card_id,
-                target: ["dimension", ["field", PEOPLE.STATE, null]],
-              },
+        questions: [peopleQuestionDetails, ordersQuestionDetails],
+      }).then(({ dashboard, questions: cards }) => {
+        const [peopleCard, ordersCard] = cards;
 
-              {
-                parameter_id: textFilter.id,
-                card_id,
-                target: ["dimension", ["field", PEOPLE.NAME, null]],
-              },
-            ],
-          },
+        updateDashboardCards({
+          dashboard_id: dashboard.id,
+          cards: [
+            {
+              card_id: peopleCard.id,
+              parameter_mappings: [
+                {
+                  parameter_id: locationFilter.id,
+                  card_id: peopleCard.id,
+                  target: ["dimension", ["field", PEOPLE.STATE, null]],
+                },
+                {
+                  parameter_id: textFilter.id,
+                  card_id: peopleCard.id,
+                  target: ["dimension", ["field", PEOPLE.NAME, null]],
+                },
+              ],
+            },
+            {
+              card_id: ordersCard.id,
+              parameter_mappings: [
+                {
+                  parameter_id: locationFilter.id,
+                  card_id: ordersCard.id,
+                  target: ["dimension", ["field", PEOPLE.CITY, null]],
+                },
+                {
+                  parameter_id: textFilter.id,
+                  card_id: ordersCard.id,
+                  target: ["dimension", ["field", PEOPLE.NAME, null]],
+                },
+              ],
+            },
+          ],
         });
 
-        visitDashboard(dashboard_id);
+        visitDashboard(dashboard.id);
       });
 
-      cy.log("verify filter is there");
+      cy.log("verify filters are there");
       filterWidget().should("contain", "Location").and("contain", "Text");
 
       editDashboard();
@@ -80,17 +101,20 @@ describe("scenarios > dashboard > filters > management", () => {
         .click();
 
       getDashboardCard().contains("Person.State");
+      getDashboardCard(1).contains("User.City");
 
       cy.log("Disconnect cards");
       sidebar().findByText("Disconnect from cards").click();
 
       getDashboardCard().should("not.contain", "Person.State");
+      getDashboardCard(1).should("not.contain", "User.City");
 
       cy.findByTestId("edit-dashboard-parameters-widget-container")
         .findByText("Text")
         .click();
 
       getDashboardCard().should("contain", "Person.Name");
+      getDashboardCard(1).should("contain", "User.Name");
 
       saveDashboard();
 
