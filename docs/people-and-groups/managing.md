@@ -115,7 +115,7 @@ This action doesn't affect email distribution lists that are managed outside of 
 
 ## Default user accounts
 
-Metabase includes default user accounts to handle various activities. We're documenting the accounts here so you know they're legitimate accounts and not someone trying to spy on your Metabase. Some things to know about them:
+Metabase includes default user accounts to handle various tasks and activity. We're documenting the accounts here so you know they're legitimate accounts and not someone trying to spy on your Metabase. Some things to know about them:
 
 - Customers are not charged for these accounts.
 - No one can log in to these user accounts.
