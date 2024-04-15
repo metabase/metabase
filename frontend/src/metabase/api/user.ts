@@ -37,7 +37,7 @@ export const userApi = Api.injectEndpoints({
       providesTags: response =>
         response ? provideUserListTags(response.data) : [],
     }),
-    getUser: builder.query<void, { id: UserId }>({
+    getUser: builder.query<User, { id: UserId }>({
       query: ({ id }) => ({
         method: "GET",
         url: `/api/user/${id}`,
