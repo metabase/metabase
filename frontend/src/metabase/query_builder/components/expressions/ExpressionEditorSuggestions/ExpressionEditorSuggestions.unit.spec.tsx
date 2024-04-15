@@ -87,7 +87,7 @@ describe("ExpressionEditorSuggestions", () => {
     );
   });
 
-  it("should render correct functions link for expressions", async () => {
+  it("should render correct functions link for expressions", () => {
     setup({ startRule: "expression" });
     expect(screen.getByText("View all functions")).toBeInTheDocument();
     expect(
@@ -98,7 +98,7 @@ describe("ExpressionEditorSuggestions", () => {
     ).toBe(true);
   });
 
-  it("should render correct functions link for filters", async () => {
+  it("should render correct functions link for filters", () => {
     setup({ startRule: "boolean" });
     expect(screen.getByText("View all functions")).toBeInTheDocument();
     expect(
@@ -109,7 +109,7 @@ describe("ExpressionEditorSuggestions", () => {
     ).toBe(true);
   });
 
-  it("should render correct functions link for aggregations", async () => {
+  it("should render correct functions link for aggregations", () => {
     setup({ startRule: "aggregation" });
     expect(screen.getByText("View all functions")).toBeInTheDocument();
     expect(
@@ -120,12 +120,12 @@ describe("ExpressionEditorSuggestions", () => {
     ).toBe(true);
   });
 
-  it("should show functions when first opened", async () => {
+  it("should show functions when first opened", () => {
     setup({ startRule: "expression" });
     expect(screen.getByText("Most used functions")).toBeInTheDocument();
   });
 
-  it("should not include popular functions when text has been typed", async () => {
+  it("should not include popular functions when text has been typed", () => {
     setup({ source: "[", startRule: "expression" });
     expect(screen.queryByText("Most used functions")).not.toBeInTheDocument();
   });
