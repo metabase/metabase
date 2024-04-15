@@ -24,7 +24,7 @@ type WrapperProps = {
 
 function Wrapper(props: WrapperProps) {
   return (
-    <ExpressionEditorSuggestions {...props}>
+    <ExpressionEditorSuggestions {...props} open>
       <div>target</div>
     </ExpressionEditorSuggestions>
   );
