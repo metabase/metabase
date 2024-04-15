@@ -101,7 +101,7 @@ const Users = createEntity({
           "People Admin",
           "Trigger User Password Reset",
         );
-        await await entityCompatibleQuery(
+        await entityCompatibleQuery(
           email,
           dispatch,
           sessionApi.endpoints.forgotPassword,
