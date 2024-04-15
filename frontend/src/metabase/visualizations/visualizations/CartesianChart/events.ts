@@ -248,6 +248,24 @@ function getDataIndex(
   return originalDataIndex ?? echartsDataIndex;
 }
 
+const CIRCLE_PATH = "M1 0A1 1 0 1 1 1 -0.0001";
+
+// HACK: Native events may wrongly have the entire series path or the entire svg as target when hovering a single datum
+const isValidDatumElement = (
+  element: SVGElement | undefined,
+  seriesType: string,
+) => {
+  if (element?.nodeName === "svg") {
+    return false;
+  }
+
+  if (seriesType !== "line") {
+    return true;
+  }
+
+  return element?.getAttribute("d") === CIRCLE_PATH;
+};
+
 export const getSeriesHoverData = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
@@ -264,14 +282,15 @@ export const getSeriesHoverData = (
     return;
   }
 
-  const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
-  const target = (event.event.event.target ?? undefined) as Element | undefined;
+  const target = event.event.event.target as SVGElement | undefined;
 
   // TODO: For some reason ECharts sometimes trigger series mouse move element with the root SVG as target
   // Find a better fix
-  if (target?.nodeName === "svg") {
+  if (!isValidDatumElement(target, event.seriesType)) {
     return;
   }
+
+  const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
 
   const stackedTooltipModel =
     settings["graph.tooltip_type"] === "series_comparison"
