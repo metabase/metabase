@@ -35,7 +35,7 @@ export const Palette = withRouter(props => {
 });
 
 const PaletteContainer = () => {
-  const { query } = useKBar();
+  const { query } = useKBar(state => ({ actions: state.actions }));
   const ref = useRef(null);
 
   useOnClickOutside(ref, () => {

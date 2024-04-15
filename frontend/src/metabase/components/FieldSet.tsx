@@ -12,7 +12,7 @@ interface FieldSetProps {
 }
 
 export function FieldSet({
-  className = "border-brand",
+  className = CS.borderBrand,
   legend,
   required = false,
   noPadding = false,
@@ -43,7 +43,7 @@ export function FieldSet({
           {required && <span>&nbsp;*</span>}
         </legend>
       )}
-      <div data-testid="field-set-content" className="w-full">
+      <div data-testid="field-set-content" className={CS.wFull}>
         {children}
       </div>
     </fieldset>

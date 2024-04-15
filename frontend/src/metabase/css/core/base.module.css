@@ -85,27 +85,16 @@ textarea {
   min-height: 110px;
 }
 
-:global(.pointer-events-none),
-:global(.pointer-events-none *) {
+.pointerEventsNone,
+.pointerEventsNone * {
   pointer-events: none;
 }
 
-:global(.disabled),
 .disabled {
   pointer-events: none;
   opacity: 0.4;
 }
 
-:global(.faded),
-.faded {
-  opacity: 0.4;
-}
-
-:global(.fade-in-hover:hover) {
-  opacity: 1;
-  transition: opacity 0.3s;
-}
-
-:global(.circle) {
+.circle {
   border-radius: 99px;
 }

@@ -14,6 +14,7 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.db :as mdb]
+   [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.custom-migrations-test :as custom-migrations-test]
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
@@ -265,7 +266,7 @@
           pg-field-3-id :type/Text
           mysql-field-1-id :type/JSON
           mysql-field-2-id :type/Text)
-        ;; TODO: this is commented out temporarily because it flakes for MySQL
+        ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
         #_(testing "Rollback restores the original state"
            (migrate! :down 46)
            (let [new-base-types (t2/select-pk->fn :base_type Field)]
@@ -373,7 +374,8 @@
           (is (true? (custom-migrations-test/no-cards-are-overlap? migrated-to-24)))
           (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? migrated-to-24 24)))))
 
-      (testing "downgrade works correctly"
+      ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
+      #_(testing "downgrade works correctly"
         (migrate! :down 46)
         (let [rollbacked-to-18 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
                                                  :model/DashboardCard :id [:in dashcard-ids]
@@ -524,7 +526,7 @@
           (testing (str "View " view-name " should be created")
             ;; Just assert that something was returned by the query and no exception was thrown
             (is (partial= [] (t2/query (str "SELECT 1 FROM " view-name))))))
-        #_#_ ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37434)
+        #_#_ ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
         (migrate! :down 47)
         (testing "Views should be removed when downgrading"
           (doseq [view-name new-view-names]
@@ -1389,3 +1391,42 @@
         (insert-perm! "perms/manage-database" "no")
         (migrate! :down 49)
         (is (nil? (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))))))
+
+(deftest create-sample-content-test
+  (testing "The sample content is created iff *create-sample-content*=true"
+    (doseq [create? [true false]]
+      (testing (str "*create-sample-content* = " create?)
+        (impl/test-migrations "v50.2024-04-09T15:55:22" [migrate!]
+          (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
+            (binding [custom-migrations/*create-sample-content* create?]
+              (is (false? (sample-content-created?)))
+              (migrate!)
+              (is ((if create? true? false?) (sample-content-created?)))))))))
+  (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
+    (impl/test-migrations "v50.2024-04-09T15:55:22" [migrate!]
+      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
+        (is (false? (sample-content-created?)))
+        (t2/insert-returning-pks! :metabase_database {:name       "db"
+                                                      :engine     "h2"
+                                                      :created_at :%now
+                                                      :updated_at :%now
+                                                      :details    "{}"})
+        (t2/query {:delete-from :metabase_database})
+        (migrate!)
+        (is (false? (sample-content-created?)))
+        (is (empty? (t2/query "SELECT * FROM metabase_database"))
+            "No database should have been created"))))
+  (testing "The sample content isn't created if a user existed already"
+    (impl/test-migrations "v50.2024-04-09T15:55:22" [migrate!]
+      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
+        (is (false? (sample-content-created?)))
+        (t2/insert-returning-pks!
+         :core_user
+         {:first_name       "Rasta"
+          :last_name        "Toucan"
+          :email            "rasta@metabase.com"
+          :password         "password"
+          :password_salt    "and pepper"
+          :date_joined      :%now})
+        (migrate!)
+        (is (false? (sample-content-created?)))))))

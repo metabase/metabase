@@ -52,7 +52,7 @@ export interface Collection {
   authority_level?: "official" | null;
   type?: "instance-analytics" | null;
 
-  parent_id?: CollectionId;
+  parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
   is_personal?: boolean;
 
@@ -68,13 +68,15 @@ export interface Collection {
   path?: CollectionId[];
 }
 
-export type CollectionItemModel =
-  | "card"
-  | "dataset"
-  | "dashboard"
-  | "snippet"
-  | "collection"
-  | "indexed-entity";
+export const COLLECTION_ITEM_MODELS = [
+  "card",
+  "dataset",
+  "dashboard",
+  "snippet",
+  "collection",
+  "indexed-entity",
+] as const;
+export type CollectionItemModel = typeof COLLECTION_ITEM_MODELS[number];
 
 export type CollectionItemId = number;
 
@@ -119,7 +121,7 @@ export interface CollectionListQuery {
 
 export interface ListCollectionItemsRequest {
   id: CollectionId;
-  models?: CollectionItemModel | CollectionItemModel[];
+  models?: CollectionItemModel[];
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   limit?: number;

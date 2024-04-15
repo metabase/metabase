@@ -49,7 +49,15 @@ export const AccordionListCell = ({
   searchInputProps,
   hasCursor,
 }) => {
-  const { type, section, sectionIndex, item, itemIndex, isLastItem } = row;
+  const {
+    type,
+    section,
+    sectionIndex,
+    item,
+    itemIndex,
+    isLastItem,
+    isLastSection,
+  } = row;
   let content;
   if (type === "header") {
     if (alwaysExpanded) {
@@ -74,7 +82,8 @@ export const AccordionListCell = ({
       content = (
         <ListCellHeader
           data-element-id="list-section-header"
-          borderBottom={section.type === "back"}
+          borderTop={section.type === "back" || section.items?.length > 0}
+          borderBottom={!isLastSection && section.type === "back"}
           className={cx(
             ListS.ListSectionHeader,
             CS.px2,
@@ -135,6 +144,8 @@ export const AccordionListCell = ({
     const name = section.name;
     content = (
       <ListCellHeader
+        borderTop
+        borderBottom={!isLastSection}
         className={cx(
           "List-section-header",
           CS.px2,

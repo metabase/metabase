@@ -34,25 +34,6 @@
   fill: currentColor;
 }
 
-.Dashboard.DashboardNight :global(.bg-light) {
-  background-color: var(--color-bg-black);
-}
-
-.Dashboard.DashboardNight :global(.bg-medium) {
-  background-color: #596269;
-}
-
-.Dashboard.DashboardNight :global(.text-dark) {
-  color: var(--color-bg-light);
-}
-
-.Dashboard.DashboardNight :global(.border-top),
-.Dashboard.DashboardNight :global(.border-left),
-.Dashboard.DashboardNight :global(.border-bottom),
-.Dashboard.DashboardNight :global(.border-right) {
-  border-color: var(--color-bg-dark);
-}
-
 /* Night mode transition */
 .Dashboard.DashboardFullscreen,
 .Dashboard.DashboardFullscreen .DashCard .Card {
@@ -174,7 +155,7 @@
 .DashDragging {
 }
 
-:global(.Modal).AddSeriesModal {
+.Modal.AddSeriesModal {
   height: 80%;
   max-height: 600px;
   width: 80%;

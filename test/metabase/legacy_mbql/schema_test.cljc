@@ -152,3 +152,9 @@
     ["not an :absolute-datetime clause"
      "should be a string"
      [nil nil {:base_type "Not a valid base type: :type/FK"}]]))
+
+(deftest ^:parallel relative-datetime-temporal-arithmetic-test
+  (are [schema x] (not (me/humanize (mc/explain schema x)))
+    ::mbql.s/Addable [:relative-datetime -1 :month]
+    ::mbql.s/Addable [:interval -2 :month]
+    ::mbql.s/+       [:+ [:relative-datetime -1 :month] [:interval -2 :month]]))

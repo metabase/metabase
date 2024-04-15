@@ -847,7 +847,7 @@
   "Add the sample database as a new `Database`."
   []
   (api/check-superuser)
-  (sample-data/add-sample-database!)
+  (sample-data/extract-and-sync-sample-database!)
   (t2/select-one Database :is_sample true))
 
 

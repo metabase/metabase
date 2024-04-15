@@ -526,6 +526,37 @@ describe("metabase/lib/expression/suggest", () => {
         });
       });
     });
+
+    it("should add the helptext for function suggestions", () => {
+      expect(
+        suggest_({
+          source: "con",
+          ...expressionOpts,
+          query: createQuery({
+            metadata,
+            query: DEFAULT_QUERY,
+          }),
+          stageIndex: -1,
+          metadata,
+          getColumnIcon: () => "icon",
+        }).suggestions,
+      ).toEqual([
+        expect.objectContaining({
+          type: "functions",
+          text: "concat(",
+          helpText: expect.objectContaining({
+            name: "concat",
+          }),
+        }),
+        expect.objectContaining({
+          type: "functions",
+          text: "contains(",
+          helpText: expect.objectContaining({
+            name: "contains",
+          }),
+        }),
+      ]);
+    });
   });
 });
 

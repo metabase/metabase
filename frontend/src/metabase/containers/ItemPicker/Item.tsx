@@ -39,7 +39,7 @@ function Item<TId>({
   }, [item, canSelect, hasChildren, onChange, onChangeOpenCollectionId]);
 
   const handleExpand = useCallback(
-    event => {
+    (event: React.MouseEvent) => {
       event.stopPropagation();
       onChangeOpenCollectionId?.(item.id);
     },

@@ -11,7 +11,7 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import type { WrappedResult } from "metabase/search/types";
 import type { IconName } from "metabase/ui";
-import type { SearchModelType, SearchResult } from "metabase-types/api";
+import type { SearchModel, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
@@ -47,7 +47,7 @@ const createSearchResult = ({
   model,
   ...resultProps
 }: {
-  model: SearchModelType;
+  model: SearchModel;
 } & Partial<SearchResult>) =>
   createMockSearchResult({
     collection: MOCK_COLLECTION,
@@ -67,7 +67,7 @@ async function setup({
   isCompact = false,
   resultProps = {},
 }: {
-  model?: SearchModelType;
+  model?: SearchModel;
   isCompact?: boolean;
   resultProps?: Partial<SearchResult>;
 } = {}) {

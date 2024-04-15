@@ -15,6 +15,8 @@ export interface FormModelPickerProps extends HTMLAttributes<HTMLDivElement> {
   name: string;
   title?: string;
   placeholder?: string;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 function FormModelPicker({
@@ -43,7 +45,7 @@ function FormModelPicker({
   }, []);
 
   const renderTrigger = useCallback(
-    ({ onClick: handleShowPopover }) => (
+    ({ onClick: handleShowPopover }: { onClick: () => void }) => (
       <FormField
         className={className}
         style={style}

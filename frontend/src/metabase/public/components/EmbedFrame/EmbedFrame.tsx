@@ -165,7 +165,7 @@ function EmbedFrame({
     : [];
   const hasVisibleParameters = visibleParameters.length > 0;
 
-  const hasHeader = Boolean(finalName || hasParameters);
+  const hasHeader = Boolean(finalName || dashboardTabs);
   const isParameterPanelSticky =
     !!dashboard &&
     theme !== "transparent" && // https://github.com/metabase/metabase/pull/38766#discussion_r1491549200
@@ -182,7 +182,10 @@ function EmbedFrame({
     >
       <ContentContainer>
         {hasHeader && (
-          <Header className="EmbedFrame-header">
+          <Header
+            className="EmbedFrame-header"
+            data-testid="embed-frame-header"
+          >
             {finalName && (
               <TitleAndDescriptionContainer>
                 <FixedWidthContainer

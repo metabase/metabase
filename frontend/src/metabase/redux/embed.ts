@@ -39,7 +39,10 @@ const options = handleActions(
   {},
 );
 
+const isEmbeddingSdk = handleActions({}, false);
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
   options,
+  isEmbeddingSdk,
 });
