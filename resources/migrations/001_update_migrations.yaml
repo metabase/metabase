@@ -5589,7 +5589,7 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-04-09T10:00:03
       author: qnkhuat
-      comment: Add null as default value for metabase_database.cache_field_values_schedule
+      comment: This clears the schedule for caching field values for databases with period scanning disabled.
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.DeleteScanFieldValuesTriggerForDBThatTurnItOff"

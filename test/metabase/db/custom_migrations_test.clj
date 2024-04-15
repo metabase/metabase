@@ -1600,7 +1600,7 @@
           (is (not (contains? model-revision-object "type"))))))))
 
 (deftest delete-scan-field-values-trigger-test
-  (testing "for DBs that turn off scan field values, we should delete its triggers"
+  (testing "We should delete the triggers for DBs that are configured not to scan their field values\n"
     (impl/test-migrations "v49.2024-04-09T10:00:03" [migrate!]
       (api.database-test/with-db-scheduler-setup
         (let [db-with-full-schedules (new-instance-with-default :metabase_database
