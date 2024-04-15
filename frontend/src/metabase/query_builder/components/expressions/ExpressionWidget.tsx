@@ -127,11 +127,16 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
       setError(null);
     };
 
+    const handleCancel = () => {
+      setIsCombiningColumns(false);
+    };
+
     return (
       <CombineColumns
         query={query}
         stageIndex={stageIndex}
         onSubmit={handleSubmit}
+        onCancel={handleCancel}
       />
     );
   }

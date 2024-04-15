@@ -3,10 +3,11 @@ import { useState, useMemo } from "react";
 import { t, jt } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import { Card, Title, Stack, Flex, Button, Box, Icon } from "metabase/ui";
+import { Title, Stack, Flex, Button, Box, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ColumnAndSeparatorRow } from "./ColumnAndSeparatorRow";
+import styles from "./CombineColumns.module.css";
 import { Example } from "./Example";
 import type { ColumnAndSeparator } from "./util";
 import {
@@ -22,6 +23,7 @@ interface Props {
   query: Lib.Query;
   stageIndex: number;
   onSubmit: (name: string, clause: Lib.ExpressionClause) => void;
+  onCancel: () => void;
 }
 
 type State = {
@@ -34,6 +36,7 @@ export function CombineColumns({
   query: originalQuery,
   stageIndex: originalStageIndex,
   onSubmit,
+  onCancel,
 }: Props) {
   const [state, setState] = useState<State>({
     columnsAndSeparators: [
@@ -153,12 +156,25 @@ export function CombineColumns({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Card maw="100vw" w={474} p="lg">
+      <Box
+        component="button"
+        px="md"
+        py="md"
+        mb="lg"
+        className={styles.header}
+        onClick={onCancel}
+      >
+        <Flex align="center">
+          <Icon name="chevronleft" className={styles.icon} />
+          {t`Select columns to combine`}
+        </Flex>
+      </Box>
+      <Box maw="100vw" w={474} p="lg" pt={0}>
         <Title mb="lg" order={4}>{t`Combine columns`}</Title>
         <Stack spacing="lg">
-          <Stack spacing={12}>
+          <Stack spacing="md">
             <Box>
-              <Stack spacing="sm">
+              <Stack spacing="md">
                 {columnsAndSeparators.map(({ column, separator }, index) => (
                   <ColumnAndSeparatorRow
                     key={index}
@@ -208,7 +224,7 @@ export function CombineColumns({
             </Button>
           </Flex>
         </Stack>
-      </Card>
+      </Box>
     </form>
   );
 }

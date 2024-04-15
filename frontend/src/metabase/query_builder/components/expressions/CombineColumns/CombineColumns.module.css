@@ -1,0 +1,12 @@
+.header {
+  width: 100%;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+  color: var(--color-text-dark);
+}
+
+.icon {
+  margin-right: 0.5rem;
+}
