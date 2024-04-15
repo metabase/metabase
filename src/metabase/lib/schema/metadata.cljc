@@ -215,6 +215,11 @@
    :model
    :metric])
 
+(mr/def ::metadata-types
+  [:enum
+   :metadata/database :metadata/table :metadata/column
+   :metadata/card :metadata/metric :metadata/segment])
+
 ;;; Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
 ;;; a [[metabase.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily converted
 ;;; to pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably not quite

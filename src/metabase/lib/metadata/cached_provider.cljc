@@ -11,20 +11,15 @@
 
 #?(:clj (set! *warn-on-reflection* true))
 
-(def metadata-types
-  [:enum
-   :metadata/database :metadata/table :metadata/column
-   :metadata/card :metadata/metric :metadata/segment])
-
 (defn- get-in-cache [cache ks]
   (when-some [cached-value (get-in @cache ks)]
     (when-not (= cached-value ::nil)
       cached-value)))
 
-(mu/defn get-all-in-cache
+(mu/defn ^:private get-all-in-cache
   "Get all cached items by type."
   [cache
-   metadata-type :- metadata-types]
+   metadata-type :- ::lib.schema.metadata/metadata-types]
   (case metadata-type
     :metabase/database
     (get-in-cache cache [:metabase/database])
@@ -46,7 +41,7 @@
 
 (mu/defn ^:private store-metadata!
   [cache
-   metadata-type :- metadata-types
+   metadata-type :- ::lib.schema.metadata/metadata-types
    id            :- pos-int?
    metadata      :- [:multi
                      {:dispatch :lib/type}

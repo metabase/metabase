@@ -7,15 +7,30 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
+(defn- update-used-cards!*
+  [used-cards]
+  (when (seq used-cards)
+    (.submit clojure.lang.Agent/pooledExecutor ^Runnable (fn []
+                                                           (try
+                                                             (log/debugf "%d cards were used during query execution: %s" (count used-cards) (str/join ";" (map :name used-cards)))
+                                                             (t2/update! :model/Card :id [:in (map :id used-cards)] {:last_used_at :%now})
+                                                             (catch Throwable e
+                                                               (log/error e "Error updating used cards")))))))
+
 (defn update-used-cards!
-  "Around middleware that update last_used_at of all cards that were used during a query execution."
+  "Update last_used_at of all cards that were used during a query execution.
+  Including but not limited to cards used as:
+  - the source card for other queries
+  - definition for sandbox rules
+  - card references in native query
+  - dashcard on dashboard
+  - alert/pulses"
   [qp]
   (fn [query rff]
     (letfn [(rff* [metadata]
-              ;; TODO: should this be done async for perf purposes? maybe this and process-userland-query should share a
-              ;; pool?
-              (let [used-cards (lib.metadata/cached-cards (qp.store/metadata-provider))]
-                #_(t2/update! :model/Card :id [:in (map :id used-cards)] {:last_used_at :%now})
-                (log/infof "%d cards were used during query execution: %s" (count used-cards) (str/join ";" (map :name used-cards))))
+              ;; doing this async so it doesn't block execution
+              (update-used-cards!* (lib.metadata/cached-metadata (qp.store/metadata-provider) :metadata/card))
               (rff metadata))]
       (qp query rff*))))

@@ -6114,6 +6114,21 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.CreateInternalUser"
 
+  - changeSet:
+      id: v50.2024-04-15T16:30:35
+      author: qnkhuat
+      comment: Add report_card.last_used_at
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: last_used_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the card is last used
+                  constraints:
+                    nullable: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
