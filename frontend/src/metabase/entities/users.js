@@ -43,6 +43,9 @@ const Users = createEntity({
         dispatch,
         userApi.endpoints.createUser,
       ),
+    get: () => {
+      throw new TypeError("Users.api.get is not supported");
+    },
   },
 
   objectSelectors: {
