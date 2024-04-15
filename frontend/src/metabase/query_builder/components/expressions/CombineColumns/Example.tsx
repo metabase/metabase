@@ -22,7 +22,10 @@ export const Example = ({ example }: Props) => {
         shadow="none"
         withBorder
       >
-        <Text size="sm" style={{ fontFamily: "Monaco, monospace" }}>
+        <Text
+          size="sm"
+          style={{ fontFamily: "Monaco, monospace", minHeight: "1rem" }}
+        >
           {example}
         </Text>
       </Card>
