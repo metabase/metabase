@@ -339,9 +339,7 @@
 
 (def ^{:arglists '([s])} ^:private validate-cron-string
   (let [validator (mc/validator u.cron/CronScheduleString)]
-    (fn [s]
-      (when (validator s)
-        s))))
+    (partial mu/validate-throw validator)))
 
 (def transform-cron-string
   "Transform for encrypted json."
@@ -471,8 +469,8 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 
 ;; --- helper fns
-(defn pre-update-changes
-  "Returns the changes used for pre-update hooks.
+(defn changes-with-pk
+  "The row merged with the changes in pre-update hooks.
   This is to match the input of pre-update for toucan1 methods"
   [row]
   (t2.protocols/with-current row (merge (t2.model/primary-key-values-map row)
