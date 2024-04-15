@@ -379,8 +379,8 @@ const getYAxisFormatter = (
   };
 };
 
-export const getYAxisLabel = (
-  axisSeriesModels: SeriesModel[],
+const getYAxisLabel = (
+  seriesNames: string[],
   settings: ComputedVisualizationSettings,
 ) => {
   if (settings["graph.y_axis.labels_enabled"] === false) {
@@ -393,11 +393,11 @@ export const getYAxisLabel = (
     return specifiedAxisName;
   }
 
-  if (axisSeriesModels.length > 1) {
+  if (seriesNames.length !== 1) {
     return undefined;
   }
 
-  return axisSeriesModels[0].name;
+  return seriesNames[0];
 };
 
 function getYAxisExtent(
@@ -419,22 +419,22 @@ function getYAxisExtent(
 }
 
 export function getYAxisModel(
-  seriesModels: SeriesModel[],
+  seriesKeys: string[],
+  seriesNames: string[],
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
   renderingContext: RenderingContext,
 ): YAxisModel | null {
-  if (seriesModels.length === 0) {
+  if (seriesKeys.length === 0) {
     return null;
   }
-  const seriesKeys = seriesModels.map(model => model.dataKey);
 
   const stackType = settings["stackable.stack_type"];
 
   const extent = getYAxisExtent(seriesKeys, dataset, stackType);
   const column = columnByDataKey[seriesKeys[0]];
-  const label = getYAxisLabel(seriesModels, settings);
+  const label = getYAxisLabel(seriesNames, settings);
   const formatter = getYAxisFormatter(column, settings, renderingContext);
 
   return {
@@ -457,30 +457,41 @@ export function getYAxesModels(
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
   const extents = getDatasetExtents(seriesDataKeys, dataset);
 
-  const [leftAxisSeriesKeys, rightAxisSeriesKeys] = getYAxisSplit(
+  const [leftAxisSeriesKeysSet, rightAxisSeriesKeysSet] = getYAxisSplit(
     seriesModels,
     extents,
     settings,
     isAutoSplitSupported,
   );
 
-  const leftAxisSeriesModels = seriesModels.filter(model =>
-    leftAxisSeriesKeys.has(model.dataKey),
-  );
-  const rightAxisSeriesModels = seriesModels.filter(model =>
-    rightAxisSeriesKeys.has(model.dataKey),
-  );
+  const leftAxisSeriesKeys: string[] = [];
+  const leftAxisSeriesNames: string[] = [];
+  const rightAxisSeriesKeys: string[] = [];
+  const rightAxisSeriesNames: string[] = [];
+
+  seriesModels.forEach(({ dataKey, name }) => {
+    if (leftAxisSeriesKeysSet.has(dataKey)) {
+      leftAxisSeriesKeys.push(dataKey);
+      leftAxisSeriesNames.push(name);
+    }
+    if (rightAxisSeriesKeysSet.has(dataKey)) {
+      rightAxisSeriesKeys.push(dataKey);
+      rightAxisSeriesNames.push(name);
+    }
+  });
 
   return {
     leftAxisModel: getYAxisModel(
-      leftAxisSeriesModels,
+      leftAxisSeriesKeys,
+      leftAxisSeriesNames,
       dataset,
       settings,
       columnByDataKey,
       renderingContext,
     ),
     rightAxisModel: getYAxisModel(
-      rightAxisSeriesModels,
+      rightAxisSeriesKeys,
+      rightAxisSeriesNames,
       dataset,
       settings,
       columnByDataKey,
