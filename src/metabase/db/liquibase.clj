@@ -242,7 +242,10 @@
           (do (Thread/sleep sleep-ms)
               (recur)))))))
 
-(defn- locked-instances []
+(defn- locked-instances
+  "Scan through a global set of potentially locking Liquibase objects, to retrieve the corresponding Lock Service
+  instances, and filter by their `hasChangeLock` flag. Returns the list of locking instances in the current process."
+  []
   (filter holding-lock? @potentially-locked-instances))
 
 (defn wait-for-all-locks
@@ -263,13 +266,23 @@
 (defn release-concurrent-locks!
   "Release any locks held by this process corresponding to the same database."
   [conn-or-data-source]
+  ;; Check whether there are Liquibase locks held by the current process - we don't want to release the database locks
+  ;; if they are held by another server, for example if this host is part of an "old" fleet shutting down while new
+  ;; servers starting up, of which one is performing the database upgrade to later Metabase version.
+  ;;
   (when-let [instances (not-empty (locked-instances))]
-    ;; We cannot use the existing instances to clear the locks, as their connections are currently blocked.
-    ;; Since we cannot "clone" a connection (they have "forgotten" their password), we use this new conn.
+    ;; We cannot use the existing instances to clear the locks, as their connections are blocking on their current
+    ;; long-running transaction. Since we cannot "clone" a connection (they have "forgotten" their password), so we
+    ;; will create a new Liquibase instance using a fresh database connection.
     (with-liquibase [liquibase conn-or-data-source]
+      ;; We rely on the way that Liquibase normalizes the connection URL to check whether the blocking and fresh
+      ;; Liquibase instances are pointing to the same database.
       (let [url (liquibase->url liquibase)]
         (doseq [instance instances]
           (when (= url (liquibase->url instance))
+            ;; We assume that the lock is being held for the purpose of migrations, since the other cases where we take
+            ;; locks are very fast, and in practice this method is only called after we have waited for a while to see
+            ;; if the lock was released on its own.
             (log/warn "Releasing liquibase lock before migrations finished")
             (release-lock-if-needed! liquibase)))))))
 
