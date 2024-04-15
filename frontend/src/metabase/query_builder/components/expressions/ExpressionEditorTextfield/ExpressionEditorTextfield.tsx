@@ -58,14 +58,13 @@ type SuggestWithFooters = {
 };
 
 function suggestWithFooters(
-  args: SuggestArgs,
-  showMetabaseLinks: boolean,
+  args: SuggestArgs & { showMetabaseLinks: boolean },
 ): SuggestWithFooters {
   const res = suggest(args);
 
   const suggestions: (Suggestion | SuggestionFooter)[] = res.suggestions ?? [];
 
-  if (showMetabaseLinks) {
+  if (args.showMetabaseLinks) {
     if (args.startRule === "aggregation") {
       suggestions?.push({
         footer: true,
@@ -162,20 +161,18 @@ function transformPropsToState(
     query,
   });
 
-  const { suggestions = [], helpText = null } = suggestWithFooters(
-    {
-      reportTimezone,
-      startRule,
-      source,
-      targetOffset: 0,
-      expressionPosition,
-      query,
-      stageIndex,
-      metadata,
-      getColumnIcon,
-    },
+  const { suggestions = [], helpText = null } = suggestWithFooters({
+    reportTimezone,
+    startRule,
+    source,
+    targetOffset: 0,
+    expressionPosition,
+    query,
+    stageIndex,
+    metadata,
+    getColumnIcon,
     showMetabaseLinks,
-  );
+  });
 
   return {
     source,
@@ -592,20 +589,18 @@ class ExpressionEditorTextfield extends React.Component<
       showMetabaseLinks,
     } = this.props;
     const { source } = this.state;
-    const { suggestions, helpText } = suggestWithFooters(
-      {
-        reportTimezone,
-        startRule,
-        source,
-        targetOffset: cursor.column,
-        expressionPosition,
-        query,
-        stageIndex,
-        metadata,
-        getColumnIcon,
-      },
+    const { suggestions, helpText } = suggestWithFooters({
+      reportTimezone,
+      startRule,
+      source,
+      targetOffset: cursor.column,
+      expressionPosition,
+      query,
+      stageIndex,
+      metadata,
+      getColumnIcon,
       showMetabaseLinks,
-    );
+    });
 
     this.setState({ helpText: helpText || null });
     if (this.state.isFocused) {
