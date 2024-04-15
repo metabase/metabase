@@ -18,7 +18,7 @@ You'll embed the full Metabase application in your app. Once logged in, people c
 
 ## [Static embedding](./static-embedding.md)
 
-Also known as Signed Embedding, Static embedding is a secure way to embed individual charts and dashboards. Your users will see data, but won’t be able to click through into it.
+Also known as Signed Embedding, Static embedding is a secure way to embed charts and dashboards. Static embeds are view only; people won't be able to drill-through charts and tables.
 
 ## [Parameters for static embeds](./static-embedding-parameters.md)
 
