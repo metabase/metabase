@@ -115,7 +115,25 @@ This action doesn't affect email distribution lists that are managed outside of 
 
 ## Default user accounts
 
-Metabase will automatically create a user account called "Metabase Internal" with an email of `internal@metabase.com`. Metabase uses this account to load the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection into your Metabase. Metabase will exclude this Metabase Internal account from the People tab in the Admin settings, so you won't see it show up if you search for it. You may see this `internal@metabase.com` account in the logs, so we're just documenting the account here so that you know it's a legitimate account and not someone trying to spy on your Metabase.
+Metabase includes default user accounts to handle various activities. Metabase will exclude these user accounts from the **Admin settings** > **People** tab, so we're documenting the accounts here so you know they're legitimate accounts and not someone trying to spy on your Metabase.
+
+### Anonymous user account
+
+- ID: 0
+- First name: External
+- Last name: User
+- Email: null
+
+Metabase uses this anonymous user account to log anonymous views, for example views of a [public question or dashboard](../questions/sharing/public-links.md). You'll see this account show up in [usage analytics](../usage-and-performance-tools/usage-analytics.md).
+
+### Metabase internal account
+
+- ID: 13371338
+- First name: Internal
+- Last name: Metabase
+- Email: internal@metabase.com
+
+The [Pro](https://www.metabase.com/pro) and [Enterprise](https://www.metabase.com/enterprise) editions include a user account called "Metabase Internal". Metabase uses this account to load the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection into your Metabase. You may see this `internal@metabase.com` account in the logs.
 
 ## Groups
 
