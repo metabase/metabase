@@ -46,7 +46,11 @@ const Users = createEntity({
         userApi.endpoints.createUser,
       ),
     get: (entityQuery, options, dispatch) =>
-      entityCompatibleQuery(entityQuery, dispatch, userApi.endpoints.getUser),
+      entityCompatibleQuery(
+        entityQuery.id,
+        dispatch,
+        userApi.endpoints.getUser,
+      ),
     update: (entityQuery, dispatch) =>
       entityCompatibleQuery(
         entityQuery,
