@@ -220,15 +220,20 @@ The row limit step lets you limit how many rows you want from the previous resul
 
 ![View the SQL](../images/view-the-sql.png)
 
-Under the hood, all Metabase questions are SQL (gasp!). If you have [SQL editor permissions](../../permissions/data.md), and you're curious to see the SQL that Metabase will run when you click **Visualize**, you can click the little console icon in the top right of the query builder.
+Under the hood, all Metabase questions are SQL (gasp!). To view the SQL that Metabase will run when you click **Visualize**, click the little **Console** icon in the top right of the query builder. Metabase will preview the SQL in a sidebar:
 
-Metabase will preview the SQL in a sidebar:
+![SQL sidebar](../images/sql-sidebar.png)
 
-![Sql sidebar](../images/sql-sidebar.png)
+To view the SQL, you must have [SQL editor permissions](../../permissions/data.md).
 
 ### Convert query builder question to SQL
 
-You can also convert the question to a [native editor question](../native-editor/writing-sql.md) by clicking **Convert the question to SQL**. Though note that conversion is a one-way street: you can't convert a SQL question back into a query builder question.
+You can also convert the question to a [native editor question](../native-editor/writing-sql.md). From the query builder screen:
+
+1. Click the **Console** icon in the upper right of the query builder.
+2. Click **Convert the question to SQL** option in the bottom right below the SQL code.
+
+Conversion is a one-way street: you can't convert a SQL question back into a query builder question.
 
 ## Play around with saved questions
 
