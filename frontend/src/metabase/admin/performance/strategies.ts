@@ -98,15 +98,15 @@ export const strategyValidationSchema = Yup.object().test(
 
 /** Cache invalidation strategies and related metadata */
 export const Strategies: Record<StrategyType, StrategyData> = {
-  schedule: {
-    label: t`Schedule: at regular intervals`,
-    shortLabel: t`Scheduled`,
-    validateWith: scheduleStrategyValidationSchema,
-  },
   duration: {
     label: t`Hours: after a specific number of hours`,
     validateWith: durationStrategyValidationSchema,
     shortLabel: t`Hours`,
+  },
+  schedule: {
+    label: t`Schedule: at regular intervals`,
+    shortLabel: t`Scheduled`,
+    validateWith: scheduleStrategyValidationSchema,
   },
   ttl: {
     label: t`Query duration multiplier: the longer the query takes the longer its cached results persist`,
