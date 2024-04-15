@@ -57,7 +57,7 @@ type SuggestWithFooters = {
   helpText?: HelpText;
 };
 
-function suggestWithFooters(
+export function suggestWithFooters(
   args: SuggestArgs & { showMetabaseLinks: boolean },
 ): SuggestWithFooters {
   const res = suggest(args);

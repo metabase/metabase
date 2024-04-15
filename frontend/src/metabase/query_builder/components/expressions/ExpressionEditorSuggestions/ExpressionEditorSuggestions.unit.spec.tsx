@@ -87,39 +87,6 @@ describe("ExpressionEditorSuggestions", () => {
     );
   });
 
-  it("should render correct functions link for expressions", () => {
-    setup({ startRule: "expression" });
-    expect(screen.getByText("View all functions")).toBeInTheDocument();
-    expect(
-      screen
-        .getByText("View all functions")
-        .getAttribute("href")
-        ?.endsWith("#functions"),
-    ).toBe(true);
-  });
-
-  it("should render correct functions link for filters", () => {
-    setup({ startRule: "boolean" });
-    expect(screen.getByText("View all functions")).toBeInTheDocument();
-    expect(
-      screen
-        .getByText("View all functions")
-        .getAttribute("href")
-        ?.endsWith("#functions"),
-    ).toBe(true);
-  });
-
-  it("should render correct functions link for aggregations", () => {
-    setup({ startRule: "aggregation" });
-    expect(screen.getByText("View all functions")).toBeInTheDocument();
-    expect(
-      screen
-        .getByText("View all functions")
-        .getAttribute("href")
-        ?.endsWith("#aggregations"),
-    ).toBe(true);
-  });
-
   it("should show functions when first opened", () => {
     setup({ startRule: "expression" });
     expect(screen.getByText("Most used functions")).toBeInTheDocument();
