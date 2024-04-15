@@ -72,7 +72,7 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
 };
 
 /** Returns null if we can't convert the cron expression to a ScheduleSettings object */
-const cronToScheduleSettings_unmemoized = (
+export const cronToScheduleSettings_unmemoized = (
   cron: string | null | undefined,
 ): ScheduleSettings | null => {
   if (!cron) {
@@ -142,6 +142,7 @@ const defaultSchedule: ScheduleSettings = {
   schedule_type: "hourly",
   schedule_minute: 0,
 };
+export const defaultCron = scheduleSettingsToCron(defaultSchedule);
 
 export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
 export const hourTo24HourFormat = (hour: number, amPm: number) =>
