@@ -70,7 +70,7 @@ const KEYS_TO_COMPARE = new Set([
   "suffix",
 ]);
 
-export function getLineAreaBarComparisonSettings(
+function getLineAreaBarComparisonSettings(
   columnSettings: Record<string, unknown>,
 ) {
   return _.pick(columnSettings, (value, key) => {
@@ -93,7 +93,7 @@ const getAggregateColumnsCount = (seriesModels: SeriesModel[]) => {
   ).length;
 };
 
-export function shouldAutoSplitYAxis(
+function shouldAutoSplitYAxis(
   settings: ComputedVisualizationSettings,
   seriesModels: SeriesModel[],
   seriesExtents: SeriesExtents,
@@ -244,12 +244,12 @@ export function computeSplit(
   return best;
 }
 
-export const getYAxisSplit = (
+const getYAxisSplit = (
   seriesModels: SeriesModel[],
   seriesExtents: SeriesExtents,
   settings: ComputedVisualizationSettings,
   isAutoSplitSupported: boolean,
-): AxisSplit => {
+) => {
   const axisBySeriesKey = seriesModels.reduce((acc, seriesModel) => {
     const seriesSettings: SeriesSettings = settings.series(
       seriesModel.legacySeriesSettingsObjectKey,
@@ -273,30 +273,30 @@ export const getYAxisSplit = (
   }
 
   if (
-    isAutoSplitSupported &&
-    shouldAutoSplitYAxis(settings, seriesModels, seriesExtents)
+    !isAutoSplitSupported ||
+    !shouldAutoSplitYAxis(settings, seriesModels, seriesExtents)
   ) {
-    // NOTE: this version computes the split after assigning fixed left/right
-    // which causes other series to move around when changing the setting
-    // return computeSplit(yExtents, left, right);
+    // assign all auto to the left
+    return [new Set([...left, ...auto]), new Set(right)];
+  }
 
-    // NOTE: this version computes a split with all axis unassigned, then moves
-    // assigned ones to their correct axis
-    const [autoLeft, autoRight] = computeSplit(seriesExtents);
-    return [
+  // computes a split with all axis unassigned, then moves
+  // assigned ones to their correct axis
+  const [autoLeft, autoRight] = computeSplit(seriesExtents);
+  return [
+    new Set(
       _.uniq([
         ...left,
         ...autoLeft.filter(dataKey => !axisBySeriesKey[dataKey]),
       ]),
+    ),
+    new Set(
       _.uniq([
         ...right,
         ...autoRight.filter(dataKey => !axisBySeriesKey[dataKey]),
       ]),
-    ];
-  } else {
-    // assign all auto to the left
-    return [[...left, ...auto], right];
-  }
+    ),
+  ];
 };
 
 const calculateStackedExtent = (
@@ -380,8 +380,7 @@ const getYAxisFormatter = (
 };
 
 export const getYAxisLabel = (
-  axisSeriesKeys: DataKey[],
-  axisColumn: DatasetColumn,
+  axisSeriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
 ) => {
   if (settings["graph.y_axis.labels_enabled"] === false) {
@@ -394,11 +393,11 @@ export const getYAxisLabel = (
     return specifiedAxisName;
   }
 
-  if (axisSeriesKeys.length > 1) {
+  if (axisSeriesModels.length > 1) {
     return undefined;
   }
 
-  return axisColumn.display_name;
+  return axisSeriesModels[0].name;
 };
 
 function getYAxisExtent(
@@ -420,21 +419,22 @@ function getYAxisExtent(
 }
 
 export function getYAxisModel(
-  seriesKeys: DataKey[],
+  seriesModels: SeriesModel[],
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
   renderingContext: RenderingContext,
 ): YAxisModel | null {
-  if (seriesKeys.length === 0) {
+  if (seriesModels.length === 0) {
     return null;
   }
+  const seriesKeys = seriesModels.map(model => model.dataKey);
 
   const stackType = settings["stackable.stack_type"];
 
   const extent = getYAxisExtent(seriesKeys, dataset, stackType);
   const column = columnByDataKey[seriesKeys[0]];
-  const label = getYAxisLabel(seriesKeys, column, settings);
+  const label = getYAxisLabel(seriesModels, settings);
   const formatter = getYAxisFormatter(column, settings, renderingContext);
 
   return {
@@ -457,23 +457,30 @@ export function getYAxesModels(
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
   const extents = getDatasetExtents(seriesDataKeys, dataset);
 
-  const [leftAxisSeries, rightAxisSeries]: AxisSplit = getYAxisSplit(
+  const [leftAxisSeriesKeys, rightAxisSeriesKeys] = getYAxisSplit(
     seriesModels,
     extents,
     settings,
     isAutoSplitSupported,
   );
 
+  const leftAxisSeriesModels = seriesModels.filter(model =>
+    leftAxisSeriesKeys.has(model.dataKey),
+  );
+  const rightAxisSeriesModels = seriesModels.filter(model =>
+    rightAxisSeriesKeys.has(model.dataKey),
+  );
+
   return {
     leftAxisModel: getYAxisModel(
-      leftAxisSeries,
+      leftAxisSeriesModels,
       dataset,
       settings,
       columnByDataKey,
       renderingContext,
     ),
     rightAxisModel: getYAxisModel(
-      rightAxisSeries,
+      rightAxisSeriesModels,
       dataset,
       settings,
       columnByDataKey,
