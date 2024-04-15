@@ -228,8 +228,8 @@ describe("hourToTwelveHourFormat", () => {
   });
 });
 
-describe("removeFalsyValues", () => {
-  it("removes falsy values from an object", () => {
+describe("removeNilValues", () => {
+  it("removes nil values from an object", () => {
     const obj = {
       a: 1,
       b: false,
@@ -239,11 +239,7 @@ describe("removeFalsyValues", () => {
       f: "some string",
       g: undefined,
     };
-    const truthyObj = { a: 1, f: "some string" };
-    expect(removeNilValues(obj)).toEqual(truthyObj);
-  });
-  it("keeps truthy values", () => {
-    const obj = { a: 1, b: true, c: "string", d: [], e: {} };
-    expect(removeNilValues(obj)).toEqual(obj);
+    const nonNilValues = { a: 1, b: false, d: 0, e: "", f: "some string" };
+    expect(removeNilValues(obj)).toEqual(nonNilValues);
   });
 });
