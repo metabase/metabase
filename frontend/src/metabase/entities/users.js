@@ -133,7 +133,7 @@ const Users = createEntity({
         MetabaseAnalytics.trackStructEvent("People Admin", "User Removed");
 
         await entityCompatibleQuery(
-          { id },
+          id,
           dispatch,
           userApi.endpoints.deactivateUser,
         );
@@ -145,7 +145,7 @@ const Users = createEntity({
         MetabaseAnalytics.trackStructEvent("People Admin", "User Reactivated");
 
         const user = await entityCompatibleQuery(
-          { id },
+          id,
           dispatch,
           userApi.endpoints.reactivateUser,
         );
