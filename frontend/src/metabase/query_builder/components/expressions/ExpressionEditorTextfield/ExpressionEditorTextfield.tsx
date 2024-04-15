@@ -64,7 +64,7 @@ export function suggestWithFooters(
 
   const suggestions: (Suggestion | SuggestionFooter)[] = res.suggestions ?? [];
 
-  if (args.showMetabaseLinks) {
+  if (args.showMetabaseLinks && args.source === "") {
     if (args.startRule === "aggregation") {
       suggestions.push({
         footer: true,
