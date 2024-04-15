@@ -66,14 +66,14 @@ function suggestWithFooters(
 
   if (args.showMetabaseLinks) {
     if (args.startRule === "aggregation") {
-      suggestions?.push({
+      suggestions.push({
         footer: true,
         name: t`View all aggregations`,
         icon: "external",
         href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#aggregations",
       });
     } else {
-      suggestions?.push({
+      suggestions.push({
         footer: true,
         name: t`View all functions`,
         icon: "external",
