@@ -7,7 +7,7 @@ import {
   removeNilValues,
 } from "metabase/admin/performance/utils";
 import { capitalize } from "metabase/lib/formatting/strings";
-import { Box, Group } from "metabase/ui";
+import { Box, Group, Text } from "metabase/ui";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
 import {
@@ -261,27 +261,27 @@ const ScheduleBody = ({
   }
 };
 
-/** Arrange Schedule components into two columns. */
+/** Arrange Schedule components into two columns, with the Selects on the right. */
 const TwoColumns = ({ children }: { children: ReactNode }) => {
   const kids = Children.toArray(children).filter(
     child => !(typeof child === "string" && !child.trim()),
   );
   const result: ReactNode[] = [];
-  const addBlank = () => result.push(<Box></Box>);
+  const addBlank = () => result.push(<div></div>);
   for (let c = 0; c < kids.length; c++) {
     const curr = kids[c];
     const next = kids[c + 1];
     const isLastItemString = c === kids.length - 1 && typeof curr === "string";
     if (isLastItemString) {
       addBlank();
-      result.push(<Box mt="-.5rem">{curr}</Box>);
+      result.push(<Text mt="-.5rem">{curr}</Text>);
     } else {
       const isFirstItemString = c === 0 && typeof curr !== "string";
       if (isFirstItemString) {
         addBlank();
       }
       if (typeof curr === "string") {
-        const wrappedCurr = <Box style={{ textAlign: "end" }}>{curr}</Box>;
+        const wrappedCurr = <Text align="end">{curr}</Text>;
         result.push(wrappedCurr);
       } else {
         result.push(curr);
