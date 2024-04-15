@@ -305,7 +305,6 @@ function group(suggestions: Suggestion[]): Groups {
 
   suggestions.forEach(function (suggestion) {
     if (suggestion.group) {
-      groups[suggestion.group] ??= [];
       groups[suggestion.group].push(suggestion);
     } else {
       groups._none.push(suggestion);
