@@ -96,20 +96,20 @@ export const strategyValidationSchema = Yup.object().test(
 
 /** Cache invalidation strategies and related metadata */
 export const Strategies: Record<StrategyType, StrategyData> = {
-  ttl: {
-    label: t`TTL: When the time-to-live (TTL) expires`,
-    shortLabel: c("'TTL' is short for 'time-to-live'").t`TTL`,
-    validateWith: ttlStrategyValidationSchema,
+  duration: {
+    label: t`Duration: after a specific number of hours`,
+    validateWith: durationStrategyValidationSchema,
+    shortLabel: t`Duration`,
   },
   schedule: {
     label: t`Schedule: at regular intervals`,
     shortLabel: t`Scheduled`,
     validateWith: scheduleStrategyValidationSchema,
   },
-  duration: {
-    label: t`Duration: after a specific number of hours`,
-    validateWith: durationStrategyValidationSchema,
-    shortLabel: t`Duration`,
+  ttl: {
+    label: t`TTL: When the time-to-live (TTL) expires`,
+    shortLabel: c("'TTL' is short for 'time-to-live'").t`TTL`,
+    validateWith: ttlStrategyValidationSchema,
   },
   nocache: {
     label: t`Don't cache results`,
