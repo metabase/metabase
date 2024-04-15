@@ -315,7 +315,7 @@ class ExpressionEditorTextfield extends React.Component<
 
     if ("footer" in suggestion) {
       // open link in new window
-      window.open(suggestion.href, "tab");
+      window.open(suggestion.href, "_blank");
       return;
     }
 
