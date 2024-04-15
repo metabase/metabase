@@ -262,7 +262,7 @@ function Footer({
 
   return (
     <ExpressionListFooter
-      target="blank"
+      target="_blank"
       href={suggestion.href}
       onMouseDownCapture={handleMouseDownCapture}
       isHighlighted={highlightedIndex === suggestion.index}
