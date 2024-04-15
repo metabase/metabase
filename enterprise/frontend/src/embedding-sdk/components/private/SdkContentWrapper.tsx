@@ -31,4 +31,8 @@ export const SdkContentWrapper = styled.div<{ font: string }>`
 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  svg {
+    display: inline;
+  }
 `;
