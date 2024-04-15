@@ -122,7 +122,6 @@
   ;; these only work if the underlying metadata provider is also a [[BulkMetadataProvider]].
   lib.metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]
-    (def cache @cache)
     (bulk-metadata cache metadata-provider metadata-type ids))
 
   #?(:clj Object :cljs IEquiv)
