@@ -1157,7 +1157,7 @@ msgstr "Désactiver"
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.tsx:19
 #: frontend/src/metabase/admin/routes.jsx:107
 msgid "People"
-msgstr "Utilisateurs!"
+msgstr "Utilisateurs"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:192
 msgid "Who do you want to add?"
@@ -13876,7 +13876,7 @@ msgstr "Échec à la planification des tâches pour la base de données {0}"
 msgid "All elements must be distinct."
 msgstr "Tous les éléments doivent être distincts."
 
-#:
+#: 
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Choisissez les colonnes concernées"
@@ -18351,12 +18351,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#:
+#: 
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Les impulsions sont progressivement supprimées"
 
-#:
+#: 
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Vous pouvez maintenant mettre en place {0} à la place. Nous supprimerons Pulses dans une prochaine version, et nous vous aiderons à migrer tout ce qui vous reste."
@@ -18365,7 +18365,7 @@ msgstr "Vous pouvez maintenant mettre en place {0} à la place. Nous supprimeron
 msgid "dashboard subscriptions"
 msgstr "abonnements au tableau de bord"
 
-#:
+#: 
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "Les graphiques de votre abonnement ne seront pas les mêmes que ceux de votre tableau de bord. {1}"
 
@@ -18513,7 +18513,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Configurer la base de données source {0} et lancer les migrations..."
 
 #. make sure the dest DB is up-to-date
-#.
+#. 
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:388
 msgid "Set up {0} target database and run migrations..."
@@ -26500,12 +26500,12 @@ msgstr "La base de données d'échantillons n'a pas pu être extraite dans le r�
 msgid "Metabase config files require a Premium token with the :advanced-config feature."
 msgstr "Les fichiers de configuration de la Metabase nécessitent un jeton Premium avec la fonction :advanced-config."
 
-#:
+#: 
 msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
 msgid "Charts in subscriptions may look slightly different from charts in dashboards."
 msgstr "Les graphiques dans les abonnements peuvent être légèrement différents des graphiques dans les tableaux de bord."
 
-#:
+#: 
 msgctxt "Seen when creating a new dashboard subscription."
 msgid "Recipients will see this data just as you see it, regardless of their permissions."
 msgstr "Les destinataires verront ces données telles que vous les voyez, indépendamment de leurs permissions."
@@ -32854,16 +32854,3 @@ msgstr "Maintenir la touche Option enfoncée pour télécharger des résultats n
 msgid "Hold the Alt key to download unformatted results"
 msgstr "Maintenir la touche Alt enfoncée pour télécharger les résultats non formatés"
 
-#: frontend/src/metabase/components/Schedule/Schedule.tsx:209
-msgctxt ""
-"{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time "
-"like '12:00pm'"
-msgid "{0} {1} at {2}"
-msgstr "{0} {1} à {2}"
-
-#: frontend/src/metabase/components/Schedule/Schedule.tsx:249
-msgctxt ""
-"{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an "
-"adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'"
-msgid "{0} {1} on the {2} {3} at {4}"
-msgstr "{0} {1} le {2} {3} à {4}"
