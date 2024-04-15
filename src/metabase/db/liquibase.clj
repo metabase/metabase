@@ -259,9 +259,9 @@
           (wait-until done? sleep-ms timeout-ms)))))
 
 (defn- liquibase->url [^Liquibase liquibase]
-  ;; Need to this cast to get access to the metadata. We currently only use JDBC app databases.
-  (let [conn ^JdbcConnection (.. liquibase getDatabase getConnection)]
-    (-> conn .getMetaData .getURL)))
+  (let [conn (.. liquibase getDatabase getConnection)]
+    ;; Need to this cast to get access to the metadata. We currently only use JDBC app databases.
+    (.getURL (.getMetaData ^JdbcConnection conn))))
 
 (defn release-concurrent-locks!
   "Release any locks held by this process corresponding to the same database."
