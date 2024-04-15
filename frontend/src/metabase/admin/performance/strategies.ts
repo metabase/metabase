@@ -6,7 +6,7 @@ import type { SchemaObjectDescription } from "yup/lib/schema";
 import type { Config, Strategy, StrategyType } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
-import { getFrequencyFromCron } from "./utils";
+import { defaultCron, getFrequencyFromCron } from "./utils";
 
 export type UpdateTargetId = (
   newTargetId: number | null,
@@ -57,7 +57,9 @@ export const durationStrategyValidationSchema = Yup.object({
 
 export const scheduleStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["schedule"]),
-  schedule: Yup.string().required(t`A cron expression is required`),
+  schedule: Yup.string()
+    .required(t`A cron expression is required`)
+    .default(defaultCron),
 });
 
 export const strategyValidationSchema = Yup.object().test(
