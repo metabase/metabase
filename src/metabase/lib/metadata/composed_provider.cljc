@@ -62,6 +62,9 @@
   (cached-database [_this]
     (some metadata.protocols/cached-database
           (cached-providers metadata-providers)))
+  (cached-metadata [_this metadata-type]
+    (some #(metadata.protocols/cached-metadata % metadata-type)
+          (cached-providers metadata-providers)))
   (cached-metadata [_this metadata-type id]
     (some #(metadata.protocols/cached-metadata % metadata-type id)
           (cached-providers metadata-providers)))
