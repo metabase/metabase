@@ -226,6 +226,8 @@ Metabase will preview the SQL in a sidebar:
 
 ![Sql sidebar](../images/sql-sidebar.png)
 
+### Convert query builder question to SQL
+
 You can also convert the question to a [native editor question](../native-editor/writing-sql.md) by clicking **Convert the question to SQL**. Though note that conversion is a one-way street: you can't convert a SQL question back into a query builder question.
 
 ## Play around with saved questions
