@@ -218,7 +218,15 @@ The row limit step lets you limit how many rows you want from the previous resul
 
 ## Viewing the SQL that powers your question
 
-Under the hood, all Metabase questions are SQL (gasp!). If you're curious to see the SQL that will get run when you ask your question, you can click the little console icon in the top-right of the notebook editor. In the modal that opens up, you'll also be given the option to start a new query in the SQL editor using this generated SQL as a starting point (assuming you have [SQL permissions](../../permissions/data.md#native-query-editing) to that database). It's a nice little shortcut to have Metabase write some boilerplate SQL for you, but then allows you to tweak and customize the query.
+![View the SQL](../images/view-the-sql.png)
+
+Under the hood, all Metabase questions are SQL (gasp!). If you have [SQL editor permissions](../../permissions/data.md), and you're curious to see the SQL that Metabase will run when you click **Visualize**, you can click the little console icon in the top right of the query builder.
+
+Metabase will preview the SQL in a sidebar:
+
+![Sql sidebar](../images/sql-sidebar.png)
+
+You can also convert the question to a native editor question by clicking **Convert the question to SQL**. Though note that conversion is a one-way street: you can't convert a SQL question back into a query builder question.
 
 ## Play around with saved questions
 
