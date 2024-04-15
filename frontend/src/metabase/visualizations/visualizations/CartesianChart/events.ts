@@ -154,10 +154,18 @@ export const getEventColumnsData = (
 
       const col = chartModel.columnByDataKey[dataKey];
       const columnSeriesModel = seriesModelsByDataKey[dataKey];
+      const key =
+        columnSeriesModel == null || "breakoutColumn" in columnSeriesModel
+          ? col.display_name
+          : columnSeriesModel?.name;
+      const displayValue =
+        isBreakoutSeries && seriesModel.breakoutColumn === col
+          ? seriesModel.name
+          : value ?? NULL_DISPLAY_VALUE;
 
       return {
-        key: columnSeriesModel?.name ?? col.display_name,
-        value: value ?? NULL_DISPLAY_VALUE,
+        key,
+        value: displayValue,
         col,
       };
     })
