@@ -1,9 +1,18 @@
-import type { MutableRefObject, type FocusEvent } from "react";
+import type { FocusEvent } from "react";
 import { useState, useMemo } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
-import { Button, Flex, Icon, Select, TextInput, Text } from "metabase/ui";
+import {
+  Button,
+  Flex,
+  Icon,
+  Select,
+  TextInput,
+  Text,
+  Popover,
+  FocusTrap,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import {
@@ -150,29 +159,74 @@ export function ColumnInput({
     [query, stageIndex, columns],
   );
 
-  const dropdown = ({ ref }: { ref: MutableRefObject<HTMLDivElement> }) => (
-    <div ref={ref}>
-      <QueryColumnPicker
-        query={query}
-        stageIndex={stageIndex}
-        columnGroups={columnGroups}
-        onSelect={onChange}
-        checkIsColumnSelected={item => item.column === value}
-        width="100%"
-      />
-    </div>
+  const [open, setOpen] = useState(false);
+
+  function handleFocus() {
+    setOpen(true);
+  }
+
+  function handleBlur(evt) {}
+
+  function handleOpen() {
+    setOpen(true);
+  }
+
+  function handleInputClick(evt) {
+    evt.preventDefault();
+    if (!open) {
+      // setOpen(true);
+    }
+  }
+
+  function handleClose() {
+    setOpen(false);
+  }
+
+  const dropdown = (
+    <FocusTrap active={open}>
+      <div>
+        <QueryColumnPicker
+          query={query}
+          stageIndex={stageIndex}
+          columnGroups={columnGroups}
+          onSelect={onChange}
+          onClose={handleClose}
+          checkIsColumnSelected={item => item.column === value}
+          width="100%"
+        />
+      </div>
+    </FocusTrap>
   );
 
   return (
-    <Select
-      classNames={{
-        wrapper: styles.wrapper,
-      }}
-      label={label}
-      data={options}
-      placeholder={t`Select a column...`}
-      value={toSelectValue(options, value)}
-      dropdownComponent={dropdown}
-    />
+    <Popover
+      opened={open}
+      onClose={handleClose}
+      onOpen={handleOpen}
+      closeOnEscape
+      closeOnClickOutside
+      width="target"
+    >
+      <Popover.Target>
+        <div onClick={handleInputClick}>
+          <Select
+            classNames={{
+              wrapper: styles.wrapper,
+              dropdown: styles.dropdown,
+              root: styles.root,
+            }}
+            onDropdownOpen={handleOpen}
+            label={label}
+            data={options}
+            placeholder={t`Select a column...`}
+            value={toSelectValue(options, value)}
+            dropdownComponent="div"
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+          />
+        </div>
+      </Popover.Target>
+      <Popover.Dropdown>{dropdown}</Popover.Dropdown>
+    </Popover>
   );
 }

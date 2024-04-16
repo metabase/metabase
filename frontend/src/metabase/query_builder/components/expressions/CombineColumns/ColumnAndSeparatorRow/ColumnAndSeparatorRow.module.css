@@ -15,10 +15,19 @@
   border-color: transparent !important;
 }
 
+.root {
+  width: 100%;
+  flex-grow: 1;
+}
+
 .wrapper {
   &:not(:only-child) {
     margin-top: 0;
   }
+}
+
+.dropdown {
+  display: none;
 }
 
 .placeholder {
