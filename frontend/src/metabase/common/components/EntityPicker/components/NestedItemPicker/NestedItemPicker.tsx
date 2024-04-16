@@ -26,7 +26,6 @@ export interface NestedItemPickerProps<
   onFolderSelect: ({ folder }: { folder: Item }) => void;
   onItemSelect: (item: Item) => void;
   generateKey: (query?: Query) => string;
-  itemName: string;
   options: Options;
   path: PickerState<Item, Query>;
   isFolder: IsFolder<Id, Model, Item>;
