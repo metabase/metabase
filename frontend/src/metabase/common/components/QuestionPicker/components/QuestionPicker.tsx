@@ -11,7 +11,7 @@ import type { SearchRequest, SearchModel } from "metabase-types/api";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
 import {
-  LoadingSpinner,
+  DelayedLoadingSpinner,
   NestedItemPicker,
   type PickerState,
 } from "../../EntityPicker";
@@ -161,7 +161,7 @@ export const QuestionPicker = ({
   }
 
   if (loadingCurrentCollection) {
-    return <LoadingSpinner />;
+    return <DelayedLoadingSpinner />;
   }
 
   return (
