@@ -1087,7 +1087,8 @@
       (qs/start scheduler)
       (doseq [db dbs]
         (qs/delete-trigger scheduler (triggers/key (format "metabase.task.update-field-values.trigger.%d" (:id db)))))
-      (t2/update! :model/Database :id [:in (map :id dbs)] {:cache_field_values_schedule nil})
+      ;; use the table, not model/Database because we don't want to trigger the hooks
+      (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil})
       (qs/shutdown scheduler))))
 
 (defn- hash-bcrypt
