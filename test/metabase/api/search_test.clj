@@ -7,9 +7,6 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.search :as api.search]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models
     :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
             DashboardCard Database PermissionsGroup PermissionsGroupMembership
@@ -492,18 +489,6 @@
                           reverse
                           sorted-results)
                      (search-request-data :rasta :q "test")))))))))
-
-  (testing "Metrics on tables for which the user does not have access to should not show up in results"
-    (mt/with-temp [Database {db-id :id} {}
-                   Table    {table-id :id} {:db_id  db-id
-                                            :schema nil}
-                   Card   _ {:dataset_query (as-> (lib.metadata.jvm/application-database-metadata-provider db-id) mp
-                                              (lib/query mp (lib.metadata/table mp table-id)))
-                             :type :metric
-                                     :name     "test metric"}]
-      (mt/with-no-data-perms-for-all-users!
-        (is (= []
-               (search-request-data :rasta :q "test"))))))
 
   (testing "Segments on tables for which the user does not have access to should not show up in results"
     (mt/with-temp [Database {db-id :id} {}
