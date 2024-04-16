@@ -231,7 +231,9 @@ export const FormButtons = ({
   const { dirty } = useFormikContext<Strategy>();
   const { status } = useFormContext();
 
-  shouldAllowInvalidation &&= targetId !== rootId;
+  if (targetId === rootId) {
+    shouldAllowInvalidation = false;
+  }
 
   const isFormPending = status === "pending";
   const [wasFormRecentlyPending] = useRecentlyTrue(isFormPending, 500);
