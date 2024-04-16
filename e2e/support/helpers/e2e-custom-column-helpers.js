@@ -1,5 +1,5 @@
 export function expressionEditorWidget() {
-  return cy.findByTestId("expression-editor").should("exist");
+  return cy.findByTestId("expression-editor");
 }
 
 export function enterCustomColumnDetails({ formula, name } = {}) {
