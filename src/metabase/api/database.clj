@@ -790,7 +790,7 @@
                                        {:name         name
                                         :engine       engine
                                         :details      details-or-error
-                                        :is_full_sync is_full_sync
+                                        :is_full_sync is-full-sync?
                                         :is_on_demand (boolean is_on_demand)
                                         :cache_ttl    cache_ttl
                                         :creator_id   api/*current-user-id*}
