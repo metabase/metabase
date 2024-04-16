@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [clojure.zip :as zip]
    [hiccup.core :refer [html]]
    [hickory.select :as hik.s]
    [metabase.formatter :as formatter]
@@ -679,13 +680,26 @@
                                                   :dataset_query q}]
           (let [doc       (render.tu/render-card-as-hickory card-id)
                 span-text (->> doc
-                               (hik.s/select (hik.s/tag :span))
+                               (hik.s/select (hik.s/tag :p))
                                (mapv (comp first :content))
                                (filter string?)
                                (filter #(str/includes? % "previous month")))]
             ;; we look for content that we are certain comes from a
             ;; successfully rendered trend chart.
-            (is (= ["vs. previous month: "] span-text))))))))
+            (is (= 1 (count span-text)))))))))
+
+(defn- content-selector
+  [content-to-match]
+  (fn [loc]
+    (let [{:keys [content]} (zip/node loc)]
+      (= content content-to-match ))))
+
+(defn- parse-transform [s]
+  (let [numbers (-> (re-find #"matrix\((.+)\)" s)
+                    second
+                    (str/split #","))
+        keys [:a :b :c :d :e :f]]
+    (zipmap keys (map parse-double numbers))))
 
 (deftest axis-selection-for-series-test
   (testing "When the user specifies all series to be on left or right, it will render. (#38839)"
@@ -713,18 +727,27 @@
                                                         :visualization_settings (viz "right")
                                                         :dataset_query          q}]
           (testing "Every series on the left correctly only renders left axis."
-            (let [doc        (render.tu/render-card-as-hickory left-card-id)
-                  left-axis  (hik.s/select (hik.s/class "visx-axis-left") doc)
-                  right-axis (hik.s/select (hik.s/class "visx-axis-right") doc)]
-              (is (= {:left  1
-                      :right 0}
-                     {:left  (count left-axis)
-                      :right (count right-axis)}))))
-          (testing "Every series on the left correctly only renders right axis."
-            (let [doc        (render.tu/render-card-as-hickory right-card-id)
-                  left-axis  (hik.s/select (hik.s/class "visx-axis-left") doc)
-                  right-axis (hik.s/select (hik.s/class "visx-axis-right") doc)]
-              (is (= {:left  0
-                      :right 1}
-                     {:left  (count left-axis)
-                      :right (count right-axis)})))))))))
+            (let [doc                (render.tu/render-card-as-hickory left-card-id)
+                  axis-label-element (hik.s/select (content-selector ["Count"]) doc)
+                  ;; the axis label has a :transform property like this: "matrix(0,1,-1,0,520,162.3245)"
+                  ;; which is explained here: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
+                  ;; If we assume the 'previous coords' for the label were 0 0, we can ignore most matrix entries,
+                  ;; and only really care about the X position, which ends up being the :e entry in the matrix.
+                  ;; the '200' is an arbitrary X value that is close-ish to the middle of the chart's graphics
+                  ;; which should mean the assertions pass, even if the static-viz output changes a bit.
+                  ;; Well, one can hope, at least :)
+                  axis-y-transform   (-> axis-label-element
+                                         (get-in [0 :attrs :transform])
+                                         parse-transform
+                                         :e)]
+              (is (= 1 (count axis-label-element)))
+              (is (> 200 axis-y-transform))))
+          (testing "Every series on the right correctly only renders right axis."
+            (let [doc                (render.tu/render-card-as-hickory right-card-id)
+                  axis-label-element (hik.s/select (content-selector ["Count"]) doc)
+                  axis-y-transform   (-> axis-label-element
+                                         (get-in [0 :attrs :transform])
+                                         parse-transform
+                                         :e)]
+              (is (= 1 (count axis-label-element)))
+              (is (< 200 axis-y-transform)))))))))

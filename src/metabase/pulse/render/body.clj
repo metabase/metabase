@@ -542,13 +542,13 @@
   [_chart-type render-type _timezone-id card dashcard data]
   (let [combined-cards-results (if dashcard
                                  (pu/execute-multi-card card dashcard)
-                                 (pu/execute-card {:creator_id (:creator_id card)} (:id card)))
+                                 [(pu/execute-card {:creator_id (:creator_id card)} (:id card))])
         cards-with-data        (map
                                 (comp
                                  add-dashcard-timeline-events
                                  (fn [c d] {:card c :data d}))
-                                (cons card (map :card combined-cards-results))
-                                (cons data (map #(get-in % [:result :data]) combined-cards-results)))
+                                (map :card combined-cards-results)
+                                (map #(get-in % [:result :data]) combined-cards-results))
         dashcard-viz-settings  (get dashcard :visualization_settings)
         {rendered-type :type content :content} (js-svg/javascript-visualization cards-with-data dashcard-viz-settings)]
     (case rendered-type
