@@ -6,7 +6,7 @@ import {
   visitDashboard,
   queryBuilderHeader,
   modal,
-  chartPathWithColor,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
@@ -60,7 +60,7 @@ describe("issue 23293", () => {
       );
 
       // Click on the first bar
-      chartPathWithColor("#509EE3").first().realClick();
+      chartPathWithFillColor("#509EE3").first().realClick();
       popover()
         .findByText(/^See these/)
         .click();
