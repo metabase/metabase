@@ -53,6 +53,7 @@
                    (map fix-schema))
           tables)))
 
+;; TODO move to enterprise route
 (api/defendpoint GET "/uploaded"
   "Get all `Tables` visible to the current user which were created by uploading a file."
   []

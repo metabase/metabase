@@ -601,11 +601,23 @@
   [db table]
   (nil? (can-update-error db table)))
 
+(defn- can-delete-error
+  "Returns an ExceptionInfo object if the user cannot delete the given upload. Returns nil otherwise."
+  [table]
+  (cond
+    (not (:is_upload table))
+    (ex-info (tru "The table must be an uploaded table.")
+             {:status-code 422})
+
+    (not (mi/can-write? table))
+    (ex-info (tru "You don''t have permissions to do that.")
+             {:status-code 403})))
+
 (defn- check-can-delete
   "Throws an error if the given table is not an upload, or if the user does not have permission to delete it."
-  [db table]
+  [table]
   ;; For now anyone that can update a table is allowed to delete it.
-  (when-let [error (can-update-error db table)]
+  (when-let [error (can-delete-error table)]
     (throw error)))
 
 ;;; +--------------------------------------------------
@@ -618,7 +630,7 @@
   (let [database   (table/database table)
         driver     (driver.u/database->driver database)
         table-name (table-identifier table)]
-    (check-can-delete database table)
+    (check-can-delete table)
     ;; Archive our app-db table
     (t2/update! :model/Table :id (:id table) {:active false})
     ;; Archive cards if the option is set. For now we only deactivate cards where this is the primary table.
