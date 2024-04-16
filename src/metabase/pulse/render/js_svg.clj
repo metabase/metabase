@@ -79,7 +79,7 @@
       node)))
 
 (defn- parse-svg-string [^String s]
-  (let [s       (str/replace s #"<svg" "<svg xmlns=\"http://www.w3.org/2000/svg\"")
+  (let [s       (str/replace s #"rgba\(0,0,0,1\)" "rgb(0,0,0)") ;; todo: is there a more general way to do this? Perhaps js side?
         factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
     (with-open [is (ByteArrayInputStream. (.getBytes s StandardCharsets/UTF_8))]
       (.createDocument factory "file:///fake.svg" is))))
