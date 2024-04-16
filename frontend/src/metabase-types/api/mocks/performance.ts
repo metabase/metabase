@@ -9,7 +9,7 @@ export const createMockCacheConfig = (
   ...opts,
 });
 
-export const createMockCacheConfigWithTTLStrategy = (
+export const createMockCacheConfigWithAdaptiveStrategy = (
   opts?: Partial<CacheConfig>,
 ): CacheConfig =>
   createMockCacheConfig({

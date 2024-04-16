@@ -1,11 +1,16 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { hourToTwelveHourFormat } from "metabase/admin/performance/utils";
+import {
+  getLongestSelectLabel,
+  hourTo24HourFormat,
+  hourToTwelveHourFormat,
+} from "metabase/admin/performance/utils";
 import { useSelector } from "metabase/lib/redux";
+import { has24HourModeSetting } from "metabase/lib/time";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import type { SelectProps } from "metabase/ui";
-import { Group, SegmentedControl, Select, Text } from "metabase/ui";
+import { Box, Group, SegmentedControl, Select, Tooltip } from "metabase/ui";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -13,12 +18,12 @@ import type {
 } from "metabase-types/api";
 
 import {
-  addZeroesToHour,
   amAndPM,
   defaultHour,
   frames,
-  hours,
+  getHours,
   minutes,
+  weekdayOfMonthOptions,
   weekdays,
 } from "./constants";
 import type { UpdateSchedule } from "./types";
@@ -44,59 +49,56 @@ export const SelectFrame = ({
 export const SelectTime = ({
   schedule,
   updateSchedule,
+  timezone,
 }: {
   schedule: ScheduleSettings;
   updateSchedule: UpdateSchedule;
-}) => {
-  const hourIn24HourFormat =
-    schedule.schedule_hour && !isNaN(schedule.schedule_hour)
-      ? schedule.schedule_hour
-      : defaultHour;
-  const hour = hourToTwelveHourFormat(hourIn24HourFormat);
-  const amPm = hourIn24HourFormat >= 12 ? 1 : 0;
-  return (
-    <Group spacing="xs">
-      <AutoWidthSelect
-        value={hour.toString()}
-        data={hours}
-        onChange={(value: string) =>
-          updateSchedule("schedule_hour", Number(value) + amPm * 12)
-        }
-      />
-      <SegmentedControl
-        radius="sm"
-        value={amPm.toString()}
-        onChange={value =>
-          updateSchedule("schedule_hour", hour + Number(value) * 12)
-        }
-        data={amAndPM}
-      />
-    </Group>
-  );
-};
-
-export const TimeDetails = ({
-  hour,
-  amPm,
-  timezone,
-  textBeforeSendTime,
-}: {
-  hour: number | null;
-  amPm: number | null;
-  timezone: string | null;
-  textBeforeSendTime?: string;
+  timezone?: string | null;
 }) => {
   const applicationName = useSelector(getApplicationName);
-  if (hour === null || amPm === null || !timezone) {
-    return null;
-  }
-  const time = addZeroesToHour(hourToTwelveHourFormat(hour));
-  const amOrPM = amAndPM[amPm].label;
+  const isClock12Hour = !has24HourModeSetting();
+  const hourIn24HourFormat =
+    schedule.schedule_hour !== undefined &&
+    schedule.schedule_hour !== null &&
+    !isNaN(schedule.schedule_hour)
+      ? schedule.schedule_hour
+      : defaultHour;
+  const hour = isClock12Hour
+    ? hourToTwelveHourFormat(hourIn24HourFormat)
+    : hourIn24HourFormat;
+  const amPm = hourIn24HourFormat >= 12 ? 1 : 0;
+  const hourIndex = isClock12Hour && hour === 12 ? 0 : hour;
   return (
-    <Text w="100%" mt="xs" size="sm" fw="bold" color="text-light">
-      {textBeforeSendTime} {time} {amOrPM} {timezone},{" "}
-      {t`your ${applicationName} timezone`}
-    </Text>
+    <Group spacing={isClock12Hour ? "xs" : "sm"}>
+      <AutoWidthSelect
+        value={hourIndex.toString()}
+        data={getHours()}
+        onChange={(value: string) => {
+          const num = Number(value);
+          updateSchedule(
+            "schedule_hour",
+            isClock12Hour ? hourTo24HourFormat(num, amPm) : num,
+          );
+        }}
+      />
+      <Group spacing="sm">
+        {isClock12Hour && (
+          <SegmentedControl
+            radius="sm"
+            value={amPm.toString()}
+            onChange={value =>
+              updateSchedule("schedule_hour", hour + Number(value) * 12)
+            }
+            data={amAndPM}
+          />
+        )}
+        {timezone && (
+          <Tooltip label={t`Your ${applicationName} timezone`}>
+            <Box tabIndex={0}>{timezone}</Box>
+          </Tooltip>
+        )}
+      </Group>
+    </Group>
   );
 };
 
@@ -132,7 +134,7 @@ export const SelectWeekdayOfMonth = ({
     onChange={(value: ScheduleDayType | "calendar-day") =>
       updateSchedule("schedule_day", value === "calendar-day" ? null : value)
     }
-    data={[{ label: t`calendar day`, value: "calendar-day" }, ...weekdays]}
+    data={weekdayOfMonthOptions}
   />
 );
 
@@ -159,15 +161,11 @@ export const SelectMinute = ({
 
 export const AutoWidthSelect = (props: SelectProps) => {
   const longestLabel = useMemo(
-    () =>
-      props.data.reduce((acc, option) => {
-        const label = typeof option === "string" ? option : option.label || "";
-        return label.length > acc.length ? label : acc;
-      }, ""),
+    () => getLongestSelectLabel(props.data),
     [props.data],
   );
   const maxWidth =
-    longestLabel.length > 10 ? "unset" : `${longestLabel.length + 0.75}rem`;
+    longestLabel.length > 15 ? "unset" : `${longestLabel.length + 0.85}rem`;
   return (
     <Select
       miw="5rem"

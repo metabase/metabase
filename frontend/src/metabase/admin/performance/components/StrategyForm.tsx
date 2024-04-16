@@ -1,6 +1,6 @@
 import { useFormikContext } from "formik";
-import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import type { DispatchWithoutAction, ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -15,20 +15,24 @@ import {
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
+import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import {
+  Box,
   Button,
+  FixedSizeIcon,
   Group,
   Icon,
-  Loader,
   Radio,
   Stack,
   Text,
   Title,
   Tooltip,
 } from "metabase/ui";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   ScheduleSettings,
   ScheduleStrategy,
@@ -41,20 +45,27 @@ import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
 import { rootId, Strategies, strategyValidationSchema } from "../strategies";
 import { cronToScheduleSettings, scheduleSettingsToCron } from "../utils";
 
+import { LoaderInButton } from "./StrategyForm.styled";
+
 export const StrategyForm = ({
   targetId,
+  targetDatabase,
   setIsDirty,
   saveStrategy,
   savedStrategy,
+  shouldAllowInvalidation,
 }: {
   targetId: number | null;
+  targetDatabase: Database | undefined;
   setIsDirty: (isDirty: boolean) => void;
   saveStrategy: (values: Strategy) => Promise<void>;
   savedStrategy?: Strategy;
+  shouldAllowInvalidation: boolean;
 }) => {
   const defaultStrategy: Strategy = {
     type: targetId === rootId ? "nocache" : "inherit",
   };
+
   return (
     <FormProvider<Strategy>
       key={targetId}
@@ -63,17 +74,26 @@ export const StrategyForm = ({
       onSubmit={saveStrategy}
       enableReinitialize
     >
-      <StrategyFormBody targetId={targetId} setIsDirty={setIsDirty} />
+      <StrategyFormBody
+        targetId={targetId}
+        targetDatabase={targetDatabase}
+        setIsDirty={setIsDirty}
+        shouldAllowInvalidation={shouldAllowInvalidation}
+      />
     </FormProvider>
   );
 };
 
 const StrategyFormBody = ({
   targetId,
+  targetDatabase,
   setIsDirty,
+  shouldAllowInvalidation,
 }: {
   targetId: number | null;
+  targetDatabase: Database | undefined;
   setIsDirty: (isDirty: boolean) => void;
+  shouldAllowInvalidation: boolean;
 }) => {
   const { dirty, values, setFieldValue } = useFormikContext<Strategy>();
   const { setStatus } = useFormContext();
@@ -99,48 +119,144 @@ const StrategyFormBody = ({
     }
   }, [selectedStrategyType, values, setFieldValue]);
 
+  const invalidateFormContainerRef = useRef<HTMLDivElement>(null);
+
+  const forceUpdate = useForceUpdate();
+
   return (
-    <Form
-      h="100%"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-      }}
-    >
-      <Stack p="lg" spacing="xl" maw="27.5rem">
-        <StrategySelector targetId={targetId} />
-        {selectedStrategyType === "ttl" && (
-          <>
-            <Field
-              title={t`Minimum query duration`}
-              subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
-            >
-              <PositiveNumberInput
-                strategyType="ttl"
-                name="min_duration_seconds"
-              />
-            </Field>
-            <Field
-              title={t`Cache time-to-live (TTL) multiplier`}
-              subtitle={<MultiplierFieldSubtitle />}
-            >
-              <PositiveNumberInput strategyType="ttl" name="multiplier" />
-            </Field>
-          </>
+    <>
+      <div
+        style={{
+          height: "100%",
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {targetDatabase && (
+          <Box lh="1rem" px="lg" py="xs" color="text-medium">
+            <Group spacing="sm">
+              <FixedSizeIcon name="database" color="inherit" />
+              <Text fw="bold" py="1rem">
+                {targetDatabase.displayName()}
+              </Text>
+            </Group>
+          </Box>
         )}
-        {selectedStrategyType === "duration" && (
-          <>
-            <Field title={t`Cache results for this many hours`}>
-              <PositiveNumberInput strategyType="duration" name="duration" />
-            </Field>
-            <input type="hidden" name="unit" />
-          </>
-        )}
-        {selectedStrategyType === "schedule" && <ScheduleStrategyFormFields />}
-      </Stack>
-      <FormButtons />
-    </Form>
+        <Form
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            flexGrow: 1,
+            overflow: "auto",
+          }}
+        >
+          <Box
+            style={{
+              borderTop: `1px solid ${color("border")}`,
+              borderBottom: `1px solid ${color("border")}`,
+              overflow: "auto",
+              flexGrow: 1,
+            }}
+          >
+            <Stack maw="27.5rem" p="lg" spacing="xl">
+              <StrategySelector targetId={targetId} />
+              {selectedStrategyType === "ttl" && (
+                <>
+                  <Field
+                    title={t`Minimum query duration`}
+                    subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
+                  >
+                    <PositiveNumberInput
+                      strategyType="ttl"
+                      name="min_duration_seconds"
+                    />
+                  </Field>
+                  <Field
+                    title={t`Cache time-to-live (TTL) multiplier`}
+                    subtitle={<MultiplierFieldSubtitle />}
+                  >
+                    <PositiveNumberInput strategyType="ttl" name="multiplier" />
+                  </Field>
+                </>
+              )}
+              {selectedStrategyType === "duration" && (
+                <>
+                  <Field title={t`Cache results for this many hours`}>
+                    <PositiveNumberInput
+                      strategyType="duration"
+                      name="duration"
+                    />
+                  </Field>
+                  <input type="hidden" name="unit" />
+                </>
+              )}
+              {selectedStrategyType === "schedule" && (
+                <ScheduleStrategyFormFields />
+              )}
+            </Stack>
+          </Box>
+          <FormButtons
+            targetId={targetId}
+            shouldAllowInvalidation={shouldAllowInvalidation}
+            invalidateFormContainerRef={invalidateFormContainerRef}
+            forceFormUpdate={forceUpdate}
+          />
+        </Form>
+      </div>
+      {
+        // The 'Invalidate cache now' button is inserted into the FormButtons component
+        // via createPortal, to avoid nesting a form inside a form
+        <PLUGIN_CACHING.InvalidateNowButton
+          targetId={targetId}
+          containerRef={invalidateFormContainerRef}
+          databaseName={targetDatabase?.displayName()}
+        />
+      }
+    </>
+  );
+};
+
+export const FormButtons = ({
+  targetId,
+  shouldAllowInvalidation,
+  invalidateFormContainerRef,
+  forceFormUpdate,
+}: {
+  targetId: number | null;
+  shouldAllowInvalidation: boolean;
+  invalidateFormContainerRef: React.RefObject<HTMLDivElement>;
+  forceFormUpdate: DispatchWithoutAction;
+}) => {
+  const { dirty } = useFormikContext<Strategy>();
+  const { status } = useFormContext();
+
+  shouldAllowInvalidation &&= targetId !== rootId;
+
+  const isFormPending = status === "pending";
+  const [wasFormRecentlyPending] = useRecentlyTrue(isFormPending, 500);
+
+  useEffect(() => {
+    // Force a form update after the timeout to ensure that the form is re-rendered
+    if (!wasFormRecentlyPending) {
+      forceFormUpdate();
+    }
+  }, [wasFormRecentlyPending, forceFormUpdate]);
+
+  const isSavingPossible = dirty || isFormPending || wasFormRecentlyPending;
+
+  if (!isSavingPossible && !shouldAllowInvalidation) {
+    return null;
+  }
+
+  return (
+    <Group p="md" px="lg" spacing="md" bg="white">
+      {isSavingPossible ? (
+        <SaveAndDiscardButtons dirty={dirty} isFormPending={isFormPending} />
+      ) : (
+        <div ref={invalidateFormContainerRef} />
+      )}
+    </Group>
   );
 };
 
@@ -180,47 +296,33 @@ const ScheduleStrategyFormFields = () => {
   );
 };
 
-export const FormButtons = () => {
-  const { dirty } = useFormikContext<Strategy>();
-  const { status } = useFormContext();
-
-  const isFormPending = status === "pending";
-  const [wasFormRecentlyPending] = useRecentlyTrue(isFormPending, 500);
-
-  const shouldShowButtons = dirty || isFormPending || wasFormRecentlyPending;
-
-  if (!shouldShowButtons) {
-    return null;
-  }
-
+const SaveAndDiscardButtons = ({
+  dirty,
+  isFormPending,
+}: {
+  dirty: boolean;
+  isFormPending: boolean;
+}) => {
   return (
-    <Group
-      style={{
-        position: "sticky",
-        bottom: 0,
-        borderTop: `1px solid ${color("border")}`,
-      }}
-      p="1rem"
-      bg={color("white")}
-      spacing="md"
-    >
+    <>
       <Button
         disabled={!dirty || isFormPending}
         type="reset"
       >{t`Discard changes`}</Button>
       <FormSubmitButton
         miw="10rem"
+        h="40px"
         label={t`Save changes`}
         successLabel={
           <Group spacing="xs">
             <Icon name="check" /> {t`Saved`}
           </Group>
         }
-        activeLabel={<Loader size="xs" />}
+        activeLabel={<LoaderInButton size=".8rem" />}
         variant="filled"
         data-testid="strategy-form-submit-button"
       />
-    </Group>
+    </>
   );
 };
 
@@ -235,7 +337,10 @@ const StrategySelector = ({ targetId }: { targetId: number | null }) => {
     <section>
       <FormRadioGroup
         label={
-          <Text lh="1rem">{t`When should cached query results be invalidated?`}</Text>
+          <Text
+            lh="1rem"
+            color="text-medium"
+          >{t`When should cached query results be invalidated?`}</Text>
         }
         name="type"
       >
@@ -315,8 +420,11 @@ const Field = ({
 const getDefaultValueForField = (
   strategyType: StrategyType,
   fieldName?: string,
-) =>
-  fieldName ? Strategies[strategyType].validateWith.cast({})[fieldName] : "";
+) => {
+  return fieldName
+    ? Strategies[strategyType].validateWith.cast({})[fieldName]
+    : "";
+};
 
 const MultiplierFieldSubtitle = () => (
   <div>

@@ -184,4 +184,5 @@ describe("StrategyEditorForDatabases", () => {
       ),
     ).toBeInTheDocument();
   });
+  // TODO: Write some tests of the invalidate now button
 });
