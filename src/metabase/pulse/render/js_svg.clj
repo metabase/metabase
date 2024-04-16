@@ -173,7 +173,7 @@
 
 (defn- icon-svg-string
   [icon-name color]
-  (str "<svg><path d=\"" (get icon-paths icon-name) "\" fill=\"" color "\"/></svg>"))
+  (str "<svg xmlns=\"http://www.w3.org/2000/svg\"><path d=\"" (get icon-paths icon-name) "\" fill=\"" color "\"/></svg>"))
 
 (defn icon
   "Entrypoint for rendering an SVG icon as a PNG, with a specific color"
