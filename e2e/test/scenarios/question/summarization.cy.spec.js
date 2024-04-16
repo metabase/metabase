@@ -15,6 +15,7 @@ import {
   checkExpressionEditorHelperPopoverPosition,
   rightSidebar,
   interceptIfNotPreviouslyDefined,
+  expressionEditorWidget,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -156,7 +157,7 @@ describe("scenarios > question > summarize sidebar", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
     popover().contains("Custom Expression").click();
-    popover().within(() => {
+    expressionEditorWidget().within(() => {
       enterCustomColumnDetails({
         formula: "2 * Max([Total])",
         name: "twice max total",
@@ -178,7 +179,7 @@ describe("scenarios > question > summarize sidebar", () => {
     summarize({ mode: "notebook" });
 
     popover().contains("Custom Expression").click();
-    popover().within(() => {
+    expressionEditorWidget().within(() => {
       enterCustomColumnDetails({
         formula:
           "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
