@@ -78,7 +78,11 @@ const ProgressBar = ({
   );
 
   return (
-    <svg width={layout.width} height={layout.height}>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={layout.width}
+      height={layout.height}
+    >
       <ClipPath id="rounded-bar">
         <rect
           width={barWidth}

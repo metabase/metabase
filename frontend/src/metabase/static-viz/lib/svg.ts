@@ -57,15 +57,6 @@ export function patchDominantBaseline(svgString: string) {
   return toHtml(svgElem, { space: "svg" });
 }
 
-/**
- * Removes `xmlns` attributes that Batik does not support
- */
-function removeNamespace(svgString: string) {
-  return svgString
-    .replace('xmlns="http://www.w3.org/2000/svg"', "")
-    .replace('xmlns:xlink="http://www.w3.org/1999/xlink"', "");
-}
-
 export const sanitizeSvgForBatik = (
   svgString: string,
   isStorybook: boolean,
@@ -74,9 +65,8 @@ export const sanitizeSvgForBatik = (
     return svgString;
   }
 
-  return [
-    transformSvgForOutline,
-    patchDominantBaseline,
-    removeNamespace,
-  ].reduce((currSVGString, transform) => transform(currSVGString), svgString);
+  return [transformSvgForOutline, patchDominantBaseline].reduce(
+    (currSVGString, transform) => transform(currSVGString),
+    svgString,
+  );
 };
