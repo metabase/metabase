@@ -5551,6 +5551,41 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.DeleteTruncateAuditLogTask"
 
+  - changeSet:
+      id: v49.2024-04-09T10:00:00
+      author: qnkhuat
+      comment: Drop not null constraint on metabase_database.cache_field_values_schedule
+      changes:
+        - dropNotNullConstraint:
+            tableName: metabase_database
+            columnName: cache_field_values_schedule
+            columnDataType: varchar(254)
+      # nothing because it should always be like this
+      rollback:
+
+  - changeSet:
+      id: v49.2024-04-09T10:00:01
+      author: qnkhuat
+      comment: Drop default value on metabase_database.cache_field_values_schedule
+      changes:
+        - dropDefaultValue:
+            tableName: metabase_database
+            columnName: cache_field_values_schedule
+      # nothing because it should always be like this
+      rollback:
+
+  - changeSet:
+      id: v49.2024-04-09T10:00:02
+      author: qnkhuat
+      comment: Add null as default value for metabase_database.cache_field_values_schedule
+      changes:
+        - addDefaultValue:
+            defaultValue: "null"
+            tableName: metabase_database
+            columnName: cache_field_values_schedule
+      # nothing because it should always be like this
+      rollback:
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

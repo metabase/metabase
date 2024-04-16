@@ -182,7 +182,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn ^:private reschedule-task!
-  [job :- (ms/InstanceOfClass JobDetail) new-trigger :- (ms/InstanceOfClass Trigger)]
+  [job         :- (ms/InstanceOfClass JobDetail)
+   new-trigger :- (ms/InstanceOfClass Trigger)]
   (try
     (when-let [scheduler (scheduler)]
       (when-let [[^Trigger old-trigger] (seq (qs/get-triggers-of-job scheduler (.getKey ^JobDetail job)))]

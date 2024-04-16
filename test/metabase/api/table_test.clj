@@ -34,7 +34,8 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version])
+   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version
+                         :cache_field_values_schedule :metadata_sync_schedule])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false
@@ -44,8 +45,6 @@
     :caveats                     nil
     :points_of_interest          nil
     :features                    (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
-    :cache_field_values_schedule "0 50 0 * * ? *"
-    :metadata_sync_schedule      "0 50 * * * ? *"
     :refingerprint               nil
     :auto_run_queries            true
     :settings                    nil

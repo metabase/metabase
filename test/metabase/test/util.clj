@@ -145,10 +145,12 @@
 
    :model/Database
    (fn [_] (default-timestamped
-             {:details   {}
-              :engine    :h2
-              :is_sample false
-              :name      (u.random/random-name)}))
+             {:details                     {}
+              :engine                      :h2
+              :is_sample                   false
+              :name                        (u.random/random-name)
+              :metadata_sync_schedule      "0 50 * * * ? *"
+              :cache_field_values_schedule "0 50 0 * * ? *"}))
 
    :model/Dimension
    (fn [_] (default-timestamped
@@ -608,8 +610,10 @@
 
 (defmacro with-temp-scheduler
   "Execute `body` with a temporary scheduler in place.
+  This does not initialize the all the jobs for performance reasons, so make sure you init it yourself!
 
     (with-temp-scheduler
+      (task.sync-databases/job-init) ;; init the jobs
       (do-something-to-schedule-tasks)
       ;; verify that the right thing happened
       (scheduler-current-tasks))"
