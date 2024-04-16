@@ -80,11 +80,6 @@ function ModelDetailPage({
   onChangeCollection,
   onChangeLocation,
 }: Props) {
-  // FIXME: hack to keep this from crashing when we load collection items
-  if (typeof model._card.dataset_query === "string") {
-    model._card.dataset_query = JSON.parse(model._card.dataset_query);
-  }
-
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
   const hasNestedQueriesEnabled = useSelector(state =>
     getSetting(state, "enable-nested-queries"),
