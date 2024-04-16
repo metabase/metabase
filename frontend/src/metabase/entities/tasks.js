@@ -9,6 +9,9 @@ export default createEntity({
   path: "/api/task",
 
   api: {
+    get: () => {
+      throw new TypeError("Tasks.api.get is not supported");
+    },
     create: () => {
       throw new TypeError("Tasks.api.create is not supported");
     },
@@ -20,11 +23,5 @@ export default createEntity({
     },
     list: (entityQuery, dispatch) =>
       entityCompatibleQuery(entityQuery, dispatch, taskApi.endpoints.listTasks),
-    get: (entityQuery, options, dispatch) =>
-      entityCompatibleQuery(
-        entityQuery.id,
-        dispatch,
-        taskApi.endpoints.getTask,
-      ),
   },
 });
