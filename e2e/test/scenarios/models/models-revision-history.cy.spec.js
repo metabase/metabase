@@ -1,5 +1,10 @@
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { restore, questionInfoButton, visitModel } from "e2e/support/helpers";
+import {
+  restore,
+  questionInfoButton,
+  visitModel,
+  echartsContainer,
+} from "e2e/support/helpers";
 
 describe("scenarios > models > revision history", () => {
   beforeEach(() => {
@@ -19,7 +24,7 @@ describe("scenarios > models > revision history", () => {
     cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
 
     cy.location("pathname").should("match", /^\/question\/\d+/);
-    cy.get("[data-element-id=line-area-bar-chart]");
+    echartsContainer();
 
     revertTo("You edited this");
     cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
