@@ -197,11 +197,13 @@ export function ColumnInput({
     </FocusTrap>
   );
 
-  // TODO: focus button on close
-
-  const text = value
-    ? Lib.displayInfo(query, stageIndex, value).displayName
-    : t`Select a column...`;
+  const text = useMemo(() => {
+    if (!value) {
+      return t`Select a column...`;
+    }
+    const info = Lib.displayInfo(query, stageIndex, value);
+    return info.longDisplayName;
+  }, [value, query, stageIndex]);
 
   return (
     <Input.Wrapper label={label} styles={{ root: { width: "100%" } }}>
