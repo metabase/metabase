@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojurewerkz.quartzite.scheduler :as qs]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.database :as api.database]
@@ -303,7 +304,9 @@
   [& body]
   `(mt/with-temp-scheduler
      (#'task.sync-databases/job-init)
-     ~@body))
+     (u/prog1 ~@body
+       (qs/delete-job (#'task/scheduler) (.getKey @#'task.sync-databases/sync-analyze-job))
+       (qs/delete-job (#'task/scheduler) (.getKey @#'task.sync-databases/field-values-job)))))
 
 (deftest create-db-default-schedule-test
   (testing "POST /api/database"
