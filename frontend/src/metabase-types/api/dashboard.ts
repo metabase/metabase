@@ -201,3 +201,15 @@ export interface GetCompatibleCardsPayload {
   query?: string;
   exclude_ids: number[];
 }
+
+export type CreateDashboardRequest = Record<string, unknown>; // TODO
+
+export type UpdateDashboardRequest = {
+  id: DashboardId;
+}; // TODO
+
+export type SaveDashboardRequest = {}; // TODO
+
+export type CopyDashboardRequest = {
+  id: DashboardId;
+}; // TODO

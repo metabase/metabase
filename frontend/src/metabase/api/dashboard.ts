@@ -1,4 +1,11 @@
-import type { Dashboard, DashboardId } from "metabase-types/api";
+import type {
+  CopyDashboardRequest,
+  CreateDashboardRequest,
+  Dashboard,
+  DashboardId,
+  SaveDashboardRequest,
+  UpdateDashboardRequest,
+} from "metabase-types/api";
 
 import { Api } from "./api";
 import {
@@ -8,18 +15,6 @@ import {
   provideDashboardListTags,
   provideDashboardTags,
 } from "./tags";
-
-type CreateDashboardRequest = Record<string, unknown>; // TODO
-
-type UpdateDashboardRequest = {
-  id: DashboardId;
-}; // TODO
-
-type SaveDashboardRequest = {}; // TODO
-
-type CopyDashboardRequest = {
-  id: DashboardId;
-}; // TODO
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: builder => ({
