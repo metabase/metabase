@@ -3,6 +3,7 @@ import type {
   CreateDashboardRequest,
   Dashboard,
   DashboardId,
+  ListDashboardsRequest,
   SaveDashboardRequest,
   UpdateDashboardRequest,
 } from "metabase-types/api";
@@ -18,7 +19,7 @@ import {
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: builder => ({
-    listDashboards: builder.query<Dashboard[], void>({
+    listDashboards: builder.query<Dashboard[], ListDashboardsRequest | void>({
       query: () => ({
         method: "GET",
         url: "/api/dashboard",
