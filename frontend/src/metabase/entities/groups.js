@@ -5,7 +5,8 @@ import {
   DELETE_MEMBERSHIP,
   CLEAR_MEMBERSHIPS,
 } from "metabase/admin/people/events";
-import { createEntity } from "metabase/lib/entities";
+import { permissionApi } from "metabase/api";
+import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { PermissionsApi } from "metabase/services";
 
 /**
@@ -17,6 +18,36 @@ const Groups = createEntity({
 
   form: {
     fields: [{ name: "name" }],
+  },
+
+  api: {
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        permissionApi.endpoints.listPermissionsGroups,
+      ),
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery.id,
+        dispatch,
+        permissionApi.endpoints.getPermissionsGroup,
+      ),
+    create: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        permissionApi.endpoints.createPermissionsGroup,
+      ),
+    update: () => {
+      throw new TypeError("Permissions.api.update is not supported");
+    },
+    delete: ({ id }, dispatch) =>
+      entityCompatibleQuery(
+        id,
+        dispatch,
+        permissionApi.endpoints.deletePermissionsGroup,
+      ),
   },
 
   actions: {
