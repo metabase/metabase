@@ -41,13 +41,37 @@ const Dashboards = createEntity({
   displayNameMany: t`dashboards`,
 
   api: {
-    get: (entityQuery, _options, dispatch) => {
-      return entityCompatibleQuery(
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        dashboardApi.endpoints.listDashboards,
+      ),
+    get: (entityQuery, _options, dispatch) =>
+      entityCompatibleQuery(
         entityQuery,
         dispatch,
         dashboardApi.endpoints.getDashboard,
-      );
-    },
+      ),
+    create: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        dashboardApi.endpoints.createDashboard,
+      ),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        dashboardApi.endpoints.updateDashboard,
+      ),
+
+    delete: ({ id }, dispatch) =>
+      entityCompatibleQuery(
+        id,
+        dispatch,
+        dashboardApi.endpoints.deleteDashboard,
+      ),
     favorite: POST("/api/dashboard/:id/favorite"),
     unfavorite: DELETE("/api/dashboard/:id/favorite"),
     save: POST("/api/dashboard/save"),
