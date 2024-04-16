@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { t, c } from "ttag";
 import _ from "underscore";
 
 import {
