@@ -5,7 +5,7 @@ import {
   visualize,
   changeBinningForDimension,
   summarize,
-  chartPathWithColor,
+  chartPathWithFillColor,
   lineChartCircle,
 } from "e2e/support/helpers";
 
@@ -28,7 +28,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Total: 50 bins");
 
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("70");
     });
@@ -58,7 +58,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Longitude: 20°");
 
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("180° W");
     });
@@ -76,7 +76,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Total: 50 bins");
 
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("70");
     });
@@ -108,7 +108,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Longitude: 20°");
 
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("180° W");
     });
@@ -124,7 +124,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Total: Auto binned");
 
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("60");
     });
@@ -152,7 +152,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Longitude: Auto binned");
 
-      chartPathWithColor("#509EE3");
+      chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("170° W");
     });
