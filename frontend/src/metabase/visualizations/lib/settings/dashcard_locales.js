@@ -590,7 +590,7 @@ const TITLE_LOCALES_BN = {
   },
   'tms.session.rejected.application' : {
     'en' : 'Rejected',
-    'bn' : 'ত্রুটিপূর্ণ'
+    'bn' : 'প্রত্যাখ্যাত'
   },
   'tms.session.pending.application' : {
     'en' : 'Pending',
@@ -644,9 +644,9 @@ const TITLE_LOCALES_BN = {
     'en' : 'General vs Substitute Transfer',
     'bn' : 'সাধারণ বনাম সাবস্টিটিউট বদলি'
   },
-  'tms.session.abandoned.application' : {
-    'en' : 'Abandoned',
-    'bn' : 'পরিত্যক্ত'
+  'tms.session.rejected.application.after.process' : {
+    'en' : 'Rejected',
+    'bn' : 'ত্রুটিপূর্ণ'
   },
   'tms.gender.wise.application.statistics' : {
     'en' : 'Gender Wise Application Statistics',
@@ -687,6 +687,14 @@ const TITLE_LOCALES_BN = {
   'total.trainee.count.based.on.obtaining.certificate' : {
     'en' : 'Trainee Statistics Based on Attainment of Certificate of Completed Training',
     'bn' : 'সম্পন্ন প্রশিক্ষণ সমূহের সার্টিফিকেট অর্জন ভিত্তিক প্রশিক্ষণার্থীর পরিসংখ্যান'
+  },
+  'tms.session.total.distinct.source.school' : {
+    'en' : 'Total distinct source school count',
+    'bn' : 'মোট স্বতন্ত্র সোর্স স্কুল'
+  },
+  'tms.session.total.distinct.destination.school' : {
+    'en' : 'Total distinct destination school count',
+    'bn' : 'মোট স্বতন্ত্র ডেস্টিনেশন স্কুল'
   },
 }
 
