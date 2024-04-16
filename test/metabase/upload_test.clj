@@ -24,7 +24,8 @@
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io File)))
 
@@ -1762,29 +1763,34 @@
 
 (deftest delete-upload!-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (with-upload-table! [table (create-upload-table!
-                                :col->upload-type (ordered-map/ordered-map
-                                                   :_mb_row_id auto-pk-type
-                                                   :number_1 int-type
-                                                   :number_2 int-type)
-                                :rows [[1, 1]])]
+    (doseq [archive-cards? [true false]]
+      (with-upload-table! [table (create-upload-table!
+                                  :col->upload-type (ordered-map/ordered-map
+                                                     :_mb_row_id auto-pk-type
+                                                     :number_1 int-type
+                                                     :number_2 int-type)
+                                  :rows [[1, 1]])]
 
-      (testing "The upload table and the expected application data are created"
-        (is (upload-table-exists? table))
-        (is (seq (t2/select :model/Table :id (:id table))))
-        (is (seq (t2/select :model/Field :table_id (:id table))))
-        ;; it would be good to have all the possible child resources populated, in order to
-        #_(is (every? #(seq (t2/select % :table_id (:id table)))
-                      (remove #{"metabase_field"} referencing-models))))
+        (testing "The upload table and the expected application data are created\n"
+          (is (upload-table-exists? table))
+          (is (seq (t2/select :model/Table :id (:id table))))
+          (testing "The expected metadata is synchronously sync'd"
+            (is (seq (t2/select :model/Field :table_id (:id table))))))
 
-      (upload/delete-upload! table)
+        (let [card    (assoc (t2.with-temp/with-temp-defaults :model/Card) :table_id (:id table))
+              card-id (t2/insert-returning-pk! :model/Card card)]
 
-      (testing "The upload table and related application data are deleted\n"
-        (is (not (upload-table-exists? table)))
-        (is (= [false] (mapv :active (t2/select :model/Table :id (:id table)))))
-        ;; Do we want to clean up any of the child resources?
-        #_(is (empty? (t2/select :model/Field :table_id (:id table))))
-        #_(doseq [model referencing-models]
-            ;; if this fails due to new related models being added, make sure to clean up their children too
-            (testing (format "And there are no more related %s instances\n" model)
-              (is (empty? (t2/select model :table_id (:id table))))))))))
+          (is (false? (:archived (t2/select-one :model/Card :id card-id))))
+
+          (upload/delete-upload! table :archive-cards? archive-cards?)
+
+          (testing (format "We %s the related cards if archive-cards? is %s"
+                           (if archive-cards? "archive" "do not archive")
+                           archive-cards?)
+            (is (= archive-cards? (:archived (t2/select-one :model/Card :id card-id)))))
+
+          (testing "The upload table and related application data are deleted\n"
+            (is (not (upload-table-exists? table)))
+            (is (= [false] (mapv :active (t2/select :model/Table :id (:id table)))))
+            (testing "We do not clean up any of the child resources synchronously (yet?)"
+              (is (seq (t2/select :model/Field :table_id (:id table)))))))))))

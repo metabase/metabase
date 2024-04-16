@@ -620,6 +620,17 @@
   (when-let [error (can-delete-error table)]
     (throw error)))
 
+(defn- table-exists?
+  "Check whether the give table exists within the customer database."
+  [driver database table]
+  (try
+    (driver/describe-table driver (:id database) table)
+    true
+    (catch Exception e
+      (if (re-find #"not found" (ex-message e))
+        false
+        (throw e)))))
+
 ;;; +--------------------------------------------------
 ;;; |  public interface for updating an uploaded table
 ;;; +--------------------------------------------------
@@ -629,17 +640,49 @@
   [table & {:keys [archive-cards?]}]
   (let [database   (table/database table)
         driver     (driver.u/database->driver database)
-        table-name (table-identifier table)]
+        table-name (table-identifier table)
+        archived   (atom nil)]
     (check-can-delete table)
-    ;; Archive our app-db table
-    (t2/update! :model/Table :id (:id table) {:active false})
-    ;; Archive cards if the option is set. For now we only deactivate cards where this is the primary table.
+
+    ;; Archive cards if desired. We do this before deleting the underlying data to minimize race conditions that
+    ;; could lead to query failures and general system noise.
+    ;;
+    ;; For now, this only covers instances where the card has this as its "primary table", i.e.
+    ;; 1. A MBQL question or model that has this table as their first or only data source, or
+    ;; 2. A MBQL question or model that depends on such a model as their first or only data source.
+    ;; Note that this does not include cases where we join to this table, or even native queries which depend .
     (when archive-cards?
-      (t2/update! :model/Card {:table_id (:id table)} {:archived true}))
-    ;; This currently isn't wired up to do anything interesting with inactive cards (yet?) - but be future-proof.
-    (sync/sync-table! (assoc table :active false))
-    ;; Delete the table itself from the customer database
-    (driver/drop-table! driver (:id database) table-name)
+      (reset! archived (t2/update-returning-pks! :model/Card
+                                                 {:table_id (:id table) :archived false}
+                                                 {:archived true})))
+
+    (try
+      ;; Attempt to delete the underlying data from the customer database.
+      ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still
+      ;; visible to administrators and the operation is easy to retry again later.
+      (driver/drop-table! driver (:id database) table-name)
+
+      ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
+      (t2/update! :model/Table :id (:id table) {:active false})
+
+      ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
+      ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
+      ;; relies on their absence from the tables being described during the database sync itself.
+      ;; Ideally in future the [[metabase.sync]] module will support direct per-table clean-up, and also clean up more
+      ;; the metadata which we had created around it.
+      #_(future (sync/retire-table! (assoc table :active false)))
+
+      (catch Exception e
+        ;; If we were unable to delete the data, preserve the appearance that archiving is a post-hoc step.
+        ;; Make sure we rethrow the original exception though, not anything related to the rollback attempt.
+        (try
+          (when (table-exists? driver database table)
+            (when-let [card-ids @archived]
+              (t2/update! :model/Card :id [:in card-ids] {:archived false})))
+          (catch Exception _e))
+
+        (throw e)))
+
     :done))
 
 (def update-action-schema
