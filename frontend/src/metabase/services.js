@@ -415,7 +415,6 @@ export const PermissionsApi = {
   graphForGroup: GET("/api/permissions/graph/group/:groupId"),
   graphForDB: GET("/api/permissions/graph/db/:databaseId"),
   updateGraph: PUT("/api/permissions/graph"),
-  createGroup: POST("/api/permissions/group"),
   memberships: GET("/api/permissions/membership"),
   createMembership: POST("/api/permissions/membership"),
   deleteMembership: DELETE("/api/permissions/membership/:id"),
