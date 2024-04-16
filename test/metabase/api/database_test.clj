@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojurewerkz.quartzite.scheduler :as qs]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.database :as api.database]
@@ -25,6 +26,8 @@
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.task :as task]
+   [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -39,7 +42,8 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (java.sql Connection)))
+   (java.sql Connection)
+   (org.quartz TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -76,7 +80,8 @@
   ([{driver :engine, :as db}]
    (merge
     (mt/object-defaults Database)
-    (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version])
+    (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version
+                     :metadata_sync_schedule :cache_field_values_schedule])
     {:engine (u/qualified-name (:engine db))
      :features (map u/qualified-name (driver.u/features driver db))
      :initial_sync_status "complete"})))
@@ -249,68 +254,104 @@
 
 (defn- create-db-via-api! [& [m]]
   (let [db-name (mt/random-name)]
-    (try
-     (let [{db-id :id, :as response} (with-redefs [driver/available?   (constantly true)
-                                                   driver/can-connect? (constantly true)]
-                                       (mt/user-http-request :crowberto :post 200 "database"
-                                                             (merge
-                                                              {:name    db-name
-                                                               :engine  (u/qualified-name ::test-driver)
-                                                               :details {:db "my_db"}}
-                                                              m)))]
-       (is (malli= [:map [:id ::lib.schema.id/database]]
-                   response))
-       (t2/select-one Database :id db-id))
-     (finally (t2/delete! Database :name db-name)))))
+    (mt/with-model-cleanup [:model/Database]
+      (let [{db-id :id, :as response} (with-redefs [driver/available?   (constantly true)
+                                                    driver/can-connect? (constantly true)]
+                                        (mt/user-http-request :crowberto :post 200 "database"
+                                                              (merge
+                                                               {:name    db-name
+                                                                :engine  (u/qualified-name ::test-driver)
+                                                                :details {:db "my_db"}}
+                                                               m)))]
+        (is (malli= [:map [:id ::lib.schema.id/database]]
+                    response))
+        (t2/select-one Database :id db-id)))))
 
-(deftest create-db-test
+(def ^:private monthly-schedule {:schedule_type "monthly" :schedule_day "fri" :schedule_frame "last"})
+
+(defn- all-db-sync-triggers-name
+  "Returns the name of trigger for DB.
+  This is all trigger names that a DB SHOULD have."
+  [db]
+  (set (map #(.getName ^TriggerKey (#'task.sync-databases/trigger-key (t2/instance :model/Database db) %))
+            @#'task.sync-databases/all-tasks)))
+
+(defn- query-all-db-sync-triggers-name
+  "Find the all triggers for DB \"db\".
+  This is all triger names that a DB HAVE in the scheduler."
+  [db]
+  (let [db (t2/instance :model/Database db)]
+    (assert (some? (#'task/scheduler)) "makes sure the scheduler is initialized!")
+    (->> (for [task-info @#'task.sync-databases/all-tasks]
+           (keep #(when (= (.getName ^TriggerKey (#'task.sync-databases/trigger-key db task-info)) (:key %))
+                    (:key %))
+                 (:triggers (task/job-info (#'task.sync-databases/job-key task-info)))))
+         flatten
+         set)))
+
+(defn- sync-and-analyze-trigger-name
+  [db]
+  (.getName ^TriggerKey (#'task.sync-databases/trigger-key db @#'task.sync-databases/sync-analyze-task-info)))
+
+(defmacro with-test-driver-available!
+  [& body]
+  `(mt/with-model-cleanup [:model/Database]
+     (with-redefs [driver/available?   (constantly true)
+                   driver/can-connect? (constantly true)]
+       ~@body)))
+
+(defmacro with-db-scheduler-setup
+  [& body]
+  `(mt/with-temp-scheduler
+     (#'task.sync-databases/job-init)
+     (u/prog1 ~@body
+       (qs/delete-job (#'task/scheduler) (.getKey @#'task.sync-databases/sync-analyze-job))
+       (qs/delete-job (#'task/scheduler) (.getKey @#'task.sync-databases/field-values-job)))))
+
+(deftest create-db-default-schedule-test
   (testing "POST /api/database"
-    (testing "Check that we can create a Database"
-      (is (malli= [:merge
-                   (into [:map] (m/map-vals (fn [v] [:fn #(= % v)]) (mt/object-defaults Database)))
-                   [:map
-                    [:metadata_sync_schedule #"0 \d{1,2} \* \* \* \? \*"]
-                    [:cache_field_values_schedule #"0 \d{1,2} \d{1,2} \* \* \? \*"]
-                    [:created_at (ms/InstanceOfClass java.time.temporal.Temporal)]
-                    [:engine     [:= ::test-driver]]
-                    [:id         ms/PositiveInt]
-                    [:details    [:fn #(= % {:db "my_db"})]]
-                    [:updated_at (ms/InstanceOfClass java.time.temporal.Temporal)]
-                    [:name       ms/NonBlankString]
-                    [:features   [:= (driver.u/features ::test-driver (mt/db))]]
-                    [:creator_id [:= (mt/user->id :crowberto)]]]]
-            (create-db-via-api!))))))
+    (testing "create a db with default scan options"
+      (with-db-scheduler-setup
+        (with-test-driver-available!
+          (let [resp (mt/user-http-request :crowberto :post 200 "database"
+                                           {:name    (mt/random-name)
+                                            :engine  (u/qualified-name ::test-driver)
+                                            :details {:db "my_db"}})
+                db   (t2/select-one :model/Database (:id resp))]
+            (is (malli= [:merge
+                         (into [:map] (m/map-vals (fn [v] [:fn #(= % v)]) (mt/object-defaults Database)))
+                         [:map
+                          [:metadata_sync_schedule #"0 \d{1,2} \* \* \* \? \*"]
+                          [:cache_field_values_schedule #"0 \d{1,2} \d{1,2} \* \* \? \*"]
+                          [:created_at (ms/InstanceOfClass java.time.temporal.Temporal)]
+                          [:engine     [:= ::test-driver]]
+                          [:id         ms/PositiveInt]
+                          [:details    [:fn #(= % {:db "my_db"})]]
+                          [:updated_at (ms/InstanceOfClass java.time.temporal.Temporal)]
+                          [:name       ms/NonBlankString]
+                          [:features   [:= (driver.u/features ::test-driver (mt/db))]]
+                          [:creator_id [:= (mt/user->id :crowberto)]]]]
+                        db))
+            (is (= (all-db-sync-triggers-name db)
+                   (query-all-db-sync-triggers-name db)))))))))
 
-(deftest create-db-test-2
+(deftest create-db-no-full-sync-test
   (testing "POST /api/database"
     (testing "can we set `is_full_sync` to `false` when we create the Database?"
       (is (= {:is_full_sync false}
              (select-keys (create-db-via-api! {:is_full_sync false}) [:is_full_sync]))))))
 
-(deftest create-db-test-3
+(deftest create-db-ignore-schedules-if-no-manual-sync-test
   (testing "POST /api/database"
     (testing "if `:let-user-control-scheduling` is false it will ignore any schedules provided"
-      (let [monthly-schedule {:schedule_type "monthly" :schedule_day "fri" :schedule_frame "last"}
-            {:keys [details metadata_sync_schedule cache_field_values_schedule]}
+      (let [{:keys [details metadata_sync_schedule cache_field_values_schedule]}
             (create-db-via-api! {:schedules {:metadata_sync      monthly-schedule
                                              :cache_field_values monthly-schedule}})]
         (is (not (:let-user-control-scheduling details)))
         (is (= "daily" (-> cache_field_values_schedule u.cron/cron-string->schedule-map :schedule_type)))
         (is (= "hourly" (-> metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))))))
 
-(deftest create-db-test-4
-  (testing "POST /api/database"
-    (testing "if `:let-user-control-scheduling` is true it will accept the schedules"
-      (let [monthly-schedule {:schedule_type "monthly" :schedule_day "fri" :schedule_frame "last"}
-            {:keys [details metadata_sync_schedule cache_field_values_schedule]}
-            (create-db-via-api! {:details   {:let-user-control-scheduling true}
-                                 :schedules {:metadata_sync      monthly-schedule
-                                             :cache_field_values monthly-schedule}})]
-        (is (:let-user-control-scheduling details))
-        (is (= "monthly" (-> cache_field_values_schedule u.cron/cron-string->schedule-map :schedule_type)))
-        (is (= "monthly" (-> metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))))))
-
-(deftest create-db-test-5
+(deftest create-db-known-error-connection-test
   (testing "POST /api/database"
     (testing "well known connection errors are reported properly"
       (let [dbname (mt/random-name)
@@ -324,7 +365,7 @@
                                         :details      {:host "localhost", :port 5432
                                                        :dbname "fakedb", :user "rastacan"}}))))))))
 
-(deftest create-db-test-6
+(deftest create-db-unknown-error-connection-test
   (testing "POST /api/database"
     (testing "unknown connection errors are reported properly"
       (let [exception (Exception. "Unknown driver message" (java.net.ConnectException. "Failed!"))]
@@ -338,7 +379,7 @@
                                         :engine  (u/qualified-name ::test-driver)
                                         :details {:db "my_db"}}))))))))
 
-(deftest create-db-test-7
+(deftest create-db-set-cache-ttl-throw-402-on-oss-test
   (testing "POST /api/database"
     (testing "should throw a 402 error if trying to set `cache_ttl` on OSS"
       (with-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
@@ -348,7 +389,7 @@
                                :details   {:db "my_db"}
                                :cache_ttl 13})))))
 
-(deftest create-db-test-8
+(deftest create-db-set-cache-ttl-on-ee-test
   (testing "POST /api/database"
     (testing "should allow setting `cache_ttl` on EE"
       (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
@@ -571,8 +612,7 @@
 
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (mt/object-defaults Database) :details)
-                  (select-keys (mt/db) [:created_at :id :updated_at :timezone :initial_sync_status :dbms_version])
+    (is (= (merge (dissoc (db-details) :details)
                   {:engine        "h2"
                    :name          "test-data"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -1061,70 +1101,190 @@
    :schedule_hour   23
    :schedule_type   "monthly"})
 
-(def ^:private schedule-map-for-hourly
+(def ^:private schedule-map-for-weekly
   {:schedule_minute 0
-   :schedule_day    nil
+   :schedule_day    "fri"
    :schedule_frame  nil
    :schedule_hour   nil
-   :schedule_type   "hourly"})
+   :schedule_type   "weekly"})
 
-(deftest create-new-db-with-custom-schedules-test
-  (testing "Can we create a NEW database and give it custom schedules?"
-    (let [db-name (mt/random-name)]
-      (try (let [db (with-redefs [driver/available? (constantly true)]
-                      (mt/user-http-request :crowberto :post 200 "database"
-                                            {:name      db-name
-                                             :engine    (u/qualified-name ::test-driver)
-                                             :details   {:db "my_db" :let-user-control-scheduling true}
-                                             :schedules {:cache_field_values schedule-map-for-last-friday-at-11pm
-                                                         :metadata_sync      schedule-map-for-hourly}}))]
-             (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
-                     :metadata_sync_schedule      "0 0 * * * ? *"}
-                    (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db))))))
-           (finally (t2/delete! Database :name db-name))))))
+(deftest create-db-with-manual-schedules-test
+  (testing "POST /api/database"
+    (testing "create a db with scan field values option is \"regularly on a schedule\""
+      (with-db-scheduler-setup
+        (with-test-driver-available!
+          (let [{:keys [details] :as db}
+                (mt/user-http-request :crowberto :post 200 "database"
+                                      {:name    (mt/random-name)
+                                       :engine  (u/qualified-name ::test-driver)
+                                       :details   {:let-user-control-scheduling true}
+                                       :schedules {:metadata_sync      schedule-map-for-weekly
+                                                   :cache_field_values schedule-map-for-last-friday-at-11pm}
+                                       :is_on_demand false
+                                       :is_full_sync true})]
+            (is (:let-user-control-scheduling details))
+            (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
+                   (:metadata_sync_schedule db)))
+            (is (= (u.cron/schedule-map->cron-string schedule-map-for-last-friday-at-11pm)
+                   (:cache_field_values_schedule db)))
+            (is (= (all-db-sync-triggers-name db)
+                   (query-all-db-sync-triggers-name db)))))))))
 
-(deftest update-schedules-for-existing-db
-  (let [attempted {:cache_field_values schedule-map-for-last-friday-at-11pm
-                   :metadata_sync      schedule-map-for-hourly}
-        expected  {:cache_field_values_schedule "0 0 23 ? * 6L *"
-                   :metadata_sync_schedule      "0 0 * * * ? *"}]
-    (testing "Can we UPDATE the schedules for an existing database?"
-      (testing "We cannot if we don't mark `:let-user-control-scheduling`"
-        (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
-          (is (=? (select-keys (mt/db) [:cache_field_values_schedule :metadata_sync_schedule])
-                  (api-update-database! 200 db (assoc db :schedules attempted))))
-          (is (not= expected
-                    (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
-      (testing "We can if we mark `:let-user-control-scheduling`"
-        (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
-          (is (=? expected
-                  (api-update-database! 200 db
-                                        (-> (into {} db)
-                                            (assoc :schedules attempted)
-                                            (assoc-in [:details :let-user-control-scheduling] true)))))
-          (is (= expected
-                 (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
-      (testing "if we update back to metabase managed schedules it randomizes for us"
-        (let [original-custom-schedules expected]
-          (t2.with-temp/with-temp [Database db (merge {:engine "h2" :details (assoc (:details (mt/db))
-                                                                                    :let-user-control-scheduling true)}
-                                                      original-custom-schedules)]
-            (is (=? {:id (u/the-id db)}
-                    (api-update-database! 200 db
-                                          (assoc-in db [:details :let-user-control-scheduling] false))))
-            (let [schedules (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))]
-              (is (not= original-custom-schedules schedules))
-              (is (= "hourly" (-> schedules :metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))
-              (is (= "daily" (-> schedules :cache_field_values_schedule u.cron/cron-string->schedule-map :schedule_type))))))))))
+(deftest create-db-never-scan-field-values-test
+  (testing "POST /api/database"
+    (testing "create a db with scan field values option is \"Never, I'll do it myself\""
+      (with-db-scheduler-setup
+        (with-test-driver-available!
+          (let [resp (mt/user-http-request :crowberto :post 200 "database"
+                                           {:name         (mt/random-name)
+                                            :engine       (u/qualified-name ::test-driver)
+                                            :details      {:db                          "my_db"
+                                                           :let-user-control-scheduling true}
+                                            :schedules    {:metadata_sync      schedule-map-for-weekly
+                                                           :cache_field_values schedule-map-for-last-friday-at-11pm}
+                                            :is_on_demand false
+                                            :is_full_sync false})
+                db   (t2/select-one :model/Database (:id resp))]
+            (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
+                   (:metadata_sync_schedule db)))
+            (is (nil? (:cache_field_values_schedule db)))
+            (is (= #{(sync-and-analyze-trigger-name db)}
+                   (query-all-db-sync-triggers-name db)))))))))
+
+(deftest create-db-on-demand-scan-field-values-test
+  (testing "POST /api/database"
+    (testing "create a db with scan field values option is \"Only when adding a new filter widget\""
+      (with-db-scheduler-setup
+        (with-test-driver-available!
+          (let [resp (mt/user-http-request :crowberto :post 200 "database"
+                                           {:name         (mt/random-name)
+                                            :engine       (u/qualified-name ::test-driver)
+                                            :details      {:db                          "my_db"
+                                                           :let-user-control-scheduling true}
+                                            :schedules    {:metadata_sync      schedule-map-for-weekly
+                                                           :cache_field_values schedule-map-for-last-friday-at-11pm}
+                                            :is_on_demand true
+                                            :is_full_sync false})
+                db   (t2/select-one :model/Database (:id resp))]
+            (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
+                   (:metadata_sync_schedule db)))
+            (is (nil? (:cache_field_values_schedule db)))
+            (is (= #{(sync-and-analyze-trigger-name db)}
+                   (query-all-db-sync-triggers-name db)))))))))
+
+(deftest update-db-to-sync-on-custom-schedule-test
+  (with-db-scheduler-setup
+    (with-test-driver-available!
+      (mt/with-temp
+        [:model/Database db {}]
+        (testing "can't update if let-user-control-scheduling is false"
+          (let [db (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                                         {:details     {}
+                                          :schedules   {:metadata_sync      schedule-map-for-weekly
+                                                        :cache_field_values schedule-map-for-last-friday-at-11pm}
+                                          :is_full_sync true
+                                          :is_on_demand false})]
+            (def db db)
+            (is (not= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
+                      (:metadata_sync_schedule db)))
+            (is (not= (u.cron/schedule-map->cron-string schedule-map-for-last-friday-at-11pm)
+                      (:cache_field_values_schedule db)))))
+
+        (testing "update db setting with a custom trigger should reschedule scan field values"
+          (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                                {:details     {:let-user-control-scheduling true}
+                                 :schedules   {:metadata_sync      schedule-map-for-weekly
+                                               :cache_field_values schedule-map-for-last-friday-at-11pm}
+                                 :is_full_sync true
+                                 :is_on_demand false})
+          (is (= (all-db-sync-triggers-name db)
+                 (query-all-db-sync-triggers-name db)))
+          (let [db (t2/select-one :model/Database (:id db))]
+            (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
+                   (:metadata_sync_schedule db)))
+            (is (= (u.cron/schedule-map->cron-string schedule-map-for-last-friday-at-11pm)
+                   (:cache_field_values_schedule db)))))
+
+       (testing "update db setting to never scan should remove scan field values trigger"
+         (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                               {:details     {:let-user-control-scheduling true}
+                                :schedules   {:metadata_sync      schedule-map-for-weekly
+                                              :cache_field_values schedule-map-for-last-friday-at-11pm}
+                                :is_full_sync false
+                                :is_on_demand false})
+         (is (= #{(sync-and-analyze-trigger-name db)}
+                (query-all-db-sync-triggers-name db)))
+         (let [db (t2/select-one :model/Database (:id db))]
+           (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
+                  (:metadata_sync_schedule db)))
+           (is (nil? (:cache_field_values_schedule db)))))
+
+       (testing "turn back to default settings should recreate all tasks with randomized schedule"
+         (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                               {:details     {:let-user-control-scheduling false}
+                                :schedules   {:metadata_sync      schedule-map-for-weekly
+                                              :cache_field_values schedule-map-for-last-friday-at-11pm}
+                                :is_full_sync true
+                                :is_on_demand false})
+         (is (= (all-db-sync-triggers-name db)
+                (query-all-db-sync-triggers-name db)))
+         (let [db (t2/select-one :model/Database (:id db))]
+           ;; make sure the new schedule is randomized, not from the payload
+           (is (not= (-> schedule-map-for-weekly u.cron/schedule-map->cron-string)
+                     (:metadata_sync_schedule db)))
+           (is (not= (-> schedule-map-for-last-friday-at-11pm u.cron/schedule-map->cron-string)
+                     (:cache_field_values_schedule db)))))))))
+
+(deftest update-db-to-never-scan-values-on-demand-test
+  (with-db-scheduler-setup
+    (with-test-driver-available!
+      (mt/with-temp
+        [:model/Database db {}]
+        (testing "update db setting to never scan should remove scan field values trigger"
+          (testing "sanity check that it has all triggers to begin with"
+            (is (= (all-db-sync-triggers-name db)
+                   (query-all-db-sync-triggers-name db))))
+          (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                                {:details     {:let-user-control-scheduling true}
+                                 :schedules   {:metadata_sync      schedule-map-for-weekly
+                                               :cache_field_values schedule-map-for-last-friday-at-11pm}
+                                 :is_full_sync false
+                                 :is_on_demand false})
+          (is (= #{(sync-and-analyze-trigger-name db)}
+                 (query-all-db-sync-triggers-name db)))
+          (let [db (t2/select-one :model/Database (:id db))]
+            (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
+                   (:metadata_sync_schedule db)))
+            (is (nil? (:cache_field_values_schedule db)))))))))
+
+(deftest update-db-to-scan-field-values-on-demand-test
+  (with-db-scheduler-setup
+    (with-test-driver-available!
+      (testing "update db to scan on demand should remove scan field values trigger"
+        (mt/with-temp
+          [:model/Database db {}]
+          (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                                {:details     {:let-user-control-scheduling true}
+                                 :schedules   {:metadata_sync      schedule-map-for-weekly
+                                               :cache_field_values schedule-map-for-last-friday-at-11pm}
+                                 :is_full_sync false
+                                 :is_on_demand true})
+          (is (= #{(sync-and-analyze-trigger-name db)}
+                 (query-all-db-sync-triggers-name db)))
+          (let [db (t2/select-one :model/Database (:id db))]
+            (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
+                   (:metadata_sync_schedule db)))
+            (is (nil? (:cache_field_values_schedule db)))))))))
 
 (deftest fetch-db-with-expanded-schedules
   (testing "If we FETCH a database will it have the correct 'expanded' schedules?"
-    (t2.with-temp/with-temp [Database db {:metadata_sync_schedule      "0 0 * * * ? *"
+    (t2.with-temp/with-temp [Database db {:details                     {:let-user-control-scheduling true}
+                                          :metadata_sync_schedule      "0 0 * ? * 6 *"
                                           :cache_field_values_schedule "0 0 23 ? * 6L *"}]
       (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
-              :metadata_sync_schedule      "0 0 * * * ? *"
+              :metadata_sync_schedule      "0 0 * ? * 6 *"
               :schedules                   {:cache_field_values schedule-map-for-last-friday-at-11pm
-                                            :metadata_sync      schedule-map-for-hourly}}
+                                            :metadata_sync      schedule-map-for-weekly}}
              (-> (mt/user-http-request :crowberto :get 200 (format "database/%d" (u/the-id db)))
                  (select-keys [:cache_field_values_schedule :metadata_sync_schedule :schedules])))))))
 

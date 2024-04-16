@@ -83,7 +83,7 @@ export default class LegendItem extends Component {
         {showDot && (
           <Tooltip tooltip={title} isEnabled={showTooltip && showDotTooltip}>
             <div
-              className={cx(CS.flexNoShrink, CS.inlineBlock, "circular")}
+              className={cx(CS.flexNoShrink, CS.inlineBlock, CS.circular)}
               style={{
                 width: 13,
                 height: 13,

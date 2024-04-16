@@ -314,8 +314,8 @@
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
 (mu/defn ^:private expanded-schedules [db :- (mi/InstanceOf Database)]
-  {:cache_field_values (u.cron/cron-string->schedule-map (:cache_field_values_schedule db))
-   :metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))})
+  {:metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))
+   :cache_field_values (some-> (:cache_field_values_schedule db) u.cron/cron-string->schedule-map)})
 
 (defn- add-expanded-schedules
   "Add 'expanded' versions of the cron schedules strings for DB in a format that is appropriate for frontend
@@ -786,7 +786,7 @@
    engine            DBEngineString
    details           ms/Map
    is_full_sync      [:maybe {:default true} ms/BooleanValue]
-   is_on_demand      [:maybe ms/BooleanValue]
+   is_on_demand      [:maybe {:default false} ms/BooleanValue]
    schedules         [:maybe sync.schedules/ExpandedSchedulesMap]
    auto_run_queries  [:maybe :boolean]
    cache_ttl         [:maybe ms/PositiveInt]
@@ -808,13 +808,11 @@
                                         :engine       engine
                                         :details      details-or-error
                                         :is_full_sync is_full_sync
-                                        :is_on_demand (boolean is_on_demand)
+                                        :is_on_demand is_on_demand
                                         :cache_ttl    cache_ttl
                                         :creator_id   api/*current-user-id*}
-                                       (sync.schedules/schedule-map->cron-strings
-                                        (if (:let-user-control-scheduling details)
-                                          (sync.schedules/scheduling schedules)
-                                          (sync.schedules/default-randomized-schedule)))
+                                       (when schedules
+                                         (sync.schedules/schedule-map->cron-strings schedules))
                                        (when (some? auto_run_queries)
                                          {:auto_run_queries auto_run_queries})))))
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
@@ -934,60 +932,51 @@
         conn-error        (when (or details-changed? engine-changed?)
                             (test-database-connection (or engine (:engine existing-database))
                                                       (or details (:details existing-database))))
-        full-sync?        (some-> is_full_sync boolean)]
+        full-sync?        (some-> is_full_sync boolean)
+        on-demand?        (boolean is_on_demand)]
     (if conn-error
       ;; failed to connect, return error
       {:status 400
        :body   conn-error}
       ;; no error, proceed with update
       (do
-        ;; TODO - is there really a reason to let someone change the engine on an existing database?
-        ;;       that seems like the kind of thing that will almost never work in any practical way
-        ;; TODO - this means one cannot unset the description. Does that matter?
-        (t2/update! Database id
+       ;; TODO - is there really a reason to let someone change the engine on an existing database?
+       ;;       that seems like the kind of thing that will almost never work in any practical way
+       ;; TODO - this means one cannot unset the description. Does that matter?
+       (t2/update! Database id
+                   (merge
                     (m/remove-vals
-                      nil?
-                      (merge
-                        {:name               name
-                         :engine             engine
-                         :details            details
-                         :refingerprint      refingerprint
-                         :is_full_sync       full-sync?
-                         :is_on_demand       (boolean is_on_demand)
-                         :description        description
-                         :caveats            caveats
-                         :points_of_interest points_of_interest
-                         :auto_run_queries   auto_run_queries}
-                        ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
-                        (when (seq settings)
-                          {:settings (into {}
-                                           (remove (fn [[_k v]] (nil? v)))
-                                           (merge (:settings existing-database) settings))})
-                        (cond
-                          ;; transition back to metabase managed schedules. the schedule
-                          ;; details, even if provided, are ignored. database is the
-                          ;; current stored value and check against the incoming details
-                          (and (get-in existing-database [:details :let-user-control-scheduling])
-                               (not (:let-user-control-scheduling details)))
-                          (sync.schedules/schedule-map->cron-strings (sync.schedules/default-randomized-schedule))
+                     nil?
+                     (merge
+                      {:name               name
+                       :engine             engine
+                       :details            details
+                       :refingerprint      refingerprint
+                       :is_full_sync       full-sync?
+                       :is_on_demand       on-demand?
+                       :description        description
+                       :caveats            caveats
+                       :points_of_interest points_of_interest
+                       :auto_run_queries   auto_run_queries}
+                      ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
+                      (when (seq settings)
+                        {:settings (into {}
+                                         (remove (fn [[_k v]] (nil? v)))
+                                         (merge (:settings existing-database) settings))})))
+                    ;; cache_field_values_schedule can be nil
+                    (when schedules
+                      (sync.schedules/schedule-map->cron-strings schedules))))
+       ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
+       ;; with the advanced-config feature enabled.
+       (when (premium-features/enable-cache-granular-controls?)
+         (t2/update! Database id {:cache_ttl cache_ttl}))
 
-                          ;; if user is controlling schedules
-                          (:let-user-control-scheduling details)
-                          (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))))))
-        ;; do nothing in the case that user is not in control of
-        ;; scheduling. leave them as they are in the db
-
-        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
-        ;; with the advanced-config feature enabled.
-        (when (premium-features/enable-cache-granular-controls?)
-          (t2/update! Database id {:cache_ttl cache_ttl}))
-
-        (let [db (t2/select-one Database :id id)]
-          (events/publish-event! :event/database-update {:object db
-                                                         :user-id api/*current-user-id*
-                                                         :previous-object existing-database})
-          ;; return the DB with the expanded schedules back in place
-          (add-expanded-schedules db))))))
+       (let [db (t2/select-one Database :id id)]
+         (events/publish-event! :event/database-update {:object db
+                                                        :user-id api/*current-user-id*
+                                                        :previous-object existing-database})
+         ;; return the DB with the expanded schedules back in place
+         (add-expanded-schedules db))))))
 
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
