@@ -155,6 +155,14 @@ export const useCommandPaletteBasicActions = ({
       },
     ];
 
+    actions.push({
+      id: "search-parent",
+      name: t`Search`,
+      section: "basic",
+      icon: "search",
+      priority: 100,
+    });
+
     return [...actions, ...browseActions];
   }, [
     dispatch,

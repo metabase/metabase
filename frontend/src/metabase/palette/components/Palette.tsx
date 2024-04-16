@@ -11,8 +11,8 @@ import { Box, Card, Center, Overlay } from "metabase/ui";
 
 import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicActions";
 
-import { PaletteInput } from "./Palette.styled";
 import { PaletteFooter } from "./PaletteFooter";
+import { PaletteInput } from "./PaletteInput";
 import { PaletteResults } from "./PaletteResults";
 
 /** Command palette */
@@ -23,6 +23,7 @@ export const Palette = withRouter(props => {
 
   //Disable when iframed in
   const { query } = useKBar();
+
   useEffect(() => {
     query.disable(isWithinIframe() || !isLoggedIn);
   }, [isLoggedIn, query]);

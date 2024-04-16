@@ -5,23 +5,17 @@ import { t } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
-import {
-  useRecentItemListQuery,
-  useSearchListQuery,
-} from "metabase/common/hooks";
+import { useRecentItemListQuery } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { getIcon, getName } from "metabase/entities/recent-items";
-import Search from "metabase/entities/search";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { closeModal } from "metabase/redux/ui";
 import {
   getDocsSearchUrl,
   getDocsUrl,
   getSettings,
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import type { SearchResult } from "metabase-types/api";
 
 import type { PaletteAction } from "../types";
 
@@ -39,16 +33,6 @@ export const useCommandPalette = ({
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   const hasQuery = query.length > 0;
-
-  const {
-    data: searchResults,
-    error: searchError,
-    isLoading: isSearchLoading,
-  } = useSearchListQuery<SearchResult>({
-    enabled: !!debouncedSearchText,
-    query: { q: debouncedSearchText, limit: 20 },
-    reload: true,
-  });
 
   const { data: recentItems } = useRecentItemListQuery({
     enabled: !debouncedSearchText,
@@ -90,67 +74,6 @@ export const useCommandPalette = ({
     docsAction,
     showDocsAction,
   ]);
-
-  const searchResultActions = useMemo<PaletteAction[]>(() => {
-    if (isSearchLoading) {
-      return [
-        {
-          id: "search-is-loading",
-          name: "Loading...",
-          keywords: query,
-          section: "search",
-        },
-      ];
-    } else if (searchError) {
-      return [
-        {
-          id: "search-error",
-          name: t`Could not load search results`,
-          section: "search",
-        },
-      ];
-    } else if (debouncedSearchText) {
-      if (searchResults?.length) {
-        return searchResults.map(result => {
-          const wrappedResult = Search.wrapEntity(result, dispatch);
-          return {
-            id: `search-result-${result.id}`,
-            name: result.name,
-            icon: wrappedResult.getIcon().name,
-            section: "search",
-            perform: () => {
-              dispatch(closeModal());
-              dispatch(push(wrappedResult.getUrl()));
-            },
-            extra: {
-              parentCollection: wrappedResult.getCollection().name,
-              isVerified: result.moderated_status === "verified",
-              database: result.database_name,
-            },
-          };
-        });
-      } else {
-        return [
-          {
-            id: "no-search-results",
-            name: t`No results for “${debouncedSearchText}”`,
-            keywords: debouncedSearchText,
-            section: "search",
-          },
-        ];
-      }
-    }
-    return [];
-  }, [
-    dispatch,
-    query,
-    debouncedSearchText,
-    isSearchLoading,
-    searchError,
-    searchResults,
-  ]);
-
-  useRegisterActions(searchResultActions, [searchResultActions]);
 
   const recentItemsActions = useMemo<PaletteAction[]>(() => {
     return (

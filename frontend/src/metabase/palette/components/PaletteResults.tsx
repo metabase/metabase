@@ -8,6 +8,7 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { Flex, Box } from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
+import { useCommandPaletteSearch } from "../hooks/useCommandPaletteSearch";
 import type { PaletteAction } from "../types";
 import { processResults, findClosesestActionIndex } from "../utils";
 
@@ -36,6 +37,10 @@ export const PaletteResults = () => {
   useCommandPalette({
     query: trimmedQuery,
     debouncedSearchText,
+  });
+
+  useCommandPaletteSearch({
+    debouncedQuery: debouncedSearchText,
   });
 
   const { results } = useMatches();
