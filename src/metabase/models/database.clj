@@ -14,9 +14,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise]]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
