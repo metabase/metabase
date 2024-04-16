@@ -65,22 +65,6 @@ export const dashboardApi = Api.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),
     }),
-    favoriteDashboard: builder.mutation<Dashboard, { id: DashboardId }>({
-      query: ({ id }) => ({
-        method: "POST",
-        url: `/api/dashboard/${id}/favorite`,
-      }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),
-    }),
-    unfavoriteDashboard: builder.mutation<Dashboard, { id: DashboardId }>({
-      query: ({ id }) => ({
-        method: "DELETE",
-        url: `/api/dashboard/${id}/favorite`,
-      }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),
-    }),
     saveDashboard: builder.mutation<Dashboard, SaveDashboardRequest>({
       query: body => ({
         method: "POST",
@@ -106,10 +90,8 @@ export const {
   useCopyDashboardMutation,
   useCreateDashboardMutation,
   useDeleteDashboardMutation,
-  useFavoriteDashboardMutation,
   useGetDashboardQuery,
   useListDashboardsQuery,
   useSaveDashboardMutation,
-  useUnfavoriteDashboardMutation,
   useUpdateDashboardMutation,
 } = dashboardApi;

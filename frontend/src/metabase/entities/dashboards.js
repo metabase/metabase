@@ -1,4 +1,3 @@
-import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import { dashboardApi } from "metabase/api";
@@ -24,8 +23,6 @@ import { addUndo } from "metabase/redux/undo";
 
 import forms from "./dashboards/forms";
 
-const FAVORITE_ACTION = `metabase/entities/dashboards/FAVORITE`;
-const UNFAVORITE_ACTION = `metabase/entities/dashboards/UNFAVORITE`;
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 
 /**
@@ -70,18 +67,6 @@ const Dashboards = createEntity({
         dispatch,
         dashboardApi.endpoints.deleteDashboard,
       ),
-    favorite: (entityQuery, dispatch) =>
-      entityCompatibleQuery(
-        entityQuery,
-        dispatch,
-        dashboardApi.endpoints.favoriteDashboard,
-      ),
-    unfavorite: (entityQuery, dispatch) =>
-      entityCompatibleQuery(
-        entityQuery,
-        dispatch,
-        dashboardApi.endpoints.unfavoriteDashboard,
-      ),
     save: (entityQuery, dispatch) =>
       entityCompatibleQuery(
         entityQuery,
@@ -120,16 +105,6 @@ const Dashboards = createEntity({
         },
         opts,
       ),
-
-    setFavorited: async ({ id }, favorite) => {
-      if (favorite) {
-        await Dashboards.api.favorite({ id });
-        return { type: FAVORITE_ACTION, payload: id };
-      } else {
-        await Dashboards.api.unfavorite({ id });
-        return { type: UNFAVORITE_ACTION, payload: id };
-      }
-    },
 
     // TODO move into more common area as copy is implemented for more entities
     copy: compose(
@@ -177,18 +152,13 @@ const Dashboards = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === FAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorite"], true);
-    } else if (type === UNFAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorite"], false);
-    } else if (type === COPY_ACTION && !error && state[""]) {
+    if (type === COPY_ACTION && !error && state[""]) {
       return { ...state, "": state[""].concat([payload.result]) };
     }
     return state;
   },
 
   objectSelectors: {
-    getFavorited: dashboard => dashboard && dashboard.favorite,
     getName: dashboard => dashboard && dashboard.name,
     getUrl: dashboard => dashboard && Urls.dashboard(dashboard),
     getCollection: dashboard =>
