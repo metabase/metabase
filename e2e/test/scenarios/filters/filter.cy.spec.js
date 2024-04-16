@@ -21,6 +21,7 @@ import {
   getNotebookStep,
   queryBuilderMain,
   selectFilterOperator,
+  expressionEditorWidget,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
@@ -972,7 +973,7 @@ describe("scenarios > question > filter", () => {
         filter({ mode: "notebook" });
 
         popover().contains("Custom Expression").click();
-        popover().within(() => {
+        expressionEditorWidget().within(() => {
           enterCustomColumnDetails({ formula: `boolean = ${condition}` });
           cy.get("@formula").blur();
 
@@ -1018,7 +1019,7 @@ describe("scenarios > question > filter", () => {
       filter({ mode: "notebook" });
 
       popover().contains("Custom Expression").click();
-      popover().within(() => {
+      expressionEditorWidget().within(() => {
         enterCustomColumnDetails({ formula: "boolean = true" });
         cy.get("@formula").blur();
 
@@ -1035,7 +1036,7 @@ describe("scenarios > question > filter", () => {
       cy.icon("notebook").click();
       summarize({ mode: "notebook" });
       popover().contains("Custom Expression").click();
-      popover().within(() => {
+      expressionEditorWidget().within(() => {
         enterCustomColumnDetails({
           formula: "CountIf(boolean)",
           name: "count if boolean is true",
@@ -1056,7 +1057,7 @@ describe("scenarios > question > filter", () => {
     openReviewsTable({ mode: "notebook" });
     filter({ mode: "notebook" });
 
-    popover().within(() => {
+    expressionEditorWidget().within(() => {
       cy.findByText("Custom Expression").click();
 
       enterCustomColumnDetails({ formula: "floor" });
