@@ -5586,6 +5586,14 @@ databaseChangeLog:
       # nothing because it should always be like this
       rollback:
 
+  - changeSet:
+      id: v49.2024-04-09T10:00:03
+      author: qnkhuat
+      comment: This clears the schedule for caching field values for databases with period scanning disabled.
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteScanFieldValuesTriggerForDBThatTurnItOff"
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
