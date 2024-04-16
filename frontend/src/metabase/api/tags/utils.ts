@@ -16,7 +16,7 @@ import type {
   FieldDimension,
   FieldId,
   ForeignKey,
-  Group,
+  GroupListQuery,
   Metric,
   PopularItem,
   RecentItem,
@@ -268,7 +268,7 @@ export function provideMetricTags(metric: Metric): TagDescription<TagType>[] {
 }
 
 export function providePermissionsGroupListTags(
-  groups: Group[],
+  groups: GroupListQuery[],
 ): TagDescription<TagType>[] {
   return [
     listTag("permissions-group"),
@@ -277,7 +277,7 @@ export function providePermissionsGroupListTags(
 }
 
 export function providePermissionsGroupTags(
-  group: Group,
+  group: GroupListQuery,
 ): TagDescription<TagType>[] {
   return [idTag("permissions-group", group.id)];
 }
