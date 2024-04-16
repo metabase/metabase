@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
@@ -75,5 +77,18 @@ describe("NotebookStep", () => {
     expect(
       screen.queryByRole("button", { name: "Remove step" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("sets the row limit only on blur", () => {
+    const step = createMockNotebookStep({ type: "limit" });
+    const { updateQuery } = setup({ step });
+
+    const input = screen.getByPlaceholderText("Enter a limit");
+    userEvent.type(input, "38");
+    userEvent.type(input, "clear");
+    userEvent.type(input, "42");
+    input.blur();
+
+    expect(updateQuery).toHaveBeenCalledTimes(1);
   });
 });

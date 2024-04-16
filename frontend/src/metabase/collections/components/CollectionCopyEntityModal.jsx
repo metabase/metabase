@@ -59,7 +59,7 @@ function CollectionCopyEntityModal({
         {newEntityObject.uncopied?.length > 0
           ? t`Duplicated ${entityObject.model}, but couldn't duplicate some questions`
           : t`Duplicated ${entityObject.model}`}
-        <Link className="link text-bold ml1" to={newEntityUrl}>
+        <Link className={cx(CS.link, "text-bold ml1")} to={newEntityUrl}>
           {t`See it`}
         </Link>
       </div>,

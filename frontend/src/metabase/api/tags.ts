@@ -1,5 +1,15 @@
-export const API_KEY_TAG = "ApiKey" as const;
-export const FIELD_VALUES_TAG = "FieldValues" as const;
+export const TAG_TYPES = ["api-key", "database", "field-values"] as const;
 
-export const tagTypes = [API_KEY_TAG, FIELD_VALUES_TAG];
-export type TagTypes = typeof tagTypes[number];
+export type TagType = typeof TAG_TYPES[number];
+
+export function tag(type: TagType) {
+  return { type };
+}
+
+export function listTag(type: TagType) {
+  return { type, id: "LIST" };
+}
+
+export function idTag(type: TagType, id: string | number) {
+  return { type, id };
+}

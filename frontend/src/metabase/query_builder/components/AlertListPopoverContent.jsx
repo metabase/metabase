@@ -87,7 +87,7 @@ class AlertListPopoverContent extends Component {
           <div className={cx(CS.borderTop, CS.p2, "bg-light-blue")}>
             <a
               className={cx(
-                "link",
+                CS.link,
                 CS.flex,
                 CS.alignCenter,
                 CS.textBold,
@@ -186,11 +186,11 @@ class AlertListItemInner extends Component {
               }}
             >
               {(isAdmin || isCurrentUser) && (
-                <a className="link" onClick={this.onEdit}>{jt`Edit`}</a>
+                <a className={CS.link} onClick={this.onEdit}>{jt`Edit`}</a>
               )}
               {!isAdmin && !unsubscribingProgress && (
                 <a
-                  className="link ml2"
+                  className={cx(CS.link, "ml2")}
                   onClick={this.onUnsubscribe}
                 >{jt`Unsubscribe`}</a>
               )}

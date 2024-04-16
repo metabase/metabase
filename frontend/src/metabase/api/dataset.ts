@@ -4,7 +4,7 @@ import { Api } from "./api";
 
 export const datasetApi = Api.injectEndpoints({
   endpoints: builder => ({
-    createNativeDataset: builder.mutation<NativeQueryForm, DatasetQuery>({
+    getNativeDataset: builder.query<NativeQueryForm, DatasetQuery>({
       query: input => ({
         method: "POST",
         url: "/api/dataset/native",
@@ -14,4 +14,4 @@ export const datasetApi = Api.injectEndpoints({
   }),
 });
 
-export const { useCreateNativeDatasetMutation } = datasetApi;
+export const { useGetNativeDatasetQuery } = datasetApi;

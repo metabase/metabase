@@ -50,7 +50,7 @@ const renderJobsTable = jobs => {
                 <td>{job.durable}</td>
                 <td>
                   <Link
-                    className="link"
+                    className={CS.link}
                     to={`/admin/troubleshooting/jobs/${job.key}`}
                   >
                     {t`View triggers`}

@@ -6,7 +6,7 @@ import _ from "underscore";
 import Modal from "metabase/components/Modal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import { ConnectedAddToDashSelectDashModal } from "metabase/containers/AddToDashSelectDashModal";
-import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
+import { MoveModal } from "metabase/containers/MoveModal";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
@@ -15,7 +15,6 @@ import { CreateAlertModalContent } from "metabase/query_builder/components/Alert
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
-import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithParameters } from "metabase/query_builder/selectors";
@@ -113,9 +112,7 @@ class QueryModals extends Component<QueryModalsProps> {
       initialCollectionId,
       onCloseModal,
       onOpenModal,
-      updateQuestion,
       setQueryBuilderMode,
-      setUIControls,
     } = this.props;
 
     switch (modal) {
@@ -240,7 +237,7 @@ class QueryModals extends Component<QueryModalsProps> {
       case MODAL_TYPES.MOVE:
         return (
           <Modal onClose={onCloseModal}>
-            <CollectionMoveModal
+            <MoveModal
               title={t`Which collection should this be in?`}
               initialCollectionId={question.collectionId()}
               onClose={onCloseModal}
@@ -343,16 +340,6 @@ class QueryModals extends Component<QueryModalsProps> {
         return (
           <Modal fit onClose={onCloseModal}>
             <PreviewQueryModal onClose={onCloseModal} />
-          </Modal>
-        );
-      case MODAL_TYPES.CONVERT_QUERY:
-        return (
-          <Modal fit onClose={onCloseModal}>
-            <ConvertQueryModal
-              onUpdateQuestion={updateQuestion}
-              onSetUIControls={setUIControls}
-              onClose={onCloseModal}
-            />
           </Modal>
         );
       default:

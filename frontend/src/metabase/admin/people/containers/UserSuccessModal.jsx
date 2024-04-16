@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -9,6 +10,7 @@ import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import User from "metabase/entities/users";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -50,7 +52,7 @@ const EmailSuccess = ({ user, isSsoEnabled }) => {
       )} with instructions to log in. If this user is unable to authenticate then you can ${(
         <Link
           to={`/admin/people/${user.id}/reset`}
-          className="link"
+          className={CS.link}
         >{t`reset their password.`}</Link>
       )}`}</div>
     );
@@ -76,7 +78,7 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
       className="pt4 text-centered"
     >
       {jt`If you want to be able to send email invites, just go to the ${(
-        <Link to="/admin/settings/email" className="link text-bold">
+        <Link to="/admin/settings/email" className={cx(CS.link, "text-bold")}>
           Email Settings
         </Link>
       )} page.`}

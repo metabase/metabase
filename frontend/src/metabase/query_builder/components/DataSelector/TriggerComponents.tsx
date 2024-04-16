@@ -1,7 +1,9 @@
+import cx from "classnames";
 import type { CSSProperties, ReactNode } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { Icon, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -81,22 +83,29 @@ export function FieldTrigger({
 export function DatabaseTrigger({ database }: { database: Database }) {
   return database ? (
     <span
-      className="text-wrap text-grey no-decoration"
+      className={cx("text-wrap text-grey", CS.noDecoration)}
       data-testid="selected-database"
     >
       {database.name}
     </span>
   ) : (
-    <span className="text-medium no-decoration">{t`Select a database`}</span>
+    <span
+      className={cx("text-medium", CS.noDecoration)}
+    >{t`Select a database`}</span>
   );
 }
 
 export function TableTrigger({ table }: { table: Table }) {
   return table ? (
-    <span className="text-wrap text-grey no-decoration">
+    <span
+      className={cx("text-wrap text-grey", CS.noDecoration)}
+      data-testid="selected-table"
+    >
       {table.display_name || table.name}
     </span>
   ) : (
-    <span className="text-medium no-decoration">{t`Select a table`}</span>
+    <span
+      className={cx("text-medium", CS.noDecoration)}
+    >{t`Select a table`}</span>
   );
 }

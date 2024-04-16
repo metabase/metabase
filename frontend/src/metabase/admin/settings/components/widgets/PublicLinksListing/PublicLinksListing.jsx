@@ -100,7 +100,7 @@ class PublicLinksListing extends Component {
                         <ExternalLink
                           href={getPublicUrl(link)}
                           onClick={() => this.trackEvent("Public Link Clicked")}
-                          className="link text-wrap"
+                          className={cx(CS.link, "text-wrap")}
                         >
                           {getPublicUrl(link)}
                         </ExternalLink>

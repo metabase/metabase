@@ -75,8 +75,11 @@ export function CollectionContent({
     modelId,
     collectionId,
     tableId,
+    uploadMode,
   }: UploadFileProps) =>
-    dispatch(uploadFileAction({ file, modelId, collectionId, tableId }));
+    dispatch(
+      uploadFileAction({ file, modelId, collectionId, tableId, uploadMode }),
+    );
 
   const error =
     bookmarksError || databasesError || collectionsError || collectionError;

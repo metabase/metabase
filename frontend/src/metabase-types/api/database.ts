@@ -84,17 +84,52 @@ export interface DatabaseUsageInfo {
   segment: number;
 }
 
-export interface DatabaseQuery {
+export interface DatabaseRequest {
+  id: DatabaseId;
   include?: "tables" | "tables.fields";
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
 }
 
-export interface DatabaseListQuery {
-  include?: "tables";
+export interface DatabaseListRequest {
+  include?: "table";
   saved?: boolean;
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
+  include_only_uploadable?: boolean;
+  include_analytics?: boolean;
+}
+
+export interface DatabaseListResponse {
+  data: Database[];
+  total: number;
+}
+
+export interface DatabaseCreateRequest {
+  name: string;
+  engine: string;
+  details: Record<string, unknown>;
+  is_full_sync?: boolean;
+  is_on_demand?: boolean;
+  schedules?: DatabaseSchedules;
+  auto_run_queries?: boolean;
+  cache_ttl?: number;
+  connection_source?: "admin" | "setup";
+}
+
+export interface DatabaseUpdateRequest {
+  id: DatabaseId;
+  name?: string;
+  engine?: string;
+  refingerprint?: boolean;
+  details?: Record<string, unknown>;
+  schedules?: DatabaseSchedules;
+  description?: string;
+  caveats?: string;
+  points_of_interest?: string;
+  auto_run_queries?: boolean;
+  cache_ttl?: number;
+  settings?: DatabaseSettings;
 }
 
 export interface DatabaseIdFieldListQuery {

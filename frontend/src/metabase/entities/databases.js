@@ -2,9 +2,10 @@ import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 import _ from "underscore";
 
+import { databaseApi } from "metabase/api";
 import Schemas from "metabase/entities/schemas";
 import { color } from "metabase/lib/colors";
-import { createEntity } from "metabase/lib/entities";
+import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import {
   fetchData,
   createThunkAction,
@@ -41,6 +42,35 @@ const Databases = createEntity({
 
   nameOne: "database",
   nameMany: "databases",
+
+  api: {
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        databaseApi.endpoints.listDatabases,
+      ),
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        databaseApi.endpoints.getDatabase,
+      ),
+    create: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        databaseApi.endpoints.createDatabase,
+      ),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        databaseApi.endpoints.updateDatabase,
+      ),
+    delete: ({ id }, dispatch) =>
+      entityCompatibleQuery(id, dispatch, databaseApi.endpoints.deleteDatabase),
+  },
 
   // ACTION CREATORS
   objectActions: {
