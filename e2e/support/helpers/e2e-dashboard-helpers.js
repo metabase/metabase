@@ -124,7 +124,7 @@ export function checkFilterLabelAndValue(label, value) {
   cy.get("fieldset").contains(value);
 }
 
-export function setFilter(type, subType) {
+export function setFilter(type, subType, name) {
   cy.icon("filter").click();
 
   cy.findByText("What do you want to filter?");
@@ -134,6 +134,10 @@ export function setFilter(type, subType) {
   if (subType) {
     sidebar().findByText("Filter operator").next().click();
     popover().findByText(subType).click();
+  }
+
+  if (name) {
+    sidebar().findByLabelText("Label").clear().type(name);
   }
 }
 

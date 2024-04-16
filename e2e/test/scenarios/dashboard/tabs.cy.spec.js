@@ -517,10 +517,8 @@ describe("scenarios > dashboard > tabs", () => {
       delayResponse(500),
     ).as("saveCard");
 
-    filterWidget().contains("Relative Date").click();
-    popover().within(() => {
-      cy.findByText("Past 7 days").click();
-    });
+    filterWidget().click();
+    popover().findByText("Past 7 days").click();
 
     // Loader in the 2nd tab
     getDashboardCard(0).within(() => {
