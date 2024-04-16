@@ -145,9 +145,18 @@ class TableInteractive extends Component {
     this._div.style.zIndex = "-1";
 
     if (this.props.isEmbeddingSdk) {
-      document
-        .getElementById(EMBEDDING_SDK_ROOT_ELEMENT_ID)
-        ?.appendChild(this._div);
+      const rootElement = document.getElementById(
+        EMBEDDING_SDK_ROOT_ELEMENT_ID,
+      );
+
+      if (rootElement) {
+        rootElement.appendChild(this._div);
+      } else {
+        console.warn(
+          // eslint-disable-next-line no-literal-metabase-strings -- not UI string
+          "Failed to find Embedding SDK provider component. Have you forgot to add MetabaseProvider?",
+        );
+      }
     } else {
       document.body.appendChild(this._div);
     }
