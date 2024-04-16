@@ -93,7 +93,7 @@ const MetadataTableColumnList = ({
 
   return (
     <div id="ColumnsList" className={cx("mt3", { disabled: isHidden })}>
-      <div className="text-uppercase text-medium py1">
+      <div className={cx(CS.textUppercase, "text-medium py1")}>
         <div className={CS.relative}>
           <div
             style={{ minWidth: 420 }}
@@ -145,7 +145,7 @@ const TableFieldOrderDropdown = ({
     <TippyPopoverWithTrigger
       triggerContent={
         <span
-          className="text-brand text-bold"
+          className={cx("text-brand", CS.textBold)}
           style={{ textTransform: "none", letterSpacing: 0 }}
           aria-label={t`Sort`}
         >

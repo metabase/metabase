@@ -37,7 +37,7 @@ const AttributeMappingEditor = ({
       <div
         className={cx(
           CS.textUppercase,
-          "text-small",
+          CS.textSmall,
           "text-grey-4",
           CS.flex,
           CS.alignCenter,
@@ -62,7 +62,7 @@ const AttributeMappingEditor = ({
       shouldUseSavedQuestion ? t`Pick a parameter` : t`Pick a column`
     }
     valueHeader={
-      <div className="text-uppercase text-small text-grey-4">
+      <div className={cx(CS.textUppercase, CS.textSmall, "text-grey-4")}>
         {shouldUseSavedQuestion ? t`Parameter or variable` : t`Column`}
       </div>
     }
@@ -87,7 +87,7 @@ const AttributeMappingEditor = ({
         </div>
       ) : null
     }
-    divider={<span className="px2 text-bold">{t`equals`}</span>}
+    divider={<span className={cx("px2", CS.textBold)}>{t`equals`}</span>}
     addText={t`Add a filter`}
     canAdd={attributesOptions.length > 0}
     canDelete={true}

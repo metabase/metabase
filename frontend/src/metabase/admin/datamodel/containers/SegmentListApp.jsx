@@ -26,7 +26,7 @@ class SegmentListAppInner extends Component {
           </Link>
         </div>
         <table className={AdminS.AdminTable}>
-          <thead className="text-bold">
+          <thead className={CS.textBold}>
             <tr>
               <th style={{ minWidth: "320px" }}>{t`Name`}</th>
               <th className={CS.full}>{t`Definition`}</th>

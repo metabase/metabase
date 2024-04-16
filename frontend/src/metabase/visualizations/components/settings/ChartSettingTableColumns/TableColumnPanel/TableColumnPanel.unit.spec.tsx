@@ -105,10 +105,10 @@ describe("DatasetColumnSelector", () => {
     expect(items[3]).toHaveTextContent("Subtotal");
   });
 
-  it("should allow to enable a column", () => {
+  it("should allow to enable a column", async () => {
     const { onChange } = setup();
 
-    enableColumn("Tax");
+    await enableColumn("Tax");
 
     const columnIndex = findColumnIndex("TAX", COLUMN_SETTINGS);
     const newSettings = [...COLUMN_SETTINGS];
@@ -116,10 +116,10 @@ describe("DatasetColumnSelector", () => {
     expect(onChange).toHaveBeenCalledWith(newSettings);
   });
 
-  it("should allow to disable a column", () => {
+  it("should allow to disable a column", async () => {
     const { onChange } = setup();
 
-    disableColumn("ID");
+    await disableColumn("ID");
 
     const columnIndex = findColumnIndex("ID", COLUMN_SETTINGS);
     const newSettings = [...COLUMN_SETTINGS];
@@ -128,12 +128,12 @@ describe("DatasetColumnSelector", () => {
   });
 });
 
-function enableColumn(columnName: string) {
-  userEvent.click(screen.getByTestId(`${columnName}-show-button`));
+async function enableColumn(columnName: string) {
+  await userEvent.click(screen.getByTestId(`${columnName}-show-button`));
 }
 
-function disableColumn(columnName: string) {
-  userEvent.click(screen.getByTestId(`${columnName}-hide-button`));
+async function disableColumn(columnName: string) {
+  await userEvent.click(screen.getByTestId(`${columnName}-hide-button`));
 }
 
 function findColumnIndex(

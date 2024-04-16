@@ -51,19 +51,19 @@ function setup(value: string, values: string[], searchDebounceMs?: number) {
 }
 
 describe("ListPicker", () => {
-  it("onSearchChange fires only once per input char", () => {
+  it("onSearchChange fires only once per input char", async () => {
     const { onSearchChange } = setup("", VALUES.slice());
 
     const select = screen.getByPlaceholderText("Pick values");
     expect(onSearchChange).toHaveBeenCalledTimes(1);
     expect(onSearchChange).toHaveBeenCalledWith("");
 
-    userEvent.click(select);
-    userEvent.type(select, "A");
+    await userEvent.click(select);
+    await userEvent.type(select, "A");
     expect(onSearchChange).toHaveBeenCalledTimes(2);
     expect(onSearchChange).toHaveBeenCalledWith("A");
 
-    userEvent.type(select, "B");
+    await userEvent.type(select, "B");
     expect(onSearchChange).toHaveBeenCalledTimes(3);
     expect(onSearchChange).toHaveBeenCalledWith("AB");
   });
@@ -72,12 +72,12 @@ describe("ListPicker", () => {
     const { onSearchChange } = setup("", VALUES.slice(), 100);
     const select = screen.getByPlaceholderText("Pick values");
 
-    userEvent.click(select);
-    userEvent.type(select, "H");
-    userEvent.type(select, "e");
-    userEvent.type(select, "l");
-    userEvent.type(select, "l");
-    userEvent.type(select, "o");
+    await userEvent.click(select);
+    await userEvent.type(select, "H");
+    await userEvent.type(select, "e");
+    await userEvent.type(select, "l");
+    await userEvent.type(select, "l");
+    await userEvent.type(select, "o");
 
     await waitFor(() => expect(onSearchChange).toHaveBeenCalledTimes(1));
     expect(onSearchChange).toHaveBeenCalledWith("Hello");
@@ -87,10 +87,10 @@ describe("ListPicker", () => {
     const { onSearchChange, unmount } = setup("", VALUES.slice(), 100);
     const select = screen.getByPlaceholderText("Pick values");
 
-    userEvent.click(select);
-    userEvent.type(select, "B");
-    userEvent.type(select, "y");
-    userEvent.type(select, "e");
+    await userEvent.click(select);
+    await userEvent.type(select, "B");
+    await userEvent.type(select, "y");
+    await userEvent.type(select, "e");
     unmount();
 
     // Careful, this won't catch calling it after the component was unmounted

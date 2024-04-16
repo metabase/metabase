@@ -30,7 +30,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -403,39 +402,41 @@
   point in the future; for now, this function is a stopgap.
 
   Results are streamed synchronously. Caller is responsible for closing `os` when this call is complete."
-  [export-format ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
+  [export-format format-rows? ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results
   (driver/with-driver (driver.u/database->driver database-id)
     (qp.store/with-metadata-provider database-id
-      (binding [qp.xlsx/*parse-temporal-string-values* true]
-        (let [w                           (qp.si/streaming-results-writer export-format os)
-              cols                        (-> results :data :cols)
-              viz-settings                (-> results :data :viz-settings)
-              [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
-              viz-settings'               (assoc viz-settings :output-order output-order)]
-          (qp.si/begin! w
-                        (assoc-in results [:data :ordered-cols] ordered-cols)
-                        viz-settings')
-          (dorun
-           (map-indexed
-            (fn [i row]
-              (qp.si/write-row! w row i ordered-cols viz-settings'))
-            rows))
-          (qp.si/finish! w results))))))
+      (let [w                           (qp.si/streaming-results-writer export-format os)
+            cols                        (-> results :data :cols)
+            viz-settings                (-> results :data :viz-settings)
+            [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
+            viz-settings'               (assoc viz-settings :output-order output-order)]
+        (qp.si/begin! w
+                      (-> results
+                          (assoc-in [:data :format-rows?] format-rows?)
+                          (assoc-in [:data :ordered-cols] ordered-cols))
+                      viz-settings')
+        (dorun
+         (map-indexed
+          (fn [i row]
+            (qp.si/write-row! w row i ordered-cols viz-settings'))
+          rows))
+        (qp.si/finish! w results)))))
 
 (defn- result-attachment
-  [{{card-name :name :as card} :card {{:keys [rows]} :data :as result} :result}]
+  [{{card-name :name format-rows :format_rows :as card} :card
+    {{:keys [rows]} :data :as result}                   :result}]
   (when (seq rows)
     [(when-let [temp-file (and (:include_csv card)
                                (create-temp-file-or-throw "csv"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :csv os result))
+         (stream-api-results-to-export-format :csv format-rows os result))
        (create-result-attachment-map "csv" card-name temp-file))
      (when-let [temp-file (and (:include_xls card)
                                (create-temp-file-or-throw "xlsx"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :xlsx os result))
+         (stream-api-results-to-export-format :xlsx format-rows os result))
        (create-result-attachment-map "xlsx" card-name temp-file))]))
 
 (defn- part-attachments [parts]
@@ -518,7 +519,7 @@
   (for [{{result-card-id :id} :card :as result} results
         :let [pulse-card (m/find-first #(= (:id %) result-card-id) (:cards pulse))]]
     (if result-card-id
-      (update result :card merge (select-keys pulse-card [:include_csv :include_xls]))
+      (update result :card merge (select-keys pulse-card [:include_csv :include_xls :format_rows]))
       result)))
 
 (defn render-pulse-email

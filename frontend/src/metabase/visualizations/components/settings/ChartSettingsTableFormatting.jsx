@@ -260,7 +260,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
   >
     <div className={cx(CS.p1, CS.borderBottom, CS.relative, "bg-light")}>
       <div className={cx(CS.px1, CS.flex, CS.alignCenter, CS.relative)}>
-        <span className={cx(CS.h4, CS.flexAuto, CS.textDark, "text-wrap")}>
+        <span className={cx(CS.h4, CS.flexAuto, CS.textDark, CS.textWrap)}>
           {rule.columns.length > 0 ? (
             rule.columns
               .map(
@@ -319,7 +319,7 @@ const RuleDescription = ({ rule }) => {
         ? t`Cells in this column will be tinted based on their values.`
         : rule.type === "single"
         ? jt`When a cell in these columns ${(
-            <span className="text-bold">
+            <span className={CS.textBold}>
               {ALL_OPERATOR_NAMES[rule.operator]}
               {getValueForDescription(rule)}
             </span>

@@ -710,9 +710,9 @@ class TableInteractive extends Component {
 
     return (
       <TableDraggable
-        /* needs to be index+name+counter so Draggable resets after each drag */
         enableUserSelectHack={false}
         enableCustomUserSelectHack={!isVirtual}
+        /* needs to be index+name+counter so Draggable resets after each drag */
         key={columnIndex + column.name + DRAG_COUNTER}
         axis="x"
         disabled={!isDraggable}
@@ -1051,7 +1051,7 @@ class TableInteractive extends Component {
                     overflow: "hidden",
                     paddingRight: getScrollBarSize(),
                   }}
-                  className="TableInteractive-header scroll-hide-all"
+                  className={cx("TableInteractive-header", CS.scrollHideAll)}
                   width={width || 0}
                   height={headerHeight}
                   rowCount={1}
@@ -1060,7 +1060,7 @@ class TableInteractive extends Component {
                   columnWidth={this.getDisplayColumnWidth}
                   cellRenderer={props =>
                     gutterColumn && props.columnIndex === 0
-                      ? () => null // we need a phantom cell to properly offset columns
+                      ? null // we need a phantom cell to properly offset columns
                       : this.tableHeaderRenderer({
                           ...props,
                           columnIndex: props.columnIndex - gutterColumn,
@@ -1089,7 +1089,7 @@ class TableInteractive extends Component {
                   rowHeight={ROW_HEIGHT}
                   cellRenderer={props =>
                     gutterColumn && props.columnIndex === 0
-                      ? () => null // we need a phantom cell to properly offset columns
+                      ? null // we need a phantom cell to properly offset columns
                       : this.cellRenderer({
                           ...props,
                           columnIndex: props.columnIndex - gutterColumn,

@@ -11,7 +11,7 @@
 }
 
 .item {
-  composes: rounded pl2 py1 mb1 from "style";
+  composes: py1 mb1 rounded pl2 from "style";
   align-items: center;
   display: flex;
   font-size: 1em;
@@ -37,7 +37,7 @@
 }
 
 .name {
-  composes: ml2 text-bold from "style";
+  composes: ml2 textBold from "style";
   color: var(--color-text-medium);
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -60,9 +60,9 @@ describe("PublicApp", () => {
     expect(screen.queryByText("My Description")).not.toBeInTheDocument();
   });
 
-  it("renders description", () => {
+  it("renders description", async () => {
     setup({ name: "My Title", description: "My Description" });
-    userEvent.hover(getIcon("info"));
+    await userEvent.hover(getIcon("info"));
     expect(screen.getByText("My Description")).toBeInTheDocument();
   });
 

@@ -27,8 +27,8 @@ describe("CollectionMenu", () => {
       isAdmin: true,
     });
 
-    userEvent.click(getIcon("ellipsis"));
-    userEvent.click(await screen.findByText("Make collection official"));
+    await userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(await screen.findByText("Make collection official"));
     expect(onUpdateCollection).toHaveBeenCalledWith(collection, {
       authority_level: "official",
     });
@@ -44,14 +44,14 @@ describe("CollectionMenu", () => {
       isAdmin: true,
     });
 
-    userEvent.click(getIcon("ellipsis"));
-    userEvent.click(await screen.findByText("Remove Official badge"));
+    await userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(await screen.findByText("Remove Official badge"));
     expect(onUpdateCollection).toHaveBeenCalledWith(collection, {
       authority_level: null,
     });
   });
 
-  it("should not be able to make the collection official if not an admin", () => {
+  it("should not be able to make the collection official if not an admin", async () => {
     const collection = createMockCollection({
       can_write: true,
     });
@@ -60,13 +60,13 @@ describe("CollectionMenu", () => {
       isAdmin: false,
     });
 
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     expect(
       screen.queryByText("Make collection official"),
     ).not.toBeInTheDocument();
   });
 
-  it("should not be able to make the collection official if it's the root collection", () => {
+  it("should not be able to make the collection official if it's the root collection", async () => {
     const collection = createMockCollection({
       id: "root",
       can_write: true,
@@ -76,7 +76,7 @@ describe("CollectionMenu", () => {
       isAdmin: true,
     });
 
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     expect(
       screen.queryByText("Make collection official"),
     ).not.toBeInTheDocument();
@@ -92,13 +92,13 @@ describe("CollectionMenu", () => {
       isAdmin: true,
     });
 
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     expect(
       await screen.findByText("Make collection official"),
     ).toBeInTheDocument();
   });
 
-  it("should not be able to make the collection official if it's a personal collection child", () => {
+  it("should be able to make the collection official if even it's a personal collection child", async () => {
     const collection = createMockCollection({
       can_write: true,
     });
@@ -108,9 +108,7 @@ describe("CollectionMenu", () => {
       isPersonalCollectionChild: true,
     });
 
-    userEvent.click(getIcon("ellipsis"));
-    expect(
-      screen.queryByText("Make collection official"),
-    ).not.toBeInTheDocument();
+    await userEvent.click(getIcon("ellipsis"));
+    expect(screen.getByText("Make collection official")).toBeInTheDocument();
   });
 });

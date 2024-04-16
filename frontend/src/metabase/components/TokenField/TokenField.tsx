@@ -17,6 +17,8 @@ import {
   KEYCODE_DOWN,
   KEYCODE_BACKSPACE,
   KEY_COMMA,
+  KEY_ENTER,
+  KEY_BACKSPACE,
 } from "metabase/lib/keyboard";
 import { Icon } from "metabase/ui";
 
@@ -310,7 +312,8 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
       // ",". Similarly, if you want to type "<" on the US keyboard layout, you
       // need to look at `key` to distinguish it from ",".
       key === KEY_COMMA ||
-      keyCode === KEYCODE_ENTER
+      keyCode === KEYCODE_ENTER ||
+      key === KEY_ENTER
     ) {
       if (this.addSelectedOption(event)) {
         event.preventDefault();
@@ -338,7 +341,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
           selectedOptionValue: this._value(filteredOptions[index + 1]),
         });
       }
-    } else if (keyCode === KEYCODE_BACKSPACE) {
+    } else if (keyCode === KEYCODE_BACKSPACE || key === KEY_BACKSPACE) {
       // backspace
       const { value } = this.props;
       if (!this.state.inputValue && value.length > 0) {
@@ -638,7 +641,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
             CS.overflowAuto,
             CS.pl1,
             CS.my1,
-            "scroll-hide",
+            CS.scrollHide,
           )}
           style={{ maxHeight: 300, ...optionsStyle }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
