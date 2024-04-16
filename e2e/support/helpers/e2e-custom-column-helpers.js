@@ -1,3 +1,7 @@
+export function expressionEditorWidget() {
+  return cy.findByTestId("expression-editor").should("exist");
+}
+
 export function enterCustomColumnDetails({ formula, name } = {}) {
   cy.get(".ace_text-input")
     .first()
