@@ -92,9 +92,11 @@ export const getStateFromIdPath = ({
 
 export const isFolder = (item: QuestionPickerItem, models: SearchModel[]) => {
   return (
-    item?.model === "collection" &&
-    _.intersection([...(item?.below ?? []), ...(item?.here ?? [])], models)
-      .length > 0
+    item.id === "root" ||
+    item.is_personal ||
+    (item?.model === "collection" &&
+      _.intersection([...(item?.below ?? []), ...(item?.here ?? [])], models)
+        .length > 0)
   );
 };
 
