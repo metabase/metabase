@@ -1,10 +1,10 @@
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import CacheTTLField from "./components/CacheTTLField";
 import DashboardCacheSection from "./components/DashboardCacheSection";
-import DatabaseCacheTimeField from "./components/DatabaseCacheTimeField";
 import DatabaseCacheTTLField from "./components/DatabaseCacheTTLField";
+import DatabaseCacheTimeField from "./components/DatabaseCacheTimeField";
 import { GranularControlsExplanation } from "./components/GranularControlsExplanation";
 import { InvalidateNowButton } from "./components/InvalidateNowButton";
 import QuestionCacheSection from "./components/QuestionCacheSection";
@@ -14,7 +14,7 @@ import {
   getQuestionsImplicitCacheTTL,
   hasQuestionCacheSection,
   normalizeCacheTTL,
-  validateCacheTTL
+  validateCacheTTL,
 } from "./utils";
 
 if (hasPremiumFeature("cache_granular_controls")) {
