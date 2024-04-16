@@ -160,8 +160,13 @@ export function ColumnInput({
     setOpen(false);
   }
 
-  function handleBlur() {
-    setTimeout(() => setOpen(false), 100);
+  function handleBlur(evt: MouseEvent) {
+    if (!evt.currentTarget || !evt.relatedTarget) {
+      return;
+    }
+    if (!evt.currentTarget.contains(evt.relatedTarget as Node)) {
+      setTimeout(() => setOpen(false), 100);
+    }
   }
 
   function handleButtonClick(evt: MouseEvent<HTMLButtonElement>) {
