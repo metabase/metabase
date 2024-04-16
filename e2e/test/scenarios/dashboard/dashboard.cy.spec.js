@@ -30,6 +30,7 @@ import {
   queryBuilderHeader,
   removeDashboardCard,
   getDashboardCards,
+  getDashboardCard,
   toggleDashboardInfoSidebar,
   dashboardHeader,
   openProductsTable,
@@ -566,7 +567,7 @@ describe("scenarios > dashboard", () => {
     // but we're testing just that the filter is added to the dashboard
     setFilter("Location", "Is");
 
-    cy.findByTestId("dashcard-container").findByText("Select…").click();
+    getDashboardCard().findByText("Select…").click();
 
     popover().findByText("State").click();
 
@@ -582,7 +583,7 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
-    // programatically create and save a question as per repro instructions in #11007
+    // programmatically create and save a question as per repro instructions in #11007
     cy.request("POST", "/api/card", {
       name: "11007",
       dataset_query: {
