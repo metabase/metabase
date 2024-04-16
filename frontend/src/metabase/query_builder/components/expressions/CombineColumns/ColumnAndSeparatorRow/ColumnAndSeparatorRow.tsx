@@ -1,23 +1,25 @@
-import { type FocusEvent, useState } from "react";
+import { type FocusEvent, useState, useMemo } from "react";
 import { t } from "ttag";
 
 import { Button, Flex, Icon, Select, TextInput, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-import type { ColumnOption } from "../util";
 import {
   fromSelectValue,
   toSelectValue,
   label,
   formatSeparator,
+  getColumnOptions,
 } from "../util";
 
 import styles from "./ColumnAndSeparatorRow.module.css";
 
 interface Props {
+  query: Lib.Query;
+  stageIndex: number;
   column: Lib.ColumnMetadata | null;
   index: number;
-  options: ColumnOption[];
+  columns: Lib.ColumnMetadata[];
   separator: string;
   showRemove: boolean;
   showSeparator: boolean;
@@ -30,9 +32,11 @@ interface Props {
 }
 
 export const ColumnAndSeparatorRow = ({
+  query,
+  stageIndex,
+  columns,
   column,
   index,
-  options,
   separator,
   showRemove,
   showSeparator,
@@ -48,17 +52,14 @@ export const ColumnAndSeparatorRow = ({
           onChange(index, column, separator);
         }}
       />
-      <Select
-        className={styles.column}
-        classNames={{
-          wrapper: styles.wrapper,
-        }}
-        data={options}
+
+      <ColumnInput
+        query={query}
+        stageIndex={stageIndex}
+        columns={columns}
+        value={column}
         label={label(index)}
-        placeholder={t`Select a column`}
-        value={toSelectValue(options, column)}
-        onChange={value => {
-          const column = fromSelectValue(options, value);
+        onChange={column => {
           onChange(index, column, separator);
         }}
       />
@@ -122,5 +123,44 @@ function SeparatorInput({
         </Text>
       )}
     </>
+  );
+}
+
+type ColumnInputProps = {
+  query: Lib.Query;
+  stageIndex: number;
+  columns: Lib.ColumnMetadata[];
+  label: string;
+  value: Lib.ColumnMetadata | null;
+  onChange: (column: Lib.ColumnMetadata | null) => void;
+};
+
+export function ColumnInput({
+  query,
+  stageIndex,
+  columns,
+  label,
+  value,
+  onChange,
+}: ColumnInputProps) {
+  const options = useMemo(
+    () => getColumnOptions(query, stageIndex, columns),
+    [query, stageIndex, columns],
+  );
+
+  return (
+    <Select
+      className={styles.column}
+      classNames={{
+        wrapper: styles.wrapper,
+      }}
+      data={options}
+      label={label}
+      placeholder={t`Select a column`}
+      value={toSelectValue(options, value)}
+      onChange={value => {
+        onChange(fromSelectValue(options, value));
+      }}
+    />
   );
 }

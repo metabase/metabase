@@ -12,7 +12,6 @@ import type { ColumnAndSeparator } from "./util";
 import {
   getExample,
   getDefaultSeparator,
-  getColumnOptions,
   formatSeparator,
   getExpressionName,
   flatten,
@@ -61,10 +60,6 @@ export function CombineColumns({
   const stageIndex = originalStageIndex;
 
   const expressionableColumns = Lib.expressionableColumns(query, stageIndex);
-  const options = useMemo(
-    () => getColumnOptions(query, stageIndex, expressionableColumns),
-    [query, stageIndex, expressionableColumns],
-  );
 
   const handleRowChange = (
     index: number,
@@ -166,10 +161,12 @@ export function CombineColumns({
                 {columnsAndSeparators.map(({ column, separator }, index) => (
                   <ColumnAndSeparatorRow
                     key={index}
+                    query={query}
+                    stageIndex={stageIndex}
                     index={index}
+                    columns={expressionableColumns}
                     column={column}
                     separator={separator}
-                    options={options}
                     showSeparator={!isUsingDefaultSeparator && index !== 0}
                     showRemove={columnsAndSeparators.length >= 3}
                     onChange={handleRowChange}
