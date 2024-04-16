@@ -20,13 +20,14 @@
   [card-id]
   (t2/select-one-fn :last_used_at :model/Card card-id))
 
-(defn- do-test
-  [card-id execute-f]
-  (assert (fn? execute-f))
+(defn do-test
+  "Check if `last_used_at` of `card-id` is nil, then execute `f`, then check that `last_used_at` is non nil."
+  [card-id thunk]
+  (assert (fn? thunk))
   (testing "last_used_at should be nil to start with"
     (is (nil? (card-last-used-at card-id))))
-  (execute-f)
-  (testing "last_used_at be updated to non nil"
+  (thunk)
+  (testing "last_used_at should be updated to non nil"
     (is (some? (card-last-used-at card-id)))))
 
 (deftest ^:parallel nested-cards-test
@@ -44,13 +45,13 @@
                                                                                      :name         "card"
                                                                                      :type         "card"}}}))))))
 
-(deftest alert-test
+(deftest ^:parallel alert-test
   (with-used-cards-setup
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
       (pulse-test/with-pulse-for-card [pulse {:card card-id}]
         (do-test card-id #(pulse/send-pulse! pulse))))))
 
-(deftest dashboard-subscription-test
+(deftest ^:parallel dashboard-subscription-test
   (with-used-cards-setup
     (mt/with-temp [:model/Dashboard dash          {}
                    :model/Card      {card-id :id} {:dataset_query (mt/mbql-query venues)}]
