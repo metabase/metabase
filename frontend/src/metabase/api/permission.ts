@@ -52,6 +52,14 @@ export const permissionApi = Api.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [idTag("permissions-group", id)]),
     }),
+    clearGroupMembership: builder.mutation<unknown, GroupId>({
+      query: id => ({
+        method: "PUT",
+        url: `/api/permissions/membership/${id}/clear`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("permissions-group", id)]),
+    }),
   }),
 });
 
@@ -60,5 +68,6 @@ export const {
   useGetPermissionsGroupQuery,
   useCreatePermissionsGroupMutation,
   useUpdatePermissionsGroupMutation,
+  useClearGroupMembershipMutation,
   useDeletePermissionsGroupMutation,
 } = permissionApi;

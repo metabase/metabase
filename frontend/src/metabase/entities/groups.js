@@ -7,7 +7,6 @@ import {
 } from "metabase/admin/people/events";
 import { permissionApi } from "metabase/api";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
-import { PermissionsApi } from "metabase/services";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -51,11 +50,18 @@ const Groups = createEntity({
   },
 
   actions: {
-    clearMember: async ({ id }) => {
-      await PermissionsApi.clearGroupMembership({ id });
-
-      return { type: CLEAR_MEMBERSHIPS, payload: { groupId: id } };
-    },
+    clearMember:
+      async ({ id }) =>
+      async dispatch => {
+        await dispatch(
+          entityCompatibleQuery(
+            id,
+            dispatch,
+            permissionApi.endpoints.clearGroupMembership,
+          ),
+        );
+        dispatch({ type: CLEAR_MEMBERSHIPS, payload: { groupId: id } });
+      },
   },
 
   reducer: (state = {}, { type, payload, error }) => {
