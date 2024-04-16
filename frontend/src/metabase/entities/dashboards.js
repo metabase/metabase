@@ -7,7 +7,6 @@ import {
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
-import { DELETE, POST } from "metabase/lib/api";
 import { color } from "metabase/lib/colors";
 import {
   createEntity,
@@ -65,17 +64,36 @@ const Dashboards = createEntity({
         dispatch,
         dashboardApi.endpoints.updateDashboard,
       ),
-
     delete: ({ id }, dispatch) =>
       entityCompatibleQuery(
         id,
         dispatch,
         dashboardApi.endpoints.deleteDashboard,
       ),
-    favorite: POST("/api/dashboard/:id/favorite"),
-    unfavorite: DELETE("/api/dashboard/:id/favorite"),
-    save: POST("/api/dashboard/save"),
-    copy: POST("/api/dashboard/:id/copy"),
+    favorite: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        dashboardApi.endpoints.favoriteDashboard,
+      ),
+    unfavorite: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        dashboardApi.endpoints.unfavoriteDashboard,
+      ),
+    save: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        dashboardApi.endpoints.saveDashboard,
+      ),
+    copy: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        dashboardApi.endpoints.copyDashboard,
+      ),
   },
 
   objectActions: {

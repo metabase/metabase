@@ -10,7 +10,14 @@ import {
 } from "./tags";
 
 type CreateDashboardRequest = Record<string, unknown>; // TODO
+
 type UpdateDashboardRequest = {
+  id: DashboardId;
+}; // TODO
+
+type SaveDashboardRequest = {}; // TODO
+
+type CopyDashboardRequest = {
   id: DashboardId;
 }; // TODO
 
@@ -58,13 +65,51 @@ export const dashboardApi = Api.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),
     }),
+    favoriteDashboard: builder.mutation<Dashboard, { id: DashboardId }>({
+      query: ({ id }) => ({
+        method: "POST",
+        url: `/api/dashboard/${id}/favorite`,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),
+    }),
+    unfavoriteDashboard: builder.mutation<Dashboard, { id: DashboardId }>({
+      query: ({ id }) => ({
+        method: "DELETE",
+        url: `/api/dashboard/${id}/favorite`,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),
+    }),
+    saveDashboard: builder.mutation<Dashboard, SaveDashboardRequest>({
+      query: body => ({
+        method: "POST",
+        url: `/api/dashboard/save`,
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("dashboard")]),
+    }),
+    copyDashboard: builder.mutation<Dashboard, CopyDashboardRequest>({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/dashboard/${id}/copy`,
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("dashboard")]),
+    }),
   }),
 });
 
 export const {
+  useCopyDashboardMutation,
   useCreateDashboardMutation,
   useDeleteDashboardMutation,
+  useFavoriteDashboardMutation,
   useGetDashboardQuery,
   useListDashboardsQuery,
+  useSaveDashboardMutation,
+  useUnfavoriteDashboardMutation,
   useUpdateDashboardMutation,
 } = dashboardApi;
