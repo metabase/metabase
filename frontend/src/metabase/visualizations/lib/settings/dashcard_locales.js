@@ -590,7 +590,7 @@ const TITLE_LOCALES_BN = {
   },
   'tms.session.rejected.application' : {
     'en' : 'Rejected',
-    'bn' : 'ত্রুটিপূর্ণ'
+    'bn' : 'প্রত্যাখ্যাত'
   },
   'tms.session.pending.application' : {
     'en' : 'Pending',
@@ -644,9 +644,9 @@ const TITLE_LOCALES_BN = {
     'en' : 'General vs Substitute Transfer',
     'bn' : 'সাধারণ বনাম সাবস্টিটিউট বদলি'
   },
-  'tms.session.abandoned.application' : {
-    'en' : 'Abandoned',
-    'bn' : 'পরিত্যক্ত'
+  'tms.session.rejected.application.after.process' : {
+    'en' : 'Rejected',
+    'bn' : 'ত্রুটিপূর্ণ'
   },
   'tms.gender.wise.application.statistics' : {
     'en' : 'Gender Wise Application Statistics',
