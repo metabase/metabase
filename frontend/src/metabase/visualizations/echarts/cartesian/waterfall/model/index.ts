@@ -85,6 +85,7 @@ export const getWaterfallChartModel = (
   // Pass waterfall dataset and keys for correct extent computation
   const leftAxisModel = getYAxisModel(
     [WATERFALL_END_KEY],
+    [],
     transformedDataset,
     settings,
     { [WATERFALL_END_KEY]: seriesModel.column },
