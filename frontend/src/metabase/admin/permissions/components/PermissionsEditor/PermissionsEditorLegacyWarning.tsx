@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -28,8 +27,8 @@ export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
             {t`In a future release, if a group’s View data access for a database (or any of its schemas or tables) is still set to “No self-service (deprecated)”, Metabase will automatically change that group’s View data access for the entire database to “Blocked”. We’ll be defaulting to “Blocked”, the least permissive View data access, to prevent any unintended access to data.`}{" "}
             <Anchor
               fw="bold"
-              component={Link}
-              to="/admin/settings/embedding-in-other-applications"
+              target="_blank"
+              to="https://www.metabase.com/docs/latest/permissions/data.html"
               style={{ color: colors.accent7 }}
             >{t`Need help? See our docs.`}</Anchor>
           </Text>

@@ -29,12 +29,12 @@ const PERM_LEVELS = [
   DataPermissionValue.UNRESTRICTED,
   DataPermissionValue.FULL,
   DataPermissionValue.IMPERSONATED,
+  DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+  DataPermissionValue.QUERY_BUILDER,
   DataPermissionValue.CONTROLLED,
   DataPermissionValue.SANDBOXED,
   DataPermissionValue.BLOCKED,
   DataPermissionValue.LEGACY_NO_SELF_SERVICE,
-  DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
-  DataPermissionValue.QUERY_BUILDER,
   DataPermissionValue.LIMITED,
   DataPermissionValue.NO,
   DataPermissionValue.NONE,
@@ -121,21 +121,6 @@ export function getPermissionWarningModal(
         value === DataPermissionValue.CONTROLLED
           ? t`Limit access`
           : t`Revoke access`,
-      cancelButtonText: t`Cancel`,
-    };
-  }
-}
-
-export function getControlledDatabaseWarningModal(
-  currDbPermissionValue: string,
-  entityId: EntityId,
-) {
-  if (currDbPermissionValue !== DataPermissionValue.CONTROLLED) {
-    const [entityType, entityTypePlural] = getEntityTypeFromId(entityId);
-    return {
-      title: t`Change access to this database to “Granular”?`,
-      message: t`Just letting you know that changing the permission setting on this ${entityType} will also update the database permission setting to “Granular” to reflect that some of the database’s ${entityTypePlural} have different permission settings.`,
-      confirmButtonText: t`Change`,
       cancelButtonText: t`Cancel`,
     };
   }

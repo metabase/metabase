@@ -21,7 +21,6 @@ import {
   DataPermissionType,
 } from "../../types";
 import {
-  getControlledDatabaseWarningModal,
   getPermissionWarning,
   getPermissionWarningModal,
   getWillRevokeNativeAccessWarningModal,
@@ -72,7 +71,6 @@ const buildAccessPermission = (
       defaultGroup,
       groupId,
     ),
-    getControlledDatabaseWarningModal(newValue, entityId),
   ];
 
   const options = PLUGIN_ADVANCED_PERMISSIONS.addSchemaPermissionOptions(
