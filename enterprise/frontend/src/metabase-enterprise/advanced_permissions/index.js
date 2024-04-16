@@ -110,6 +110,8 @@ if (hasPremiumFeature("advanced_permissions")) {
     return value === DataPermissionValue.BLOCKED;
   };
 
+  PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn = true;
+
   PLUGIN_ADVANCED_PERMISSIONS.defaultViewDataPermission =
     DataPermissionValue.BLOCKED;
 

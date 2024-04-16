@@ -9,6 +9,7 @@ import _ from "underscore";
 
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { PermissionsApi } from "metabase/services";
 import { Loader, Center } from "metabase/ui";
 
@@ -124,6 +125,10 @@ function DatabasesPermissionsPage({
 
   const handleBreadcrumbsItemSelect = item => dispatch(push(item.url));
 
+  const showLegacyNoSelfServiceWarning =
+    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
+    permissionEditor.hasLegacyNoSelfServiceValueInPermissionGraph;
+
   return (
     <Fragment>
       <PermissionsSidebar
@@ -154,7 +159,7 @@ function DatabasesPermissionsPage({
           onAction={handleAction}
           warnings={() => (
             <>
-              {permissionEditor.hasLegacyNoSelfServiceValueInPermissionGraph && (
+              {showLegacyNoSelfServiceWarning && (
                 <PermissionsEditorLegacyNoSelfServiceWarning />
               )}
             </>

@@ -9,6 +9,7 @@ import {
   getFieldsPermission,
   getSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Group,
@@ -179,6 +180,7 @@ export function getRawQueryWarningModal(
   if (
     value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
     nativePermission !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
     ![
       DataPermissionValue.UNRESTRICTED,
       DataPermissionValue.IMPERSONATED,

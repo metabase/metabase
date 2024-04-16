@@ -211,9 +211,11 @@ export const buildSchemasPermissions = (
   );
 
   const hasAnyAccessOptions = accessPermission.options.length > 1;
+  const shouldShowViewDataColumn =
+    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn && hasAnyAccessOptions;
 
   return _.compact([
-    hasAnyAccessOptions && accessPermission,
+    shouldShowViewDataColumn && accessPermission,
     nativePermission,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
       entityId,

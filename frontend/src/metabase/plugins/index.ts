@@ -353,6 +353,7 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
     _subject: "schemas" | "tables" | "fields",
   ) => false,
   isRestrictivePermission: (_value: string) => false,
+  shouldShowViewDataColumn: false,
   defaultViewDataPermission: DataPermissionValue.UNRESTRICTED,
 };
 
