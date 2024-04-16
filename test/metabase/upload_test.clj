@@ -584,6 +584,19 @@
               (is (= [@#'upload/auto-pk-column-name "unknown" "unknown_2" "unknown_3" "unknown_2_2"]
                      (column-names-for-table table))))))))))
 
+(deftest create-from-csv-sanitize-to-duplicate-names-test
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (with-upload-table!
+         [table (create-from-csv-and-sync-with-defaults!
+                 :file (csv-file-with ["cost $, cost %, cost #"
+                                       "$123,12.3, 100"]))]
+         (testing "Table and Fields exist after sync"
+           (testing "Check the data was uploaded into the table correctly"
+             (is (= [@#'upload/auto-pk-column-name "cost__" "cost___2" "cost___3"]
+                    (column-names-for-table table))))))))))
+
 (deftest create-from-csv-bool-and-int-test
   (testing "Upload a CSV file with integers and booleans in the same column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
