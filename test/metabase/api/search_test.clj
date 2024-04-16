@@ -9,7 +9,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models
     :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
-            DashboardCard Database LegacyMetric PermissionsGroup
+            DashboardCard Database PermissionsGroup
             PermissionsGroupMembership Pulse PulseCard QueryAction Segment Table]]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
@@ -72,8 +72,8 @@
    :updated_at                 true})
 
 (defn- table-search-results
-  "Segments and Metrics come back with information about their Tables as of 0.33.0. The `model-defaults` for Segment and
-  Metric put them both in the `:checkins` Table."
+  "Segments come back with information about their Tables as of 0.33.0. The `model-defaults` for Segment
+  put them in the `:checkins` Table."
   []
   (merge
    {:table_id true, :database_id true}
@@ -113,15 +113,13 @@
     (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
     (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
                  :database_id true :creator_id true :creator_common_name "Rasta Toucan" :dataset_query (update (mt/query venues) :type name))
-    (merge
-     (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
-     (table-search-results))
+    (make-result "metric test metric", :model "metric", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
     (merge
      (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
      (table-search-results))]))
 
-(defn- default-metric-segment-results []
-  (filter #(contains? #{"metric" "segment"} (:model %)) (default-search-results)))
+(defn- default-segment-results []
+  (filter #(contains? #{"segment"} (:model %)) (default-search-results)))
 
 (defn- default-archived-results []
   (for [result (default-search-results)
@@ -135,7 +133,7 @@
       search-item)))
 
 (defn- default-results-with-collection []
-  (on-search-types #{"dashboard" "pulse" "card" "dataset" "action"}
+  (on-search-types #{"dashboard" "pulse" "card" "dataset" "metric" "action"}
                    #(assoc % :collection {:id true, :name (if (= (:model %) "action") nil true) :authority_level nil :type nil})
                    (default-search-results)))
 
@@ -163,8 +161,8 @@
                    Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
                                                      :type :model)
                    Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
-                   LegacyMetric      metric         (assoc (data-map "metric %s metric")
-                                                     :table_id (mt/id :checkins))
+                   Card        metric         (assoc (coll-data-map "metric %s metric" coll)
+                                                     :type :metric)
                    Segment     segment        (data-map "segment %s segment")]
       (f {:action     action
           :collection coll
@@ -319,19 +317,20 @@
         (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
                (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term)))))
       (testing "return a subset of model for created-by filter"
-        (is (= #{"dashboard" "dataset" "card" "action"}
+        (is (= #{"dashboard" "dataset" "card" "metric" "action"}
                (set (mt/user-http-request :crowberto :get 200 "search/models"
                                           :q search-term
                                           :created_by (mt/user->id :rasta))))))
       (testing "return a subset of model for verified filter"
         (t2.with-temp/with-temp
-          [:model/Card       {v-card-id :id}  {:name (format "%s Verified Card" search-term)}
-           :model/Card       {v-model-id :id} {:name (format "%s Verified Model" search-term) :type :model}
-           :model/Collection {_v-coll-id :id} {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
+          [:model/Card       {v-card-id :id}   {:name (format "%s Verified Card" search-term)}
+           :model/Card       {v-model-id :id}  {:name (format "%s Verified Model" search-term) :type :model}
+           :model/Card       {v-metric-id :id} {:name (format "%s Verified Metric" search-term) :type :metric}
+           :model/Collection {_v-coll-id :id}  {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
           (testing "when has both :content-verification features"
             (mt/with-premium-features #{:content-verification}
-              (mt/with-verified-cards [v-card-id v-model-id]
-                (is (= #{"card" "dataset"}
+              (mt/with-verified-cards [v-card-id v-model-id v-metric-id]
+                (is (= #{"card" "dataset" "metric"}
                        (set (mt/user-http-request :crowberto :get 200 "search/models"
                                                   :q search-term
                                                   :verified true)))))))
@@ -343,13 +342,13 @@
                                                   :q search-term
                                                   :verified true)))))))))
       (testing "return a subset of model for created_at filter"
-        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card"}
+        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
                (set (mt/user-http-request :crowberto :get 200 "search/models"
                                           :q search-term
                                           :created_at "today")))))
 
       (testing "return a subset of model for search_native_query filter"
-        (is (= #{"dataset" "action" "card"}
+        (is (= #{"dataset" "action" "card" "metric"}
                (set (mt/user-http-request :crowberto :get 200 "search/models"
                                           :q search-term
                                           :search_native_query true))))))))
@@ -377,8 +376,8 @@
                    DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}
                    DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}
                    DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}]
-      (is (= dashboard-count-results
-             (set (unsorted-search-request-data :rasta :q "dashboard-count")))))))
+      (is (=? (sort-by :dashboardcard_count dashboard-count-results)
+              (sort-by :dashboardcard_count (unsorted-search-request-data :rasta :q "dashboard-count")))))))
 
 (deftest moderated-status-test
   (let [search-term "moderated-status-test"]
@@ -397,12 +396,12 @@
               (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term)))))))
 
 (deftest permissions-test
-  (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Metrics and segments "
+  (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Segments "
                 "don't have collections, so they'll be returned")
     (mt/with-non-admin-groups-no-root-collection-perms
       (with-search-items-in-root-collection "test"
         (mt/with-full-data-perms-for-all-users!
-          (is (= (default-metric-segment-results)
+          (is (= (default-segment-results)
                  (search-request-data :rasta :q "test")))))))
 
   (testing "Users that have root collection permissions should get root collection search results"
@@ -423,12 +422,10 @@
                          PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
             (mt/with-full-data-perms-for-all-users!
               (perms/grant-collection-read-permissions! group (u/the-id collection))
-              (is (= (->> (default-results-with-collection)
+              (is (=? (->> (default-results-with-collection)
                           (map #(if (= "collection" (:model %)) (merge % {:can_write false}) %))
                           (concat (map #(merge default-search-row % (table-search-results))
-                                       [{:name "metric test2 metric", :description "Lookin' for a blueberry",
-                                         :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
-                                        {:name "segment test2 segment", :description "Lookin' for a blueberry",
+                                       [{:name "segment test2 segment", :description "Lookin' for a blueberry",
                                          :model "segment" :creator_id true :creator_common_name "Rasta Toucan"}]))
                           ;; This reverse is hokey; it's because the test2 results happen to come first in the API response
                           reverse
@@ -481,23 +478,11 @@
               (is (= (->> (default-results-with-collection)
                           (map #(if (= "collection" (:model %)) (merge % {:can_write false}) %))
                           (concat (map #(merge default-search-row % (table-search-results))
-                                       [{:name "metric test2 metric" :description "Lookin' for a blueberry"
-                                         :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
-                                        {:name "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"
+                                       [{:name "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"
                                          :creator_id true :creator_common_name "Rasta Toucan"}]))
                           reverse
                           sorted-results)
                      (search-request-data :rasta :q "test")))))))))
-
-  (testing "Metrics on tables for which the user does not have access to should not show up in results"
-    (mt/with-temp [Database {db-id :id} {}
-                   Table    {table-id :id} {:db_id  db-id
-                                            :schema nil}
-                   LegacyMetric   _ {:table_id table-id
-                               :name     "test metric"}]
-      (mt/with-no-data-perms-for-all-users!
-        (is (= []
-               (search-request-data :rasta :q "test"))))))
 
   (testing "Segments on tables for which the user does not have access to should not show up in results"
     (mt/with-temp [Database {db-id :id} {}
@@ -699,8 +684,7 @@
                      Card        _ (archived {:name "dataset test dataset" :type :model})
                      Dashboard   _ (archived {:name "dashboard test dashboard 2"})
                      Collection  _ (archived {:name "collection test collection 2"})
-                     LegacyMetric      _ (archived {:name     "metric test metric 2"
-                                              :table_id (mt/id :checkins)})
+                     Card        _ (archived {:name "metric test metric 2" :type :metric})
                      Segment     _ (archived {:name "segment test segment 2"})]
         (is (= (default-search-results)
                (search-request-data :crowberto :q "test"))))))
@@ -720,8 +704,7 @@
                      Card        _ (archived {:name "dataset test dataset" :type :model})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
                      Collection  _ (archived {:name "collection test collection"})
-                     LegacyMetric      _ (archived {:name     "metric test metric"
-                                              :table_id (mt/id :checkins)})
+                     Card        _ (archived {:name "metric test metric" :type :metric})
                      Segment     _ (archived {:name "segment test segment"})]
         (is (= (default-archived-results)
                (search-request-data :crowberto :q "test", :archived "true"))))))
@@ -737,8 +720,7 @@
                      Card        _ (archived {:name "dataset test dataset" :type :model})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
                      Collection  _ (archived {:name "collection test collection"})
-                     LegacyMetric      _ (archived {:name     "metric test metric"
-                                              :table_id (mt/id :checkins)})
+                     Card        _ (archived {:name "metric test metric" :type :metric})
                      Segment     _ (archived {:name "segment test segment"})]
         (is (ordered-subset? (default-archived-results)
                              (search-request-data :crowberto :archived "true")))))))
@@ -888,12 +870,9 @@
        Database  _              {:name (str "database 3 " search-string)}
        Table     {table-id :id} {:db_id  db-id
                                  :schema nil}
-       LegacyMetric    _              {:table_id table-id
-                                 :name     (str "metric 1 " search-string)}
-       LegacyMetric    _              {:table_id table-id
-                                 :name     (str "metric 1 " search-string)}
-       LegacyMetric    _              {:table_id table-id
-                                 :name     (str "metric 2 " search-string)}
+       Card      _              {:name (str "metric 1 " search-string) :type :metric}
+       Card      _              {:name (str "metric 1 " search-string) :type :metric}
+       Card      _              {:name (str "metric 2 " search-string) :type :metric}
        Segment   _              {:table_id table-id
                                  :name     (str "segment 1 " search-string)}
        Segment   _              {:table_id table-id
@@ -915,7 +894,7 @@
             ;; the call count number here are expected to change if we change the search api
             ;; we have this test here just to keep tracks this number to remind us to put effort
             ;; into keep this number as low as we can
-            (is (= 9 (call-count)))))))))
+            (is (= 6 (call-count)))))))))
 
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a search query is triggered and context is passed"
@@ -1094,14 +1073,14 @@
        :model/Card       {lucky-model-id :id}  {:name search-term :type :model}
        :model/Dashboard  {rasta-dash-id :id}   {:name search-term}
        :model/Dashboard  {lucky-dash-id :id}   {:name search-term}
-       :model/LegacyMetric     {rasta-metric-id :id} {:name search-term :table_id (mt/id :checkins)}
-       :model/LegacyMetric     {lucky-metric-id :id} {:name search-term :table_id (mt/id :checkins)}]
+       :model/Card       {rasta-metric-id :id} {:name search-term :type :metric}
+       :model/Card       {lucky-metric-id :id} {:name search-term :type :metric}]
       (let [rasta-user-id (mt/user->id :rasta)
             lucky-user-id (mt/user->id :lucky)]
         (doseq [[model id user-id] [[:model/Card rasta-card-id rasta-user-id] [:model/Card rasta-model-id rasta-user-id]
-                                    [:model/Dashboard rasta-dash-id rasta-user-id] [:model/LegacyMetric rasta-metric-id rasta-user-id]
+                                    [:model/Dashboard rasta-dash-id rasta-user-id] [:model/Card rasta-metric-id rasta-user-id]
                                     [:model/Card lucky-card-id lucky-user-id] [:model/Card lucky-model-id lucky-user-id]
-                                    [:model/Dashboard lucky-dash-id lucky-user-id] [:model/LegacyMetric lucky-metric-id lucky-user-id]]]
+                                    [:model/Dashboard lucky-dash-id lucky-user-id] [:model/Card lucky-metric-id lucky-user-id]]]
           (revision/push-revision!
            {:entity       model
             :id           id
@@ -1214,13 +1193,13 @@
   (let [search-term "created-at-filtering"]
     (with-search-items-in-root-collection search-term
       (testing "returns only applicable models"
-        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card"}
+        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
                (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today")
                    :available_models
                    set))))
 
       (testing "works with others filter too"
-        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card"}
+        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
                (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today" :creator_id (mt/user->id :rasta))
                    :available_models
                    set))))
@@ -1235,12 +1214,12 @@
       [:model/Card       {card-id :id}   {:name search-term}
        :model/Card       {model-id :id}  {:name search-term :type :model}
        :model/Dashboard  {dash-id :id}   {:name search-term}
-       :model/LegacyMetric {metric-id :id} {:name search-term :table_id (mt/id :checkins)}
+       :model/Card       {metric-id :id} {:name search-term :type :metric}
        :model/Action     {action-id :id} {:name       search-term
                                           :model_id   model-id
                                           :type       :http}]
       (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
-                          [:model/Dashboard dash-id] [:model/LegacyMetric metric-id]]]
+                          [:model/Dashboard dash-id] [:model/Card metric-id]]]
         (revision/push-revision!
          {:entity       model
           :id           id
@@ -1267,7 +1246,7 @@
 
       (testing "works with the last_edited_by filter too"
         (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
-                            [:model/Dashboard dash-id] [:model/LegacyMetric metric-id]]]
+                            [:model/Dashboard dash-id] [:model/Card metric-id]]]
           (revision/push-revision!
            {:entity       model
             :id           id
@@ -1329,9 +1308,12 @@
                                                :created_at two-years-ago}
          :model/Segment    {_segment-new :id} {:name       search-term
                                                :created_at new}
-         :model/LegacyMetric     {_metric-new :id}  {:name       search-term
-                                               :created_at new
-                                               :table_id (mt/id :checkins)}]
+         :model/Card       {metric-new :id}   {:name       search-term
+                                               :type       :metric
+                                               :created_at new}
+         :model/Card       {metric-old :id}   {:name       search-term
+                                               :type       :metric
+                                               :created_at two-years-ago}]
         ;; with clock doesn't work if calling via API, so we call the search function directly
         (let [test-search (fn [created-at expected]
                             (testing (format "searching with created-at = %s" created-at)
@@ -1351,14 +1333,16 @@
                             ["database"   db-new]
                             ["dataset"    model-new]
                             ["dashboard"  dashboard-new]
-                            ["table"      table-new]}
+                            ["table"      table-new]
+                            ["metric"     metric-new]}
               old-result  #{["action"     action-old]
                             ["card"       card-old]
                             ["collection" coll-old]
                             ["database"   db-old]
                             ["dataset"    model-old]
                             ["dashboard"  dashboard-old]
-                            ["table"      table-old]}]
+                            ["table"      table-old]
+                            ["metric"     metric-old]}]
           ;; absolute datetime
           (test-search "Q2-2021" old-result)
           (test-search "2023-05-04" new-result)
@@ -1388,8 +1372,8 @@
                                                 :type       :model}
          :model/Card       {model-old :id}     {:name       search-term
                                                 :type       :model}
-         :model/LegacyMetric {metric-new :id}    {:name       search-term :table_id (mt/id :checkins)}
-         :model/LegacyMetric {metric-old :id}    {:name       search-term :table_id (mt/id :checkins)}
+         :model/Card       {metric-new :id}    {:name       search-term :type :metric}
+         :model/Card       {metric-old :id}    {:name       search-term :type :metric}
          :model/Action     {action-new :id}    {:name       search-term
                                                 :model_id   model-new
                                                 :type       :http
@@ -1405,8 +1389,8 @@
                                                            ["Card" card-old two-years-ago]
                                                            ["Card" model-new new]
                                                            ["Card" model-old two-years-ago]
-                                                           ["Metric" metric-new new]
-                                                           ["Metric" metric-old two-years-ago]]]
+                                                           ["Card" metric-new new]
+                                                           ["Card" metric-old two-years-ago]]]
                                                       {:model       model
                                                        :model_id    model-id
                                                        :object      "{}"
@@ -1555,7 +1539,7 @@
         (is (=? {:errors {:table-db-id "nullable value must be an integer greater than zero."}}
                 (mt/user-http-request :crowberto :get 400 "search/models" :table-db-id -1))))
       (testing "`table-db-id` is for a non-existent database"
-        (is (= #{"dashboard" "database" "segment" "collection" "action" "metric"}
+        (is (= #{"dashboard" "database" "segment" "collection" "action"}
                (set (mt/user-http-request :crowberto :get 200 "search/models" :table-db-id Integer/MAX_VALUE)))))
       (testing "`table-db-id` is for an existing database"
         (is (= #{"dashboard" "database" "segment" "collection" "action" "metric" "card" "dataset" "table"}

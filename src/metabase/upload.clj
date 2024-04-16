@@ -927,7 +927,7 @@
                                    (remove #(false? (:is_upload %)))
                                    (keep :table_id)
                                    set)
-        mbql?                 (fn [model] (= "query" (name (:query_type model "query"))))
+        mbql?                 (fn [model] (= "query" (name (or (:query_type model) "query"))))
         has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
     (for [model models]
       (m/assoc-some
