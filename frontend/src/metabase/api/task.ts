@@ -1,3 +1,5 @@
+import type { Task } from "metabase-types/api";
+
 import { Api } from "./api";
 
 export const taskApi = Api.injectEndpoints({
@@ -8,7 +10,7 @@ export const taskApi = Api.injectEndpoints({
         url: "/api/task",
       }),
     }),
-    getTask: builder.query<unknown, number>({
+    getTask: builder.query<Task, number>({
       query: id => ({
         method: "GET",
         url: `/api/task/${id}`,

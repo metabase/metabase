@@ -34,7 +34,7 @@ import {
   ModelCacheRefreshJobs,
   ModelCacheRefreshJobModal,
 } from "metabase/admin/tasks/containers/ModelCacheRefreshJobs";
-import TaskModal from "metabase/admin/tasks/containers/TaskModal";
+import { TaskModal } from "metabase/admin/tasks/containers/TaskModal";
 import TasksApp from "metabase/admin/tasks/containers/TasksApp";
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
 import Tools from "metabase/admin/tools/containers/Tools";
