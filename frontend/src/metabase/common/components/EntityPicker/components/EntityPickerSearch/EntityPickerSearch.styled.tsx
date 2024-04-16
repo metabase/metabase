@@ -7,5 +7,7 @@ export const EntityPickerSearchResult = styled(SearchResult)<{
   isSelected: boolean;
 }>`
   width: 40rem;
-  ${({ isSelected }) => isSelected && `border: 1px solid ${color("brand")}`}
+  border: 1px solid
+    ${({ isSelected }) => (isSelected ? color("brand") : "transparent")};
+  margin-bottom: 1px;
 `;
