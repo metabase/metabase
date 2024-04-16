@@ -680,10 +680,10 @@
                                                   :dataset_query q}]
           (let [doc       (render.tu/render-card-as-hickory card-id)
                 span-text (->> doc
-                               (hik.s/select (hik.s/tag :p))
+                               (hik.s/select (hik.s/tag :span))
                                (mapv (comp first :content))
                                (filter string?)
-                               (filter #(str/includes? % "previous month")))]
+                               (filter #(str/includes? % "vs.")))]
             ;; we look for content that we are certain comes from a
             ;; successfully rendered trend chart.
             (is (= 1 (count span-text)))))))))
