@@ -58,6 +58,8 @@ export function ExpressionEditorSuggestions({
   highlightedIndex: number;
   children: ReactNode;
 }) {
+  const ref = useRef(null);
+
   const withIndex = suggestions.map((suggestion, index) => ({
     ...suggestion,
     index,
@@ -75,6 +77,13 @@ export function ExpressionEditorSuggestions({
 
   const groups = group(items);
 
+  function handleMouseDown(evt: MouseEvent) {
+    if (evt.target === ref.current) {
+      evt.preventDefault();
+      evt.stopPropagation();
+    }
+  }
+
   return (
     <Popover
       position="bottom-start"
@@ -86,7 +95,11 @@ export function ExpressionEditorSuggestions({
       <Popover.Target>{children}</Popover.Target>
       <Popover.Dropdown>
         <DelayGroup>
-          <ExpressionList data-testid="expression-suggestions-list">
+          <ExpressionList
+            data-testid="expression-suggestions-list"
+            ref={ref}
+            onMouseDownCapture={handleMouseDown}
+          >
             <ExpressionEditorSuggestionsListGroup
               suggestions={groups._none}
               query={query}
