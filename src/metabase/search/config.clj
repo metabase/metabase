@@ -13,7 +13,7 @@
 
 (defsetting search-typeahead-enabled
   (deferred-tru "Enable typeahead search in the {0} navbar?"
-                (public-settings/application-name-for-setting-descriptions))
+    (public-settings/application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -113,7 +113,6 @@
     ;; true to search for verified items only, nil will return all items
     [:verified                            {:optional true} true?]]))
 
-
 (def all-search-columns
   "All columns that will appear in the search results, and the types of those columns. The generated search query is a
   `UNION ALL` of the queries for each different entity; it looks something like:
@@ -164,6 +163,7 @@
    :database_id         :integer
    ;; returned for Database and Table
    :initial_sync_status :text
+   :database_name       :text
    ;; returned for Action
    :model_id            :integer
    :model_name          :text
@@ -236,10 +236,10 @@
 
 (def ^:private dashboardcard-count-col
   "Subselect to get the count of associated DashboardCards"
-   [{:select [:%count.*]
-     :from   [:report_dashboardcard]
-     :where  [:= :report_dashboardcard.card_id :card.id]}
-    :dashboardcard_count])
+  [{:select [:%count.*]
+    :from   [:report_dashboardcard]
+    :where  [:= :report_dashboardcard.card_id :card.id]}
+   :dashboardcard_count])
 
 (def ^:private table-columns
   "Columns containing information about the Table this model references. Returned for Metrics and Segments."
@@ -314,18 +314,19 @@
 
 (defmethod columns-for-model "table"
   [_]
-  [:id
-   :name
-   :created_at
-   :display_name
-   :description
-   :updated_at
-   :initial_sync_status
-   [:id :table_id]
-   [:db_id :database_id]
-   [:schema :table_schema]
-   [:name :table_name]
-   [:description :table_description]])
+  [[:table.id :id]
+   [:table.name :name]
+   [:table.created_at :created_at]
+   [:table.display_name :display_name]
+   [:table.description :description]
+   [:table.updated_at :updated_at]
+   [:table.initial_sync_status :initial_sync_status]
+   [:table.id :table_id]
+   [:table.db_id :database_id]
+   [:table.schema :table_schema]
+   [:table.name :table_name]
+   [:table.description :table_description]
+   [:metabase_database.name :database_name]])
 
 (defmulti column->string
   "Turn a complex column into a string"

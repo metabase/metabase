@@ -274,7 +274,7 @@ describe("scenarios > question > filter", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".cellData").contains("Widget");
+    cy.get("[data-testid=cell-data]").contains("Widget");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 1 row");
   });
@@ -630,7 +630,7 @@ describe("scenarios > question > filter", () => {
       display: "table",
     });
 
-    cy.get(".cellData").contains("Count").click();
+    cy.get("[data-testid=cell-data]").contains("Count").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
     cy.findByPlaceholderText("Enter a number").type("42");
@@ -728,14 +728,16 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
 
     // Try to auto-complete Tax
-    cy.get(".ace_text-input").type("Ta");
+    cy.get(".ace_text-input").type("Disc");
+
+    // the text here is split up so we try and find the suffix
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tax");
+    cy.findByText("ount");
 
     // Esc closes the suggestion popover
     cy.realPress("{esc}");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tax").should("not.exist");
+    cy.findByText("ount").should("not.exist");
   });
 
   it("should work on twice summarized questions and preserve both summaries (metabase#15620)", () => {
@@ -993,7 +995,10 @@ describe("scenarios > question > filter", () => {
       function assertOnTheResult() {
         // Filter name
         cy.findByTextEnsureVisible(`boolean is ${condition.toLowerCase()}`);
-        cy.get(".cellData").should("contain", integerAssociatedWithCondition);
+        cy.get("[data-testid=cell-data]").should(
+          "contain",
+          integerAssociatedWithCondition,
+        );
       }
     });
   });

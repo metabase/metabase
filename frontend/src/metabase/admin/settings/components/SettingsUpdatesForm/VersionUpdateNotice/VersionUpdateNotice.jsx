@@ -79,7 +79,7 @@ function NewVersionAvailable({ currentVersion }) {
           CS.p2,
           CS.bordered,
           CS.rounded,
-          "border-success",
+          CS.borderSuccess,
           CS.flex,
           CS.flexRow,
           CS.alignCenter,
@@ -152,7 +152,7 @@ function HostingCTA() {
       <HostingCTAContent>
         <HostingCTAIconContainer
           className={cx(
-            "circular",
+            CS.circular,
             CS.bgMedium,
             CS.alignCenter,
             CS.justifyCenter,

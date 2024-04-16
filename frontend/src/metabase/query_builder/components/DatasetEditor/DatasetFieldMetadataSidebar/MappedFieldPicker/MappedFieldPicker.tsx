@@ -7,6 +7,7 @@ import Fields from "metabase/entities/fields";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { FieldId } from "metabase-types/api";
 
 import { StyledSelectButton } from "./MappedFieldPicker.styled";
 
@@ -56,7 +57,7 @@ function MappedFieldPicker({
   }, []);
 
   const onFieldChange = useCallback(
-    fieldId => {
+    (fieldId: FieldId) => {
       onChange(fieldId);
       selectButtonRef.current?.focus();
     },

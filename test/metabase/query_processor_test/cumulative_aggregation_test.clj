@@ -160,18 +160,44 @@
                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-with-multiple-breakouts-test
-  (mt/test-drivers (mt/normal-drivers)
-    (let [query (-> (mt/mbql-query orders
-                      {:aggregation [[:cum-count]]
-                       :breakout    [!year.created_at !month.created_at]
-                       :limit       3})
-                    (assoc-in [:middleware :format-rows?] false))]
-      (mt/with-native-query-testing-context query
-        (is (= [[#t "2016-01-01" #t "2016-04-01" 1]
-                [#t "2016-01-01" #t "2016-05-01" 20]
-                [#t "2016-01-01" #t "2016-06-01" 57]]
-               (mt/formatted-rows [->local-date ->local-date int]
-                 (qp/process-query query))))))))
+  (testing "Should be PARTIONED BY first BREAKOUT and ORDERED BY the second BREAKOUT (#2862)"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [query (-> (mt/mbql-query orders
+                        {:aggregation [[:cum-count]]
+                         :breakout    [!year.created_at !month.created_at]
+                         :limit       12})
+                      (assoc-in [:middleware :format-rows?] false))]
+        (mt/with-native-query-testing-context query
+          (is (= [[#t "2016-01-01" #t "2016-04-01" 1]
+                  [#t "2016-01-01" #t "2016-05-01" 20]
+                  [#t "2016-01-01" #t "2016-06-01" 57]
+                  [#t "2016-01-01" #t "2016-07-01" 121]
+                  [#t "2016-01-01" #t "2016-08-01" 200]
+                  [#t "2016-01-01" #t "2016-09-01" 292]
+                  [#t "2016-01-01" #t "2016-10-01" 429]
+                  [#t "2016-01-01" #t "2016-11-01" 579]
+                  [#t "2016-01-01" #t "2016-12-01" 744]
+                  [#t "2017-01-01" #t "2017-01-01" 205] ; <--- total should reset here, when first breakout changes
+                  [#t "2017-01-01" #t "2017-02-01" 411]
+                  [#t "2017-01-01" #t "2017-03-01" 667]]
+                 (mt/formatted-rows [->local-date ->local-date int]
+                   (qp/process-query query)))))))))
+
+(deftest ^:parallel cumulative-count-with-three-breakouts-test
+  (testing "Three breakouts: should be PARTIONED BY first and second BREAKOUTS and ORDERED BY the last BREAKOUT (#2862)"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [query (-> (mt/mbql-query orders
+                        {:aggregation [[:cum-count]]
+                         :breakout    [!year.created_at !month.created_at !day.created_at]
+                         :limit       4})
+                      (assoc-in [:middleware :format-rows?] false))]
+        (mt/with-native-query-testing-context query
+          (is (= [[#t "2016-01-01" #t "2016-04-01" #t "2016-04-30" 1]
+                  [#t "2016-01-01" #t "2016-05-01" #t "2016-05-04" 1] ; <- count should reset here, when first two breakouts change
+                  [#t "2016-01-01" #t "2016-05-01" #t "2016-05-06" 2]
+                  [#t "2016-01-01" #t "2016-05-01" #t "2016-05-08" 3]]
+                 (mt/formatted-rows [->local-date ->local-date ->local-date int]
+                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-without-field-test
   (mt/test-drivers (mt/normal-drivers)
@@ -207,18 +233,46 @@
                      (qp/process-query query))))))))))
 
 (deftest ^:parallel cumulative-sum-with-multiple-breakouts-test
-  (mt/test-drivers (mt/normal-drivers)
-    (let [query (-> (mt/mbql-query orders
-                      {:aggregation [[:cum-sum $total]]
-                       :breakout    [!year.created_at !month.created_at]
-                       :limit       3})
-                    (assoc-in [:middleware :format-rows?] false))]
-      (mt/with-native-query-testing-context query
-        (is (= [[#t "2016-01-01" #t "2016-04-01" 52]
-                [#t "2016-01-01" #t "2016-05-01" 1318]
-                [#t "2016-01-01" #t "2016-06-01" 3391]]
-               (mt/formatted-rows [->local-date ->local-date int]
-                 (qp/process-query query))))))))
+  (testing "Should be PARTIONED BY first BREAKOUT and ORDERED BY the second BREAKOUT (#2862)"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [query (-> (mt/mbql-query orders
+                        {:aggregation [[:cum-sum $total]]
+                         :breakout    [!year.created_at !month.created_at]
+                         :limit       12})
+                      (assoc-in [:middleware :format-rows?] false))]
+        (mt/with-native-query-testing-context query
+          ;; you can sanity check these numbers by changing `:cum-sum` to `:sum` and adding them up manually
+          (is (= [[#t "2016-01-01" #t "2016-04-01" 52.76]
+                  [#t "2016-01-01" #t "2016-05-01" 1318.49]
+                  [#t "2016-01-01" #t "2016-06-01" 3391.41]
+                  [#t "2016-01-01" #t "2016-07-01" 7126.13]
+                  [#t "2016-01-01" #t "2016-08-01" 12086.78]
+                  [#t "2016-01-01" #t "2016-09-01" 17458.87]
+                  [#t "2016-01-01" #t "2016-10-01" 25161.80]
+                  [#t "2016-01-01" #t "2016-11-01" 33088.49]
+                  [#t "2016-01-01" #t "2016-12-01" 42156.94]
+                  [#t "2017-01-01" #t "2017-01-01" 11094.77] ; <--- total should reset here, when first breakout changes
+                  [#t "2017-01-01" #t "2017-02-01" 22338.43]
+                  [#t "2017-01-01" #t "2017-03-01" 36454.11]]
+                 (mt/formatted-rows [->local-date ->local-date 2.0]
+                   (qp/process-query query)))))))))
+
+(deftest ^:parallel cumulative-sum-with-three-breakouts-test
+  (testing "Three breakouts: should be PARTIONED BY first and second BREAKOUTS and ORDERED BY the last BREAKOUT (#2862)"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [query (-> (mt/mbql-query orders
+                        {:aggregation [[:cum-sum $total]]
+                         :breakout    [!year.created_at !month.created_at !day.created_at]
+                         :limit       4})
+                      (assoc-in [:middleware :format-rows?] false))]
+        (mt/with-native-query-testing-context query
+          ;; you can sanity check these numbers by changing `:cum-sum` to `:sum` and adding them up manually.
+          (is (= [[#t "2016-01-01" #t "2016-04-01" #t "2016-04-30" 52.76]
+                  [#t "2016-01-01" #t "2016-05-01" #t "2016-05-04" 98.78]  ; <-- total should reset here, when first two breakouts change
+                  [#t "2016-01-01" #t "2016-05-01" #t "2016-05-06" 186.07]
+                  [#t "2016-01-01" #t "2016-05-01" #t "2016-05-08" 270.94]]
+                 (mt/formatted-rows [->local-date ->local-date ->local-date 2.0]
+                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-and-sum-in-expressions-test
   (testing "Cumulative count should work inside expressions (#13634, #15118)"

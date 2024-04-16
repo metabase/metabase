@@ -2,6 +2,7 @@
   "Tests for /api/table endpoints."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.api.table :as api.table]
    [metabase.driver :as driver]
@@ -33,7 +34,8 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version])
+   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version
+                         :cache_field_values_schedule :metadata_sync_schedule])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false
@@ -43,8 +45,6 @@
     :caveats                     nil
     :points_of_interest          nil
     :features                    (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
-    :cache_field_values_schedule "0 50 0 * * ? *"
-    :metadata_sync_schedule      "0 50 * * * ? *"
     :refingerprint               nil
     :auto_run_queries            true
     :settings                    nil
@@ -148,23 +148,27 @@
 (deftest list-uploaded-tables-test
   (testing "GET /api/table/uploaded"
     (testing "These should come back in alphabetical order and include relevant metadata"
-      (with-tables-as-uploads [:categories :reviews :venues]
-        (is (= #{{:name         (mt/format-name "categories")
-                  :display_name "Categories"
-                  :id           (mt/id :categories)
-                  :entity_type  "entity/GenericTable"}
-                 {:name         (mt/format-name "reviews")
-                  :display_name "Reviews"
-                  :id           (mt/id :reviews)
-                  :entity_type  "entity/GenericTable"}
-                 {:name         (mt/format-name "venues")
-                  :display_name "Venues"
-                  :id           (mt/id :venues)
-                  :entity_type  "entity/GenericTable"}}
-               (->> (mt/user-http-request :rasta :get 200 "table/uploaded")
-                    (filter #(= (:db_id %) (mt/id)))        ; prevent stray tables from affecting unit test results
-                    (map #(select-keys % [:name :display_name :id :entity_type]))
-                    set)))))))
+      (with-tables-as-uploads [:categories :reviews]
+        (t2.with-temp/with-temp [Card {} {:table_id (mt/id :categories)}
+                                 Card {} {:table_id (mt/id :reviews)}
+                                 Card {} {:table_id (mt/id :reviews)}]
+          (let [result (mt/user-http-request :rasta :get 200 "table/uploaded")]
+            ;; =? doesn't seem to allow predicates inside maps, inside a set
+            (is (every? t/offset-date-time? (map :created_at result)))
+            (is (= #{{:name         (mt/format-name "categories")
+                      :display_name "Categories"
+                      :id           (mt/id :categories)
+                      :schema       "PUBLIC"
+                      :entity_type  "entity/GenericTable"}
+                     {:name         (mt/format-name "reviews")
+                      :display_name "Reviews"
+                      :id           (mt/id :reviews)
+                      :schema       "PUBLIC"
+                      :entity_type  "entity/GenericTable"}}
+                   (->> result
+                        (filter #(= (:db_id %) (mt/id)))    ; prevent stray tables from affecting unit test results
+                        (map #(select-keys % [:name :display_name :id :entity_type :schema :usage_count]))
+                        set)))))))))
 
 (deftest get-table-test
   (testing "GET /api/table/:id"
@@ -407,7 +411,10 @@
 (deftest update-table-sync-test
   (testing "PUT /api/table/:id"
     (testing "Table should get synced when it gets unhidden"
-      (t2.with-temp/with-temp [Table table]
+      (t2.with-temp/with-temp [Database db    {:details (:details (mt/db))}
+                               Table    table (-> (t2/select-one :model/Table (mt/id :venues))
+                                                  (dissoc :id)
+                                                  (assoc :db_id (:id db)))]
         (let [called (atom 0)
               ;; original is private so a var will pick up the redef'd. need contents of var before
               original (var-get #'api.table/sync-unhidden-tables)]

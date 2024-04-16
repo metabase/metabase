@@ -97,6 +97,101 @@ describe("ParameterSidebar", () => {
 
     expect(onChangeQueryType).toHaveBeenCalledWith("none");
   });
+
+  describe("location", () => {
+    beforeEach(() => {
+      setup({
+        parameter: createMockUiParameter({
+          type: "string/=",
+          sectionId: "location",
+        }),
+      });
+    });
+
+    it("should render type", () => {
+      expect(screen.getByDisplayValue("Location")).toBeInTheDocument();
+    });
+
+    it("should render operator", () => {
+      expect(screen.getByDisplayValue("Is")).toBeInTheDocument();
+    });
+  });
+
+  describe("id", () => {
+    beforeEach(() => {
+      setup({
+        parameter: createMockUiParameter({
+          type: "id",
+          sectionId: "id",
+        }),
+      });
+    });
+
+    it("should render type", () => {
+      expect(screen.getByDisplayValue("ID")).toBeInTheDocument();
+    });
+
+    it("should not render operator", () => {
+      expect(screen.getAllByDisplayValue("id").length).toBe(1);
+    });
+  });
+
+  describe("string", () => {
+    beforeEach(() => {
+      setup({
+        parameter: createMockUiParameter({
+          type: "string/=",
+          sectionId: "string",
+        }),
+      });
+    });
+
+    it("should render type", () => {
+      expect(screen.getByDisplayValue("Text or Category")).toBeInTheDocument();
+    });
+
+    it("should render operator", () => {
+      expect(screen.getByDisplayValue("Is")).toBeInTheDocument();
+    });
+  });
+
+  describe("date", () => {
+    beforeEach(() => {
+      setup({
+        parameter: createMockUiParameter({
+          type: "date/single",
+          sectionId: "date",
+        }),
+      });
+    });
+
+    it("should render type", () => {
+      expect(screen.getByDisplayValue("Time")).toBeInTheDocument();
+    });
+
+    it("should render operator", () => {
+      expect(screen.getByDisplayValue("Single Date")).toBeInTheDocument();
+    });
+  });
+
+  describe("number", () => {
+    beforeEach(() => {
+      setup({
+        parameter: createMockUiParameter({
+          type: "number/=",
+          sectionId: "number",
+        }),
+      });
+    });
+
+    it("should render type", () => {
+      expect(screen.getByDisplayValue("Number")).toBeInTheDocument();
+    });
+
+    it("should render operator", () => {
+      expect(screen.getByDisplayValue("Equal to")).toBeInTheDocument();
+    });
+  });
 });
 
 const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
@@ -115,6 +210,7 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
       onChangeSourceType={jest.fn()}
       onChangeSourceConfig={jest.fn()}
       onChangeRequired={jest.fn()}
+      hasMapping={false}
     />,
   );
 

@@ -79,7 +79,7 @@ export default class InputWithSelectPrefix extends Component {
         )}
       >
         <Select
-          className="border-right"
+          className={CS.borderRight}
           value={prefix || defaultPrefix}
           onChange={e => this.setState({ prefix: e.target.value })}
           buttonProps={{ className: CS.borderless }}

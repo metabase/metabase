@@ -96,6 +96,7 @@
   This query transformation takes queries with cumulative aggregations and breakouts in the same stage and then adds a
   new prior stage that does all of the breakout-column calculations so the original stage can just use raw column
   identifiers. See #40982 for more info."
+  {:added "0.50.0"}
   [query :- ::lib.schema/query]
   (lib.walk/walk-stages
    query

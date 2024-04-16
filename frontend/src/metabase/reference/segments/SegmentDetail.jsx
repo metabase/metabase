@@ -13,7 +13,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import Detail from "metabase/reference/components/Detail";
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
-import Formula from "metabase/reference/components/Formula";
+import { Formula } from "metabase/reference/components/Formula";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { getMetadata } from "metabase/selectors/metadata";

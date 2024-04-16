@@ -2,6 +2,7 @@ import type { TagDescription } from "@reduxjs/toolkit/query";
 
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 import type {
+  Alert,
   ApiKey,
   Bookmark,
   Card,
@@ -70,6 +71,19 @@ export function provideActivityItemTags(
   item: RecentItem | PopularItem,
 ): TagDescription<TagType>[] {
   return [idTag(TAG_TYPE_MAPPING[item.model], item.model_id)];
+}
+
+export function provideAlertListTags(
+  alerts: Alert[],
+): TagDescription<TagType>[] {
+  return [listTag("alert"), ...alerts.flatMap(provideAlertTags)];
+}
+
+export function provideAlertTags(alert: Alert): TagDescription<TagType>[] {
+  return [
+    idTag("alert", alert.id),
+    ...(alert.creator ? provideUserTags(alert.creator) : []),
+  ];
 }
 
 export function provideApiKeyListTags(

@@ -70,7 +70,7 @@ function _BaseBucketPickerPopover({
     [items],
   );
 
-  const handleExpand = useCallback(evt => {
+  const handleExpand = useCallback((evt: React.MouseEvent) => {
     evt.stopPropagation();
     setIsExpanded(true);
   }, []);

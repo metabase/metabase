@@ -19,7 +19,7 @@ import type { EmbedHomepageDismissReason } from "./types";
 
 export type EmbedHomepageViewProps = {
   embeddingAutoEnabled: boolean;
-  exampleDashboardId?: number;
+  exampleDashboardId: number | null;
   licenseActiveAtSetup: boolean;
   defaultTab: "interactive" | "static";
   onDismiss: (reason: EmbedHomepageDismissReason) => void;

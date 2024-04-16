@@ -367,15 +367,6 @@ export const PulseApi = {
   unsubscribe: DELETE("/api/pulse/:id/subscription"),
 };
 
-export const AlertApi = {
-  list: GET("/api/alert"),
-  list_for_question: GET("/api/alert/question/:questionId"),
-  get: GET("/api/alert/:id"),
-  create: POST("/api/alert"),
-  update: PUT("/api/alert/:id"),
-  unsubscribe: DELETE("/api/alert/:id/subscription"),
-};
-
 export const SegmentApi = {
   list: GET("/api/segment"),
   create: POST("/api/segment"),
@@ -451,11 +442,8 @@ export const SetupApi = {
 };
 
 export const UserApi = {
-  create: POST("/api/user"),
   list: GET("/api/user/recipients"),
   current: GET("/api/user/current"),
-  // get:                         GET("/api/user/:userId"),
-  update: PUT("/api/user/:id"),
   update_password: PUT("/api/user/:id/password"),
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
   delete: DELETE("/api/user/:userId"),
