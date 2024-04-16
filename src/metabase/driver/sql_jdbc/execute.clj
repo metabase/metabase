@@ -251,6 +251,16 @@
         (seq more)
         (recur more)))))
 
+(def ^:private DbOrIdOrSpec
+  [:and
+   [:or :int :map]
+   [:fn
+    ;; can't wrap a java.sql.Connection here because we're not
+    ;; responsible for its lifecycle and that means you can't use
+    ;; `with-open` on the Connection you'd get from the DataSource
+    {:error/message "Cannot be a JDBC spec wrapping a java.sql.Connection"}
+    (complement :connection)]])
+
 (mu/defn do-with-resolved-connection-data-source :- (lib.schema.common/instance-of-class DataSource)
   "Part of the default implementation for [[do-with-connection-with-options]]: get an appropriate `java.sql.DataSource`
   for `db-or-id-or-spec`. Not for use with a JDBC spec wrapping a `java.sql.Connection` (a spec with the key
@@ -258,14 +268,7 @@
   Connections provided by this DataSource."
   {:added "0.47.0", :arglists '(^javax.sql.DataSource [driver db-or-id-or-spec options])}
   [driver           :- :keyword
-   db-or-id-or-spec :- [:and
-                        [:or :int :map]
-                        [:fn
-                         ;; can't wrap a java.sql.Connection here because we're not
-                         ;; responsible for its lifecycle and that means you can't use
-                         ;; `with-open` on the Connection you'd get from the DataSource
-                         {:error/message "Cannot be a JDBC spec wrapping a java.sql.Connection"}
-                         (complement :connection)]]
+   db-or-id-or-spec :- DbOrIdOrSpec
    {:keys [^String session-timezone], :as _options} :- ConnectionOptions]
   (if-not (u/id db-or-id-or-spec)
     ;; not a Database or Database ID... this is a raw `clojure.java.jdbc` spec, use that
