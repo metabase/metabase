@@ -95,12 +95,12 @@ export const formatSeparator = (separator: string) => {
 };
 
 export const getDefaultSeparator = (column: Lib.ColumnMetadata): string => {
-  if (Lib.isURL(column)) {
-    return "/";
-  }
-
   if (Lib.isEmail(column)) {
     return "";
+  }
+
+  if (Lib.isURL(column)) {
+    return "/";
   }
 
   return " ";
@@ -148,12 +148,12 @@ const getColumnExample = (
     return column;
   }
 
-  if (Lib.isURL(column)) {
-    return "https://www.example.com";
-  }
-
   if (Lib.isEmail(column)) {
     return "email@example.com";
+  }
+
+  if (Lib.isURL(column)) {
+    return "https://www.example.com";
   }
 
   if (Lib.isID(column)) {
