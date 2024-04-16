@@ -74,30 +74,15 @@ module.exports = env => {
             },
           ],
         },
-<<<<<<< Updated upstream
         {
           test: /\.svg$/,
           type: "asset/resource",
           resourceQuery: { not: [/component|source/] },
         },
-=======
-        // {
-        //   test: /\.svg$/i,
-        //   use: "null-loader",
-        // },
->>>>>>> Stashed changes
       ],
     },
     resolve: {
-      extensions: [
-        ".webpack.js",
-        ".web.js",
-        ".js",
-        ".jsx",
-        ".ts",
-        ".tsx",
-        ".svg",
-      ],
+      extensions: [".webpack.js", ".web.js", ".js", ".jsx", ".ts", ".tsx"],
       alias: {
         assets: ASSETS_PATH,
         metabase: SRC_PATH,
