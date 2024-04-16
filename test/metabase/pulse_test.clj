@@ -394,11 +394,16 @@
   (testing "1 pulse that has 2 cards, should contain two query image attachments (as well as an icon attachment)"
     (do-test
      {:card
-      (assoc (pulse.test-util/checkins-query-card {:breakout [!day.date]}) :name "card 1")
+      (assoc (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+             :visualization_settings {:graph.dimensions ["DATE"]
+                                      :graph.metrics    ["count"]}
+             :name "card 1")
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
         (mt/with-temp [Card {card-id-2 :id} (assoc (pulse.test-util/checkins-query-card {:breakout [!month.date]})
+                                                   :visualization_settings {:graph.dimensions ["DATE"]
+                                                                            :graph.metrics    ["count"]}
                                                    :name "card 2"
                                                    :display :line)
                        PulseCard _ {:pulse_id pulse-id
@@ -417,26 +422,31 @@
 
 (deftest empty-results-test
   (testing "Pulse where the card has no results"
-    (tests {:card (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
-                                                        :breakout [!day.date]})}
+    (tests {:card (assoc (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
+                                                               :breakout [!day.date]})
+                         :visualization_settings {:graph.dimensions ["DATE"]
+                                                  :graph.metrics    ["count"]})}
       "skip if empty = false"
-      {:pulse    {:skip_if_empty false}
+      {:pulse  {:skip_if_empty false}
        :assert {:email (fn [_ _]
-                           (is (= (rasta-pulse-email)
-                                  (mt/summarize-multipart-email #"Pulse Name"))))}}
+                         (is (= (rasta-pulse-email)
+                                (mt/summarize-multipart-email #"Pulse Name"))))}}
 
       "skip if empty = true"
-      {:pulse    {:skip_if_empty true}
+      {:pulse  {:skip_if_empty true}
        :assert {:email (fn [_ _]
-                           (is (= {}
-                                  (mt/summarize-multipart-email #"Pulse Name"))))}})))
+                         (is (= {}
+                                (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
 (deftest rows-alert-test
   (testing "Rows alert"
     (tests {:pulse {:alert_condition "rows", :alert_first_only false}}
       "with data"
       {:card
-       (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+       (merge
+        (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+        {:visualization_settings {:graph.dimensions ["DATE"]
+                                  :graph.metrics    ["count"]}})
 
        :assert
        {:email
@@ -451,13 +461,13 @@
         (fn [{:keys [card-id]} [result]]
           (is (= {:channel-id  "#general",
                   :attachments [{:blocks [{:type "header", :text {:type "plain_text", :text "🔔 Test card", :emoji true}}]}
-                                {:title                  pulse.test-util/card-name
-                                 :rendered-info          {:attachments false
-                                                          :content     true}
-                                 :title_link             (str "https://metabase.com/testmb/question/" card-id)
-                                 :attachment-name        "image.png"
-                                 :channel-id             "FOO"
-                                 :fallback               pulse.test-util/card-name}]}
+                                {:title           pulse.test-util/card-name
+                                 :rendered-info   {:attachments false
+                                                   :content     true}
+                                 :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                                 :attachment-name "image.png"
+                                 :channel-id      "FOO"
+                                 :fallback        pulse.test-util/card-name}]}
                  (pulse.test-util/thunk->boolean result)))
           (is (every? produces-bytes? (rest (:attachments result)))))}}
 
@@ -490,7 +500,12 @@
 
 
       "with data and a CSV + XLS attachment"
-      {:card       (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+      {:card
+       (merge
+        (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+        {:visualization_settings {:graph.dimensions ["DATE"]
+                                  :graph.metrics    ["count"]}})
+
        :pulse-card {:include_csv true, :include_xls true}
 
        :assert
@@ -672,8 +687,8 @@
                                                  :display                :line
                                                  :visualization_settings {:graph.show_goal  true
                                                                           :graph.goal_value 5.9
-                                                                          :graph.dimensions ["the_day"]
-                                                                          :graph.metrics    ["total_per_day"]}}]
+                                                                          :graph.dimensions ["THE_DAY"]
+                                                                          :graph.metrics    ["TOTAL_PER_DAY"]}}]
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:alert_condition  "goal"
                                                                    :alert_first_only false
                                                                    :alert_above_goal true}}]
