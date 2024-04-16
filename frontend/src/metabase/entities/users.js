@@ -57,6 +57,9 @@ const Users = createEntity({
         dispatch,
         userApi.endpoints.updateUser,
       ),
+    delete: () => {
+      throw new TypeError("Users.api.delete is not supported");
+    },
   },
 
   objectSelectors: {
