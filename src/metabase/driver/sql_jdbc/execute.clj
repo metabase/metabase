@@ -710,7 +710,18 @@
                                                     e))))]
         (let [rsmeta           (.getMetaData rs)
               results-metadata {:cols (column-metadata driver rsmeta)}]
-          (respond results-metadata (reducible-rows driver rs rsmeta qp.pipeline/*canceled-chan*))))))))
+          (try (respond results-metadata (reducible-rows driver rs rsmeta qp.pipeline/*canceled-chan*))
+               ;; Following cancels the statment on the dbms side.
+               ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
+               ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statment is still
+               ;; in progress.
+               ;; It also handles situation where query is canceled through [[qp.pipeline/*canceled-chan*]].
+               (finally (try (.cancel stmt)
+                             (catch java.sql.SQLException _
+                               (log/warn "Statement cancelation failed."))
+                             (catch java.sql.SQLFeatureNotSupportedException _
+                               (log/warnf "Statemet's `.cancel` method not supported by `%s` driver."
+                                          (name driver))))))))))))
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the
