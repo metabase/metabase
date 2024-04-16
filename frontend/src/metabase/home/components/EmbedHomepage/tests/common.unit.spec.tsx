@@ -95,6 +95,18 @@ describe("EmbedHomepage (OSS)", () => {
     expect(body).toEqual({ value: "dismissed-done" });
   });
 
+  it("should set 'embedding-homepage' to 'dismissed-not-interested-now' when dismissing because not interested", async () => {
+    setup();
+    await userEvent.hover(screen.getByText("Hide these"));
+
+    await userEvent.click(screen.getByText("I'm not interested right now"));
+
+    const lastCall = getLastHomepageSettingSettingCall();
+
+    const body = await lastCall?.request?.json();
+    expect(body).toEqual({ value: "dismissed-not-interested-now" });
+  });
+
   describe("Feedback modal", () => {
     const setupForFeedbackModal = async () => {
       setup();

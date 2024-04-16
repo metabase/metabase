@@ -60,7 +60,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
               onClick={() => onDismiss("dismissed-run-into-issues")}
             >{t`I ran into issues`}</Menu.Item>
             <Menu.Item
-              onClick={() => onDismiss("dismissed-run-into-issues")}
+              onClick={() => onDismiss("dismissed-not-interested-now")}
             >{t`I'm not interested right now`}</Menu.Item>
           </Menu.Dropdown>
         </Menu>
