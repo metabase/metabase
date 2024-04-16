@@ -34,14 +34,13 @@ export const TabsView = <
   const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
 
   useMount(() => {
-    const tabModels = tabs.map(tab => tab.model);
-    if (initialValue?.model && tabModels.includes(initialValue.model)) {
+    if (initialValue?.model && tabs.some((tab) => tab.model === initialValue.model)) {
       setSelectedTab(initialValue.model);
     }
   });
 
   useEffect(() => {
-    // when when the searchQuery changes, switch to the search tab
+    // when the searchQuery changes, switch to the search tab
     if (!!searchQuery && searchQuery !== previousSearchQuery) {
       setSelectedTab("search");
     } else if (selectedTab === "search") {
