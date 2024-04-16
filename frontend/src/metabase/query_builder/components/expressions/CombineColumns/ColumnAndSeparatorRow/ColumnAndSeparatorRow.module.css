@@ -15,17 +15,6 @@
   border-color: transparent !important;
 }
 
-.root {
-  width: 100%;
-  flex-grow: 1;
-}
-
-.wrapper {
-  &:not(:only-child) {
-    margin-top: 0;
-  }
-}
-
 .dropdown {
   display: none;
 }
@@ -35,4 +24,9 @@
   bottom: 0.5rem;
   left: 0.75rem;
   pointer-events: none;
+}
+
+.button {
+  justify-content: space-between !important;
+  font-weight: normal;
 }
