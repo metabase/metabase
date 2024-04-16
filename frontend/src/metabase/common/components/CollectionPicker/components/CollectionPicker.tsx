@@ -1,7 +1,6 @@
 import type { Ref } from "react";
 import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
-import { t } from "ttag";
 
 import { isValidCollectionId } from "metabase/collections/utils";
 import { useCollectionQuery } from "metabase/common/hooks";
@@ -189,7 +188,6 @@ export const CollectionPickerInner = (
 
   return (
     <NestedItemPicker
-      itemName={t`collection`}
       isFolder={isFolder}
       shouldDisableItem={shouldDisableItem}
       options={options}

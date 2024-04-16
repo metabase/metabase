@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
-import { t } from "ttag";
 
 import { isValidCollectionId } from "metabase/collections/utils";
 import { useCollectionQuery, useQuestionQuery } from "metabase/common/hooks";
@@ -167,7 +166,6 @@ export const QuestionPicker = ({
 
   return (
     <NestedItemPicker
-      itemName={t`question`}
       isFolder={(item: QuestionPickerItem) => isFolder(item, models)}
       options={options}
       generateKey={generateKey}
