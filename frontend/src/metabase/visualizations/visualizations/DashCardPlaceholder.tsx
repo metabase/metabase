@@ -8,16 +8,18 @@ import {
 import { replaceCard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { Flex, Button } from "metabase/ui";
-import type { VirtualDashboardCard } from "metabase-types/api";
+import type { Dashboard, VirtualDashboardCard } from "metabase-types/api";
 
 import type { VisualizationProps } from "../types";
 
 type Props = VisualizationProps & {
   dashcard: VirtualDashboardCard;
+  dashboard: Dashboard;
   isEditingParameter?: boolean;
 };
 
 function DashCardPlaceholderInner({
+  dashboard,
   dashcard,
   isDashboard,
   isEditing,
@@ -57,10 +59,10 @@ function DashCardPlaceholderInner({
       {isQuestionPickerOpen && (
         <QuestionPickerModal
           value={
-            dashcard.card.id
+            dashboard.collection_id
               ? {
-                  id: dashcard.card.id,
-                  model: "card",
+                  id: dashboard.collection_id,
+                  model: "dashboard",
                 }
               : undefined
           }
