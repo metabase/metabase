@@ -276,6 +276,8 @@
                  (or
                   ;if there is any changes in user control setting
                   (some? (get-in changes [:details :let-user-control-scheduling]))
+                  ;; if the let user control scheduling is already on, we should always try to re-infer it
+                  (get-in database [:details :let-user-control-scheduling])
                   ;; if there is a changes in schedules, make sure it respects the settings
                   (some some? [(:cache_field_values_schedule changes) (:metadata_sync_schedule changes)]))
                  infer-db-schedules

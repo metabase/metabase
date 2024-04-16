@@ -606,7 +606,11 @@
         (try
           (assert (not (qs/started? temp-scheduler))
                   "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
-          (thunk)
+          (with-redefs [qs/initialize (constantly temp-scheduler)
+                        ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
+                        ;; after it's done, but we need the scheduler for testing
+                        qs/shutdown   (constantly nil)]
+            (thunk))
           (finally
             (qs/shutdown temp-scheduler)))))))
 
