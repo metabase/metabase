@@ -16,6 +16,7 @@ import type {
   FieldDimension,
   FieldId,
   ForeignKey,
+  Group,
   Metric,
   PopularItem,
   RecentItem,
@@ -264,6 +265,21 @@ export function provideMetricTags(metric: Metric): TagDescription<TagType>[] {
     idTag("metric", metric.id),
     ...(metric.table ? provideTableTags(metric.table) : []),
   ];
+}
+
+export function providePermissionsGroupListTags(
+  groups: Group[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("permissions-group"),
+    ...groups.flatMap(providePermissionsGroupTags),
+  ];
+}
+
+export function providePermissionsGroupTags(
+  group: Group,
+): TagDescription<TagType>[] {
+  return [idTag("permissions-group", group.id)];
 }
 
 export function provideSearchItemListTags(
