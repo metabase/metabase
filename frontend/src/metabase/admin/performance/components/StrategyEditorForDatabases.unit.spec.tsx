@@ -3,14 +3,14 @@ import { act, screen } from "__support__/ui";
 import { changeInput, getSaveButton, setup } from "./test-utils";
 
 describe("StrategyEditorForDatabases", () => {
-  it("lets user change the default policy from Duration to Adaptive to No caching", async () => {
+  it("lets user change the default policy from 'Duration' to 'Query duration multiplier' to 'No caching'", async () => {
     setup();
     expect(
       screen.queryByRole("button", { name: "Save changes" }),
     ).not.toBeInTheDocument();
 
     const ttlStrategyRadioButton = await screen.findByRole("radio", {
-      name: /Adaptive/i,
+      name: /Query duration multiplier/i,
     });
     ttlStrategyRadioButton.click();
 
@@ -30,12 +30,10 @@ describe("StrategyEditorForDatabases", () => {
 
     await act(async () => {
       const durationStrategyRadioButton = await screen.findByRole("radio", {
-        name: /duration/i,
+        name: /hours/i,
       });
       durationStrategyRadioButton.click();
-
       expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
-
       await changeInput(/Cache results for this many hours/, 24, 48);
     });
 
@@ -46,9 +44,8 @@ describe("StrategyEditorForDatabases", () => {
         name: /Don.t cache/i,
       });
       noCacheStrategyRadioButton.click();
-
-      expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
     });
+    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
 
     (await screen.findByTestId("strategy-form-submit-button")).click();
   });

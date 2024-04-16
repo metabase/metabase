@@ -34,7 +34,7 @@ export const doNotCacheStrategyValidationSchema = Yup.object({
 });
 
 export const defaultMinDurationMs = 1000;
-export const adaptiveStrategyValidationSchema = Yup.object({
+export const multiplierStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["ttl"]),
   min_duration_ms: positiveInteger.default(defaultMinDurationMs),
   min_duration_seconds: positiveInteger.default(
@@ -107,7 +107,7 @@ export const Strategies: Record<StrategyType, StrategyData> = {
   ttl: {
     label: t`Query duration multiplier: the longer the query takes the longer its cached results persist`,
     shortLabel: t`Query duration multiplier`,
-    validateWith: adaptiveStrategyValidationSchema,
+    validateWith: multiplierStrategyValidationSchema,
   },
   nocache: {
     label: t`Don’t cache results`,

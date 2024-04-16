@@ -2,7 +2,7 @@ type Model = "root" | "database" | "collection" | "dashboard" | "question";
 
 export type StrategyType =
   | "nocache"
-  | "ttl" // aka Adaptive
+  | "ttl" // aka Query duration multiplier
   | "duration"
   | "schedule"
   | "inherit";
@@ -18,7 +18,7 @@ export enum DurationUnit {
   Days = "days",
 }
 
-export interface AdaptiveStrategy extends StrategyBase {
+export interface MultiplierStrategy extends StrategyBase {
   type: "ttl";
   multiplier: number;
   min_duration_ms: number;
@@ -47,7 +47,7 @@ export interface ScheduleStrategy extends StrategyBase {
 /** Cache invalidation strategy */
 export type Strategy =
   | DoNotCacheStrategy
-  | AdaptiveStrategy
+  | MultiplierStrategy
   | DurationStrategy
   | InheritStrategy
   | ScheduleStrategy;

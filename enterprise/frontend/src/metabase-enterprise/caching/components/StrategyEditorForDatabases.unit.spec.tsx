@@ -27,14 +27,14 @@ describe("StrategyEditorForDatabases", () => {
     const rootStrategyHeading = await screen.findByText("Default policy");
     expect(rootStrategyHeading).toBeInTheDocument();
     expect(
-      await screen.findByLabelText("Edit default policy (currently: Duration)"),
+      await screen.findByLabelText("Edit default policy (currently: Hours)"),
     ).toBeInTheDocument();
     expect(
       await screen.findAllByLabelText(/Edit policy for database/),
     ).toHaveLength(4);
     expect(
       await screen.findByLabelText(
-        "Edit policy for database 'Database 1' (currently: TTL)",
+        "Edit policy for database 'Database 1' (currently: Query duration multiplier)",
       ),
     ).toBeInTheDocument();
     expect(
@@ -44,29 +44,29 @@ describe("StrategyEditorForDatabases", () => {
     ).toBeInTheDocument();
     expect(
       await screen.findByLabelText(
-        "Edit policy for database 'Database 3' (currently: Duration)",
+        "Edit policy for database 'Database 3' (currently: Hours)",
       ),
     ).toBeInTheDocument();
     expect(
       await screen.findByLabelText(
-        "Edit policy for database 'Database 4' (currently inheriting the default policy, Duration)",
+        "Edit policy for database 'Database 4' (currently inheriting the default policy, Hours)",
       ),
     ).toBeInTheDocument();
   });
 
-  it("lets user change the default policy from Duration to TTL to No caching", async () => {
+  it("lets user change the default policy from Duration to Query duration multiplier to No caching", async () => {
     const editButton = await screen.findByLabelText(
-      `Edit default policy (currently: Duration)`,
+      `Edit default policy (currently: Hours)`,
     );
     editButton.click();
     expect(
       screen.queryByRole("button", { name: "Save changes" }),
     ).not.toBeInTheDocument();
 
-    const ttlStrategyRadioButton = await screen.findByRole("radio", {
-      name: /TTL/i,
+    const multiplierStrategyRadioButton = await screen.findByRole("radio", {
+      name: /Query duration multiplier/i,
     });
-    ttlStrategyRadioButton.click();
+    multiplierStrategyRadioButton.click();
 
     expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
 
@@ -80,7 +80,9 @@ describe("StrategyEditorForDatabases", () => {
     (await screen.findByTestId("strategy-form-submit-button")).click();
 
     expect(
-      await screen.findByLabelText(`Edit default policy (currently: TTL)`),
+      await screen.findByLabelText(
+        `Edit default policy (currently: Query duration multiplier)`,
+      ),
     ).toBeInTheDocument();
 
     await act(async () => {
@@ -97,7 +99,7 @@ describe("StrategyEditorForDatabases", () => {
     (await screen.findByTestId("strategy-form-submit-button")).click();
 
     expect(
-      await screen.findByLabelText(`Edit default policy (currently: Duration)`),
+      await screen.findByLabelText(`Edit default policy (currently: Hours)`),
     ).toBeInTheDocument();
 
     await act(async () => {
@@ -118,9 +120,9 @@ describe("StrategyEditorForDatabases", () => {
     ).toBeInTheDocument();
   });
 
-  it("lets user change policy for Database 1 from TTL to Duration to Don't cache to Use default", async () => {
+  it("lets user change policy for Database 1 from Query duration multiplier to Duration to Don't cache to Use default", async () => {
     const editButton = await screen.findByLabelText(
-      `Edit policy for database 'Database 1' (currently: TTL)`,
+      `Edit policy for database 'Database 1' (currently: Query duration multiplier)`,
     );
     editButton.click();
 
@@ -128,10 +130,10 @@ describe("StrategyEditorForDatabases", () => {
       screen.queryByRole("button", { name: "Save changes" }),
     ).not.toBeInTheDocument();
 
-    const ttlStrategyRadioButton = await screen.findByRole("radio", {
-      name: /TTL/i,
+    const multiplierStrategyRadioButton = await screen.findByRole("radio", {
+      name: /Query duration multiplier/i,
     });
-    expect(ttlStrategyRadioButton).toBeChecked();
+    expect(multiplierStrategyRadioButton).toBeChecked();
 
     expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
 
@@ -144,7 +146,7 @@ describe("StrategyEditorForDatabases", () => {
 
     expect(
       await screen.findByLabelText(
-        `Edit policy for database 'Database 1' (currently: TTL)`,
+        `Edit policy for database 'Database 1' (currently: Query duration multiplier)`,
       ),
     ).toBeInTheDocument();
 
