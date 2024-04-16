@@ -169,6 +169,15 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           onChange={handleExpressionChange}
           onCommit={handleCommit}
           onError={(errorMessage: string) => setError(errorMessage)}
+          shortcuts={[
+            {
+              shortcut: true,
+              name: t`Combine columns`,
+              action: () => setIsCombiningColumns(true),
+              group: "shortcuts",
+              icon: "combine",
+            },
+          ]}
         />
       </ExpressionFieldWrapper>
       {withName && (
@@ -192,9 +201,6 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
 
       <Footer>
         <ActionButtonsWrapper>
-          <Button onClick={() => setIsCombiningColumns(true)}>
-            Combine {/* TODO: use the dropdown suggestions for this */}
-          </Button>
           {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
           <Button
             variant={isValid ? "filled" : "default"}

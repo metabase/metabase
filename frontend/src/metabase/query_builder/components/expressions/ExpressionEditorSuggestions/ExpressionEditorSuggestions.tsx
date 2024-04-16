@@ -108,6 +108,14 @@ export function ExpressionEditorSuggestions({
               onSuggestionMouseDown={onSuggestionMouseDown}
             />
             <ExpressionEditorSuggestionsListGroup
+              name="shortcuts"
+              suggestions={groups.shortcuts}
+              query={query}
+              stageIndex={stageIndex}
+              highlightedIndex={highlightedIndex}
+              onSuggestionMouseDown={onSuggestionMouseDown}
+            />
+            <ExpressionEditorSuggestionsListGroup
               name="popularAggregations"
               suggestions={groups.popularAggregations}
               query={query}
@@ -316,6 +324,7 @@ function group(suggestions: Suggestion[]): Groups {
     _none: [],
     popularAggregations: [],
     popularExpressions: [],
+    shortcuts: [],
   };
 
   suggestions.forEach(function (suggestion) {
