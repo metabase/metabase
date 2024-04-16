@@ -311,10 +311,14 @@
                    :model/Card         relevant-card            {:name "Card with stale query"}
                    :model/Card         not-stale-card           {:name "Card whose columns are up to date"}
                    :model/Card         irrelevant-card          {:name "Card with no QueryFields at all"}
+                   :model/Card         select-*-card            {:name "Card with only wildcard refs"}
                    :model/QueryField   _                        {:card_id  (u/the-id relevant-card)
                                                                  :field_id inactive-field-id}
                    :model/QueryField   _                        {:card_id  (u/the-id not-stale-card)
-                                                                 :field_id active-field-id}]
+                                                                 :field_id active-field-id}
+                   :model/QueryField   _                        {:card_id  (u/the-id select-*-card)
+                                                                 :field_id inactive-field-id
+                                                                 :direct_reference false}]
       (with-cards-in-readable-collection [relevant-card not-stale-card irrelevant-card]
         (is (=? [{:name         "Card with stale query"
                   :query_fields [{:card_id  (u/the-id relevant-card)

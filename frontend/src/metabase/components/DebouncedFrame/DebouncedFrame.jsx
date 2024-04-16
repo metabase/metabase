@@ -90,7 +90,7 @@ class DebouncedFrame extends Component {
     return (
       <div
         ref={r => (this._container = r)}
-        className={cx(className, "relative")}
+        className={cx(className, CS.relative)}
         style={{
           overflow: "hidden",
           transition: "opacity 0.25s",

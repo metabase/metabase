@@ -62,7 +62,7 @@ const MetadataTableSettings = ({
   const [discardTableFieldValues] = useDiscardTableFieldValuesMutation();
 
   return (
-    <div className="relative">
+    <div className={CS.relative}>
       <div className={cx(CS.wrapper, CS.wrapperTrim)}>
         <div className={cx(CS.flex, CS.alignCenter, CS.my2)}>
           <MetadataBackButton

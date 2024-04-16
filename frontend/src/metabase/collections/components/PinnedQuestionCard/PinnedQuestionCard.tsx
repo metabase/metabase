@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
@@ -5,6 +6,7 @@ import {
   isFullyParameterized,
   isPreviewShown,
 } from "metabase/collections/utils";
+import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -62,7 +64,7 @@ const PinnedQuestionCard = ({
     <CardRoot
       to={item.getUrl()}
       isPreview={isPreview}
-      className="hover-parent hover--visibility"
+      className={cx(CS.hoverParent, CS.hoverVisibility)}
     >
       {!isPreview && positionedActionMenu}
       {isPreview ? (

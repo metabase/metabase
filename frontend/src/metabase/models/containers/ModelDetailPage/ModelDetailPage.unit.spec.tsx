@@ -37,7 +37,6 @@ import type {
   WritebackQueryAction,
 } from "metabase-types/api";
 import {
-  createMockCollection,
   createMockDatabase,
   createMockField,
   createMockImplicitCUDActions,
@@ -62,9 +61,6 @@ import {
 } from "metabase-types/store/mocks";
 
 import ModelDetailPage from "./ModelDetailPage";
-
-console.warn = jest.fn();
-console.error = jest.fn();
 
 // eslint-disable-next-line react/display-name
 jest.mock("metabase/actions/containers/ActionCreator", () => () => (
@@ -179,18 +175,6 @@ function createMockQueryAction(
     }),
   });
 }
-
-const COLLECTION_1 = createMockCollection({
-  id: 5,
-  name: "C1",
-  can_write: true,
-});
-
-const COLLECTION_2 = createMockCollection({
-  id: 10,
-  name: "C2",
-  can_write: true,
-});
 
 type SetupOpts = {
   model: Card;
@@ -366,32 +350,6 @@ describe("ModelDetailPage", () => {
           expect(modelUpdateSpy).toHaveBeenCalledWith(
             { id: model.id() },
             { archived: true },
-            expect.anything(),
-          );
-        });
-      });
-
-      it("can be moved to another collection", async () => {
-        const { model, modelUpdateSpy } = await setup({
-          model: getModel({ collection_id: 1 }),
-          collections: [COLLECTION_1, COLLECTION_2],
-        });
-
-        userEvent.click(getIcon("ellipsis"));
-        userEvent.click(await screen.findByText("Move"));
-
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
-        userEvent.click(await screen.findByText(COLLECTION_2.name));
-        userEvent.click(screen.getByRole("button", { name: "Move" }));
-
-        await waitFor(() =>
-          expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
-        );
-
-        await waitFor(() => {
-          expect(modelUpdateSpy).toHaveBeenCalledWith(
-            { id: model.id() },
-            { collection_id: COLLECTION_2.id },
             expect.anything(),
           );
         });

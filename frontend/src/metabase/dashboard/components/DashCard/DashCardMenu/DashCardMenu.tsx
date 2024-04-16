@@ -1,8 +1,10 @@
+import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { editQuestion } from "metabase/dashboard/actions";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
@@ -115,7 +117,7 @@ const DashCardMenu = ({
       renderTrigger={({ open, onClick }: TriggerProps) => (
         <Icon
           name="ellipsis"
-          className={!open ? "hover-child hover-child--smooth" : undefined}
+          className={!open ? cx(CS.hoverChild, CS.hoverChildSmooth) : undefined}
           data-testid="dashcard-menu"
           onClick={onClick}
         />

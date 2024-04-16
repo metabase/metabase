@@ -391,6 +391,7 @@ class TableInteractive extends Component {
       console.error(e);
     }
   }
+
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   _getCellClickedObjectCached(
     data,
@@ -446,6 +447,7 @@ class TableInteractive extends Component {
       console.error(e);
     }
   }
+
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   _visualizationIsClickableCached(visualizationIsClickable, clicked) {
     return visualizationIsClickable(clicked);
@@ -562,7 +564,9 @@ class TableInteractive extends Component {
           backgroundColor,
         }}
         className={cx(
-          "TableInteractive-cellWrapper text-dark hover-parent hover--visibility",
+          "TableInteractive-cellWrapper text-dark",
+          CS.hoverParent,
+          CS.hoverVisibility,
           {
             "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
             padLeft: columnIndex === 0 && !showDetailShortcut,
@@ -590,7 +594,7 @@ class TableInteractive extends Component {
         {isCollapsed && (
           <ExpandButton
             data-testid="expand-column"
-            className="hover-child"
+            className={CS.hoverChild}
             small
             borderless
             iconSize={10}
@@ -989,7 +993,7 @@ class TableInteractive extends Component {
             }
             return (
               <TableInteractiveRoot
-                className={cx(className, "TableInteractive relative", {
+                className={cx(className, "TableInteractive", CS.relative, {
                   "TableInteractive--pivot": this.props.isPivoted,
                   "TableInteractive--ready": this.state.contentWidths,
                   // no hover if we're dragging a column
@@ -1113,6 +1117,7 @@ class TableInteractive extends Component {
     const height = grid.scrollHeight;
     let top = 0;
     let start = Date.now();
+
     // console.profile();
     function next() {
       grid.scrollTop = top;
@@ -1131,6 +1136,7 @@ class TableInteractive extends Component {
         }
       }, 40);
     }
+
     next();
   }
 }

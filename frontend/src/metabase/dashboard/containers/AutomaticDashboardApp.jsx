@@ -117,7 +117,7 @@ class AutomaticDashboardAppInner extends Component {
 
     return (
       <div
-        className={cx("relative AutomaticDashboard", {
+        className={cx(CS.relative, "AutomaticDashboard", {
           "AutomaticDashboard--withSidebar": hasSidebar,
         })}
       >
@@ -256,7 +256,7 @@ const SuggestionsList = ({ suggestions, section }) => (
             <ItemLink
               key={itemIndex}
               to={item.url}
-              className="hover-parent hover--visibility"
+              className={cx(CS.hoverParent, CS.hoverVisibility)}
             >
               <Card className="p2" hoverable>
                 <ItemContent>
@@ -266,7 +266,7 @@ const SuggestionsList = ({ suggestions, section }) => (
                     className="mr1"
                   />
                   <h4 className="text-wrap">{item.title}</h4>
-                  <ItemDescription className="hover-child">
+                  <ItemDescription className={CS.hoverChild}>
                     <Tooltip tooltip={item.description}>
                       <Icon name="info_outline" color={color("bg-dark")} />
                     </Tooltip>

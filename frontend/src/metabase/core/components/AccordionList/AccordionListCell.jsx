@@ -50,7 +50,14 @@ export const AccordionListCell = ({
     if (alwaysExpanded) {
       content = (
         <div
-          className="pt2 mb1 mx2 h5 text-uppercase text-bold"
+          className={cx(
+            CS.pt2,
+            CS.mb1,
+            CS.mx2,
+            CS.h5,
+            CS.textUppercase,
+            CS.textBold,
+          )}
           style={{ color: color }}
         >
           {section.name}
@@ -67,8 +74,7 @@ export const AccordionListCell = ({
             CS.py2,
             CS.flex,
             CS.alignCenter,
-            "hover-parent",
-            "hover--opacity",
+            CS.hoverParent,
             {
               "List-section-header--cursor": hasCursor,
               [CS.cursorPointer]: canToggleSections,
@@ -98,7 +104,7 @@ export const AccordionListCell = ({
             </Box>
           )}
           {sections.length > 1 && section.items && section.items.length > 0 && (
-            <span className={cx(CS.flexAlignRight, CS.ml1, "hover-child")}>
+            <span className={cx(CS.flexAlignRight, CS.ml1, CS.hoverChild)}>
               <Icon
                 name={
                   sectionIsExpanded(sectionIndex) ? "chevronup" : "chevrondown"

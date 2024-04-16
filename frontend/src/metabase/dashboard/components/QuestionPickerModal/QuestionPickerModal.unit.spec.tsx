@@ -44,7 +44,6 @@ const COLLECTION_CARD = createMockCollectionItem({
 
 const DASHBOARD = createMockDashboard({
   id: 1,
-  collection_id: null,
   collection: ROOT_COLLECTION,
 });
 

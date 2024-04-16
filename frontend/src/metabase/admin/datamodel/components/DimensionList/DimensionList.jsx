@@ -111,7 +111,9 @@ export class DimensionList extends Component {
     return (
       <Box className="Field-extra">
         {item.dimension?.tag && (
-          <span className="h5 text-light px1">{item.dimension.tag}</span>
+          <span className={cx(CS.h5, CS.textLight, CS.px1)}>
+            {item.dimension.tag}
+          </span>
         )}
         {subDimensions?.length > 0 ? (
           <PopoverWithTrigger
@@ -144,7 +146,13 @@ export class DimensionList extends Component {
           <Tooltip tooltip={t`Add grouping`}>
             <Icon
               name="add"
-              className="mx1 cursor-pointer hover-child faded fade-in-hover"
+              className={cx(
+                "mx1",
+                "cursor-pointer",
+                CS.hoverChild,
+                "faded",
+                "fade-in-hover",
+              )}
               onClick={e => {
                 e.stopPropagation();
                 this.handleAdd(item);
@@ -256,7 +264,7 @@ export class DimensionList extends Component {
         onChange={this.handleChange}
         itemIsSelected={this.itemIsSelected}
         renderItemExtra={this.renderItemExtra}
-        getItemClassName={() => "hover-parent hover--display"}
+        getItemClassName={() => cx(CS.hoverParent, CS.hoverDisplay)}
       />
     );
   }

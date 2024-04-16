@@ -6,6 +6,7 @@ import {
 } from "__support__/server-mocks";
 import {
   act,
+  createMockClipboardData,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -538,6 +539,23 @@ describe("StringFilterValuePicker", () => {
       expect(screen.getByText("a@b.com")).toBeInTheDocument();
       expect(screen.queryByText("a@b")).not.toBeInTheDocument();
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com", "a@b"]);
+    });
+
+    it("should trim clipboard data", async () => {
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+      });
+
+      const clipboardData = createMockClipboardData({
+        getData: () => " abc\r\ndef",
+      });
+      userEvent.paste(screen.getByLabelText("Filter value"), "", {
+        clipboardData,
+      });
+      expect(onChange).toHaveBeenLastCalledWith(["abc", "def"]);
     });
   });
 

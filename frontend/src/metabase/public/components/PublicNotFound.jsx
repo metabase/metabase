@@ -16,7 +16,7 @@ const PublicNotFound = () => (
         )}
       />
       <div
-        className={cx(CS.mt1, CS.h4, "sm-h3 md-h2", CS.textBold)}
+        className={cx(CS.mt1, CS.h4, CS.smH3, CS.mdH2, CS.textBold)}
       >{t`Not found`}</div>
     </div>
   </EmbedFrame>
