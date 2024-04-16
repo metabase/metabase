@@ -10,6 +10,7 @@ import {
   mockSlackConfigured,
   isOSS,
   visitDashboard,
+  editDashboard,
   sendEmailAndAssert,
   addOrUpdateDashboardCard,
   addTextBox,
@@ -26,8 +27,6 @@ import {
   getEmbedModalSharingPane,
   setFilter,
 } from "e2e/support/helpers";
-
-import { editDashboard } from "../../../support/helpers/e2e-dashboard-helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { admin, normal } = USERS;
