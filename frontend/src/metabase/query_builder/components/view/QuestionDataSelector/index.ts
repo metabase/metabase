@@ -1,1 +1,1 @@
-export { default as QuestionDataSelector } from "./QuestionDataSelector";
+export { QuestionDataSelector } from "./QuestionDataSelector";

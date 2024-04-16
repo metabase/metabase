@@ -1,15 +1,20 @@
-/* eslint-disable react/prop-types */
+import CS from "metabase/css/core/index.css";
+import type { updateQuestion as updateQuestionAction } from "metabase/query_builder/actions";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
-import QuestionDataSelectorS from "./QuestionDataSelector.module.css";
-
-export default function QuestionDataSelector({
+export const QuestionDataSelector = ({
   question,
   updateQuestion,
   triggerElement,
-}) {
-  const handleTableChange = (tableId, databaseId) => {
+}: {
+  question: Question;
+  updateQuestion: typeof updateQuestionAction;
+  triggerElement: JSX.Element;
+}) => {
+  const handleTableChange = (tableId: TableId, databaseId: DatabaseId) => {
     const metadata = question.metadata();
     const metadataProvider = Lib.metadataProvider(databaseId, metadata);
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
@@ -19,7 +24,7 @@ export default function QuestionDataSelector({
 
   return (
     <DataSourceSelector
-      containerClassName={QuestionDataSelectorS.DataPopoverContainer}
+      containerClassName={CS.z2}
       hasTableSearch
       databaseQuery={{ saved: true }}
       setSourceTableFn={handleTableChange}
@@ -27,4 +32,4 @@ export default function QuestionDataSelector({
       isOpen
     />
   );
-}
+};
