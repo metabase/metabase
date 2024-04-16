@@ -1,11 +1,12 @@
-import { type FocusEvent, useState, useMemo } from "react";
+import type { MutableRefObject, type FocusEvent } from "react";
+import { useState, useMemo } from "react";
 import { t } from "ttag";
 
+import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import { Button, Flex, Icon, Select, TextInput, Text } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import {
-  fromSelectValue,
   toSelectValue,
   label,
   formatSeparator,
@@ -143,24 +144,35 @@ export function ColumnInput({
   value,
   onChange,
 }: ColumnInputProps) {
+  const columnGroups = useMemo(() => Lib.groupColumns(columns), [columns]);
   const options = useMemo(
     () => getColumnOptions(query, stageIndex, columns),
     [query, stageIndex, columns],
   );
 
+  const dropdown = ({ ref }: { ref: MutableRefObject<HTMLDivElement> }) => (
+    <div ref={ref}>
+      <QueryColumnPicker
+        query={query}
+        stageIndex={stageIndex}
+        columnGroups={columnGroups}
+        onSelect={onChange}
+        checkIsColumnSelected={item => item.column === value}
+        width="100%"
+      />
+    </div>
+  );
+
   return (
     <Select
-      className={styles.column}
       classNames={{
         wrapper: styles.wrapper,
       }}
-      data={options}
       label={label}
-      placeholder={t`Select a column`}
+      data={options}
+      placeholder={t`Select a column...`}
       value={toSelectValue(options, value)}
-      onChange={value => {
-        onChange(fromSelectValue(options, value));
-      }}
+      dropdownComponent={dropdown}
     />
   );
 }
