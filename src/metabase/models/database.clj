@@ -1,5 +1,6 @@
 (ns metabase.models.database
   (:require
+   [clojure.core.match :refer [match]]
    [medley.core :as m]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
@@ -14,6 +15,7 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
@@ -72,7 +74,31 @@
    (and (not= pk perms/audit-db-id)
         ((get-method mi/can-write? ::mi/write-policy.full-perms-for-perms-set) model pk))))
 
-(defn- schedule-tasks!
+(defn- infer-db-schedules
+  "Infer database schedule settings based on its options."
+  [{:keys [details is_full_sync is_on_demand cache_field_values_schedule metadata_sync_schedule] :as database}]
+  (match [(boolean (:let-user-control-scheduling details)) is_full_sync is_on_demand]
+    [false _ _]
+    (merge
+     database
+     (sync.schedules/schedule-map->cron-strings
+      (sync.schedules/default-randomized-schedule)))
+
+    ;; "Regularly on a schedule"
+    ;; -> sync both steps, schedule should be provided
+    [true true false]
+    (do
+     (assert (every? some? [cache_field_values_schedule metadata_sync_schedule]))
+     database)
+
+    ;; "Only when adding a new filter" or "Never, I'll do it myself"
+    ;; -> Sync metadata only
+    [true false _]
+    ;; schedules should only contains metadata_sync, but FE might sending both
+    ;; so we just manually nullify it here
+    (assoc database :cache_field_values_schedule nil)))
+
+(defn- check-and-schedule-tasks-for-db!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
@@ -102,7 +128,7 @@
     ;; give full download perms for this database to the All Users permissions group
     (perms/grant-full-download-permissions! (perms-group/all-users) database)
     ;; schedule the Database sync & analyze tasks
-    (schedule-tasks! (t2.realize/realize database))))
+    (check-and-schedule-tasks-for-db! (t2.realize/realize database))))
 
 (def ^:private ^:dynamic *normalizing-details*
   "Track whether we're calling [[driver/normalize-db-details]] already to prevent infinite
@@ -190,27 +216,20 @@
             (secret/expand-inferred-secret-values conn-prop-nm conn-prop secret*))))))
 
 (defn- handle-secrets-changes [{:keys [details] :as database}]
-  (if (map? details)
-    (let [updated-details (secret/reduce-over-details-secret-values
-                            (driver.u/database->driver database)
-                            details
-                            (partial handle-db-details-secret-prop! database))]
-      (assoc database :details updated-details))
-    database))
+  (let [updated-details (secret/reduce-over-details-secret-values
+                         (driver.u/database->driver database)
+                         details
+                         (partial handle-db-details-secret-prop! database))]
+    (assoc database :details updated-details)))
 
 (t2/define-before-update :model/Database
   [database]
-  (let [database                  (mi/pre-update-changes database)
-        {new-metadata-schedule    :metadata_sync_schedule,
-         new-fieldvalues-schedule :cache_field_values_schedule,
-         new-engine               :engine
-         new-settings             :settings} database
+  (let [changes                              (t2/changes database)
+        {new-engine               :engine
+         new-settings             :settings} changes
         {is-sample?               :is_sample
-         old-metadata-schedule    :metadata_sync_schedule
-         old-fieldvalues-schedule :cache_field_values_schedule
          existing-settings        :settings
-         existing-engine          :engine
-         existing-name            :name} (t2/original database)
+         existing-engine          :engine}   (t2/original database)
         new-engine                       (some-> new-engine keyword)]
     (if (and is-sample?
              new-engine
@@ -219,32 +238,23 @@
                       {:status-code     400
                        :existing-engine existing-engine
                        :new-engine      new-engine}))
-      (u/prog1 (-> database
-                   (cond->
-                     ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
-                     (and (some? (:details database))
-                          (not (driver/database-supports? (or new-engine existing-engine) :nested-field-columns database)))
-                     (update :details dissoc :json_unfolding))
-                   handle-secrets-changes)
-        ;; TODO - this logic would make more sense in post-update if such a method existed
-        ;; if the sync operation schedules have changed, we need to reschedule this DB
-        (when (or new-metadata-schedule new-fieldvalues-schedule)
-          ;; if one of the schedules wasn't passed continue using the old one
-          (let [new-metadata-schedule    (or new-metadata-schedule old-metadata-schedule)
-                new-fieldvalues-schedule (or new-fieldvalues-schedule old-fieldvalues-schedule)]
-            (when (not= [new-metadata-schedule new-fieldvalues-schedule]
-                        [old-metadata-schedule old-fieldvalues-schedule])
-              (log/info
-                (trs "{0} Database ''{1}'' sync/analyze schedules have changed!" existing-engine existing-name)
-                "\n"
-                (trs "Sync metadata was: ''{0}'' is now: ''{1}''" old-metadata-schedule new-metadata-schedule)
-                "\n"
-                (trs "Cache FieldValues was: ''{0}'', is now: ''{1}''" old-fieldvalues-schedule new-fieldvalues-schedule))
-              ;; reschedule the database. Make sure we're passing back the old schedule if one of the two wasn't supplied
-              (schedule-tasks!
-                (assoc database
-                       :metadata_sync_schedule      new-metadata-schedule
-                       :cache_field_values_schedule new-fieldvalues-schedule)))))
+      (u/prog1 (cond-> database
+                 ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
+                 (and (some? (:details changes))
+                      (not (driver/database-supports? (or new-engine existing-engine) :nested-field-columns database)))
+                 (update :details dissoc :json_unfolding)
+
+                 (or
+                  ;if there is any changes in user control setting
+                  (some? (get-in changes [:details :let-user-control-scheduling]))
+                  ;; if the let user control scheduling is already on, we should always try to re-infer it
+                  (get-in database [:details :let-user-control-scheduling])
+                  ;; if there is a changes in schedules, make sure it respects the settings
+                  (some some? [(:cache_field_values_schedule changes) (:metadata_sync_schedule changes)]))
+                 infer-db-schedules
+
+                 (some? (:details changes))
+                 handle-secrets-changes)
         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
         (when (and (:database-enable-actions (or new-settings existing-settings))
@@ -254,13 +264,20 @@
                            :existing-engine existing-engine
                            :new-engine      new-engine})))))))
 
+(t2/define-after-update :model/Database
+  [database]
+  (check-and-schedule-tasks-for-db! (t2.realize/realize database)))
+
 (t2/define-before-insert :model/Database
   [{:keys [details initial_sync_status], :as database}]
-  (-> database
+  (-> (merge {:is_full_sync true
+              :is_on_demand false}
+             database)
       (cond->
         (not details)             (assoc :details {})
         (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
-      handle-secrets-changes))
+      handle-secrets-changes
+      infer-db-schedules))
 
 (defmethod mi/perms-objects-set :model/Database
   [{db-id :id} read-or-write]

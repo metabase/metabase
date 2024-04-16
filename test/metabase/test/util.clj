@@ -145,10 +145,12 @@
 
    :model/Database
    (fn [_] (default-timestamped
-             {:details   {}
-              :engine    :h2
-              :is_sample false
-              :name      (u.random/random-name)}))
+             {:details                     {}
+              :engine                      :h2
+              :is_sample                   false
+              :name                        (u.random/random-name)
+              :metadata_sync_schedule      "0 50 * * * ? *"
+              :cache_field_values_schedule "0 50 0 * * ? *"}))
 
    :model/Dimension
    (fn [_] (default-timestamped
@@ -593,7 +595,11 @@
         (try
           (assert (not (qs/started? temp-scheduler))
                   "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
-          (thunk)
+          (with-redefs [qs/initialize (constantly temp-scheduler)
+                        ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
+                        ;; after it's done, but we need the scheduler for testing
+                        qs/shutdown   (constantly nil)]
+            (thunk))
           (finally
             (qs/shutdown temp-scheduler)))))))
 
@@ -608,8 +614,10 @@
 
 (defmacro with-temp-scheduler
   "Execute `body` with a temporary scheduler in place.
+  This does not initialize the all the jobs for performance reasons, so make sure you init it yourself!
 
     (with-temp-scheduler
+      (task.sync-databases/job-init) ;; init the jobs
       (do-something-to-schedule-tasks)
       ;; verify that the right thing happened
       (scheduler-current-tasks))"
