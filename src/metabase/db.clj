@@ -78,3 +78,10 @@
     (throw (ex-info "Application database calls are not allowed inside core.async dispatch pool threads."
                     {})))
   resolved-query)
+
+(defn release-migration-locks!
+  "Wait up to `timeout-seconds` for the current process to release all migration locks, otherwise force release them."
+  [timeout-seconds]
+  (if (db-is-set-up?)
+    :done
+    (mdb.setup/release-migration-locks! (mdb.connection/data-source) timeout-seconds)))

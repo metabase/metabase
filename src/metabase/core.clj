@@ -88,7 +88,10 @@
   (task/stop-scheduler!)
   (server/stop-web-server!)
   (prometheus/shutdown!)
-  (log/info (trs "Metabase Shutdown COMPLETE")))
+  ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
+  (let [timeout-seconds 20]
+    (mdb/release-migration-locks! timeout-seconds))
+  (log/info "Metabase Shutdown COMPLETE"))
 
 (defenterprise ensure-audit-db-installed!
   "OSS implementation of `audit-db/ensure-db-installed!`, which is an enterprise feature, so does nothing in the OSS
