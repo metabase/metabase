@@ -27,6 +27,7 @@ export const defaultOptions: QuestionPickerOptions = {
   showPersonalCollections: true,
   showRootCollection: true,
   allowCreateNew: false,
+  hasConfirmButtons: false,
 };
 interface QuestionPickerProps {
   onItemSelect: (item: QuestionPickerItem) => void;
