@@ -1,7 +1,10 @@
 import { getIn, setIn } from "icepick";
 import _ from "underscore";
 
-import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
+import {
+  PLUGIN_DATA_PERMISSIONS,
+  PLUGIN_ADVANCED_PERMISSIONS,
+} from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type {
@@ -21,7 +24,8 @@ import type {
 import { DataPermission, DataPermissionValue } from "../../types";
 
 export const isRestrictivePermission = (value: DataPermissionValue) =>
-  value === DataPermissionValue.BLOCKED || value === DataPermissionValue.NO;
+  value === DataPermissionValue.NO ||
+  PLUGIN_ADVANCED_PERMISSIONS.isRestrictivePermission(value);
 
 // permission that do not have a nested shemas/native key
 const flatPermissions = new Set([
@@ -45,7 +49,9 @@ function getPermissionPath(
 }
 
 const omittedDefaultValues: Record<DataPermission, DataPermissionValue> = {
-  [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
+  get [DataPermission.VIEW_DATA]() {
+    return PLUGIN_ADVANCED_PERMISSIONS.defaultViewDataPermission;
+  },
   [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
   [DataPermission.DOWNLOAD]: DataPermissionValue.NONE,
   [DataPermission.DATA_MODEL]: DataPermissionValue.NONE,
