@@ -11,7 +11,7 @@ export const taskApi = Api.injectEndpoints({
     getTask: builder.query<unknown, number>({
       query: id => ({
         method: "GET",
-        url: `/api/task/${id}}`,
+        url: `/api/task/${id}`,
       }),
     }),
     getTasksInfo: builder.query<unknown, void>({
