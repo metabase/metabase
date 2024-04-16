@@ -1,5 +1,7 @@
 (ns metabase.lib.card
   (:require
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
@@ -159,8 +161,16 @@
     (card-metadata-columns metadata-providerable card)))
 
 (defmethod lib.metadata.calculation/returned-columns-method :metadata/card
-  [query _stage-number card {:keys [unique-name-fn], :as _options}]
+  [query _stage-number card {:keys [unique-name-fn], :as options}]
   (mapv (fn [col]
           (let [desired-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)]
             (assoc col :lib/desired-column-alias (unique-name-fn desired-alias))))
-        (card-metadata-columns query card)))
+        (if (= (:type card) :metric)
+          (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
+                                 (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
+            (not-empty (lib.metadata.calculation/returned-columns
+                        (assoc metric-query :lib/metadata (:lib/metadata query))
+                        -1
+                        (lib.util/query-stage metric-query -1)
+                        options)))
+          (card-metadata-columns query card))))

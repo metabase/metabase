@@ -5,9 +5,10 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -20,16 +21,16 @@
     (lib.metadata/metric query metric-id)))
 
 (mu/defn ^:private metric-definition :- [:maybe ::lib.schema/stage.mbql]
-  [{:keys [definition], :as _metric-metadata} :- lib.metadata/LegacyMetricMetadata]
-  (when definition
-    (let [normalized-definition (cond-> definition
-                                  (not (contains? definition :lib/type))
+  [{:keys [dataset-query], :as _metric-metadata} :- lib.metadata/MetricMetadata]
+  (when dataset-query
+    (let [normalized-definition (cond-> dataset-query
+                                  (not (contains? dataset-query :lib/type))
                                   ;; legacy; needs conversion
                                   (-> mbql.normalize/normalize lib.convert/->pMBQL))]
       (lib.util/query-stage normalized-definition -1))))
 
 (defmethod lib.ref/ref-method :metadata/metric
-  [{:keys [id], :as metric-metadata}]
+  [{:keys [id lib.join/join-alias], :as metric-metadata}]
   (let [effective-type (or (:effective-type metric-metadata)
                            (:base-type metric-metadata)
                            (when-let [aggregation (first (:aggregation (metric-definition metric-metadata)))]
@@ -37,6 +38,7 @@
                                (when (isa? ag-effective-type :type/*)
                                  ag-effective-type))))
         options (cond-> {:lib/uuid (str (random-uuid))}
+                  join-alias (assoc :join-alias join-alias)
                   effective-type (assoc :effective-type effective-type))]
     [:metric options id]))
 
@@ -87,30 +89,42 @@
         (lib.metadata.calculation/column-name query stage-number metric-metadata))
       "metric"))
 
-(mu/defn available-metrics :- [:maybe [:sequential {:min 1} lib.metadata/LegacyMetricMetadata]]
-  "Get a list of Metrics that you may consider using as aggregations for a query. Only Metrics that have the same
-  `table-id` as the `source-table` for this query will be suggested."
+(defn- source-metric
+  [query stage-number]
+  (let [stage (lib.util/query-stage query stage-number)]
+    (some->> (:source-card stage) (lib.metadata/metric query))))
+
+(defn- joined-metrics
+  [query stage-number]
+  (->> (lib.join/joins query stage-number)
+       (keep (fn [join]
+               (when-let [card-id (-> join :stages peek :source-card)]
+                 (when-let [card (lib.metadata/metric query card-id)]
+                   (assoc card ::lib.join/join-alias (:alias join))))))))
+
+(mu/defn available-metrics :- [:maybe [:sequential {:min 1} lib.metadata/MetricMetadata]]
+  "Get a list of Metrics that you may consider using as aggregations for a query."
   ([query]
    (available-metrics query -1))
   ([query :- ::lib.schema/query
     stage-number :- :int]
-   (when (zero? (lib.util/canonical-stage-index query stage-number))
-     (let [metric-aggregations (into {}
-                                     (keep-indexed (fn [index aggregation-clause]
-                                                     (when (lib.util/clause-of-type? aggregation-clause :metric)
-                                                       [(get aggregation-clause 2) index])))
-                                     (lib.aggregation/aggregations query stage-number))
-           metadata-provider (lib.metadata/->metadata-provider query)
-           metric-id (lib.util/source-metric-id query)
-           source-table-id (lib.util/source-table-id query)]
-       (when-let [metrics (cond
-                            metric-id [(lib.metadata.protocols/metric metadata-provider metric-id)]
-                            source-table-id (lib.metadata.protocols/metrics metadata-provider source-table-id))]
-         (cond
-           (empty? metrics)             nil
-           (empty? metric-aggregations) (vec metrics)
-           :else                        (mapv (fn [metric-metadata]
-                                                (let [aggregation-pos (-> metric-metadata :id metric-aggregations)]
-                                                  (cond-> metric-metadata
-                                                    aggregation-pos (assoc :aggregation-position aggregation-pos))))
-                                              metrics)))))))
+   (let [metric-aggregations (into {}
+                                   (keep-indexed (fn [index aggregation-clause]
+                                                   (when (lib.util/clause-of-type? aggregation-clause :metric)
+                                                     [[(get aggregation-clause 2)
+                                                       (:join-alias (lib.options/options aggregation-clause))]
+                                                      index])))
+                                   (lib.aggregation/aggregations query stage-number))
+         s-metric (source-metric query stage-number)
+         metrics (cond-> (joined-metrics query stage-number)
+                   s-metric (cons s-metric))]
+     (when (seq metrics)
+       (if (empty? metric-aggregations)
+         (vec metrics)
+         (mapv (fn [metric-metadata]
+                 (let [aggregation-pos (-> metric-metadata
+                                           ((juxt :id ::lib.join/join-alias))
+                                           metric-aggregations)]
+                   (cond-> metric-metadata
+                     aggregation-pos (assoc :aggregation-position aggregation-pos))))
+               metrics))))))

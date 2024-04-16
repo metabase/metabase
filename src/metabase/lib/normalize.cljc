@@ -24,7 +24,7 @@
    :metadata/column   ::lib.schema.metadata/column
    :metadata/card     ::lib.schema.metadata/card
    :metadata/segment  ::lib.schema.metadata/segment
-   :metadata/metric   ::lib.schema.metadata/legacy-metric})
+   :metadata/metric   ::lib.schema.metadata/metric})
 
 (defn- infer-schema [x]
   (cond

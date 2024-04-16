@@ -179,19 +179,13 @@
          {:type :field, :id id}))
      ;; cf. frontend/src/metabase-lib/Question.ts and frontend/src/metabase-lib/queries/StructuredQuery.ts
      (when-let [card-id (:source-card base-stage)]
-       [{:type :table, :id (str "card__" card-id)}
-        {:type :card,  :id card-id}])
-     ;; support metric sources for now
-     (for [source (:sources base-stage)
-           :when (= (:lib/type source) :source/metric)
-           :let [card-id (:id source)
-                 metric-metadata (or (lib.metadata/metric metadata-providerable card-id)
-                                     (lib.metadata/card metadata-providerable card-id))
-                 metric-table-id (:table-id metric-metadata)]
-           item (cond-> [{:type :table, :id (str "card__" card-id)}
-                         {:type :card, :id card-id}]
-                  metric-table-id (conj {:type :table, :id metric-table-id}))]
-       item)
+       (let [metric-metadata (or (lib.metadata/metric metadata-providerable card-id)
+                                 (lib.metadata/card metadata-providerable card-id))
+             metric-table-id (:table-id metric-metadata)]
+         (cond-> [{:type :table, :id (str "card__" card-id)}
+                  {:type :card, :id card-id}]
+           metric-table-id (conj {:type :table, :id metric-table-id})
+           (not metric-metadata) (assoc-in [0 :recurse] true))))
      (when-let [table-id (:source-table base-stage)]
        (cons {:type :table, :id table-id}
              (query-dependents-foreign-keys metadata-providerable
