@@ -3,7 +3,7 @@ import { act, screen } from "__support__/ui";
 import { changeInput, getSaveButton, setup } from "./test-utils";
 
 describe("StrategyEditorForDatabases", () => {
-  it("lets user change the default policy from 'Duration' to 'Query duration multiplier' to 'No caching'", async () => {
+  it("lets user change the default policy from 'Hours' to 'Query duration multiplier' to 'No caching'", async () => {
     setup();
     expect(
       screen.queryByRole("button", { name: "Save changes" }),
@@ -30,7 +30,7 @@ describe("StrategyEditorForDatabases", () => {
 
     await act(async () => {
       const durationStrategyRadioButton = await screen.findByRole("radio", {
-        name: /hours/i,
+        name: /after a specific number of hours/i,
       });
       durationStrategyRadioButton.click();
       expect((await screen.findAllByRole("spinbutton")).length).toBe(1);

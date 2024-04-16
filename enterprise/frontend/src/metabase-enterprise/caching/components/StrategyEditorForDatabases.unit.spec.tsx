@@ -54,7 +54,7 @@ describe("StrategyEditorForDatabases", () => {
     ).toBeInTheDocument();
   });
 
-  it("lets user change the default policy from Duration to Query duration multiplier to No caching", async () => {
+  it("lets user change the default policy from Hours to Query duration multiplier to No caching", async () => {
     const editButton = await screen.findByLabelText(
       `Edit default policy (currently: Hours)`,
     );
@@ -87,7 +87,7 @@ describe("StrategyEditorForDatabases", () => {
 
     await act(async () => {
       const durationStrategyRadioButton = await screen.findByRole("radio", {
-        name: /duration/i,
+        name: /after a specific number of hours/i,
       });
       durationStrategyRadioButton.click();
 
@@ -152,7 +152,7 @@ describe("StrategyEditorForDatabases", () => {
 
     await act(async () => {
       const durationStrategyRadioButton = await screen.findByRole("radio", {
-        name: /duration/i,
+        name: /hours/i,
       });
       durationStrategyRadioButton.click();
 
@@ -165,7 +165,7 @@ describe("StrategyEditorForDatabases", () => {
 
     expect(
       await screen.findByLabelText(
-        `Edit policy for database 'Database 1' (currently: Duration)`,
+        `Edit policy for database 'Database 1' (currently: Hours)`,
       ),
     ).toBeInTheDocument();
 
