@@ -38,9 +38,12 @@ const Groups = createEntity({
         dispatch,
         permissionApi.endpoints.createPermissionsGroup,
       ),
-    update: () => {
-      throw new TypeError("Permissions.api.update is not supported");
-    },
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        permissionApi.endpoints.updatePermissionsGroup,
+      ),
     delete: ({ id }, dispatch) =>
       entityCompatibleQuery(
         id,
