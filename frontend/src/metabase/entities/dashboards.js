@@ -163,7 +163,11 @@ const Dashboards = createEntity({
 
   actions: {
     save: dashboard => async dispatch => {
-      const savedDashboard = await Dashboards.api.save(dashboard);
+      const savedDashboard = await entityCompatibleQuery(
+        dashboard,
+        dispatch,
+        dashboardApi.endpoints.saveDashboard,
+      );
       dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
       return {
         type: "metabase/entities/dashboards/SAVE_DASHBOARD",
