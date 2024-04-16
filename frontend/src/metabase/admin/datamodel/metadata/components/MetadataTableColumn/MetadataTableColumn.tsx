@@ -78,7 +78,7 @@ const MetadataTableColumn = ({
     >
       <div className={cx(CS.flex, CS.flexColumn, CS.flexAuto)}>
         <div
-          className={cx(CS.textMonospace, "mb1")}
+          className={cx(CS.textMonospace, CS.mb1)}
           style={{ fontSize: "12px" }}
         >
           {getFieldRawName(field)}

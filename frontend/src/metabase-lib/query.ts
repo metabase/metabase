@@ -12,7 +12,7 @@ import type {
   ColumnMetadata,
   Join,
   MetadataProvider,
-  MetricMetadata,
+  LegacyMetricMetadata,
   Query,
   SegmentMetadata,
   TableMetadata,
@@ -61,8 +61,8 @@ export function appendStage(query: Query): Query {
   return ML.append_stage(query);
 }
 
-export function dropStage(query: Query, stageIndex: number): Query {
-  return ML.drop_stage(query, stageIndex);
+export function dropStage(query: Query): Query {
+  return ML.drop_stage(query);
 }
 
 export function dropEmptyStages(query: Query): Query {
@@ -81,7 +81,12 @@ export function replaceClause(
   query: Query,
   stageIndex: number,
   targetClause: Clause | Join,
-  newClause: Clause | ColumnMetadata | MetricMetadata | SegmentMetadata | Join,
+  newClause:
+    | Clause
+    | ColumnMetadata
+    | LegacyMetricMetadata
+    | SegmentMetadata
+    | Join,
 ): Query {
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }

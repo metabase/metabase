@@ -109,7 +109,6 @@
                          (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating)))))]
     (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
                                               :database_id (mt/id)
-                                              :creator_id 1
                                               :type :metric}]
       (let [query (lib/query mp (lib.metadata/card mp (:id source-metric)))]
         (is (=

@@ -98,7 +98,7 @@ export default class Progress extends Component {
     // we have to reset height before we can calculate new height
     bar.style.height = 0;
     bar.style.height = computeBarHeight({
-      cardHeight: this.props.gridSize.height,
+      cardHeight: this.props?.gridSize?.height,
       componentHeight: component.clientHeight,
       isMobile: this.props.isMobile,
     });
@@ -243,11 +243,11 @@ export default class Progress extends Component {
                 <IconBorder borderWidth={2}>
                   <Icon name="check" />
                 </IconBorder>
-                <div className="pl2">{barMessage}</div>
+                <div className={CS.pl2}>{barMessage}</div>
               </div>
             )}
           </div>
-          <div className="mt1">
+          <div className={CS.mt1}>
             <span className="float-left">0</span>
             <span className="float-right">{t`Goal ${formatValue(
               goal,
@@ -261,8 +261,11 @@ export default class Progress extends Component {
 }
 
 function computeBarHeight({ cardHeight, componentHeight, isMobile }) {
-  const isSmallCard = cardHeight === Progress.minSize.height;
+  if (!cardHeight) {
+    return `${MAX_BAR_HEIGHT}px`;
+  }
 
+  const isSmallCard = cardHeight === Progress.minSize.height;
   if (isSmallCard && !isMobile) {
     const computedHeight =
       MIN_BAR_HEIGHT + (componentHeight - COMPONENT_HEIGHT_TO_MIN_BAR_HEIGHT);

@@ -172,45 +172,45 @@
 
 ;; TODO TB legacy macro test, delete or port
 #_(deftest ^:parallel underlying-records-apply-test-3
-    (testing "metric over time"
-      (let [metric   {:description "Orders with a subtotal of $100 or more."
-                      :archived false
-                      :updated-at "2023-10-04T20:11:34.029582"
-                      :lib/type :metadata/metric
-                      :definition
-                      {"source-table" (meta/id :orders)
-                       "aggregation" [["count"]]
-                       "filter" [">=" ["field" (meta/id :orders :subtotal) nil] 100]}
-                      :table-id (meta/id :orders)
-                      :name "Large orders"
-                      :caveats nil
-                      :entity-id "NWMNcv_yhhZIT7winoIdi"
-                      :how-is-this-calculated nil
-                      :show-in-getting-started false
-                      :id 1
-                      :database (meta/id)
-                      :points-of-interest nil
-                      :creator-id 1
-                      :created-at "2023-10-04T20:11:34.029582"}
-            provider (lib/composed-metadata-provider
-                      meta/metadata-provider
-                      (providers.mock/mock-metadata-provider {:metrics [metric]}))]
-        (underlying-state (-> (lib/query provider (meta/table-metadata :orders))
-                              (lib/aggregate metric)
-                              (lib/breakout (lib/with-temporal-bucket
-                                              (meta/field-metadata :orders :created-at)
-                                              :month)))
-                          0 #_agg-index
-                          6572.12
-                          [last-month]
-                          (fn [_agg-dim [breakout-dim]]
-                            (let [monthly-breakout (-> (:column-ref breakout-dim)
-                                                       (lib.options/with-options {:temporal-unit :month}))
-                                  subtotal         (-> (meta/field-metadata :orders :subtotal)
-                                                       lib/ref
-                                                       (lib.options/with-options {}))]
-                              [[:=  {} monthly-breakout last-month]
-                               [:>= {} subtotal 100]]))))))
+  (testing "metric over time"
+    (let [metric   {:description "Orders with a subtotal of $100 or more."
+                    :archived false
+                    :updated-at "2023-10-04T20:11:34.029582"
+                    :lib/type :metadata/legacy-metric
+                    :definition
+                    {"source-table" (meta/id :orders)
+                     "aggregation" [["count"]]
+                     "filter" [">=" ["field" (meta/id :orders :subtotal) nil] 100]}
+                    :table-id (meta/id :orders)
+                    :name "Large orders"
+                    :caveats nil
+                    :entity-id "NWMNcv_yhhZIT7winoIdi"
+                    :how-is-this-calculated nil
+                    :show-in-getting-started false
+                    :id 1
+                    :database (meta/id)
+                    :points-of-interest nil
+                    :creator-id 1
+                    :created-at "2023-10-04T20:11:34.029582"}
+          provider (lib/composed-metadata-provider
+                    meta/metadata-provider
+                    (providers.mock/mock-metadata-provider {:metrics [metric]}))]
+      (underlying-state (-> (lib/query provider (meta/table-metadata :orders))
+                            (lib/aggregate metric)
+                            (lib/breakout (lib/with-temporal-bucket
+                                            (meta/field-metadata :orders :created-at)
+                                            :month)))
+                        0 #_agg-index
+                        6572.12
+                        [last-month]
+                        (fn [_agg-dim [breakout-dim]]
+                          (let [monthly-breakout (-> (:column-ref breakout-dim)
+                                                     (lib.options/with-options {:temporal-unit :month}))
+                                subtotal         (-> (meta/field-metadata :orders :subtotal)
+                                                     lib/ref
+                                                     (lib.options/with-options {}))]
+                            [[:=  {} monthly-breakout last-month]
+                             [:>= {} subtotal 100]]))))))
 
 (deftest ^:parallel multiple-aggregations-multiple-breakouts-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

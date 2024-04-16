@@ -40,8 +40,8 @@ export default class ChannelSetupMessage extends Component {
     } else {
       const adminEmail = Settings.get("admin-email");
       content = (
-        <div className="mb1">
-          <h4 className="text-medium">{t`Your admin's email address`}:</h4>
+        <div className={CS.mb1}>
+          <h4 className={CS.textMedium}>{t`Your admin's email address`}:</h4>
           <a className={cx(CS.h2, CS.link)} href={"mailto:" + adminEmail}>
             {adminEmail}
           </a>

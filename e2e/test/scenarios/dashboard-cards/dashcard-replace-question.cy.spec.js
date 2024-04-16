@@ -30,6 +30,7 @@ const PARAMETER = {
     id: "1",
     name: "Created At",
     type: "date/all-options",
+    sectionId: "date",
   }),
   CATEGORY: createMockParameter({
     id: "2",
@@ -40,6 +41,7 @@ const PARAMETER = {
     id: "3",
     name: "Not mapped to anything",
     type: "number/=",
+    sectionId: "number",
   }),
 
   // Used to reproduce:
@@ -48,6 +50,7 @@ const PARAMETER = {
     id: "2",
     name: "Created At (2)",
     type: "date/range",
+    sectionId: "date",
   }),
 };
 

@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, filter, summarize } from "e2e/support/helpers";
+import { restore, filter, summarize, modal } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -52,7 +52,7 @@ describe.skip("issue 25189", () => {
 
     // 2. We shouldn't see duplication in the bulk filter modal
     filter();
-    cy.get(".Modal").within(() => {
+    modal().within(() => {
       // Implicit assertion - will fail if more than one element is found
       cy.findByText(ccFunction);
       cy.findByText(ccTable);

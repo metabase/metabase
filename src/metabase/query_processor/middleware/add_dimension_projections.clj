@@ -41,19 +41,18 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli :as mu]))
 
 (def ^:private ExternalRemappingDimension
   "Schema for the info we fetch about `external` type Dimensions that will be used for remappings in this Query. Fetched
   by the pre-processing portion of the middleware, and passed along to the post-processing portion."
   [:map
-   [:id                        ms/PositiveInt]      ; unique ID for the remapping
-   [:name                      ms/NonBlankString]   ; display name for the remapping
-   [:field-id                  ms/PositiveInt]      ; ID of the Field being remapped
-   [:field-name                ms/NonBlankString]   ; Name of the Field being remapped
-   [:human-readable-field-id   ms/PositiveInt]      ; ID of the FK Field to remap values to
-   [:human-readable-field-name ms/NonBlankString]]) ; Name of the FK Field to remap values to
+   [:id                        ::lib.schema.id/dimension]              ; unique ID for the remapping
+   [:name                      ::lib.schema.common/non-blank-string]   ; display name for the remapping
+   [:field-id                  ::lib.schema.id/field]                  ; ID of the Field being remapped
+   [:field-name                ::lib.schema.common/non-blank-string]   ; Name of the Field being remapped
+   [:human-readable-field-id   ::lib.schema.id/field]                  ; ID of the FK Field to remap values to
+   [:human-readable-field-name ::lib.schema.common/non-blank-string]]) ; Name of the FK Field to remap values to
 
 ;;;; Pre-processing
 
@@ -62,12 +61,12 @@
   are ineligable) to a remapping dimension information for any Fields that have an `external` type dimension remapping."
   [fields :- [:maybe [:sequential mbql.s/Field]]]
   (when-let [field-ids (not-empty (set (lib.util.match/match fields [:field (id :guard integer?) _] id)))]
-    (let [field-metadatas (qp.store/bulk-metadata :metadata/column field-ids)]
+    (let [field-metadatas (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column field-ids)]
       (when-let [remap-field-ids (not-empty (into #{}
                                                   (keep (comp :field-id :lib/external-remap))
                                                   field-metadatas))]
         ;; do a bulk fetch of the remaps.
-        (qp.store/bulk-metadata :metadata/column remap-field-ids)
+        (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column remap-field-ids)
         (into {}
               (comp (filter :lib/external-remap)
                     (keep (fn [field]
@@ -161,12 +160,12 @@
        (add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id infos)
        (add-fk-remaps-rewrite-existing-fields-add-new-field-dimension-id infos)))
 
-(mu/defn ^:private add-fk-remaps-rewrite-order-by :- [:maybe [:sequential mbql.s/OrderBy]]
+(mu/defn ^:private add-fk-remaps-rewrite-order-by :- [:maybe [:sequential ::mbql.s/OrderBy]]
   "Order by clauses that include an external remapped column should be replace that original column in the order by with
   the newly remapped column. This should order by the text of the remapped column vs. the id of the source column
   before the remapping"
   [field->remapped-col :- [:map-of mbql.s/field mbql.s/field]
-   order-by-clauses    :- [:maybe [:sequential mbql.s/OrderBy]]]
+   order-by-clauses    :- [:maybe [:sequential ::mbql.s/OrderBy]]]
   (into []
         (comp (map (fn [[direction field, :as order-by-clause]]
                      (if-let [remapped-col (get field->remapped-col field)]
@@ -257,9 +256,9 @@
    ;; index of original column
    [:col-index      :int]
    ;; names
-   [:from            ms/NonBlankString]
+   [:from            ::lib.schema.common/non-blank-string]
    ;; I'm not convinced this works if there's already a column with the same name in the results.
-   [:to              ms/NonBlankString]
+   [:to              ::lib.schema.common/non-blank-string]
    ;; map of original value -> human readable value
    [:value->readable :map]
    ;; Info about the new column we will tack on to end of `:cols`

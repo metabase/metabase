@@ -11,7 +11,7 @@ import PasswordReveal from "metabase/components/PasswordReveal";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
-import User from "metabase/entities/users";
+import Users from "metabase/entities/users";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { clearTemporaryPassword } from "../people";
@@ -76,7 +76,7 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
     <PasswordReveal password={temporaryPassword} />
     <div
       style={{ paddingLeft: "5em", paddingRight: "5em" }}
-      className={cx("pt4", CS.textCentered)}
+      className={cx(CS.pt4, CS.textCentered)}
     >
       {jt`If you want to be able to send email invites, just go to the ${(
         <Link to="/admin/settings/email" className={cx(CS.link, CS.textBold)}>
@@ -88,7 +88,7 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
 );
 
 export default _.compose(
-  User.load({
+  Users.load({
     id: (state, props) => props.params.userId,
   }),
   connect(

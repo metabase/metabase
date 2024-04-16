@@ -71,9 +71,9 @@ export default class ObjectActionsSelect extends Component {
                 triggerClasses={cx(
                   CS.block,
                   CS.p2,
-                  "bg-error-hover",
-                  "text-error",
-                  "text-white-hover",
+                  CS.bgErrorHover,
+                  CS.textError,
+                  CS.textWhiteHover,
                   CS.cursorPointer,
                 )}
               >

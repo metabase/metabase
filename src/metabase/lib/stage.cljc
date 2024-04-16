@@ -54,12 +54,11 @@
   probably wrong; we can recalculate the correct metadata anyway."
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  (let [{stage-type :lib/type, :keys [source-card sources] :as stage} (lib.util/query-stage query stage-number)]
+  (let [{stage-type :lib/type, :keys [source-card] :as stage} (lib.util/query-stage query stage-number)]
     (or (::cached-metadata stage)
         (when-let [metadata (:lib/stage-metadata stage)]
           (when (or (= stage-type :mbql.stage/native)
-                    source-card
-                    (lib.util/first-metric-id sources))
+                    source-card)
             (let [source-type (case stage-type
                                 :mbql.stage/native :source/native
                                 :mbql.stage/mbql   :source/card)]
@@ -315,7 +314,6 @@
 (def ^:private display-name-source-parts
   [:source-table
    :source-card
-   :sources
    :joins])
 
 (def ^:private display-name-other-parts
@@ -348,10 +346,10 @@
   "Does given query stage have any clauses?"
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  (boolean (seq (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table :source-card :sources))))
+  (boolean (seq (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table :source-card))))
 
 (mu/defn append-stage :- ::lib.schema/query
-  "Adds a new blank stage to the end of the pipeline"
+  "Adds a new blank stage to the end of the pipeline."
   [query]
   (update query :stages conj {:lib/type :mbql.stage/mbql}))
 

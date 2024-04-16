@@ -1,22 +1,34 @@
 (ns metabase.query-processor.middleware.auto-bucket-datetimes-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor.middleware.auto-bucket-datetimes
-    :as qp.auto-bucket-datetimes]
-   [metabase.query-processor.store :as qp.store]))
+   [metabase.query-processor.middleware.auto-bucket-datetimes :as qp.auto-bucket-datetimes]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util.malli :as mu]))
 
 (deftest ^:parallel should-not-be-autobucketed?-test
   (testing "Don't auto-bucket fields that are already bucketed"
-    (is (#'qp.auto-bucket-datetimes/should-not-be-autobucketed? [:field 1 {:temporal-unit :month}]))))
+    (is (= :do-not-bucket-reason/field-with-bucketing-or-binning
+           (#'qp.auto-bucket-datetimes/should-not-be-autobucketed?
+            (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+            [:stages 0]
+            (lib.normalize/normalize :mbql.clause/field [:field {:temporal-unit :month} (meta/id :checkins :date)]))))))
 
-(defn- auto-bucket [query]
-  (if (qp.store/initialized?)
+(mu/defn ^:private auto-bucket [query :- :map]
+  (if (= (:lib/type query) :mbql/query)
     (qp.auto-bucket-datetimes/auto-bucket-datetimes query)
-    (qp.store/with-metadata-provider meta/metadata-provider
-      (qp.auto-bucket-datetimes/auto-bucket-datetimes query))))
+    (let [metadata-provider (if (qp.store/initialized?)
+                              (qp.store/metadata-provider)
+                              meta/metadata-provider)
+          query (lib/query metadata-provider query)]
+      (-> query
+          qp.auto-bucket-datetimes/auto-bucket-datetimes
+          lib.convert/->legacy-MBQL))))
 
 (defn- auto-bucket-mbql [mbql-query]
   (-> (auto-bucket {:database (meta/id), :type :query, :query mbql-query})
@@ -52,16 +64,15 @@
 
 (deftest ^:parallel auto-bucket-in-compound-filter-clause-test
   (testing "Fields should still get auto-bucketed when present in compound filter clauses (#9127)"
-    (qp.store/with-metadata-provider meta/metadata-provider
-      (is (= {:source-table 1
-              :filter       [:and
-                             [:= [:field (meta/id :checkins :date) {:temporal-unit :day}] "2018-11-19"]
-                             [:= [:field (meta/id :venues :name) nil] "ABC"]]}
-             (auto-bucket-mbql
-              {:source-table 1
-               :filter       [:and
-                              [:= [:field (meta/id :checkins :date) nil] "2018-11-19"]
-                              [:= [:field (meta/id :venues :name) nil] "ABC"]]}))))))
+    (is (= {:source-table 1
+            :filter       [:and
+                           [:= [:field (meta/id :checkins :date) {:temporal-unit :day}] "2018-11-19"]
+                           [:= [:field (meta/id :venues :name) nil] "ABC"]]}
+           (auto-bucket-mbql
+            {:source-table 1
+             :filter       [:and
+                            [:= [:field (meta/id :checkins :date) nil] "2018-11-19"]
+                            [:= [:field (meta/id :venues :name) nil] "ABC"]]})))))
 
 (deftest ^:parallel auto-bucket-field-literals-test
   (testing "DateTime field literals should also get auto-bucketed (#9007)"
@@ -180,7 +191,7 @@
 
 (deftest ^:parallel ignore-native-queries-test
   (testing "do native queries pass thru unchanged?"
-    (let [native-query {:database 1, :type :native, :native {:query "SELECT COUNT(cans) FROM birds;"}}]
+    (let [native-query {:database (meta/id), :type :native, :native {:query "SELECT COUNT(cans) FROM birds;"}}]
       (is (= native-query
              (auto-bucket native-query))))))
 

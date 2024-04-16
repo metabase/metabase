@@ -1,20 +1,17 @@
+import { useLayoutEffect, useState } from "react";
+import { useDebounce } from "react-use";
 import { t } from "ttag";
 
-import NoResults from "assets/img/no_results.svg";
+import { useSearchQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
+import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import Search from "metabase/entities/search";
-import { useDebouncedEffectWithCleanup } from "metabase/hooks/use-debounced-effect";
-import { defer } from "metabase/lib/promise";
 import { useDispatch } from "metabase/lib/redux";
 import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";
 import type { WrappedResult } from "metabase/search/types";
 import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
-import type {
-  SearchModelType,
-  SearchResultId,
-  SearchResults,
-} from "metabase-types/api";
+import type { SearchModel, SearchResultId } from "metabase-types/api";
 
 import type { TypeWithModel } from "../../types";
 
@@ -31,7 +28,7 @@ const defaultSearchFilter = <
 
 export function EntityPickerSearchInput<
   Id extends SearchResultId,
-  Model extends SearchModelType,
+  Model extends SearchModel,
   Item extends TypeWithModel<Id, Model>,
 >({
   searchQuery,
@@ -43,45 +40,29 @@ export function EntityPickerSearchInput<
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   setSearchResults: (results: Item[] | null) => void;
-  models: string[];
+  models: SearchModel[];
   searchFilter?: (results: Item[]) => Item[];
 }) {
-  useDebouncedEffectWithCleanup(
-    () => {
-      const cancelled = defer();
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
 
-      const searchFn = () => {
-        if (searchQuery && !searchQuery.trim()) {
-          setSearchResults([]);
-          return;
-        }
-
-        if (searchQuery) {
-          Search.api
-            .list({ models, q: searchQuery }, { cancelled: cancelled.promise })
-            .then((results: SearchResults<Id, Model, Item>) => {
-              if (results.data) {
-                const items = results.data;
-                const filteredResults = searchFilter(items);
-                setSearchResults(filteredResults);
-              } else {
-                setSearchResults(null);
-              }
-            });
-        } else {
-          setSearchResults(null);
-        }
-      };
-
-      const cleanup = () => {
-        cancelled.resolve();
-      };
-
-      return [searchFn, cleanup];
+  const { data, isFetching } = useSearchQuery(
+    {
+      q: debouncedSearchQuery,
+      models,
     },
-    200,
-    [searchQuery, models, searchFilter],
+    {
+      skip: !debouncedSearchQuery,
+    },
   );
+
+  useLayoutEffect(() => {
+    if (data && !isFetching) {
+      setSearchResults(searchFilter(data.data as unknown as Item[]));
+    } else {
+      setSearchResults(null);
+    }
+  }, [data, isFetching, searchFilter, setSearchResults]);
 
   return (
     <TextInput
@@ -140,11 +121,7 @@ export const EntityPickerSearchResults = <
           <EmptyState
             title={t`Didn't find anything`}
             message={t`There weren't any results for your search.`}
-            illustrationElement={
-              <Box mb={"-2.5rem"}>
-                <img src={NoResults} />
-              </Box>
-            }
+            illustrationElement={<NoObjectError mb="-1.5rem" />}
           />
         </Flex>
       )}

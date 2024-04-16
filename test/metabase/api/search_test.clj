@@ -7,10 +7,13 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.search :as api.search]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models
     :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
-            DashboardCard Database PermissionsGroup
-            PermissionsGroupMembership Pulse PulseCard QueryAction Segment Table]]
+            DashboardCard Database PermissionsGroup PermissionsGroupMembership
+            Pulse PulseCard QueryAction Segment Table]]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
@@ -42,6 +45,8 @@
 
 (def ^:private default-search-row
   {:archived                   false
+   :effective_location         nil
+   :location                   nil
    :bookmark                   nil
    :collection                 default-collection
    :collection_authority_level nil
@@ -52,6 +57,7 @@
    :creator_id                 false
    :dashboardcard_count        nil
    :database_id                false
+   :database_name              nil
    :dataset_query              nil
    :description                nil
    :display                    nil
@@ -100,6 +106,8 @@
                                             :model "collection"
                                             ;; TODO the default-collection data for this doesn't make sense:
                                             :collection (assoc default-collection :id true :name true)
+                                            :effective_location "/"
+                                            :location "/"
                                             :updated_at false
                                             :can_write true))
 
@@ -249,6 +257,7 @@
              [:like [:lower :table_schema]      "%foo%"] [:inline 0]
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]
+             [:like [:lower :database_name]     "%foo%"] [:inline 0]
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
              [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
              :else [:inline 1]]]
@@ -484,6 +493,18 @@
                           sorted-results)
                      (search-request-data :rasta :q "test")))))))))
 
+  (testing "Metrics on tables for which the user does not have access to should not show up in results"
+    (mt/with-temp [Database {db-id :id} {}
+                   Table    {table-id :id} {:db_id  db-id
+                                            :schema nil}
+                   Card   _ {:dataset_query (as-> (lib.metadata.jvm/application-database-metadata-provider db-id) mp
+                                              (lib/query mp (lib.metadata/table mp table-id)))
+                             :type :metric
+                                     :name     "test metric"}]
+      (mt/with-no-data-perms-for-all-users!
+        (is (= []
+               (search-request-data :rasta :q "test"))))))
+
   (testing "Segments on tables for which the user does not have access to should not show up in results"
     (mt/with-temp [Database {db-id :id} {}
                    Table    {table-id :id} {:db_id  db-id
@@ -551,126 +572,126 @@
 (deftest indexed-entity-test
   (testing "Should search indexed entities"
     (mt/dataset airports
-      (let [query (mt/mbql-query municipality)]
-        (mt/with-temp [Card model {:type          :model
-                                   :dataset_query query}]
-          (let [model-index (model-index/create
-                             (mt/$ids {:model-id   (:id model)
-                                       :pk-ref     $municipality.id
-                                       :value-ref  $municipality.name
-                                       :creator-id (mt/user->id :rasta)}))
-                relevant    (comp (filter (comp #{(:id model)} :model_id))
-                                  (filter (comp #{"indexed-entity"} :model)))
-                search!     (fn [search-term]
-                              (:data (make-search-request :crowberto [:q search-term])))]
-            (model-index/add-values! model-index)
+                (let [query (mt/mbql-query municipality)]
+                  (mt/with-temp [Card model {:type          :model
+                                             :dataset_query query}]
+                    (let [model-index (model-index/create
+                                       (mt/$ids {:model-id   (:id model)
+                                                 :pk-ref     $municipality.id
+                                                 :value-ref  $municipality.name
+                                                 :creator-id (mt/user->id :rasta)}))
+                          relevant    (comp (filter (comp #{(:id model)} :model_id))
+                                            (filter (comp #{"indexed-entity"} :model)))
+                          search!     (fn [search-term]
+                                        (:data (make-search-request :crowberto [:q search-term])))]
+                      (model-index/add-values! model-index)
 
-            (is (= #{"Dallas-Fort Worth" "Fort Lauderdale" "Fort Myers"
-                     "Fort Worth" "Fort Smith" "Fort Wayne"}
-                   (into #{} (comp relevant (map :name)) (search! "fort"))))
+                      (is (= #{"Dallas-Fort Worth" "Fort Lauderdale" "Fort Myers"
+                               "Fort Worth" "Fort Smith" "Fort Wayne"}
+                             (into #{} (comp relevant (map :name)) (search! "fort"))))
 
-            (let [normalize (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
-              (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
-                                 :name           "Rome"
-                                 :model_id       (:id model)
-                                 :model_name     (:name model)
-                                 :model_index_id (mt/malli=? :int)}
-                       "Tromsø" {:pk_ref         (mt/$ids $municipality.id)
-                                 :name           "Tromsø"
-                                 :model_id       (:id model)
-                                 :model_name     (:name model)
-                                 :model_index_id (mt/malli=? :int)}}
-                      (into {} (comp relevant (map (juxt :name normalize)))
-                            (search! "rom")))))))))))
+                      (let [normalize (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
+                        (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
+                                           :name           "Rome"
+                                           :model_id       (:id model)
+                                           :model_name     (:name model)
+                                           :model_index_id (mt/malli=? :int)}
+                                 "Tromsø" {:pk_ref         (mt/$ids $municipality.id)
+                                           :name           "Tromsø"
+                                           :model_id       (:id model)
+                                           :model_name     (:name model)
+                                           :model_index_id (mt/malli=? :int)}}
+                                (into {} (comp relevant (map (juxt :name normalize)))
+                                      (search! "rom")))))))))))
 
 (deftest indexed-entity-perms-test
   (mt/dataset airports
-    (let [query (mt/mbql-query municipality)]
-      (mt/with-temp [Collection collection           {:name     "test"
-                                                      :location "/"}
-                     Card       root-model           {:type         :model
-                                                      :dataset_query query
-                                                      :collection_id nil}
-                     Card       sub-collection-model {:type          :model
-                                                      :dataset_query query
-                                                      :collection_id (u/id collection)}]
-        (let [model-index-1 (model-index/create
-                             (mt/$ids {:model-id   (:id root-model)
-                                       :pk-ref     $municipality.id
-                                       :value-ref  $municipality.name
-                                       :creator-id (mt/user->id :rasta)}))
-              model-index-2 (model-index/create
-                             (mt/$ids {:model-id   (:id sub-collection-model)
-                                       :pk-ref     $municipality.id
-                                       :value-ref  $municipality.name
-                                       :creator-id (mt/user->id :rasta)}))
-              relevant-1    (comp (filter (comp #{(:id root-model)} :model_id))
-                                  (filter (comp #{"indexed-entity"} :model)))
-              relevant-2    (comp (filter (comp #{(:id sub-collection-model)} :model_id))
-                                  (filter (comp #{"indexed-entity"} :model)))
-              search!       (fn search!
-                              ([search-term] (search! search-term :crowberto))
-                              ([search-term user] (:data (make-search-request user [:q search-term]))))
-              normalize     (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
-          (model-index/add-values! model-index-1)
-          (model-index/add-values! model-index-2)
+              (let [query (mt/mbql-query municipality)]
+                (mt/with-temp [Collection collection           {:name     "test"
+                                                                :location "/"}
+                               Card       root-model           {:type         :model
+                                                                :dataset_query query
+                                                                :collection_id nil}
+                               Card       sub-collection-model {:type          :model
+                                                                :dataset_query query
+                                                                :collection_id (u/id collection)}]
+                  (let [model-index-1 (model-index/create
+                                       (mt/$ids {:model-id   (:id root-model)
+                                                 :pk-ref     $municipality.id
+                                                 :value-ref  $municipality.name
+                                                 :creator-id (mt/user->id :rasta)}))
+                        model-index-2 (model-index/create
+                                       (mt/$ids {:model-id   (:id sub-collection-model)
+                                                 :pk-ref     $municipality.id
+                                                 :value-ref  $municipality.name
+                                                 :creator-id (mt/user->id :rasta)}))
+                        relevant-1    (comp (filter (comp #{(:id root-model)} :model_id))
+                                            (filter (comp #{"indexed-entity"} :model)))
+                        relevant-2    (comp (filter (comp #{(:id sub-collection-model)} :model_id))
+                                            (filter (comp #{"indexed-entity"} :model)))
+                        search!       (fn search!
+                                        ([search-term] (search! search-term :crowberto))
+                                        ([search-term user] (:data (make-search-request user [:q search-term]))))
+                        normalize     (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
+                    (model-index/add-values! model-index-1)
+                    (model-index/add-values! model-index-2)
 
-          (testing "Indexed entities returned if a non-admin user has full data perms and collection access"
-            (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :all :native :write}}}
-              (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
-                                 :name           "Rome"
-                                 :model_id       (:id root-model)
-                                 :model_name     (:name root-model)
-                                 :model_index_id (mt/malli=? :int)}
-                       "Tromsø" {:pk_ref         (mt/$ids $municipality.id)
-                                 :name           "Tromsø"
-                                 :model_id       (:id root-model)
-                                 :model_name     (:name root-model)
-                                 :model_index_id (mt/malli=? :int)}}
-                      (into {} (comp relevant-1 (map (juxt :name normalize)))
-                            (search! "rom" :rasta))))))
+                    (testing "Indexed entities returned if a non-admin user has full data perms and collection access"
+                      (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :all :native :write}}}
+                        (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
+                                           :name           "Rome"
+                                           :model_id       (:id root-model)
+                                           :model_name     (:name root-model)
+                                           :model_index_id (mt/malli=? :int)}
+                                 "Tromsø" {:pk_ref         (mt/$ids $municipality.id)
+                                           :name           "Tromsø"
+                                           :model_id       (:id root-model)
+                                           :model_name     (:name root-model)
+                                           :model_index_id (mt/malli=? :int)}}
+                                (into {} (comp relevant-1 (map (juxt :name normalize)))
+                                      (search! "rom" :rasta))))))
 
-          (testing "Indexed entities are not returned if a user doesn't have full data perms for the DB"
-            (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :none :native :none}}}
-              (is (= #{}
-                     (into #{} (comp relevant-1 (map (juxt :name normalize)))
-                           (search! "rom" :rasta)))))
+                    (testing "Indexed entities are not returned if a user doesn't have full data perms for the DB"
+                      (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :none :native :none}}}
+                        (is (= #{}
+                               (into #{} (comp relevant-1 (map (juxt :name normalize)))
+                                     (search! "rom" :rasta)))))
 
-            (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :all :native :none}}}
-              (is (= #{}
-                     (into #{} (comp relevant-1 (map (juxt :name normalize)))
-                           (search! "rom" :rasta)))))
+                      (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :all :native :none}}}
+                        (is (= #{}
+                               (into #{} (comp relevant-1 (map (juxt :name normalize)))
+                                     (search! "rom" :rasta)))))
 
-            (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
-              (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas {"PUBLIC" {id-1 :all
-                                                                                        id-2 :all
-                                                                                        id-3 :all
-                                                                                        id-4 :none}}}}}
-                (is (= #{}
-                       (into #{} (comp relevant-1 (map (juxt :name normalize)))
-                             (search! "rom" :rasta))))))
+                      (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
+                        (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas {"PUBLIC" {id-1 :all
+                                                                                                  id-2 :all
+                                                                                                  id-3 :all
+                                                                                                  id-4 :none}}}}}
+                          (is (= #{}
+                                 (into #{} (comp relevant-1 (map (juxt :name normalize)))
+                                       (search! "rom" :rasta))))))
 
-            (mt/with-additional-premium-features #{:advanced-permissions}
-              (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :block :native :none}}}
-                (is (= #{}
-                       (into #{} (comp relevant-1 (map (juxt :name normalize)))
-                             (search! "rom" :rasta)))))))
+                      (mt/with-additional-premium-features #{:advanced-permissions}
+                        (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :block :native :none}}}
+                          (is (= #{}
+                                 (into #{} (comp relevant-1 (map (juxt :name normalize)))
+                                       (search! "rom" :rasta)))))))
 
-          (testing "Indexed entities are not returned if a user doesn't have root collection access"
-            (mt/with-non-admin-groups-no-root-collection-perms
-              (is (= #{}
-                     (into #{} (comp relevant-1 (map (juxt :name normalize)))
-                           (search! "rom" :rasta)))))
+                    (testing "Indexed entities are not returned if a user doesn't have root collection access"
+                      (mt/with-non-admin-groups-no-root-collection-perms
+                        (is (= #{}
+                               (into #{} (comp relevant-1 (map (juxt :name normalize)))
+                                     (search! "rom" :rasta)))))
 
-            (mt/with-non-admin-groups-no-collection-perms collection
-              (is (= #{}
-                     (into #{} (comp relevant-2 (map (juxt :name normalize)))
-                           (search! "rom" :rasta))))))
+                      (mt/with-non-admin-groups-no-collection-perms collection
+                        (is (= #{}
+                               (into #{} (comp relevant-2 (map (juxt :name normalize)))
+                                     (search! "rom" :rasta))))))
 
-          (testing "Sandboxed users do not see indexed entities in search"
-            (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
-              (is (= #{}
-                     (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
+                    (testing "Sandboxed users do not see indexed entities in search"
+                      (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
+                        (is (= #{}
+                               (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
@@ -747,6 +768,7 @@
     :archived            nil
     :model               "table"
     :database_id         true
+    :database_name       "test-data"
     :pk_ref              nil
     :initial_sync_status "complete"}))
 
@@ -760,59 +782,59 @@
   (testing "You should see Tables in the search results!\n"
     (mt/with-temp [Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
-        (is (= [(default-table-search-row "RoundTable")]
-               (search-request-data user :q "RoundTable"))))))
+                     (is (= [(default-table-search-row "RoundTable")]
+                            (search-request-data user :q "RoundTable"))))))
   (testing "You should not see hidden tables"
     (mt/with-temp [Table _normal {:name "Foo Visible"}
                    Table _hidden {:name "Foo Hidden", :visibility_type "hidden"}]
       (do-test-users [user [:crowberto :rasta]]
-        (is (= [(default-table-search-row "Foo Visible")]
-               (search-request-data user :q "Foo"))))))
+                     (is (= [(default-table-search-row "Foo Visible")]
+                            (search-request-data user :q "Foo"))))))
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
-                 (search-request-data user :q "Lancelot")))))))
+                       (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
+                              (search-request-data user :q "Lancelot")))))))
   (testing "You should be able to search by their description"
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [Table _ {:name "RoundTable" :description lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
-                 (search-request-data user :q "Lancelot")))))))
+                       (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
+                              (search-request-data user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
       (mt/with-temp [Table _ {:name table-name}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= []
-                 (search-request-data user :q table-name :archived true)))))))
+                       (is (= []
+                              (search-request-data user :q table-name :archived true)))))))
   (testing "*archived* tables should not appear in search results"
     (let [table-name (mt/random-name)]
       (mt/with-temp [Table _ {:name table-name, :active false}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= []
-                 (search-request-data user :q table-name)))))))
+                       (is (= []
+                              (search-request-data user :q table-name)))))))
   (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
     (mt/with-temp [Database {db-id :id} {}
                    Table    table {:db_id db-id}]
       (mt/with-no-data-perms-for-all-users!
         (is (= []
-             (binding [*search-request-results-database-id* db-id]
-               (search-request-data :rasta :q (:name table)))))))))
+               (binding [*search-request-results-database-id* db-id]
+                 (search-request-data :rasta :q (:name table)))))))))
 
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
                 "does have perms, they should still be able to see it (#12332)")
-    (mt/with-temp [Database                   {db-id :id} {}
+    (mt/with-temp [Database                   {db-id :id} {:name "test-data"}
                    Table                      table {:name "RoundTable" :db_id db-id}
                    PermissionsGroup           {group-id :id} {}
                    PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
       (mt/with-no-data-perms-for-all-users!
         (data-perms/set-table-permission! group-id table :perms/data-access :unrestricted)
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(default-table-search-row "RoundTable")]
-                 (binding [*search-request-results-database-id* db-id]
-                   (search-request-data user :q "RoundTable")))))))))
+                       (is (= [(default-table-search-row "RoundTable")]
+                              (binding [*search-request-results-database-id* db-id]
+                                (search-request-data user :q "RoundTable")))))))))
 
 (deftest all-users-no-data-perms-table-test
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"

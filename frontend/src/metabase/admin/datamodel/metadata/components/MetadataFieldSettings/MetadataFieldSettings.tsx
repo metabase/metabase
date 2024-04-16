@@ -86,8 +86,8 @@ const MetadataFieldSettings = ({
   table,
   field,
   idFields,
-  fetched,
-  loading,
+  fetched = false,
+  loading = true,
   params: { schemaId, section },
 }: MetadataFieldSettingsProps) => {
   const schema = schemas.find(schema => schema.id === schemaId);
@@ -188,7 +188,7 @@ const FieldBreadcrumbs = ({
   hasMultipleSchemas,
 }: FieldBreadcrumbsProps) => {
   return (
-    <div className="mb4 pt2 ml-auto mr-auto">
+    <div className={cx(CS.mb4, CS.pt2, CS.mlAuto, CS.mrAuto)}>
       <Breadcrumbs
         crumbs={[
           [database.displayName(), Urls.dataModelDatabase(database.id)],

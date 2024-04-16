@@ -1,4 +1,4 @@
-import type { DndContextProps } from "@dnd-kit/core";
+import type { DndContextProps, DragEndEvent } from "@dnd-kit/core";
 import { PointerSensor, useSensor, DndContext } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
@@ -7,6 +7,7 @@ import { useMergedRef } from "@mantine/hooks";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 import {
@@ -60,7 +61,7 @@ export const ClauseStep = <T,>({
         {renderName(item, index)}
         {!readOnly && (
           <Icon
-            className="ml1"
+            className={CS.ml1}
             name="close"
             onClick={e => {
               e.stopPropagation();
@@ -114,11 +115,11 @@ function ClauseStepDndContext<T>({
   onReorder,
 }: ClauseStepDndContextProps<T>) {
   const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 0 },
+    activationConstraint: { distance: 15 },
   });
 
   const handleSortEnd: DndContextProps["onDragEnd"] = useCallback(
-    input => {
+    (input: DragEndEvent) => {
       if (input.over) {
         const sourceIndex = getItemIndexFromId(input.active.id);
         const targetIndex = getItemIndexFromId(input.over.id);

@@ -170,7 +170,7 @@ export function QueryColumnPicker({
   );
 
   const renderItemExtra = useCallback(
-    item => (
+    (item: ColumnListItem) => (
       <QueryColumnInfoIcon
         query={query}
         stageIndex={stageIndex}
@@ -202,6 +202,7 @@ export function QueryColumnPicker({
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
+        globalSearch
       />
     </DelayGroup>
   );

@@ -1,4 +1,5 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -171,7 +172,18 @@ const TableDetail = props => {
       >
         {() => (
           <div className={CS.wrapper}>
-            <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
+            <div
+              className={cx(
+                CS.pl4,
+                CS.pr3,
+                CS.pt4,
+                CS.mb4,
+                CS.mb1,
+                CS.bgWhite,
+                CS.rounded,
+                CS.bordered,
+              )}
+            >
               <List>
                 <li className={CS.relative}>
                   <Detail

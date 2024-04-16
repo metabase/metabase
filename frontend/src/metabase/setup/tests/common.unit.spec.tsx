@@ -3,6 +3,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
+import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
 import {
   clickNextStep,
@@ -14,6 +15,7 @@ import {
   skipLanguageStep,
   skipWelcomeScreen,
   submitUserInfoStep,
+  getLastSettingsPutPayload,
 } from "./setup";
 
 describe("setup (OSS)", () => {
@@ -71,20 +73,6 @@ describe("setup (OSS)", () => {
         expectSectionToHaveLabel("Add your data", "4");
         expectSectionToHaveLabel("Usage data preferences", "5");
       });
-
-      it("should not set the flag for the embedding homepage", async () => {
-        await setupForUsageQuestion();
-        await selectUsageReason("self-service-analytics");
-        await clickNextStep();
-
-        screen.getByText("I'll add my data later").click();
-
-        screen.getByRole("button", { name: "Finish" }).click();
-
-        await screen.findByRole("link", { name: "Take me to Metabase" });
-
-        expect(localStorage.getItem("showEmbedHomepage")).toBeNull();
-      });
     });
 
     describe("when selecting 'Embedding'", () => {
@@ -101,18 +89,6 @@ describe("setup (OSS)", () => {
         );
 
         expectSectionToHaveLabel("Usage data preferences", "4");
-      });
-
-      it("should set the flag for the embed homepage in the local storage", async () => {
-        await setupForUsageQuestion();
-        await selectUsageReason("embedding");
-        await clickNextStep();
-
-        screen.getByRole("button", { name: "Finish" }).click();
-
-        await screen.findByRole("link", { name: "Take me to Metabase" });
-
-        expect(localStorage.getItem("showEmbedHomepage")).toBe("true");
       });
     });
 
@@ -132,20 +108,6 @@ describe("setup (OSS)", () => {
         expectSectionToHaveLabel("Add your data", "4");
         expectSectionToHaveLabel("Usage data preferences", "5");
       });
-
-      it("should set the flag for the embed homepage in the local storage", async () => {
-        await setupForUsageQuestion();
-        await selectUsageReason("both");
-        await clickNextStep();
-
-        screen.getByText("I'll add my data later").click();
-
-        screen.getByRole("button", { name: "Finish" }).click();
-
-        await screen.findByRole("link", { name: "Take me to Metabase" });
-
-        expect(localStorage.getItem("showEmbedHomepage")).toBe("true");
-      });
     });
 
     describe("when selecting 'Not sure yet'", () => {
@@ -164,19 +126,73 @@ describe("setup (OSS)", () => {
         expectSectionToHaveLabel("Add your data", "4");
         expectSectionToHaveLabel("Usage data preferences", "5");
       });
+    });
+  });
 
-      it("should not set the flag for the embedding homepage", async () => {
-        await setupForUsageQuestion();
-        await selectUsageReason("self-service-analytics");
-        await clickNextStep();
+  describe("embedding homepage flags", () => {
+    it("should set the correct flags when interested in embedding", async () => {
+      await setup();
+      await skipWelcomeScreen();
+      await skipLanguageStep();
+      await submitUserInfoStep();
 
-        screen.getByText("I'll add my data later").click();
+      await selectUsageReason("embedding");
+      await clickNextStep();
 
-        screen.getByRole("button", { name: "Finish" }).click();
+      await screen.getByText("Finish").click();
 
-        await screen.findByRole("link", { name: "Take me to Metabase" });
+      expect(await getLastSettingsPutPayload()).toEqual({
+        "embedding-homepage": "visible",
+        "enable-embedding": true,
+        "setup-embedding-autoenabled": true,
+        "setup-license-active-at-setup": false,
+      });
+    });
 
-        expect(localStorage.getItem("showEmbedHomepage")).toBeNull();
+    it("should not set 'embedding-homepage' when not interested in embedding", async () => {
+      await setup();
+      await skipWelcomeScreen();
+      await skipLanguageStep();
+      await submitUserInfoStep();
+
+      await selectUsageReason("self-service-analytics");
+      await clickNextStep();
+
+      await screen.getByText("I'll add my data later").click();
+
+      await screen.getByText("Finish").click();
+
+      const flags = await getLastSettingsPutPayload();
+
+      expect(flags["embedding-homepage"]).toBeUndefined();
+      expect(flags["enable-embedding"]).toBeUndefined();
+      expect(flags["setup-embedding-autoenabled"]).toBeUndefined();
+    });
+
+    it("should not autoenable embedding if it was set by an env", async () => {
+      await setup({
+        settingOverrides: [
+          createMockSettingDefinition({
+            key: "enable-embedding",
+            value: false,
+            is_env_setting: true,
+          }),
+        ],
+      });
+      await skipWelcomeScreen();
+      await skipLanguageStep();
+      await submitUserInfoStep();
+
+      await selectUsageReason("embedding");
+      await clickNextStep();
+
+      await screen.getByText("Finish").click();
+
+      const flags = await getLastSettingsPutPayload();
+
+      expect(flags).toEqual({
+        "embedding-homepage": "visible",
+        "setup-license-active-at-setup": false,
       });
     });
   });

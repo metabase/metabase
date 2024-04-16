@@ -1,7 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor, within } from "__support__/ui";
+import {
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
@@ -104,6 +109,23 @@ describe("QueryBuilder", () => {
     });
 
     describe("query execution time", () => {
+      it("renders query execution time for mbql questions", async () => {
+        await setup({
+          card: TEST_CARD,
+          dataset: createMockDataset({
+            running_time: 123,
+          }),
+        });
+
+        const [runButton] = screen.getAllByTestId("run-button");
+        userEvent.click(runButton);
+        await waitForLoaderToBeRemoved();
+
+        const executionTime = await screen.findByTestId("execution-time");
+        expect(executionTime).toBeInTheDocument();
+        expect(executionTime).toHaveTextContent("123 ms");
+      });
+
       it("renders query execution time for native questions", async () => {
         await setup({
           card: TEST_NATIVE_CARD,
@@ -112,15 +134,9 @@ describe("QueryBuilder", () => {
           }),
         });
 
-        const executionTime = screen.getByTestId("execution-time");
+        const executionTime = await screen.findByTestId("execution-time");
         expect(executionTime).toBeInTheDocument();
         expect(executionTime).toHaveTextContent("123 ms");
-      });
-
-      it("does not render query execution time for non-native questions", async () => {
-        await setup({ card: TEST_CARD });
-
-        expect(screen.queryByTestId("execution-time")).not.toBeInTheDocument();
       });
     });
   });

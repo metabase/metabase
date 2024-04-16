@@ -57,10 +57,10 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Can we use case in metric"
       (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
-                                                       :definition {:source-table (mt/id :venues)
-                                                                    :aggregation  [:sum
-                                                                                   [:case [[[:< [:field (mt/id :venues :price) nil] 4]
-                                                                                            [:field (mt/id :venues :price) nil]]]]]}}]
+                                                             :definition {:source-table (mt/id :venues)
+                                                                          :aggregation  [:sum
+                                                                                         [:case [[[:< [:field (mt/id :venues :price) nil] 4]
+                                                                                                  [:field (mt/id :venues :price) nil]]]]]}}]
         (is (= 179.0 (test-case [:metric metric-id])))))))
 
 (deftest ^:parallel test-case-aggregations-in-breakout

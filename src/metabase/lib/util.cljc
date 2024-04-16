@@ -475,17 +475,15 @@
   [query :- :map]
   (= (first-stage-type query) :mbql.stage/native))
 
-(defn first-metric-id
-  "Return the ID of the first metric source in `sources`, if any."
-  [sources]
-  (some #(when (= (:lib/type %) :source/metric)
-           (:id %))
-        sources))
+(def ^:dynamic ^{:arglists '(^java.lang.String [^java.lang.String s])} *escape-alias-fn*
+  "Function to use for escaping a unique alias when generating `:lib/desired-alias`."
+  identity)
 
-(mu/defn source-metric-id :- [:maybe ::lib.schema.id/metric]
-  "If this query has a metric in `:sources`, return its ID."
-  [query]
-  (-> query :stages first :sources first-metric-id))
+(defn- unique-alias [original suffix]
+  (->> (str original \_ suffix)
+       *escape-alias-fn*
+       ;; truncate alias to 60 characters (actually 51 characters plus a hash).
+       truncate-alias))
 
 (mu/defn unique-name-generator :- [:=>
                                    [:cat ::lib.schema.common/non-blank-string]
@@ -500,10 +498,11 @@
   (comp truncate-alias
         (mbql.u/unique-name-generator
          ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
+         ;;
+         ;; some databases treat aliases as case-insensitive so make sure the generated aliases are unique regardless
+         ;; of case
          :name-key-fn     u/lower-case-en
-         ;; truncate alias to 60 characters (actually 51 characters plus a hash).
-         :unique-alias-fn (fn [original suffix]
-                            (truncate-alias (str original \_ suffix))))))
+         :unique-alias-fn unique-alias)))
 
 (def ^:private strip-id-regex
   #?(:cljs (js/RegExp. " id$" "i")
@@ -604,5 +603,8 @@
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
   [query :- [:maybe :map]]
   (when (map? query)
-    (keyword (some #(get query %)
-                   [:lib/type :type "lib/type" "type"]))))
+    (when-let [query-type (keyword (some #(get query %)
+                                         [:lib/type :type "lib/type" "type"]))]
+      (when (#{:mbql/query :query :native :internal} query-type)
+        query-type)))
+)

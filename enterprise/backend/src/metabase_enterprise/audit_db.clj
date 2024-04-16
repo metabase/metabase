@@ -3,7 +3,6 @@
    [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.db :as mdb]
    [metabase.models.database :refer [Database]]
@@ -144,7 +143,7 @@
                      :from [(t2/table-name :model/Table)]
                      :where [:= :db_id audit-db-id]}]}
                   {:name [:lower :name]}))
-    (log/infof "Adjusted Audit DB for loading Analytics Content")))
+    (log/info "Adjusted Audit DB for loading Analytics Content")))
 
 (defn- adjust-audit-db-to-host!
   [{audit-db-id :id :keys [engine]}]
@@ -251,7 +250,6 @@
 (defn- maybe-load-analytics-content!
   [audit-db]
   (when analytics-dir-resource
-    (ee.internal-user/ensure-internal-user-exists!)
     (adjust-audit-db-to-source! audit-db)
     (ia-content->plugins (plugins/plugins-dir))
     (let [[last-checksum current-checksum] (get-last-and-current-checksum)]

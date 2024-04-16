@@ -2,6 +2,7 @@
   "Middleware that wraps value literals in `value`/`absolute-datetime`/etc. clauses containing relevant type
   information; parses datetime string literals when appropriate."
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -13,7 +14,8 @@
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :as i18n])
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
@@ -50,7 +52,9 @@
    (when (:temporal-unit opts)
      {:unit (:temporal-unit opts)})
    (when (:base-type opts)
-     {:base_type (:base-type opts)})))
+     {:base_type (:base-type opts)})
+   (when (:effective-type opts)
+     {:effective_type (:effective-type opts)})))
 
 (defmethod type-info :expression [[_ _name opts]]
   (merge
@@ -59,7 +63,9 @@
    (when (:temporal-unit opts)
      {:unit (:temporal-unit opts)})
    (when (:base-type opts)
-     {:base_type (:base-type opts)})))
+     {:base_type (:base-type opts)})
+   (when (:effective-type opts)
+     {:effective_type (:effective-type opts)})))
 
 ;;; ------------------------------------------------- add-type-info --------------------------------------------------
 
@@ -209,21 +215,33 @@
   (let [t (parse-temporal-string-literal-to-class s LocalDateTime)]
     [:absolute-datetime t target-unit]))
 
+(defn- date-literal-string? [s]
+  (not (str/includes? s "T")))
+
 (defmethod parse-temporal-string-literal :type/DateTimeWithTZ
   [_effective-type s target-unit]
-  (let [t (parse-temporal-string-literal-to-class s OffsetDateTime)]
+  (let [t (parse-temporal-string-literal-to-class s OffsetDateTime)
+        target-unit (if (and (= target-unit :default)
+                             (date-literal-string? s))
+                      :day
+                      target-unit)]
     [:absolute-datetime t target-unit]))
 
 (defmethod parse-temporal-string-literal :type/DateTimeWithZoneID
   [_effective-type s target-unit]
-  (let [t (parse-temporal-string-literal-to-class s ZonedDateTime)]
+  (let [target-unit (if (and (= target-unit :default)
+                             (date-literal-string? s))
+                      :day
+                      target-unit)
+        t           (parse-temporal-string-literal-to-class s ZonedDateTime)]
     [:absolute-datetime t target-unit]))
 
 (defmethod add-type-info String
   [s {:keys [unit], :as info} & {:keys [parse-datetime-strings?]
                                  :or   {parse-datetime-strings? true}}]
   (if (and unit
-           parse-datetime-strings?)
+           parse-datetime-strings?
+           (seq s))
     (let [effective-type ((some-fn :effective_type :base_type) info)]
       (parse-temporal-string-literal effective-type s unit))
     [:value s info]))
@@ -280,7 +298,7 @@
                       source-query (update :source-query wrap-value-literals-in-mbql-query options))]
     (wrap-value-literals-in-mbql inner-query)))
 
-(defn wrap-value-literals
+(mu/defn wrap-value-literals :- mbql.s/Query
   "Middleware that wraps ran value literals in `:value` (for integers, strings, etc.) or `:absolute-datetime` (for
   datetime strings, etc.) clauses which include info about the Field they are being compared to. This is done mostly
   to make it easier for drivers to write implementations that rely on multimethod dispatch (by clause name) -- they
@@ -288,5 +306,4 @@
   [{query-type :type, :as query}]
   (if-not (= query-type :query)
     query
-    (mbql.s/validate-query
-     (update query :query wrap-value-literals-in-mbql-query nil))))
+    (update query :query wrap-value-literals-in-mbql-query nil)))

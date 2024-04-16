@@ -82,6 +82,10 @@ const setup = async (
     fetchMock.get("path:/api/collection", TEST_COLLECTIONS);
     fetchMock.get("path:/api/collection/root", ROOT_TEST_COLLECTION);
     setupCollectionByIdEndpoint({ collections: [BOBBY_TEST_COLLECTION] });
+    setupCollectionItemsEndpoint({
+      collection: BOBBY_TEST_COLLECTION,
+      collectionItems: [],
+    });
   }
 
   const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
@@ -153,8 +157,6 @@ function getQuestion({
     metadata,
   );
 }
-
-const EXPECTED_DIRTY_SUGGESTED_NAME = "Orders, Count, 1 row";
 
 function getDirtyQuestion(originalQuestion: Question) {
   return originalQuestion
@@ -355,7 +357,7 @@ describe("SaveQuestionModal", () => {
       await userEvent.click(screen.getByText("Save as new question"));
 
       expect(screen.getByLabelText("Name")).toHaveValue(
-        EXPECTED_DIRTY_SUGGESTED_NAME,
+        `${CARD.name} - Modified`,
       );
       expect(screen.getByLabelText("Description")).toHaveValue(
         CARD.description,
@@ -380,7 +382,9 @@ describe("SaveQuestionModal", () => {
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
-      expect(newQuestion.displayName()).toBe(EXPECTED_DIRTY_SUGGESTED_NAME);
+      expect(newQuestion.displayName()).toBe(
+        `${originalQuestion.displayName()} - Modified`,
+      );
       expect(newQuestion.description()).toBe("Example");
       expect(newQuestion.collectionId()).toBe(null);
     });
@@ -761,6 +765,10 @@ describe("SaveQuestionModal", () => {
           },
         });
         setupCollectionByIdEndpoint({ collections: [COLLECTION.PARENT] });
+        setupCollectionItemsEndpoint({
+          collection: BOBBY_TEST_COLLECTION,
+          collectionItems: [],
+        });
       });
       it("should create collection inside nested folder", async () => {
         await userEvent.click(collDropdown());

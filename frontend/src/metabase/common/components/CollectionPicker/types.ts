@@ -1,8 +1,9 @@
 import type {
   CollectionId,
-  SearchListQuery,
-  SearchModelType,
+  SearchRequest,
+  SearchModel,
   SearchResult,
+  CollectionItemModel,
 } from "metabase-types/api";
 
 import type {
@@ -11,14 +12,14 @@ import type {
   TypeWithModel,
 } from "../EntityPicker";
 
-export type CollectionPickerItem = TypeWithModel<
-  CollectionId,
-  SearchModelType
-> &
+export type CollectionPickerItem = TypeWithModel<CollectionId, SearchModel> &
   Pick<Partial<SearchResult>, "description" | "can_write"> & {
     location?: string | null;
     effective_location?: string | null;
     is_personal?: boolean;
+    collection_id?: CollectionId;
+    here?: CollectionItemModel[];
+    below?: CollectionItemModel[];
   };
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {
@@ -29,8 +30,8 @@ export type CollectionPickerOptions = EntityPickerModalOptions & {
 
 export type CollectionItemListProps = ListProps<
   CollectionId,
-  SearchModelType,
+  SearchModel,
   CollectionPickerItem,
-  SearchListQuery,
+  SearchRequest,
   CollectionPickerOptions
 >;

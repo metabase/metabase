@@ -52,7 +52,7 @@ describe("scenarios > binning > correctness > longitude", () => {
     cy.findByText("Done").click();
 
     getTitle("Count by Longitude");
-    cy.get(".cellData")
+    cy.get("[data-testid=cell-data]")
       .should("contain", "Longitude")
       .should("contain", "Count")
       .and("contain", "166.54257260° W")

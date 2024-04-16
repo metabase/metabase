@@ -288,7 +288,7 @@
   [{:keys [database-name]} driver]
   (assert (string? database-name))
   (assert (keyword? driver))
-  (mdb/setup-db!)
+  (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
   (t2/select-one Database
                  :name    database-name
                  :engine (u/qualified-name driver)
@@ -428,10 +428,14 @@
 (defmethod aggregate-column-info ::test-extensions
   ([_ aggregation-type]
    (assert (#{:count :cum-count} aggregation-type))
-   {:base_type     :type/BigInteger
+   {:base_type     (case aggregation-type
+                     :count     :type/BigInteger
+                     :cum-count :type/Decimal)
     :semantic_type :type/Quantity
     :name          "count"
-    :display_name  "Count"
+    :display_name  (case aggregation-type
+                     :count     "Count"
+                     :cum-count "Cumulative count")
     :source        :aggregation
     :field_ref     [:aggregation 0]})
 
@@ -443,7 +447,7 @@
                                                 :query    {:source-table table-id
                                                            :aggregation  [[aggregation-type [:field-id field-id]]]}}))
     (when (= aggregation-type :cum-count)
-      {:base_type     :type/BigInteger
+      {:base_type     :type/Decimal
        :semantic_type :type/Quantity}))))
 
 

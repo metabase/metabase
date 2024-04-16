@@ -11,7 +11,7 @@ import FormMessage from "metabase/components/form/FormMessage";
 import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import DatabaseSyncModal from "metabase/databases/containers/DatabaseSyncModal";
+import { DatabaseSyncModal } from "metabase/databases/components/DatabaseSyncModal";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
@@ -146,14 +146,14 @@ export default class DatabaseList extends Component {
             </tbody>
           </table>
           {!hasSampleDatabase && isAdmin ? (
-            <div className="pt4">
+            <div className={CS.pt4}>
               <span
-                className={cx("p2", CS.textItalic, {
+                className={cx(CS.p2, CS.textItalic, {
                   [CS.borderTop]: databases && databases.length > 0,
                 })}
               >
                 {isAddingSampleDatabase ? (
-                  <span className={cx("text-light", CS.noDecoration)}>
+                  <span className={cx(CS.textLight, CS.noDecoration)}>
                     {t`Restoring the sample database...`}
                   </span>
                 ) : (

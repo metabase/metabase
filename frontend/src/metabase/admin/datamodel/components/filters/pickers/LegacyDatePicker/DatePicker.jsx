@@ -7,6 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Calendar from "metabase/components/Calendar";
+import PopoverS from "metabase/components/Popover/Popover.module.css";
 import CS from "metabase/css/core/index.css";
 import { FieldDimension } from "metabase-lib/v1/Dimension";
 
@@ -336,7 +337,7 @@ export default class DatePicker extends Component {
     return (
       <div
         // apply flex to align the operator selector and the "Widget" if necessary
-        className={cx(className, "PopoverBody--marginBottom", {
+        className={cx(className, PopoverS.PopoverBodyMarginBottom, {
           [cx(CS.flex, CS.alignCenter)]: Widget && Widget.horizontalLayout,
         })}
         style={{ minWidth: 300 }}
@@ -344,8 +345,8 @@ export default class DatePicker extends Component {
         {!disableOperatorSelection && (
           <DatePickerSelector
             className={cx({
-              mr2: Widget && Widget.horizontalLayout,
-              mb2: Widget && !Widget.horizontalLayout,
+              [CS.mr2]: Widget && Widget.horizontalLayout,
+              [CS.mb2]: Widget && !Widget.horizontalLayout,
             })}
             operator={operator && operator.name}
             operators={operators}

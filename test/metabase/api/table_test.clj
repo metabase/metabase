@@ -2,6 +2,7 @@
   "Tests for /api/table endpoints."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.api.table :as api.table]
    [metabase.driver :as driver]
@@ -33,7 +34,8 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version])
+   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version
+                         :cache_field_values_schedule :metadata_sync_schedule])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false
@@ -43,8 +45,6 @@
     :caveats                     nil
     :points_of_interest          nil
     :features                    (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
-    :cache_field_values_schedule "0 50 0 * * ? *"
-    :metadata_sync_schedule      "0 50 * * * ? *"
     :refingerprint               nil
     :auto_run_queries            true
     :settings                    nil
@@ -82,7 +82,6 @@
 (defn- fk-field-details [field]
   (-> (field-details field)
       (dissoc :dimension_options :default_dimension_option)))
-
 
 (deftest list-table-test
   (testing "GET /api/table"
@@ -122,7 +121,54 @@
              (->> (mt/user-http-request :rasta :get 200 "table")
                   (filter #(= (:db_id %) (mt/id))) ; prevent stray tables from affecting unit test results
                   (map #(select-keys % [:name :display_name :id :entity_type]))
-                  set))))))
+                  set))))
+    (testing "Schema is \"\" rather than nil, if not set"
+      (mt/with-temp [Database {database-id :id} {}
+                     Table    {}                {:db_id        database-id
+                                                 :name         "schemaless_table"
+                                                 :display_name "Schemaless"
+                                                 :entity_type  "entity/GenericTable"
+                                                 :schema       nil}]
+        (is (= [""]
+               (->> (mt/user-http-request :rasta :get 200 "table")
+                    (filter #(= (:db_id %) database-id))
+                    (map :schema))))))))
+
+(defmacro with-tables-as-uploads
+  "Temporarily mark the given tables as uploads, as an alternate to making more expensive or brittle changes to the db."
+  [table-keys & body]
+  `(t2/with-transaction []
+     (let [where-clause# {:id [:in (map mt/id ~table-keys)]}]
+       (try
+         (t2/update! :model/Table where-clause# {:is_upload true})
+         ~@body
+         (finally
+           (t2/update! :model/Table where-clause# {:is_upload false}))))))
+
+(deftest list-uploaded-tables-test
+  (testing "GET /api/table/uploaded"
+    (testing "These should come back in alphabetical order and include relevant metadata"
+      (with-tables-as-uploads [:categories :reviews]
+        (t2.with-temp/with-temp [Card {} {:table_id (mt/id :categories)}
+                                 Card {} {:table_id (mt/id :reviews)}
+                                 Card {} {:table_id (mt/id :reviews)}]
+          (let [result (mt/user-http-request :rasta :get 200 "table/uploaded")]
+            ;; =? doesn't seem to allow predicates inside maps, inside a set
+            (is (every? t/offset-date-time? (map :created_at result)))
+            (is (= #{{:name         (mt/format-name "categories")
+                      :display_name "Categories"
+                      :id           (mt/id :categories)
+                      :schema       "PUBLIC"
+                      :entity_type  "entity/GenericTable"}
+                     {:name         (mt/format-name "reviews")
+                      :display_name "Reviews"
+                      :id           (mt/id :reviews)
+                      :schema       "PUBLIC"
+                      :entity_type  "entity/GenericTable"}}
+                   (->> result
+                        (filter #(= (:db_id %) (mt/id)))    ; prevent stray tables from affecting unit test results
+                        (map #(select-keys % [:name :display_name :id :entity_type :schema :usage_count]))
+                        set)))))))))
 
 (deftest get-table-test
   (testing "GET /api/table/:id"
@@ -134,6 +180,23 @@
              :display_name "Venues"
              :db_id        (mt/id)})
            (mt/user-http-request :rasta :get 200 (format "table/%d" (mt/id :venues)))))
+
+    (testing " returns schema as \"\" not nil"
+      (mt/with-temp [Database {database-id :id} {}
+                     Table    {table-id :id}    {:db_id        database-id
+                                                 :name         "schemaless_table"
+                                                 :display_name "Schemaless"
+                                                 :entity_type  "entity/GenericTable"
+                                                 :schema       nil}]
+        (is (= (merge
+                 (dissoc (table-defaults) :segments :field_values :metrics :db)
+                 (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status] :id table-id) :pk_field)
+                 {:schema       ""
+                  :name         "schemaless_table"
+                  :display_name "Schemaless"
+                  :db_id        database-id})
+               (dissoc (mt/user-http-request :rasta :get 200 (str "table/" table-id))
+                       :db)))))
 
     (testing " should return a 403 for a user that doesn't have read permissions for the table"
       (mt/with-temp [Database {database-id :id} {}
@@ -319,6 +382,7 @@
               (t2/hydrate (t2/select-one [Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table)) :pk_field)
               {:description     "What a nice table!"
                :entity_type     nil
+               :schema          ""
                :visibility_type "hidden"
                :display_name    "Userz"})
              (dissoc (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table)))
@@ -347,7 +411,10 @@
 (deftest update-table-sync-test
   (testing "PUT /api/table/:id"
     (testing "Table should get synced when it gets unhidden"
-      (t2.with-temp/with-temp [Table table]
+      (t2.with-temp/with-temp [Database db    {:details (:details (mt/db))}
+                               Table    table (-> (t2/select-one :model/Table (mt/id :venues))
+                                                  (dissoc :id)
+                                                  (assoc :db_id (:id db)))]
         (let [called (atom 0)
               ;; original is private so a var will pick up the redef'd. need contents of var before
               original (var-get #'api.table/sync-unhidden-tables)]

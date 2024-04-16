@@ -48,7 +48,9 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     queryBuilderMain().within(() => {
       cy.findByLabelText("Legend").findByText("Gadget").should("exist");
-      cy.get(".LineAreaBarChart").findByText("January 2023").should("exist");
+      cy.get("[data-element-id=line-area-bar-chart]")
+        .findByText("January 2023")
+        .should("exist");
     });
 
     cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
@@ -65,7 +67,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     );
 
     queryBuilderMain().within(() => {
-      cy.get(".LineAreaBarChart").findByText("June 2022"); // more granular axis labels
+      cy.get("[data-element-id=line-area-bar-chart]").findByText("June 2022"); // more granular axis labels
 
       // confirm that product category is still broken out
       cy.findByLabelText("Legend").within(() => {
@@ -519,7 +521,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^10 –/)
-      .closest(".TableInteractive-cellWrapper")
+      .closest(".test-TableInteractive-cellWrapper")
       .next()
       .contains("85")
       .click();
@@ -563,7 +565,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findByText("Distinct values").click();
 
     // there should be 0 distinct values since they are all null
-    cy.get(".TableInteractive-cellWrapper").contains("0");
+    cy.get(".test-TableInteractive-cellWrapper").contains("0");
   });
 
   it("should parse value on click through on the first row of pie chart (metabase#15250)", () => {
@@ -679,7 +681,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".LineAreaBarChart").get(".dot").first().click({ force: true });
+    cy.get("[data-element-id=line-area-bar-chart]")
+      .get(".dot")
+      .first()
+      .click({ force: true });
     popover().within(() => {
       cy.findByText("See these Orders").should("be.visible");
 
@@ -723,14 +728,20 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".LineAreaBarChart").findAllByTestId("legend-item").first().click();
+    cy.get("[data-element-id=line-area-bar-chart]")
+      .findAllByTestId("legend-item")
+      .first()
+      .click();
 
     popover().within(() => {
       cy.findByText("See these Orders").should("be.visible");
       cy.findByText("Automatic insights…").should("be.visible");
     });
 
-    cy.get(".LineAreaBarChart").get(".bar").first().click({ force: true });
+    cy.get("[data-element-id=line-area-bar-chart]")
+      .get(".bar")
+      .first()
+      .click({ force: true });
     popover().within(() => {
       cy.findByText("See these Orders").should("be.visible");
 
@@ -767,7 +778,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".CardVisualization").get("path.cursor-pointer").first().click();
+    cy.findAllByTestId("choropleth-feature").first().click();
 
     popover().within(() => {
       cy.findByText("See these People").should("be.visible");

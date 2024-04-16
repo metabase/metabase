@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { useEvent } from "react-use";
 import { t } from "ttag";
@@ -59,17 +59,21 @@ const QueryDownloadPopover = ({
 }: QueryDownloadPopoverProps) => {
   const [isHoldingAltKey, setHoldingAltKey] = useState(false);
 
-  useEvent("keydown", event => {
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.key === "Alt") {
       setHoldingAltKey(true);
     }
-  });
+  }, []);
 
-  useEvent("keyup", event => {
+  const handleKeyUp = useCallback((event: KeyboardEvent) => {
     if (event.key === "Alt") {
       setHoldingAltKey(false);
     }
-  });
+  }, []);
+
+  useEvent("keydown", handleKeyDown);
+
+  useEvent("keyup", handleKeyUp);
 
   const formats = canDownloadPng
     ? [...exportFormats, exportFormatPng]
@@ -84,8 +88,8 @@ const QueryDownloadPopover = ({
   };
 
   const formattingInfoTooltipLabel = isMac()
-    ? t`Option click to download without formatting applied`
-    : t`Alt click to download without formatting applied`;
+    ? t`Hold the Option key to download unformatted results`
+    : t`Hold the Alt key to download unformatted results`;
 
   return (
     <DownloadPopoverRoot isExpanded={hasTruncatedResults}>
@@ -131,7 +135,7 @@ const DownloadButton = ({
 
   return (
     <DownloadButtonRoot
-      onClick={event => onDownload(format, !event.altKey)}
+      onClick={() => onDownload(format, !isHoldingAltKey)}
       ref={ref}
     >
       <DownloadButtonText>.{format}</DownloadButtonText>

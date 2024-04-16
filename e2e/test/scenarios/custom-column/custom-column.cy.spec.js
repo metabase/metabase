@@ -262,7 +262,7 @@ describe("scenarios > question > custom column", () => {
     );
     cy.log("Works in 0.35.3");
     // ID should be "1" but it is picking the product ID and is showing "14"
-    cy.get(".TableInteractive-cellWrapper--firstColumn")
+    cy.get(".test-TableInteractive-cellWrapper--firstColumn")
       .eq(1) // the second cell from the top in the first column (the first one is a header cell)
       .findByText("1");
   });
@@ -341,7 +341,7 @@ describe("scenarios > question > custom column", () => {
       .should("have.length.of.at.least", 8);
   });
 
-  it.skip("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
+  it("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
     cy.createQuestion(
       {
         name: "13634",
@@ -365,7 +365,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Foo Bar");
-    cy.findAllByText("57911");
+    cy.findAllByText("57,911");
   });
 
   it("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
@@ -473,25 +473,8 @@ describe("scenarios > question > custom column", () => {
       expect(response.body.error).to.not.exist;
     });
 
-    cy.get(".cellData").should("contain", "37.65");
+    cy.get("[data-testid=cell-data]").should("contain", "37.65");
     cy.findAllByTestId("header-cell").should("not.contain", CE_NAME);
-  });
-
-  it("should handle using `case()` with boolean expressions (metabase#38944)", () => {
-    const expression = 'case(isempty([Discount]), "true", "false")';
-    openOrdersTable({ mode: "notebook" });
-
-    addCustomColumn();
-
-    popover().within(() => {
-      enterCustomColumnDetails({
-        formula: expression,
-        name: "Discount is empty",
-      });
-
-      cy.findByRole("button", { name: "Done" }).should("be.disabled");
-      cy.findByText("Invalid expression");
-    });
   });
 
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {

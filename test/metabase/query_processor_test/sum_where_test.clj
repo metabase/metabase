@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test.sum-where-test
   (:require
    [clojure.test :refer :all]
-   #_[metabase.models.metric :refer [LegacyMetric]]
+   #_[metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.segment :refer [Segment]]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))

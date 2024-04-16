@@ -7,7 +7,6 @@
         "ranquild",
         "uladzimirdev",
         "kamilmielnik",
-        "oleggromov",
         "nemanjaglumac",
         "romeovs"
       ]
@@ -15,7 +14,7 @@
     {
       "name": "Embedding",
       "label": ".Team/Embedding",
-      "members": ["WiNloSt", "deniskaber", "oisincoveney", "npretto"]
+      "members": ["WiNloSt", "deniskaber", "oisincoveney", "npretto", "heypoom"]
     },
     {
       "name": "BEC",
