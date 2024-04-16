@@ -17,3 +17,4 @@ export * from "./session";
 export * from "./table";
 export * from "./timeline";
 export * from "./timeline-event";
+export * from "./user";
