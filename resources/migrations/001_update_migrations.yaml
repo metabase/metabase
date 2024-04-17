@@ -6188,6 +6188,51 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.BackfillQueryField"
 
+  - changeSet:
+      id: v50.2024-04-12T13:24:09
+      author: johnswanson
+      comment: Add `collection.trashed_from_location`
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: trashed_from_location
+                  type: ${text.type}
+                  remarks: "The previous location this collection was trashed from"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-04-12T13:43:12
+      author: johnswanson
+      comment: Add `report_card.trashed_from_collection_id`
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: trashed_from_collection_id
+                  type: int
+                  remarks: "The previous parent collection this card was trashed *from*"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-04-12T13:43:20
+      author: johnswanson
+      comment: Add `report_dashboard.trashed_from_collection_id`
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: trashed_from_collection_id
+                  type: int
+                  remarks: "The previous parent collection this dashboard was trashed *from*"
+                  constraints:
+                    nullable: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -200,27 +200,28 @@
                                                                    :parameters "abc"})))))
 
 (def ^:private dashboard-defaults
-  {:archived                false
-   :caveats                 nil
-   :collection_id           nil
-   :collection_position     nil
-   :collection              true
-   :created_at              true ; assuming you call dashboard-response on the results
-   :description             nil
-   :embedding_params        nil
-   :enable_embedding        false
-   :initially_published_at  nil
-   :entity_id               true
-   :made_public_by_id       nil
-   :parameters              []
-   :points_of_interest      nil
-   :cache_ttl               nil
-   :position                nil
-   :width                   "fixed"
-   :public_uuid             nil
-   :auto_apply_filters      true
-   :show_in_getting_started false
-   :updated_at              true})
+  {:archived                   false
+   :caveats                    nil
+   :collection_id              nil
+   :collection_position        nil
+   :collection                 true
+   :created_at                 true ; assuming you call dashboard-response on the results
+   :description                nil
+   :embedding_params           nil
+   :enable_embedding           false
+   :initially_published_at     nil
+   :entity_id                  true
+   :made_public_by_id          nil
+   :parameters                 []
+   :points_of_interest         nil
+   :cache_ttl                  nil
+   :position                   nil
+   :width                      "fixed"
+   :public_uuid                nil
+   :auto_apply_filters         true
+   :show_in_getting_started    false
+   :updated_at                 true
+   :trashed_from_collection_id nil})
 
 (deftest create-dashboard-test
   (testing "POST /api/dashboard"
