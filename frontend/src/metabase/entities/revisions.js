@@ -1,5 +1,4 @@
 import { revisionApi } from "metabase/api";
-import { POST } from "metabase/lib/api";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 
 import Dashboards from "./dashboards";
@@ -25,17 +24,20 @@ const Revision = createEntity({
             ...revision,
           })),
         ),
-    revert: POST("/api/revision/revert"),
   },
 
   objectActions: {
     // use thunk since we don't actually want to dispatch an action
-    revert: revision => async (dispatch, getState) => {
-      await Revision.api.revert({
-        entity: revision.model_type,
-        id: revision.model_id,
-        revision_id: revision.id,
-      });
+    revert: revision => async dispatch => {
+      await entityCompatibleQuery(
+        {
+          entity: revision.model_type,
+          id: revision.model_id,
+          revision_id: revision.id,
+        },
+        dispatch,
+        revisionApi.endpoints.revertRevision,
+      );
 
       return dispatch(Revision.actions.invalidateLists());
     },
