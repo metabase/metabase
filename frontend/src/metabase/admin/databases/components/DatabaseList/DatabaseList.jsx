@@ -76,7 +76,7 @@ export default class DatabaseList extends Component {
 
     return (
       <div className={CS.wrapper} data-testid="database-list">
-        <section className={cx(AdminS.PageHeader, CS.px2, "clearfix")}>
+        <section className={cx(AdminS.PageHeader, CS.px2, CS.clearfix)}>
           {isAdmin && (
             <Link
               to="/admin/databases/create"
