@@ -58,6 +58,10 @@ export function invalidateTags(
   return !error ? tags : [];
 }
 
+// ----------------------------------------------------------------------- //
+// Keep the below list of entity-specific functions alphabetically sorted. //
+// ----------------------------------------------------------------------- //
+
 export function provideActivityItemListTags(
   items: RecentItem[] | PopularItem[],
 ): TagDescription<TagType>[] {
