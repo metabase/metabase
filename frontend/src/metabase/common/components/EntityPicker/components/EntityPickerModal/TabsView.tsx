@@ -34,7 +34,10 @@ export const TabsView = <
   const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
 
   useMount(() => {
-    if (initialValue?.model && tabs.some((tab) => tab.model === initialValue.model)) {
+    if (
+      initialValue?.model &&
+      tabs.some(tab => tab.model === initialValue.model)
+    ) {
       setSelectedTab(initialValue.model);
     }
   });

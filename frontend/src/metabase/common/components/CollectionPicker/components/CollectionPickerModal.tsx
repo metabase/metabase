@@ -21,14 +21,14 @@ interface CollectionPickerModalProps {
   onChange: (item: CollectionPickerValueItem) => void;
   onClose: () => void;
   options?: CollectionPickerOptions;
-  value: Pick<CollectionPickerItem, "id" | "model">;
+  value: Pick<CollectionPickerValueItem, "id" | "model">;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
 }
 
 const canSelectItem = (
   item: Pick<CollectionPickerItem, "can_write" | "model"> | null,
 ): item is CollectionPickerValueItem => {
-  return !!item && item?.can_write !== false && item.model === "collection";
+  return !!item && item.can_write !== false && item.model === "collection";
 };
 
 const searchFilter = (
@@ -129,7 +129,7 @@ export const CollectionPickerModal = ({
         onClose={closeCreateDialog}
         parentCollectionId={
           canSelectItem(selectedItem)
-            ? selectedItem?.id
+            ? selectedItem.id
             : canSelectItem(value)
             ? value.id
             : "root"

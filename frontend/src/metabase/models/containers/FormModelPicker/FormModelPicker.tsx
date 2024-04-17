@@ -3,8 +3,8 @@ import type { HTMLAttributes } from "react";
 import { useState, useRef } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetCardQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
-import { useQuestionQuery } from "metabase/common/hooks";
 import FormField from "metabase/core/components/FormField";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { Button, Icon } from "metabase/ui";
@@ -29,10 +29,9 @@ export function FormModelPicker({
   const formFieldRef = useRef<HTMLDivElement>(null);
 
   const isModelSelected = typeof value === "number";
-  const { data: model } = useQuestionQuery({
-    id: value,
-    enabled: isModelSelected,
-  });
+  const { data: model } = useGetCardQuery(
+    isModelSelected ? { id: value } : skipToken,
+  );
 
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
@@ -59,7 +58,7 @@ export function FormModelPicker({
             root: { "&:active": { transform: "none" } },
           }}
         >
-          {isModelSelected ? model?.displayName() : placeholder}
+          {isModelSelected ? model?.name : placeholder}
         </Button>
       </FormField>
       {isPickerOpen && (
@@ -67,10 +66,10 @@ export function FormModelPicker({
           models={["dataset"]}
           title={t`Select a model`}
           value={
-            model?.id()
+            model?.id
               ? {
-                  id: model?.id(),
-                  model: model?.type() === "model" ? "dataset" : "card",
+                  id: model.id,
+                  model: model.type === "model" ? "dataset" : "card",
                 }
               : undefined
           }

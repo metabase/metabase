@@ -8,7 +8,7 @@ import {
   mockScrollBy,
   renderWithProviders,
   screen,
-  waitFor,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import type { CollectionId, CollectionItem } from "metabase-types/api";
 import {
@@ -64,11 +64,13 @@ const collectionTree: NestedCollectionItem[] = [
               {
                 ...myQuestion,
                 model: "card",
-              } as unknown as NestedCollectionItem,
+                descendants: [],
+              },
               {
                 ...myModel,
                 model: "dataset",
-              } as unknown as NestedCollectionItem,
+                descendants: [],
+              },
             ],
             location: "/4/",
             can_write: true,
@@ -109,33 +111,34 @@ const collectionTree: NestedCollectionItem[] = [
 ];
 
 const flattenCollectionTree = (
-  node: NestedCollectionItem[],
+  nodes: NestedCollectionItem[],
 ): Omit<NestedCollectionItem, "descendants">[] => {
-  if (!node) {
+  if (!nodes) {
     return [];
   }
-  return [...node.map(n => _.omit(n, "descendants"))].concat(
-    ...node.map(n => flattenCollectionTree(n.descendants)),
-  );
+  return nodes.flatMap(({ descendants, ...node }) => [
+    node,
+    ...flattenCollectionTree(descendants),
+  ]);
 };
 
-const walkForCollectionItems = (node: NestedCollectionItem[]) => {
-  node.forEach(n => {
-    if (!n.descendants) {
+const setupCollectionTreeMocks = (node: NestedCollectionItem[]) => {
+  node.forEach(node => {
+    if (!node.descendants) {
       return;
     }
-    const collectionItems = n.descendants.map((c: NestedCollectionItem) =>
+    const collectionItems = node.descendants.map((c: NestedCollectionItem) =>
       createMockCollectionItem(c),
     );
 
     setupCollectionItemsEndpoint({
-      collection: createMockCollection({ id: n.id }),
+      collection: createMockCollection({ id: node.id }),
       collectionItems,
       models: ["collection", "dataset", "card"],
     });
 
     if (collectionItems.length > 0) {
-      walkForCollectionItems(n.descendants);
+      setupCollectionTreeMocks(node.descendants);
     }
   });
 };
@@ -165,8 +168,7 @@ const commonSetup = () => {
     }
   });
 
-  // Setup collection items mocks
-  walkForCollectionItems(collectionTree);
+  setupCollectionTreeMocks(collectionTree);
 };
 
 const setupPicker = async ({
@@ -184,9 +186,7 @@ const setupPicker = async ({
     />,
   );
 
-  await waitFor(() =>
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument(),
-  );
+  await waitForLoaderToBeRemoved();
 };
 
 const setupModal = async ({
@@ -205,9 +205,7 @@ const setupModal = async ({
     />,
   );
 
-  await waitFor(() =>
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument(),
-  );
+  await waitForLoaderToBeRemoved();
 };
 
 describe("QuestionPicker", () => {

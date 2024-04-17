@@ -5,8 +5,8 @@ import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import { useGetCardQuery, skipToken } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
-import { useQuestionQuery } from "metabase/common/hooks";
 import ActionButton from "metabase/components/ActionButton";
 import QuestionLoader from "metabase/containers/QuestionLoader";
 import Radio from "metabase/core/components/Radio";
@@ -117,10 +117,9 @@ const EditSandboxingModal = ({
     (!_.isEqual(originalPolicy, normalizedPolicy) ||
       normalizedPolicy.id == null);
 
-  const { data: currentQuestion } = useQuestionQuery({
-    id: Number(policy.card_id),
-    enabled: !!policy.card_id,
-  });
+  const { data: currentQuestion } = useGetCardQuery(
+    policy.card_id != null ? { id: policy.card_id } : skipToken,
+  );
 
   return (
     <div>
@@ -166,23 +165,21 @@ const EditSandboxingModal = ({
                 root: { "&:active": { transform: "none" } },
               }}
             >
-              {currentQuestion?.displayName() ?? t`Select a question`}
+              {currentQuestion?.name ?? t`Select a question`}
             </Button>
             {showPickerModal && (
               <QuestionPickerModal
                 value={
-                  currentQuestion
+                  currentQuestion && policy.card_id != null
                     ? {
-                        id: Number(policy.card_id),
+                        id: policy.card_id,
                         model:
-                          currentQuestion.type() === "model"
-                            ? "dataset"
-                            : "card",
+                          currentQuestion.type === "model" ? "dataset" : "card",
                       }
                     : undefined
                 }
                 onChange={newCard => {
-                  setPolicy({ ...policy, card_id: Number(newCard.id) });
+                  setPolicy({ ...policy, card_id: newCard.id });
                   hideModal();
                 }}
                 onClose={hideModal}

@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 
+import { skipToken, useGetCardQuery } from "metabase/api";
 import { isValidCollectionId } from "metabase/collections/utils";
-import { useCollectionQuery, useQuestionQuery } from "metabase/common/hooks";
+import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
@@ -44,14 +45,13 @@ const useGetInitialCollection = (
 
   const cardId = isQuestion ? Number(initialValue.id) : undefined;
 
-  const { data: currentQuestion, error: questionError } = useQuestionQuery({
-    id: cardId,
-    enabled: !!cardId,
-  });
+  const { data: currentQuestion, error: questionError } = useGetCardQuery(
+    cardId ? { id: cardId } : skipToken,
+  );
 
   const collectionId =
     isQuestion && currentQuestion
-      ? currentQuestion?.collectionId()
+      ? currentQuestion?.collection_id
       : initialValue?.id;
 
   const { data: currentCollection, error: collectionError } =
@@ -61,7 +61,7 @@ const useGetInitialCollection = (
     });
 
   return {
-    currentQuestion: currentQuestion?._card,
+    currentQuestion: currentQuestion,
     currentCollection,
     isLoading: !currentCollection,
     error: questionError ?? collectionError,
@@ -126,30 +126,24 @@ export const QuestionPicker = ({
       if (currentCollection?.id) {
         const newPath = getStateFromIdPath({
           idPath: getCollectionIdPath(
-            {
-              id: currentCollection.id,
-              location: currentCollection.location,
-              is_personal: currentCollection.is_personal,
-            },
+            currentCollection,
             userPersonalCollectionId,
           ),
           models,
         });
 
-        if (currentCollection.can_write) {
-          // start with the current item selected if we can
-          newPath[newPath.length - 1].selectedItem = currentQuestion
-            ? {
-                id: currentQuestion.id,
-                name: currentQuestion.name,
-                model: currentQuestion.type === "model" ? "dataset" : "card",
-              }
-            : {
-                id: currentCollection.id,
-                name: currentCollection.name,
-                model: "collection",
-              };
-        }
+        // start with the current item selected if we can
+        newPath[newPath.length - 1].selectedItem = currentQuestion
+          ? {
+              id: currentQuestion.id,
+              name: currentQuestion.name,
+              model: currentQuestion.type === "model" ? "dataset" : "card",
+            }
+          : {
+              id: currentCollection.id,
+              name: currentCollection.name,
+              model: "collection",
+            };
 
         setPath(newPath);
       }
@@ -158,7 +152,7 @@ export const QuestionPicker = ({
   );
 
   if (error) {
-    <LoadingAndErrorWrapper error={error} />;
+    return <LoadingAndErrorWrapper error={error} />;
   }
 
   if (loadingCurrentCollection) {
