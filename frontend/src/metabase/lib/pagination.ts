@@ -1,8 +1,8 @@
-import type { PaginationInput, PaginationParams } from "metabase-types/api";
+import type { PaginationInput, PaginationRequest } from "metabase-types/api";
 
-export const getPaginationParams = (
+export const getPaginationRequestParams = (
   input: PaginationInput,
-): PaginationParams => {
+): PaginationRequest => {
   if (!input) {
     return {};
   }
