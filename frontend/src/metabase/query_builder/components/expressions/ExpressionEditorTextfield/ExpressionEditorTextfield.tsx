@@ -165,7 +165,7 @@ function transformPropsToState(
     metadata,
     reportTimezone,
     showMetabaseLinks,
-    shortcuts,
+    shortcuts = [],
   } = props;
   const expressionFromClause = clause
     ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
@@ -616,7 +616,7 @@ class ExpressionEditorTextfield extends React.Component<
       expressionPosition,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       showMetabaseLinks,
-      shortcuts,
+      shortcuts = [],
     } = this.props;
     const { source } = this.state;
     const { suggestions, helpText } = suggestWithExtras({
