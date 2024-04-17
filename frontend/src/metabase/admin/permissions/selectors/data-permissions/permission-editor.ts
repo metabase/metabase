@@ -271,9 +271,11 @@ export const getDatabasesPermissionEditor = createSelector(
       hasSingleSchema,
     );
 
+    const showViewDataColumn = hasViewDataOptions(entities);
+
     const columns = _.compact([
       { name: getEditorEntityName(params, hasSingleSchema) },
-      hasViewDataOptions(entities) && { name: t`View data` },
+      showViewDataColumn && { name: t`View data` },
       { name: t`Create queries` },
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
     ]);
@@ -281,16 +283,13 @@ export const getDatabasesPermissionEditor = createSelector(
     const breadcrumbs = getDatabasesEditorBreadcrumbs(params, metadata, group);
     const title = t`Permissions for the `;
 
-    const deprecatedPermsInGraph = new Set(
-      _.compact([
-        hasPermissionValueInEntityGraphs(
-          permissions,
-          entities.map((entity: any) => ({ groupId, ...entity.entityId })),
-          DataPermission.VIEW_DATA,
-          DataPermissionValue.LEGACY_NO_SELF_SERVICE,
-        ) && DataPermissionValue.LEGACY_NO_SELF_SERVICE,
-      ]),
-    );
+    const hasLegacyNoSelfServiceValueInPermissionGraph =
+      hasPermissionValueInEntityGraphs(
+        permissions,
+        entities.map((entity: any) => ({ groupId, ...entity.entityId })),
+        DataPermission.VIEW_DATA,
+        DataPermissionValue.LEGACY_NO_SELF_SERVICE,
+      );
 
     return {
       title,
@@ -306,7 +305,7 @@ export const getDatabasesPermissionEditor = createSelector(
       filterPlaceholder: getFilterPlaceholder(params, hasSingleSchema),
       columns,
       entities,
-      deprecatedPermsInGraph,
+      hasLegacyNoSelfServiceValueInPermissionGraph,
     };
   },
 );
@@ -422,26 +421,25 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
 
       const permissionSubject = getPermissionSubject(params);
 
+      const showViewDataColumn = hasViewDataOptions(entities);
+
       const columns = _.compact([
         { name: t`Group name` },
-        hasViewDataOptions(entities) && { name: t`View data` },
+        showViewDataColumn && { name: t`View data` },
         { name: t`Create queries` },
         ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
       ]);
 
-      const deprecatedPermsInGraph = new Set(
-        _.compact([
-          hasPermissionValueInEntityGraphs(
-            permissions,
-            entities.map((entity: any) => ({
-              groupId: entity.id,
-              ...entity.entityId,
-            })),
-            DataPermission.VIEW_DATA,
-            DataPermissionValue.LEGACY_NO_SELF_SERVICE,
-          ) && DataPermissionValue.LEGACY_NO_SELF_SERVICE,
-        ]),
-      );
+      const hasLegacyNoSelfServiceValueInPermissionGraph =
+        hasPermissionValueInEntityGraphs(
+          permissions,
+          entities.map((entity: any) => ({
+            groupId: entity.id,
+            ...entity.entityId,
+          })),
+          DataPermission.VIEW_DATA,
+          DataPermissionValue.LEGACY_NO_SELF_SERVICE,
+        );
 
       return {
         title: t`Permissions for`,
@@ -449,7 +447,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
         breadcrumbs: getGroupsDataEditorBreadcrumbs(params, metadata),
         columns,
         entities,
-        deprecatedPermsInGraph,
+        hasLegacyNoSelfServiceValueInPermissionGraph,
       };
     },
   );

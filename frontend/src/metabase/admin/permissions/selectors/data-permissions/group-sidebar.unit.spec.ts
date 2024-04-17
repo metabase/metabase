@@ -1,5 +1,6 @@
 import { assocIn } from "icepick";
 
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import type { State } from "metabase-types/store";
 
 import { DataPermission, DataPermissionValue } from "../../types";
@@ -50,6 +51,12 @@ describe("getGroupsDataPermissionEditor", () => {
   });
 
   it("returns entities list for permissions editor", () => {
+    const originalPluginValue =
+      PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn;
+
+    // make sure that we're showing the view data column
+    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn = true;
+
     const entities = getGroupsDataPermissionEditor(stateWithLegacyValues, {
       params: {
         databaseId: 3,
@@ -116,6 +123,8 @@ describe("getGroupsDataPermissionEditor", () => {
         iconColor: "danger",
       },
     ]);
+
+    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn = originalPluginValue;
   });
 
   it("omits view data options when there is only one view data option", () => {

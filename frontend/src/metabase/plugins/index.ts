@@ -4,12 +4,12 @@ import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
-import type {
-  DataPermission,
-  DatabaseEntityId,
-  PermissionSubject,
+import {
+  type DataPermission,
+  type DatabaseEntityId,
+  type PermissionSubject,
   DataPermissionValue,
-  EntityId,
+  type EntityId,
 } from "metabase/admin/permissions/types";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
@@ -352,6 +352,9 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
     _value: string,
     _subject: "schemas" | "tables" | "fields",
   ) => false,
+  isRestrictivePermission: (_value: string) => false,
+  shouldShowViewDataColumn: false,
+  defaultViewDataPermission: DataPermissionValue.UNRESTRICTED,
 };
 
 export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {

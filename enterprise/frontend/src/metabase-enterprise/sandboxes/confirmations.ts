@@ -25,7 +25,7 @@ export function getSandboxedTableWarningModal(
   ) {
     return {
       title: t`Change access to this database to “Sandboxed”?`,
-      message: t`As part of providing sandboxing we will also have to remove this group's native querying permissions from all tables and schemas in this database.`,
+      message: t`This group's native querying permissions will be removed from all tables and schemas in this database.`,
       confirmButtonText: t`Change`,
       cancelButtonText: t`Cancel`,
     };

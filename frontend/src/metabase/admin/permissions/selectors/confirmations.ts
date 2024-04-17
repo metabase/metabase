@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { t, c } from "ttag";
 import _ from "underscore";
 
 import {
@@ -9,6 +9,7 @@ import {
   getFieldsPermission,
   getSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Group,
@@ -29,12 +30,12 @@ const PERM_LEVELS = [
   DataPermissionValue.UNRESTRICTED,
   DataPermissionValue.FULL,
   DataPermissionValue.IMPERSONATED,
+  DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+  DataPermissionValue.QUERY_BUILDER,
   DataPermissionValue.CONTROLLED,
   DataPermissionValue.SANDBOXED,
   DataPermissionValue.BLOCKED,
   DataPermissionValue.LEGACY_NO_SELF_SERVICE,
-  DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
-  DataPermissionValue.QUERY_BUILDER,
   DataPermissionValue.LIMITED,
   DataPermissionValue.NO,
   DataPermissionValue.NONE,
@@ -126,21 +127,6 @@ export function getPermissionWarningModal(
   }
 }
 
-export function getControlledDatabaseWarningModal(
-  currDbPermissionValue: string,
-  entityId: EntityId,
-) {
-  if (currDbPermissionValue !== DataPermissionValue.CONTROLLED) {
-    const [entityType, entityTypePlural] = getEntityTypeFromId(entityId);
-    return {
-      title: t`Change access to this database to “Granular”?`,
-      message: t`Just letting you know that changing the permission setting on this ${entityType} will also update the database permission setting to “Granular” to reflect that some of the database’s ${entityTypePlural} have different permission settings.`,
-      confirmButtonText: t`Change`,
-      cancelButtonText: t`Cancel`,
-    };
-  }
-}
-
 export function getWillRevokeNativeAccessWarningModal(
   permissions: GroupsPermissions,
   groupId: number,
@@ -163,8 +149,9 @@ export function getWillRevokeNativeAccessWarningModal(
 
     return {
       title: t`Change access to this database to “Granular”?`,
-      message: t`As part of providing granular permissions for this one ${entityType}, we will also have to remove this group's native querying permissions from all tables and schemas in this database.`,
-      confirmButtonText: t`Change`,
+      message: t`As part of providing granular permissions for this one ${entityType}, this group's native querying permissions will also be removed from all tables and schemas in this database.`,
+      confirmButtonText: c("This is a verb, for a confirmation button")
+        .t`Change`,
       cancelButtonText: t`Cancel`,
     };
   }
@@ -193,6 +180,7 @@ export function getRawQueryWarningModal(
   if (
     value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
     nativePermission !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
     ![
       DataPermissionValue.UNRESTRICTED,
       DataPermissionValue.IMPERSONATED,

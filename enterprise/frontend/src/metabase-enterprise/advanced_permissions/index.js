@@ -106,6 +106,15 @@ if (hasPremiumFeature("advanced_permissions")) {
     );
   };
 
+  PLUGIN_ADVANCED_PERMISSIONS.isRestrictivePermission = value => {
+    return value === DataPermissionValue.BLOCKED;
+  };
+
+  PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn = true;
+
+  PLUGIN_ADVANCED_PERMISSIONS.defaultViewDataPermission =
+    DataPermissionValue.BLOCKED;
+
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS[
     DataPermissionValue.IMPERSONATED
   ] = getImpersonatedPostAction;

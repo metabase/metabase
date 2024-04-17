@@ -80,20 +80,44 @@ const groupTableAccessPolicies = handleActions(
     },
     [UPDATE_DATA_PERMISSION]: {
       next: (state, { payload }) => {
-        if (payload.entityId.tableId === undefined) {
+        if (!payload || !payload.entityId) {
           return state;
         }
 
-        const key = getPolicyKeyFromParams({
-          groupId: payload.groupId,
-          tableId: payload.entityId.tableId,
-        });
+        const { entityId, metadata, groupId } = payload;
 
-        const isSandboxed = key in state;
-        const isUnsandboxing = payload.value !== DataPermissionValue.SANDBOXED;
+        // if user is unsandboxing a specific table,
+        // remove the specific table's sandbox data
+        if (entityId.tableId !== undefined) {
+          const key = getPolicyKeyFromParams({
+            groupId,
+            tableId: entityId.tableId,
+          });
+          const isTableSandboxed = key in state;
+          const isUnsandboxingTable =
+            isTableSandboxed && payload.value !== DataPermissionValue.SANDBOXED;
 
-        if (isSandboxed && isUnsandboxing) {
-          return _.omit(state, key);
+          if (isTableSandboxed && isUnsandboxingTable) {
+            return _.omit(state, key);
+          } else {
+            return state;
+          }
+        }
+
+        if (entityId.databaseId !== null) {
+          const database = metadata.databases?.[entityId.databaseId];
+          const tables = database?.tables ?? [];
+          // filter tables if there's a schema referenced in the entity id
+          const entityTables = tables.filter(
+            table =>
+              !entityId.schemaName || table.schema_name === entityId.schemaName,
+          );
+
+          // delete 0 to N sandboxes present in the state
+          const policyKeys = entityTables.map(table =>
+            getPolicyKeyFromParams({ groupId, tableId: table.id }),
+          );
+          return _.omit(state, policyKeys);
         }
 
         return state;

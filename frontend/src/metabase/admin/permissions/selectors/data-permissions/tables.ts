@@ -21,7 +21,6 @@ import {
   DataPermissionType,
 } from "../../types";
 import {
-  getControlledDatabaseWarningModal,
   getPermissionWarning,
   getPermissionWarningModal,
   getWillRevokeNativeAccessWarningModal,
@@ -72,7 +71,6 @@ const buildAccessPermission = (
       defaultGroup,
       groupId,
     ),
-    getControlledDatabaseWarningModal(newValue, entityId),
   ];
 
   const options = PLUGIN_ADVANCED_PERMISSIONS.addSchemaPermissionOptions(
@@ -184,8 +182,11 @@ export const buildTablesPermissions = (
 
   const hasAnyAccessOptions = accessPermission.options.length > 1;
 
+  const shouldShowViewDataColumn =
+    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn && hasAnyAccessOptions;
+
   return _.compact([
-    hasAnyAccessOptions && accessPermission,
+    shouldShowViewDataColumn && accessPermission,
     nativePermission,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
       entityId,

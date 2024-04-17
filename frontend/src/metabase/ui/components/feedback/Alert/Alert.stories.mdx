@@ -5,7 +5,7 @@ import { Box, Alert, Icon, Stack, Text, TextInput } from "metabase/ui";
 export const args = {
   icon: <Icon name="warning" />,
   title: "Bummer!",
-  withCloseButton: false
+  withCloseButton: false,
 };
 
 export const argTypes = {
@@ -16,11 +16,16 @@ export const argTypes = {
     control: { type: "text" },
   },
   withCloseButton: {
-    control: {type: "toggle"}
-  }
+    control: { type: "toggle" },
+  },
 };
 
-<Meta title="Feecback/Alert" component={Alert} args={args} argTypes={argTypes} />
+<Meta
+  title="Feedback/Alert"
+  component={Alert}
+  args={args}
+  argTypes={argTypes}
+/>
 
 # Alert
 
@@ -29,10 +34,19 @@ Show helpful alerts when things go sideways (or maybe it's a happy alert. It hap
 ## Examples
 
 export const DefaultTemplate = args => {
-  return (<Alert {...args}>
-    <Text>The No self-service access level for View data is going away.</Text>
-    <Text>In a future release, if a group’s View data access for a database (or any of its schemas or tables) is still set to No self-service (deprecated), Metabase will automatically change that group’s View data access for the entire database to Blocked. We’ll be defaulting to Blocked, the least permissive View data access, to prevent any unattended access to data. Need help? See our docs.</Text>
-  </Alert>);
+  return (
+    <Alert {...args}>
+      <Text>The No self-service access level for View data is going away.</Text>
+      <Text>
+        In a future release, if a group’s View data access for a database (or
+        any of its schemas or tables) is still set to No self-service
+        (deprecated), Metabase will automatically change that group’s View data
+        access for the entire database to Blocked. We’ll be defaulting to
+        Blocked, the least permissive View data access, to prevent any
+        unattended access to data. Need help? See our docs.
+      </Text>
+    </Alert>
+  );
 };
 
 export const Default = DefaultTemplate.bind({});
