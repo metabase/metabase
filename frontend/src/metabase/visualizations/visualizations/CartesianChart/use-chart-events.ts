@@ -51,6 +51,7 @@ export const useChartEvents = (
   }: VisualizationProps,
 ) => {
   const isBrushing = useRef<boolean>();
+  const hasCombinedCards = rawSeries.length > 1;
 
   const onOpenQuestion = useCallback(
     (cardId?: CardId) => {
@@ -99,7 +100,12 @@ export const useChartEvents = (
             return;
           }
 
-          const hoveredData = getSeriesHoverData(chartModel, settings, event);
+          const hoveredData = getSeriesHoverData(
+            chartModel,
+            settings,
+            event,
+            hasCombinedCards,
+          );
 
           const isSameDatumHovered =
             hoveredData?.index === hovered?.index &&
@@ -109,13 +115,20 @@ export const useChartEvents = (
             return;
           }
 
-          onHoverChange?.(getSeriesHoverData(chartModel, settings, event));
+          onHoverChange?.(
+            getSeriesHoverData(chartModel, settings, event, hasCombinedCards),
+          );
         },
       },
       {
         eventName: "click",
         handler: (event: EChartsSeriesMouseEvent) => {
-          const clickData = getSeriesClickData(chartModel, settings, event);
+          const clickData = getSeriesClickData(
+            chartModel,
+            settings,
+            event,
+            hasCombinedCards,
+          );
 
           if (timelineEventsModel && event.name === "timeline-event") {
             onOpenTimelines?.();
@@ -182,6 +195,7 @@ export const useChartEvents = (
       onOpenTimelines,
       onSelectTimelineEvents,
       onDeselectTimelineEvents,
+      hasCombinedCards,
     ],
   );
 
