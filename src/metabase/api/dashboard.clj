@@ -250,7 +250,6 @@
         api/read-check
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
-        api/check-not-archived
         hide-unreadable-cards
         add-query-average-durations)))
 
@@ -701,7 +700,15 @@
           changes-stats              (atom nil)
           ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
           ;; tests that exclude it. so this only checks for dashcards
-          update-dashcards-and-tabs? (contains? dash-updates :dashcards)]
+          update-dashcards-and-tabs? (contains? dash-updates :dashcards)
+          dash-updates (cond-> dash-updates
+                         ;; changing `archived` also means changing the `collection_id` and `trashed_from_collection_id`
+                         (contains? dash-updates :archived)
+                         (assoc :collection_id (if (:archived dash-updates)
+                                                 collection/TRASH_COLLECTION_ID
+                                                 (:trashed_from_collection_id current-dash))
+                                :trashed_from_collection_id (when (:archived dash-updates)
+                                                              (:collection_id current-dash))))]
       (collection/check-allowed-to-change-collection current-dash dash-updates)
       (check-allowed-to-change-embedding current-dash dash-updates)
       (api/check-500
