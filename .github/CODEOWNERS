@@ -8,3 +8,13 @@ enterprise/backend/src/metabase_enterprise/task/truncate_audit_table.clj @noahmo
 enterprise/backend/src/metabase_enterprise/internal_user.clj @noahmoss
 src/metabase/**/*permissions* @noahmoss
 src/metabase/integrations @noahmoss
+
+# BEC team
+src/metabase/sync @qnkhuat @calherries
+src/metabase/sync.clj @qnkhuat @calherries
+src/metabase/search @qnkhuat
+enterprise/backend/src/metabase_enterprise/serialization @piranha
+src/metabase/upload.clj @calherries @crisptrutski
+src/metabase/upload @calherries @crisptrutski
+src/metabase/native_query_analyzer.clj @tsmacdonald
+src/metabase/native_query_analyzer @tsmacdonald
