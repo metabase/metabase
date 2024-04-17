@@ -42,6 +42,8 @@ export const ItemList = <
   isCurrentLevel,
   shouldDisableItem,
 }: ItemListProps<Id, Model, Item>) => {
+  const LinkComponent = useContext(PickerLinkContext) || NavLink;
+
   const activeItemIndex = useMemo(() => {
     if (!items) {
       return -1;
@@ -67,8 +69,6 @@ export const ItemList = <
   if (!items || !items.length) {
     return null;
   }
-
-  const LinkComponent = useContext(PickerLinkContext) || NavLink;
 
   return (
     <VirtualizedList Wrapper={PickerColumn} scrollTo={activeItemIndex}>
