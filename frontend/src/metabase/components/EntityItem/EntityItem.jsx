@@ -76,7 +76,7 @@ function EntityItemName({ name, variant }) {
   return (
     <h3
       className={cx(CS.overflowHidden, {
-        "text-list": variant === "list",
+        [CS.textList]: variant === "list",
       })}
     >
       <Ellipsified>{name}</Ellipsified>
@@ -217,7 +217,7 @@ function EntityItemMenu({
       <EntityMenu
         triggerAriaLabel={t`Actions`}
         className={className}
-        closedClassNames="hover-child hover-child--smooth"
+        closedClassNames={cx(CS.hoverChild, CS.hoverChildSmooth)}
         triggerIcon="ellipsis"
         items={actions}
       />
@@ -247,8 +247,8 @@ const EntityItem = ({
 
   return (
     <EntityItemWrapper
-      className={cx("hover-parent hover--visibility", {
-        "bg-light-hover": variant === "list",
+      className={cx(CS.hoverParent, CS.hoverVisibility, {
+        [CS.bgLightHover]: variant === "list",
       })}
       variant={variant}
       disabled={disabled}
@@ -278,7 +278,7 @@ const EntityItem = ({
           onMove={onMove}
           onCopy={onCopy}
           onArchive={onArchive}
-          className="ml1"
+          className={CS.ml1}
         />
       </EntityItemActions>
     </EntityItemWrapper>

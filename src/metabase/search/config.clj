@@ -13,7 +13,7 @@
 
 (defsetting search-typeahead-enabled
   (deferred-tru "Enable typeahead search in the {0} navbar?"
-                (public-settings/application-name-for-setting-descriptions))
+    (public-settings/application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -54,7 +54,7 @@
    "database"       {:db-model :model/Database :alias :database}
    "dataset"        {:db-model :model/Card :alias :card}
    "indexed-entity" {:db-model :model/ModelIndexValue :alias :model-index-value}
-   "metric"         {:db-model :model/LegacyMetric :alias :metric}
+   "metric"         {:db-model :model/Card :alias :card}
    "segment"        {:db-model :model/Segment :alias :segment}
    "table"          {:db-model :model/Table :alias :table}})
 
@@ -74,6 +74,7 @@
   [model]
   (case model
     "dataset" (recur "card")
+    "metric" (recur "card")
     (str/capitalize model)))
 
 (defn model->alias
@@ -113,7 +114,6 @@
     ;; true to search for verified items only, nil will return all items
     [:verified                            {:optional true} true?]]))
 
-
 (def all-search-columns
   "All columns that will appear in the search results, and the types of those columns. The generated search query is a
   `UNION ALL` of the queries for each different entity; it looks something like:
@@ -147,6 +147,8 @@
    :bookmark            :boolean
    ;; returned for everything except Collection
    :updated_at          :timestamp
+   ;; returned only for Collection
+   :location            :text
    ;; returned for Card only, used for scoring and displays
    :dashboardcard_count :integer
    :last_edited_at      :timestamp
@@ -162,6 +164,7 @@
    :database_id         :integer
    ;; returned for Database and Table
    :initial_sync_status :text
+   :database_name       :text
    ;; returned for Action
    :model_id            :integer
    :model_name          :text
@@ -200,6 +203,10 @@
   [_]
   (searchable-columns-for-model "card"))
 
+(defmethod searchable-columns-for-model "metric"
+  [_]
+  (searchable-columns-for-model "card"))
+
 (defmethod searchable-columns-for-model "dashboard"
   [_]
   [:name
@@ -234,10 +241,10 @@
 
 (def ^:private dashboardcard-count-col
   "Subselect to get the count of associated DashboardCards"
-   [{:select [:%count.*]
-     :from   [:report_dashboardcard]
-     :where  [:= :report_dashboardcard.card_id :card.id]}
-    :dashboardcard_count])
+  [{:select [:%count.*]
+    :from   [:report_dashboardcard]
+    :where  [:= :report_dashboardcard.card_id :card.id]}
+   :dashboardcard_count])
 
 (def ^:private table-columns
   "Columns containing information about the Table this model references. Returned for Metrics and Segments."
@@ -299,6 +306,7 @@
         [:name :collection_name]
         [:type :collection_type]
         [:authority_level :collection_authority_level]
+        :location
         bookmark-col))
 
 (defmethod columns-for-model "segment"
@@ -311,18 +319,19 @@
 
 (defmethod columns-for-model "table"
   [_]
-  [:id
-   :name
-   :created_at
-   :display_name
-   :description
-   :updated_at
-   :initial_sync_status
-   [:id :table_id]
-   [:db_id :database_id]
-   [:schema :table_schema]
-   [:name :table_name]
-   [:description :table_description]])
+  [[:table.id :id]
+   [:table.name :name]
+   [:table.created_at :created_at]
+   [:table.display_name :display_name]
+   [:table.description :description]
+   [:table.updated_at :updated_at]
+   [:table.initial_sync_status :initial_sync_status]
+   [:table.id :table_id]
+   [:table.db_id :database_id]
+   [:table.schema :table_schema]
+   [:table.name :table_name]
+   [:table.description :table_description]
+   [:metabase_database.name :database_name]])
 
 (defmulti column->string
   "Turn a complex column into a string"

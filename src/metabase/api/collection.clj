@@ -98,7 +98,8 @@
                         :id
                         (collection/permissions-set->visible-collection-ids permissions-set))]
                ;; Order NULL collection types first so that audit collections are last
-               :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
+               :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+                          [[[:case [:= :type nil] 0 :else 1]] :asc]
                           [:%lower.name :asc]]})
    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
@@ -200,8 +201,12 @@
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
-                                          (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
+                                          (update acc (case (keyword card-type)
+                                                       :model :dataset
+                                                       :metric :metric
+                                                       :card) conj collection-id))
                                         {:dataset #{}
+                                         :metric  #{}
                                          :card    #{}}
                                         (mdb.query/reducible-query {:select-distinct [:collection_id :type]
                                                                     :from            [:report_card]
@@ -216,6 +221,7 @@
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
   #{"card"       ; SavedQuestion
     "dataset"    ; Model. TODO : update this
+    "metric"
     "collection"
     "dashboard"
     "pulse"      ; I think the only kinds of Pulses we still have are Alerts?
@@ -371,11 +377,15 @@
             :moderated_status :icon :personal_owner_id :collection_preview
             :dataset_query :table_id :query_type :is_upload)))
 
-(defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
+(defn- card-query [card-type collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                      :c.dataset_query
-                     [(h2x/literal (if dataset? "dataset" "card")) :model]
+                     [(h2x/literal (case card-type
+                                     :model "dataset"
+                                     :metric  "metric"
+                                     "card"))
+                      :model]
                      [:u.id :last_edit_user]
                      [:u.email :last_edit_email]
                      [:u.first_name :last_edit_first_name]
@@ -392,7 +402,7 @@
                        :order-by [[:id :desc]]
                        :limit    1}
                       :moderated_status]]
-                    dataset?
+                    (= :model card-type)
                     (conj :c.database_id))
        :from      [[:report_card :c]]
        :left-join [[:revision :r] [:and
@@ -403,18 +413,30 @@
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
-                   (if dataset?
+                   (case card-type
+                     :model
                      [:= :c.type (h2x/literal "model")]
-                     [:in :c.type [(h2x/literal "question")
-                                   (h2x/literal "metric")]])]}
-      (cond-> dataset?
+
+                     :metric
+                     [:= :c.type (h2x/literal "metric")]
+
+                     [:= :c.type (h2x/literal "question")])]}
+      (cond-> (= :model card-type)
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dataset
   [_ collection options]
-  (card-query true collection options))
+  (card-query :model collection options))
+
+(defmethod collection-children-query :metric
+  [_ collection options]
+  (card-query :metric collection options))
+
+(defmethod collection-children-query :card
+  [_ collection options]
+  (card-query :question collection options))
 
 (defmethod post-process-collection-children :dataset
   [_ collection rows]
@@ -424,11 +446,7 @@
     (->> (map #(assoc %2 :dataset_query %1) queries-parsed rows)
          upload/model-hydrate-based-on-upload
          (map #(assoc %2 :dataset_query %1) queries-before)
-         (post-process-collection-children collection :card))))
-
-(defmethod collection-children-query :card
-  [_ collection options]
-  (card-query false collection options))
+         (post-process-collection-children :card collection))))
 
 (defn- fully-parameterized-text?
   "Decide if `text`, usually (a part of) a query, is fully parameterized given the parameter types
@@ -480,6 +498,10 @@
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card
+  [_ _ rows]
+  (map post-process-card-row rows))
+
+(defmethod post-process-collection-children :metric
   [_ _ rows]
   (map post-process-card-row rows))
 
@@ -560,8 +582,12 @@
 
         child-type->coll-id-set
         (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
-                  (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
+                  (update acc (case (keyword card-type)
+                               :model :dataset
+                               :metric :metric
+                               :card) conj collection-id))
                 {:dataset #{}
+                 :metric  #{}
                  :card    #{}}
                 (mdb.query/reducible-query {:select-distinct [:collection_id :type]
                                             :from            [:report_card]
@@ -653,6 +679,7 @@
     :collection Collection
     :card       Card
     :dataset    Card
+    :metric     Card
     :dashboard  Dashboard
     :pulse      Pulse
     :snippet    NativeQuerySnippet
@@ -698,10 +725,11 @@
   (let [rankings {:dashboard  1
                   :pulse      2
                   :dataset    3
-                  :card       4
-                  :snippet    5
-                  :collection 6
-                  :timeline   7}]
+                  :metric     4
+                  :card       5
+                  :snippet    6
+                  :collection 7
+                  :timeline   8}]
     (conj select-clause [[:inline (get rankings model 100)]
                          :model_ranking])))
 
@@ -709,7 +737,7 @@
   ;; generate the set of columns across all child queries. Remember to add type info if not a text column
   (into []
         (comp cat (map select-name) (distinct))
-        (for [model [:card :dashboard :snippet :pulse :collection :timeline]]
+        (for [model [:card :metric :dataset :dashboard :snippet :pulse :collection :timeline]]
           (:select (collection-children-query model {:id 1 :location "/"} nil)))))
 
 
@@ -718,7 +746,8 @@
   treatment of nulls in the different app db types."
   [sort-info db-type]
   ;; always put "Metabase Analytics" last
-  (into [[[[:case [:= :collection_type nil] 0 :else 1]] :asc]]
+  (into [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+         [[[:case [:= :collection_type nil] 0 :else 1]] :asc]]
         (case sort-info
           nil                     [[:%lower.name :asc]]
           [:name :asc]            [[:%lower.name :asc]]
@@ -802,7 +831,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet :timeline]
+  (let [valid-models (for [model-kw [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)

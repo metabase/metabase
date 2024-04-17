@@ -18,18 +18,18 @@ class MetricListAppInner extends Component {
     const { metrics, tableSelector, setArchived } = this.props;
 
     return (
-      <div className="px3 pb2">
+      <div className={cx(CS.px3, CS.pb2)}>
         <div className={cx(CS.flex, CS.py2)}>
           {tableSelector}
-          <Link to="/admin/datamodel/metric/create" className="ml-auto">
+          <Link to="/admin/datamodel/metric/create" className={CS.mlAuto}>
             <Button primary>{t`New metric`}</Button>
           </Link>
         </div>
         <table className={AdminS.AdminTable}>
-          <thead className="text-bold">
+          <thead className={CS.textBold}>
             <tr>
               <th style={{ minWidth: "320px" }}>{t`Name`}</th>
-              <th className="full">{t`Definition`}</th>
+              <th className={CS.full}>{t`Definition`}</th>
               <th>{t`Actions`}</th>
             </tr>
           </thead>

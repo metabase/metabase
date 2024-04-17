@@ -766,3 +766,28 @@
                  (lib/->pMBQL x))
       [:time-interval [:field 1 nil] -5 :year nil]
       [:time-interval [:field 1 nil] -5 :year {}])))
+
+(deftest ^:parallel convert-arithmetic-expressions-to-legacy-test
+  (testing "Generate correct expression definitions even if expression contains `:name` (#40982)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/breakout (meta/field-metadata :orders :created-at))
+                    (lib/expression "expr" (lib.options/update-options (lib/+ 1 2) assoc :name "my_expr", :base-type :type/Number)))]
+      (is (=? {:type  :query
+               :query {:expressions {"expr" [:+ 1 2]}}}
+              (lib.convert/->legacy-MBQL query))))))
+
+(deftest ^:parallel convert-with-broken-expression-types-test
+  (testing "be flexible when converting from legacy, metadata type overrides are soometimes dropped (#41122)"
+    (let [legacy {:database (meta/id)
+                  :type     :query
+                  :query    {:filter [:between [:+
+                                                [:field 40 {:base-type :type/Integer}]
+                                                [:interval 1 :year]]
+                                      [:relative-datetime -2 :month]
+                                      [:relative-datetime 0 :month]]}}]
+      (is (=? {:stages [{:filters [[:between {} [:+ {}
+                                                 [:field {:base-type :type/Integer} 40]
+                                                 [:interval {} 1 :year]]
+                                    [:relative-datetime {} -2 :month]
+                                    [:relative-datetime {} 0 :month]]]}]}
+              (lib.convert/->pMBQL legacy))))))

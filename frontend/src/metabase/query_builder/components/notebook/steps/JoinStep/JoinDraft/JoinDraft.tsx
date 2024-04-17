@@ -17,6 +17,8 @@ interface JoinDraftProps {
   query: Lib.Query;
   stageIndex: number;
   color: string;
+  initialStrategy?: Lib.JoinStrategy;
+  initialRhsTable?: Lib.Joinable;
   isReadOnly: boolean;
   isModelDataSource: boolean;
   onJoinChange: (join: Lib.Join) => void;
@@ -26,20 +28,23 @@ export function JoinDraft({
   query,
   stageIndex,
   color,
+  initialStrategy,
+  initialRhsTable,
   isReadOnly,
   isModelDataSource,
   onJoinChange,
 }: JoinDraftProps) {
-  const [strategy, setStrategy] = useState(() =>
-    getDefaultJoinStrategy(query, stageIndex),
+  const [strategy, setStrategy] = useState(
+    () => initialStrategy ?? getDefaultJoinStrategy(query, stageIndex),
   );
-  const [rhsTable, setRhsTable] = useState<Lib.Joinable>();
-  const [rhsTableColumns, setRhsTableColumns] = useState<Lib.ColumnMetadata[]>(
-    [],
+  const [rhsTable, setRhsTable] = useState(initialRhsTable);
+  const [rhsTableColumns, setRhsTableColumns] = useState(() =>
+    initialRhsTable
+      ? Lib.joinableColumns(query, stageIndex, initialRhsTable)
+      : [],
   );
-  const [selectedRhsTableColumns, setSelectedRhsTableColumns] = useState<
-    Lib.ColumnMetadata[]
-  >([]);
+  const [selectedRhsTableColumns, setSelectedRhsTableColumns] =
+    useState(rhsTableColumns);
   const [lhsColumn, setLhsColumn] = useState<Lib.ColumnMetadata>();
 
   const lhsTableName = useMemo(

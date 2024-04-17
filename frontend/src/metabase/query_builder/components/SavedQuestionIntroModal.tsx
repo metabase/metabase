@@ -49,8 +49,8 @@ export const SavedQuestionIntroModal = ({
 
   return (
     <Modal isOpen={isShowingNewbModal}>
-      <ModalContent title={title} className="Modal-content text-centered py2">
-        <div className="px2 pb2 text-paragraph">{message}</div>
+      <ModalContent title={title} className={cx(CS.textCentered, CS.py2)}>
+        <div className={cx(CS.px2, CS.pb2, CS.textParagraph)}>{message}</div>
         <div className={cx("Form-actions", CS.flex, CS.justifyCenter, CS.py1)}>
           <button
             className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}

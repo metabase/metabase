@@ -8,6 +8,7 @@ import {
   openSeriesSettings,
   queryBuilderMain,
   addOrUpdateDashboardCard,
+  modal,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -232,7 +233,9 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.get(".LineAreaBarChart").get(".trend").should("be.visible");
+    cy.get("[data-element-id=line-area-bar-chart]")
+      .get(".trend")
+      .should("be.visible");
   });
 
   it("should show label for empty value series breakout (metabase#32107)", () => {
@@ -519,7 +522,7 @@ describe("scenarios > visualizations > line chart", () => {
         cy.findByDisplayValue(old_name).clear().type(new_name);
       });
 
-      cy.get(".Modal")
+      modal()
         .as("modal")
         .within(() => {
           cy.button("Done").click();

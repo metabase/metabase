@@ -15,6 +15,7 @@ import {
   undoToast,
   openDashboardMenu,
   toggleDashboardInfoSidebar,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -223,9 +224,9 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 popover().findByText("Move").click();
                 cy.location("pathname").should("eq", `/dashboard/${id}/move`);
 
-                modal().within(() => {
+                entityPickerModal().within(() => {
                   cy.findByText("First collection").click();
-                  clickButton("Move");
+                  cy.button("Move").click();
                 });
 
                 assertOnRequest("updateDashboard");
@@ -258,7 +259,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 );
                 modal().within(() => {
                   cy.findByRole("heading", { name: "Archive this dashboard?" }); //Without this, there is some race condition and the button click fails
-                  clickButton("Archive");
+                  cy.button("Archive").click();
                   assertOnRequest("updateDashboard");
                 });
 
@@ -269,7 +270,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 );
                 undoToast().within(() => {
                   cy.findByText("Archived dashboard");
-                  clickButton("Undo");
+                  cy.button("Undo").click();
                   assertOnRequest("updateDashboard");
                 });
 
@@ -313,10 +314,6 @@ describe("managing dashboard from the dashboard's edit menu", () => {
   });
 });
 
-function clickButton(name) {
-  cy.findByRole("button", { name }).should("not.be.disabled").click();
-}
-
 function assertOnRequest(xhr_alias) {
   cy.wait("@" + xhr_alias).then(xhr => {
     expect(xhr.status).not.to.eq(403);
@@ -324,5 +321,5 @@ function assertOnRequest(xhr_alias) {
   cy.findByText("Sorry, you don’t have permission to see that.").should(
     "not.exist",
   );
-  cy.get(".Modal").should("not.exist");
+  modal().should("not.exist");
 }

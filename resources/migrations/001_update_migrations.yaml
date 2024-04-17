@@ -5530,6 +5530,71 @@ databaseChangeLog:
       rollback: # not needed
 
   - changeSet:
+      id: v49.2024-03-26T10:23:12
+      author: adam-james
+      comment: Add pulse_card.format_rows
+      changes:
+        - addColumn:
+            tableName: pulse_card
+            columns:
+              - column:
+                  name: format_rows
+                  type: ${boolean.type}
+                  defaultValue: true
+                  remarks: Whether or not to apply formatting to the rows of the export
+
+  - changeSet:
+      id: v49.2024-03-26T20:27:58
+      author: noahmoss
+      comment: Added 0.46.0 - Delete the truncate audit log task (renamed to truncate audit tables)
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteTruncateAuditLogTask"
+
+  - changeSet:
+      id: v49.2024-04-09T10:00:00
+      author: qnkhuat
+      comment: Drop not null constraint on metabase_database.cache_field_values_schedule
+      changes:
+        - dropNotNullConstraint:
+            tableName: metabase_database
+            columnName: cache_field_values_schedule
+            columnDataType: varchar(254)
+      # nothing because it should always be like this
+      rollback:
+
+  - changeSet:
+      id: v49.2024-04-09T10:00:01
+      author: qnkhuat
+      comment: Drop default value on metabase_database.cache_field_values_schedule
+      changes:
+        - dropDefaultValue:
+            tableName: metabase_database
+            columnName: cache_field_values_schedule
+      # nothing because it should always be like this
+      rollback:
+
+  - changeSet:
+      id: v49.2024-04-09T10:00:02
+      author: qnkhuat
+      comment: Add null as default value for metabase_database.cache_field_values_schedule
+      changes:
+        - addDefaultValue:
+            defaultValue: "null"
+            tableName: metabase_database
+            columnName: cache_field_values_schedule
+      # nothing because it should always be like this
+      rollback:
+
+  - changeSet:
+      id: v49.2024-04-09T10:00:03
+      author: qnkhuat
+      comment: This clears the schedule for caching field values for databases with period scanning disabled.
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteScanFieldValuesTriggerForDBThatTurnItOff"
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
@@ -6067,6 +6132,61 @@ databaseChangeLog:
                   name: estimated_row_count
                   type: bigint
                   remarks: The estimated row count
+
+  - changeSet:
+      id: v50.2024-03-25T14:53:00
+      author: tsmacdonald
+      comment: Add query_field.direct_reference
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: direct_reference
+                  type: ${boolean.type}
+                  remarks: "Is the Field referenced directly or via a wildcard"
+                  constraints:
+                    nullable: false
+                  defaultValue: true
+
+  - changeSet:
+      id: v50.2024-03-28T16:30:35
+      author: calherries
+      comment: Create internal user
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateInternalUser"
+
+  - changeSet:
+      id: v50.2024-03-29T10:00:00
+      author: piranha
+      comment: 'Granular cache invalidation'
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: cache_invalidated_at
+                  type: ${timestamp_type}
+                  remarks: 'An invalidation time that can supersede cache_config.invalidated_at'
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-04-09T15:55:22
+      author: calherries
+      comment: Create sample content
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateSampleContent"
+
+  - changeSet:
+      id: v50.2024-04-09T15:55:23
+      author: piranha
+      comment: Backfill query_field for native queries
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.BackfillQueryField"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

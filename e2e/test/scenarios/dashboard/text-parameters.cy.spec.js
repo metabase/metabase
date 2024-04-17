@@ -11,6 +11,7 @@ import {
   addHeadingWhileEditing,
   popover,
 } from "e2e/support/helpers";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -154,12 +155,13 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
       const { dashboard_id } = card;
       cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
         parameters: [
-          {
+          createMockParameter({
             name: "Single Date",
             slug: "single_date",
             id: "ad1c877e",
             type: "date/single",
-          },
+            sectionId: "date",
+          }),
         ],
       });
       const updatedSize = {

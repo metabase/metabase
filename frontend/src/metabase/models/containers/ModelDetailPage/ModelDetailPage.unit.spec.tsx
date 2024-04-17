@@ -37,7 +37,6 @@ import type {
   WritebackQueryAction,
 } from "metabase-types/api";
 import {
-  createMockCollection,
   createMockDatabase,
   createMockField,
   createMockImplicitCUDActions,
@@ -62,9 +61,6 @@ import {
 } from "metabase-types/store/mocks";
 
 import ModelDetailPage from "./ModelDetailPage";
-
-console.warn = jest.fn();
-console.error = jest.fn();
 
 // eslint-disable-next-line react/display-name
 jest.mock("metabase/actions/containers/ActionCreator", () => () => (
@@ -180,18 +176,6 @@ function createMockQueryAction(
   });
 }
 
-const COLLECTION_1 = createMockCollection({
-  id: 5,
-  name: "C1",
-  can_write: true,
-});
-
-const COLLECTION_2 = createMockCollection({
-  id: 10,
-  name: "C2",
-  can_write: true,
-});
-
 type SetupOpts = {
   model: Card;
   tab?: string;
@@ -289,10 +273,10 @@ async function setupActions({
   });
 }
 
-function openActionMenu(action: WritebackAction) {
+async function openActionMenu(action: WritebackAction) {
   const listItem = screen.getByRole("listitem", { name: action.name });
   const menuButton = within(listItem).getByLabelText("ellipsis icon");
-  userEvent.click(menuButton);
+  await userEvent.click(menuButton);
 }
 
 describe("ModelDetailPage", () => {
@@ -323,8 +307,8 @@ describe("ModelDetailPage", () => {
         const { model, modelUpdateSpy } = await setup({ model: getModel() });
 
         const input = screen.getByDisplayValue(model.displayName() as string);
-        userEvent.clear(input);
-        userEvent.type(input, "New model name");
+        await userEvent.clear(input);
+        await userEvent.type(input, "New model name");
         fireEvent.blur(input);
 
         await waitFor(() => {
@@ -339,7 +323,7 @@ describe("ModelDetailPage", () => {
         const { model, modelUpdateSpy } = await setup({ model: getModel() });
 
         const input = screen.getByPlaceholderText("Add description");
-        userEvent.type(input, "Foo bar");
+        await userEvent.type(input, "Foo bar");
         fireEvent.blur(input);
 
         await waitFor(() => {
@@ -356,42 +340,16 @@ describe("ModelDetailPage", () => {
       it("can be archived", async () => {
         const { model, modelUpdateSpy } = await setup({ model: getModel() });
 
-        userEvent.click(getIcon("ellipsis"));
-        userEvent.click(await screen.findByText("Archive"));
+        await userEvent.click(getIcon("ellipsis"));
+        await userEvent.click(await screen.findByText("Archive"));
 
         expect(screen.getByRole("dialog")).toBeInTheDocument();
-        userEvent.click(screen.getByRole("button", { name: "Archive" }));
+        await userEvent.click(screen.getByRole("button", { name: "Archive" }));
 
         await waitFor(() => {
           expect(modelUpdateSpy).toHaveBeenCalledWith(
             { id: model.id() },
             { archived: true },
-            expect.anything(),
-          );
-        });
-      });
-
-      it("can be moved to another collection", async () => {
-        const { model, modelUpdateSpy } = await setup({
-          model: getModel({ collection_id: 1 }),
-          collections: [COLLECTION_1, COLLECTION_2],
-        });
-
-        userEvent.click(getIcon("ellipsis"));
-        userEvent.click(await screen.findByText("Move"));
-
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
-        userEvent.click(await screen.findByText(COLLECTION_2.name));
-        userEvent.click(screen.getByRole("button", { name: "Move" }));
-
-        await waitFor(() =>
-          expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
-        );
-
-        await waitFor(() => {
-          expect(modelUpdateSpy).toHaveBeenCalledWith(
-            { id: model.id() },
-            { collection_id: COLLECTION_2.id },
             expect.anything(),
           );
         });
@@ -467,7 +425,7 @@ describe("ModelDetailPage", () => {
         const { model } = await setup({ model: getModel(), tab: "schema" });
         const fields = model.getResultMetadata();
 
-        userEvent.click(screen.getByText("Schema"));
+        await userEvent.click(screen.getByText("Schema"));
 
         expect(fields.length).toBeGreaterThan(0);
         expect(screen.getByText(`${fields.length} fields`)).toBeInTheDocument();
@@ -554,7 +512,7 @@ describe("ModelDetailPage", () => {
 
       it("allows to create a new query action from the empty state", async () => {
         await setupActions({ model: getModel(), actions: [] });
-        userEvent.click(screen.getByRole("link", { name: "New action" }));
+        await userEvent.click(screen.getByRole("link", { name: "New action" }));
         expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
       });
 
@@ -609,7 +567,7 @@ describe("ModelDetailPage", () => {
           actions: [createMockQueryAction({ model_id: model.id })],
         });
 
-        userEvent.click(screen.getByRole("link", { name: "New action" }));
+        await userEvent.click(screen.getByRole("link", { name: "New action" }));
 
         expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
       });
@@ -619,7 +577,7 @@ describe("ModelDetailPage", () => {
         const action = createMockQueryAction({ model_id: model.id });
         await setupActions({ model, actions: [action] });
 
-        userEvent.click(screen.getByRole("link", { name: action.name }));
+        await userEvent.click(screen.getByRole("link", { name: action.name }));
 
         expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
       });
@@ -629,8 +587,8 @@ describe("ModelDetailPage", () => {
         const action = createMockQueryAction({ model_id: model.id });
         await setupActions({ model, actions: [action] });
 
-        openActionMenu(action);
-        userEvent.click(await screen.findByText("Edit"));
+        await openActionMenu(action);
+        await userEvent.click(await screen.findByText("Edit"));
 
         expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
       });
@@ -642,11 +600,13 @@ describe("ModelDetailPage", () => {
         await setupActions({ model, actions: [action] });
 
         const listItem = screen.getByRole("listitem", { name: action.name });
-        userEvent.click(within(listItem).getByLabelText("ellipsis icon"));
-        userEvent.click(await screen.findByText("Archive"));
+        await userEvent.click(within(listItem).getByLabelText("ellipsis icon"));
+        await userEvent.click(await screen.findByText("Archive"));
 
         const modal = screen.getByRole("dialog");
-        userEvent.click(within(modal).getByRole("button", { name: "Archive" }));
+        await userEvent.click(
+          within(modal).getByRole("button", { name: "Archive" }),
+        );
 
         await waitFor(() =>
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
@@ -664,7 +624,7 @@ describe("ModelDetailPage", () => {
         });
         await setupActions({ model, actions: [action] });
 
-        openActionMenu(action);
+        await openActionMenu(action);
 
         expect(screen.queryByText("Archive")).not.toBeInTheDocument();
       });
@@ -675,9 +635,9 @@ describe("ModelDetailPage", () => {
         const actions = createMockImplicitCUDActions(model.id);
         await setupActions({ model, actions });
 
-        userEvent.click(screen.getByLabelText("Actions menu"));
-        userEvent.click(await screen.findByText("Disable basic actions"));
-        userEvent.click(screen.getByRole("button", { name: "Disable" }));
+        await userEvent.click(screen.getByLabelText("Actions menu"));
+        await userEvent.click(await screen.findByText("Disable basic actions"));
+        await userEvent.click(screen.getByRole("button", { name: "Disable" }));
 
         actions.forEach(action => {
           expect(deleteActionSpy).toHaveBeenCalledWith({ id: action.id });
@@ -714,7 +674,7 @@ describe("ModelDetailPage", () => {
 
       it("doesn't show a link to the metadata editor", async () => {
         await setup({ model: modelCard });
-        userEvent.click(screen.getByText("Schema"));
+        await userEvent.click(screen.getByText("Schema"));
         expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
       });
 
@@ -731,7 +691,7 @@ describe("ModelDetailPage", () => {
         const action = createMockQueryAction({ model_id: modelCard.id });
         await setupActions({ model: modelCard, actions: [action] });
 
-        openActionMenu(action);
+        await openActionMenu(action);
 
         expect(await screen.findByText("View")).toBeInTheDocument();
       });
@@ -740,7 +700,7 @@ describe("ModelDetailPage", () => {
         const action = createMockQueryAction({ model_id: modelCard.id });
         await setupActions({ model: modelCard, actions: [action] });
 
-        openActionMenu(action);
+        await openActionMenu(action);
 
         expect(screen.queryByText("Archive")).not.toBeInTheDocument();
       });
@@ -846,8 +806,8 @@ describe("ModelDetailPage", () => {
       const action = createMockQueryAction({ model_id: modelCard.id });
       await setupActions({ model: modelCard, actions: [action] });
 
-      userEvent.click(screen.getByLabelText("Actions menu"));
-      userEvent.click(await screen.findByText("Create basic actions"));
+      await userEvent.click(screen.getByLabelText("Actions menu"));
+      await userEvent.click(await screen.findByText("Create basic actions"));
 
       await waitFor(() => {
         expect(createActionSpy).toHaveBeenCalledWith({
@@ -875,7 +835,7 @@ describe("ModelDetailPage", () => {
       const createActionSpy = jest.spyOn(ActionsApi, "create");
       await setupActions({ model: modelCard, actions: [] });
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByRole("button", { name: /Create basic action/i }),
       );
 
@@ -907,7 +867,7 @@ describe("ModelDetailPage", () => {
         actions: createMockImplicitCUDActions(modelCard.id),
       });
 
-      userEvent.click(screen.getByLabelText("Actions menu"));
+      await userEvent.click(screen.getByLabelText("Actions menu"));
 
       expect(
         screen.queryByText(/Create basic action/i),
@@ -917,7 +877,7 @@ describe("ModelDetailPage", () => {
     it("doesn't allow to disable implicit actions if they don't exist", async () => {
       await setupActions({ model: modelCard, actions: [] });
 
-      userEvent.click(screen.getByLabelText("Actions menu"));
+      await userEvent.click(screen.getByLabelText("Actions menu"));
 
       expect(
         screen.queryByText("Disable basic actions"),
@@ -977,21 +937,21 @@ describe("ModelDetailPage", () => {
         "true",
       );
 
-      userEvent.click(screen.getByText("Schema"));
+      await userEvent.click(screen.getByText("Schema"));
       expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/schema`);
       expect(screen.getByRole("tab", { name: "Schema" })).toHaveAttribute(
         "aria-selected",
         "true",
       );
 
-      userEvent.click(screen.getByText("Actions"));
+      await userEvent.click(screen.getByText("Actions"));
       expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/actions`);
       expect(screen.getByRole("tab", { name: "Actions" })).toHaveAttribute(
         "aria-selected",
         "true",
       );
 
-      userEvent.click(screen.getByText("Used by"));
+      await userEvent.click(screen.getByText("Used by"));
       expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
       expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
         "aria-selected",

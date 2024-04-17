@@ -23,6 +23,7 @@ import {
   expectNoBadSnowplowEvents,
   expectGoodSnowplowEvents,
   modal,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -89,11 +90,7 @@ describe(
                       .should("have.attr", "aria-selected", "false");
                   });
 
-                  openQuestionActions();
-                  cy.findByTestId("move-button").click();
-                  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                  cy.findByText("My personal collection").click();
-                  clickButton("Move");
+                  moveQuestionTo(/Personal Collection/);
                   assertOnRequest("updateQuestion");
                   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                   cy.contains("37.65");
@@ -117,22 +114,25 @@ describe(
                 });
 
                 it("should be able to move the question to a collection created on the go", () => {
+                  const NEW_COLLECTION_NAME = "Foo";
+
                   openQuestionActions();
                   cy.findByTestId("move-button").click();
-                  const NEW_COLLECTION = "Foo";
-
-                  modal().within(() => {
-                    cy.findByText("New collection").click();
+                  entityPickerModal().within(() => {
+                    cy.findByText(/Personal Collection/).click();
+                    cy.findByText("Create a new collection").click();
                   });
 
-                  cy.findByTestId("new-collection-modal").then(modal => {
-                    cy.findByPlaceholderText(
-                      "My new fantastic collection",
-                    ).type(NEW_COLLECTION);
-                    cy.findByText("Create").click();
+                  cy.findByTestId("create-collection-on-the-go").within(() => {
+                    cy.findByPlaceholderText("My new collection").type(
+                      NEW_COLLECTION_NAME,
+                    );
+                    cy.button("Create").click();
                   });
 
-                  cy.get("header").findByText(NEW_COLLECTION);
+                  entityPickerModal().button("Move").click();
+
+                  cy.get("header").findByText(NEW_COLLECTION_NAME);
                 });
 
                 it("should be able to move models", () => {
@@ -152,11 +152,7 @@ describe(
                       .should("have.attr", "aria-selected", "false");
                   });
 
-                  openQuestionActions();
-                  cy.findByTestId("move-button").click();
-                  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                  cy.findByText("My personal collection").click();
-                  clickButton("Move");
+                  moveQuestionTo(/Personal Collection/);
                   assertOnRequest("updateQuestion");
                   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                   cy.contains("37.65");
@@ -243,14 +239,8 @@ describe(
                   cy.reload();
 
                   cy.log("Move the question to a personal collection");
-                  openQuestionActions();
-                  popover().findByText("Move").click();
-                  modal().within(() => {
-                    cy.findByRole("heading", {
-                      name: myPersonalCollection,
-                    }).click();
-                    cy.button("Move").click();
-                  });
+
+                  moveQuestionTo(/Personal Collection/);
 
                   cy.log("assert public collections are not visible");
                   openQuestionActions();
@@ -267,12 +257,7 @@ describe(
                   });
 
                   cy.log("Move the question to the root collection");
-                  openQuestionActions();
-                  popover().findByText("Move").click();
-                  modal().within(() => {
-                    cy.findByRole("heading", { name: "Our analytics" }).click();
-                    cy.button("Move").click();
-                  });
+                  moveQuestionTo("Our analytics");
 
                   cy.log("assert all collections are visible");
                   openQuestionActions();
@@ -376,7 +361,7 @@ describe(
                 openQuestionActions();
                 cy.findByTestId("add-to-dashboard-button").click();
 
-                cy.get(".Modal").within(() => {
+                modal().within(() => {
                   cy.findByText("Orders in a dashboard").should("not.exist");
                   cy.icon("search").click();
                   cy.findByPlaceholderText("Search").type(
@@ -393,7 +378,7 @@ describe(
                 openQuestionActions();
                 cy.findByTestId("add-to-dashboard-button").click();
 
-                cy.get(".Modal").within(() => {
+                modal().within(() => {
                   cy.findByText("Create a new dashboard").click();
                   cy.findByLabelText(/Which collection/).should(
                     "contain.text",
@@ -500,4 +485,13 @@ function turnIntoModel() {
 
 function findSelectedItem() {
   return cy.findByRole("dialog").findByRole("option", { selected: true });
+}
+
+function moveQuestionTo(newCollectionName) {
+  openQuestionActions();
+  cy.findByTestId("move-button").click();
+  entityPickerModal().within(() => {
+    cy.findByText(newCollectionName).click();
+    cy.button("Move").click();
+  });
 }

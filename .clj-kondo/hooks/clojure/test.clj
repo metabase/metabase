@@ -1,6 +1,8 @@
 (ns hooks.clojure.test
-  (:require [clj-kondo.hooks-api :as hooks]
-            [clojure.string :as str]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]
+   [clojure.string :as str]
+   [hooks.common]))
 
 (def ^:private disallowed-parallel-forms
   "Things you should not be allowed to use inside parallel tests. Besides these, anything ending in `!` not whitelisted
@@ -106,18 +108,8 @@
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
-     metabase.query-processor.store/store-database!})
-
-(defn- node->qualified-symbol [node]
-  (try
-    (when (hooks/token-node? node)
-      (let [sexpr (hooks/sexpr node)]
-        (when (symbol? sexpr)
-          (when-let [resolved (hooks/resolve {:name sexpr})]
-            (symbol (name (:ns resolved)) (name (:name resolved)))))))
-    ;; some symbols like `*count/Integer` aren't resolvable.
-    (catch Exception _
-      nil)))
+     metabase.query-processor.store/store-database!
+     next.jdbc/execute!})
 
 (defn- warn-about-disallowed-parallel-forms [form]
   (letfn [(error! [form message]
@@ -125,7 +117,7 @@
                                        :message message
                                        :type :metabase/validate-deftest)))
           (f [form]
-            (when-let [qualified-symbol (node->qualified-symbol form)]
+            (when-let [qualified-symbol (hooks.common/node->qualified-symbol form)]
               (cond
                 (disallowed-parallel-forms qualified-symbol)
                 (error! form (format "%s is not allowed inside a ^:parallel test or test fixture" qualified-symbol))

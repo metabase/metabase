@@ -10,7 +10,9 @@
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -19,9 +21,10 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
+   [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -420,8 +423,8 @@
   of `honeysql-form`. Most drivers can use the default implementations for all of these methods, but some may need to
   override one or more (e.g. SQL Server needs to override this method for the `:limit` clause, since T-SQL uses `TOP`
   instead of `LIMIT`)."
-  {:added "0.32.0", :arglists '([driver top-level-clause honeysql-form query]), :style/indent 2}
-  (fn [driver top-level-clause _ _]
+  {:added "0.32.0", :arglists '([driver top-level-clause honeysql-form inner-query]), :style/indent [:form]}
+  (fn [driver top-level-clause _honeysql-form _inner-query]
     [(driver/dispatch-on-initialized-driver driver) top-level-clause])
   :hierarchy #'driver/hierarchy)
 
@@ -686,6 +689,99 @@
   [:power
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
+
+(defn- format-rows-unbounded-preceding [_clause _args]
+  ["ROWS UNBOUNDED PRECEDING"])
+
+(sql/register-clause!
+ ::rows-unbounded-preceding
+ #'format-rows-unbounded-preceding
+ nil)
+
+(defn- cumulative-aggregation-over-rows
+  "Generate an OVER (...) expression for stuff like cumulative sum or cumulative count.
+
+  For a single breakout the generate SQL will look something like:
+
+    OVER (
+      ORDER BY created_at
+      ROWS UNBOUNDED PRECEDING
+    )
+
+  Note that [[nest-breakouts-in-queries-with-cumulative-aggregations]] ensures we will always see a plain column
+  identifier here.
+
+  With more than one breakout, we `PARTITION BY` all breakouts except the last, then `ORDER BY` the last breakout. See
+  #2862 for more information as to why we do this. Example:
+
+    OVER (
+      PARTITION BY city_name
+      ORDER BY created_at
+      ROWS UNBOUNDED PRECEDING
+    )"
+  [driver expr]
+  (let [num-breakouts     (count (:breakout *inner-query*))
+        ;; sanity check: shouldn't be using this function if we don't have any breakouts, we should have just done
+        ;; `:count` or `:sum` (see `->honeysql` methods below)
+        _                 (assert (pos? num-breakouts)
+                                  "we should be compiling cumulative count/sum as regular count/sum, with no breakouts")
+        ;; Only calculate this if it's needed, it won't be for drivers that support ordering by col numbers when we only
+        ;; have one breakout.
+        group-bys         (:group-by (apply-top-level-clause driver :breakout {} *inner-query*))
+        partition-exprs   (when (> num-breakouts 1)
+                            (butlast group-bys))
+        order-expr        (last group-bys)]
+    [:over
+     [expr
+      (merge
+       (when (seq partition-exprs)
+         {:partition-by (mapv (fn [expr]
+                                [expr])
+                              partition-exprs)})
+       {:order-by                  [[order-expr :asc]]
+        ::rows-unbounded-preceding []})]]))
+
+;;;    cum-count()
+;;;
+;;; should compile to SQL like
+;;;
+;;;    sum(count()) OVER (ORDER BY ...)
+;;;
+;;; where the ORDER BY matches what's in the query (i.e., the breakouts), or
+;;;
+;;;    sum(count()) OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING)
+;;;
+;;; if the database supports ordering by SELECT expression position
+(defmethod ->honeysql [:sql :cum-count]
+  [driver [_cum-count expr-or-nil]]
+  ;; a cumulative count with no breakouts doesn't really mean anything, just compile it as a normal count.
+  (if (empty? (:breakout *inner-query*))
+    (->honeysql driver [:count expr-or-nil])
+    (cumulative-aggregation-over-rows
+     driver
+     [:sum (if expr-or-nil
+             [:count (->honeysql driver expr-or-nil)]
+             [:count :*])])))
+
+;;;    cum-sum(total)
+;;;
+;;; should compile to SQL like
+;;;
+;;;    sum(sum(total)) OVER (ORDER BY ...)
+;;;
+;;; where the ORDER BY matches what's in the query (i.e., the breakouts), or
+;;;
+;;;    sum(sum(total)) OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING)
+;;;
+;;; if the database supports ordering by SELECT expression position
+(defmethod ->honeysql [:sql :cum-sum]
+  [driver [_cum-sum expr]]
+  ;; a cumulative sum with no breakouts doesn't really mean anything, just compile it as a normal sum.
+  (if (empty? (:breakout *inner-query*))
+    (->honeysql driver [:sum expr])
+    (cumulative-aggregation-over-rows
+     driver
+     [:sum [:sum (->honeysql driver expr)]])))
 
 (defn- interval? [expr]
   (mbql.u/is-clause? :interval expr))
@@ -1071,7 +1167,7 @@
   [:or
    [:and mbql.s/value
     [:fn {:error/message "string value"} #(string? (second %))]]
-   mbql.s/FieldOrExpressionDef])
+   ::mbql.s/FieldOrExpressionDef])
 
 (mu/defn ^:private generate-pattern
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
@@ -1348,11 +1444,9 @@
      (format-honeysql-2 dialect honeysql-form)
      (catch Throwable e
        (try
-         (log/error e
-                    (u/format-color 'red
-                                    (str (deferred-tru "Invalid HoneySQL form: {0}" (ex-message e))
-                                         "\n"
-                                         (u/pprint-to-str honeysql-form))))
+         (log/error e (u/format-color :red
+                                      "Invalid HoneySQL form: %s\n%s"
+                                      (ex-message e) (u/pprint-to-str honeysql-form)))
          (finally
            (throw (ex-info (tru "Error compiling HoneySQL form: {0}" (ex-message e))
                            {:dialect dialect
@@ -1471,9 +1565,39 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+;;; This is a wrapper
+;;; around [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation]], which is
+;;; written for pMBQL, so we can use it with a legacy inner query. Once we rework the SQL QP to use pMBQL we can remove
+;;; this.
+(mu/defn ^:private nest-breakouts-in-queries-with-cumulative-aggregations :- mbql.s/MBQLQuery
+  [inner-query :- mbql.s/MBQLQuery]
+  (let [metadata-provider (qp.store/metadata-provider)
+        database-id       (u/the-id (lib.metadata/database (qp.store/metadata-provider)))]
+    (-> (lib.query/query-from-legacy-inner-query metadata-provider database-id inner-query)
+        qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation
+        lib.convert/->legacy-MBQL
+        :query)))
+
+;;; [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation]] already does
+;;; basically the same check, this is here mostly to avoid the performance hit of converting to pMBQL and back in
+;;; queries that have no cumulative aggregations at all. Once we convert the SQL QP to pMBQL we can remove this.
+(defn- has-cumulative-aggregations? [inner-query]
+  (or (lib.util.match/match (:aggregation inner-query)
+        #{:cum-sum :cum-count}
+        true)
+      (when-let [source-query (:source-query inner-query)]
+        (has-cumulative-aggregations? source-query))))
+
+(defn- maybe-nest-breakouts-in-queries-with-cumulative-aggregations [inner-query]
+  (cond-> inner-query
+    (has-cumulative-aggregations? inner-query) nest-breakouts-in-queries-with-cumulative-aggregations))
+
 (defmethod preprocess :sql
   [_driver inner-query]
-  (nest-query/nest-expressions (add/add-alias-info inner-query)))
+  (-> inner-query
+      maybe-nest-breakouts-in-queries-with-cumulative-aggregations
+      add/add-alias-info
+      nest-query/nest-expressions))
 
 (defn mbql->honeysql
   "Build the HoneySQL form we will compile to SQL and execute."

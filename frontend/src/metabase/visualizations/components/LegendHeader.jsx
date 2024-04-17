@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
 
 import ExplicitSize from "../../components/ExplicitSize";
@@ -59,9 +60,9 @@ class LegendHeader extends Component {
       <div
         className={cx(
           styles.LegendHeader,
-          "Card-title",
+          DashboardS.CardTitle,
           CS.textDefault,
-          "text-smaller",
+          CS.textSmaller,
           CS.mx1,
           CS.flex,
           CS.flexNoShrink,

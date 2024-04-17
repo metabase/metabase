@@ -16,7 +16,8 @@
    [metabase.query-processor.middleware.resolve-joins :as qp.middleware.resolve-joins]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn- joined-fields [inner-query]
   (m/distinct-by
@@ -46,14 +47,27 @@
      :name     (:name field)}))
 
 (defn- remove-unused-fields [inner-query source]
-  (let [used-fields (-> #{}
-                        (into (map keep-source+alias-props) (lib.util.match/match inner-query :field))
-                        (into (map keep-source+alias-props) (lib.util.match/match inner-query :expression)))
+  (let [used-fields (into #{}
+                          (map keep-source+alias-props)
+                          (lib.util.match/match inner-query #{:field :expression}))
         nfc-roots (into #{} (keep nfc-root) used-fields)]
-    (update source :fields (fn [fields]
-                             (filterv #(or (-> % keep-source+alias-props used-fields)
-                                           (-> % field-id-props nfc-roots))
-                                      fields)))))
+    (log/debugf "Used fields:\n%s" (u/pprint-to-str used-fields))
+    (letfn [(used? [[_tag id-or-name {::add/keys [desired-alias], :as opts}, :as field]]
+              (or (contains? used-fields (keep-source+alias-props field))
+                  ;; we should also consider a Field to be used if we're referring to it with a nominal field literal
+                  ;; ref in the next stage -- that's actually how you're supposed to be doing it anyway.
+                  (when (integer? id-or-name)
+                    (let [nominal-ref (keep-source+alias-props [:field desired-alias opts])]
+                      (contains? used-fields nominal-ref)))
+                  (contains? nfc-roots (field-id-props field))))
+            (used?* [field]
+              (u/prog1 (used? field)
+                (if <>
+                  (log/debugf "Keeping used field:\n%s" (u/pprint-to-str field))
+                  (log/debugf "Removing unused field:\n%s" (u/pprint-to-str (keep-source+alias-props field))))))
+            (remove-unused [fields]
+              (filterv used?* fields))]
+      (update source :fields remove-unused))))
 
 (defn- nest-source [inner-query]
   (let [filter-clause (:filter inner-query)

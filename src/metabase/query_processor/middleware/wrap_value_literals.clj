@@ -2,15 +2,20 @@
   "Middleware that wraps value literals in `value`/`absolute-datetime`/etc. clauses containing relevant type
   information; parses datetime string literals when appropriate."
   (:require
+   [clojure.string :as str]
+   [java-time.api :as t]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.types :as types]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date])
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
@@ -40,23 +45,27 @@
 
 (defmethod type-info :field [[_ id-or-name opts]]
   (merge
-    ;; With Mlv2 queries, this could be combined with `:expression` below and use the column from the
-    ;; query rather than metadata/field
-    (when (integer? id-or-name)
-      (type-info (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
-    (when (:temporal-unit opts)
-      {:unit (:temporal-unit opts)})
-    (when (:base-type opts)
-      {:base_type (:base-type opts)})))
+   ;; With Mlv2 queries, this could be combined with `:expression` below and use the column from the
+   ;; query rather than metadata/field
+   (when (integer? id-or-name)
+     (type-info (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
+   (when (:temporal-unit opts)
+     {:unit (:temporal-unit opts)})
+   (when (:base-type opts)
+     {:base_type (:base-type opts)})
+   (when (:effective-type opts)
+     {:effective_type (:effective-type opts)})))
 
 (defmethod type-info :expression [[_ _name opts]]
   (merge
-    (when (isa? (:base-type opts) :type/Temporal)
-      {:unit :default})
-    (when (:temporal-unit opts)
-      {:unit (:temporal-unit opts)})
-    (when (:base-type opts)
-      {:base_type (:base-type opts)})))
+   (when (isa? (:base-type opts) :type/Temporal)
+     {:unit :default})
+   (when (:temporal-unit opts)
+     {:unit (:temporal-unit opts)})
+   (when (:base-type opts)
+     {:base_type (:base-type opts)})
+   (when (:effective-type opts)
+     {:effective_type (:effective-type opts)})))
 
 ;;; ------------------------------------------------- add-type-info --------------------------------------------------
 
@@ -101,19 +110,141 @@
   [this info & _]
   [:absolute-datetime this (get info :unit :default)])
 
+(defmulti ^:private coerce-temporal
+  "Coerce temporal value `t` to `target-class`, or throw an Exception if it is an invalid conversion."
+  {:arglists '([t target-class])}
+  (fn [t target-class]
+    [(class t) target-class]))
+
+(defn- throw-invalid-conversion [message]
+  (throw (ex-info message {:type qp.error-type/invalid-query})))
+
+(defn- throw-invalid-date []
+  (throw-invalid-conversion (i18n/tru "Invalid date literal: expected a date, got a time")))
+
+(defmethod coerce-temporal [java.time.LocalDate      java.time.LocalDate] [t _target-class]  t)
+(defmethod coerce-temporal [java.time.LocalTime      java.time.LocalDate] [_t _target-class] (throw-invalid-date))
+(defmethod coerce-temporal [java.time.OffsetTime     java.time.LocalDate] [_t _target-class] (throw-invalid-date))
+(defmethod coerce-temporal [java.time.LocalDateTime  java.time.LocalDate] [t _target-class]  (t/local-date t))
+(defmethod coerce-temporal [java.time.OffsetDateTime java.time.LocalDate] [t _target-class]  (t/local-date t))
+(defmethod coerce-temporal [java.time.ZonedDateTime  java.time.LocalDate] [t _target-class]  (t/local-date t))
+
+(defn- throw-invalid-time []
+  (throw-invalid-conversion (i18n/tru "Invalid time literal: expected a time, got a date")))
+
+(defn- LocalTime->OffsetTime [t]
+  (if (= (qp.timezone/results-timezone-id) "UTC")
+    (t/offset-time t (t/zone-offset 0))
+    ;; if the zone is something else, we'll just have to make do with a LocalTime, since there's no way to determine
+    ;; what the appropriate offset to use for something like `US/Pacific` is for a give TIME with no DATE associated
+    ;; with it.
+    t))
+
+(defmethod coerce-temporal [LocalDate      LocalTime] [_t _target-class] (throw-invalid-time))
+(defmethod coerce-temporal [LocalTime      LocalTime] [t _target-class]  t)
+(defmethod coerce-temporal [OffsetTime     LocalTime] [t _target-class]  (t/local-time t))
+(defmethod coerce-temporal [LocalDateTime  LocalTime] [t _target-class]  (t/local-time t))
+(defmethod coerce-temporal [OffsetDateTime LocalTime] [t _target-class]  (t/local-time t))
+(defmethod coerce-temporal [ZonedDateTime  LocalTime] [t _target-class]  (t/local-time t))
+
+(defmethod coerce-temporal [LocalDate      OffsetTime] [_t _target-class] (throw-invalid-time))
+(defmethod coerce-temporal [LocalTime      OffsetTime] [t _target-class]  (LocalTime->OffsetTime t))
+(defmethod coerce-temporal [OffsetTime     OffsetTime] [t _target-class]  t)
+(defmethod coerce-temporal [LocalDateTime  OffsetTime] [t target-class]   (coerce-temporal (t/local-time t) target-class))
+(defmethod coerce-temporal [OffsetDateTime OffsetTime] [t _target-class]  (t/offset-time t))
+(defmethod coerce-temporal [ZonedDateTime  OffsetTime] [t _target-class]  (t/offset-time t))
+
+(defn- throw-invalid-datetime []
+  (throw-invalid-conversion (i18n/tru "Invalid datetime literal: expected a date or datetime, got a time")))
+
+(defmethod coerce-temporal [LocalDate      LocalDateTime] [t _target-class]  (t/local-date-time t (t/local-time 0)))
+(defmethod coerce-temporal [LocalTime      LocalDateTime] [_t _target-class] (throw-invalid-datetime))
+(defmethod coerce-temporal [OffsetTime     LocalDateTime] [_t _target-class] (throw-invalid-datetime))
+(defmethod coerce-temporal [LocalDateTime  LocalDateTime] [t _target-class]  t)
+(defmethod coerce-temporal [OffsetDateTime LocalDateTime] [t _target-class]  (t/local-date-time t))
+(defmethod coerce-temporal [ZonedDateTime  LocalDateTime] [t _target-class]  (t/local-date-time t))
+
+(defmethod coerce-temporal [LocalDate      OffsetDateTime] [t target-class]   (coerce-temporal (t/local-date-time t (t/local-time 0)) target-class))
+(defmethod coerce-temporal [LocalTime      OffsetDateTime] [_t _target-class] (throw-invalid-datetime))
+(defmethod coerce-temporal [OffsetTime     OffsetDateTime] [_t _target-class] (throw-invalid-datetime))
+(defmethod coerce-temporal [LocalDateTime  OffsetDateTime] [t _target-class]  (t/offset-date-time t (qp.timezone/results-timezone-id)))
+(defmethod coerce-temporal [OffsetDateTime OffsetDateTime] [t _target-class]  t)
+(defmethod coerce-temporal [ZonedDateTime  OffsetDateTime] [t _target-class]  (t/offset-date-time t))
+
+(defmethod coerce-temporal [LocalDate      ZonedDateTime] [t target-class]   (coerce-temporal (t/local-date-time t (t/local-time 0)) target-class))
+(defmethod coerce-temporal [LocalTime      ZonedDateTime] [_t _target-class] (throw-invalid-datetime))
+(defmethod coerce-temporal [OffsetTime     ZonedDateTime] [_t _target-class] (throw-invalid-datetime))
+(defmethod coerce-temporal [LocalDateTime  ZonedDateTime] [t _target-class]  (t/zoned-date-time t (t/zone-id (qp.timezone/results-timezone-id))))
+(defmethod coerce-temporal [OffsetDateTime ZonedDateTime] [t _target-class]  t) ; OffsetDateTime is perfectly fine.
+(defmethod coerce-temporal [ZonedDateTime  ZonedDateTime] [t _target-class]  t)
+
+(defn- parse-temporal-string-literal-to-class [s target-class]
+  (coerce-temporal (u.date/parse s) target-class))
+
+(defmulti ^:private parse-temporal-string-literal
+  "Parse a temporal string literal like `2024-03-20` for use in a filter against a column with `effective-type`, e.g.
+  `:type/Date`. The effective-type of the target column affects what we parse the string as; for example we'd parse
+  the string above as a `LocalDate` for a `:type/Date` and a `OffsetDateTime` for a
+  `:type/DateTimeWithTZ`."
+  {:arglists '([effective-type s target-unit])}
+  (fn [effective-type _s _target-unit]
+    effective-type))
+
+(defmethod parse-temporal-string-literal :default
+  [_effective-type s target-unit]
+  (let [t (u.date/parse s (qp.timezone/results-timezone-id))]
+    [:absolute-datetime t target-unit]))
+
+(defmethod parse-temporal-string-literal :type/Date
+  [_effective-type s target-unit]
+  (let [t (parse-temporal-string-literal-to-class s LocalDate)]
+    [:absolute-datetime t target-unit]))
+
+(defmethod parse-temporal-string-literal :type/Time
+  [_effective-type s target-unit]
+  (let [t (parse-temporal-string-literal-to-class s LocalTime)]
+    [:time t target-unit]))
+
+(defmethod parse-temporal-string-literal :type/TimeWithTZ
+  [_effective-type s target-unit]
+  (let [t (parse-temporal-string-literal-to-class s OffsetTime)]
+    [:time t target-unit]))
+
+(defmethod parse-temporal-string-literal :type/DateTime
+  [_effective-type s target-unit]
+  (let [t (parse-temporal-string-literal-to-class s LocalDateTime)]
+    [:absolute-datetime t target-unit]))
+
+(defn- date-literal-string? [s]
+  (not (str/includes? s "T")))
+
+(defmethod parse-temporal-string-literal :type/DateTimeWithTZ
+  [_effective-type s target-unit]
+  (let [t (parse-temporal-string-literal-to-class s OffsetDateTime)
+        target-unit (if (and (= target-unit :default)
+                             (date-literal-string? s))
+                      :day
+                      target-unit)]
+    [:absolute-datetime t target-unit]))
+
+(defmethod parse-temporal-string-literal :type/DateTimeWithZoneID
+  [_effective-type s target-unit]
+  (let [target-unit (if (and (= target-unit :default)
+                             (date-literal-string? s))
+                      :day
+                      target-unit)
+        t           (parse-temporal-string-literal-to-class s ZonedDateTime)]
+    [:absolute-datetime t target-unit]))
+
 (defmethod add-type-info String
-  [this {:keys [unit], :as info} & {:keys [parse-datetime-strings?]
-                                    :or   {parse-datetime-strings? true}}]
-  (if-let [temporal-value (when (and unit
-                                     parse-datetime-strings?
-                                     (string? this))
-                            ;; TIMEZONE FIXME - I think this should actually use
-                            ;; (qp.timezone/report-timezone-id-if-supported) instead ?
-                            (u.date/parse this (qp.timezone/results-timezone-id)))]
-    (if (some #(instance? % temporal-value) [LocalTime OffsetTime])
-      [:time temporal-value unit]
-      [:absolute-datetime temporal-value unit])
-    [:value this info]))
+  [s {:keys [unit], :as info} & {:keys [parse-datetime-strings?]
+                                 :or   {parse-datetime-strings? true}}]
+  (if (and unit
+           parse-datetime-strings?
+           (seq s))
+    (let [effective-type ((some-fn :effective_type :base_type) info)]
+      (parse-temporal-string-literal effective-type s unit))
+    [:value s info]))
 
 
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
@@ -167,7 +298,7 @@
                       source-query (update :source-query wrap-value-literals-in-mbql-query options))]
     (wrap-value-literals-in-mbql inner-query)))
 
-(defn wrap-value-literals
+(mu/defn wrap-value-literals :- mbql.s/Query
   "Middleware that wraps ran value literals in `:value` (for integers, strings, etc.) or `:absolute-datetime` (for
   datetime strings, etc.) clauses which include info about the Field they are being compared to. This is done mostly
   to make it easier for drivers to write implementations that rely on multimethod dispatch (by clause name) -- they
@@ -175,5 +306,4 @@
   [{query-type :type, :as query}]
   (if-not (= query-type :query)
     query
-    (mbql.s/validate-query
-     (update query :query wrap-value-literals-in-mbql-query nil))))
+    (update query :query wrap-value-literals-in-mbql-query nil)))

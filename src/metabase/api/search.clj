@@ -8,13 +8,15 @@
    [metabase.api.common :as api]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
+   [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.search.config :as search.config :refer [SearchableModel
+                                                     SearchContext]]
    [metabase.search.filter :as search.filter]
    [metabase.search.scoring :as scoring]
    [metabase.search.util :as search.util]
@@ -188,7 +190,7 @@
 
 (mu/defn ^:private with-last-editing-info :- :map
   [query :- :map
-   model :- [:enum "card" "dataset" "dashboard" "metric"]]
+   model :- [:enum "card" "dashboard"]]
   (-> query
       (replace-select :last_editor_id :r.user_id)
       (replace-select :last_edited_at :r.timestamp)
@@ -217,18 +219,18 @@
   (fn [model _] model))
 
 (mu/defn ^:private shared-card-impl
-  [model      :- [:enum "card" "dataset"] ; TODO -- use :metabase.models.card/type instead and have this `:question`/`:model`/etc.
+  [model      :- ::card/type
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
-      (sql.helpers/where [:= :card.type (if (= model "dataset") "model" "question")])
+      (sql.helpers/where [:= :card.type (name model)])
       (sql.helpers/left-join [:card_bookmark :bookmark]
                              [:and
                               [:= :bookmark.card_id :card.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :card.collection_id search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
-      (with-last-editing-info model)
-      (with-moderated-status model)))
+      (with-last-editing-info "card")
+      (with-moderated-status "card")))
 
 (defmethod search-query-for-model "action"
   [model search-ctx]
@@ -239,16 +241,21 @@
                              [:= :query_action.action_id :action.id])
       (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
 
-
 (defmethod search-query-for-model "card"
   [_model search-ctx]
-  (shared-card-impl "card" search-ctx))
+  (shared-card-impl :question search-ctx))
 
 (defmethod search-query-for-model "dataset"
   [_model search-ctx]
-  (-> (shared-card-impl "dataset" search-ctx)
+  (-> (shared-card-impl :model search-ctx)
       (update :select (fn [columns]
                         (cons [(h2x/literal "dataset") :model] (rest columns))))))
+
+(defmethod search-query-for-model "metric"
+  [_model search-ctx]
+  (-> (shared-card-impl :metric search-ctx)
+      (update :select (fn [columns]
+                        (cons [(h2x/literal "metric") :model] (rest columns))))))
 
 (defmethod search-query-for-model "collection"
   [_model search-ctx]
@@ -271,13 +278,7 @@
                               [:= :bookmark.dashboard_id :dashboard.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)
-      (with-last-editing-info model)))
-
-(defmethod search-query-for-model "metric"
-  [model search-ctx]
-  (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:metabase_table :table] [:= :metric.table_id :table.id])
-      (with-last-editing-info model)))
+      (with-last-editing-info "dashboard")))
 
 (defn- add-model-index-permissions-clause
   [query current-user-perms]
@@ -320,10 +321,10 @@
 (defmethod search-query-for-model "table"
   [model {:keys [current-user-perms table-db-id], :as search-ctx}]
   (when (seq current-user-perms)
-    (let [base-query (base-query-for-model model search-ctx)]
-      (add-table-db-id-clause
-       base-query
-       table-db-id))))
+
+    (-> (base-query-for-model model search-ctx)
+        (add-table-db-id-clause table-db-id)
+        (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
 
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
@@ -333,7 +334,7 @@
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
                                (remove #{:collection_authority_level :moderated_status
-                                         :initial_sync_status :pk_ref}))
+                                         :initial_sync_status :pk_ref :location}))
         case-clauses      (as-> columns-to-search <>
                             (map (fn [col] [:like [:lower col] match]) <>)
                             (interleave <> (repeat [:inline 0]))
@@ -448,6 +449,9 @@
         xf                 (comp
                             (map t2.realize/realize)
                             (map to-toucan-instance)
+                            (map #(if (t2/instance-of? :model/Collection %)
+                                    (t2/hydrate % :effective_location)
+                                    (assoc % :effective_location nil)))
                             (filter (partial check-permissions-for-model (:archived? search-ctx)))
                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                             ;; needed
@@ -475,7 +479,6 @@
      :offset           (:offset-int search-ctx)
      :table_db_id      (:table-db-id search-ctx)
      :models           (:models search-ctx)}))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |

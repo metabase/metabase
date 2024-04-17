@@ -124,7 +124,7 @@ function PivotTable({
   const topHeaderRef = useRef(null);
 
   const getColumnTitle = useCallback(
-    function (columnIndex) {
+    function (columnIndex: number) {
       const column = data.cols.filter(col => !isPivotGroupColumn(col))[
         columnIndex
       ];
@@ -365,7 +365,7 @@ function PivotTable({
               {/* top header */}
               <Collection
                 ref={topHeaderRef}
-                className="scroll-hide-all"
+                className={CS.scrollHideAll}
                 isNightMode={isNightMode}
                 width={width - leftHeaderWidth}
                 height={topHeaderHeight}
@@ -406,7 +406,7 @@ function PivotTable({
                   {({ height }) => (
                     <Collection
                       ref={leftHeaderRef}
-                      className="scroll-hide-all"
+                      className={CS.scrollHideAll}
                       cellCount={leftHeaderItems.length}
                       cellRenderer={({ index, style, key }) => (
                         <LeftHeaderCell
@@ -446,7 +446,7 @@ function PivotTable({
                     <Grid
                       width={width - leftHeaderWidth}
                       height={height}
-                      className="text-dark"
+                      className={CS.textDark}
                       rowCount={rowCount}
                       columnCount={columnCount}
                       rowHeight={CELL_HEIGHT}

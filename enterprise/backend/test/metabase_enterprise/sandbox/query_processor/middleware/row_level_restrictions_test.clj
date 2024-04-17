@@ -185,7 +185,9 @@
                    :query {:source-query {:source-table                  $$checkins
                                           :fields                        [$id !default.$date $user_id $venue_id]
                                           :filter                        [:and
-                                                                          [:>= !default.date [:absolute-datetime #t "2014-01-02T00:00Z[UTC]" :default]]
+                                                                          [:> !default.date [:absolute-datetime
+                                                                                             #t "2014-01-01"
+                                                                                             :default]]
                                                                           [:=
                                                                            $user_id
                                                                            [:value 5 {:base_type         :type/Integer

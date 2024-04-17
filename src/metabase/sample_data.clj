@@ -60,27 +60,30 @@
        (do
          ;; If the plugins directory is a temp directory, fall back to reading the DB directly from the JAR until a
          ;; working plugins directory is available. (We want to ensure the sample DB is in a stable location.)
-         (log/warn (trs (str "Sample database could not be extracted to the plugins directory,"
-                             "which may result in slow startup times. "
-                             "Please set MB_PLUGINS_DIR to a writable directory and restart Metabase.")))
+         (log/warn (str "Sample database could not be extracted to the plugins directory,"
+                        "which may result in slow startup times. "
+                        "Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))
          (jar-db-details resource)))}))
 
-(defn add-sample-database!
-  "Add the sample database as a Metabase DB if it doesn't already exist."
+(defn extract-and-sync-sample-database!
+  "Adds the sample database as a Metabase DB if it doesn't already exist. If it does exist in the app DB,
+  we update its details."
   []
-  (when-not (t2/exists? Database :is_sample true)
-    (try
-      (log/info (trs "Loading sample database"))
-      (let [details (try-to-extract-sample-database!)]
-        (log/debug "Syncing Sample Database...")
-        (sync/sync-database! (first (t2/insert-returning-instances! Database
-                                                                    :name      sample-database-name
-                                                                    :details   details
-                                                                    :engine    :h2
-                                                                    :is_sample true))))
-      (log/debug "Finished adding Sample Database.")
-      (catch Throwable e
-        (log/error e (trs "Failed to load sample database"))))))
+  (try
+    (log/info "Loading sample database")
+    (let [details (try-to-extract-sample-database!)
+          db (if (t2/exists? Database :is_sample true)
+               (t2/select-one Database (first (t2/update-returning-pks! Database :is_sample true {:details details})))
+               (first (t2/insert-returning-instances! Database
+                                                      :name      sample-database-name
+                                                      :details   details
+                                                      :engine    :h2
+                                                      :is_sample true)))]
+      (log/debug "Syncing Sample Database...")
+      (sync/sync-database! db))
+    (log/debug "Finished adding Sample Database.")
+    (catch Throwable e
+      (log/error e "Failed to load sample database"))))
 
 (defn update-sample-database-if-needed!
   "Update the path to the sample database DB if it exists in case the JAR has moved."

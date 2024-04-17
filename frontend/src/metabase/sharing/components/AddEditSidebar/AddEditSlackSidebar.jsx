@@ -46,7 +46,7 @@ function _AddEditSlackSidebar({
       onCancel={onCancel}
     >
       <div className={cx(CS.pt4, CS.flex, CS.alignCenter, CS.px4)}>
-        <Icon name="slack" className="mr1" size={21} />
+        <Icon name="slack" className={CS.mr1} size={21} />
         <Heading>{t`Send this dashboard to Slack`}</Heading>
       </div>
       <CaveatMessage />
@@ -77,7 +77,7 @@ function _AddEditSlackSidebar({
             onChannelScheduleChange(newSchedule, changedProp)
           }
         />
-        <div className="pt2 pb1">
+        <div className={cx(CS.pt2, CS.pb1)}>
           <SendTestPulse
             channel={channel}
             channelSpecs={formInput.channels}
@@ -125,7 +125,7 @@ function _AddEditSlackSidebar({
             handleArchive={handleArchive}
           />
         )}
-        <div className="p2 mt-auto text-small text-medium">
+        <div className={cx(CS.p2, CS.mtAuto, CS.textSmall, CS.textMedium)}>
           {t`Charts in subscriptions may look slightly different from charts in dashboards.`}
         </div>
       </div>

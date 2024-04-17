@@ -284,7 +284,7 @@ class SettingsBatchForm extends Component {
     return (
       <div>
         {breadcrumbs && (
-          <Breadcrumbs crumbs={breadcrumbs} className="ml2 mb3" />
+          <Breadcrumbs crumbs={breadcrumbs} className={cx(CS.ml2, CS.mb3)} />
         )}
 
         {layout.map((section, index) =>
@@ -300,10 +300,12 @@ class SettingsBatchForm extends Component {
         )}
 
         {formErrors && formErrors.message && (
-          <div className="m2 text-error text-bold">{formErrors.message}</div>
+          <div className={cx(CS.m2, CS.textError, CS.textBold)}>
+            {formErrors.message}
+          </div>
         )}
 
-        <div className="m2 mb4">
+        <div className={cx(CS.m2, CS.mb4)}>
           {renderSubmitButton ? (
             renderSubmitButton({
               valid,
@@ -314,7 +316,7 @@ class SettingsBatchForm extends Component {
             })
           ) : (
             <Button
-              className="mr1"
+              className={CS.mr1}
               primary={!disabled}
               success={submitting === "success"}
               disabled={disabled || pristine}

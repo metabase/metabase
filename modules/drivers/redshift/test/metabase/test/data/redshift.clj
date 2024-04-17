@@ -13,6 +13,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
@@ -134,10 +135,10 @@
                              (catch com.amazon.redshift.util.RedshiftException e
                                (if (re-find #"relation .* does not exist" (or (ex-message e) ""))
                                  :old-style-cache
-                                 (do (log/error "Error classifying cache schema" e)
+                                 (do (log/error e "Error classifying cache schema")
                                      :unknown-error)))
                              (catch Exception e
-                               (log/error "Error classifying cache schema" e)
+                               (log/error e "Error classifying cache schema")
                                :unknown-error)))]
 
         (group-by classify! schemas)))))
@@ -226,3 +227,9 @@
                                              (= (:name %) "extsales")))
                                 tables))))
     (original-describe-database driver database)))
+
+(defmethod ddl.i/format-name :redshift
+  [_driver s]
+  ;; Redshift is case-insensitive for identifiers and returns them in lower-case by default from system tables, even if
+  ;; you create the tables with upper-case characters.
+  (u/lower-case-en s))

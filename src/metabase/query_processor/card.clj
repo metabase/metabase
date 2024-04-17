@@ -33,7 +33,7 @@
 (defenterprise granular-cache-strategy
   "Returns cache strategy for a card. On EE, this checks the hierarchy for the card, dashboard, or
    database (in that order). Returns nil on OSS."
-  metabase-enterprise.caching.strategies
+  metabase-enterprise.cache.strategies
   [_card _dashboard-id])
 
 (defn- cache-strategy
@@ -209,8 +209,9 @@
   (let [dash-viz (when (and (not= context :question)
                             dashcard-id)
                    (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
-        card     (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
-                                                 :type :result_metadata :visualization_settings]
+        card     (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :collection_id
+                                                 :type :result_metadata :visualization_settings
+                                                 :cache_ttl :cache_invalidated_at]
                                                 :id card-id))
         query    (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                      (update :viz-settings (fn [viz] (merge viz dash-viz)))

@@ -185,7 +185,7 @@ describe("scenarios > question > nested", () => {
       createNestedQuestion({ baseQuestionDetails, nestedQuestionDetails });
 
       cy.log("Reported failing since v0.35.2");
-      cy.get(".cellData").contains(metric.name);
+      cy.get("[data-testid=cell-data]").contains(metric.name);
     });
   });
 
@@ -466,7 +466,7 @@ describe("scenarios > question > nested", () => {
     cy.wait("@dataset");
 
     // should allow to browse object details when exploring native query results (metabase#16938)
-    cy.get(".Table-ID")
+    cy.get(".test-Table-ID")
       .as("primaryKeys")
       .should("have.length", 5)
       .first()

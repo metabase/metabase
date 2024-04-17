@@ -18,7 +18,7 @@
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
-   [metabase.models.metric :refer [LegacyMetric]]
+   [metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
@@ -57,27 +57,27 @@
   "Load serialized metabase instance as created by [[dump]] command from directory `path`."
   [path context :- Context]
   (plugins/load-plugins!)
-  (mdb/setup-db!)
+  (mdb/setup-db! :create-sample-content? false)
   (check-premium-token!)
   (when-not (load/compatible? path)
-    (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
+    (log/warn "Dump was produced using a different version of Metabase. Things may break!"))
   (let [context (merge {:mode     :skip
                         :on-error :continue}
                        context)]
     (try
-      (log/info (trs "BEGIN LOAD from {0} with context {1}" path context))
+      (log/infof "BEGIN LOAD from %s with context %s" path context)
       (let [all-res    [(load/load! (str path "/users") context)
                         (load/load! (str path "/databases") context)
                         (load/load! (str path "/collections") context)
                         (load/load-settings! path context)]
             reload-fns (filter fn? all-res)]
         (when (seq reload-fns)
-          (log/info (trs "Finished first pass of load; now performing second pass"))
+          (log/info "Finished first pass of load; now performing second pass")
           (doseq [reload-fn reload-fns]
             (reload-fn)))
-        (log/info (trs "END LOAD from {0} with context {1}" path context)))
+        (log/infof "END LOAD from %s with context %s" path context))
       (catch Throwable e
-        (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))
+        (log/errorf e "ERROR LOAD from %s: %s" path (.getMessage e))
         (throw e)))))
 
 (mu/defn v2-load-internal!
@@ -91,12 +91,12 @@
    & {:keys [token-check?]
       :or   {token-check? true}}]
   (plugins/load-plugins!)
-  (mdb/setup-db!)
+  (mdb/setup-db! :create-sample-content? false)
   (when token-check?
     (check-premium-token!))
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
   ;(when-not (load/compatible? path)
-  ;  (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
+  ;  (log/warn "Dump was produced using a different version of Metabase. Things may break!"))
   (log/infof "Loading serialized Metabase files from %s" path)
   (serdes/with-cache
     (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts)))
@@ -183,8 +183,8 @@
 (defn v1-dump!
   "Legacy Metabase app data dump"
   [path {:keys [state user include-entity-id] :or {state :active} :as opts}]
-  (log/info (trs "BEGIN DUMP to {0} via user {1}" path user))
-  (mdb/setup-db!)
+  (log/infof "BEGIN DUMP to %s via user %s" path user)
+  (mdb/setup-db! :create-sample-content? false)
   (check-premium-token!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (let [users       (if user
@@ -222,13 +222,13 @@
                   users)))
   (dump/dump-settings! path)
   (dump/dump-dimensions! path)
-  (log/info (trs "END DUMP to {0} via user {1}" path user)))
+  (log/infof "END DUMP to %s via user %s" path user))
 
 (defn v2-dump!
   "Exports Metabase app data to directory at path"
   [path {:keys [collection-ids] :as opts}]
-  (log/info (trs "Exporting Metabase to {0}" path) (u/emoji "🏭 🚛💨"))
-  (mdb/setup-db!)
+  (log/infof "Exporting Metabase to %s" path)
+  (mdb/setup-db! :create-sample-content? false)
   (check-premium-token!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (let [f (io/file path)]

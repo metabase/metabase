@@ -115,6 +115,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search.config]
    [metabase.search.util :as search.util]
@@ -321,7 +322,11 @@
                           :authority_level collection_authority_level
                           :type            collection_type}
          :scores          all-scores)
-        (update :dataset_query #(some-> % json/parse-string mbql.normalize/normalize))
+        (update :dataset_query (fn [dataset-query]
+                                 (when-let [query (some-> dataset-query json/parse-string)]
+                                   (if (get query "type")
+                                      (mbql.normalize/normalize query)
+                                      (not-empty (lib/normalize query))))))
         (dissoc
          :collection_id
          :collection_name

@@ -30,6 +30,7 @@ import {
   queryBuilderHeader,
   removeDashboardCard,
   getDashboardCards,
+  getDashboardCard,
   toggleDashboardInfoSidebar,
   dashboardHeader,
   openProductsTable,
@@ -42,6 +43,7 @@ import {
   createDashboardWithTabs,
   entityPickerModal,
   collectionOnTheGoModal,
+  setFilter,
 } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
@@ -312,8 +314,8 @@ describe("scenarios > dashboard", () => {
         cy.findByTestId("edit-bar").button("Cancel").click();
         openDashboardMenu();
         popover().findByText("Move").click();
-        modal().within(() => {
-          cy.findByRole("heading", { name: myPersonalCollection }).click();
+        entityPickerModal().within(() => {
+          cy.findByText("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });
 
@@ -330,8 +332,8 @@ describe("scenarios > dashboard", () => {
         cy.findByTestId("edit-bar").button("Cancel").click();
         openDashboardMenu();
         popover().findByText("Move").click();
-        modal().within(() => {
-          cy.findByRole("heading", { name: "Our analytics" }).click();
+        entityPickerModal().within(() => {
+          cy.findByText("Our analytics").click();
           cy.button("Move").click();
         });
 
@@ -559,20 +561,16 @@ describe("scenarios > dashboard", () => {
 
   it("should add a filter", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.icon("pencil").click();
-    cy.icon("filter").click();
+    editDashboard();
+
     // Adding location/state doesn't make much sense for this case,
     // but we're testing just that the filter is added to the dashboard
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Location").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Is").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…").click();
+    setFilter("Location", "Is");
 
-    popover().within(() => {
-      cy.findByText("State").click();
-    });
+    getDashboardCard().findByText("Select…").click();
+
+    popover().findByText("State").click();
+
     cy.icon("close");
     cy.button("Done").click();
 
@@ -585,7 +583,7 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
-    // programatically create and save a question as per repro instructions in #11007
+    // programmatically create and save a question as per repro instructions in #11007
     cy.request("POST", "/api/card", {
       name: "11007",
       dataset_query: {
@@ -621,29 +619,19 @@ describe("scenarios > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("11007").click();
 
-    // add first filter
-    cy.icon("filter").click();
-    popover().within(() => {
-      cy.findByText("Time").click();
-      cy.findByText("All Options").click();
-    });
+    setFilter("Time", "All Options");
+
     // and connect it to the card
     selectDashboardFilter(cy.findByTestId("dashcard-container"), "Created At");
 
     // add second filter
-    cy.icon("filter").click();
-    popover().within(() => {
-      cy.findByText("ID").click();
-    });
+    setFilter("ID");
+
     // and connect it to the card
     selectDashboardFilter(cy.findByTestId("dashcard-container"), "Product ID");
 
     // add third filter
-    cy.icon("filter").click();
-    popover().within(() => {
-      cy.findByText("Text or Category").click();
-      cy.findByText("Starts with").click();
-    });
+    setFilter("Text or Category", "Starts with");
     // and connect it to the card
     selectDashboardFilter(cy.findByTestId("dashcard-container"), "Category");
 
@@ -1159,8 +1147,7 @@ function checkOptionsForFilter(filter) {
     .and("not.contain", "Dashboard filters");
 
   // Get rid of the open popover to be able to select another filter
-  // Uses force: true because the popover is covering this text. This happens
-  // after we introduce the database prompt banner.
+  // Uses force: true because the popover is covering this text.
   cy.findByText("Pick one or more filters to update").click({ force: true });
 }
 

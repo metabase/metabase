@@ -142,7 +142,7 @@
 
 (def ^:private TopLevelKey
   "In the interest of making this easy to use in JS-land we'll accept either strings or keywords."
-  [:enum :aggregation :breakout :filters :limit :order-by :source-table :source-card :sources :joins])
+  [:enum :aggregation :breakout :filters :limit :order-by :source-table :source-card :joins])
 
 (mu/defn describe-top-level-key :- [:maybe ::lib.schema.common/non-blank-string]
   "'top-level' here means the top level of an individual stage. Generate a human-friendly string describing a specific
@@ -265,7 +265,7 @@
     (try
       (describe-query query)
       (catch #?(:clj Throwable :cljs js/Error) e
-        (log/error e (i18n/tru "Error calculating display name for query: {0}" (ex-message e)))
+        (log/errorf e "Error calculating display name for query: %s" (ex-message e))
         nil))))
 
 (defmulti display-info-method
@@ -450,6 +450,11 @@
   [_query _stage-number _x _options]
   [])
 
+;;; if you pass in an integer assume it's a stage number; use the method for the query stage itself.
+(defmethod returned-columns-method :dispatch-type/integer
+  [query _stage-number stage-number options]
+  (returned-columns-method query stage-number (lib.util/query-stage query stage-number) options))
+
 (mu/defn returned-columns :- [:maybe ColumnsWithUniqueAliases]
   "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
   join, and include the `:lib/source` of where they came from. This should only include columns that will be present
@@ -515,6 +520,11 @@
 (defmethod visible-columns-method :default
   [query stage-number x options]
   (returned-columns-method query stage-number x options))
+
+;;; if you pass in an integer assume it's a stage number; use the method for the query stage itself.
+(defmethod visible-columns-method :dispatch-type/integer
+  [query _stage-number stage-number options]
+  (visible-columns-method query stage-number (lib.util/query-stage query stage-number) options))
 
 (mu/defn visible-columns :- ColumnsWithUniqueAliases
   "Return a sequence of columns that should be visible *within* a given stage of something, e.g. a query stage or a

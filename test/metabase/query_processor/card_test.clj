@@ -34,7 +34,7 @@
                    :multiplier       10
                    :avg-execution-ms 4000}
                   (:cache-strategy (#'qp.card/query-for-card card {} {} {})))))))
-    ;; corresponding EE tests in metabase-enterprise.caching.strategies-test
+    ;; corresponding EE tests in metabase-enterprise.cache.strategies-test
     (testing "card ttl only, does not take effect on OSS"
       (mt/with-temp [Card card {:cache_ttl 1337}]
         (is (=? {:type             :ttl
@@ -50,7 +50,7 @@
                  :avg-execution-ms int?}
                 (:cache-strategy (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
     (testing "multiple ttl, db ttl does not take effect on OSS"
-      ;; corresponding EE test in metabase-enterprise.caching.strategies-test
+      ;; corresponding EE test in metabase-enterprise.cache.strategies-test
       (mt/with-temp [Database db {:cache_ttl 1337}
                      Dashboard dash {}
                      Card card {:database_id (u/the-id db)}]

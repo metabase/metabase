@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -35,4 +34,4 @@
                     (str h2-filename ".mv.db")]]
     (when (.exists (io/file filename))
       (io/delete-file filename)
-      (log/warn (u/format-color 'red (trs "Output H2 database already exists: %s, removing.") filename)))))
+      (log/warn (u/format-color :red "Output H2 database already exists: %s, removing." filename)))))

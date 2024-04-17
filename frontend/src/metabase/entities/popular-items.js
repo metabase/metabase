@@ -1,4 +1,5 @@
-import { createEntity } from "metabase/lib/entities";
+import { activityApi } from "metabase/api";
+import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { entityTypeForObject } from "metabase/lib/schema";
 import { PopularItemSchema } from "metabase/schema";
 
@@ -25,6 +26,16 @@ const PopularItems = createEntity({
   nameOne: "popularItem",
   path: "/api/activity/popular_items",
   schema: PopularItemSchema,
+
+  api: {
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        activityApi.endpoints.listPopularItems,
+      ),
+  },
+
   wrapEntity(item, dispatch = null) {
     const entity = getEntity(item);
     return entity.wrapEntity(item, dispatch);

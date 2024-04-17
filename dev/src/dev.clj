@@ -13,8 +13,7 @@
 ;; - [Getting started with backend development](https://github.com/metabase/metabase/blob/master/docs/developers-guide/devenv.md#backend-development)
 ;; - [Additional notes on using tools.deps](https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps)
 ;; - [Use the dev-scripts repo to run various local DBs](https://github.com/metabase/dev-scripts)
-;; - [If you're on mac and need a VM to run Windows, Linux.. etc checkout UTM](https://mac.getutm.app/)
-;; - [Other tips](https://github.com/metabase/metabase/wiki/Metabase-Backend-Dev-Secrets)
+;; - If you're on a Mac and need a VM to run Windows or Linux, [check out UTM](https://mac.getutm.app/)
 ;;
 ;; ## Important Parts of the Codebase
 ;;
@@ -30,6 +29,20 @@
 ;; - [Honey SQL](https://github.com/seancorfield/honeysql) (version 2) for SQL queries
 ;; - [Liquibase](https://docs.liquibase.com/concepts/changelogs/changeset.html) for database migrations
 ;; - [Compojure](https://github.com/weavejester/compojure) on top of [Ring](https://github.com/ring-clojure/ring) for our API
+;;
+;; ## Other Helpful Things
+;;
+;; [Tips on our Github wiki](https://github.com/metabase/metabase/wiki/Metabase-Backend-Dev-Secrets)
+;;
+;; ### The Dev Debug Page
+;; If you want an easy way to GET/POST to an endpoint and display the results in a webpage, check out the [Dev Debug
+;; Page](https://github.com/metabase/metabase/pull/40580). Cherry-pick the commit from that PR, modify `DevDebug.jsx` as
+;; you see fit ([here](https://github.com/metabase/metabase/commit/4c5723f44424dca2a68a753b83e31ec8129da0fb) is an
+;; example from the ParseSQL project), and then play with the results at `/dev_debug`. *Don't forget to remove the
+;; commit before merging to `master`!*
+;;
+;; ### Lifecycle of a Query
+;; Dan wrote a nice guide [here](https://www.notion.so/metabase/Lifecycle-of-a-query-58e212402b7e444d937aba7757f9ec06?pvs=4)
 ;;
 ;; <hr />
 
@@ -251,8 +264,7 @@
   ([]
    (migrate! :up))
   ([direction & [version]]
-   (mdb/migrate! (mdb/db-type) (mdb/data-source)
-                 direction version)))
+   (mdb/migrate! (mdb/data-source) direction version)))
 
 (methodical/defmethod t2.connection/do-with-connection :model/Database
   "Support running arbitrary queries against data warehouse DBs for easy REPL debugging. Only works for SQL+JDBC drivers

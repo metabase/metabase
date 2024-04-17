@@ -1,4 +1,9 @@
-import { restore, openNativeEditor, runNativeQuery } from "e2e/support/helpers";
+import {
+  restore,
+  openNativeEditor,
+  runNativeQuery,
+  modal,
+} from "e2e/support/helpers";
 
 const nativeQuery = "select (random() * random() * random()), pg_sleep(2)";
 
@@ -85,7 +90,7 @@ function saveQuestion(name) {
 
   cy.findByLabelText("Name").type(name);
 
-  cy.get(".Modal").button("Save").click();
+  modal().button("Save").click();
 
   cy.findByText("Not now").click();
 
@@ -93,7 +98,7 @@ function saveQuestion(name) {
 }
 
 function getCellText() {
-  return cy.get(".cellData").eq(-1).invoke("text");
+  return cy.get("[data-testid=cell-data]").eq(-1).invoke("text");
 }
 
 function refresh() {

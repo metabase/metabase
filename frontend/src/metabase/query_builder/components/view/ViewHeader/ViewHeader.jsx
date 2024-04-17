@@ -1,10 +1,12 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { useEffect, useCallback, useState } from "react";
 import { usePrevious } from "react-use";
-import { t, ngettext, msgid } from "ttag";
+import { t } from "ttag";
 
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -35,7 +37,7 @@ import {
   ViewRunButtonWithTooltip,
 } from "./ViewHeader.styled";
 import {
-  ConvertQueryButton,
+  ToggleNativeQueryPreview,
   HeadBreadcrumbs,
   FilterHeaderButton,
   FilterHeaderToggle,
@@ -80,8 +82,6 @@ const viewTitleHeaderPropTypes = {
 
   className: PropTypes.string,
   style: PropTypes.object,
-
-  requiredTemplateTags: PropTypes.array,
 };
 
 export function ViewTitleHeader(props) {
@@ -341,7 +341,7 @@ function AhHocQuestionLeftSide(props) {
       <ViewHeaderLeftSubHeading>
         {isSummarized && (
           <QuestionDataSource
-            className="mb1"
+            className={CS.mb1}
             question={question}
             isObjectDetail={isObjectDetail}
             subHead
@@ -398,7 +398,6 @@ ViewTitleHeaderRightSide.propTypes = {
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.func,
   onQueryChange: PropTypes.func,
-  requiredTemplateTags: PropTypes.array,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -431,7 +430,6 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
-    requiredTemplateTags,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const { isEditable } = Lib.queryDisplayInfo(question.query());
@@ -464,17 +462,13 @@ function ViewTitleHeaderRightSide(props) {
 
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
-  const disabledSaveTooltip = getDisabledSaveTooltip(
-    isEditable,
-    requiredTemplateTags,
-    canSave,
-  );
+  const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
       {FilterHeaderToggle.shouldRender(props) && (
         <FilterHeaderToggle
-          className="ml2 mr1"
+          className={cx(CS.ml2, CS.mr1)}
           query={question.query()}
           isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}
@@ -483,13 +477,13 @@ function ViewTitleHeaderRightSide(props) {
       )}
       {FilterHeaderButton.shouldRender(props) && (
         <FilterHeaderButton
-          className="hide sm-show"
+          className={cx(CS.hide, CS.smShow)}
           onOpenModal={onOpenModal}
         />
       )}
       {QuestionSummarizeWidget.shouldRender(props) && (
         <QuestionSummarizeWidget
-          className="hide sm-show"
+          className={cx(CS.hide, CS.smShow)}
           isShowingSummarySidebar={isShowingSummarySidebar}
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
@@ -505,8 +499,8 @@ function ViewTitleHeaderRightSide(props) {
           />
         </ViewHeaderIconButtonContainer>
       )}
-      {ConvertQueryButton.shouldRender(props) && (
-        <ConvertQueryButton question={question} onOpenModal={onOpenModal} />
+      {ToggleNativeQueryPreview.shouldRender(props) && (
+        <ToggleNativeQueryPreview question={question} />
       )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
@@ -558,39 +552,8 @@ function ViewTitleHeaderRightSide(props) {
 
 ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
 
-function getDisabledSaveTooltip(
-  isEditable,
-  requiredTemplateTags = [],
-  canSave,
-) {
+function getDisabledSaveTooltip(isEditable) {
   if (!isEditable) {
     return t`You don't have permission to save this question.`;
   }
-
-  const missingValueRequiredTTags = requiredTemplateTags.filter(
-    tag => tag.required && !tag.default,
-  );
-
-  if (!canSave) {
-    return getMissingRequiredTemplateTagsTooltip(missingValueRequiredTTags);
-  }
-
-  // Having an empty tooltip text is ok because it won't be shown.
-  return "";
-}
-
-function getMissingRequiredTemplateTagsTooltip(requiredTemplateTags = []) {
-  if (!requiredTemplateTags.length) {
-    return "";
-  }
-
-  const names = requiredTemplateTags
-    .map(tag => `"${tag["display-name"] ?? tag.name}"`)
-    .join(", ");
-
-  return ngettext(
-    msgid`The ${names} variable requires a default value but none was provided.`,
-    `The ${names} variables require default values but none were provided.`,
-    requiredTemplateTags.length,
-  );
 }

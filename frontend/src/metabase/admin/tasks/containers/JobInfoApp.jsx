@@ -44,13 +44,13 @@ const renderJobsTable = jobs => {
           {jobs &&
             jobs.map(job => (
               <tr key={job.key}>
-                <td className="text-bold">{job.key}</td>
+                <td className={CS.textBold}>{job.key}</td>
                 <td>{job.class}</td>
                 <td>{job.description}</td>
                 <td>{job.durable}</td>
                 <td>
                   <Link
-                    className="link"
+                    className={CS.link}
                     to={`/admin/troubleshooting/jobs/${job.key}`}
                   >
                     {t`View triggers`}

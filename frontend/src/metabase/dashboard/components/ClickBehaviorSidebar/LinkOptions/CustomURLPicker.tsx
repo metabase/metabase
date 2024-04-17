@@ -1,9 +1,11 @@
+import cx from "classnames";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import CS from "metabase/css/core/index.css";
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";
@@ -44,9 +46,12 @@ export function CustomURLPicker({
     linkTemplate: url,
   });
 
-  const handleLinkTemplateChange = useCallback(e => {
-    setUrl(e.currentTarget.value);
-  }, []);
+  const handleLinkTemplateChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setUrl(e.currentTarget.value);
+    },
+    [],
+  );
 
   const handleSubmit = useCallback(() => {
     updateSettings({
@@ -91,7 +96,7 @@ export function CustomURLPicker({
             value={url}
             placeholder={t`e.g. http://acme.com/id/\{\{user_id\}\}`}
             onChange={handleLinkTemplateChange}
-            className="block full"
+            className={cx(CS.block, CS.full)}
           />
           {isTableDisplay(dashcard) && (
             <CustomLinkText

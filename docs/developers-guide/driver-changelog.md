@@ -13,6 +13,47 @@ title: Driver interface changelog
   efficient way possible. This is currently only required for drivers that support the `:uploads` feature, and has
   a default implementation for JDBC-based drivers.
 
+- New feature `:window-functions` has been added. Drivers that implement this method are expected to implement the
+  cumulative sum (`:cum-sum`) and cumulative count (`:cum-count`) aggregation clauses in their native query language.
+  For non-SQL drivers (drivers not based on our `:sql` or `:sql-jdbc` drivers), this feature flag is set to `false` by
+  default; the old (broken) post-processing implementations of cumulative aggregations will continue to be used. (See
+  issues [#13634](https://github.com/metabase/metabase/issues/13634) and
+  [#15118](https://github.com/metabase/metabase/issues/15118) for more information on why the old implementation is
+  broken.)
+
+  Non-SQL drivers should be updated to implement cumulative aggregations natively if possible.
+
+  The SQL implementation uses `OVER (...)` expressions. It will automatically move `GROUP BY` expressions like
+  `date_trunc()` into a `SUBSELECT` so fussy databases like BigQuery can reference plain column identifiers. The
+  actual SQL generated will look something like
+
+  ```sql
+  SELECT
+    created_at_month,
+    sum(sum(total) OVER (ORDER BY created_at_month ROWS UNBOUNDED PRECEDING) AS cumulative_sum
+  FROM (
+    SELECT
+      date_trunc('month', created_at) AS created_at_month,
+      total
+    FROM
+      my_table
+    ) source
+  GROUP BY
+    created_at_month
+  ORDER BY
+    created_at_month
+  ```
+
+  Non-SQL drivers can use
+  `metabase.query-processor.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation`
+  if they want to leverage the same query transformation. See the default `:sql` implementation of
+  `metabase.driver.sql.query-processor/preprocess` for an example of using this transformation when needed.
+
+  You can run the new tests in `metabase.query-processor-test.cumulative-aggregation-test` to verify that your driver
+  implementation is working correctly.
+
+- `metabase.driver.common/class->base-type` no longer supports Joda Time classes. They have been deprecated since 2019.
+
 ## Metabase 0.49.1
 
 - Another driver feature has been added: `describe-fields`. If a driver opts-in to supporting this feature, The

@@ -731,7 +731,11 @@
 
       ;; all series already have positions assigned
       ;; This comes from the user explicitly setting left or right on the series in the UI.
-      :else positions)))
+      :else (into {} (mapcat
+                      (fn [[k vs]]
+                        (for [v vs]
+                          [v k])))
+                  positions))))
 
 (defn- single-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,

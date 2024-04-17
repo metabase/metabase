@@ -31,7 +31,7 @@
   (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
     (locking h2-test-dbs-created-by-this-instance
       (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
-        (mdb/setup-db!)                 ; if not already setup
+        (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
         (t2/delete! Database :engine "h2", :name database-name)
         (swap! h2-test-dbs-created-by-this-instance conj database-name)))))
 
@@ -100,13 +100,19 @@
    (merge
     ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type)
     (when (= ag-type :count)
-      {:base_type :type/BigInteger})))
+      {:base_type :type/BigInteger})
+    (when (= ag-type :cum-count)
+      {:base_type :type/Decimal})))
 
   ([driver ag-type field]
    (merge
     ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
-    (when (#{:sum :cum-count} ag-type)
-      {:base_type :type/BigInteger}))))
+    (when (= ag-type :sum)
+      {:base_type :type/BigInteger})
+    ;; because it's implemented as sum(count(field)) OVER (...). But shouldn't a sum of integers be an
+    ;; integer? :thinking_face:
+    (when (= ag-type :cum-count)
+      {:base_type :type/Decimal}))))
 
 (defmethod execute/execute-sql! :h2
   [driver _ dbdef sql]

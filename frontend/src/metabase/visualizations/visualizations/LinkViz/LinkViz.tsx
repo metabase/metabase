@@ -8,7 +8,7 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import type {
   LinkCardSettings,
-  SearchModelType,
+  SearchModel,
   UnrestrictedLinkEntity,
   VirtualDashboardCard,
 } from "metabase-types/api";
@@ -32,7 +32,7 @@ import { settings } from "./LinkVizSettings";
 import type { WrappedUnrestrictedLinkEntity } from "./types";
 import { isUrlString } from "./utils";
 
-const MODELS_TO_SEARCH: SearchModelType[] = [
+const MODELS_TO_SEARCH: SearchModel[] = [
   "card",
   "dataset",
   "dashboard",

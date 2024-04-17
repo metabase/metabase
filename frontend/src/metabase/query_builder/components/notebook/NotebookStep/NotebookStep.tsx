@@ -4,10 +4,12 @@ import { t } from "ttag";
 
 import ExpandingContent from "metabase/components/ExpandingContent";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 import type { Query } from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import NotebookStepPreview from "../NotebookStepPreview";
@@ -69,7 +71,10 @@ function NotebookStep({
           button: (
             <ActionButton
               key={`actionButton_${stepUi.title}`}
-              className={cx({ "mr2 mt2": isLastStep, mr1: !isLastStep })}
+              className={cx({
+                [cx(CS.mr2, CS.mt2)]: isLastStep,
+                [CS.mr1]: !isLastStep,
+              })}
               color={stepUi.getColor()}
               large={hasLargeActionButtons}
               {...stepUi}
@@ -104,21 +109,26 @@ function NotebookStep({
   } = STEP_UI[step.type] || {};
 
   const color = getColor();
-  const canPreview = Boolean(step.getPreviewQuery);
+  const canPreview = Lib.canRun(step.query) && step.active && step.visible;
   const hasPreviewButton = !isPreviewOpen && canPreview;
   const canRevert = typeof step.revert === "function" && !readOnly;
 
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
       <StepRoot
-        className="hover-parent hover--visibility"
+        className={cx(CS.hoverParent, CS.hoverVisibility)}
         data-testid={step.testID}
       >
         <StepHeader color={color}>
           {title}
           {canRevert && (
             <IconButtonWrapper
-              className="ml-auto text-light text-medium-hover hover-child"
+              className={cx(
+                CS.mlAuto,
+                CS.textLight,
+                CS.textMediumHover,
+                CS.hoverChild,
+              )}
               onClick={handleClickRevert}
             >
               <Icon

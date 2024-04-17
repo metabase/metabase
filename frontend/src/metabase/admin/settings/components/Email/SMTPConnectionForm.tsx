@@ -5,6 +5,7 @@ import { t } from "ttag";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 import type { SettingElement } from "metabase/admin/settings/types";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
@@ -71,7 +72,7 @@ export const SMTPConnectionForm = ({
   );
 
   const handleSendTestEmail = useCallback(
-    async e => {
+    async (e: React.MouseEvent) => {
       e.preventDefault();
 
       setSendingEmail("working");
@@ -134,7 +135,7 @@ export const SMTPConnectionForm = ({
             <>
               {valid && pristine && submitting === "default" ? (
                 <Button
-                  className="mr1"
+                  className={CS.mr1}
                   success={sendingEmail === "success"}
                   disabled={disabled}
                   onClick={handleSendTestEmail}
@@ -143,7 +144,7 @@ export const SMTPConnectionForm = ({
                 </Button>
               ) : null}
               <Button
-                className="mr1"
+                className={CS.mr1}
                 disabled={disabled}
                 onClick={handleClearEmailSettings}
               >

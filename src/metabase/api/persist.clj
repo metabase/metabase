@@ -119,7 +119,7 @@
   "Enable global setting to allow databases to persist models."
   []
   (validation/check-has-application-permission :setting)
-  (log/info (tru "Enabling model persistence"))
+  (log/info "Enabling model persistence")
   (public-settings/persisted-models-enabled! true)
   (task.persist-refresh/enable-persisting!)
   api/generic-204-no-content)
@@ -132,7 +132,7 @@
   []
   (let [id->db      (m/index-by :id (t2/select Database))
         enabled-dbs (filter (comp :persist-models-enabled :settings) (vals id->db))]
-    (log/info (tru "Disabling model persistence"))
+    (log/info "Disabling model persistence")
     (doseq [db enabled-dbs]
       (t2/update! Database (u/the-id db)
                   {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))

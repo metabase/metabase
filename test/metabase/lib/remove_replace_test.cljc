@@ -472,12 +472,12 @@
               (lib/replace-clause
                query
                (first (lib/aggregations query))
-               (first (lib/available-metrics query)))))
+               (first (lib/available-legacy-metrics query)))))
       (is (=? {:stages [{:aggregation [[:count {:lib/uuid string?}]]}]}
               (-> query
                   (lib/replace-clause
                    (first (lib/aggregations query))
-                   (first (lib/available-metrics query)))
+                   (first (lib/available-legacy-metrics query)))
                   (as-> $q (lib/replace-clause $q (first (lib/aggregations $q)) (lib/count)))))))))
 
 (deftest ^:parallel replace-segment-test

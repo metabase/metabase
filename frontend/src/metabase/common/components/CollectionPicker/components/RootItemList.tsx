@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useCollectionQuery } from "metabase/common/hooks";
+import { useCollectionQuery, useSearchListQuery } from "metabase/common/hooks";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
@@ -15,6 +15,8 @@ const personalCollectionsRoot: CollectionPickerItem = {
   model: "collection",
   location: "/",
   description: "",
+  here: ["collection"],
+  below: ["collection"],
 };
 
 /**
@@ -29,6 +31,7 @@ export const RootItemList = ({
   options,
   isFolder,
   isCurrentLevel,
+  shouldDisableItem,
 }: CollectionItemListProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
@@ -38,6 +41,17 @@ export const RootItemList = ({
       id: currentUser?.personal_collection_id,
       enabled: !!currentUser?.personal_collection_id,
     });
+
+  const {
+    data: personalCollectionItems,
+    isLoading: isLoadingPersonalCollectionItems,
+  } = useSearchListQuery({
+    query: {
+      collection: currentUser?.personal_collection_id,
+      models: ["collection"],
+    },
+    enabled: !!currentUser?.personal_collection_id,
+  });
 
   const {
     data: rootCollection,
@@ -53,6 +67,7 @@ export const RootItemList = ({
         collectionsData.push({
           ...rootCollection,
           model: "collection",
+          here: ["collection"],
           location: "/",
           name:
             options.namespace === "snippets"
@@ -63,6 +78,7 @@ export const RootItemList = ({
         collectionsData.push({
           name: t`Collections`,
           id: "root",
+          here: ["collection"],
           description: null,
           can_write: false,
           model: "collection",
@@ -79,8 +95,9 @@ export const RootItemList = ({
     ) {
       collectionsData.push({
         ...personalCollection,
+        here: personalCollectionItems?.length ? ["collection"] : [],
         model: "collection",
-        location: personalCollection.location || "/",
+        can_write: true,
       });
 
       if (isAdmin) {
@@ -96,16 +113,22 @@ export const RootItemList = ({
     isAdmin,
     options,
     rootCollectionError,
+    personalCollectionItems,
   ]);
 
   return (
     <ItemList
       items={data}
-      isLoading={isLoadingRootCollecton || isLoadingPersonalCollecton}
+      isLoading={
+        isLoadingRootCollecton ||
+        isLoadingPersonalCollecton ||
+        isLoadingPersonalCollectionItems
+      }
       onClick={onClick}
       selectedItem={selectedItem}
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
+      shouldDisableItem={shouldDisableItem}
     />
   );
 };
