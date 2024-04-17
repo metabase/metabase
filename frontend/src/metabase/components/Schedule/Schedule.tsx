@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 import { c } from "ttag";
 
-import { removeNilValues } from "metabase/common/utils/misc";
 import { capitalize } from "metabase/lib/formatting/strings";
+import { removeNullAndUndefinedValues } from "metabase/lib/types";
 import { Box } from "metabase/ui";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
@@ -92,7 +92,7 @@ export const Schedule = ({
         [field]: value,
       };
 
-      newSchedule = removeNilValues(newSchedule);
+      newSchedule = removeNullAndUndefinedValues(newSchedule);
 
       if (field === "schedule_type") {
         newSchedule = {
