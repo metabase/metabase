@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase.api.table-test :as oss-test]
    [metabase.test :as mt]
-   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def list-url "ee/uploads")
@@ -67,8 +66,7 @@
                (is (true? (mt/user-http-request :crowberto :delete 200 (delete-url table-id)))))))
 
          (testing "The table must be uploaded"
-           (let [table-id (:id (oss-test/create-csv!))]
-             (t2/update! :model/Table :id table-id {:is_upload false})
+           (mt/with-temp [:model/Table {table-id :id}]
              (is (= {:message "The table must be an uploaded table."}
                     (mt/user-http-request :rasta :delete 422 (delete-url table-id))))))
 

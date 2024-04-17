@@ -32,6 +32,7 @@
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -640,21 +641,8 @@
   [table & {:keys [archive-cards?]}]
   (let [database   (table/database table)
         driver     (driver.u/database->driver database)
-        table-name (table-identifier table)
-        archived   (atom nil)]
+        table-name (table-identifier table)]
     (check-can-delete table)
-
-    ;; Archive cards if desired. We do this before deleting the underlying data to minimize race conditions that
-    ;; could lead to query failures and general system noise.
-    ;;
-    ;; For now, this only covers instances where the card has this as its "primary table", i.e.
-    ;; 1. A MBQL question or model that has this table as their first or only data source, or
-    ;; 2. A MBQL question or model that depends on such a model as their first or only data source.
-    ;; Note that this does not include cases where we join to this table, or even native queries which depend .
-    (when archive-cards?
-      (reset! archived (t2/update-returning-pks! :model/Card
-                                                 {:table_id (:id table) :archived false}
-                                                 {:archived true})))
 
     (try
       ;; Attempt to delete the underlying data from the customer database.
@@ -668,17 +656,28 @@
       ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
       ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
       ;; relies on their absence from the tables being described during the database sync itself.
-      ;; Ideally in future the [[metabase.sync]] module will support direct per-table clean-up, and also clean up more
-      ;; the metadata which we had created around it.
+      ;; TODO update the [[metabase.sync]] module to support direct per-table clean-up
+      ;; Ideally this will also clean up more the metadata which we had created around it, e.g. advanced field values.
       #_(future (sync/retire-table! (assoc table :active false)))
+
+      ;; Archive the related cards if the customer opted in.
+      ;;
+      ;; For now, this only covers instances where the card has this as its "primary table", i.e.
+      ;; 1. A MBQL question or model that has this table as their first or only data source, or
+      ;; 2. A MBQL question or model that depends on such a model as their first or only data source.
+      ;; Note that this does not include cases where we join to this table, or even native queries which depend .
+
+      (when archive-cards?
+        (t2/update-returning-pks! :model/Card
+                                  {:table_id (:id table) :archived false}
+                                  {:archived true}))
 
       (catch Exception e
         ;; If we were unable to delete the data, preserve the appearance that archiving is a post-hoc step.
-        ;; Make sure we rethrow the original exception though, not anything related to the rollback attempt.
         (try
           (when (table-exists? driver database table)
-            (when-let [card-ids @archived]
-              (t2/update! :model/Card :id [:in card-ids] {:archived false})))
+            (log/errorf e "Failure to delete table %s" (:name table)))
+          ;; Make sure we rethrow the original exception though, not anything related to this check.
           (catch Exception _e))
 
         (throw e)))

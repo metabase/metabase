@@ -24,7 +24,7 @@
    archive-cards [:maybe {:default false} ms/BooleanValue]}
   (try
     ;; To be idempotent, we do not check whether the table has already been deactivated.
-    (let [table  (api/check-404 (t2/select-one :model/Table :id id))
+    (let [table  (api/check-404 (t2/select-one :model/Table id))
           result (upload/delete-upload! table :archive-cards? archive-cards)]
       {:status 200
        :body   (= :done result)})

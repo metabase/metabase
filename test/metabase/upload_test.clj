@@ -24,8 +24,7 @@
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (java.io File)))
 
@@ -1777,9 +1776,7 @@
           (testing "The expected metadata is synchronously sync'd"
             (is (seq (t2/select :model/Field :table_id (:id table))))))
 
-        (let [card    (assoc (t2.with-temp/with-temp-defaults :model/Card) :table_id (:id table))
-              card-id (t2/insert-returning-pk! :model/Card card)]
-
+        (mt/with-temp [:model/Card {card-id :id} {:table_id (:id table)}]
           (is (false? (:archived (t2/select-one :model/Card :id card-id))))
 
           (upload/delete-upload! table :archive-cards? archive-cards?)
