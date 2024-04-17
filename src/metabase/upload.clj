@@ -32,7 +32,6 @@
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -621,17 +620,6 @@
   (when-let [error (can-delete-error table)]
     (throw error)))
 
-(defn- table-exists?
-  "Check whether the give table exists within the customer database."
-  [driver database table]
-  (try
-    (driver/describe-table driver (:id database) table)
-    true
-    (catch Exception e
-      (if (re-find #"not found" (ex-message e))
-        false
-        (throw e)))))
-
 ;;; +--------------------------------------------------
 ;;; |  public interface for updating an uploaded table
 ;;; +--------------------------------------------------
@@ -644,39 +632,31 @@
         table-name (table-identifier table)]
     (check-can-delete table)
 
-    (try
-      ;; Attempt to delete the underlying data from the customer database.
-      ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still
-      ;; visible to administrators and the operation is easy to retry again later.
-      (driver/drop-table! driver (:id database) table-name)
+    ;; Attempt to delete the underlying data from the customer database.
+    ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still
+    ;; visible to administrators and the operation is easy to retry again later.
+    (driver/drop-table! driver (:id database) table-name)
 
-      ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
-      (t2/update! :model/Table :id (:id table) {:active false})
+    ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
+    (t2/update! :model/Table :id (:id table) {:active false})
 
-      ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
-      ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
-      ;; relies on their absence from the tables being described during the database sync itself.
-      ;; TODO update the [[metabase.sync]] module to support direct per-table clean-up
-      ;; Ideally this will also clean up more the metadata which we had created around it, e.g. advanced field values.
-      #_(future (sync/retire-table! (assoc table :active false)))
+    ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
+    ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
+    ;; relies on their absence from the tables being described during the database sync itself.
+    ;; TODO update the [[metabase.sync]] module to support direct per-table clean-up
+    ;; Ideally this will also clean up more the metadata which we had created around it, e.g. advanced field values.
+    #_(future (sync/retire-table! (assoc table :active false)))
 
-      ;; Archive the related cards if the customer opted in.
-      ;;
-      ;; For now, this only covers instances where the card has this as its "primary table", i.e.
-      ;; 1. A MBQL question or model that has this table as their first or only data source, or
-      ;; 2. A MBQL question or model that depends on such a model as their first or only data source.
-      ;; Note that this does not include cases where we join to this table, or even native queries which depend .
-
-      (when archive-cards?
-        (t2/update-returning-pks! :model/Card
-                                  {:table_id (:id table) :archived false}
-                                  {:archived true}))
-
-      (catch Exception e
-        (u/ignore-exceptions
-         (when (table-exists? driver database table)
-           (log/errorf e "Failure to delete table %s" (:name table))))
-        (throw e)))
+    ;; Archive the related cards if the customer opted in.
+    ;;
+    ;; For now, this only covers instances where the card has this as its "primary table", i.e.
+    ;; 1. A MBQL question or model that has this table as their first or only data source, or
+    ;; 2. A MBQL question or model that depends on such a model as their first or only data source.
+    ;; Note that this does not include cases where we join to this table, or even native queries which depend .
+    (when archive-cards?
+      (t2/update-returning-pks! :model/Card
+                                {:table_id (:id table) :archived false}
+                                {:archived true}))
 
     :done))
 
