@@ -54,6 +54,7 @@ import lineShowDotsOn from "./line-show-dots-on.json";
 import logYScaleCustomYAxisRange from "./log-y-scale-custom-y-axis-range.json";
 import longDimensionNameCutOff37420 from "./long-dimension-name-cut-off-37420.json";
 import messedUpAxis from "./messed-up-axis.json";
+import nativeAutoYSplit from "./native-auto-y-split.json";
 import nullCategoryValueFormatting from "./null-category-value-formatting.json";
 import numberOfInsightsError39608 from "./number-of-insights-error-39608.json";
 import numericXAxisIncludesZero37082 from "./numeric-x-axis-includes-zero-37082.json";
@@ -133,6 +134,7 @@ export const data = {
   combinedBarTimeSeriesDifferentGranularityWithBreakout,
   longDimensionNameCutOff37420,
   compactXAxisDoesNotWork38917,
+  nativeAutoYSplit,
   numberOfInsightsError39608,
   numericXAxisIncludesZero37082,
   wrongYAxisRange37306,
