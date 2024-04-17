@@ -15,11 +15,11 @@ import type {
 } from "../EntityPicker";
 
 export type QuestionPickerModel = Extract<
-  QuestionPickerItem["model"],
+  SearchResult["model"],
   "card" | "dataset" | "collection"
 >;
 export type QuestionPickerValueModel = Extract<
-  QuestionPickerItem["model"],
+  SearchResult["model"],
   "card" | "dataset"
 >;
 
