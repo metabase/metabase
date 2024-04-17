@@ -6,26 +6,55 @@ title: SAML with Okta
 
 {% include plans-blockquote.html feature="Okta SAML authentication" %}
 
-## Configuring SAML settings in Okta
+1. [Turn on SAML-based SSO in Metabase](./authenticating-with-saml.md#enabling-saml-authentication-in-metabase)
+2. [Set up SAML in Okta](#set-up-saml-in-okta).
+3. [Set up SAML up in Metabase](#set-up-saml-in-metabase).
 
-| Metabase SAML                       | Okta SAML                                                                                                                    |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| URL the IdP should redirect back to | Single sign-on URL. This is your Metabase [Site URL][site-url] -- it should start with `https://` and end with `/auth/sso`.  |
-| SAML Application Name               | Audience URI (SP Entity ID)                                                                                                  |
+You can also [configure group mappings](#configure-group-mappings) to assign Okta users to Metabase groups.
 
-### Setting attribute statements
+## Turn on SAML-based SSO in Metabase
 
-Metabase needs you to set the first name (given name), last name (surname), and email address attributes in Okta. These attributes will be passed from Okta to Metabase during authentication to automatically log people into their Metabase accounts.
+## Set up SAML in Okta
 
-Fill out the **Attribute statements (optional)** section in Okta using the information from your Metabase **SAML attributes** (found under **Admin panel** > **Authentication** > **SAML**).
+Once you turned on SAM L authentication in Metabase, you'll need to create a SAML app integration in Okta.
 
-| Name                                                                 | Value          |
-| -------------------------------------------------------------------- | -------------- |
-| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname`    | user.firstName |
-| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` | user.email     |
-| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname`      | user.lastName  |
+### Create an app integration
 
-**End-users should not be able to edit the email address attribute**. Your IdP will pass the email address attribute to Metabase in order to log people into their Metabase accounts (or to create an account on the first login). If a person can change the email address attribute, they'll potentially be able to access Metabase accounts other than their own.
+From the Okta **Admin** console, [create a new SAML app integration][okta-saml-docs] to use with Metabase.
+
+### Configure Okta SAML settings
+
+To configure Okta app integration with Metabase, you'll need to use the information in Metabase **Admin panel** > **Authentication** > **SAML**.
+
+#### General settings
+
+| Okta SAML                       | Metabase SAML                                                                                                                               |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Single sign-on URL**          | **URL the IdP should redirect to**. This is your Metabase [Site URL][site-url] -- it should start with `https://` and end with `/auth/sso`. |
+| **Audience URI (SP Entity ID)** | **SAML Application Name** ("Metabase" by default)                                                                                           |
+
+#### Attribute statements
+
+Metabase needs you to set some attributes in Okta:
+
+- email address
+- first name (given name)
+- last name (surname)
+
+These attributes will be passed from Okta to Metabase during authentication to automatically log people into their Metabase accounts.
+
+In **Attribute statements (optional)** in Okta, create attribute statements for the email, first name, and last name. The attribute names in Okta should match the attribute names in Metabase, and the values should use Okta `user` attributes.
+
+The default attribute names and the corresponding attribute values are:
+| Name | Value |
+| ------------------------------------------------------------------ | -------------- |
+| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` | user.email |
+| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname` | user.firstName |
+| `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname` | user.lastName |
+
+If you use non-default attribute names in Okta app configuration, you will also need to change the names for the attribute fields in Metabase in **Admin panel** > **Authentication** > **SAML**
+
+> **End-users should not be able to edit the email address attribute**. Your IdP will pass the email address attribute to Metabase in order to log people into their Metabase accounts (or to create an account on the first login). If a person can change the email address attribute, they'll potentially be able to access Metabase accounts other than their own.
 
 ### Example of an Okta assertion
 
@@ -71,42 +100,65 @@ You can click **Preview SAML assertion** to view the XML file generated by Okta.
 </saml2:Assertion>
 ```
 
-## Managing signing certificates in Okta
+## Set up SAML in Metabase
 
-From your Okta Admin console, go to **SAML Setup** > **View SAML setup instructions**.
+Once you set up your SAML app in Okta, you'll need to configure SAML in Metabase. You'll need some information from Okta, so go to the page for the Metabase app integration in Okta, and in the **Sign On** tab, click on **View SAML setup instructions**.
 
-Put the following information in your Metabase SAML form (**Admin panel** > **Authentication** > **SAML**):
+Use the information from Okta SAML instructions to fill the Metabase SAML form in **Admin panel** > **Authentication** > **SAML**:
 
-| Metabase SAML                       | Okta SAML                              |
-| ----------------------------------- | -------------------------------------- |
-| SAML Identity Provider URL          | Identity Provider Single Sign-On URL   |
-| SAML Identity Provider Certificate  | X.509 Certificate                      |
-| SAML Identity Provider Issuer       | Identity Provider Issuer               |
+| Metabase SAML                      | Okta SAML                            |
+| ---------------------------------- | ------------------------------------ |
+| SAML Identity Provider URL         | Identity Provider Single Sign-On URL |
+| SAML Identity Provider Certificate | X.509 Certificate                    |
+| SAML Identity Provider Issuer      | Identity Provider Issuer             |
 
 For more information, see [Enabling SAML authentication in Metabase][enabling-saml-in-metabase].
 
-## Configuring group mappings
+## Configure group mappings
 
-### Example of mapping a single group to Metabase
+You can configure Okta SAML to automatically assign users to Metabase groups. You'll need to create a custom attribute in Okta that lists the Metabase groups for each user, and then tell Metabase to read that attribute.
 
-Let's say that you've created a User Profile attribute named `metabaseGroups`. Once you've created your `metabaseGroups` attribute, you'll need to update it for each user that needs to be automatically added to a Metabase group. For ease of use, we recommend using the same name for the groups you would use in Metabase.
+1. In Okta **Profile Editor**, [create a new User Profile attribute](https://help.okta.com/en-us/content/topics/users-groups-profiles/usgp-add-custom-user-attributes.htm) called `metabaseGroups`, which can be a `string` or a `string array`.
+   ![New User Profile attribute](images/okta-new-attribute.png)
+2. For each user in Okta, fill the `metabaseGroups` attribute with their Metabase group(s).
 
-After that, you'll need to add an additional SAML attribute to the ones we added above.
+   ![Metabase groups attribute](images/okta-adding-groups.png)
 
-![Group attribute](images/saml-group-attribute.png)
+   Keep in mind that Metabase groups don't have to correspond to Okta User Groups. If you'd like to leverage Okta User Groups to set up Metabase Groups, see [Map Okta User Groups to Metabase groups](#).
 
-### Example of mapping multiple groups to Metabase
+   You'll set up the mapping between the values in `metabaseGroups` and your actual Metabase groups later, so the names you put into this field can be arbitrary strings and they don't have to match the names of your Metabase groups. But to make your life easier, we recommend that you use the same names for the groups in Okta as you would use in Metabase.
 
-If you'd like to leverage Okta User Groups, you can [create an `Attribute Statement`][okta-create-attribute-statement] with the `Name` of `metabaseGroups` and the `Value` of an Okta Language Expression such as `getFilteredGroups({"groupId1", "groupId2"}, "group.name", 100)`.
+   > Metabase needs the list of group names to be passed as an array. For this, your Okta account has to have `SAML_SUPPORT_ARRAY_ATTRIBUTES` enabled, otherwise Okta will concatenate the group names instead of passing them as an array. If your Okta account is old, you might need to reach out to Okta support to enable `SAML_SUPPORT_ARRAY_ATTRIBUTES`.
 
-This expression will return a list of strings containing User Group names that the user logging in is part of. The Group IDs in `{"groupId1", "groupId2"}` are the groups that you would like to map to in Metabase.
+3. In the **Okta SAML settings** for the Metabase app integration, add a new attribute statement `MetabaseGroupName` with the value `user.metabaseGroups` (the profile attribute you just created)
+4. In **Metabase SAML settings**:
+
+- Turn on **Synchronize Group Memberships**
+- For each of the groups you added to Okta users, set up a new mapping to a Metabase group
+- In **Group attribute name**, enter `MetabaseGroupName` (the name of the SAML attribute statement)
+
+  ![Metabase group mapping](images/saml-okta-groups.png)
+
+### Map Okta User Groups to Metabase groups
+
+If you'd like to use Okta User Groups for assigning users to Metabase groups, fill the `metabaseGroups` attribute with the following;
+
+```
+Arrays.flatten(getFilteredGroups({"groupId1", "groupId2"}, "group.name", 100))
+```
+
+where `groupId1`, `groupId2` etc. are are IDs of Okta User Groups corresponding to Metabase groups.
+
+This expression will retrieve the names of Okta User Groups by Group ID and return them as an array. The Group IDs in `{"groupId1", "groupId2"}` are the groups that you would like to map to Metabase groups.
+
+You'll still need to set up group mappings in Metabase SAML settings.
 
 ## Troubleshooting SAML issues
 
 For common issues, go to [Troubleshooting SAML][troubleshooting-saml].
 
 [enabling-saml-in-metabase]: ./authenticating-with-saml.md#enabling-saml-authentication-in-metabase
-[okta-saml-docs]: https://help.okta.com/en-us/Content/Topics/Apps/Apps_App_Integration_Wizard_SAML.htm
+[okta-saml-docs]: https://help.okta.com/oie/en-us/content/topics/apps/apps_app_integration_wizard_saml.htm
 [okta-create-attribute-statement]: https://support.okta.com/help/s/article/How-to-define-and-configure-a-custom-SAML-attribute-statement
 [saml-doc]: ./authenticating-with-saml.md
 [site-url]: ../configuring-metabase/settings.md#site-url
