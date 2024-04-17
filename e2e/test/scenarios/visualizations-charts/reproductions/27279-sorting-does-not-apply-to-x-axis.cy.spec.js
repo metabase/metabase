@@ -1,5 +1,11 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { restore, visitQuestionAdhoc, popover } from "e2e/support/helpers";
+import {
+  restore,
+  visitQuestionAdhoc,
+  popover,
+  echartsContainer,
+  chartPathWithFillColor,
+} from "e2e/support/helpers";
 
 const questionDetails = {
   name: "27279",
@@ -51,18 +57,27 @@ describe("issue 27279", () => {
     const legendItems = ["-3", "-2", "-1", "0"];
     compareValuesInOrder(cy.findAllByTestId("legend-item"), legendItems);
 
-    const xAxisTicks = ["F2021", "V2021", "S2022", "F2022"];
-    compareValuesInOrder(cy.get(".x.axis .tick"), xAxisTicks);
+    // need to add a single space on either side of the text as it is used as padding
+    // in ECharts
+    const xAxisTicks = ["F2021", "V2021", "S2022", "F2022"].map(
+      str => ` ${str} `,
+    );
+    compareValuesInOrder(
+      echartsContainer()
+        .get("text")
+        .contains(/F2021|V2021|S2022|F2022/),
+      xAxisTicks,
+    );
 
     // Extra step, just to be overly cautious
-    cy.get(".bar").first().realHover();
+    chartPathWithFillColor("#98D9D9").realHover();
     popover().within(() => {
       testPairedTooltipValues("K", "F2021");
       testPairedTooltipValues("O", "-3");
       testPairedTooltipValues("Sum of V", "1");
     });
 
-    cy.get(".bar").last().realHover();
+    chartPathWithFillColor("#509EE3").realHover();
     popover().within(() => {
       testPairedTooltipValues("K", "F2022");
       testPairedTooltipValues("O", "0");
