@@ -24,6 +24,7 @@ import {
   sendEmailAndAssert,
   setTokenFeatures,
   selectFilterOperator,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const {
@@ -350,7 +351,7 @@ describeEE("formatting > sandboxes", () => {
         // Drill-through
         cy.findByTestId("query-visualization-root").within(() => {
           // Click on the first bar in a graph (Category: "Doohickey")
-          cy.get(".bar").eq(0).click({ force: true });
+          chartPathWithFillColor("#509EE3").eq(0).click();
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Orders").click();
@@ -427,7 +428,7 @@ describeEE("formatting > sandboxes", () => {
       // Drill-through
       cy.findByTestId("query-visualization-root").within(() => {
         // Click on the first bar in a graph (Category: "Doohickey")
-        cy.get(".bar").eq(0).click({ force: true });
+        chartPathWithFillColor("#509EE3").eq(0).click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("See these Orders").click();
@@ -738,7 +739,7 @@ describeEE("formatting > sandboxes", () => {
         // Drill-through
         cy.findByTestId("query-visualization-root").within(() => {
           // Click on the second bar in a graph (Category: "Widget")
-          cy.get(".bar").eq(1).click({ force: true });
+          chartPathWithFillColor("#509EE3").eq(1).click();
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Orders").click();
