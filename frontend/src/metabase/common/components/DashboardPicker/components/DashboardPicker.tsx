@@ -1,27 +1,29 @@
-import { useCallback, useState } from "react";
+import { ComponentType, createContext, useCallback, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
+import type { SearchModel, SearchRequest } from "metabase-types/api";
 import { isValidCollectionId } from "metabase/collections/utils";
 import { useCollectionQuery, useDashboardQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { SearchRequest, SearchModel } from "metabase-types/api";
 
+import { NavLink, type NavLinkProps } from "@mantine/core";
+import { StrategyFormLauncher } from "metabase-enterprise/caching/components/StrategyFormLauncher";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
 import {
   LoadingSpinner,
   NestedItemPicker,
-  type PickerState,
+  type PickerState
 } from "../../EntityPicker";
-import type { DashboardPickerOptions, DashboardPickerItem } from "../types";
+import type { DashboardPickerItem, DashboardPickerOptions } from "../types";
 import {
   generateKey,
   getCollectionIdPath,
   getStateFromIdPath,
-  isFolder,
+  isFolder
 } from "../utils";
 
 export const defaultOptions: DashboardPickerOptions = {
@@ -60,7 +62,12 @@ const useGetInitialCollection = (
       enabled: !isDashboard || !!currentDashboard,
     });
 
-    console.log({currentCollection, currentDashboard, collectionError, dashboardError});
+  console.log({
+    currentCollection,
+    currentDashboard,
+    collectionError,
+    dashboardError,
+  });
 
   return {
     currentDashboard: currentDashboard,
@@ -168,15 +175,51 @@ export const DashboardPicker = ({
   }
 
   return (
-    <NestedItemPicker
-      itemName={t`dashboard`}
-      isFolder={isFolder}
-      options={options}
-      generateKey={generateKey}
-      onFolderSelect={onFolderSelect}
-      onItemSelect={handleItemSelect}
-      path={path}
-      listResolver={CollectionItemPickerResolver}
+    <PickerLinkContextProvider value={LinkForDashboardCacheConsole}>
+      <NestedItemPicker
+        itemName={t`dashboard`}
+        isFolder={isFolder}
+        options={options}
+        generateKey={generateKey}
+        onFolderSelect={onFolderSelect}
+        onItemSelect={handleItemSelect}
+        path={path}
+        listResolver={CollectionItemPickerResolver}
+      />
+    </PickerLinkContextProvider>
+  );
+};
+
+export const PickerLinkContext =
+  createContext<ComponentType<NavLinkProps> | null>(null);
+
+const LinkForDashboardCacheConsole = (props: NavLinkProps) => {
+  return (
+    <NavLink
+      {...props}
+      icon={null}
+      label={
+        <StrategyFormLauncher
+          forId={0}
+          targetId={1}
+          title={props.label?.toString() || ""}
+          updateTargetId={() => {}}
+          configs={[]}
+          isFormDirty={false}
+        />
+      }
     />
   );
 };
+
+const PickerLinkContextProvider = ({
+  children,
+  value,
+}: {
+  children: React.ReactNode;
+  value: ComponentType<NavLinkProps>;
+}) => (
+  <PickerLinkContext.Provider value={value}>
+    {children}
+  </PickerLinkContext.Provider>
+);

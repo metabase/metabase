@@ -1,5 +1,5 @@
 import type React from "react";
-import { useMemo } from "react";
+import { useContext, useMemo } from "react";
 import { t } from "ttag";
 
 import { VirtualizedList } from "metabase/components/VirtualizedList";
@@ -11,6 +11,7 @@ import { getIcon, isSelectedItem } from "../../utils";
 import { DelayedLoadingSpinner } from "../LoadingSpinner";
 
 import { PickerColumn } from "./ItemList.styled";
+import { PickerLinkContext } from "metabase/common/components/DashboardPicker";
 
 interface ItemListProps<
   Id,
@@ -67,11 +68,13 @@ export const ItemList = <
     return null;
   }
 
+  const LinkComponent = useContext(PickerLinkContext) || NavLink;
+
   return (
     <VirtualizedList Wrapper={PickerColumn} scrollTo={activeItemIndex}>
       {items.map((item: Item) => (
         <div key={`${item.model}-${item.id}`}>
-          <NavLink
+          <LinkComponent
             disabled={shouldDisableItem?.(item)}
             rightSection={
               isFolder(item) ? <Icon name="chevronright" size={10} /> : null

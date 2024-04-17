@@ -1,5 +1,7 @@
 import type { CollectionId, DashboardId } from "metabase-types/api";
 
+import { NavLink, NavLinkProps } from "@mantine/core";
+import { ComponentPropsWithRef, ComponentType, createContext } from "react";
 import ItemPicker from "./ItemPicker";
 import type { ItemPickerProps } from "./ItemPicker/ItemPicker";
 
