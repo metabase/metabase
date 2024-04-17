@@ -1,13 +1,10 @@
 import { useCallback } from "react";
 import { c } from "ttag";
 
-import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
-import {
-  getLongestSelectLabel,
-  removeNilValues,
-} from "metabase/admin/performance/utils";
+import { removeNilValues } from "metabase/common/utils/misc";
 import { capitalize } from "metabase/lib/formatting/strings";
 import { Box } from "metabase/ui";
+import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
 import {
   AutoWidthSelect,
@@ -25,7 +22,7 @@ import {
   weekdayOfMonthOptions,
 } from "./constants";
 import type { ScheduleChangeProp, UpdateSchedule } from "./types";
-import { addScheduleComponents } from "./utils";
+import { addScheduleComponents, getLongestSelectLabel } from "./utils";
 
 type ScheduleProperty = keyof ScheduleSettings;
 
@@ -157,31 +154,21 @@ const renderSchedule = ({
   };
   const frequencyProps = {
     ...itemProps,
-    key: "frequency",
     scheduleType: schedule.schedule_type,
     scheduleOptions,
   };
   const timeProps = {
     ...itemProps,
     timezone,
-    key: "time",
   };
-  const minuteProps = {
-    ...itemProps,
-    key: "minute",
-  };
-  const weekdayProps = {
-    ...itemProps,
-    key: "weekday",
-  };
+  const minuteProps = itemProps;
+  const weekdayProps = itemProps;
   const frameProps = {
     ...itemProps,
-    key: "frame",
     longestLabel: getLongestSelectLabel(frames),
   };
   const weekdayOfMonthProps = {
     ...itemProps,
-    key: "weekday-of-month",
     longestLabel: getLongestSelectLabel(weekdayOfMonthOptions),
   };
 
@@ -195,8 +182,8 @@ const renderSchedule = ({
         ).t`{0} {1} at {2} minutes past the hour`,
         [
           verb,
-          <SelectFrequency {...frequencyProps} />,
-          <SelectMinute {...minuteProps} />,
+          <SelectFrequency key="frequency" {...frequencyProps} />,
+          <SelectMinute key="minute" {...minuteProps} />,
         ],
       );
     } else {
@@ -208,7 +195,7 @@ const renderSchedule = ({
           .t`[{0} {1}]`
           .replace(/^\[/, "")
           .replace(/\]$/, ""),
-        [verb, <SelectFrequency {...frequencyProps} />],
+        [verb, <SelectFrequency key="frequency" {...frequencyProps} />],
       );
     }
   } else if (scheduleType === "daily") {
@@ -219,8 +206,8 @@ const renderSchedule = ({
       ).t`{0} {1} at {2}`,
       [
         verb,
-        <SelectFrequency {...frequencyProps} />,
-        <SelectTime {...timeProps} />,
+        <SelectFrequency key="frequency" {...frequencyProps} />,
+        <SelectTime key="time" {...timeProps} />,
       ],
     );
   } else if (scheduleType === "weekly") {
@@ -231,9 +218,9 @@ const renderSchedule = ({
       ).t`{0} {1} on {2} at {3}`,
       [
         verb,
-        <SelectFrequency {...frequencyProps} />,
-        <SelectWeekday {...weekdayProps} />,
-        <SelectTime {...timeProps} />,
+        <SelectFrequency key="frequency" {...frequencyProps} />,
+        <SelectWeekday key="weekday" {...weekdayProps} />,
+        <SelectTime key="time" {...timeProps} />,
       ],
     );
   } else if (scheduleType === "monthly") {
@@ -245,9 +232,9 @@ const renderSchedule = ({
         ).t`{0} {1} on the {2} at {3}`,
         [
           verb,
-          <SelectFrequency {...frequencyProps} />,
-          <SelectFrame {...frameProps} />,
-          <SelectTime {...timeProps} />,
+          <SelectFrequency key="frequency" {...frequencyProps} />,
+          <SelectFrame key="frame" {...frameProps} />,
+          <SelectTime key="time" {...timeProps} />,
         ],
       );
     } else {
@@ -258,10 +245,13 @@ const renderSchedule = ({
         ).t`{0} {1} on the {2} {3} at {4}`,
         [
           verb,
-          <SelectFrequency {...frequencyProps} />,
-          <SelectFrame {...frameProps} />,
-          <SelectWeekdayOfMonth {...weekdayOfMonthProps} />,
-          <SelectTime {...timeProps} />,
+          <SelectFrequency key="frequency" {...frequencyProps} />,
+          <SelectFrame key="frame" {...frameProps} />,
+          <SelectWeekdayOfMonth
+            key="weekday-of-month"
+            {...weekdayOfMonthProps}
+          />,
+          <SelectTime key="time" {...timeProps} />,
         ],
       );
     }

@@ -1,14 +1,17 @@
-import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
+import { memoize } from "underscore";
 
-import { memoize, pick } from "underscore";
-
-import type { ScheduleDayType, ScheduleFrameType } from "metabase-types/api";
+import { isNil } from "metabase/common/utils/misc";
 import {
   Cron,
   weekdays,
   optionNameTranslations,
 } from "metabase/components/Schedule/constants";
-import type { SelectProps } from "metabase/ui";
+import type {
+  ScheduleSettings,
+  ScheduleType,
+  ScheduleDayType,
+  ScheduleFrameType,
+} from "metabase-types/api";
 
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
   const index = weekdays.findIndex(o => o.value === day);
@@ -144,18 +147,6 @@ export const defaultCron = scheduleSettingsToCron(defaultSchedule);
 export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
 export const hourTo24HourFormat = (hour: number, amPm: number) =>
   hour + amPm * 12;
-
-export const removeNilValues = (obj: any) => pick(obj, val => !isNil(val));
-
-type Nil = null | undefined;
-export const isNil = (value: any): value is Nil =>
-  value === undefined || value === null;
-
-export const getLongestSelectLabel = (data: SelectProps["data"]) =>
-  data.reduce((acc, option) => {
-    const label = typeof option === "string" ? option : option.label || "";
-    return label.length > acc.length ? label : acc;
-  }, "");
 
 export const getFrequencyFromCron = (cron: string) => {
   const scheduleType = cronToScheduleSettings(cron)?.schedule_type;

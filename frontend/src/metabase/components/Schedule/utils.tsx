@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { isValidElement } from "react";
 
+import type { SelectProps } from "metabase/ui";
 import { Box, Group } from "metabase/ui";
 
 const placeholderRegex = /^\{([0-9])+\}$/;
@@ -58,3 +59,9 @@ const addBlanks = (arr: ReactNode[]) => {
   }
   return <>{result}</>;
 };
+
+export const getLongestSelectLabel = (data: SelectProps["data"]) =>
+  data.reduce((acc, option) => {
+    const label = typeof option === "string" ? option : option.label || "";
+    return label.length > acc.length ? label : acc;
+  }, "");

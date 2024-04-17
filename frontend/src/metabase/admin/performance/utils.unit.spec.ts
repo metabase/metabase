@@ -3,7 +3,6 @@ import type { ScheduleSettings } from "metabase-types/api";
 import {
   cronToScheduleSettings,
   hourToTwelveHourFormat,
-  removeNilValues,
   scheduleSettingsToCron,
 } from "./utils";
 
@@ -225,21 +224,5 @@ describe("hourToTwelveHourFormat", () => {
     expect(hourToTwelveHourFormat(11)).toBe(11);
     expect(hourToTwelveHourFormat(10)).toBe(10);
     expect(hourToTwelveHourFormat(1)).toBe(1);
-  });
-});
-
-describe("removeNilValues", () => {
-  it("removes nil values from an object", () => {
-    const obj = {
-      a: 1,
-      b: false,
-      c: null,
-      d: 0,
-      e: "",
-      f: "some string",
-      g: undefined,
-    };
-    const nonNilValues = { a: 1, b: false, d: 0, e: "", f: "some string" };
-    expect(removeNilValues(obj)).toEqual(nonNilValues);
   });
 });
