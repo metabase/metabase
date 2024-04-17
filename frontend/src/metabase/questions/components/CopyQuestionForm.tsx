@@ -80,14 +80,15 @@ export const CopyQuestionForm = withRouter(
               label={t`Name`}
               placeholder={t`What is the name of your dashboard?`}
               autoFocus
-              mb="0.5rem"
+              mb="1.5rem"
             />
             <FormTextarea
               name="description"
               label={t`Description`}
               placeholder={t`It's optional but oh, so helpful`}
               nullable
-              mb="0.5rem"
+              mb="1.5rem"
+              minRows={4}
             />
             <FormCollectionPicker
               name="collection_id"
@@ -98,7 +99,7 @@ export const CopyQuestionForm = withRouter(
               {!!onCancel && (
                 <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
               )}
-              <FormSubmitButton title={t`Copy`} />
+              <FormSubmitButton label={t`Duplicate`} />
             </FormFooter>
           </Form>
         )}
