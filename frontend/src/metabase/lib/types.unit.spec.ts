@@ -1,6 +1,6 @@
-import { removeNullOrUndefinedValues } from "./types";
+import { removeNullAndUndefinedValues } from "./types";
 
-describe("removeNullOrUndefinedValues", () => {
+describe("removeNullAndUndefinedValues", () => {
   it("removes nil values from an object", () => {
     const obj = {
       a: 1,
@@ -18,6 +18,6 @@ describe("removeNullOrUndefinedValues", () => {
       e: "",
       f: "some string",
     };
-    expect(removeNullOrUndefinedValues(obj)).toEqual(keepers);
+    expect(removeNullAndUndefinedValues(obj)).toEqual(keepers);
   });
 });

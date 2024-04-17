@@ -1,11 +1,11 @@
 import { memoize } from "underscore";
 
-import { isNil } from "metabase/common/utils/misc";
 import {
   Cron,
   weekdays,
   optionNameTranslations,
 } from "metabase/components/Schedule/constants";
+import { isNullOrUndefined } from "metabase/lib/types";
 import type {
   ScheduleSettings,
   ScheduleType,
@@ -150,9 +150,7 @@ export const hourTo24HourFormat = (hour: number, amPm: number) =>
 
 export const getFrequencyFromCron = (cron: string) => {
   const scheduleType = cronToScheduleSettings(cron)?.schedule_type;
-  if (isNil(scheduleType)) {
-    return "";
-  } else {
-    return optionNameTranslations[scheduleType];
-  }
+  return isNullOrUndefined(scheduleType)
+    ? ""
+    : optionNameTranslations[scheduleType];
 };

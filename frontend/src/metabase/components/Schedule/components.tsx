@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
-  getLongestSelectLabel,
   hourTo24HourFormat,
   hourToTwelveHourFormat,
 } from "metabase/admin/performance/utils";
@@ -27,6 +26,7 @@ import {
   weekdays,
 } from "./constants";
 import type { UpdateSchedule } from "./types";
+import { getLongestSelectLabel } from "./utils";
 
 export const SelectFrame = ({
   schedule,
