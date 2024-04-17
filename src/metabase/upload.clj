@@ -673,13 +673,9 @@
                                   {:archived true}))
 
       (catch Exception e
-        ;; If we were unable to delete the data, preserve the appearance that archiving is a post-hoc step.
-        (try
-          (when (table-exists? driver database table)
-            (log/errorf e "Failure to delete table %s" (:name table)))
-          ;; Make sure we rethrow the original exception though, not anything related to this check.
-          (catch Exception _e))
-
+        (u/ignore-exceptions
+         (when (table-exists? driver database table)
+           (log/errorf e "Failure to delete table %s" (:name table))))
         (throw e)))
 
     :done))
