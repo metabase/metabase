@@ -1,8 +1,10 @@
+import cx from "classnames";
 import type * as React from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import type { UpdateQuestionOpts } from "metabase/query_builder/actions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { Icon } from "metabase/ui";
@@ -95,7 +97,7 @@ const ChartTypeSidebar = ({
   );
 
   const handleClick = useCallback(
-    (display, e) => {
+    (display: string, e: React.MouseEvent) => {
       if (display === question.display()) {
         openChartSettings(e);
       } else {
@@ -119,7 +121,7 @@ const ChartTypeSidebar = ({
 
   return (
     <SidebarContent
-      className="full-height px1"
+      className={cx(CS.fullHeight, CS.px1)}
       onDone={() => onCloseChartType()}
     >
       <OptionList data-testid="display-options-sensible">

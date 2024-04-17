@@ -3,6 +3,7 @@ import type {
   ClickBehavior,
   Collection,
   CollectionAuthorityLevel,
+  CollectionId,
   Parameter,
   ParameterId,
   ParameterTarget,
@@ -15,7 +16,7 @@ import type {
 } from "./actions";
 import type { Card, CardId, CardDisplayType } from "./card";
 import type { Dataset } from "./dataset";
-import type { SearchModelType } from "./search";
+import type { SearchModel } from "./search";
 
 // x-ray dashboard have string ids
 export type DashboardId = number | string;
@@ -32,7 +33,7 @@ export interface Dashboard {
   created_at: string;
   updated_at: string;
   collection?: Collection | null;
-  collection_id: number | null;
+  collection_id: CollectionId | null;
   name: string;
   description: string | null;
   model?: string;
@@ -178,7 +179,7 @@ export type UnrestrictedLinkEntity = {
   id: number;
   db_id?: number;
   database_id?: number;
-  model: SearchModelType;
+  model: SearchModel;
   name: string;
   display_name?: string;
   description?: string;

@@ -42,7 +42,7 @@
         (if (and (or (nil? catalog) (= table_catalog catalog))
                  (or (nil? schema) (= table_schema schema)))
           [(conj columns column_name) table_catalog table_schema]
-          (do (log/warnf "Ambiguous catalog/schema for constraint %s in table %s"
+          (do (log/warnf "Ambiguous catalog/schema for constraint %s in table"
                          constraint-name)
               (reduced nil))))
       [[] nil nil]

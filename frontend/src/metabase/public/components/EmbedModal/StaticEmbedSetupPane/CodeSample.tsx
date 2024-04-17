@@ -43,7 +43,7 @@ export const CodeSample = ({
           {title && <h4>{title}</h4>}
           {languageOptions.length > 1 ? (
             <Select
-              className="ml-auto"
+              className={CS.mlAuto}
               value={selectedOptionId}
               onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                 onChangeOption(e.target.value)
@@ -61,7 +61,16 @@ export const CodeSample = ({
           ) : null}
         </div>
       )}
-      <div className="bordered rounded shadowed relative mt2">
+      <div
+        className={cx(
+          CS.bordered,
+          CS.rounded,
+          CS.shadowed,
+          CS.relative,
+          CS.mt2,
+          CS.overflowHidden,
+        )}
+      >
         <AceEditor
           className={CS.z1}
           value={source}
@@ -73,7 +82,7 @@ export const CodeSample = ({
         />
         {source && (
           <CopyButtonContainer>
-            <CopyButton className="p1" value={source} onCopy={onCopy} />
+            <CopyButton className={CS.p1} value={source} onCopy={onCopy} />
           </CopyButtonContainer>
         )}
       </div>

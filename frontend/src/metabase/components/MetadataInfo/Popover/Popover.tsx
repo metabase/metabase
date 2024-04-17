@@ -1,11 +1,11 @@
-import type { ReactNode } from "react";
-import { useCallback, useRef, useState } from "react";
+import type { ReactNode, MouseEvent } from "react";
+import { useCallback, useState } from "react";
 
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import type { HoverCardProps } from "metabase/ui";
 import { HoverCard, useDelayGroup } from "metabase/ui";
 
-export const POPOVER_DELAY: [number, number] = [1000, 300];
+export const POPOVER_DELAY: [number, number] = [250, 150];
 export const POPOVER_TRANSITION_DURATION = 150;
 
 import { WidthBound, Dropdown, Target } from "./Popover.styled";
@@ -19,6 +19,7 @@ export type PopoverProps = Pick<
   "children" | "position" | "disabled"
 > & {
   delay?: [number, number];
+  width?: number;
   content: ReactNode;
 };
 
@@ -27,6 +28,7 @@ export function Popover({
   disabled,
   delay = POPOVER_DELAY,
   content,
+  width,
   children,
 }: PopoverProps) {
   const group = useDelayGroup();
@@ -36,12 +38,10 @@ export function Popover({
   const { setupCloseHandler, removeCloseHandler } =
     useSequencedContentCloseHandler();
 
-  const ref = useRef(null);
   const handleOpen = useCallback(() => {
-    setupCloseHandler(ref.current, () => setIsOpen(false));
     group.onOpen();
     setIsOpen(true);
-  }, [setupCloseHandler, group]);
+  }, [group]);
 
   const handleClose = useCallback(() => {
     removeCloseHandler();
@@ -60,15 +60,33 @@ export function Popover({
       transitionProps={{
         duration: group.shouldDelay ? POPOVER_TRANSITION_DURATION : 0,
       }}
-      keepMounted
+      middlewares={{
+        shift: true,
+        flip: false,
+      }}
     >
       <HoverCard.Target>{children}</HoverCard.Target>
-      <Dropdown>
+      <Dropdown
+        onClick={stopPropagation}
+        onMouseDown={stopPropagation}
+        onMouseUp={stopPropagation}
+      >
         {/* HACK: adds an element between the target and the card */}
         {/* to avoid the card from disappearing */}
         <Target />
-        <WidthBound ref={ref}>{isOpen && content}</WidthBound>
+        <WidthBound
+          width={width}
+          ref={node => {
+            setupCloseHandler(node, () => setIsOpen(false));
+          }}
+        >
+          {isOpen && content}
+        </WidthBound>
       </Dropdown>
     </HoverCard>
   );
+}
+
+function stopPropagation(evt: MouseEvent) {
+  evt.stopPropagation();
 }

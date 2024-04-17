@@ -77,16 +77,19 @@ describe("TimeFilterEditor", () => {
   const column = findColumn("ORDERS", TIME_FIELD.name);
 
   describe("new filter", () => {
-    it("should add a filter with one value", () => {
+    it("should add a filter with one value", async () => {
       const { getNextFilterName, onInput } = setup({
         query,
         stageIndex,
         column,
       });
 
-      userEvent.clear(screen.getByPlaceholderText("Enter a time"));
-      userEvent.type(screen.getByPlaceholderText("Enter a time"), "10:20");
-      userEvent.tab();
+      await userEvent.clear(screen.getByPlaceholderText("Enter a time"));
+      await userEvent.type(
+        screen.getByPlaceholderText("Enter a time"),
+        "10:20",
+      );
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Time is before 10:20 AM");
       expect(onInput).toHaveBeenCalled();
@@ -99,11 +102,13 @@ describe("TimeFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByText("before"));
-      userEvent.click(await screen.findByText("Between"));
-      userEvent.type(screen.getByPlaceholderText("Min"), "{selectall}10:15");
-      userEvent.type(screen.getByPlaceholderText("Max"), "{selectall}20:40");
-      userEvent.tab();
+      await userEvent.click(screen.getByText("before"));
+      await userEvent.click(await screen.findByText("Between"));
+      await userEvent.clear(screen.getByPlaceholderText("Min"));
+      await userEvent.type(screen.getByPlaceholderText("Min"), "10:15");
+      await userEvent.clear(screen.getByPlaceholderText("Max"));
+      await userEvent.type(screen.getByPlaceholderText("Max"), "20:40");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Time is 10:15 AM – 8:40 PM");
       expect(onInput).toHaveBeenCalled();
@@ -116,8 +121,8 @@ describe("TimeFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByText("before"));
-      userEvent.click(await screen.findByText("Is empty"));
+      await userEvent.click(screen.getByText("before"));
+      await userEvent.click(await screen.findByText("Is empty"));
 
       expect(getNextFilterName()).toBe("Time is empty");
     });
@@ -129,15 +134,15 @@ describe("TimeFilterEditor", () => {
         column,
       });
 
-      userEvent.clear(screen.getByPlaceholderText("Enter a time"));
-      userEvent.tab();
+      await userEvent.clear(screen.getByPlaceholderText("Enter a time"));
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBeNull();
     });
   });
 
   describe("existing filter", () => {
-    it("should update a filter with one value", () => {
+    it("should update a filter with one value", async () => {
       const { query, stageIndex, column, filter } = createQueryWithFilter({
         operator: ">",
         values: [new Date(2020, 0, 1, 10, 20)],
@@ -149,14 +154,17 @@ describe("TimeFilterEditor", () => {
         filter,
       });
 
-      userEvent.clear(screen.getByDisplayValue("10:20"));
-      userEvent.type(screen.getByPlaceholderText("Enter a time"), "11:40");
-      userEvent.tab();
+      await userEvent.clear(screen.getByDisplayValue("10:20"));
+      await userEvent.type(
+        screen.getByPlaceholderText("Enter a time"),
+        "11:40",
+      );
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Time is after 11:40 AM");
     });
 
-    it("should update a filter with two values", () => {
+    it("should update a filter with two values", async () => {
       const { query, stageIndex, column, filter } = createQueryWithFilter({
         operator: "between",
         values: [new Date(2020, 0, 1, 10, 20), new Date(2020, 0, 1, 12, 40)],
@@ -168,11 +176,11 @@ describe("TimeFilterEditor", () => {
         filter,
       });
 
-      userEvent.clear(screen.getByDisplayValue("10:20"));
-      userEvent.type(screen.getByPlaceholderText("Min"), "11:40");
-      userEvent.clear(screen.getByDisplayValue("12:40"));
-      userEvent.type(screen.getByPlaceholderText("Max"), "15:10");
-      userEvent.tab();
+      await userEvent.clear(screen.getByDisplayValue("10:20"));
+      await userEvent.type(screen.getByPlaceholderText("Min"), "11:40");
+      await userEvent.clear(screen.getByDisplayValue("12:40"));
+      await userEvent.type(screen.getByPlaceholderText("Max"), "15:10");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Time is 11:40 AM – 3:10 PM");
     });
@@ -189,8 +197,8 @@ describe("TimeFilterEditor", () => {
         filter,
       });
 
-      userEvent.click(screen.getByText("is empty"));
-      userEvent.click(await screen.findByText("Not empty"));
+      await userEvent.click(screen.getByText("is empty"));
+      await userEvent.click(await screen.findByText("Not empty"));
 
       expect(getNextFilterName()).toBe("Time is not empty");
     });
@@ -207,8 +215,8 @@ describe("TimeFilterEditor", () => {
         filter,
       });
 
-      userEvent.click(screen.getByText("before"));
-      userEvent.click(await screen.findByText("After"));
+      await userEvent.click(screen.getByText("before"));
+      await userEvent.click(await screen.findByText("After"));
 
       expect(getNextFilterName()).toBe("Time is after 10:20 AM");
     });

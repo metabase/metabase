@@ -1,7 +1,7 @@
 import type { WrappedRecentItem } from "metabase/nav/components/search/RecentsList";
 import type { WrappedResult } from "metabase/search/types";
 import { Icon } from "metabase/ui";
-import type { SearchModelType } from "metabase-types/api";
+import type { SearchModel } from "metabase-types/api";
 
 import { CollectionIcon } from "./CollectionIcon";
 import { DefaultIcon } from "./DefaultIcon";
@@ -9,7 +9,7 @@ import { IconWrapper } from "./ItemIcon.styled";
 
 export interface IconComponentProps {
   item: WrappedResult | WrappedRecentItem;
-  type: SearchModelType;
+  type: SearchModel;
 }
 
 const IconComponent = ({ item, type }: IconComponentProps) => {
@@ -27,7 +27,7 @@ const IconComponent = ({ item, type }: IconComponentProps) => {
 interface ItemIconProps {
   active: boolean;
   item: WrappedResult | WrappedRecentItem;
-  type: SearchModelType;
+  type: SearchModel;
   "data-testid"?: string;
 }
 

@@ -163,13 +163,15 @@ export default class PulseEditChannels extends Component {
       this.props.pulseIsValid && channelIsValid(channel, channelSpec);
 
     return (
-      <li key={index} className="py2">
+      <li key={index} className={CS.py2}>
         {channelSpec.error && (
-          <div className="pb2 text-bold text-error">{channelSpec.error}</div>
+          <div className={cx(CS.pb2, CS.textBold, CS.textError)}>
+            {channelSpec.error}
+          </div>
         )}
         {channelSpec.recipients && (
           <div>
-            <div className="h4 text-bold mb1">
+            <div className={cx(CS.h4, CS.textBold, CS.mb1)}>
               {this.props.emailRecipientText || t`To:`}
             </div>
             <RecipientPicker
@@ -213,7 +215,7 @@ export default class PulseEditChannels extends Component {
           />
         )}
         {this.props.testPulse && (
-          <div className="pt2">
+          <div className={CS.pt2}>
             <ActionButton
               actionFn={this.onTestPulseChannel.bind(this, channel)}
               disabled={
@@ -257,7 +259,7 @@ export default class PulseEditChannels extends Component {
         >
           {CHANNEL_ICONS[channelSpec.type] && (
             <Icon
-              className="mr1 text-light"
+              className={cx(CS.mr1, CS.textLight)}
               name={CHANNEL_ICONS[channelSpec.type]}
               size={28}
             />
@@ -270,10 +272,12 @@ export default class PulseEditChannels extends Component {
           />
         </div>
         {channels.length > 0 && channelSpec.configured ? (
-          <ul className="bg-light px3">{channels}</ul>
+          <ul className={cx(CS.bgLight, CS.px3)}>{channels}</ul>
         ) : channels.length > 0 && !channelSpec.configured ? (
-          <div className="p4 text-centered">
-            <h3 className="mb2">{t`${channelSpec.name} needs to be set up by an administrator.`}</h3>
+          <div className={cx(CS.p4, CS.textCentered)}>
+            <h3
+              className={CS.mb2}
+            >{t`${channelSpec.name} needs to be set up by an administrator.`}</h3>
             <ChannelSetupMessage user={user} channels={[channelSpec.name]} />
           </div>
         ) : null}
@@ -289,7 +293,7 @@ export default class PulseEditChannels extends Component {
       slack: { name: t`Slack`, type: "slack" },
     };
     return (
-      <ul className="bordered rounded bg-white">
+      <ul className={cx(CS.bordered, CS.rounded, CS.bgWhite)}>
         {Object.values(channels).map(channelSpec =>
           this.renderChannelSection(channelSpec),
         )}

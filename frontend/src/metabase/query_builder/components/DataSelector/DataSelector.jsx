@@ -46,8 +46,6 @@ import {
 import { SearchResults, getSearchItemTableOrCardId } from "./data-search";
 import SavedEntityPicker from "./saved-entity-picker/SavedEntityPicker";
 
-import "./DataSelector.module.css";
-
 const MIN_SEARCH_LENGTH = 2;
 
 // chooses a data source bucket (datasets / raw data (tables) / saved questions)
@@ -1094,7 +1092,7 @@ const DataSelector = _.compose(
   // (see DATA_BUCKET step)
   Search.loadList({
     query: {
-      models: "dataset",
+      models: ["dataset"],
       limit: 1,
     },
     listName: "models",

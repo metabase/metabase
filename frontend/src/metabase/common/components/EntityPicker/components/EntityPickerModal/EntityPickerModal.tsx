@@ -5,7 +5,7 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
-import type { SearchModelType, SearchResultId } from "metabase-types/api";
+import type { SearchModel, SearchResultId } from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
@@ -27,6 +27,8 @@ export type EntityPickerModalOptions = {
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
   allowCreateNew?: boolean;
+  confirmButtonText?: string;
+  cancelButtonText?: string;
 };
 
 export const defaultOptions: EntityPickerModalOptions = {
@@ -51,7 +53,7 @@ export interface EntityPickerModalProps<Model extends string, Item> {
 
 export function EntityPickerModal<
   Id extends SearchResultId,
-  Model extends SearchModelType,
+  Model extends SearchModel,
   Item extends TypeWithModel<Id, Model>,
 >({
   title = t`Choose an item`,
@@ -99,7 +101,10 @@ export function EntityPickerModal<
       onClose={onClose}
       data-testid="entity-picker-modal"
       trapFocus={trapFocus}
+      zIndex={400} // needed to put this above the BulkActionsToast
       closeOnEscape={false} // we're doing this manually in useWindowEvent
+      xOffset="10vw"
+      yOffset="10dvh"
     >
       <Modal.Overlay />
       <ModalContent h="100%">
@@ -137,6 +142,8 @@ export function EntityPickerModal<
                 onCancel={onClose}
                 canConfirm={canSelectItem}
                 actionButtons={actionButtons}
+                confirmButtonText={options?.confirmButtonText}
+                cancelButtonText={options?.cancelButtonText}
               />
             )}
           </ErrorBoundary>

@@ -26,13 +26,11 @@ describe("issue 13751", { tags: "@external" }, () => {
 
   it("should allow using strings in filter based on a custom column (metabase#13751)", () => {
     addCustomColumn();
-    popover().within(() => {
-      enterCustomColumnDetails({
-        formula: 'regexextract([State], "^C[A-Z]")',
-      });
-      cy.findByPlaceholderText("Something nice and descriptive").type(CC_NAME);
-      cy.button("Done").click();
+    enterCustomColumnDetails({
+      formula: 'regexextract([State], "^C[A-Z]")',
+      name: CC_NAME,
     });
+    cy.button("Done").click();
 
     getNotebookStep("filter")
       .findByText(/Add filter/)

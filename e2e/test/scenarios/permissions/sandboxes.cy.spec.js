@@ -149,7 +149,7 @@ describeEE("formatting > sandboxes", () => {
         visitQuestion("@questionId");
 
         cy.log("Make sure user is initially sandboxed");
-        cy.get(".TableInteractive-cellWrapper--firstColumn").should(
+        cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
           "have.length",
           11,
         );
@@ -166,7 +166,7 @@ describeEE("formatting > sandboxes", () => {
 
         visualize();
         cy.log("Make sure user is still sandboxed");
-        cy.get(".TableInteractive-cellWrapper--firstColumn").should(
+        cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
           "have.length",
           7,
         );
@@ -176,8 +176,11 @@ describeEE("formatting > sandboxes", () => {
     describe("table sandboxed on a saved parameterized SQL question", () => {
       it("should show filtered categories", () => {
         openPeopleTable();
-        cy.get(".TableInteractive-headerCellData").should("have.length", 4);
-        cy.get(".TableInteractive-cellWrapper--firstColumn").should(
+        cy.get(".test-TableInteractive-headerCellData").should(
+          "have.length",
+          4,
+        );
+        cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
           "have.length",
           2,
         );
@@ -226,13 +229,15 @@ describeEE("formatting > sandboxes", () => {
 
       popover().within(() => {
         // Collapse "Order/s/" in order to bring "User" into view (trick to get around virtualization - credits: @flamber)
-        cy.get(".List-section-header")
+        cy.get("[data-element-id=list-section-header]")
           .contains(/Orders?/)
           .click();
 
-        cy.get(".List-section-header").contains("User").click();
+        cy.get("[data-element-id=list-section-header]")
+          .contains("User")
+          .click();
 
-        cy.get(".List-item").contains("ID").click();
+        cy.get("[data-element-id=list-item]").contains("ID").click();
       });
 
       visualize();
@@ -610,7 +615,9 @@ describeEE("formatting > sandboxes", () => {
               cy.log(
                 "It should show remapped Display Values instead of Product ID",
               );
-              cy.get(".cellData").contains("Awesome Concrete Shoes").click();
+              cy.get("[data-testid=cell-data]")
+                .contains("Awesome Concrete Shoes")
+                .click();
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText(/View details/i).click();
 
@@ -785,7 +792,7 @@ describeEE("formatting > sandboxes", () => {
         expect(response.statusCode).to.eq(400);
         expect(response.body.message).to.eq(ERROR_MESSAGE);
       });
-      cy.get(".Modal").scrollTo("bottom");
+      modal().scrollTo("bottom");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(ERROR_MESSAGE);
     });

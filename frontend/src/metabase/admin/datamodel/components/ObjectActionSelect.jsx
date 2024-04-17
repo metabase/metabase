@@ -19,6 +19,7 @@ export default class ObjectActionsSelect extends Component {
 
     this.retireModal = createRef();
   }
+
   static propTypes = {
     object: PropTypes.object.isRequired,
     objectType: PropTypes.string.isRequired,
@@ -67,7 +68,14 @@ export default class ObjectActionsSelect extends Component {
               <ModalWithTrigger
                 ref={this.retireModal}
                 triggerElement={t`Retire ${objectTypeLocalized}`}
-                triggerClasses="block p2 bg-error-hover text-error text-white-hover cursor-pointer"
+                triggerClasses={cx(
+                  CS.block,
+                  CS.p2,
+                  CS.bgErrorHover,
+                  CS.textError,
+                  CS.textWhiteHover,
+                  CS.cursorPointer,
+                )}
               >
                 <ObjectRetireModal
                   object={object}

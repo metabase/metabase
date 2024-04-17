@@ -308,17 +308,17 @@
 
 (defn normalize-query-parameter
   "Normalize a parameter in the query `:parameters` list."
-  [{:keys [type target id values_source_config], :as param}]
+  [{param-type :type, :keys [target id values_source_config], :as param}]
   (cond-> param
     id                   (update :id mbql.u/qualified-name)
     ;; some things that get ran thru here, like dashcard param targets, do not have :type
-    type                 (update :type maybe-normalize-token)
+    param-type           (update :type maybe-normalize-token)
     target               (update :target #(normalize-tokens % :ignore-path))
     values_source_config (update-in [:values_source_config :label_field] #(normalize-tokens % :ignore-path))
     values_source_config (update-in [:values_source_config :value_field] #(normalize-tokens % :ignore-path))))
 
 (defn- normalize-source-query [source-query]
-  (let [{native? :native, :as source-query} (m/map-keys maybe-normalize-token source-query)]
+  (let [{native? :native, :as source-query} (update-keys source-query maybe-normalize-token)]
     (if native?
       (-> source-query
           (set/rename-keys {:native :query})
@@ -328,7 +328,7 @@
 
 (defn- normalize-join [join]
   ;; path in call to `normalize-tokens` is [:query] so it will normalize `:source-query` as appropriate
-  (let [{:keys [strategy fields alias], :as join} (normalize-tokens join :query)]
+  (let [{:keys [strategy fields], join-alias :alias, :as join} (normalize-tokens join :query)]
     (cond-> join
       strategy
       (update :strategy maybe-normalize-token)
@@ -336,7 +336,7 @@
       ((some-fn keyword? string?) fields)
       (update :fields maybe-normalize-token)
 
-      alias
+      join-alias
       (update :alias mbql.u/qualified-name))))
 
 (declare canonicalize-mbql-clauses)
@@ -357,7 +357,7 @@
 (defn- normalize-native-query
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
   [native-query]
-  (let [native-query (m/map-keys maybe-normalize-token native-query)]
+  (let [native-query (update-keys native-query maybe-normalize-token)]
     (cond-> native-query
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
 
@@ -679,7 +679,7 @@
           (try
             (canonicalize-mbql-clause form)
             (catch #?(:clj Throwable :cljs js/Error) e
-              (log/error (i18n/tru "Invalid clause:") form)
+              (log/error "Invalid clause:" form)
               (throw (ex-info (i18n/tru "Invalid MBQL clause: {0}" (ex-message e))
                               {:clause form}
                               e))))]
@@ -782,9 +782,6 @@
     (not native?) canonicalize-inner-mbql-query
     native?       canonicalize-native-query))
 
-(defn- canonicalize-sources [sources]
-  (mapv #(update % :lib/type keyword) sources))
-
 (defn- non-empty? [x]
   (if (coll? x)
     (seq x)
@@ -798,8 +795,7 @@
     (non-empty? (:breakout     mbql-query)) (update :breakout     canonicalize-breakouts)
     (non-empty? (:fields       mbql-query)) (update :fields       (partial mapv wrap-implicit-field-id))
     (non-empty? (:order-by     mbql-query)) (update :order-by     canonicalize-order-by)
-    (non-empty? (:source-query mbql-query)) (update :source-query canonicalize-source-query)
-    (non-empty? (:sources      mbql-query)) (update :sources      canonicalize-sources)))
+    (non-empty? (:source-query mbql-query)) (update :source-query canonicalize-source-query)))
 
 (def ^:private ^{:arglists '([query])} canonicalize-inner-mbql-query
   (comp canonicalize-mbql-clauses canonicalize-top-level-mbql-clauses))

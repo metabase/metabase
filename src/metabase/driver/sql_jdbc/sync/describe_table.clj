@@ -54,8 +54,8 @@
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
   [driver database-type]
   (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
-      (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
-                            database-type))
+      (do (log/warnf "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
+                     database-type)
           :type/*)))
 
 (defn- calculated-semantic-type
@@ -554,10 +554,8 @@
         fields           (field-types->fields field-types)]
     (if (> (count fields) max-nested-field-columns)
       (do
-        (log/warn
-         (format
-          "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
-          max-nested-field-columns))
+        (log/warnf "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
+                   max-nested-field-columns)
         (set (take max-nested-field-columns fields)))
       fields)))
 

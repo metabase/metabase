@@ -7,6 +7,7 @@ import { isActionDashCard } from "metabase/actions/utils";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import {
   isNativeDashCard,
   isVirtualDashCard,
@@ -125,7 +126,7 @@ export function DashCardCardParameterMapper({
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
 
   const handleChangeTarget = useCallback(
-    target => {
+    (target: ParameterTarget | null) => {
       if (editingParameter) {
         setParameterMapping(editingParameter.id, dashcard.id, card.id, target);
       }
@@ -257,7 +258,7 @@ export function DashCardCardParameterMapper({
       {isVirtual && isDisabled ? (
         showVirtualDashCardInfoText(dashcard, isMobile) ? (
           <TextCardDefault>
-            <Icon name="info" size={12} className="pr1" />
+            <Icon name="info" size={12} className={CS.pr1} />
             {mappingInfoText}
           </TextCardDefault>
         ) : (
@@ -265,7 +266,7 @@ export function DashCardCardParameterMapper({
             <Icon
               name="info"
               size={16}
-              className="text-dark-hover"
+              className={CS.textDarkHover}
               tooltip={mappingInfoText}
             />
           </TextCardDefault>

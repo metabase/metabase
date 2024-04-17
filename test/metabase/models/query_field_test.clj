@@ -1,16 +1,20 @@
 (ns metabase.models.query-field-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(def ^:private query-field-keys [:card_id :field_id])
+(def ^:private query-field-keys [:card_id :field_id :direct_reference])
+
+(defn- qf->map [query-field]
+  (select-keys query-field query-field-keys))
 
 (defn- query-fields-for-card
   [card-id]
-  (t2/select-fn-set #(select-keys % query-field-keys) :model/QueryField
+  (t2/select-fn-set qf->map :model/QueryField
                     :card_id card-id))
 
 (defn- do-with-test-setup [f]
@@ -40,7 +44,9 @@
   ([card-id]
    (trigger-parse! card-id "SELECT TAX, TOTAL FROM orders"))
   ([card-id query]
-   (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query query})})))
+   (if (string? query)
+     (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query query})})
+     (t2/update! :model/Card card-id {:dataset_query query}))))
 
 ;;;;
 ;;;; Actual tests
@@ -48,10 +54,12 @@
 
 (deftest query-fields-created-by-queries-test
   (with-test-setup
-    (let [total-qf {:card_id  card-id
-                    :field_id total-id}
-          tax-qf   {:card_id  card-id
-                    :field_id tax-id}]
+    (let [total-qf {:card_id          card-id
+                    :field_id         total-id
+                    :direct_reference true}
+          tax-qf   {:card_id          card-id
+                    :field_id         tax-id
+                    :direct_reference true}]
 
       (testing "A freshly created card has relevant corresponding QueryFields"
         (is (= #{total-qf}
@@ -62,9 +70,22 @@
         (is (= #{tax-qf total-qf}
                (query-fields-for-card card-id))))
 
-      (testing "Removing columns from the query removes the Queryfields"
+      (testing "Removing columns from the query removes the QueryFields"
         (trigger-parse! card-id "SELECT tax, not_total FROM orders")
         (is (= #{tax-qf}
+               (query-fields-for-card card-id))))
+
+      (testing "Columns referenced via field filters are still found"
+        (trigger-parse! card-id
+                        (mt/native-query {:query "SELECT tax FROM orders WHERE {{adequate_total}}"
+                                          :template-tags {"adequate_total"
+                                                          {:type         :dimension
+                                                           :name         "adequate_total"
+                                                           :display-name "Total is big enough"
+                                                           :dimension    [:field (mt/id :orders :total)
+                                                                          {:base-type :type/Number}]
+                                                           :widget-type  :number/>=}}}))
+        (is (= #{tax-qf total-qf}
                (query-fields-for-card card-id)))))))
 
 (deftest bogus-queries-test
@@ -72,3 +93,39 @@
     (testing "Updating a query with bogus columns does not create QueryFields"
       (trigger-parse! card-id "SELECT DOES, NOT_EXIST FROM orders")
       (is (empty? (t2/select :model/QueryField :card_id card-id))))))
+
+(deftest wildcard-test
+  (with-test-setup
+    (let [total-qf {:card_id          card-id
+                    :field_id         total-id
+                    :direct_reference false}
+          tax-qf   {:card_id          card-id
+                    :field_id         tax-id
+                    :direct_reference false}]
+      (testing "simple select *"
+        (trigger-parse! card-id "select * from orders")
+        (let [qfs (query-fields-for-card card-id)]
+          (is (= 9 (count qfs)))
+          (is (not-every? :direct_reference qfs))
+          (is (set/subset? #{total-qf tax-qf} qfs)))))))
+
+(deftest table-wildcard-test
+  (with-test-setup
+    (let [total-qf {:card_id          card-id
+                    :field_id         total-id
+                    :direct_reference true}
+          tax-qf   {:card_id          card-id
+                    :field_id         tax-id
+                    :direct_reference true}]
+      (testing "mix of select table.* and named columns"
+        (trigger-parse! card-id "select p.*, o.tax, o.total from orders o join people p on p.id = o.user_id")
+        (let [qfs (query-fields-for-card card-id)]
+          ;; TODO: o.id is a bug; the query only has p.id but we don't link tables and columns yet
+          ;; c.f. Milestone 3 of https://github.com/metabase/metabase/issues/36911
+          (is (= (+ 13 #_people 2 #_tax-and-total 1 #_o.user_id 1 #_o.id)
+                 (count qfs)))
+          ;; 13 total, but id is referenced directly
+          (is (= 12 (t2/count :model/QueryField :card_id card-id :direct_reference false)))
+          ;; subset since it also includes the PKs/FKs
+          (is (set/subset? #{total-qf tax-qf}
+                           (t2/select-fn-set qf->map :model/QueryField :card_id card-id :direct_reference true))))))))

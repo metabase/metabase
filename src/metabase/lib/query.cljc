@@ -10,9 +10,11 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.ref :as lib.ref]
+   [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
@@ -63,7 +65,8 @@
 (mu/defn can-run :- :boolean
   "Returns whether the query is runnable. Manually validate schema for cljs."
   [query :- ::lib.schema/query]
-  (and (mc/validate ::lib.schema/query query)
+  (and (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+         (mc/validate ::lib.schema/query query))
        (boolean (can-run-method query))))
 
 (defmulti can-save-method
@@ -79,8 +82,7 @@
   [query card-type]
   (or (not= card-type :metric)
       (let [last-stage (lib.util/query-stage query -1)]
-        (and (empty? (:breakout last-stage))
-             (= (-> last-stage :aggregation count) 1)))))
+        (= (-> last-stage :aggregation count) 1))))
 
 (mu/defn can-save :- :boolean
   "Returns whether `query` for a card of `card-type` can be saved."
@@ -115,31 +117,25 @@
                       {:legacy-query legacy-query}
                       e)))))
 
-(defn- query-from-unknown-query [metadata-providerable query]
-  (assoc (lib.convert/->pMBQL query)
-         :lib/type     :mbql/query
-         :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)))
-
-(mu/defn ^:private query-from-existing :- ::lib.schema/query
-  "Create a pMBQL query from either an existing pMBQL query (attaching metadata provider as needed), or from a legacy MBQL
-  query (converting it to pMBQL)."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
-   query                 :- :map]
-  (let [f (if (some #(get query %) [:type "type"])
-            query-from-legacy-query
-            query-from-unknown-query)]
-    (f metadata-providerable query)))
-
 (defmulti ^:private query-method
   "Implementation for [[query]]."
   {:arglists '([metadata-providerable x])}
   (fn [_metadata-providerable x]
-    (lib.dispatch/dispatch-value x))
+    (or (lib.util/normalized-query-type x)
+        (lib.dispatch/dispatch-value x)))
   :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod query-method :query ; legacy MBQL query
+  [metadata-providerable legacy-query]
+  (query-from-legacy-query metadata-providerable legacy-query))
+
+(defmethod query-method :native ; legacy native query
+  [metadata-providerable legacy-query]
+  (query-from-legacy-query metadata-providerable legacy-query))
 
 (defmethod query-method :dispatch-type/map
   [metadata-providerable query]
-  (query-from-existing metadata-providerable query))
+  (query-method metadata-providerable (assoc (lib.convert/->pMBQL query) :lib/type :mbql/query)))
 
 ;;; this should already be a query in the shape we want but:
 ;; - let's make sure it has the database metadata that was passed in
@@ -150,7 +146,8 @@
   (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
         query (-> query
                   (assoc :lib/metadata metadata-provider)
-                  (dissoc :lib.convert/converted?))
+                  (dissoc :lib.convert/converted?)
+                  lib.normalize/normalize)
         stages (:stages query)]
     (cond-> query
       converted?
@@ -188,11 +185,26 @@
                      [{:lib/type     :mbql.stage/mbql
                        :source-table (u/the-id table-metadata)}]))
 
+(declare query)
+
 (defmethod query-method :metadata/card
   [metadata-providerable card-metadata]
-  (query-with-stages metadata-providerable
-                     [{:lib/type     :mbql.stage/mbql
-                       :source-card (u/the-id card-metadata)}]))
+  (let [card-id (u/the-id card-metadata)
+        base-query (query-with-stages metadata-providerable
+                                      [{:lib/type :mbql.stage/mbql
+                                        :source-card card-id}])]
+    (if (= (:type card-metadata) :metric)
+      (let [metric-query (query metadata-providerable (:dataset-query card-metadata))
+            metric-breakouts (:breakout (lib.util/query-stage metric-query -1))
+            base-query (reduce
+                         #(lib.util/add-summary-clause %1 0 :breakout %2)
+                         base-query
+                         metric-breakouts)]
+        (-> base-query
+            (lib.util/add-summary-clause
+              0 :aggregation
+              (lib.options/ensure-uuid [:metric {} card-id]))))
+      base-query)))
 
 (defmethod query-method :mbql.stage/mbql
   [metadata-providerable mbql-stage]
@@ -202,45 +214,13 @@
   [metadata-providerable native-stage]
   (query-with-stages metadata-providerable [native-stage]))
 
-(defn- convert-metric-query
-  [a-query]
-  (if-let [card-id (get-in a-query [:stages 0 :source-card])]
-    (let [{card-type :type} (lib.metadata/card a-query card-id)
-          metric-meta (lib.metadata/metric a-query card-id)]
-      (cond-> a-query
-        (= card-type :metric)
-        (lib.util/update-query-stage 0 (fn [stage]
-                                         (-> stage
-                                             (dissoc :source-card)
-                                             (assoc :sources [{:lib/type :source/metric
-                                                               :id card-id}]))))
-
-        (and (= card-type :metric)
-             (not-any? #(= (peek %) card-id)
-                       ;; using lib.aggregation/aggregations would result in a cyclic dep
-                       (:aggregation (lib.util/query-stage a-query 0))))
-        (lib.util/add-summary-clause 0 :aggregation (lib.ref/ref metric-meta))))
-    a-query))
-
-(defn- revert-metric-query
-  [a-query]
-  ;; handle single metric for now
-  (if-let [{source-type :lib/type, card-id :id} (first (get-in a-query [:stages 0 :sources]))]
-    (cond-> a-query
-      (= source-type :source/metric)
-      (lib.util/update-query-stage 0 (fn [stage]
-                                       (-> stage
-                                           (dissoc :sources)
-                                           (assoc :source-card card-id)))))
-    a-query))
-
 (mu/defn query :- ::lib.schema/query
   "Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- lib.metadata/MetadataProviderable
    x]
-  (convert-metric-query (query-method metadata-providerable x)))
+  (query-method metadata-providerable x))
 
 (mu/defn query-from-legacy-inner-query :- ::lib.schema/query
   "Create a pMBQL query from a legacy inner query."
@@ -254,7 +234,7 @@
 (defn ->legacy-MBQL
   "Convert the pMBQL `a-query` into a legacy MBQL query."
   [a-query]
-  (-> a-query revert-metric-query lib.convert/->legacy-MBQL))
+  (-> a-query lib.convert/->legacy-MBQL))
 
 (mu/defn with-different-table :- ::lib.schema/query
   "Changes an existing query to use a different source table or card.
@@ -286,15 +266,15 @@
 (mu/defn uses-segment? :- :boolean
   "Tests whether `a-query` uses segment with ID `segment-id`.
   `segment-id` can be a regular segment ID or a string. The latter is for symmetry
-  with [[uses-metric?]]."
+  with [[uses-legacy-metric?]]."
   [a-query :- ::lib.schema/query
    segment-id :- [:or ::lib.schema.id/segment :string]]
   (occurs-in-stage-clause? a-query :filters #(occurs-in-expression? % :segment segment-id)))
 
-(mu/defn uses-metric? :- :boolean
+(mu/defn uses-legacy-metric? :- :boolean
   "Tests whether `a-query` uses metric with ID `metric-id`.
   `metric-id` can be a regular metric ID or a string. The latter is to support
-  some strange use-cases (see [[metabase.lib.metric-test/ga-metric-metadata-test]])."
+  some strange use-cases (see [[metabase.lib.legacy-metric-test/ga-metric-metadata-test]])."
   [a-query :- ::lib.schema/query
-   metric-id :- [:or ::lib.schema.id/metric :string]]
+   metric-id :- [:or ::lib.schema.id/legacy-metric :string]]
   (occurs-in-stage-clause? a-query :aggregation #(occurs-in-expression? % :metric metric-id)))

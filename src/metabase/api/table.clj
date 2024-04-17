@@ -25,7 +25,7 @@
    [metabase.types :as types]
    [metabase.upload :as upload]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -41,12 +41,24 @@
   "Schema for a valid table field ordering."
   (into [:enum] (map name table/field-orderings)))
 
+(defn- fix-schema [table]
+  (update table :schema str))
+
 (api/defendpoint GET "/"
   "Get all `Tables`."
   []
   (as-> (t2/select Table, :active true, {:order-by [[:name :asc]]}) tables
     (t2/hydrate tables :db)
-    (filterv mi/can-read? tables)))
+    (into [] (comp (filter mi/can-read?)
+                   (map fix-schema))
+          tables)))
+
+(api/defendpoint GET "/uploaded"
+  "Get all `Tables` visible to the current user which were created by uploading a file."
+  []
+  (as-> (t2/select Table, :active true, :is_upload true, {:order-by [[:name :asc]]}) tables
+        (map #(update % :schema str) tables)
+        (filterv mi/can-read? tables)))
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
@@ -57,7 +69,8 @@
                             api/write-check
                             api/read-check)]
     (-> (api-perm-check-fn Table id)
-        (t2/hydrate :db :pk_field))))
+        (t2/hydrate :db :pk_field)
+        fix-schema)))
 
 (defn- update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
@@ -88,10 +101,10 @@
          (if (binding [h2/*allow-testing-h2-connections* true]
                (driver.u/can-connect-with-details? (:engine database) (:details database)))
            (doseq [table newly-unhidden]
-             (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name table))))
+             (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
              (sync/sync-table! table))
-           (log/warn (u/format-color 'red (trs "Cannot connect to database ''{0}'' in order to sync unhidden tables"
-                                               (:name database))))))))))
+           (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
+                                     (:name database)))))))))
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
@@ -332,6 +345,7 @@
         (m/dissoc-in [:db :details])
         (assoc-dimension-options db)
         format-fields-for-response
+        fix-schema
         (update :fields (partial filter (fn [{visibility-type :visibility_type}]
                                           (case (keyword visibility-type)
                                             :hidden    include-hidden-fields?

@@ -20,7 +20,7 @@ import { columnNameToUrl } from "../audit_app/lib/mode";
 function idxToUrl(resRow, resCols, nameToResCol, colName) {
   const idVal = resRow[nameToResCol[colName]];
   const urlVal = colName && idVal ? columnNameToUrl[colName](idVal) : "";
-  const linkClass = urlVal === "" ? "" : "text-brand";
+  const linkClass = urlVal === "" ? "" : CS.textBrand;
   return [urlVal, linkClass];
 }
 
@@ -70,7 +70,7 @@ function ErrorDetailDisplay(props) {
       });
       return (
         <tr key={x}>
-          <td align="right" className="m0 mt1 text-medium">
+          <td align="right" className={cx(CS.m0, CS.mt1, CS.textMedium)}>
             {formatColumn(resCols[nameToResCol[x]])}
           </td>
           <td>
@@ -88,10 +88,10 @@ function ErrorDetailDisplay(props) {
       ?.split("|")
       ?.map((x, idx) => (
         <tr key={x}>
-          <td align="right" className="m0 mt1 text-medium">
+          <td align="right" className={cx(CS.m0, CS.mt1, CS.textMedium)}>
             {idx === 0 && formatColumn(resCols[nameToResCol.dash_name_str])}
           </td>
-          <td className="text-bold">
+          <td className={CS.textBold}>
             {formatValue(x, { column: resCols[nameToResCol.dash_name_str] })}
           </td>
         </tr>
@@ -114,7 +114,15 @@ function ErrorDetailDisplay(props) {
       </h2>,
       <div
         key="error_str"
-        className="half rounded p2 text-dark text-monospace text-small bg-light"
+        className={cx(
+          CS.half,
+          CS.rounded,
+          CS.p2,
+          CS.textDark,
+          CS.textMonospace,
+          CS.textSmall,
+          CS.bgLight,
+        )}
       >
         {resRow[nameToResCol.error_str]}
       </div>,

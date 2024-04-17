@@ -2,6 +2,7 @@
   "Tests for /api/card endpoints."
   (:require
    [cheshire.core :as json]
+   [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -83,7 +84,8 @@
    :cache_ttl              nil
    :average_query_time     nil
    :last_query_start       nil
-   :result_metadata        nil})
+   :result_metadata        nil
+   :cache_invalidated_at   nil})
 
 ;; Used in dashboard tests
 (def card-defaults-no-hydrate
@@ -311,10 +313,14 @@
                    :model/Card         relevant-card            {:name "Card with stale query"}
                    :model/Card         not-stale-card           {:name "Card whose columns are up to date"}
                    :model/Card         irrelevant-card          {:name "Card with no QueryFields at all"}
+                   :model/Card         select-*-card            {:name "Card with only wildcard refs"}
                    :model/QueryField   _                        {:card_id  (u/the-id relevant-card)
                                                                  :field_id inactive-field-id}
                    :model/QueryField   _                        {:card_id  (u/the-id not-stale-card)
-                                                                 :field_id active-field-id}]
+                                                                 :field_id active-field-id}
+                   :model/QueryField   _                        {:card_id  (u/the-id select-*-card)
+                                                                 :field_id inactive-field-id
+                                                                 :direct_reference false}]
       (with-cards-in-readable-collection [relevant-card not-stale-card irrelevant-card]
         (is (=? [{:name         "Card with stale query"
                   :query_fields [{:card_id  (u/the-id relevant-card)
@@ -799,7 +805,7 @@
                            (assoc :type :metric))
           invalid-card (-> card-name
                            (card-with-name-and-query
-                            (-> query (lib/breakout (first (lib/breakoutable-columns query)))))
+                             (-> query (lib/aggregate (lib/sum (lib.metadata/field query (mt/id :venues :id))))))
                            (assoc :type :metric))]
       (mt/with-full-data-perms-for-all-users!
         (mt/with-model-cleanup [:model/Card]
@@ -814,13 +820,13 @@
                                       (merge
                                        (mt/with-temp-defaults :model/Card)
                                        updated-card)))
-              (testing "Update fails if there is a breakout"
+              (testing "Update fails if there are multiple aggregations"
                 (let [response (mt/user-http-request :rasta :put 400 (str "card/" card-id)
                                                      (merge
                                                       (mt/with-temp-defaults :model/Card)
                                                       invalid-card))]
                   (is (= "Card of type metric is invalid, cannot be saved." response))))))
-          (testing "Creation fails if there is a breakout"
+          (testing "Creation fails if there are multiple aggregations"
             (let [response (mt/user-http-request :rasta :post 400 "card"
                                                  (merge
                                                   (mt/with-temp-defaults :model/Card)
@@ -3585,3 +3591,22 @@
                                :visualization_settings {}}]
         (is (=? {:message #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"daily-bird-counts\""}
                 (mt/user-http-request :crowberto :post 400 "card" card-data)))))))
+
+(deftest ^:parallel format-export-middleware-test
+  (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
+    (let [q             {:database (mt/id)
+                         :type     :native
+                         :native   {:query "SELECT 2000 AS number, '2024-03-26'::DATE AS date;"}}
+          output-helper {:csv  (fn [output] (->> output csv/read-csv last))
+                         :json (fn [output] (->> output (map (juxt :NUMBER :DATE)) last))}]
+      (t2.with-temp/with-temp [Card {card-id :id} {:display :table :dataset_query q}]
+        (doseq [[export-format apply-formatting? expected] [[:csv true ["2,000" "March 26, 2024"]]
+                                                            [:csv false ["2000" "2024-03-26"]]
+                                                            [:json true ["2,000" "March 26, 2024"]]
+                                                            [:json false [2000 "2024-03-26"]]]]
+          (testing (format "export_format %s yields expected output for %s exports." apply-formatting? export-format)
+              (is (= expected
+                     (->> (mt/user-http-request
+                           :crowberto :post 200
+                           (format "card/%s/query/%s?format_rows=%s" card-id (name export-format) apply-formatting?))
+                          ((get output-helper export-format)))))))))))

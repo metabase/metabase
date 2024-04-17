@@ -155,7 +155,7 @@ export default class ChoroplethMap extends Component {
           this.setState({
             geoJson: geoJson,
             geoJsonPath: geoJsonPath,
-            minimalBounds: computeMinimalBounds(geoJson.features),
+            minimalBounds: computeMinimalBounds(geoJson?.features ?? []),
           });
         });
       }

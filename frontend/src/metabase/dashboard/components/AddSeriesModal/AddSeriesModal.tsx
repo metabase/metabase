@@ -171,7 +171,16 @@ export class AddSeriesModal extends Component<Props, State> {
                 className={cx(CS.spread, CS.flex, CS.layoutCentered)}
                 style={{ backgroundColor: color("bg-white") }}
               >
-                <div className="h3 rounded bordered p3 bg-white shadowed">
+                <div
+                  className={cx(
+                    CS.h3,
+                    CS.rounded,
+                    CS.bordered,
+                    CS.p3,
+                    CS.bgWhite,
+                    CS.shadowed,
+                  )}
+                >
                   {t`Applying Question`}
                 </div>
               </div>
@@ -193,7 +202,7 @@ export class AddSeriesModal extends Component<Props, State> {
           </div>
         </div>
         <div
-          className={cx("border-left", CS.flex, CS.flexColumn)}
+          className={cx(CS.borderLeft, CS.flex, CS.flexColumn)}
           style={{
             width: 370,
             backgroundColor: color("bg-light"),

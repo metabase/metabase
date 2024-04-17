@@ -52,7 +52,7 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     setupJwt();
     cy.visit("/admin/settings/authentication/jwt");
 
-    getUserProvisioningInput().click();
+    getUserProvisioningInput().label.click();
     cy.button("Save changes").click();
     cy.wait("@updateSettings");
 

@@ -268,8 +268,8 @@ describe("formatting", () => {
       });
       // it's not actually a link
       expect(isElementOfType(formatted, ExternalLink)).toEqual(false);
-      // but it's formatted as a link
-      expect(formatted.props.className).toEqual("link link--wrappable");
+      // expect the text to be in a div (which has link formatting) rather than ExternalLink
+      expect(formatted.props["data-testid"]).toEqual("link-formatted-text");
     });
     it("should render image", () => {
       const formatted = formatValue("http://metabase.com/logo.png", {
@@ -498,8 +498,8 @@ describe("formatting", () => {
 
         // it is not a link set on the question level
         expect(isElementOfType(formatted, ExternalLink)).toEqual(false);
-        // it is formatted as a link cell for the dashboard level click behavior
-        expect(formatted.props.className).toEqual("link link--wrappable");
+        // expect the text to be in a div (which has link formatting) rather than ExternalLink
+        expect(formatted.props["data-testid"]).toEqual("link-formatted-text");
       });
     });
 

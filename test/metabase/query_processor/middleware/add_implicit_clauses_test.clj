@@ -7,10 +7,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.query-processor.middleware.add-implicit-clauses
-    :as qp.add-implicit-clauses]
-   [metabase.query-processor.middleware.add-source-metadata
-    :as add-source-metadata]
+   [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
+   [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -44,7 +42,10 @@
             :order-by     [[:asc [:field 1 nil]]]}
            (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
             {:source-table 1
-             :breakout     [[:field 1 nil]]})))
+             :breakout     [[:field 1 nil]]})))))
+
+(deftest ^:parallel add-order-bys-for-breakouts-test-2
+  (testing "we should add order-bys for breakout clauses"
     (testing "Add Field to existing order-by"
       (is (= {:source-table 1
               :breakout     [[:field 2 nil]]
@@ -53,8 +54,10 @@
              (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
               {:source-table 1
                :breakout     [[:field 2 nil]]
-               :order-by     [[:asc [:field 1 nil]]]}))))
+               :order-by     [[:asc [:field 1 nil]]]}))))))
 
+(deftest ^:parallel add-order-bys-for-breakouts-test-3
+  (testing "we should add order-bys for breakout clauses"
     (testing "...but not if the Field is already in an order-by"
       (is (= {:source-table 1
               :breakout     [[:field 1 nil]]
@@ -62,22 +65,30 @@
              (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
               {:source-table 1
                :breakout     [[:field 1 nil]]
-               :order-by     [[:asc [:field 1 nil]]]})))
+               :order-by     [[:asc [:field 1 nil]]]}))))))
+
+(deftest ^:parallel add-order-bys-for-breakouts-test-4
+  (testing "we should add order-bys for breakout clauses"
+    (testing "...but not if the Field is already in an order-by"
       (is (= {:source-table 1
               :breakout     [[:field 1 nil]]
               :order-by     [[:desc [:field 1 nil]]]}
              (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
               {:source-table 1
                :breakout     [[:field 1 nil]]
-               :order-by     [[:desc [:field 1 nil]]]})))
+               :order-by     [[:desc [:field 1 nil]]]}))))))
+
+(deftest ^:parallel add-order-bys-for-breakouts-test-5
+  (testing "we should add order-bys for breakout clauses"
+    (testing "...but not if the Field is already in an order-by"
       (testing "With a datetime-field"
         (is (= {:source-table 1
                 :breakout     [[:field 1 {:temporal-unit :day}]]
-                :order-by     [[:asc [:field 1 nil]]]}
+                :order-by     [[:asc [:field 1 {:temporal-unit :day}]]]}
                (#'qp.add-implicit-clauses/add-implicit-breakout-order-by
                 {:source-table 1
                  :breakout     [[:field 1 {:temporal-unit :day}]]
-                 :order-by     [[:asc [:field 1 nil]]]})))))))
+                 :order-by     [[:asc [:field 1 {:temporal-unit :day}]]]})))))))
 
 (defn- add-implicit-fields [inner-query]
   (if (qp.store/initialized?)

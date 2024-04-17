@@ -39,7 +39,7 @@ describe("issue 17768", () => {
 
     popover().within(() => {
       cy.findByText("ID")
-        .closest(".List-section")
+        .closest("[data-element-id=list-section]")
         .realHover()
         .contains("Auto bin")
         .should("not.exist");

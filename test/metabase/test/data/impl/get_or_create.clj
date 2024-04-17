@@ -13,7 +13,8 @@
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
@@ -147,19 +148,18 @@
     ;; Add DB object to Metabase DB
     (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
           db                 (first (t2/insert-returning-instances! Database
-                                                                    :name    database-name
-                                                                    :engine  (u/qualified-name driver)
-                                                                    :details connection-details))]
+                                                                    (merge
+                                                                     (t2.with-temp/with-temp-defaults :model/Database)
+                                                                     {:name    database-name
+                                                                      :engine  (u/qualified-name driver)
+                                                                      :details connection-details})))]
       (sync-newly-created-database! driver database-definition connection-details db)
       ;; make sure we're returing an up-to-date copy of the DB
       (t2/select-one Database :id (u/the-id db)))
     (catch Throwable e
       (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
       (tx/destroy-db! driver database-definition)
-      (throw (ex-info (format "Failed to create %s '%s' test database: %s" driver database-name (ex-message e))
-                      {:driver        driver
-                       :database-name database-name}
-                      e)))))
+      (throw e))))
 
 (defn- create-database-with-bound-settings! [driver dbdef]
   (letfn [(thunk []

@@ -4,7 +4,6 @@
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
 
@@ -24,6 +23,6 @@
          (sync/sync-database! database)
          (sync-metadata/sync-db-metadata! database))
        (catch Throwable e
-         (log/error e (trs "Error syncing Database {0}" (u/the-id database)))))))
+         (log/errorf e "Error syncing Database %s" (u/the-id database))))))
    (catch Throwable e
      (log/warnf e "Failed to process sync-database event: %s" topic))))

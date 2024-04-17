@@ -5,6 +5,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(def CacheConfig "Cache configuration" :model/CacheConfig)
+
 (doto :model/CacheConfig
   (derive :metabase/model)
   (derive :hook/timestamped?))

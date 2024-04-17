@@ -21,6 +21,11 @@
   (cond-> card-metadata
     (not display-name) (assoc :display-name (u.humanization/name->human-readable-name :simple card-name))))
 
+(defmethod lib.metadata.calculation/display-info-method :metadata/card
+  [query stage-number card-metadata]
+  (cond-> ((get-method lib.metadata.calculation/display-info-method :default) query stage-number card-metadata)
+    (= (:type card-metadata) :metric) (assoc :metric? true)))
+
 (defmethod lib.metadata.calculation/visible-columns-method :metadata/card
   [query
    stage-number
@@ -44,16 +49,6 @@
       (or (when-let [card-metadata (lib.metadata/card query source-card)]
             (lib.metadata.calculation/display-name query stage-number card-metadata :long))
           (fallback-display-name source-card)))))
-
-;; handle single metric sources like cards for now
-(defmethod lib.metadata.calculation/describe-top-level-key-method :sources
-  [query stage-number _k]
-  (let [{:keys [sources]} (lib.util/query-stage query stage-number)
-        metric-id (lib.util/first-metric-id sources)]
-    (when sources
-      (or (when-let [card-metadata (lib.metadata/card query metric-id)]
-            (lib.metadata.calculation/display-name query stage-number card-metadata :long))
-          (i18n/tru "Metric {0}" (pr-str metric-id))))))
 
 (mu/defn ^:private infer-returned-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [metadata-providerable :- lib.metadata/MetadataProviderable

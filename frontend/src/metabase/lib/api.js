@@ -31,6 +31,10 @@ const DEFAULT_OPTIONS = {
 
 export class Api extends EventEmitter {
   basename = "";
+  apiKey = "";
+  sessionToken;
+
+  onBeforeRequest;
 
   GET;
   POST;
@@ -58,6 +62,10 @@ export class Api extends EventEmitter {
       };
 
       return async (rawData, invocationOptions = {}) => {
+        if (this.onBeforeRequest) {
+          await this.onBeforeRequest();
+        }
+
         const options = { ...defaultOptions, ...invocationOptions };
         let url = urlTemplate;
         const data = { ...rawData };
@@ -87,6 +95,15 @@ export class Api extends EventEmitter {
 
         if (options.formData && options.fetch) {
           delete headers["Content-Type"];
+        }
+
+        if (this.apiKey) {
+          headers["X-Api-Key"] = this.apiKey;
+        }
+
+        if (this.sessionToken) {
+          // eslint-disable-next-line no-literal-metabase-strings -- not a UI string
+          headers["X-Metabase-Session"] = this.sessionToken;
         }
 
         if (isWithinIframe()) {
@@ -236,6 +253,7 @@ export class Api extends EventEmitter {
     options,
   ) {
     const controller = options.controller || new AbortController();
+    const signal = options.signal ?? controller.signal;
     options.cancelled?.then(() => controller.abort());
 
     const requestUrl = new URL(this.basename + url, location.origin);
@@ -243,7 +261,7 @@ export class Api extends EventEmitter {
       method,
       headers,
       body: requestBody,
-      signal: controller.signal,
+      signal,
     });
 
     return fetch(request)
@@ -280,7 +298,7 @@ export class Api extends EventEmitter {
         });
       })
       .catch(error => {
-        if (controller.signal.aborted) {
+        if (signal.aborted) {
           throw { isCancelled: true };
         } else {
           throw error;

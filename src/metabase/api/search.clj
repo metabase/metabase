@@ -241,7 +241,6 @@
                              [:= :query_action.action_id :action.id])
       (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
 
-
 (defmethod search-query-for-model "card"
   [_model search-ctx]
   (shared-card-impl :question search-ctx))
@@ -322,10 +321,10 @@
 (defmethod search-query-for-model "table"
   [model {:keys [current-user-perms table-db-id], :as search-ctx}]
   (when (seq current-user-perms)
-    (let [base-query (base-query-for-model model search-ctx)]
-      (add-table-db-id-clause
-       base-query
-       table-db-id))))
+
+    (-> (base-query-for-model model search-ctx)
+        (add-table-db-id-clause table-db-id)
+        (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
 
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
@@ -335,7 +334,7 @@
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
                                (remove #{:collection_authority_level :moderated_status
-                                         :initial_sync_status :pk_ref}))
+                                         :initial_sync_status :pk_ref :location}))
         case-clauses      (as-> columns-to-search <>
                             (map (fn [col] [:like [:lower col] match]) <>)
                             (interleave <> (repeat [:inline 0]))
@@ -450,6 +449,9 @@
         xf                 (comp
                             (map t2.realize/realize)
                             (map to-toucan-instance)
+                            (map #(if (t2/instance-of? :model/Collection %)
+                                    (t2/hydrate % :effective_location)
+                                    (assoc % :effective_location nil)))
                             (filter (partial check-permissions-for-model (:archived? search-ctx)))
                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                             ;; needed
@@ -477,7 +479,6 @@
      :offset           (:offset-int search-ctx)
      :table_db_id      (:table-db-id search-ctx)
      :models           (:models search-ctx)}))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |

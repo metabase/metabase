@@ -10,9 +10,11 @@ import type {
   IsFolder,
   TypeWithModel,
 } from "../../types";
+import { isSelectedItem } from "../../utils";
 import { AutoScrollBox } from "../AutoScrollBox";
 
 import { ListBox } from "./NestedItemPicker.styled";
+import { findLastSelectedItem } from "./utils";
 
 export interface NestedItemPickerProps<
   Id,
@@ -29,6 +31,7 @@ export interface NestedItemPickerProps<
   path: PickerState<Item, Query>;
   isFolder: IsFolder<Id, Model, Item>;
   listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
+  shouldDisableItem?: (item: Item) => boolean;
 }
 
 export function NestedItemPicker<
@@ -45,6 +48,7 @@ export function NestedItemPicker<
   path,
   isFolder,
   listResolver: ListResolver,
+  shouldDisableItem,
 }: NestedItemPickerProps<Id, Model, Item, Query, Options>) {
   const handleClick = (item: Item) => {
     if (isFolder(item)) {
@@ -54,6 +58,8 @@ export function NestedItemPicker<
     }
   };
 
+  const lastSelectedItem = findLastSelectedItem(path);
+
   return (
     <AutoScrollBox
       data-testid="nested-item-picker"
@@ -62,6 +68,12 @@ export function NestedItemPicker<
       <Flex h="100%" w="fit-content">
         {path.map((level, index) => {
           const { query, selectedItem } = level;
+
+          const isCurrentLevel = Boolean(
+            selectedItem &&
+              lastSelectedItem &&
+              isSelectedItem(selectedItem, lastSelectedItem),
+          );
 
           return (
             <ListBox
@@ -74,7 +86,8 @@ export function NestedItemPicker<
                   selectedItem={selectedItem}
                   options={options}
                   onClick={(item: Item) => handleClick(item)}
-                  isCurrentLevel={index === path.length - 2}
+                  isCurrentLevel={isCurrentLevel}
+                  shouldDisableItem={shouldDisableItem}
                   isFolder={isFolder}
                 />
               </ErrorBoundary>

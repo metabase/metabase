@@ -15,6 +15,7 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { GenericError } from "metabase/components/ErrorPages";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import title from "metabase/hoc/Title";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
@@ -33,7 +34,6 @@ import {
   initializeDatabase,
   saveDatabase,
   updateDatabase,
-  syncDatabaseSchema,
   dismissSyncSpinner,
   deleteDatabase,
   selectEngine,
@@ -53,7 +53,6 @@ interface DatabaseEditAppProps {
   params: { databaseId: DatabaseId };
   reset: () => void;
   initializeDatabase: (databaseId: DatabaseId) => void;
-  syncDatabaseSchema: (databaseId: DatabaseId) => Promise<void>;
   dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
   deleteDatabase: (
     databaseId: DatabaseId,
@@ -88,7 +87,6 @@ const mapDispatchToProps = {
   initializeDatabase,
   saveDatabase,
   updateDatabase,
-  syncDatabaseSchema,
   dismissSyncSpinner,
   deleteDatabase,
   selectEngine,
@@ -110,7 +108,6 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
     deleteDatabase,
     updateDatabase,
     initializeError,
-    syncDatabaseSchema,
     dismissSyncSpinner,
     isAdmin,
     isModelPersistenceEnabled,
@@ -160,12 +157,12 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
 
   return (
     <DatabaseEditRoot>
-      <Breadcrumbs className="py4" crumbs={crumbs} />
+      <Breadcrumbs className={CS.py4} crumbs={crumbs} />
 
       <DatabaseEditMain>
         <ErrorBoundary errorComponent={GenericError as ComponentType}>
           <div>
-            <div className="pt0">
+            <div className={CS.pt0}>
               <LoadingAndErrorWrapper
                 loading={!database}
                 error={initializeError}
@@ -194,7 +191,6 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
             isModelPersistenceEnabled={isModelPersistenceEnabled}
             updateDatabase={updateDatabase}
             deleteDatabase={deleteDatabase}
-            syncDatabaseSchema={syncDatabaseSchema}
             dismissSyncSpinner={dismissSyncSpinner}
           />
         )}

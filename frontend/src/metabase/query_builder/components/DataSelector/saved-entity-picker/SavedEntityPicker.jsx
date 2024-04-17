@@ -1,14 +1,15 @@
 import PropTypes from "prop-types";
-import { useMemo, useState, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
 import {
+  currentUserPersonalCollections,
   isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
-  currentUserPersonalCollections,
 } from "metabase/collections/utils";
 import { Tree } from "metabase/components/tree";
+import CS from "metabase/css/core/index.css";
 import Collection, {
   PERSONAL_COLLECTIONS,
   buildCollectionTree,
@@ -17,9 +18,9 @@ import { Icon } from "metabase/ui";
 
 import SavedEntityList from "./SavedEntityList";
 import {
-  SavedEntityPickerRoot,
-  CollectionsContainer,
   BackButton,
+  CollectionsContainer,
+  SavedEntityPickerRoot,
   TreeContainer,
 } from "./SavedEntityPicker.styled";
 import { CARD_INFO } from "./constants";
@@ -117,7 +118,7 @@ function SavedEntityPicker({
     <SavedEntityPickerRoot>
       <CollectionsContainer>
         <BackButton onClick={onBack} data-testid="saved-entity-back-navigation">
-          <Icon name="chevronleft" className="mr1" />
+          <Icon name="chevronleft" className={CS.mr1} />
           {CARD_INFO[type].title}
         </BackButton>
         <TreeContainer data-testid="saved-entity-collection-tree">

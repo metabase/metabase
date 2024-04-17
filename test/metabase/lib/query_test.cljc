@@ -163,9 +163,9 @@
                                   (mu/disable-enforcement
                                    (lib/display-info query -1 query)))
           true  editable
-          false (assoc editable :database 999999999)    ; database unknown - no permissions
-          false (mock-db-native-perms :none)            ; native-permissions explicitly set to :none
-          false (mock-db-native-perms nil))))))         ; native-permissions not found on the database
+          false (assoc editable :database 999999999) ; database unknown - no permissions
+          false (mock-db-native-perms :none)         ; native-permissions explicitly set to :none
+          false (mock-db-native-perms nil))))))      ; native-permissions not found on the database
 
 (deftest ^:parallel convert-from-legacy-preserve-info-test
   (testing ":info key should be converted when converting from legacy to pMBQL"
@@ -201,4 +201,43 @@
                           (lib/aggregate (lib/count)))
       false :metric   (-> lib.tu/venues-query
                           (lib/aggregate (lib/count))
+                          (lib/aggregate (lib/sum (meta/field-metadata :venues :id))))
+      true  :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count))
                           (lib/breakout (first (lib/breakoutable-columns lib.tu/venues-query)))))))
+
+(deftest ^:parallel normalize-test
+  (testing "Normalize (including adding :lib/uuids) when creating a new query"
+    (are [x] (=? {:lib/type :mbql/query
+                  :database (meta/id)
+                  :stages   [{:lib/type     :mbql.stage/mbql
+                              :source-table 1
+                              :aggregation  [[:count {:lib/uuid string?}]]
+                              :filters      [[:=
+                                              {:lib/uuid string?}
+                                              [:field {:lib/uuid string?} 1]
+                                              4]]}]}
+                 (lib/query meta/metadata-provider x))
+      {"lib/type" "mbql/query"
+       "database" (meta/id)
+       "stages"   [{"lib/type"     "mbql.stage/mbql"
+                    "source-table" 1
+                    "aggregation"  [["count" {}]]
+                    "filters"      [["=" {} ["field" {} 1] 4]]}]}
+
+      {:lib/type :mbql/query
+       :database (meta/id)
+       :stages   [{:lib/type     :mbql.stage/mbql
+                   :source-table 1
+                   :aggregation  [[:count {}]]
+                   :filters      [[:=
+                                   {}
+                                   [:field {} 1]
+                                   4]]}]}
+
+      ;; denormalized legacy query
+      {"type"     "query"
+       "database" (meta/id)
+       "query"    {"source-table" 1
+                   "aggregation"  [["count"]]
+                   "filter"       ["=" ["field" 1 nil] 4]}})))

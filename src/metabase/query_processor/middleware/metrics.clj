@@ -11,14 +11,14 @@
   (lib/expression query expression-name expression))
 
 (defn expand
-  "Expand `:sources` into an expanded query combining this query with sources.
+  "Expand `:source-card` of `:type` `:metric` into an expanded query combining this query with sources.
 
    How various clauses are combined.
    ```
       :expressions - combine with source metric
       :aggregation - use stage, replace :metric reference with source aggregation
       :filters     - combine with source metric
-      :breakout    - should not exist on source metric, metric-dimensions
+      :breakout    - should be ignored on source metric, and already copied onto consumer by `query`
       :order-by    - should not exist on source metric
       :joins       - should not exist on stage
       :fields      - should not exist on either
@@ -26,22 +26,25 @@
    "
   [query]
   (lib.walk/walk-stages
-    query
-    (fn [_query _path {:keys [sources filters aggregation expressions breakout order-by] :as stage}]
-      (if-let [source-metric (when (every? (comp #{:source/metric} :lib/type) sources)
-                               (:id (first sources)))] ;; Ignore multiple metrics for now
-        (let [source-metric-card (lib.metadata/card query source-metric)
-              source-query (expand (lib/query query (:dataset-query source-metric-card)))
-              source-aggregations (lib/aggregations source-query)
-              new-aggregations (->> (lib.util.match/replace aggregation
-                                      [:metric {} source-metric] (first source-aggregations))
-                                    lib.util/fresh-uuids)]
-          (as-> source-query $q
-              (lib.util/update-query-stage $q -1 dissoc :aggregation :breakout :order-by :fields)
-              (reduce lib/filter $q filters)
-              (reduce lib/breakout $q breakout)
-              (reduce lib/order-by $q order-by)
-              (reduce expression-with-name-from-source $q expressions)
-              (reduce lib/aggregate $q new-aggregations)
-              (:stages $q)))
-        stage))))
+   query
+   (fn [_query _path {:keys [source-card filters aggregation expressions breakout order-by] :as stage}]
+     (let [source-metadata (some->> source-card (lib.metadata/card query))]
+       (if (= (:type source-metadata) :metric)
+         (let [source-query (expand (-> query
+                                        (lib/query (:dataset-query source-metadata))
+                                        lib.util/fresh-query-instance))
+               metric-aggregation (-> source-query lib/aggregations first)
+               new-aggregations (lib.util.match/replace aggregation
+                                  [:metric {} source-card]
+                                  (assoc-in (lib.util/fresh-uuids metric-aggregation)
+                                            [1 :lib/uuid]
+                                            (get-in &match [1 :lib/uuid])))]
+           (as-> source-query $q
+             (lib.util/update-query-stage $q -1 dissoc :aggregation :breakout :order-by :fields)
+             (reduce lib/filter $q filters)
+             (reduce lib/breakout $q breakout)
+             (reduce lib/aggregate $q new-aggregations)
+             (reduce expression-with-name-from-source $q expressions)
+             (reduce lib/order-by $q order-by)
+             (:stages $q)))
+         stage)))))

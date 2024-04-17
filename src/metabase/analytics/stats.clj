@@ -22,7 +22,6 @@
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -126,31 +125,34 @@
 (defn- instance-settings
   "Figure out global info about this instance"
   []
-  {:version                             (config/mb-version-info :tag)
-   :running_on                          (environment-type)
-   :startup_time_millis                 (public-settings/startup-time-millis)
-   :application_database                (config/config-str :mb-db-type)
-   :check_for_updates                   (public-settings/check-for-updates)
-   :report_timezone                     (driver/report-timezone)
+  {:version                              (config/mb-version-info :tag)
+   :running_on                           (environment-type)
+   :startup_time_millis                  (public-settings/startup-time-millis)
+   :application_database                 (config/config-str :mb-db-type)
+   :check_for_updates                    (public-settings/check-for-updates)
+   :report_timezone                      (driver/report-timezone)
    ; We deprecated advanced humanization but have this here anyways
-   :friendly_names                      (= (humanization/humanization-strategy) "advanced")
-   :email_configured                    (email/email-configured?)
-   :slack_configured                    (slack/slack-configured?)
-   :sso_configured                      (google/google-auth-enabled)
-   :instance_started                    (snowplow/instance-creation)
-   :has_sample_data                     (t2/exists? Database, :is_sample true)
-   :enable_embedding                    (embed.settings/enable-embedding)
-   :embedding_app_origin_set            (boolean (embed.settings/embedding-app-origin))
-   :appearance_site_name                (not= (public-settings/site-name) "Metabase")
-   :appearance_help_link                (public-settings/help-link)
-   :appearance_logo                     (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
-   :appareance_favicon                  (not= (public-settings/application-favicon-url) "app/assets/img/favicon.ico")
-   :apperance_loading_message           (not= (public-settings/loading-message) :doing-science)
-   :appearance_metabot_greeting         (not (public-settings/show-metabot))
-   :apparerance_lighthouse_illustration (not (public-settings/show-lighthouse-illustration))
-   :appearance_ui_colors                (appearance-ui-colors-changed?)
-   :appearance_chart_colors             (appearance-chart-colors-changed?)
-   :appearance_show_mb_links            (not (public-settings/show-metabase-links))})
+   :friendly_names                       (= (humanization/humanization-strategy) "advanced")
+   :email_configured                     (email/email-configured?)
+   :slack_configured                     (slack/slack-configured?)
+   :sso_configured                       (google/google-auth-enabled)
+   :instance_started                     (snowplow/instance-creation)
+   :has_sample_data                      (t2/exists? Database, :is_sample true)
+   :enable_embedding                     (embed.settings/enable-embedding)
+   :embedding_app_origin_set             (boolean (embed.settings/embedding-app-origin))
+   :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
+   :appearance_help_link                 (public-settings/help-link)
+   :appearance_logo                      (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
+   :appearance_favicon                   (not= (public-settings/application-favicon-url) "app/assets/img/favicon.ico")
+   :appearance_loading_message           (not= (public-settings/loading-message) :doing-science)
+   :appearance_metabot_greeting          (not (public-settings/show-metabot))
+   :appearance_login_page_illustration   (public-settings/login-page-illustration)
+   :appearance_landing_page_illustration (public-settings/landing-page-illustration)
+   :appearance_no_data_illustration      (public-settings/no-data-illustration)
+   :appearance_no_object_illustration    (public-settings/no-object-illustration)
+   :appearance_ui_colors                 (appearance-ui-colors-changed?)
+   :appearance_chart_colors              (appearance-chart-colors-changed?)
+   :appearance_show_mb_links             (not (public-settings/show-metabase-links))})
 
 (defn- user-metrics
   "Get metrics based on user records.
@@ -434,7 +436,7 @@
   (try
      (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
      (catch Throwable e
-       (log/error e (trs "Sending usage stats FAILED")))))
+       (log/error e "Sending usage stats FAILED"))))
 
 
 (defn phone-home-stats!

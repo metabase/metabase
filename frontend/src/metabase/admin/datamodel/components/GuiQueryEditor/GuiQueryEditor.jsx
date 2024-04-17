@@ -59,7 +59,7 @@ export class GuiQueryEditor extends Component {
       CS.textBold,
       CS.flex,
       CS.alignCenter,
-      "text-medium-hover",
+      CS.textMediumHover,
       CS.cursorPointer,
       CS.noDecoration,
       CS.transitionColor,
@@ -196,7 +196,7 @@ export class GuiQueryEditor extends Component {
       for (const [index, aggregation] of aggregations.entries()) {
         aggregationList.push(
           <AggregationWidget
-            className="QueryOption p1"
+            className={cx("QueryOption", CS.p1)}
             key={"agg" + index}
             aggregation={aggregation}
             query={legacyQuery}
@@ -218,7 +218,7 @@ export class GuiQueryEditor extends Component {
           aggregations[index + 1].length > 0
         ) {
           aggregationList.push(
-            <span key={"and" + index} className="text-bold">{t`and`}</span>,
+            <span key={"and" + index} className={CS.textBold}>{t`and`}</span>,
           );
         }
       }
@@ -266,14 +266,7 @@ export class GuiQueryEditor extends Component {
           />
         ) : (
           <span
-            className={cx(
-              CS.flex,
-              CS.alignCenter,
-              CS.px2,
-              CS.py2,
-              CS.textBold,
-              "text-grey",
-            )}
+            className={cx(CS.flex, CS.alignCenter, CS.px2, CS.py2, CS.textBold)}
           >
             {legacyQuery.table() && legacyQuery.table().displayName()}
           </span>
