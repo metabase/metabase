@@ -80,10 +80,10 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
     );
   });
 
-  it("respects 'no download' permissions when 'All users' group data permissions are set to `Blocked` (metabase#22408)", () => {
+  it("respects 'no download' permissions when 'All users' group data permissions are set to `Block` (metabase#22408)", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
-    modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Blocked");
+    modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Block");
 
     cy.button("Save changes").click();
 
@@ -93,7 +93,7 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
       cy.button("Yes").click();
     });
 
-    // When data permissions are set to `Blocked`, download permissions are automatically revoked
+    // When data permissions are set to `Block`, download permissions are automatically revoked
     assertPermissionForItem("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
 
     // Normal user belongs to both "data" and "collections" groups.

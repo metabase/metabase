@@ -70,15 +70,11 @@
           non-admin-groups (conj non-magic-groups all-users-group)]
       ;; Data access permissions
       (if (= (:db_id table) config/audit-db-id)
+        ;; Tables in audit DB should start out with no-self-service in all groups
+        (data-perms/set-new-table-permissions! non-admin-groups table :perms/data-access :no-self-service)
         (do
-         ;; Tables in audit DB should start out with no query access in all groups
-         (data-perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
-         (data-perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
-        (do
-          ;; Normal tables start out with unrestricted data access in all groups, but query access only in All Users
-          (data-perms/set-new-table-permissions! (conj non-magic-groups all-users-group) table :perms/view-data :unrestricted)
-          (data-perms/set-new-table-permissions! [all-users-group] table :perms/create-queries :query-builder)
-          (data-perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)))
+          (data-perms/set-new-table-permissions! [all-users-group] table :perms/data-access :unrestricted)
+          (data-perms/set-new-table-permissions! non-magic-groups table :perms/data-access :no-self-service)))
       ;; Download permissions
       (data-perms/set-new-table-permissions! [all-users-group] table :perms/download-results :one-million-rows)
       (data-perms/set-new-table-permissions! non-magic-groups table :perms/download-results :no)
@@ -92,18 +88,12 @@
 
 (defmethod mi/can-read? :model/Table
   ([instance]
-   (and (data-perms/user-has-permission-for-table?
-         api/*current-user-id*
-         :perms/view-data
-         :unrestricted
-         (:db_id instance)
-         (:id instance))
-        (data-perms/user-has-permission-for-table?
-         api/*current-user-id*
-         :perms/create-queries
-         :query-builder
-         (:db_id instance)
-         (:id instance))))
+   (data-perms/user-has-permission-for-table?
+    api/*current-user-id*
+    :perms/data-access
+    :unrestricted
+    (:db_id instance)
+    (:id instance)))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Table pk))))
 

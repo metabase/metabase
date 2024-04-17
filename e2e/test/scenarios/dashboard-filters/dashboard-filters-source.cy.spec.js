@@ -250,7 +250,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
 describeEE("scenarios > dashboard > filters", () => {
   beforeEach(() => {
-    restore("default-ee");
+    restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
   });

@@ -61,7 +61,7 @@
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
               (is (true? (:has_access (latest-view (u/id user) (u/id table)))))
 
-              (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/create-queries :no)
+              (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/data-access :no-self-service)
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
               (is (false? (:has_access (latest-view (u/id user) (u/id table))))))))))))
 

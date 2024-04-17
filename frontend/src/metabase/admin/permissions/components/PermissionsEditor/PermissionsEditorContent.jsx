@@ -30,7 +30,6 @@ export const permissionEditorContentPropTypes = {
   onAction: PropTypes.func,
   onBreadcrumbsItemSelect: PropTypes.func,
   breadcrumbs: PropTypes.array,
-  warnings: PropTypes.func,
 };
 
 export function PermissionsEditorContent({
@@ -44,7 +43,6 @@ export function PermissionsEditorContent({
   onChange,
   onSelect,
   onAction,
-  warnings: Warnings = () => null,
 }) {
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
@@ -76,8 +74,6 @@ export function PermissionsEditorContent({
       </Subhead>
 
       {description && <Text>{description}</Text>}
-
-      <Warnings />
 
       <EditorFilterContainer>
         <Input

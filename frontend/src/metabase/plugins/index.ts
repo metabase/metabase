@@ -4,12 +4,10 @@ import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
-import {
-  type DataPermission,
-  type DatabaseEntityId,
-  type PermissionSubject,
-  DataPermissionValue,
-  type EntityId,
+import type {
+  DataPermission,
+  DatabaseEntityId,
+  PermissionSubject,
 } from "metabase/admin/permissions/types";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
@@ -87,19 +85,14 @@ export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS = {
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS = [];
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS = [] as Array<
-  (
-    _permissions: GroupsPermissions,
-    _groupId: number,
-    _entityId: EntityId,
-    _value: DataPermissionValue,
-  ) => any
->;
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS = {
-  sandboxed: [],
+  controlled: [],
 };
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION = {
-  sandboxed: null,
+  controlled: null,
+};
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE = {
+  controlled: null,
 };
 
 export const PLUGIN_DATA_PERMISSIONS: {
@@ -107,16 +100,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
     state: State,
   ) => Record<string, unknown>)[];
   hasChanges: ((state: State) => boolean)[];
-  shouldRestrictNativeQueryPermissions: (
-    permissions: GroupsPermissions,
-    groupId: number,
-    entityId: EntityId,
-    permission: DataPermission,
-    value: DataPermissionValue,
-    database: Database,
-  ) => boolean;
-
-  upgradeViewPermissionsIfNeeded:
+  updateNativePermission:
     | ((
         permissions: GroupsPermissions,
         groupId: number,
@@ -129,8 +113,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
 } = {
   permissionsPayloadExtraSelectors: [],
   hasChanges: [],
-  upgradeViewPermissionsIfNeeded: null,
-  shouldRestrictNativeQueryPermissions: () => false,
+  updateNativePermission: null,
 };
 
 // user form fields, e.x. login attributes
@@ -352,9 +335,6 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
     _value: string,
     _subject: "schemas" | "tables" | "fields",
   ) => false,
-  isRestrictivePermission: (_value: string) => false,
-  shouldShowViewDataColumn: false,
-  defaultViewDataPermission: DataPermissionValue.UNRESTRICTED,
 };
 
 export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
@@ -363,7 +343,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
     _groupId: number,
     _isAdmin: boolean,
     _permissions: GroupsPermissions,
-    _dataAccessPermissionValue: DataPermissionValue,
+    _dataAccessPermissionValue: string,
     _defaultGroup: Group,
     _permissionSubject: PermissionSubject,
   ) => {
