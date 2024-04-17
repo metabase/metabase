@@ -10,9 +10,11 @@ src/metabase/**/*permissions* @noahmoss
 src/metabase/integrations @noahmoss
 
 # BEC team
-src/sync @qnkhuat @calherries
-src/sync.clj @qnkhuat @calherries
-src/search @qnkhuat
+src/metabase/sync @qnkhuat @calherries
+src/metabase/sync.clj @qnkhuat @calherries
+src/metabase/search @qnkhuat
 enterprise/backend/src/metabase_enterprise/serialization @piranha
-src/upload.clj @calherries @crisptrutski
-src/upload @calherries @crisptrutski
+src/metabase/upload.clj @calherries @crisptrutski
+src/metabase/upload @calherries @crisptrutski
+src/metabase/native_query_analyzer.clj @tsmacdonald
+src/metabase/native_query_analyzer @tsmacdonald
