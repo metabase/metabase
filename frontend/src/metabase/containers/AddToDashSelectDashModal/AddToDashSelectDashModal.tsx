@@ -1,32 +1,16 @@
-import type { ComponentPropsWithoutRef } from "react";
 import { useState } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
+import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
 import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import ModalContent from "metabase/components/ModalContent";
-import DashboardPicker from "metabase/containers/DashboardPicker";
-import Link from "metabase/core/components/Link";
-import CS from "metabase/css/core/index.css";
-import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
-import { CreateDashboardModalConnected } from "metabase/dashboard/containers/CreateDashboardModal";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Icon } from "metabase/ui";
 import type { Card, CollectionId, Dashboard } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
-import { LinkContent } from "./AddToDashSelectDashModal.styled";
 import { useMostRecentlyViewedDashboard } from "./hooks";
 import { getInitialOpenCollectionId } from "./utils";
-
-function mapStateToProps(state: State) {
-  return {
-    dashboards: state.entities.dashboards,
-  };
-}
 
 const getTitle = ({ type }: Card) => {
   if (type === "model") {
@@ -47,16 +31,11 @@ interface AddToDashSelectDashModalProps {
   dashboards: Record<string, Dashboard>;
 }
 
-type DashboardPickerProps = ComponentPropsWithoutRef<typeof DashboardPicker>;
-
-const AddToDashSelectDashModal = ({
+export const AddToDashSelectDashModal = ({
   card,
-  dashboards,
   onClose,
   onChangeLocation,
 }: AddToDashSelectDashModalProps) => {
-  const [shouldCreateDashboard, setShouldCreateDashboard] = useState(false);
-
   const mostRecentlyViewedDashboardQuery = useMostRecentlyViewedDashboard();
   const mostRecentlyViewedDashboard = mostRecentlyViewedDashboardQuery.data;
   const questionCollection = card.collection ?? ROOT_COLLECTION;
@@ -74,9 +53,7 @@ const AddToDashSelectDashModal = ({
     enabled: initialOpenCollectionId !== undefined,
   });
 
-  const [openCollectionId, setOpenCollectionId] = useState<
-    CollectionId | undefined
-  >();
+  const [openCollectionId] = useState<CollectionId | undefined>();
   const openCollection = useSelector(state =>
     Collections.selectors.getObject(state, {
       entityId: openCollectionId,
@@ -86,35 +63,22 @@ const AddToDashSelectDashModal = ({
   const showCreateNewDashboardOption =
     !isQuestionInPersonalCollection || isOpenCollectionInPersonalCollection;
 
-  const navigateToDashboard: Required<CreateDashboardFormOwnProps>["onCreate"] =
-    dashboard => {
-      onChangeLocation(
-        Urls.dashboard(dashboard, {
-          editMode: true,
-          addCardWithId: card.id,
-        }),
-      );
-    };
-
-  const onDashboardSelected: DashboardPickerProps["onChange"] = dashboardId => {
-    if (dashboardId) {
-      const dashboard = dashboards[dashboardId];
-      navigateToDashboard(dashboard);
-    }
+  const navigateToDashboard = (dashboard: Pick<Dashboard, "id" | "name">) => {
+    onChangeLocation(
+      Urls.dashboard(dashboard, {
+        editMode: true,
+        addCardWithId: card.id,
+      }),
+    );
   };
 
-  if (shouldCreateDashboard) {
-    return (
-      <CreateDashboardModalConnected
-        filterPersonalCollections={
-          isQuestionInPersonalCollection ? "only" : undefined
-        }
-        collectionId={card.collection_id}
-        onCreate={navigateToDashboard}
-        onClose={() => setShouldCreateDashboard(false)}
-      />
-    );
-  }
+  const onDashboardSelected = (
+    selectedDashboard?: Pick<Dashboard, "id" | "name">,
+  ) => {
+    if (selectedDashboard?.id) {
+      navigateToDashboard(selectedDashboard);
+    }
+  };
 
   const isLoading =
     mostRecentlyViewedDashboardQuery.isLoading || collectionQuery.isLoading;
@@ -125,32 +89,45 @@ const AddToDashSelectDashModal = ({
   }
 
   return (
-    <ModalContent
-      id="AddToDashSelectDashModal"
+    <DashboardPickerModal
       title={getTitle(card)}
+      onChange={onDashboardSelected}
       onClose={onClose}
-    >
-      <DashboardPicker
-        onOpenCollectionChange={setOpenCollectionId}
-        filterPersonalCollections={
-          isQuestionInPersonalCollection ? "only" : undefined
-        }
-        onChange={onDashboardSelected}
-        collectionId={initialOpenCollectionId}
-        value={mostRecentlyViewedDashboardQuery.data?.id}
-      />
-      {showCreateNewDashboardOption && (
-        <Link onClick={() => setShouldCreateDashboard(true)} to="">
-          <LinkContent>
-            <Icon name="add" className={CS.mx1} />
-            <h4>{t`Create a new dashboard`}</h4>
-          </LinkContent>
-        </Link>
-      )}
-    </ModalContent>
+      value={
+        mostRecentlyViewedDashboardQuery.data
+          ? {
+              id: mostRecentlyViewedDashboardQuery.data?.id,
+              model: "dashboard",
+            }
+          : undefined
+      }
+      options={{
+        allowCreateNew: showCreateNewDashboardOption,
+        showPersonalCollections: isQuestionInPersonalCollection,
+      }}
+    />
+    // <ModalContent
+    //   id="AddToDashSelectDashModal"
+    //   title={getTitle(card)}
+    //   onClose={onClose}
+    // >
+    //   <DashboardPicker
+    //     onOpenCollectionChange={setOpenCollectionId}
+    //     filterPersonalCollections={
+    //       isQuestionInPersonalCollection ? "only" : undefined
+    //     }
+    //     onChange={onDashboardSelected}
+    //     collectionId={initialOpenCollectionId}
+    //     value={mostRecentlyViewedDashboardQuery.data?.id}
+    //   />
+    //   {showCreateNewDashboardOption && (
+    //     <Link onClick={() => setShouldCreateDashboard(true)} to="">
+    //       <LinkContent>
+    //         <Icon name="add" className={CS.mx1} />
+    //         <h4>{t`Create a new dashboard`}</h4>
+    //       </LinkContent>
+    //     </Link>
+    //   )}
+    // </ModalContent>
   );
 };
-
-export const ConnectedAddToDashSelectDashModal = connect(mapStateToProps)(
-  AddToDashSelectDashModal,
-);
