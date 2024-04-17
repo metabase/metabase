@@ -21,7 +21,7 @@ import type {
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
 
-export type Formatter = (value: unknown, options: OptionsType) => string;
+export type Formatter = (value: unknown, options?: OptionsType) => string;
 
 export type ColorGetter = (colorName: string) => string;
 
