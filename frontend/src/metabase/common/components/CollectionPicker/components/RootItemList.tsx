@@ -6,8 +6,9 @@ import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
+import type { ListProps, TypeWithModel } from "../../EntityPicker";
 import { ItemList } from "../../EntityPicker";
-import type { CollectionItemListProps, CollectionPickerItem } from "../types";
+import type { CollectionPickerItem, CollectionPickerOptions } from "../types";
 
 const personalCollectionsRoot: CollectionPickerItem = {
   ...PERSONAL_COLLECTIONS,
@@ -25,14 +26,20 @@ const personalCollectionsRoot: CollectionPickerItem = {
  * b) the user's personal collection
  * c) a top level folder including all personal collections (admin only)
  */
-export const RootItemList = ({
+export const RootItemList = <
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+  Query,
+  Options extends CollectionPickerOptions,
+>({
   onClick,
   selectedItem,
   options,
   isFolder,
   isCurrentLevel,
   shouldDisableItem,
-}: CollectionItemListProps) => {
+}: ListProps<Id, Model, Item, Query, Options>) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
 

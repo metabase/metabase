@@ -2,15 +2,10 @@ import type {
   CollectionId,
   CollectionItemModel,
   SearchModel,
-  SearchRequest,
   SearchResult,
 } from "metabase-types/api";
 
-import type {
-  EntityPickerModalOptions,
-  ListProps,
-  TypeWithModel,
-} from "../EntityPicker";
+import type { EntityPickerModalOptions, TypeWithModel } from "../EntityPicker";
 
 export type CollectionPickerItem = TypeWithModel<CollectionId, SearchModel> &
   Pick<Partial<SearchResult>, "description" | "can_write"> & {
@@ -27,11 +22,3 @@ export type CollectionPickerOptions = EntityPickerModalOptions & {
   showRootCollection?: boolean;
   namespace?: "snippets";
 };
-
-export type CollectionItemListProps = ListProps<
-  CollectionId,
-  SearchModel,
-  CollectionPickerItem,
-  SearchRequest,
-  CollectionPickerOptions
->;

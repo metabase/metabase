@@ -1,18 +1,33 @@
 import { useMemo } from "react";
 
 import { useCollectionListQuery } from "metabase/common/hooks";
-import type { Collection } from "metabase-types/api";
+import type {
+  Collection,
+  SearchModel,
+  SearchRequest,
+} from "metabase-types/api";
 
+import type {
+  EntityPickerOptions,
+  ListProps,
+  TypeWithModel,
+} from "../../EntityPicker";
 import { ItemList } from "../../EntityPicker";
-import type { CollectionItemListProps, CollectionPickerItem } from "../types";
+import type { CollectionPickerItem } from "../types";
 
-export const PersonalCollectionsItemList = ({
+export const PersonalCollectionsItemList = <
+  Id,
+  Model extends SearchModel,
+  Item extends TypeWithModel<Id, Model>,
+  Query extends SearchRequest,
+  Options extends EntityPickerOptions,
+>({
   onClick,
   selectedItem,
   isFolder,
   isCurrentLevel,
   shouldDisableItem,
-}: CollectionItemListProps) => {
+}: ListProps<Id, Model, Item, Query, Options>) => {
   const {
     data: collections,
     error,

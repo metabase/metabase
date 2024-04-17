@@ -1,16 +1,28 @@
 import { useSearchListQuery } from "metabase/common/hooks";
+import type { SearchModel, SearchRequest } from "metabase-types/api";
 
+import type {
+  EntityPickerOptions,
+  ListProps,
+  TypeWithModel,
+} from "../../EntityPicker";
 import { ItemList } from "../../EntityPicker";
-import type { CollectionItemListProps, CollectionPickerItem } from "../types";
+import type { CollectionPickerItem } from "../types";
 
-export const SearchItemList = ({
+export const SearchItemList = <
+  Id,
+  Model extends SearchModel,
+  Item extends TypeWithModel<Id, Model>,
+  Query extends SearchRequest,
+  Options extends EntityPickerOptions,
+>({
   query,
   onClick,
   selectedItem,
   isFolder,
   isCurrentLevel,
   shouldDisableItem,
-}: CollectionItemListProps) => {
+}: ListProps<Id, Model, Item, Query, Options>) => {
   const { data, error, isLoading } = useSearchListQuery<CollectionPickerItem>({
     query,
   });

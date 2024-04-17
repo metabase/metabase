@@ -1,12 +1,23 @@
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import type { SearchModel, SearchRequest } from "metabase-types/api";
 
-import type { CollectionItemListProps } from "../types";
+import type {
+  EntityPickerOptions,
+  ListProps,
+  TypeWithModel,
+} from "../../EntityPicker";
 
 import { PersonalCollectionsItemList } from "./PersonalCollectionItemList";
 import { RootItemList } from "./RootItemList";
 import { SearchItemList } from "./SearchItemList";
 
-export const CollectionItemPickerResolver = ({
+export const CollectionItemPickerResolver = <
+  Id,
+  Model extends SearchModel,
+  Item extends TypeWithModel<Id, Model>,
+  Query extends SearchRequest,
+  Options extends EntityPickerOptions,
+>({
   onClick,
   selectedItem,
   options,
@@ -14,7 +25,7 @@ export const CollectionItemPickerResolver = ({
   isFolder,
   isCurrentLevel,
   shouldDisableItem,
-}: CollectionItemListProps) => {
+}: ListProps<Id, Model, Item, Query, Options>) => {
   if (!query) {
     return (
       <RootItemList
