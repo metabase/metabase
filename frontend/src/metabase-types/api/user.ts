@@ -65,9 +65,7 @@ export type UserInfo = Pick<
 
 export type UserListQuery = {
   recipients?: boolean;
-  limit?: number;
-  offset?: number;
-};
+} & PaginationRequest;
 
 export type UserLoginHistoryItem = {
   timestamp: string;
