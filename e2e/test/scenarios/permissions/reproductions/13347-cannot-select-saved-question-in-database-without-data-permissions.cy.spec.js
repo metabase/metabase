@@ -14,14 +14,8 @@ describe.skip("issue 13347", { tags: "@external" }, () => {
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        1: {
-          "view-data": "unrestricted",
-          "create-queries": "query-builder-and-native",
-        },
-        [PG_DB_ID]: {
-          "view-data": "unrestricted",
-          "create-queries": "no",
-        },
+        1: { data: { schemas: "all", native: "write" } },
+        [PG_DB_ID]: { data: { schemas: "none", native: "none" } },
       },
     });
 

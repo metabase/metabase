@@ -1,10 +1,9 @@
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
-import { DataPermission, type TableEntityId } from "./types";
+import type { DataPermission, TableEntityId } from "./types";
 
 const getEventPrefix = (permission: DataPermission) => {
-  const shouldUseBackwardCompatibleEventName =
-    permission === DataPermission.VIEW_DATA;
+  const shouldUseBackwardCompatibleEventName = permission === "data";
   if (shouldUseBackwardCompatibleEventName) {
     return "";
   }

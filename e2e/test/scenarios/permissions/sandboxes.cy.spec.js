@@ -5,7 +5,6 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  modifyPermission,
   describeEE,
   modal,
   openOrdersTable,
@@ -38,14 +37,12 @@ const {
   PEOPLE_ID,
 } = SAMPLE_DATABASE;
 
-const { DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
-
-const DATA_ACCESS_PERMISSION_INDEX = 0;
+const { DATA_GROUP } = USER_GROUPS;
 
 describeEE("formatting > sandboxes", () => {
   describe("admin", () => {
     beforeEach(() => {
-      restore("default-ee");
+      restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
       cy.visit("/admin/people");
@@ -88,7 +85,7 @@ describeEE("formatting > sandboxes", () => {
     const QUESTION_NAME = "Joined test";
 
     beforeEach(() => {
-      restore("default-ee");
+      restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
 
@@ -193,7 +190,7 @@ describeEE("formatting > sandboxes", () => {
 
   describe("Sandboxing reproductions", () => {
     beforeEach(() => {
-      restore("default-ee");
+      restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
     });
@@ -206,17 +203,12 @@ describeEE("formatting > sandboxes", () => {
         },
       });
 
-      cy.updatePermissionsGraph({
-        [COLLECTION_GROUP]: {
-          [SAMPLE_DB_ID]: {
-            "view-data": "unrestricted",
-            "create-queries": {
-              PUBLIC: {
-                [ORDERS_ID]: "query-builder",
-                [PRODUCTS_ID]: "query-builder",
-                [REVIEWS_ID]: "query-builder",
-              },
-            },
+      cy.updatePermissionsSchemas({
+        schemas: {
+          PUBLIC: {
+            [ORDERS_ID]: "all",
+            [PRODUCTS_ID]: "all",
+            [REVIEWS_ID]: "all",
           },
         },
       });
@@ -319,19 +311,10 @@ describeEE("formatting > sandboxes", () => {
           },
         });
 
-        cy.updatePermissionsGraph({
-          [COLLECTION_GROUP]: {
-            [SAMPLE_DB_ID]: {
-              "view-data": {
-                PUBLIC: {
-                  [PRODUCTS_ID]: "unrestricted",
-                },
-              },
-              "create-queries": {
-                PUBLIC: {
-                  [PRODUCTS_ID]: "query-builder",
-                },
-              },
+        cy.updatePermissionsSchemas({
+          schemas: {
+            PUBLIC: {
+              [PRODUCTS_ID]: "all",
             },
           },
         });
@@ -397,15 +380,10 @@ describeEE("formatting > sandboxes", () => {
         },
       });
 
-      cy.updatePermissionsGraph({
-        [COLLECTION_GROUP]: {
-          [SAMPLE_DB_ID]: {
-            "view-data": "unrestricted",
-            "create-queries": {
-              PUBLIC: {
-                [PRODUCTS_ID]: "query-builder",
-              },
-            },
+      cy.updatePermissionsSchemas({
+        schemas: {
+          PUBLIC: {
+            [PRODUCTS_ID]: "all",
           },
         },
       });
@@ -678,14 +656,10 @@ describeEE("formatting > sandboxes", () => {
             },
           });
 
-          cy.updatePermissionsGraph({
-            [COLLECTION_GROUP]: {
-              [SAMPLE_DB_ID]: {
-                "view-data": {
-                  PUBLIC: {
-                    [PRODUCTS_ID]: "unrestricted",
-                  },
-                },
+          cy.updatePermissionsSchemas({
+            schemas: {
+              PUBLIC: {
+                [PRODUCTS_ID]: "all",
               },
             },
           });
@@ -799,13 +773,13 @@ describeEE("formatting > sandboxes", () => {
       cy.visit(
         `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
       );
-      modifyPermission("data", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
-
-      modal().within(() => {
-        cy.findByText("Change access to this database to “Sandboxed”?");
-        cy.button("Change").click();
-      });
-
+      cy.wait("@tablePermissions");
+      cy.icon("eye")
+        .eq(1) // No better way of doing this, undfortunately (see table above)
+        .click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Sandboxed").click();
+      cy.button("Change").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Use a saved question to create a custom view for this table",

@@ -5,11 +5,9 @@ import type {
   GroupsPermissions,
 } from "metabase-types/api";
 
-import { DataPermission } from "../../types";
-
 import {
   getFieldsPermission,
-  getSchemasPermission,
+  getNativePermission,
   isRestrictivePermission,
 } from "./data-permissions";
 
@@ -33,19 +31,13 @@ function diffDatabasePermissions(
     grantedTables: {},
     revokedTables: {},
   };
-  // get the native permissions for this db
-  const oldNativePerm = getSchemasPermission(
-    oldPerms,
-    groupId,
-    { databaseId: database.id },
-    DataPermission.CREATE_QUERIES,
-  );
-  const newNativePerm = getSchemasPermission(
-    newPerms,
-    groupId,
-    { databaseId: database.id },
-    DataPermission.CREATE_QUERIES,
-  );
+  // get the native permisisons for this db
+  const oldNativePerm = getNativePermission(oldPerms, groupId, {
+    databaseId: database.id,
+  });
+  const newNativePerm = getNativePermission(newPerms, groupId, {
+    databaseId: database.id,
+  });
   if (oldNativePerm !== newNativePerm) {
     databaseDiff.native = newNativePerm;
   }
@@ -59,7 +51,7 @@ function diffDatabasePermissions(
         schemaName: table.schema_name || "",
         tableId: table.id as ConcreteTableId,
       },
-      DataPermission.VIEW_DATA,
+      "data",
     );
     const newFieldsPerm = getFieldsPermission(
       newPerms,
@@ -69,7 +61,7 @@ function diffDatabasePermissions(
         schemaName: table.schema_name || "",
         tableId: table.id as ConcreteTableId,
       },
-      DataPermission.VIEW_DATA,
+      "data",
     );
     if (oldFieldsPerm !== newFieldsPerm) {
       if (isRestrictivePermission(newFieldsPerm)) {

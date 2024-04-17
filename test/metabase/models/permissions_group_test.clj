@@ -83,7 +83,7 @@
                             :from [[:data_permissions :p]]
                             :where [:and
                                     [:= :p.group_id group-id]
-                                    [:= :p.perm_type (u/qualified-name :perms/view-data)]
+                                    [:= :p.perm_type (u/qualified-name :perms/data-access)]
                                     [:= :p.db_id db-id]]}))))
 
 (deftest newly-created-databases-test
@@ -153,9 +153,9 @@
       (is
        (= {group-id
            {db-id
-            {:perms/view-data :unrestricted,
-             :perms/create-queries :no,
+            {:perms/data-access :no-self-service,
              :perms/download-results :no,
              :perms/manage-table-metadata :no,
+             :perms/native-query-editing :no,
              :perms/manage-database :no}}}
           (data-perms/data-permissions-graph :group-id group-id :db-id db-id))))))
