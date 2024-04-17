@@ -113,7 +113,6 @@
                                          :strategy {:type     "schedule"
                                                     :schedule "0/2 * * * * ?"}})))))))))
 
-
 (deftest invalidation-test
   (mt/discard-setting-changes [enable-query-caching]
     (public-settings/enable-query-caching! true)

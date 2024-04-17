@@ -35,7 +35,7 @@
    database (in that order). In OSS returns root configuration."
   metabase-enterprise.cache.strategies
   [_card _dashboard-id]
-  (cache-config/row->config (cache-config/root-strategy)))
+  (cache-config/card-strategy (cache-config/root-strategy) nil))
 
 (defn- enrich-strategy [strategy query]
   (case (:type strategy)

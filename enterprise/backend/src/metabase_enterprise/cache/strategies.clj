@@ -70,8 +70,7 @@
               :order-by :ordering
               :limit    [:inline 1]}
         item (t2/select-one :model/CacheConfig :id q)]
-    (when item
-      (:strategy (cache-config/row->config item card)))))
+    (cache-config/card-strategy item card)))
 
 ;;; Strategy execution
 

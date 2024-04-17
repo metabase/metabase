@@ -1449,6 +1449,8 @@
                                                                        :parameters "")))
             card (t2/insert-returning-pk! :report_card (-> (mt/with-temp-defaults Card)
                                                            (update :display str)
+                                                           (update :visualization_settings json/generate-string)
+                                                           (update :dataset_query json/generate-string)
                                                            (assoc :cache_ttl 30)))]
 
         (migrate!)
@@ -1479,6 +1481,7 @@
 
       ;; this one to have custom configuration to check they are not copied over
       (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
+                                                      (update :details json/generate-string)
                                                       (update :engine str)
                                                       (assoc :cache_ttl 10)))
       (migrate!)

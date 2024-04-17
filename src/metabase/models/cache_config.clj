@@ -28,17 +28,20 @@
   (t2/select-one :model/CacheConfig :model "root" :model_id 0 :strategy :ttl))
 
 (defn row->config
-  "Transform from how cache config is stored to how it's used/exposed in the API.
-
-  Accepts `card` optionally to return proper `:invalidated-at` value."
-  [row & [card]]
+  "Transform from how cache config is stored to how it's used/exposed in the API."
+  [row]
   (when row
     {:model    (:model row)
      :model_id (:model_id row)
      :strategy (-> (:config row)
-                   (assoc :type (:strategy row))
-                   (m/assoc-some :invalidated-at (t/max (:invalidated_at row)
-                                                        (:cache_invalidated_at card))))}))
+                   (assoc :type (:strategy row)))}))
+
+(defn card-strategy
+  "Shapes `row` into strategy for a given `card`."
+  [row card]
+  (some-> (:strategy (row->config row))
+          (m/assoc-some :invalidated-at (t/max (:invalidated_at row)
+                                               (:cache_invalidated_at card)))))
 
 (defn config->row
   "Transform cache config from API form into db storage form."
