@@ -1,8 +1,8 @@
 import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
+import type { PaginationRequest, PaginationResponse } from "./pagination";
 
 export type UserId = number;
-
 export type UserAttribute = string;
 
 export interface BaseUser {
@@ -99,14 +99,11 @@ export type ListUsersRequest = {
   query?: string;
   group_id?: number;
   include_deactivated?: boolean;
-};
+} & PaginationRequest;
 
 export type ListUsersResponse = {
   data: User[];
-  total: number;
-  limit: number | null;
-  offset: number | null;
-};
+} & PaginationResponse;
 
 export type UpdateUserRequest = {
   id: UserId;
