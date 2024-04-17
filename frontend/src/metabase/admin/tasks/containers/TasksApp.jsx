@@ -60,6 +60,7 @@ export const TasksApp = ({ children }) => {
             page={page}
             pageSize={50}
             itemsLength={tasks?.length}
+            total={tasksData.total}
           />
         </SectionControls>
       </SectionHeader>
