@@ -179,7 +179,8 @@
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
-  (let [cards (t2/select [Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query] :is_sample false)]
+  (let [cards (t2/select [Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query]
+                         :creator_id [:not= config/internal-mb-user-id])]
     {:questions (merge-count-maps (for [card cards]
                                     (let [native? (= (keyword (:query_type card)) :native)]
                                       {:total       1
@@ -203,11 +204,11 @@
   "Get metrics based on dashboards
   TODO characterize by # of revisions, and created by an admin"
   []
-  (let [dashboards (t2/select [Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params] :is_sample false)
+  (let [dashboards (t2/select [Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params] :creator_id [:not= config/internal-mb-user-id])
         dashcards  (t2/query {:select :dc.*
                               :from [[(t2/table-name DashboardCard) :dc]]
                               :join [[(t2/table-name Dashboard) :d] [:= :d.id :dc.dashboard_id]]
-                              :where [:not :d.is_sample]})]
+                              :where [:not [:= :d.creator_id config/internal-mb-user-id]]})]
     {:dashboards         (count dashboards)
      :with_params        (count (filter (comp seq :parameters) dashboards))
      :num_dashs_per_user (medium-histogram dashboards :creator_id)
@@ -301,8 +302,8 @@
 (defn- collection-metrics
   "Get metrics on Collection usage."
   []
-  (let [collections (t2/select Collection :is_sample false)
-        cards       (t2/select [Card :collection_id] :is_sample false)]
+  (let [collections (t2/select Collection :creator_id [:not= config/internal-mb-user-id])
+        cards       (t2/select [Card :collection_id] :creator_id [:not= config/internal-mb-user-id])]
     {:collections              (count collections)
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
