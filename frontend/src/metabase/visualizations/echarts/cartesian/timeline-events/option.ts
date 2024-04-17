@@ -9,7 +9,7 @@ import type { RenderingContext } from "metabase/visualizations/types";
 import type { TimelineEventId } from "metabase-types/api";
 
 // TODO: change to GraalVM supported implementation
-const setSvgColor = (svgString: string, color: string) => {
+export const setSvgColor = (svgString: string, color: string) => {
   // Parse the SVG string into a DOM element
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgString, "image/svg+xml");
@@ -23,9 +23,13 @@ const setSvgColor = (svgString: string, color: string) => {
   return serializer.serializeToString(svg);
 };
 
-function svgToDataUri(svgString: string) {
+export function svgToDataUri(svgString: string) {
   const base64Encoded = btoa(svgString);
-  return `image://data:image/svg+xml;base64,${base64Encoded}`;
+  return `data:image/svg+xml;base64,${base64Encoded}`;
+}
+
+function svgToImageUri(svgString: string) {
+  return `image://${svgToDataUri(svgString)}`;
 }
 
 export const getTimelineEventsSeries = (
@@ -48,7 +52,7 @@ export const getTimelineEventsSeries = (
         events.length === 1 ? (events[0].icon as IconName) : "star";
 
       const iconSvg = setSvgColor(Icons[iconName].source, color);
-      const dataUri = svgToDataUri(iconSvg);
+      const dataUri = svgToImageUri(iconSvg);
 
       return {
         z: CHART_STYLE.timelineEvents.zIndex,

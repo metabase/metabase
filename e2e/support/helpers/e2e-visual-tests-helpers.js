@@ -1,9 +1,26 @@
+import { color as getColor } from "metabase/lib/colors";
+import { Icons } from "metabase/ui";
+import {
+  setSvgColor,
+  svgToDataUri,
+} from "metabase/visualizations/echarts/cartesian/timeline-events/option";
+
 export function ensureDcChartVisibility() {
   cy.get(".dc-chart");
 }
 
 export function echartsContainer() {
   return cy.findByTestId("chart-container");
+}
+
+export function echartsIcon(name, color = undefined) {
+  const iconSvg = setSvgColor(
+    Icons[name].source,
+    color ?? getColor("text-light"),
+  );
+  const dataUri = svgToDataUri(iconSvg);
+
+  return echartsContainer().find(`image[href="${dataUri}"]`);
 }
 
 export function chartPathWithFillColor(color) {
