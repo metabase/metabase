@@ -89,7 +89,7 @@
 
     :drill-thru/column-extract
     (for [extraction (:extractions drill)]
-      [(:key extraction)])
+      [(:tag extraction)])
 
     [nil]))
 
@@ -211,7 +211,7 @@
                   :type         :drill-thru/column-extract
                   :query        orders-query
                   :stage-number -1
-                  :extractions  (partial mc/validate [:sequential [:map [:key keyword?]]])}]
+                  :extractions  (partial mc/validate [:sequential [:map [:tag keyword?]]])}]
                 (lib/available-drill-thrus orders-query -1 context)))
         (test-drill-applications orders-query context)))))
 
@@ -715,7 +715,7 @@
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}
                   {:type        :drill-thru/column-extract
                    :extractions (partial mc/validate [:sequential [:map
-                                                                   [:key          keyword?]
+                                                                   [:tag          keyword?]
                                                                    [:display-name string?]]])}]}))
 
 (deftest ^:parallel available-drill-thrus-test-9

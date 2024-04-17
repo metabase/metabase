@@ -19,7 +19,7 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
         title: extraction.displayName,
         section: "extract-popover",
         buttonType: "horizontal",
-        question: () => applyDrill(drill, extraction.key),
+        question: () => applyDrill(drill, extraction.tag),
         extra: () => ({ settingsSyncOptions: { column: clicked.column } }),
       }),
     );
