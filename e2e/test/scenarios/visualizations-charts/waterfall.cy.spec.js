@@ -7,6 +7,8 @@ import {
   openNativeEditor,
   visualize,
   summarize,
+  echartsContainer,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -20,33 +22,15 @@ describe("scenarios > visualizations > waterfall", () => {
   function verifyWaterfallRendering(xLabel = null, yLabel = null) {
     // a waterfall chart is just a stacked bar chart, with 4 bars
     // (not all of them will be visible at once, but they should exist)
-    cy.findByTestId("query-visualization-root")
-      .get(".sub .chart-body")
-      .within(() => {
-        cy.get(".stack._0");
-        cy.get(".stack._1");
-        cy.get(".stack._2");
-        cy.get(".stack._3");
-      });
-    cy.findByTestId("query-visualization-root")
-      .get(".axis.x")
-      .within(() => {
-        cy.findByText("Total");
-      });
+    chartPathWithFillColor("#88BF4D");
+    chartPathWithFillColor("#4C5773");
+    echartsContainer().get("text").contains("Total");
 
     if (xLabel) {
-      cy.findByTestId("query-visualization-root")
-        .get(".x-axis-label")
-        .within(() => {
-          cy.findByText(xLabel);
-        });
+      echartsContainer().get("text").contains(xLabel);
     }
     if (yLabel) {
-      cy.findByTestId("query-visualization-root")
-        .get(".y-axis-label")
-        .within(() => {
-          cy.findByText(yLabel);
-        });
+      echartsContainer().get("text").contains(yLabel);
     }
   }
 
@@ -152,11 +136,7 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
 
-    cy.findByTestId("query-visualization-root")
-      .get(".axis.x")
-      .within(() => {
-        cy.findByText("Total").should("not.exist");
-      });
+    echartsContainer().get("text").contains("Total").should("not.exist");
   });
 
   it("should show error for multi-series questions (metabase#15152)", () => {
@@ -179,8 +159,9 @@ describe("scenarios > visualizations > waterfall", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Waterfall chart does not support multiple series");
 
+    echartsContainer().should("not.exist");
     cy.findByTestId("remove-count").click();
-    cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
+    echartsContainer().should("exist"); // Chart renders after removing the second metric
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Add another/).should("not.exist");
@@ -214,7 +195,7 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.contains("Select a field").click();
     cy.get("[data-element-id=list-item]").contains("Count").click();
 
-    cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
+    echartsContainer().should("exist"); // Chart renders after adding a metric
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Add another/).should("not.exist");
@@ -234,7 +215,7 @@ describe("scenarios > visualizations > waterfall", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
     cy.icon("waterfall").click({ force: true });
-    cy.findByTestId("query-visualization-root").get(".bar");
+    chartPathWithFillColor("#88BF4D");
   });
 
   it("should display correct values when one of them is 0 (metabase#16246)", () => {
@@ -254,7 +235,13 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
-    cy.get(".value-label").as("labels").eq(-3).invoke("text").should("eq", "0");
+    // paint-order='stroke' targets the waterfall labels only
+    echartsContainer()
+      .get("text[paint-order='stroke']")
+      .as("labels")
+      .eq(-3)
+      .invoke("text")
+      .should("eq", "0");
 
     cy.get("@labels").last().invoke("text").should("eq", "0.1");
   });
@@ -276,7 +263,12 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
-    cy.get(".value-label").as("labels").eq(-3).invoke("text").should("eq", "");
+    echartsContainer()
+      .get("text[paint-order='stroke']")
+      .as("labels")
+      .eq(-3)
+      .invoke("text")
+      .should("eq", " ");
 
     cy.get("@labels").last().invoke("text").should("eq", "0.1");
   });
@@ -311,35 +303,22 @@ describe("scenarios > visualizations > waterfall", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Show total").next().click();
 
-      cy.findByTestId("query-visualization-root")
-        .get(".axis.x")
-        .within(() => {
-          cy.findByText("Total").should("not.exist");
-        });
+      echartsContainer().get("text").contains("Total").should("not.exist");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Show total").next().click();
-      cy.findByTestId("query-visualization-root")
-        .get(".axis.x")
-        .within(() => {
-          cy.findByText("Total");
-        });
+      echartsContainer().get("text").contains("Total").should("exist");
     });
 
     it("should allow toggling of value labels", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 
-      cy.findByTestId("query-visualization-root")
-        .get(".value-label")
-        .should("not.exist");
+      echartsContainer().get("text").contains("(4.56)").should("not.exist");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Show values on data points").next().click();
-      cy.findByTestId("query-visualization-root")
-        .get(".value-label")
-        .contains(4.56)
-        .should("be.visible");
+      echartsContainer().get("text").contains("(4.56)").should("be.visible");
     });
   });
 });
