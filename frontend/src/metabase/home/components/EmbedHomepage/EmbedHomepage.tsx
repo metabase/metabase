@@ -79,7 +79,7 @@ export const EmbedHomepage = () => {
     setFeedbackModalOpened(false);
     sendProductFeedback({
       comments: feedback,
-      email: email || undefined,
+      email: email,
       source: "embedding-homepage-dismiss",
     });
   };
