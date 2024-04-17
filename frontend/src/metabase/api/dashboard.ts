@@ -20,9 +20,10 @@ import {
 export const dashboardApi = Api.injectEndpoints({
   endpoints: builder => ({
     listDashboards: builder.query<Dashboard[], ListDashboardsRequest | void>({
-      query: () => ({
+      query: body => ({
         method: "GET",
         url: "/api/dashboard",
+        body,
       }),
       providesTags: dashboards =>
         dashboards ? provideDashboardListTags(dashboards) : [],
