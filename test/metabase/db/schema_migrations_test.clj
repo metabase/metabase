@@ -9,6 +9,7 @@
 
   See `metabase.db.schema-migrations-test.impl` for the implementation of this functionality."
   (:require
+   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -1439,12 +1440,16 @@
       (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
       (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"}))
 
-      (let [db   (t2/insert-returning-pk! Database (-> (mt/with-temp-defaults Database)
-                                                       (assoc :cache_ttl 10)))
-            dash (t2/insert-returning-pk! Dashboard (-> (mt/with-temp-defaults Dashboard)
-                                                        (assoc :cache_ttl 20)))
-            card (t2/insert-returning-pk! Card (-> (mt/with-temp-defaults Card)
-                                                   (assoc :cache_ttl 30)))]
+      (let [db   (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
+                                                                 (update :details json/generate-string)
+                                                                 (update :engine str)
+                                                                 (assoc :cache_ttl 10)))
+            dash (t2/insert-returning-pk! :report_dashboard (-> (mt/with-temp-defaults Dashboard)
+                                                                (assoc :cache_ttl 20
+                                                                       :parameters "")))
+            card (t2/insert-returning-pk! :report_card (-> (mt/with-temp-defaults Card)
+                                                           (update :display str)
+                                                           (assoc :cache_ttl 30)))]
 
         (migrate!)
 
@@ -1473,8 +1478,9 @@
       (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"}))
 
       ;; this one to have custom configuration to check they are not copied over
-      (t2/insert-returning-pk! Database (-> (mt/with-temp-defaults Database)
-                                            (assoc :cache_ttl 10)))
+      (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
+                                                      (update :engine str)
+                                                      (assoc :cache_ttl 10)))
       (migrate!)
       (is (= []
              (t2/select :model/CacheConfig))))))

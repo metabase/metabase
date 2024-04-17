@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.api.cache :as api.cache]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -11,6 +10,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.models.cache-config :as cache-config]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.query :as query]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
@@ -30,18 +30,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defenterprise granular-cache-strategy
-  "Returns cache strategy for a card. On EE, this checks the hierarchy for the card, dashboard, or
-   database (in that order). Returns nil on OSS."
+(defenterprise cache-strategy
+  "Returns cache strategy for a card. In EE, this checks the hierarchy for the card, dashboard, or
+   database (in that order). In OSS returns root configuration."
   metabase-enterprise.cache.strategies
-  [_card _dashboard-id])
-
-(defn- cache-strategy
-  [card dashboard-id]
-  (or (granular-cache-strategy card dashboard-id)
-      (some-> (t2/select-one :model/CacheConfig :model "root" :model_id 0 :strategy :ttl)
-              api.cache/row->config)))
-
+  [_card _dashboard-id]
+  (cache-config/row->config (cache-config/root-strategy)))
 
 (defn- enrich-strategy [strategy query]
   (case (:type strategy)

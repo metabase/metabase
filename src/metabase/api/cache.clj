@@ -3,12 +3,12 @@
    [clojure.walk :as walk]
    [compojure.core :refer [GET]]
    [java-time.api :as t]
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.models :refer [CacheConfig Card]]
+   [metabase.models.cache-config :as cache-config]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -16,24 +16,6 @@
    [toucan2.core :as t2]))
 
 ;; Data shape
-
-(defn row->config
-  "Transform from how cache config is stored to how it's used/exposed in the API"
-  [row & [card]]
-  {:model    (:model row)
-   :model_id (:model_id row)
-   :strategy (-> (:config row)
-                 (assoc :type (:strategy row))
-                 (m/assoc-some :invalidated-at (t/max (:invalidated_at row)
-                                                      (:cache_invalidated_at card))))})
-
-(defn config->row
-  "Transform cache config from API form into db storage from"
-  [{:keys [model model_id strategy]}]
-  {:model    model
-   :model_id model_id
-   :strategy (:type strategy)
-   :config   (dissoc strategy :type)})
 
 (defn- drop-internal-fields
   "See `metabase-enterprise.cache.strategies/CacheStrategy`"
@@ -122,7 +104,7 @@
                                         [:= :model [:inline "dashboard"]] [:!= :report_dashboard.id nil]
                                         :else                             true]})
                 (t2/select :model/CacheConfig :model "root"))]
-    {:data (mapv row->config items)}))
+    {:data (mapv cache-config/row->config items)}))
 
 (api/defendpoint PUT "/"
   "Store cache configuration."
@@ -133,7 +115,7 @@
   (validation/check-has-application-permission :setting)
   (assert-valid-models model [model_id] (premium-features/enable-cache-granular-controls?))
   (t2/with-transaction [_tx]
-    (let [data    (config->row config)
+    (let [data    (cache-config/config->row config)
           current (t2/select-one :model/CacheConfig :model model :model_id model_id {:for :update})]
       {:id (u/prog1 (mdb.query/update-or-insert! :model/CacheConfig {:model model :model_id model_id}
                                                  (constantly data))

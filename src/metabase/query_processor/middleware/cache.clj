@@ -219,7 +219,7 @@
                 (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))))
 
 (defn- is-cacheable? {:arglists '([query])} [{:keys [cache-strategy]}]
-  cache-strategy)
+  (some? cache-strategy))
 
 (defn maybe-return-cached-results
   "Middleware for caching results of a query if applicable.

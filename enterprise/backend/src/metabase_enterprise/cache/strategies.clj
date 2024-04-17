@@ -1,7 +1,7 @@
 (ns metabase-enterprise.cache.strategies
   (:require
    [java-time.api :as t]
-   [metabase.api.cache :as api.cache]
+   [metabase.models.cache-config :as cache-config]
    [metabase.public-settings.premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.util.cron :as u.cron]
@@ -50,7 +50,7 @@
 
 ;;; Querying DB
 
-(defenterprise-schema granular-cache-strategy :- [:maybe (CacheStrategy)]
+(defenterprise-schema cache-strategy :- [:maybe (CacheStrategy)]
   "Returns the granular cache strategy for a card."
   :feature :cache-granular-controls
   [card dashboard-id]
@@ -71,7 +71,7 @@
               :limit    [:inline 1]}
         item (t2/select-one :model/CacheConfig :id q)]
     (when item
-      (:strategy (api.cache/row->config item card)))))
+      (:strategy (cache-config/row->config item card)))))
 
 ;;; Strategy execution
 
