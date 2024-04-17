@@ -1199,11 +1199,7 @@
                                   :report_dashboardcard
                                   :dashboardcard_series]]
                 (when-let [values (seq (table-name->rows table-name))]
-                  (let [values (for [v values]
-                                 (cond-> v
-                                   (contains? #{:collection :report_dashboard :report_card} table-name)
-                                   (assoc :is_sample true)))]
-                    (t2/query {:insert-into table-name :values values}))))
+                  (t2/query {:insert-into table-name :values values})))
               (t2/query {:insert-into :permissions
                          :values      [{:object   (format "/collection/%s/" example-collection-id)
                                         :group_id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))}]})
