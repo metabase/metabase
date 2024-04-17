@@ -72,9 +72,11 @@ export function setParameterType(
   type: string,
   sectionId: string,
 ): Parameter {
-  // TODO: maybe also reset default?
+  // reset default value
+  const { default: _, ...rest } = parameter;
+
   return {
-    ...parameter,
+    ...rest,
     type,
     sectionId,
   };

@@ -21,6 +21,7 @@ import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-s
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
+  ParameterMappingOptions,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -52,22 +53,15 @@ export interface ParameterSettingsProps {
   embeddedParameterVisibility: EmbeddingParameterVisibility | null;
 }
 
-type SectionOption = {
-  sectionId: string;
-  type: string;
-  name: string;
-  operator: string;
-  menuName?: string;
-  combinedName?: string | undefined;
-};
-
 const parameterSections = getDashboardParameterSections();
 const dataTypeSectionsData = parameterSections.map(section => ({
   label: section.name,
   value: section.id,
 }));
-const defaultOptionForSection: Record<string, SectionOption> =
-  getDefaultOptionForParameterSection();
+const defaultOptionForSection = getDefaultOptionForParameterSection() as Record<
+  string,
+  ParameterMappingOptions
+>;
 
 export const ParameterSettings = ({
   parameter,
@@ -123,15 +117,17 @@ export const ParameterSettings = ({
   const isMultiValue = getIsMultiSelect(parameter) ? "multi" : "single";
 
   const handleTypeChange = (sectionId: string) => {
-    // can be moved to redux?
     const defaultOptionOfNextType = defaultOptionForSection[sectionId];
 
     onChangeType(defaultOptionOfNextType.type, sectionId);
   };
 
   const handleOperatorChange = (operatorType: string) => {
-    // TODO: fix sectionId type
-    onChangeType(operatorType, sectionId as string);
+    if (!sectionId) {
+      return;
+    }
+
+    onChangeType(operatorType, sectionId);
   };
 
   const filterOperatorData = useMemo(() => {
@@ -147,7 +143,7 @@ export const ParameterSettings = ({
       return [];
     }
 
-    const options = currentSection.options as SectionOption[];
+    const options = currentSection.options;
 
     return options.map(option => ({
       label: option.menuName ?? option.name,
