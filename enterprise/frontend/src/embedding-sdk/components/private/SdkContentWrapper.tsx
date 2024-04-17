@@ -34,4 +34,8 @@ export const SdkContentWrapper = styled.div<{ font: string; baseUrl?: string }>`
   -moz-osx-font-smoothing: grayscale;
 
   ${({ baseUrl }) => defaultFontFiles({ baseUrl })}
+  
+  svg {
+    display: inline;
+  }
 `;

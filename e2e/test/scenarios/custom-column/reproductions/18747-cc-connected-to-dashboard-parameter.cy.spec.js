@@ -1,5 +1,11 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, popover, visitDashboard } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  visitDashboard,
+  editDashboard,
+  setFilter,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -61,10 +67,9 @@ describe("issue 18747", () => {
 });
 
 function addNumberParameterToDashboard() {
-  cy.icon("pencil").click();
-  cy.icon("filter").click();
-  cy.contains("Number").click();
-  cy.findByText("Equal to").click();
+  editDashboard();
+
+  setFilter("Number", "Equal to");
 }
 
 function mapParameterToCustomColumn() {

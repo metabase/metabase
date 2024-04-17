@@ -19,25 +19,27 @@ type WrapperProps = {
   suggestions?: Suggestion[];
   highlightedIndex: number;
   onSuggestionMouseDown: () => void;
+  startRule: string;
 };
 
 function Wrapper(props: WrapperProps) {
   return (
-    <ExpressionEditorSuggestions {...props}>
+    <ExpressionEditorSuggestions {...props} open>
       <div>target</div>
     </ExpressionEditorSuggestions>
   );
 }
 
 type SetupOpts = {
-  source: string;
+  source?: string;
+  startRule: string;
 };
 
-function setup(opts: SetupOpts) {
+function setup({ source = "", startRule }: SetupOpts) {
   const query = createQuery({ metadata: METADATA });
   const stageIndex = 0;
   const { suggestions } = suggest({
-    source: opts.source,
+    source,
     query,
     stageIndex,
     metadata: METADATA,
@@ -51,6 +53,7 @@ function setup(opts: SetupOpts) {
     suggestions,
     onSuggestionMouseDown: jest.fn(),
     highlightedIndex: -1,
+    startRule,
   };
 
   const { rerender } = renderWithProviders(<Wrapper {...props} />);
@@ -60,8 +63,8 @@ function setup(opts: SetupOpts) {
 }
 
 describe("ExpressionEditorSuggestions", () => {
-  test("suggestions items should show column info icon", async () => {
-    setup({ source: "[" });
+  it("should render with the column info icon", async () => {
+    setup({ source: "[", startRule: "expression" });
 
     await waitFor(() =>
       screen.findAllByTestId("expression-suggestions-list-item"),
@@ -73,7 +76,7 @@ describe("ExpressionEditorSuggestions", () => {
   });
 
   test("suggestions items should show function helptext info icons", async () => {
-    setup({ source: "con" });
+    setup({ source: "con", startRule: "expression" });
 
     await waitFor(() =>
       screen.findAllByTestId("expression-suggestions-list-item"),
@@ -82,5 +85,21 @@ describe("ExpressionEditorSuggestions", () => {
     expect(screen.getAllByLabelText("More info").length).toBeGreaterThanOrEqual(
       1,
     );
+  });
+
+  it("should show functions when first opened", () => {
+    setup({ startRule: "expression" });
+    expect(screen.getByText("Most used functions")).toBeInTheDocument();
+
+    expect(screen.getByText("case")).toBeInTheDocument();
+    expect(screen.getByText("coalesce")).toBeInTheDocument();
+  });
+
+  it("should not include popular functions when text has been typed", () => {
+    setup({ source: "[", startRule: "expression" });
+    expect(screen.queryByText("Most used functions")).not.toBeInTheDocument();
+
+    expect(screen.queryByText("case")).not.toBeInTheDocument();
+    expect(screen.queryByText("coalesce")).not.toBeInTheDocument();
   });
 });

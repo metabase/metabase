@@ -614,12 +614,21 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
       cy.log("Assert dashboard theme");
       getIframeBody()
         .findByTestId("embed-frame")
-        .should("not.have.class", "Theme--transparent");
+        .invoke("attr", "data-embed-theme")
+        .then(embedTheme => {
+          expect(embedTheme).to.eq("light");
+        });
+
       // We're getting an input element which is 0x0 in size
       cy.findByLabelText("Transparent").click({ force: true });
+      cy.wait(1000);
       getIframeBody()
         .findByTestId("embed-frame")
-        .should("have.class", "Theme--transparent");
+        .invoke("attr", "data-embed-theme")
+        .then(embedTheme => {
+          expect(embedTheme).to.eq("transparent");
+        });
+
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
 
       cy.log("Assert dashboard title");

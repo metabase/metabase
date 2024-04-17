@@ -323,6 +323,12 @@ export function provideTimelineTags(
   ];
 }
 
+export function provideUserListTags(
+  users: UserInfo[],
+): TagDescription<TagType>[] {
+  return [listTag("user"), ...users.flatMap(user => provideUserTags(user))];
+}
+
 export function provideUserTags(user: UserInfo): TagDescription<TagType>[] {
   return [idTag("user", user.id)];
 }

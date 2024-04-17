@@ -118,7 +118,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   };
 
   return (
-    <Container>
+    <Container data-testid="expression-editor">
       {header}
       <ExpressionFieldWrapper>
         <FieldLabel htmlFor="expression-content">

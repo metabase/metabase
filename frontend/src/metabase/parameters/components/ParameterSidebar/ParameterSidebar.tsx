@@ -22,6 +22,7 @@ import { ParameterSettings } from "../ParameterSettings";
 export interface ParameterSidebarProps {
   parameter: Parameter;
   otherParameters: Parameter[];
+  hasMapping: boolean;
   onChangeName: (parameterId: ParameterId, name: string) => void;
   onChangeDefaultValue: (parameterId: ParameterId, value: unknown) => void;
   onChangeIsMultiSelect: (
@@ -68,6 +69,7 @@ export const ParameterSidebar = ({
   onShowAddParameterPopover,
   onClose,
   getEmbeddedParameterVisibility,
+  hasMapping,
 }: ParameterSidebarProps): JSX.Element => {
   const parameterId = parameter.id;
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
@@ -198,6 +200,7 @@ export const ParameterSidebar = ({
             onChangeSourceType={handleSourceTypeChange}
             onChangeSourceConfig={handleSourceConfigChange}
             onChangeRequired={handleChangeRequired}
+            hasMapping={hasMapping}
           />
         </Tabs.Panel>
 

@@ -5,6 +5,7 @@ import _ from "underscore";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
+import { hasMapping } from "metabase/parameters/utils/dashboards";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 
 import { ActionSidebarConnected } from "./ActionSidebar";
@@ -152,6 +153,7 @@ export function DashboardSidebars({
           onShowAddParameterPopover={showAddParameterPopover}
           onClose={closeSidebar}
           onChangeRequired={setParameterRequired}
+          hasMapping={hasMapping(parameter, dashboard)}
         />
       );
     }

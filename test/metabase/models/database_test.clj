@@ -75,7 +75,7 @@
                  :key                 (format "metabase.task.sync-and-analyze.trigger.%d" db-id)
                  :misfire-instruction "DO_NOTHING"
                  :may-fire-again?     true
-                 :schedule            "0 50 * * * ? *"
+                 :schedule            (mt/malli=? some?)
                  :final-fire-time     nil
                  :data                {"db-id" db-id}}
                 (trigger-for-db db-id)))
