@@ -11,6 +11,8 @@ src/metabase/integrations @noahmoss
 
 # BEC team
 src/sync @qnkhuat @calherries
+src/sync.clj @qnkhuat @calherries
 src/search @qnkhuat
 enterprise/backend/src/metabase_enterprise/serialization @piranha
+src/upload.clj @calherries @crisptrutski
 src/upload @calherries @crisptrutski
