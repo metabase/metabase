@@ -21,6 +21,7 @@ import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-s
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
+  ParameterMappingOptions,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -42,7 +43,7 @@ export interface ParameterSettingsProps {
   hasMapping: boolean;
   isParameterSlugUsed: (value: string) => boolean;
   onChangeName: (name: string) => void;
-  onChangeType: (type: string, sectionId: string) => void;
+  onChangeType: (option: ParameterMappingOptions) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
   onChangeQueryType: (queryType: ValuesQueryType) => void;
@@ -52,22 +53,12 @@ export interface ParameterSettingsProps {
   embeddedParameterVisibility: EmbeddingParameterVisibility | null;
 }
 
-type SectionOption = {
-  sectionId: string;
-  type: string;
-  name: string;
-  operator: string;
-  menuName?: string;
-  combinedName?: string | undefined;
-};
-
 const parameterSections = getDashboardParameterSections();
 const dataTypeSectionsData = parameterSections.map(section => ({
   label: section.name,
   value: section.id,
 }));
-const defaultOptionForSection: Record<string, SectionOption> =
-  getDefaultOptionForParameterSection();
+const defaultOptionForSection = getDefaultOptionForParameterSection();
 
 export const ParameterSettings = ({
   parameter,
@@ -123,15 +114,21 @@ export const ParameterSettings = ({
   const isMultiValue = getIsMultiSelect(parameter) ? "multi" : "single";
 
   const handleTypeChange = (sectionId: string) => {
-    // can be moved to redux?
-    const defaultOptionOfNextType = defaultOptionForSection[sectionId];
+    const option = defaultOptionForSection[sectionId];
 
-    onChangeType(defaultOptionOfNextType.type, sectionId);
+    if (option) {
+      onChangeType(option);
+    }
   };
 
   const handleOperatorChange = (operatorType: string) => {
-    // TODO: fix sectionId type
-    onChangeType(operatorType, sectionId as string);
+    const option = parameterSections
+      .find(section => section.id === sectionId)
+      ?.options.find(opt => opt.type === operatorType);
+
+    if (option) {
+      onChangeType(option);
+    }
   };
 
   const filterOperatorData = useMemo(() => {
@@ -147,7 +144,7 @@ export const ParameterSettings = ({
       return [];
     }
 
-    const options = currentSection.options as SectionOption[];
+    const options = currentSection.options;
 
     return options.map(option => ({
       label: option.menuName ?? option.name,

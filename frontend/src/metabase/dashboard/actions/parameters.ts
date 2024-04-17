@@ -272,27 +272,28 @@ export const setParameterName = createThunkAction(
 export const SET_PARAMETER_TYPE = "metabase/dashboard/SET_PARAMETER_TYPE";
 export const setParameterType = createThunkAction(
   SET_PARAMETER_TYPE,
-  (parameterId: ParameterId, type: string, sectionId: string) =>
+  (parameterId: ParameterId, option: ParameterMappingOptions) =>
     (dispatch, getState) => {
-      const parameter = getParameters(getState()).find(
-        ({ id }) => id === parameterId,
-      );
+      const parameters = getParameters(getState());
+      const parameter = parameters.find(({ id }) => id === parameterId);
 
       if (!parameter) {
         return;
       }
 
-      if (parameter.sectionId !== sectionId) {
+      const otherParameters = parameters.filter(({ id }) => id !== parameterId);
+
+      if (parameter.sectionId !== option.sectionId) {
         // reset all mappings if type has changed,
         // but do not reset when only operator has changed
         dispatch(resetParameterMapping(parameterId));
       }
 
       updateParameter(dispatch, getState, parameterId, parameter =>
-        setParamType(parameter, type, sectionId),
+        setParamType(parameter, option, otherParameters),
       );
 
-      return { id: parameterId, type };
+      return { id: parameterId, type: option.type };
     },
 );
 

@@ -10,6 +10,7 @@ import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/par
 import type {
   Parameter,
   ParameterId,
+  ParameterMappingOptions,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -26,8 +27,7 @@ export interface ParameterSidebarProps {
   onChangeName: (parameterId: ParameterId, name: string) => void;
   onChangeType: (
     parameterId: ParameterId,
-    nextType: string,
-    nextSectionId: string,
+    option: ParameterMappingOptions,
   ) => void;
   onChangeDefaultValue: (parameterId: ParameterId, value: unknown) => void;
   onChangeIsMultiSelect: (
@@ -99,8 +99,8 @@ export const ParameterSidebar = ({
   );
 
   const handleTypeChange = useCallback(
-    (type: string, sectionId: string) => {
-      onChangeType(parameterId, type, sectionId);
+    (option: ParameterMappingOptions) => {
+      onChangeType(parameterId, option);
     },
     [parameterId, onChangeType],
   );

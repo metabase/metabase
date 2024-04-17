@@ -33,16 +33,26 @@ type ExtendedMapping = DashboardParameterMapping & {
   card: Card;
 };
 
-export function createParameter(
+function getParameterUniqueName(
   option: ParameterMappingOptions,
-  parameters: Parameter[] = [],
-): Parameter {
+  parameters: Parameter[],
+): string {
   let name = option.combinedName || option.name;
   let nameIndex = 0;
+
   // get a unique name
   while (_.any(parameters, p => p.name === name)) {
     name = (option.combinedName || option.name) + " " + ++nameIndex;
   }
+
+  return name;
+}
+
+export function createParameter(
+  option: ParameterMappingOptions,
+  parameters: Parameter[] = [],
+): Parameter {
+  const name = getParameterUniqueName(option, parameters);
 
   const parameter: Parameter = {
     name: "",
@@ -69,14 +79,17 @@ export function setParameterName(
 
 export function setParameterType(
   parameter: Parameter,
-  type: string,
-  sectionId: string,
+  option: ParameterMappingOptions,
+  otherParameters: Parameter[],
 ): Parameter {
-  // TODO: maybe also reset default?
+  const name = getParameterUniqueName(option, otherParameters);
+
   return {
     ...parameter,
-    type,
-    sectionId,
+    type: option.type,
+    sectionId: option.sectionId,
+    default: undefined,
+    name,
   };
 }
 
