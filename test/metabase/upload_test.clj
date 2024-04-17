@@ -1752,3 +1752,43 @@
                       (rows-for-table table)))
 
               (io/delete-file file))))))))
+
+(defn- upload-table-exists? [table]
+  ;; we don't need to worry about sql injection here
+  (-> (format "SELECT 1 FROM information_schema.tables WHERE table_name = '%s'" (:name table))
+      ((fn [sql] {:database (:db_id table), :type :native, :native {:query sql}}))
+      qp/process-query
+      :row_count
+      pos?))
+
+(deftest delete-upload!-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (doseq [archive-cards? [true false]]
+      (with-upload-table! [table (create-upload-table!
+                                  :col->upload-type (ordered-map/ordered-map
+                                                     :_mb_row_id auto-pk-type
+                                                     :number_1 int-type
+                                                     :number_2 int-type)
+                                  :rows [[1, 1]])]
+
+        (testing "The upload table and the expected application data are created\n"
+          (is (upload-table-exists? table))
+          (is (seq (t2/select :model/Table :id (:id table))))
+          (testing "The expected metadata is synchronously sync'd"
+            (is (seq (t2/select :model/Field :table_id (:id table))))))
+
+        (mt/with-temp [:model/Card {card-id :id} {:table_id (:id table)}]
+          (is (false? (:archived (t2/select-one :model/Card :id card-id))))
+
+          (upload/delete-upload! table :archive-cards? archive-cards?)
+
+          (testing (format "We %s the related cards if archive-cards? is %s"
+                           (if archive-cards? "archive" "do not archive")
+                           archive-cards?)
+            (is (= archive-cards? (:archived (t2/select-one :model/Card :id card-id)))))
+
+          (testing "The upload table and related application data are deleted\n"
+            (is (not (upload-table-exists? table)))
+            (is (= [false] (mapv :active (t2/select :model/Table :id (:id table)))))
+            (testing "We do not clean up any of the child resources synchronously (yet?)"
+              (is (seq (t2/select :model/Field :table_id (:id table)))))))))))
