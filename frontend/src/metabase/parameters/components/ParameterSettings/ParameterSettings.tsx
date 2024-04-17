@@ -3,7 +3,10 @@ import { t } from "ttag";
 
 import { resetParameterMapping } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
-import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
+import {
+  getDashboardParameterSections,
+  getDefaultOptionForParameterSection,
+} from "metabase/parameters/utils/dashboard-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
   Radio,
@@ -39,6 +42,7 @@ export interface ParameterSettingsProps {
   hasMapping: boolean;
   isParameterSlugUsed: (value: string) => boolean;
   onChangeName: (name: string) => void;
+  onChangeType: (type: string, sectionId: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
   onChangeQueryType: (queryType: ValuesQueryType) => void;
@@ -62,11 +66,14 @@ const dataTypeSectionsData = parameterSections.map(section => ({
   label: section.name,
   value: section.id,
 }));
+const defaultOptionForSection: Record<string, SectionOption> =
+  getDefaultOptionForParameterSection();
 
 export const ParameterSettings = ({
   parameter,
   isParameterSlugUsed,
   onChangeName,
+  onChangeType,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
   onChangeQueryType,
@@ -115,6 +122,18 @@ export const ParameterSettings = ({
   const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
   const isMultiValue = getIsMultiSelect(parameter) ? "multi" : "single";
 
+  const handleTypeChange = (sectionId: string) => {
+    // can be moved to redux?
+    const defaultOptionOfNextType = defaultOptionForSection[sectionId];
+
+    onChangeType(defaultOptionOfNextType.type, sectionId);
+  };
+
+  const handleOperatorChange = (operatorType: string) => {
+    // TODO: fix sectionId type
+    onChangeType(operatorType, sectionId as string);
+  };
+
   const filterOperatorData = useMemo(() => {
     if (!sectionId) {
       return [];
@@ -131,7 +150,7 @@ export const ParameterSettings = ({
     const options = currentSection.options as SectionOption[];
 
     return options.map(option => ({
-      label: option.name,
+      label: option.menuName ?? option.name,
       value: option.type,
     }));
   }, [sectionId]);
@@ -152,15 +171,19 @@ export const ParameterSettings = ({
         <>
           <Box mb="xl">
             <SettingLabel>{t`Filter type`}</SettingLabel>
-            <Select disabled data={dataTypeSectionsData} value={sectionId} />
+            <Select
+              data={dataTypeSectionsData}
+              value={sectionId}
+              onChange={handleTypeChange}
+            />
           </Box>
           {filterOperatorData.length > 1 && (
             <Box mb="xl">
               <SettingLabel>{t`Filter operator`}</SettingLabel>
               <Select
-                disabled
                 data={filterOperatorData}
                 value={parameter.type}
+                onChange={handleOperatorChange}
               />
             </Box>
           )}
