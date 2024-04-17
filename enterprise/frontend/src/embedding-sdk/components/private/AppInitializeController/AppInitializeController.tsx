@@ -6,7 +6,7 @@ import { EmbeddingContext } from "embedding-sdk/context";
 import { useInitData } from "embedding-sdk/hooks";
 import type { SDKConfigType } from "embedding-sdk/types";
 
-import { SdkContentWrapper } from "./SdkContentWrapper";
+import { SdkContentWrapper } from "../SdkContentWrapper";
 
 interface AppInitializeControllerProps {
   children: React.ReactNode;

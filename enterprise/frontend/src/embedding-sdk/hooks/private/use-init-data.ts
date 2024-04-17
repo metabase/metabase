@@ -20,11 +20,21 @@ interface InitDataLoaderParameters {
   config: SDKConfigType;
 }
 
+type LoginStatus =
+  | { status: "success" }
+  | { status: "loading" }
+  | {
+      status: "error";
+      error: Error;
+    }
+  | null;
+
 export const useInitData = ({
   config,
 }: InitDataLoaderParameters): {
   isLoggedIn: boolean;
   isInitialized: boolean;
+  loginStatus: LoginStatus;
 } => {
   const dispatch = useDispatch();
 
@@ -33,8 +43,12 @@ export const useInitData = ({
   const [sessionTokenState, setSessionTokenState] =
     useState<EmbeddingSessionTokenState | null>(null);
 
+  const [loginStatus, setLoginStatus] = useState<LoginStatus>(null);
+
   useEffect(() => {
     registerVisualizationsOnce();
+
+    setLoginStatus({ status: "loading" });
   }, []);
 
   const jwtProviderUri =
@@ -69,20 +83,32 @@ export const useInitData = ({
       api.apiKey = config.apiKey;
     } else {
       setIsLoggedIn(false);
+      setLoginStatus({
+        error: new Error("Invalid auth type"),
+        status: "error",
+      });
       return;
     }
 
-    Promise.all([
-      dispatch(refreshCurrentUser()),
-      dispatch(reloadSettings()),
-    ]).then(() => {
-      setIsInitialized(true);
-      setIsLoggedIn(true);
-    });
+    Promise.all([dispatch(refreshCurrentUser()), dispatch(reloadSettings())])
+      .then(() => {
+        setIsInitialized(true);
+        setIsLoggedIn(true);
+        setLoginStatus({ status: "success" });
+      })
+      .catch(() => {
+        setLoginStatus({
+          status: "error",
+          error: new Error("Failed to login"),
+        });
+        setIsLoggedIn(false);
+        setIsInitialized(true);
+      });
   }, [config, dispatch, sessionTokenState]);
 
   return {
     isLoggedIn,
     isInitialized,
+    loginStatus,
   };
 };

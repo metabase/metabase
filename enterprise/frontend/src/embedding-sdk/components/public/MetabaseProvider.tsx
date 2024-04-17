@@ -2,7 +2,7 @@ import type { ReactNode, JSX } from "react";
 import { memo } from "react";
 import { Provider } from "react-redux";
 
-import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
+import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController/AppInitializeController";
 import { store } from "embedding-sdk/store";
 import type { SDKConfigType } from "embedding-sdk/types";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
