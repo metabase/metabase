@@ -20,6 +20,7 @@ import type {
   Metric,
   PopularItem,
   RecentItem,
+  Revision,
   SearchModel,
   SearchResult,
   Segment,
@@ -281,6 +282,18 @@ export function providePermissionsGroupTags(
   group: GroupListQuery,
 ): TagDescription<TagType>[] {
   return [idTag("permissions-group", group.id)];
+}
+
+export function provideRevisionListTags(
+  revisions: Revision[],
+): TagDescription<TagType>[] {
+  return [listTag("revision"), ...revisions.flatMap(provideRevisionTags)];
+}
+
+export function provideRevisionTags(
+  revision: Revision,
+): TagDescription<TagType>[] {
+  return [idTag("revision", revision.id)];
 }
 
 export function provideSearchItemListTags(
