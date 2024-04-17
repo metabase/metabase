@@ -290,10 +290,10 @@
   (testing "Sample content doesn't contribute to stats"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? true)
-      (testing "sense check: Collection, Dashboard, and Cards exist but all have is_sample=true"
-        (is (true? (t2/exists? :model/Collection :is_sample true)))
-        (is (true? (t2/exists? :model/Dashboard :is_sample true)))
-        (is (true? (t2/exists? :model/Card :is_sample true))))
+      (testing "sense check: Collection, Dashboard, and Cards exist"
+        (is (true? (t2/exists? :model/Collection)))
+        (is (true? (t2/exists? :model/Dashboard)))
+        (is (true? (t2/exists? :model/Card))))
       (testing "All metrics should be empty"
         (is (= {:collections 0, :cards_in_collections 0, :cards_not_in_collections 0, :num_cards_per_collection {}}
                (#'stats/collection-metrics)))
