@@ -156,10 +156,6 @@ describe("EditSandboxingModal", () => {
           await screen.findByRole("button", { name: /sandbox question/i }),
         );
 
-        await userEvent.click(
-          await screen.findByRole("button", { name: "Select" }),
-        );
-
         await userEvent.click(screen.getByText("Save"));
 
         await waitFor(() => {
@@ -208,10 +204,6 @@ describe("EditSandboxingModal", () => {
       await screen.findByTestId("entity-picker-modal");
       await userEvent.click(
         await screen.findByRole("button", { name: /sandbox question/i }),
-      );
-
-      await userEvent.click(
-        await screen.findByRole("button", { name: "Select" }),
       );
 
       await userEvent.click(screen.getByText("Save"));

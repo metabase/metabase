@@ -150,6 +150,7 @@ interface SetupOpts {
   };
   onChange?: (item: QuestionPickerItem) => void;
   models?: [QuestionPickerValueModel, ...QuestionPickerValueModel[]];
+  options?: typeof defaultOptions;
 }
 
 const commonSetup = () => {
@@ -193,6 +194,7 @@ const setupModal = async ({
   initialValue,
   models = ["card", "dataset"],
   onChange = jest.fn<void, [QuestionPickerItem]>(),
+  options = defaultOptions,
 }: SetupOpts = {}) => {
   commonSetup();
 
@@ -202,6 +204,7 @@ const setupModal = async ({
       value={initialValue}
       onClose={jest.fn()}
       models={models}
+      options={options}
     />,
   );
 
@@ -273,6 +276,23 @@ describe("QuestionPickerModal", () => {
 
   it("should render the modal", async () => {
     await setupModal();
+
+    expect(
+      await screen.findByText(/choose a question or model/i),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Our Analytics/ }),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByRole("button", { name: /Select/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should render the modal with a select button", async () => {
+    await setupModal({
+      options: { ...defaultOptions, hasConfirmButtons: true },
+    });
 
     expect(
       await screen.findByText(/choose a question or model/i),
