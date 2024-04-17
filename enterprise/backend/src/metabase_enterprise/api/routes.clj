@@ -16,7 +16,7 @@
    [metabase-enterprise.llm.api :as llm.api]
    [metabase-enterprise.sandbox.api.routes :as sandbox]
    [metabase-enterprise.serialization.api :as api.serialization]
-   [metabase-enterprise.uploads.api :as api.uploads]
+   [metabase-enterprise.upload-management.api :as api.uploads]
    [metabase.api.common :refer [context defroutes]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
