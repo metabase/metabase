@@ -56,19 +56,19 @@ export function getDefaultOptionForParameterSection() {
       }
 
       if (sectionId === "location") {
-        defaultOption = options.find(o => o.name === "Is");
+        defaultOption = options.find(o => o.type === "string/=");
       }
 
       if (sectionId === "number") {
-        defaultOption = options.find(o => o.name === "Between");
+        defaultOption = options.find(o => o.type === "number/between");
       }
 
       if (sectionId === "string") {
-        defaultOption = options.find(o => o.name === "Is");
+        defaultOption = options.find(o => o.type === "string/=");
       }
 
       if (sectionId === "date") {
-        defaultOption = options.find(o => o.name === "Date Filter");
+        defaultOption = options.find(o => o.type === "date/all-options");
       }
 
       return [sectionId, defaultOption];
