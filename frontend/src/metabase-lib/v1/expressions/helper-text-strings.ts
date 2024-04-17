@@ -433,6 +433,44 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
+    name: "month-name",
+    structure: "monthName",
+    description: () =>
+      t`Returns the localized short name ("Apr") for the given month number (4)`,
+    args: [
+      {
+        name: t`monthNumber`,
+        description: t`Column or expression giving the number of a month in the year, 1 to 12.`,
+        example: formatIdentifier(t`Birthday Month`),
+      },
+    ],
+  },
+  {
+    name: "quarter-name",
+    structure: "quarterName",
+    description: () => t`Returns a string like "Q1", given the quarter number`,
+    args: [
+      {
+        name: t`quarterNumber`,
+        description: t`Column or expression giving the number of a quarter of the year, 1 to 4.`,
+        example: formatIdentifier(t`Fiscal Quarter`),
+      },
+    ],
+  },
+  {
+    name: "day-name",
+    structure: "dayName",
+    description: () =>
+      t`Returns the localized name of a day of the week, given the day's number.`,
+    args: [
+      {
+        name: t`dayNumber`,
+        description: t`Column or expression giving the number of a day of the week, 1 to 7. Which day is 1 is defined in your localization setting; default Sunday.`,
+        example: formatIdentifier(t`Weekday`),
+      },
+    ],
+  },
+  {
     name: "abs",
     structure: "abs",
     description: () =>
@@ -890,7 +928,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     name: "get-day-of-week",
     structure: "weekday",
     description: () =>
-      t`Takes a datetime and returns an integer (1-7) with the number of the day of the week.`,
+      t`Takes a datetime and returns an integer (1-7) with the number of the day of the week. Which day is 1 is defined in your localization settings.`,
     args: [
       {
         name: t`column`,

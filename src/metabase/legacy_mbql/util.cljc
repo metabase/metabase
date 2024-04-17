@@ -9,9 +9,12 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #?@(:clj [[metabase.models.dispatch :as models.dispatch]])))
+   #?@(:clj
+       [[metabase.models.dispatch :as models.dispatch]
+        [metabase.util.i18n]])))
 
 (defn qualified-name
   "Like `name`, but if `x` is a namespace-qualified keyword, returns that a string including the namespace."
@@ -388,13 +391,39 @@
     [:subdomain column]
     (recur [:regex-match-first column (str subdomain-regex)])))
 
+(defn- temporal-case-expression
+  "Creates a `:case` expression with a condition for each value of the given unit."
+  [column unit n]
+  (let [user-locale #?(:clj  (metabase.util.i18n/user-locale)
+                       :cljs nil)]
+    [:case
+     (vec (for [raw-value (range 1 (inc n))]
+            [[:= column raw-value] (shared.ut/format-unit raw-value unit user-locale)]))
+     {:default ""}]))
+
+(defn- desugar-temporal-names
+  "Given an expression like `[:month-name column]`, transforms this into a `:case` expression, which matches the input
+  numbers and transforms them into names.
+
+  Uses the user's locale rather than the site locale, so the results will depend on the runner of the query, not just
+  the query itself. Filtering should be done based on the number, rather than the name."
+  [expression]
+  (lib.util.match/replace expression
+    [:month-name column]
+    (recur (temporal-case-expression column :month-of-year 12))
+    [:quarter-name column]
+    (recur (temporal-case-expression column :quarter-of-year 4))
+    [:day-name column]
+    (recur (temporal-case-expression column :day-of-week 7))))
+
 (mu/defn desugar-expression :- ::mbql.s/FieldOrExpressionDef
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
   to compile."
   [expression :- ::mbql.s/FieldOrExpressionDef]
   (-> expression
       desugar-divide-with-extra-args
-      desugar-host-and-domain))
+      desugar-host-and-domain
+      desugar-temporal-names))
 
 (defn- maybe-desugar-expression [clause]
   (cond-> clause
