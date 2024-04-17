@@ -1,4 +1,4 @@
-(ns metabase-enterprise.uploads.api-test
+(ns metabase-enterprise.upload-management.api-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -7,12 +7,12 @@
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(def list-url "ee/uploads")
+(def list-url "ee/upload-management/tables/")
 
 (deftest list-uploaded-tables-test
-  (testing "GET ee/uploads/"
+  (testing "GET ee/upload-management/tables"
     (testing "These should come back in alphabetical order and include relevant metadata"
-      (mt/with-premium-features #{:uploads}
+      (mt/with-premium-features #{:upload-management}
         (oss-test/with-tables-as-uploads [:categories :reviews]
           (t2.with-temp/with-temp [:model/Card {} {:table_id (mt/id :categories)}
                                    :model/Card {} {:table_id (mt/id :reviews)}
@@ -37,20 +37,20 @@
                           set))))))))))
 
 (defn- delete-url [table-id]
-  (str "ee/uploads/" table-id))
+  (str "ee/upload-management/tables/" table-id))
 
 (defn- listed-table-ids []
   (into #{} (map :id) (mt/user-http-request :crowberto :get 200 list-url)))
 
 (deftest delete-csv-test
-  (testing "DELETE ee/uploads/:id"
+  (testing "DELETE ee/upload-management/:id"
     (mt/test-driver :h2
       (mt/with-empty-db
        (testing "Behind a feature flag"
          (is (str/starts-with? (mt/user-http-request :crowberto :delete 402 (delete-url 1))
-                               "Upload Maintenance is a paid feature not currently available to your instance.")))
+                               "Upload Management is a paid feature not currently available to your instance.")))
 
-       (mt/with-premium-features #{:uploads}
+       (mt/with-premium-features #{:upload-management}
          (testing "Happy path\n"
            (let [table-id (:id (oss-test/create-csv!))]
              (testing "We can see the table in the list"

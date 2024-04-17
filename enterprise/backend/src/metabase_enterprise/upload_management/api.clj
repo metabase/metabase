@@ -1,4 +1,4 @@
-(ns metabase-enterprise.uploads.api
+(ns metabase-enterprise.upload-management.api
   (:require
    [compojure.core :refer [DELETE]]
    [metabase.api.common :as api]
@@ -9,7 +9,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(api/defendpoint GET "/"
+(api/defendpoint GET "/tables/"
   "Get all `Tables` visible to the current user which were created by uploading a file."
   []
   (as-> (t2/select :model/Table, :active true, :is_upload true, {:order-by [[:name :asc]]}) tables
@@ -17,7 +17,7 @@
         (map #(update % :schema str) tables)
         (filterv mi/can-read? tables)))
 
-(api/defendpoint DELETE "/:id"
+(api/defendpoint DELETE "/tables/:id"
   "Delete the uploaded table from the database, optionally archiving cards for which it is the primary source."
   [id archive-cards]
   {id            ms/PositiveInt

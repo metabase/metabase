@@ -50,5 +50,5 @@
     "/autodescribe" []
     (ee.api.common/+require-premium-feature :llm-autodescription (deferred-tru "LLM Auto-description") llm.api/routes))
    (context
-    "/uploads" []
-    (ee.api.common/+require-premium-feature :uploads (deferred-tru "Upload Maintenance") api.uploads/routes))))
+    "/upload-management" []
+    (ee.api.common/+require-premium-feature :upload-management (deferred-tru "Upload Management") api.uploads/routes))))
