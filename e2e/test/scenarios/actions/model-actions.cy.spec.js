@@ -222,7 +222,6 @@ describe(
       modal().eq(1).findByText("Select a model").click();
       entityPickerModal().within(() => {
         cy.findByText("Order").click();
-        cy.button("Select").click();
       });
 
       cy.findByRole("button", { name: "Create" }).click();

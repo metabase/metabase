@@ -783,7 +783,7 @@ describeEE("formatting > sandboxes", () => {
       });
     });
 
-    it.only("attempt to sandbox based on question with differently-typed columns than a sandboxed table should provide meaningful UI error (metabase#14612)", () => {
+    it("attempt to sandbox based on question with differently-typed columns than a sandboxed table should provide meaningful UI error (metabase#14612)", () => {
       const QUESTION_NAME = "Different type";
       const ERROR_MESSAGE =
         "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.";

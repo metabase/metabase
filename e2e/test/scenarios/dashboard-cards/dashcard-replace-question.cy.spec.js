@@ -275,7 +275,6 @@ function replaceQuestion(
       cy.findByText(collectionName).click();
     }
     cy.findByText(nextQuestionName).click();
-    cy.button("Select").click();
   });
   cy.wait("@cardQuery");
 }

@@ -22,7 +22,6 @@ export function setFilterQuestionSource({ question, field }) {
 
   entityPickerModal().within(() => {
     cy.findByText(question).click();
-    cy.button("Select").click();
   });
 
   modal().within(() => {
