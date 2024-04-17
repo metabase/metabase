@@ -16,7 +16,7 @@ import {
 type FeedbackModalProps = {
   opened: boolean;
   onClose: () => void;
-  onSubmit: (feedback: { feedback?: string; email?: string }) => void;
+  onSubmit: (feedback: { comment?: string; email?: string }) => void;
 };
 
 export const FeedbackModal = ({
@@ -24,11 +24,11 @@ export const FeedbackModal = ({
   onClose,
   onSubmit,
 }: FeedbackModalProps) => {
-  const [feedback, setFeedback] = useState("");
+  const [comment, setComment] = useState("");
   const [email, setEmail] = useState("");
   const handleSubmit = () =>
     onSubmit({
-      feedback: feedback.trim() || undefined,
+      comment: comment.trim() || undefined,
       email: email.trim() || undefined,
     });
 
@@ -47,9 +47,9 @@ export const FeedbackModal = ({
 
         <Textarea
           label={t`Feedback`}
-          name="feedback"
+          name="comment"
           placeholder={t`Tell us what happened`}
-          onChange={e => setFeedback(e.currentTarget.value)}
+          onChange={e => setComment(e.currentTarget.value)}
           minRows={3}
         />
 
@@ -64,7 +64,7 @@ export const FeedbackModal = ({
         <Group position="right">
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button variant="filled" onClick={handleSubmit}>
-            {feedback.trim().length + email.trim().length > 0
+            {comment.trim().length + email.trim().length > 0
               ? t`Send`
               : t`Skip`}
           </Button>

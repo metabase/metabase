@@ -63,10 +63,10 @@ export const EmbedHomepage = () => {
   };
 
   const onFeedbackSubmit = ({
-    feedback,
+    comment,
     email,
   }: {
-    feedback?: string;
+    comment?: string;
     email?: string;
   }) => {
     dispatch(
@@ -78,7 +78,7 @@ export const EmbedHomepage = () => {
 
     setFeedbackModalOpened(false);
     sendProductFeedback({
-      comments: feedback,
+      comment,
       email: email,
       source: "embedding-homepage-dismiss",
     });

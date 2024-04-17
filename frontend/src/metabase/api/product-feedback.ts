@@ -4,12 +4,18 @@ const productFeedbackApi = Api.injectEndpoints({
   endpoints: builder => ({
     sendProductFeedback: builder.mutation<
       void,
-      { comments?: string; email?: string; source: string }
+      { comment?: string; email?: string; source: string }
     >({
-      query: ({ comments, email, source }) => ({
+      query: ({ comment, email, source }) => ({
         method: "POST",
         url: `/api/util/product-feedback`,
-        body: { comments, email, source },
+        body: {
+          // harbormaster expects the field `comments`, we use `comment` because it
+          // reflects better what it's shown in the UI
+          comments: comment,
+          email,
+          source,
+        },
       }),
     }),
   }),
