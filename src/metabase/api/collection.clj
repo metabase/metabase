@@ -82,12 +82,10 @@
 
   To select only personal collections, pass in `personal-only` as `true`.
   This will select only collections where `personal_owner_id` is not `nil`."
-  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
+  [{:keys [exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
-                       (when (some? archived)
-                         [:= :archived archived])
                        (when shallow
                          (location-from-collection-id-clause collection-id))
                        (when personal-only
@@ -121,8 +119,7 @@
    namespace                      [:maybe ms/NonBlankString]
    personal-only                  [:maybe ms/BooleanValue]}
   (as->
-   (select-collections {:archived                       archived
-                        :exclude-other-user-collections exclude-other-user-collections
+   (select-collections {:exclude-other-user-collections exclude-other-user-collections
                         :namespace                      namespace
                         :shallow                        false
                         :personal-only                  personal-only
@@ -192,9 +189,7 @@
    namespace                      [:maybe ms/NonBlankString]
    shallow                        [:maybe :boolean]
    collection-id                  [:maybe ms/PositiveInt]}
-  (let [archived    (if exclude-archived false nil)
-        collections (select-collections {:archived                       archived
-                                         :exclude-other-user-collections exclude-other-user-collections
+  (let [collections (select-collections {:exclude-other-user-collections exclude-other-user-collections
                                          :namespace                      namespace
                                          :shallow                        shallow
                                          :collection-id                  collection-id
@@ -206,8 +201,7 @@
                                         {:dataset #{}
                                          :card    #{}}
                                         (mdb.query/reducible-query {:select-distinct [:collection_id :type]
-                                                                    :from            [:report_card]
-                                                                    :where           [:= :archived false]}))
+                                                                    :from            [:report_card]}))
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
@@ -242,7 +236,6 @@
 
 (def ^:private CollectionChildrenOptions
   [:map
-   [:archived?                     :boolean]
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
    ;; when specified, only return results of this type.
    [:models       {:optional true} [:maybe [:set (into [:enum] (map keyword) valid-model-param-values)]]]
@@ -373,7 +366,7 @@
             :moderated_status :icon :personal_owner_id :collection_preview
             :dataset_query :table_id :query_type :is_upload)))
 
-(defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
+(defn- card-query [dataset? collection {:keys [pinned-state]}]
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                      :c.dataset_query
@@ -404,7 +397,6 @@
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
-                   [:= :archived (boolean archived?)]
                    [:= :c.type (h2x/literal (if dataset? "model" "question"))]]}
       (cond-> dataset?
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
@@ -479,7 +471,7 @@
   [_ _ rows]
   (map post-process-card-row rows))
 
-(defn- dashboard-query [collection {:keys [archived? pinned-state]}]
+(defn- dashboard-query [collection {:keys [pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
                    [(h2x/literal "dashboard") :model]
                    [:u.id :last_edit_user]
@@ -494,8 +486,7 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   [:= :collection_id (:id collection)]
-                   [:= :archived (boolean archived?)]]}
+                   [:= :collection_id (:id collection)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dashboard
@@ -519,10 +510,9 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [archived? collection-namespace pinned-state]}]
+  [collection {:keys [collection-namespace pinned-state]}]
   (-> (assoc (collection/effective-children-query
               collection
-              [:= :archived archived?]
               (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
               (snippets-collection-filter-clause))
              ;; We get from the effective-children-query a normal set of columns selected:
@@ -562,14 +552,12 @@
                 (mdb.query/reducible-query {:select-distinct [:collection_id :type]
                                             :from            [:report_card]
                                             :where           [:and
-                                                              [:= :archived false]
                                                               [:in :collection_id descendant-collection-ids]]}))
 
         collections-containing-dashboards
         (->> (t2/query {:select-distinct [:collection_id]
                         :from :report_dashboard
                         :where [:and
-                                [:= :archived false]
                                 [:in :collection_id descendant-collection-ids]]})
              (map :collection_id)
              (into #{}))
