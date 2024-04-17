@@ -120,7 +120,7 @@ describe("scenarios > dashboard > filters > management", () => {
   });
 
   describe("change parameter type", () => {
-    it("should reset existing filter mappings", () => {
+    it("should reset existing filter mappings and default value", () => {
       createDashboardWithFilterAndQuestionMapped();
 
       selectFilter("Text");
@@ -129,10 +129,18 @@ describe("scenarios > dashboard > filters > management", () => {
 
       cy.log("change filter type");
 
-      sidebar().findByDisplayValue("Text or Category").click();
+      sidebar().within(() => {
+        // verifies default value presents
+        cy.findByText("value to check default").should("exist");
+        cy.findByDisplayValue("Text or Category").click();
+      });
 
       popover().findByText("Number").click();
 
+      sidebar().within(() => {
+        // verifies no default value
+        cy.findByText("No default").should("exist");
+      });
       getDashboardCard().should("not.contain", "Person.Name");
 
       saveDashboard();
@@ -148,45 +156,45 @@ describe("scenarios > dashboard > filters > management", () => {
       cy.log("verify Text default value: Is");
       sidebar().findByDisplayValue("Is").should("exist");
 
-      sidebar().findByDisplayValue("Text or Category").click();
-      popover().findByText("Number").click();
+      changeFilterType("Number");
 
       cy.log("verify Number default value: Between");
-      sidebar().findByDisplayValue("Between").should("exist");
+      verifyOperatorValue("Between");
 
-      sidebar().findByDisplayValue("Number").click();
-      popover().findByText("ID").click();
+      changeFilterType("ID");
 
       cy.log("verify ID doesn't render operator select");
       sidebar().findAllByRole("searchbox").should("have.length", 1);
 
-      sidebar().findByDisplayValue("ID").click();
-      popover().findByText("Time").click();
+      changeFilterType("Time");
 
       cy.log("verify Date default value: All Options");
-      sidebar().findByDisplayValue("All Options").should("exist");
+      verifyOperatorValue("All Options");
 
-      sidebar().findByDisplayValue("Time").click();
-      popover().findByText("Location").click();
+      changeFilterType("Location");
 
       cy.log("verify Date default value: Is");
-      sidebar().findByDisplayValue("Is").should("exist");
+      verifyOperatorValue("Is");
     });
   });
 
   describe("change parameter operator", () => {
-    it("should not reset filter mappings", () => {
+    it("should not reset filter mappings, but reset default value", () => {
       createDashboardWithFilterAndQuestionMapped();
 
       selectFilter("Text");
 
-      getDashboardCard().should("contain", "Person.Name");
-
-      sidebar().findByDisplayValue("Is").click();
-
-      popover().findByText("Contains").click();
+      // verifies default value is there
+      sidebar().findByText("value to check default").should("exist");
 
       getDashboardCard().should("contain", "Person.Name");
+
+      changeOperator("Contains");
+
+      getDashboardCard().should("contain", "Person.Name");
+
+      // verifies default value does not exist
+      sidebar().findByText("No default").should("exist");
 
       saveDashboard();
 
@@ -202,6 +210,7 @@ function createDashboardWithFilterAndQuestionMapped() {
     id: "5aefc726",
     type: "string/=",
     sectionId: "string",
+    default: "value to check default",
   });
 
   const peopleQuestionDetails = {
@@ -242,4 +251,22 @@ function selectFilter(name) {
   cy.findByTestId("edit-dashboard-parameters-widget-container")
     .findByText(name)
     .click();
+}
+
+function changeFilterType(type) {
+  sidebar().findByText("Filter type").next().click();
+  popover().findByText(type).click();
+}
+
+function changeOperator(operator) {
+  sidebar().findByText("Filter operator").next().click();
+  popover().findByText(operator).click();
+}
+
+function verifyOperatorValue(value) {
+  sidebar()
+    .findByText("Filter operator")
+    .next()
+    .findByRole("searchbox")
+    .should("have.value", value);
 }
