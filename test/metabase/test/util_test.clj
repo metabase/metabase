@@ -7,6 +7,7 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import (java.util.concurrent CountDownLatch TimeUnit)))
 
@@ -50,27 +51,30 @@
 
 (deftest ^:parallel with-dynamic-redefs-test
   (testing "Three threads can independently redefine a regular var"
-    (let [n-threads 3
-          latch (CountDownLatch. (inc n-threads))
-          take-latch  #(do
-                         (.countDown latch)
-                         ;; We give a generous timeout here in case there is heavy contention for the thread pool in CI
-                         (when-not (.await latch 30 TimeUnit/SECONDS)
-                           (throw (ex-info "Timeout waiting on all threads to pull their latch"
-                                           {:latch latch
-                                            :thread-id (.threadId (Thread/currentThread))}))))]
+    (let [n-threads  3
+          thread-id  #(.threadId (Thread/currentThread))
+          latch      (CountDownLatch. (inc n-threads))
+          take-latch #(do
+                        (.countDown latch)
+                        ;; We give a generous timeout here in case there is heavy contention for the thread pool in CI
+                        (when-not (.await latch 30 TimeUnit/SECONDS)
+                          (throw (ex-info "Timeout waiting on all threads to pull their latch"
+                                          {:latch     latch
+                                           :thread-id (thread-id)}))))]
 
       (testing "The original definition"
         (is (= "original" (clump "o" "riginal"))))
 
       (future
         (testing "A thread that minds its own business"
+          (log/info "Starting no-op thread, thread-id:" (thread-id))
           (is (= "123" (clump 12 3)))
           (take-latch)
           (is (= "321" (clump 3 21)))))
 
       (future
         (testing "A thread that redefines it in reverse"
+          (log/info "Starting reverse thread, thread-id:" (thread-id))
           (mt/with-dynamic-redefs [clump #(str %2 %1)]
             (is (= "ok" (clump "k" "o")))
             (take-latch)
@@ -78,6 +82,7 @@
 
       (future
         (testing "A thread that redefines it twice"
+          (log/info "Starting double-redefining thread, thread-id:" (thread-id))
           (mt/with-dynamic-redefs [clump (fn [_ y] (str y y))]
             (is (= "zz" (clump "a" "z")))
             (mt/with-dynamic-redefs [clump (fn [x _] (str x x))]
@@ -86,6 +91,7 @@
               (is (= "mm" (clump "m" "l"))))
             (is (= "bb" (clump "a" "b"))))))
 
+      (log/info "Taking latch on main thread, thread-id:" (thread-id))
       (take-latch)
       (testing "The original definition survives"
         (is (= "original" (clump "orig" "inal")))))))
