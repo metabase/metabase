@@ -6173,6 +6173,22 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: v50.2024-04-09T15:55:19
+      author: calherries
+      comment: Add collection.is_sample column
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: is_sample
+                  type: ${boolean.type}
+                  remarks: "Is the collection part of the sample content?"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+
+  - changeSet:
       id: v50.2024-04-09T15:55:22
       author: calherries
       comment: Create sample content

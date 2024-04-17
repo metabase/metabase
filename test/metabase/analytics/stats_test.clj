@@ -299,11 +299,11 @@
                (#'stats/collection-metrics)))
         (is (= {:questions {}, :public {}, :embedded {}}
                (#'stats/question-metrics)))
-        (is (= {:dashboards 0,
-                :with_params 0,
-                :num_dashs_per_user {},
-                :num_cards_per_dash {},
-                :num_dashs_per_card {},
-                :public {},
-                :embedded {}}
+        (is (= {:dashboards         0
+                :with_params        0
+                :num_dashs_per_user {}
+                :num_cards_per_dash {}
+                :num_dashs_per_card {}
+                :public             {}
+                :embedded           {}}
                (#'stats/dashboard-metrics)))))))

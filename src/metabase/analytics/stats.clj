@@ -302,7 +302,7 @@
 (defn- collection-metrics
   "Get metrics on Collection usage."
   []
-  (let [collections (t2/select Collection :creator_id [:not= config/internal-mb-user-id])
+  (let [collections (t2/select Collection :type [:not= "instance-analytics"] :is_sample false)
         cards       (t2/select [Card :collection_id] :creator_id [:not= config/internal-mb-user-id])]
     {:collections              (count collections)
      :cards_in_collections     (count (filter :collection_id cards))
