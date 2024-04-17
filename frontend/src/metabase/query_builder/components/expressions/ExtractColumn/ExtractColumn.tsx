@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
@@ -6,6 +6,8 @@ import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../ExpressionWidgetHeader";
+
+import { isColumnExtractable } from "./util";
 
 type Props = {
   query: Lib.Query;
@@ -25,9 +27,15 @@ export function ExtractColumn({ query, stageIndex, onCancel }: Props) {
     setColumn(column);
   }
 
-  if (!column) {
+  const extractableColumns = useMemo(() => {
     const columns = Lib.expressionableColumns(query, stageIndex);
-    const columnGroups = Lib.groupColumns(columns);
+    return columns.filter(column =>
+      isColumnExtractable(query, stageIndex, column),
+    );
+  }, [query, stageIndex]);
+
+  if (!column) {
+    const columnGroups = Lib.groupColumns(extractableColumns);
 
     return (
       <>
@@ -35,14 +43,18 @@ export function ExtractColumn({ query, stageIndex, onCancel }: Props) {
           title={t`Select column to extract from`}
           onBack={onCancel}
         />
-        <QueryColumnPicker
-          query={query}
-          stageIndex={stageIndex}
-          columnGroups={columnGroups}
-          onSelect={handleSelect}
-          checkIsColumnSelected={item => item.column === column}
-          width="100%"
-        />
+        <Box py="sm">
+          <QueryColumnPicker
+            query={query}
+            stageIndex={stageIndex}
+            columnGroups={columnGroups}
+            onSelect={handleSelect}
+            checkIsColumnSelected={item => item.column === column}
+            width="100%"
+            alwaysExpanded
+            disableSearch
+          />
+        </Box>
       </>
     );
   }
@@ -56,9 +68,7 @@ export function ExtractColumn({ query, stageIndex, onCancel }: Props) {
         onBack={() => setColumn(null)}
       />
       <form onSubmit={handleSubmit}>
-        <Box maw="100vw" p="lg" pt={0}>
-          TODO
-        </Box>
+        <Box p="lg">TODO</Box>
       </form>
     </>
   );
