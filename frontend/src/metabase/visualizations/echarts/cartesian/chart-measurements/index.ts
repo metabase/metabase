@@ -386,8 +386,7 @@ export const getChartPadding = (
 
   const hasXAxisName = settings["graph.x_axis.labels_enabled"];
   if (hasXAxisName) {
-    padding.bottom +=
-      CHART_STYLE.axisName.size / 2 + CHART_STYLE.axisNameMargin;
+    padding.bottom += CHART_STYLE.axisName.size / 2;
   }
 
   return padding;
