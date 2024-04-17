@@ -1,11 +1,9 @@
 import type {
   CollectionId,
-  SearchRequest,
-  SearchModel,
-  SearchResult,
   CollectionItemModel,
-  DashboardId,
-  CardId,
+  SearchModel,
+  SearchRequest,
+  SearchResult,
 } from "metabase-types/api";
 
 import type {
@@ -14,22 +12,7 @@ import type {
   TypeWithModel,
 } from "../EntityPicker";
 
-export type CollectionItemId = CollectionId | CardId | DashboardId;
-
-export type CollectionPickerModel = Extract<
-  SearchModel,
-  "collection" | "card" | "dataset" | "dashboard"
->;
-
-export type CollectionPickerValueModel = Extract<
-  CollectionPickerModel,
-  "collection"
->;
-
-export type CollectionPickerItem = TypeWithModel<
-  CollectionItemId,
-  CollectionPickerModel
-> &
+export type CollectionPickerItem = TypeWithModel<CollectionId, SearchModel> &
   Pick<Partial<SearchResult>, "description" | "can_write"> & {
     location?: string | null;
     effective_location?: string | null;
@@ -39,11 +22,6 @@ export type CollectionPickerItem = TypeWithModel<
     below?: CollectionItemModel[];
   };
 
-export type CollectionPickerValueItem = Omit<CollectionPickerItem, "model"> & {
-  id: CollectionId;
-  model: CollectionPickerValueModel;
-};
-
 export type CollectionPickerOptions = EntityPickerModalOptions & {
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
@@ -51,8 +29,8 @@ export type CollectionPickerOptions = EntityPickerModalOptions & {
 };
 
 export type CollectionItemListProps = ListProps<
-  CollectionItemId,
-  CollectionPickerModel,
+  CollectionId,
+  SearchModel,
   CollectionPickerItem,
   SearchRequest,
   CollectionPickerOptions

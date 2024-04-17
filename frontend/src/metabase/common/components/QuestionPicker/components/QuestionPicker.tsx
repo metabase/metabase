@@ -9,7 +9,6 @@ import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { SearchRequest, SearchModel } from "metabase-types/api";
 
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
-import { getPathLevelForItem } from "../../CollectionPicker/utils";
 import {
   DelayedLoadingSpinner,
   NestedItemPicker,
@@ -19,6 +18,7 @@ import type { QuestionPickerOptions, QuestionPickerItem } from "../types";
 import {
   generateKey,
   getCollectionIdPath,
+  getPathLevelForItem,
   getStateFromIdPath,
   isFolder,
 } from "../utils";

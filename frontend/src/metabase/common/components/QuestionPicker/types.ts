@@ -1,27 +1,45 @@
-import type { SearchRequest, SearchModel, CardId } from "metabase-types/api";
+import type {
+  CardId,
+  CollectionId,
+  CollectionItemModel,
+  DashboardId,
+  SearchModel,
+  SearchRequest,
+  SearchResult,
+} from "metabase-types/api";
 
 import type {
-  CollectionItemId,
-  CollectionPickerItem,
-} from "../CollectionPicker";
-import type { EntityPickerModalOptions, ListProps } from "../EntityPicker";
+  EntityPickerModalOptions,
+  ListProps,
+  TypeWithModel,
+} from "../EntityPicker";
 
 export type QuestionPickerModel = Extract<
-  CollectionPickerItem["model"],
+  QuestionPickerItem["model"],
   "card" | "dataset" | "collection"
 >;
 export type QuestionPickerValueModel = Extract<
-  CollectionPickerItem["model"],
+  QuestionPickerItem["model"],
   "card" | "dataset"
 >;
 
-export type QuestionPickerValueItem = CollectionPickerItem & {
+export type QuestionPickerValueItem = QuestionPickerItem & {
   id: CardId;
   model: QuestionPickerValueModel;
 };
 
-// we could tighten this up in the future, but there's relatively little value to it
-export type QuestionPickerItem = CollectionPickerItem;
+export type QuestionPickerItem = TypeWithModel<
+  QuestionPickerItemId,
+  QuestionPickerItemModel
+> &
+  Pick<Partial<SearchResult>, "description" | "can_write"> & {
+    location?: string | null;
+    effective_location?: string | null;
+    is_personal?: boolean;
+    collection_id?: CollectionId;
+    here?: CollectionItemModel[];
+    below?: CollectionItemModel[];
+  };
 
 export type QuestionPickerOptions = EntityPickerModalOptions & {
   showPersonalCollections?: boolean;
@@ -29,9 +47,16 @@ export type QuestionPickerOptions = EntityPickerModalOptions & {
 };
 
 export type QuestionItemListProps = ListProps<
-  CollectionItemId,
+  QuestionPickerItemId,
   SearchModel,
   QuestionPickerItem,
   SearchRequest,
   QuestionPickerOptions
+>;
+
+export type QuestionPickerItemId = CollectionId | CardId | DashboardId;
+
+export type QuestionPickerItemModel = Extract<
+  SearchModel,
+  "collection" | "card" | "dataset" | "dashboard"
 >;

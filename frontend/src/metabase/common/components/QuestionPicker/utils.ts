@@ -102,3 +102,22 @@ export const isFolder = (item: QuestionPickerItem, models: SearchModel[]) => {
 
 export const generateKey = (query?: SearchRequest) =>
   JSON.stringify(query ?? "root");
+
+export const getPathLevelForItem = (
+  item: QuestionPickerItem,
+  path: PickerState<QuestionPickerItem, SearchRequest>,
+  userPersonalCollectionId?: CollectionId,
+): number => {
+  if (item.id === userPersonalCollectionId) {
+    return 0;
+  }
+
+  const parentCollectionId = item?.collection_id || "root";
+
+  // set selected item at the correct level
+  const pathLevel = path.findIndex(
+    level => String(level?.query?.collection) === String(parentCollectionId),
+  );
+
+  return pathLevel === -1 ? 0 : pathLevel;
+};

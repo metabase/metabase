@@ -7,18 +7,14 @@ import type { SearchModel } from "metabase-types/api";
 
 import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
-import type {
-  CollectionPickerItem,
-  CollectionPickerOptions,
-  CollectionPickerValueItem,
-} from "../types";
+import type { CollectionPickerItem, CollectionPickerOptions } from "../types";
 
 import { CollectionPicker } from "./CollectionPicker";
 import { NewCollectionDialog } from "./NewCollectionDialog";
 
 interface CollectionPickerModalProps {
   title?: string;
-  onChange: (item: CollectionPickerValueItem) => void;
+  onChange: (item: CollectionPickerItem) => void;
   onClose: () => void;
   options?: CollectionPickerOptions;
   value: Pick<CollectionPickerItem, "id" | "model">;
@@ -27,7 +23,7 @@ interface CollectionPickerModalProps {
 
 const canSelectItem = (
   item: Pick<CollectionPickerItem, "can_write" | "model"> | null,
-): item is CollectionPickerValueItem => {
+): item is CollectionPickerItem => {
   return !!item && item?.can_write !== false && item.model === "collection";
 };
 
