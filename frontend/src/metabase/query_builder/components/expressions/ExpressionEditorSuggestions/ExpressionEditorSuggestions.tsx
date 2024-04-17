@@ -306,6 +306,7 @@ function colorForIcon(icon: string | undefined | null) {
       return { normal: color("accent1"), highlighted: color("brand-white") };
     case "function":
     case "combine":
+    case "split":
       return { normal: color("brand"), highlighted: color("brand-white") };
     default:
       return {

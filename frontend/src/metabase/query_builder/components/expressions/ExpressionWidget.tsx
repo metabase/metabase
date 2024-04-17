@@ -24,6 +24,7 @@ import {
 } from "./ExpressionWidget.styled";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
+import { ExtractColumn } from "./ExtractColumn";
 
 export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   query: Lib.Query;
@@ -82,6 +83,8 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   );
   const [error, setError] = useState<string | null>(null);
   const [isCombiningColumns, setIsCombiningColumns] = useState(false);
+
+  const [isExtractingColumn, setIsExtractingColumn] = useState(false);
 
   const isValidName = withName ? name.trim().length > 0 : true;
   const isValidExpression = isNotNull(expression) && isExpression(expression);
@@ -151,6 +154,18 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     );
   }
 
+  if (isExtractingColumn) {
+    return (
+      <Container data-testid="expression-editor">
+        <ExtractColumn
+          query={query}
+          stageIndex={stageIndex}
+          onCancel={() => setIsExtractingColumn(false)}
+        />
+      </Container>
+    );
+  }
+
   return (
     <Container data-testid="expression-editor">
       {header}
@@ -179,6 +194,13 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
               action: () => setIsCombiningColumns(true),
               group: "shortcuts",
               icon: "combine",
+            },
+            !startRule && {
+              shortcut: true,
+              name: t`Extract columns`,
+              icon: "split",
+              group: "shortcuts",
+              action: () => setIsExtractingColumn(true),
             },
           ].filter(Boolean)}
         />
