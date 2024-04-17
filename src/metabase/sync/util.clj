@@ -347,7 +347,7 @@
                                 (when (seq table-names) [:in :name table-names])]}))
 
 (defn db->sync-schemas
-  "Returns all the Schemas that have their metadata sync'd for `database-or-id`. If the database doesn't support.
+  "Returns all the Schemas that have their metadata sync'd for `database-or-id`.
   Assumes the database supports schemas."
   [database-or-id]
   (vec (map :schema (t2/query {:select-distinct [:schema]
