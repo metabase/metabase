@@ -13,8 +13,8 @@ const addZeroesToHour = (
   hour: number,
   { useZero = false }: { useZero: boolean },
 ) => {
-  if (!useZero) {
-    hour ||= 12;
+  if (!useZero && hour === 0) {
+    hour = 12;
   }
   return c("This is a time like 12:00pm. {0} is the hour part of the time")
     .t`${hour}:00`;
