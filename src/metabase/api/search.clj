@@ -110,7 +110,7 @@
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
   so we can return its `:name`."
   [honeysql-query                                :- ms/Map
-   collection-id-column                          :- keyword?
+   collection-id-column
    {:keys [current-user-perms
            filter-items-in-personal-collection]} :- SearchContext]
   (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
@@ -216,6 +216,17 @@
   {:arglists '([model search-context])}
   (fn [model _] model))
 
+(defn collection-id-for-table
+  "What column should we use to a) join to the `collection` table? and b) filter collections to the set the user is
+  allowed to see?
+
+  When we're not looking for collections, use `{my-table}.collection_id` or `{my-table}.trashed_from_collection_id`,
+  depending on if we're looking for archived items."
+  [table-name]
+  [:coalesce
+   (keyword (format "%s.trashed_from_collection_id" (name table-name)))
+   (keyword (format "%s.collection_id" (name table-name)))])
+
 (mu/defn ^:private shared-card-impl
   [model      :- [:enum "card" "dataset"] ; TODO -- use :metabase.models.card/type instead and have this `:question`/`:model`/etc.
    search-ctx :- SearchContext]
@@ -225,7 +236,7 @@
                              [:and
                               [:= :bookmark.card_id :card.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses :card.collection_id search-ctx)
+      (add-collection-join-and-where-clauses (collection-id-for-table :card) search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
       (with-last-editing-info model)
       (with-moderated-status model)))
@@ -237,7 +248,8 @@
                              [:= :model.id :action.model_id])
       (sql.helpers/left-join :query_action
                              [:= :query_action.action_id :action.id])
-      (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
+      (add-collection-join-and-where-clauses (collection-id-for-table :model)
+                                             search-ctx)))
 
 (defmethod search-query-for-model "card"
   [_model search-ctx]
@@ -269,7 +281,7 @@
                              [:and
                               [:= :bookmark.dashboard_id :dashboard.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)
+      (add-collection-join-and-where-clauses (collection-id-for-table :dashboard) search-ctx)
       (with-last-editing-info model)))
 
 (defmethod search-query-for-model "metric"

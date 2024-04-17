@@ -330,7 +330,7 @@
   ([collection-ids :- VisibleCollections]
    (visible-collection-ids->honeysql-filter-clause :collection_id collection-ids))
 
-  ([collection-id-field :- :keyword
+  ([collection-id-field :- :any
     collection-ids      :- VisibleCollections]
    (if (= collection-ids :all)
      true
