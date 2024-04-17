@@ -6,10 +6,10 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
-   [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def ^:private ^{:arglists '([field])} field-type
@@ -28,7 +28,7 @@
 
 (def SourceEntity
   "A source for a card. Can be either a table or another card."
-  [:or (mi/InstanceOf Table) (mi/InstanceOf Card)])
+  [:or (ms/InstanceOf Table) (ms/InstanceOf Card)])
 
 (def Bindings
   "Top-level lexical context mapping source names to their corresponding entity and constituent dimensions. See also

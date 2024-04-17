@@ -2,8 +2,8 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -12,7 +12,7 @@
   "Sync the `table_privileges` table with the privileges in the database.
 
    This is a cache of the data returned from `driver/table-privileges`, but it's stored in the database for performance."
-  [database :- (mi/InstanceOf :model/Database)]
+  [database :- (ms/InstanceOf :model/Database)]
   (let [driver (driver.u/database->driver database)]
     (when (and (not= :redshift driver)
                ;; redshift does support table-privileges, but we don't want to sync it now because table privileges are

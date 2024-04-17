@@ -442,11 +442,7 @@ export const SetupApi = {
 export const UserApi = {
   list: GET("/api/user/recipients"),
   current: GET("/api/user/current"),
-  update_password: PUT("/api/user/:id/password"),
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
-  delete: DELETE("/api/user/:userId"),
-  reactivate: PUT("/api/user/:userId/reactivate"),
-  send_invite: POST("/api/user/:id/send_invite"),
 };
 
 export const UtilApi = {
