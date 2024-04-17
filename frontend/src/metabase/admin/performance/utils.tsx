@@ -1,17 +1,14 @@
+import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
+
 import { memoize, pick } from "underscore";
 
+import type { ScheduleDayType, ScheduleFrameType } from "metabase-types/api";
 import {
   Cron,
-  optionNameTranslations,
   weekdays,
+  optionNameTranslations,
 } from "metabase/components/Schedule/constants";
 import type { SelectProps } from "metabase/ui";
-import type {
-  ScheduleDayType,
-  ScheduleFrameType,
-  ScheduleSettings,
-  ScheduleType,
-} from "metabase-types/api";
 
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
   const index = weekdays.findIndex(o => o.value === day);
