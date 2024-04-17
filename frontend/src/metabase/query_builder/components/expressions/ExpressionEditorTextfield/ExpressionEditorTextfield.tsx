@@ -19,6 +19,7 @@ import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
 import { format } from "metabase-lib/v1/expressions/format";
 import { processSource } from "metabase-lib/v1/expressions/process";
 import type {
+  GroupName,
   SuggestArgs,
   Suggestion,
 } from "metabase-lib/v1/expressions/suggest";
@@ -56,7 +57,7 @@ export type SuggestionShortcut = {
   shortcut: true;
   name: string;
   icon: IconName;
-  group: string;
+  group: GroupName;
   action: () => void;
 };
 
