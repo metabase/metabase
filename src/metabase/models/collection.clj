@@ -45,6 +45,32 @@
   "Maximum number of characters allowed in a Collection `slug`."
   510)
 
+(def ^:const TRASH_COLLECTION_ID
+  "The fixed ID of the trash collection."
+  13371339)
+
+(defn trash-collection
+  "Gets the Trash collection from the database."
+  []
+  (t2/select-one :model/Collection :id TRASH_COLLECTION_ID))
+
+(def ^:private trash-path
+  "The fixed location path for the trash collection."
+  (format "/%s/" TRASH_COLLECTION_ID))
+
+(defn is-trash-or-descendant?
+  "Is this the trash collection, or a descendant of it?"
+  [collection]
+  (str/starts-with? (:location collection) trash-path))
+
+(defn ensure-trash-collection-created!
+  "Creates the trash collection if it does not already exist."
+  []
+  (when (nil? (trash-collection))
+    (t2/insert! :model/Collection {:id TRASH_COLLECTION_ID
+                                   :name "Trash"
+                                   :type "trash"})))
+
 (def Collection
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], no2 it's a reference to the toucan2 model name.
   We'll keep this till we replace all the Card symbol in our codebase."
