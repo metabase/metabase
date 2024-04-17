@@ -54,8 +54,11 @@
           latch (CountDownLatch. (inc n-threads))
           take-latch  #(do
                          (.countDown latch)
-                         (when-not (.await latch 100 TimeUnit/MILLISECONDS)
-                           (throw (ex-info "Timeout waiting on all threads to pull their latch" {:latch latch}))))]
+                         ;; We give a generous timeout here in case there is heavy contention for the thread pool in CI
+                         (when-not (.await latch 30 TimeUnit/SECONDS)
+                           (throw (ex-info "Timeout waiting on all threads to pull their latch"
+                                           {:latch latch
+                                            :thread-id (.threadId (Thread/currentThread))}))))]
 
       (testing "The original definition"
         (is (= "original" (clump "o" "riginal"))))
@@ -75,7 +78,7 @@
 
       (future
         (testing "A thread that redefines it twice"
-          (mt/with-dynamic-redefs [clump #(str %2 %2)]
+          (mt/with-dynamic-redefs [clump (fn [_ y] (str y y))]
             (is (= "zz" (clump "a" "z")))
             (mt/with-dynamic-redefs [clump (fn [x _] (str x x))]
               (is (= "aa" (clump "a" "z")))
