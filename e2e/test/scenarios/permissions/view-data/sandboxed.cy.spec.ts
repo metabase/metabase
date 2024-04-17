@@ -41,11 +41,6 @@ describeEE("scenarios > admin > permissions > view data > sandboxed", () => {
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
 
     modal().within(() => {
-      cy.findByText("Change access to this database to “Granular”?");
-      cy.button("Change").click();
-    });
-
-    modal().within(() => {
       cy.findByText("Change access to this database to “Sandboxed”?");
       cy.button("Change").click();
     });
@@ -123,11 +118,6 @@ describeEE("scenarios > admin > permissions > view data > sandboxed", () => {
     cy.get("a").contains("Sample Database").click();
 
     modifyPermission("Orders", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
-
-    modal().within(() => {
-      cy.findByText("Change access to this database to “Granular”?");
-      cy.button("Change").click();
-    });
 
     modal().within(() => {
       cy.findByText("Change access to this database to “Sandboxed”?");

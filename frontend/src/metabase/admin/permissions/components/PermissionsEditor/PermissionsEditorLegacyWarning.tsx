@@ -28,7 +28,7 @@ export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
             <Anchor
               fw="bold"
               target="_blank"
-              to="https://www.metabase.com/docs/latest/permissions/data.html"
+              href="https://www.metabase.com/docs/latest/permissions/data.html"
               style={{ color: colors.accent7 }}
             >{t`Need help? See our docs.`}</Anchor>
           </Text>

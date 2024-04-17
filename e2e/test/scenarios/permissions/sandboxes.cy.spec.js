@@ -5,6 +5,7 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  modifyPermission,
   describeEE,
   modal,
   openOrdersTable,
@@ -38,6 +39,8 @@ const {
 } = SAMPLE_DATABASE;
 
 const { DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
+
+const DATA_ACCESS_PERMISSION_INDEX = 0;
 
 describeEE("formatting > sandboxes", () => {
   describe("admin", () => {
@@ -791,13 +794,7 @@ describeEE("formatting > sandboxes", () => {
       cy.visit(
         `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
       );
-      cy.wait("@tablePermissions");
-      cy.icon("eye")
-        .eq(1) // No better way of doing this, undfortunately (see table above)
-        .click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sandboxed").click();
-      cy.button("Change").click();
+      modifyPermission("data", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
 
       modal().within(() => {
         cy.findByText("Change access to this database to “Sandboxed”?");

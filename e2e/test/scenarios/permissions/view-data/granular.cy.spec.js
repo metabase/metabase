@@ -167,11 +167,6 @@ describeEE("scenarios > admin > permissions > view data > granular", () => {
 function makeOrdersSandboxed() {
   modifyPermission("Orders", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
 
-  modal().within(() => {
-    cy.findByText("Change access to this database to “Granular”?");
-    cy.button("Change").click();
-  });
-
   cy.url().should(
     "include",
     `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
