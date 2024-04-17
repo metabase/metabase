@@ -1,10 +1,9 @@
-import { GET, POST } from "metabase/lib/api";
-import { createEntity } from "metabase/lib/entities";
+import { revisionApi } from "metabase/api";
+import { POST } from "metabase/lib/api";
+import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 
 import Dashboards from "./dashboards";
 import Questions from "./questions";
-
-const listRevisions = GET("/api/revision");
 
 /**
  * @deprecated use "metabase/api" instead
@@ -12,15 +11,20 @@ const listRevisions = GET("/api/revision");
 const Revision = createEntity({
   name: "revisions",
   api: {
-    list: ({ model_type, model_id }, options) =>
-      // add model_type and model_id to each object since they are required for revert
-      listRevisions({ entity: model_type, id: model_id }).then(revisions =>
-        revisions.map(revision => ({
-          model_type,
-          model_id,
-          ...revision,
-        })),
-      ),
+    list: ({ model_type, model_id }, dispatch) =>
+      entityCompatibleQuery(
+        { entity: model_type, id: model_id },
+        dispatch,
+        revisionApi.endpoints.listRevision,
+      )
+        // add model_type and model_id to each object since they are required for revert
+        .then(revisions =>
+          revisions.map(revision => ({
+            model_type,
+            model_id,
+            ...revision,
+          })),
+        ),
     revert: POST("/api/revision/revert"),
   },
 
