@@ -1174,9 +1174,9 @@
                                       v))
             table-name->rows      (fn [table-name]
                                     (->> (table-name->raw-rows table-name)
-                                    ;; We sort the rows by id and remove them so that auto-incrementing ids are
-                                    ;; generated in the same order. We can't insert the ids directly in H2 without
-                                    ;; creating sequences for all the generated id columns.
+                                         ;; We sort the rows by id and remove them so that auto-incrementing ids are
+                                         ;; generated in the same order. We can't insert the ids directly in H2 without
+                                         ;; creating sequences for all the generated id columns.
                                          (sort-by :id)
                                          (map (fn [row]
                                                 (dissoc (update-vals row replace-temporals) :id)))))
