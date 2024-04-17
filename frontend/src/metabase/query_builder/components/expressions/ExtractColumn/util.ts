@@ -1,14 +1,11 @@
 import * as Lib from "metabase-lib";
 
-export function isColumnExtractable(
+// TODO: use Lib.displayInfo instead
+export function mock_displayInfo(
   query: Lib.Query,
   stageIndex: number,
-  column: Lib.ColumnMetadata,
-): boolean {
-  const info = Lib.displayInfo(query, stageIndex, column);
-  return (
-    info.semanticType === "type/Email" ||
-    info.semanticType === "type/URL" ||
-    info.effectiveType === "type/DateTime"
-  );
+  extraction: Lib.ColumnExtraction,
+) {
+  /// HERE
+  return {};
 }

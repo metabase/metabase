@@ -7,7 +7,8 @@ import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../ExpressionWidgetHeader";
 
-import { isColumnExtractable } from "./util";
+import { ExtractDateTime } from "./ExtractDateTime";
+import { mock_displayInfo } from "./util";
 
 type Props = {
   query: Lib.Query;
@@ -29,13 +30,23 @@ export function ExtractColumn({ query, stageIndex, onCancel }: Props) {
 
   const extractableColumns = useMemo(() => {
     const columns = Lib.expressionableColumns(query, stageIndex);
-    return columns.filter(column =>
-      isColumnExtractable(query, stageIndex, column),
-    );
+    return columns
+      .map(column => {
+        const extractions = Lib.columnExtractions(query, column);
+        return {
+          column,
+          extractions: extractions.map(extraction =>
+            mock_displayInfo(query, stageIndex, extraction),
+          ),
+        };
+      })
+      .filter(info => info.extractions.length > 0);
   }, [query, stageIndex]);
 
   if (!column) {
-    const columnGroups = Lib.groupColumns(extractableColumns);
+    const columnGroups = Lib.groupColumns(
+      extractableColumns.map(x => x.column),
+    );
 
     return (
       <>
@@ -60,6 +71,7 @@ export function ExtractColumn({ query, stageIndex, onCancel }: Props) {
   }
 
   const info = Lib.displayInfo(query, stageIndex, column);
+  const Component = component(info);
 
   return (
     <>
@@ -68,8 +80,34 @@ export function ExtractColumn({ query, stageIndex, onCancel }: Props) {
         onBack={() => setColumn(null)}
       />
       <form onSubmit={handleSubmit}>
-        <Box p="lg">TODO</Box>
+        <Box p="sm">
+          <Component />
+        </Box>
       </form>
     </>
   );
+}
+
+function component(info: Lib.ColumnDisplayInfo) {
+  if (info.semanticType === "type/Email") {
+    return ExtractEmail;
+  }
+
+  if (info.semanticType === "type/URL") {
+    return ExtractUrl;
+  }
+
+  if (info.effectiveType === "type/DateTime") {
+    return ExtractDateTime;
+  }
+
+  return null;
+}
+
+function ExtractEmail() {
+  return <div>Email</div>;
+}
+
+function ExtractUrl() {
+  return <div>Url</div>;
 }

@@ -1,0 +1,16 @@
+.button {
+  border-radius: 8px;
+  text-align: start;
+
+  .content {
+    line-height: 1rem;
+  }
+
+  &:hover {
+    background: var(--color-brand);
+
+    .content {
+      color: var(--color-white);
+    }
+  }
+}
