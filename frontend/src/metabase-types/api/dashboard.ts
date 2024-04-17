@@ -208,6 +208,11 @@ export type ListDashboardsRequest = {
   f?: "all" | "mine" | "archived";
 };
 
+export type GetDashboardRequest = {
+  id: DashboardId;
+  ignore_error?: boolean;
+};
+
 export type CreateDashboardRequest = {
   name: string;
   description?: string | null;

@@ -3,6 +3,7 @@ import type {
   CreateDashboardRequest,
   Dashboard,
   DashboardId,
+  GetDashboardRequest,
   ListDashboardsRequest,
   SaveDashboardRequest,
   UpdateDashboardRequest,
@@ -28,10 +29,11 @@ export const dashboardApi = Api.injectEndpoints({
       providesTags: dashboards =>
         dashboards ? provideDashboardListTags(dashboards) : [],
     }),
-    getDashboard: builder.query<Dashboard, DashboardId>({
-      query: id => ({
+    getDashboard: builder.query<Dashboard, GetDashboardRequest>({
+      query: ({ id, ignore_error }) => ({
         method: "GET",
         url: `/api/dashboard/${id}`,
+        noEvent: ignore_error,
       }),
       providesTags: dashboard =>
         dashboard ? provideDashboardTags(dashboard) : [],

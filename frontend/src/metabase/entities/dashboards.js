@@ -43,9 +43,9 @@ const Dashboards = createEntity({
         dispatch,
         dashboardApi.endpoints.listDashboards,
       ),
-    get: (entityQuery, _options, dispatch) =>
+    get: (entityQuery, options, dispatch) =>
       entityCompatibleQuery(
-        entityQuery.id,
+        { ...entityQuery, ignore_error: options?.noEvent },
         dispatch,
         dashboardApi.endpoints.getDashboard,
       ),
