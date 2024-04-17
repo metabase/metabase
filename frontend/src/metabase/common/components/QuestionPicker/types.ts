@@ -2,7 +2,6 @@ import type {
   CardId,
   CollectionId,
   CollectionItemModel,
-  DashboardId,
   SearchModel,
   SearchRequest,
   SearchResult,
@@ -54,9 +53,9 @@ export type QuestionItemListProps = ListProps<
   QuestionPickerOptions
 >;
 
-export type QuestionPickerItemId = CollectionId | CardId | DashboardId;
+export type QuestionPickerItemId = CollectionId | CardId;
 
 export type QuestionPickerItemModel = Extract<
   SearchModel,
-  "collection" | "card" | "dataset" | "dashboard"
+  "collection" | "card" | "dataset"
 >;

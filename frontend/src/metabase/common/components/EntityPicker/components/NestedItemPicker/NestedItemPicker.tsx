@@ -2,12 +2,13 @@ import type { ComponentType } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Flex } from "metabase/ui";
+import type { SearchResult } from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
+  IsFolder,
   ListProps,
   PickerState,
-  IsFolder,
   TypeWithModel,
 } from "../../types";
 import { isSelectedItem } from "../../utils";
@@ -18,7 +19,7 @@ import { findLastSelectedItem } from "./utils";
 
 export interface NestedItemPickerProps<
   Id,
-  Model extends string,
+  Model extends SearchResult["model"],
   Item extends TypeWithModel<Id, Model>,
   Query,
   Options extends EntityPickerOptions,
@@ -35,7 +36,7 @@ export interface NestedItemPickerProps<
 
 export function NestedItemPicker<
   Id,
-  Model extends string,
+  Model extends SearchResult["model"],
   Item extends TypeWithModel<Id, Model>,
   Query,
   Options extends EntityPickerOptions,

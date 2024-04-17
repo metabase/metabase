@@ -14,7 +14,12 @@ import {
   NestedItemPicker,
   type PickerState,
 } from "../../EntityPicker";
-import type { QuestionPickerOptions, QuestionPickerItem } from "../types";
+import type {
+  QuestionPickerOptions,
+  QuestionPickerItem,
+  QuestionPickerItemId,
+  QuestionPickerModel,
+} from "../types";
 import {
   generateKey,
   getCollectionIdPath,
@@ -166,7 +171,13 @@ export const QuestionPicker = ({
   }
 
   return (
-    <NestedItemPicker
+    <NestedItemPicker<
+      QuestionPickerItemId,
+      QuestionPickerModel,
+      QuestionPickerItem,
+      SearchRequest,
+      QuestionPickerOptions
+    >
       isFolder={(item: QuestionPickerItem) => isFolder(item, models)}
       options={options}
       generateKey={generateKey}
