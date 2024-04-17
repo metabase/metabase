@@ -192,86 +192,119 @@ const ScheduleBody = ({
   if (scheduleType === "hourly") {
     if (minutesOnHourPicker) {
       // e.g. "Send hourly at 15 minutes past the hour"
-      return (
-        <TwoColumns>{c(
+      return translatedStringToScheduleElement(
+        c(
           "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes",
-        ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} at ${(
-          <SelectMinute {...minuteProps} />
-        )} minutes past the hour`}</TwoColumns>
+        ).t`{0} {1} at {2} minutes past the hour`,
+        [
+          verb,
+          <SelectFrequency {...frequencyProps} />,
+          <SelectMinute {...minuteProps} />,
+        ],
       );
     } else {
       // e.g. "Send hourly"
       return (
-        <TwoColumns>
-          {
-            // We cannot use a string with only placeholders as a msgid.
-            // So, as a workaround, we include square brackets in the msgid and then remove them
-            removeBracketsFromTranslation(
-              c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'.")
-                .jt`[${verb} ${(<SelectFrequency {...frequencyProps} />)}]`,
-            )
-          }
-        </TwoColumns>
+        // We cannot use a string with only placeholders as a msgid.
+        // So, as a workaround, we include square brackets in the msgid and then remove them
+        translatedStringToScheduleElement(
+          c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'.")
+            .t`[{0} {1}]`
+            .replace(/^\[/, "")
+            .replace(/\]$/, ""),
+          [verb, <SelectFrequency {...frequencyProps} />],
+        )
       );
     }
   } else if (scheduleType === "daily") {
     // e.g. "Send daily at 12:00pm"
-    return (
-      <TwoColumns>
-        {c(
-          "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'",
-        ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} at ${(
-          <SelectTime {...timeProps} />
-        )}`}
-      </TwoColumns>
+    return translatedStringToScheduleElement(
+      c(
+        "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'",
+      ).t`{0} {1} at {2}`,
+      [
+        verb,
+        <SelectFrequency {...frequencyProps} />,
+        <SelectTime {...timeProps} />,
+      ],
     );
-  } else if (scheduleType === "weekly") {
-    // e.g. "Send weekly on Tuesday at 12:00pm"
-    return (
-      <TwoColumns>
-        {c(
-          "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
-        ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} on ${(
-          <SelectWeekday {...weekdayProps} />
-        )} at ${(<SelectTime {...timeProps} />)}`}
-      </TwoColumns>
-    );
-  } else if (scheduleType === "monthly") {
-    // e.g. "Send monthly on the 15th at 12:00pm"
-    if (schedule.schedule_frame === "mid") {
-      return (
-        <TwoColumns>
-          {c(
-            "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is the noun '15th' (as in 'the 15th of the month'), {3} is a time like '12:00pm'",
-          ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} on the ${(
-            <SelectFrame {...frameProps} />
-          )} at ${(<SelectTime {...timeProps} />)}`}
-        </TwoColumns>
-      );
-    } else {
-      // e.g. "Send monthly on the first Tuesday at 12:00pm"
-      return (
-        <TwoColumns>
-          {c(
-            "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'",
-          ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} on the ${(
-            <SelectFrame {...frameProps} />
-          )} ${(<SelectWeekdayOfMonth {...weekdayOfMonthProps} />)} at ${(
-            <SelectTime {...timeProps} />
-          )}`}
-        </TwoColumns>
-      );
-    }
-  } else {
-    return null;
   }
+  // else if (scheduleType === "weekly") {
+  ///   // e.g. "Send weekly on Tuesday at 12:00pm"
+  ///   return (
+  ///     <TwoColumns>
+  ///       {c(
+  ///         "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
+  ///       ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} on ${(
+  ///         <SelectWeekday {...weekdayProps} />
+  ///       )} at ${(<SelectTime {...timeProps} />)}`}
+  ///     </TwoColumns>
+  ///   );
+  /// } else if (scheduleType === "monthly") {
+  ///   // e.g. "Send monthly on the 15th at 12:00pm"
+  ///   if (schedule.schedule_frame === "mid") {
+  ///     return (
+  ///       <TwoColumns>
+  ///         {c(
+  ///           "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is the noun '15th' (as in 'the 15th of the month'), {3} is a time like '12:00pm'",
+  ///         ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} on the ${(
+  ///           <SelectFrame {...frameProps} />
+  ///         )} at ${(<SelectTime {...timeProps} />)}`}
+  ///       </TwoColumns>
+  ///     );
+  ///   } else {
+  ///     // e.g. "Send monthly on the first Tuesday at 12:00pm"
+  ///     return (
+  ///       <TwoColumns>
+  ///         {c(
+  ///           "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'",
+  ///         ).jt`${verb} ${(<SelectFrequency {...frequencyProps} />)} on the ${(
+  ///           <SelectFrame {...frameProps} />
+  ///         )} ${(<SelectWeekdayOfMonth {...weekdayOfMonthProps} />)} at ${(
+  ///           <SelectTime {...timeProps} />
+  ///         )}`}
+  ///       </TwoColumns>
+  ///     );
+  ///   }
+  /// } else {
+  ///   return null;
+  /// }
 };
 
-/** Arrange Schedule components into two columns, with the Selects on the right. */
-const TwoColumns = ({ children }: { children: ReactNode }) => {
-  const kids = Children.toArray(children).filter(
-    child => !(typeof child === "string" && !child.trim()),
-  );
+const placeholderRegex = /^\{[0-9]+\}$/;
+const translatedStringToScheduleElement = (
+  str: string,
+  components: ReactNode[],
+): ReactNode => {
+  // TODO:
+  // * Use an array, not a large JSX element,
+  // because then you can add blanks to the array which will then be replaced in a subsequent step
+  // * Use the logic in oldFunc to add blanks between adjacent Selects
+
+  let elem = <></>;
+  const parts = str.split(/(?=\{)|(?<=\})/g);
+  for (const part of parts) {
+    if (part.match(placeholderRegex)) {
+      const i = parseInt(part.slice(1, -1));
+      elem = (
+        <>
+          {elem}
+          {components[i]}
+        </>
+      );
+    } else {
+      elem = (
+        <>
+          {elem}
+          {part}
+        </>
+      );
+    }
+  }
+  return elem;
+};
+
+const oldFunc = () => {
   const result: ReactNode[] = [];
   const addBlank = () => result.push(<Box></Box>);
   for (let c = 0; c < kids.length; c++) {
