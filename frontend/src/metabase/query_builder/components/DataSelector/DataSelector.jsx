@@ -1100,7 +1100,7 @@ const DataSelector = _.compose(
   }),
   Search.loadList({
     query: {
-      models: "metric",
+      models: ["metric"],
       limit: 1,
     },
     listName: "metrics",
