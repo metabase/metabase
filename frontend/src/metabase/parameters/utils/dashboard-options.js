@@ -43,6 +43,22 @@ export function getDashboardParameterSections() {
   ].filter(Boolean);
 }
 
+export function getParameterSectionsBySectionAndOperatorId() {
+  const sections = getDashboardParameterSections();
+
+  const map = Object.fromEntries(
+    sections.map(section => {
+      const options = section.options;
+      const optionsByType = Object.fromEntries(
+        options.map(option => [option.type, option]),
+      );
+      return [section.id, optionsByType];
+    }),
+  );
+
+  return map;
+}
+
 export function getDefaultOptionForParameterSection() {
   const sections = getDashboardParameterSections();
 

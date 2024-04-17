@@ -6,6 +6,7 @@ import { useDispatch } from "metabase/lib/redux";
 import {
   getDashboardParameterSections,
   getDefaultOptionForParameterSection,
+  getParameterSectionsBySectionAndOperatorId,
 } from "metabase/parameters/utils/dashboard-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
@@ -54,6 +55,8 @@ export interface ParameterSettingsProps {
 }
 
 const parameterSections = getDashboardParameterSections();
+const parameterSectionsById = getParameterSectionsBySectionAndOperatorId();
+
 const dataTypeSectionsData = parameterSections.map(section => ({
   label: section.name,
   value: section.id,
@@ -122,13 +125,13 @@ export const ParameterSettings = ({
   };
 
   const handleOperatorChange = (operatorType: string) => {
-    const option = parameterSections
-      .find(section => section.id === sectionId)
-      ?.options.find(opt => opt.type === operatorType);
-
-    if (option) {
-      onChangeType(option);
+    if (!sectionId) {
+      return;
     }
+
+    const option = parameterSectionsById[sectionId][operatorType];
+
+    onChangeType(option);
   };
 
   const filterOperatorData = useMemo(() => {
