@@ -62,7 +62,7 @@ function DashCardPlaceholderInner({
             dashboard.collection_id
               ? {
                   id: dashboard.collection_id,
-                  model: "dashboard",
+                  model: "collection",
                 }
               : undefined
           }

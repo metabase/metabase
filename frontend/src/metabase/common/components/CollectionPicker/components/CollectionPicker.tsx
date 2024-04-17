@@ -61,7 +61,7 @@ export const CollectionPickerInner = (
     error,
     isLoading: loadingCurrentCollection,
   } = useCollectionQuery({
-    id: (isValidCollectionId(initialValue?.id) && initialValue?.id) || "root",
+    id: isValidCollectionId(initialValue?.id) ? initialValue?.id : "root",
     enabled: !!initialValue?.id,
   });
 
@@ -179,7 +179,7 @@ export const CollectionPickerInner = (
   );
 
   if (error) {
-    <LoadingAndErrorWrapper error={error} />;
+    return <LoadingAndErrorWrapper error={error} />;
   }
 
   if (loadingCurrentCollection) {

@@ -25,7 +25,7 @@ interface QuestionPickerModalProps {
   onClose: () => void;
   options?: QuestionPickerOptions;
   value?: Pick<QuestionPickerItem, "id" | "model">;
-  models?: [QuestionPickerModel, ...QuestionPickerModel[]];
+  models?: QuestionPickerModel[];
 }
 
 const canSelectItem = (
