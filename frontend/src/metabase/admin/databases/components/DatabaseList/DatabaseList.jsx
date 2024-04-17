@@ -83,7 +83,7 @@ export default class DatabaseList extends Component {
               className={cx(
                 ButtonsS.Button,
                 ButtonsS.ButtonPrimary,
-                "float-right",
+                CS.floatRight,
               )}
             >{t`Add database`}</Link>
           )}
