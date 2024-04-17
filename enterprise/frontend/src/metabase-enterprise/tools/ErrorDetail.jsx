@@ -155,7 +155,7 @@ function ErrorDetail(props) {
     <div>
       <Button
         primary
-        className="float-right"
+        className={CS.floatRight}
         onClick={() => errorRetry(cardId)}
       >
         {t`Rerun this question`}
