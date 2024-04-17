@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, leftSidebar } from "e2e/support/helpers";
+import { restore, leftSidebar, echartsContainer } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -64,6 +64,8 @@ describe("scenarios > question > trendline", () => {
       cy.findByText("Trend line").click();
     });
     // ensure that two trend lines are present
-    cy.get("g.trend path.line").should("have.length", 2);
+    echartsContainer()
+      .find("path[stroke-dasharray='5,5']")
+      .should("have.length", 2);
   });
 });
