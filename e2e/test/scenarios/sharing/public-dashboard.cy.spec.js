@@ -249,10 +249,12 @@ describe("scenarios > public > dashboard", () => {
   it("should render when a filter passed with value starting from '0' (metabase#41483)", () => {
     cy.get("@dashboardId").then(id => {
       visitPublicDashboard(id, {
-        params: { number: "02" },
+        params: { text: "002" },
       });
     });
 
-    cy.url().should("include", "number=2");
+    cy.url().should("include", "text=002");
+
+    filterWidget().findByText("002").should("be.visible");
   });
 });
