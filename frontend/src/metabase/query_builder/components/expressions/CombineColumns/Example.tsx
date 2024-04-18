@@ -25,6 +25,7 @@ export const Example = ({ example }: Props) => {
         <Text
           size="sm"
           style={{ fontFamily: "Monaco, monospace", minHeight: "1rem" }}
+          data-testid="combine-example"
         >
           {example}
         </Text>

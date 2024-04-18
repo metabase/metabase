@@ -133,7 +133,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     };
 
     return (
-      <Container>
+      <Container data-testid="expression-editor">
         <ExpressionWidgetHeader
           title={t`Select columns to combine`}
           onBack={handleCancel}
@@ -185,6 +185,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           <FieldLabel htmlFor="expression-name">{t`Name`}</FieldLabel>
           <Input
             id="expression-name"
+            data-testid="expression-name"
             type="text"
             value={name}
             placeholder={t`Something nice and descriptive`}
