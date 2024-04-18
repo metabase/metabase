@@ -1,9 +1,10 @@
 import classNames from "classnames";
-import type { FocusEvent, MouseEvent, KeyboardEvent } from "react";
-import { useRef, useState, useMemo } from "react";
+import type { FocusEvent, MouseEvent, KeyboardEvent, ReactNode } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { Button, Icon, Input, Popover, FocusTrap } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -63,7 +64,7 @@ export function ColumnPicker({
 
   const dropdown = (
     <FocusTrap active={open}>
-      <div onBlur={handleBlur}>
+      <Dropdown onBlur={handleBlur}>
         <QueryColumnPicker
           query={query}
           stageIndex={stageIndex}
@@ -73,7 +74,7 @@ export function ColumnPicker({
           checkIsColumnSelected={item => item.column === value}
           width="100%"
         />
-      </div>
+      </Dropdown>
     </FocusTrap>
   );
 
@@ -115,4 +116,24 @@ export function ColumnPicker({
       </Popover>
     </Input.Wrapper>
   );
+}
+
+// Hack to prevent parent TippyPopover from closing when selecting an item
+// TODO: remove when TippyPopover is no longer used
+function Dropdown({
+  children,
+  onBlur,
+}: {
+  children: ReactNode;
+  onBlur: (evt: FocusEvent<HTMLDivElement>) => void;
+}) {
+  const { setupCloseHandler, removeCloseHandler } =
+    useSequencedContentCloseHandler();
+
+  useEffect(() => {
+    setupCloseHandler(document.body, () => undefined);
+    return () => removeCloseHandler();
+  }, [setupCloseHandler, removeCloseHandler]);
+
+  return <div onBlur={onBlur}>{children}</div>;
 }
