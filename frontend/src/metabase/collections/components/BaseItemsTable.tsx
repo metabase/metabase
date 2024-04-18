@@ -13,9 +13,11 @@ import {
   BulkSelectWrapper,
 } from "./BaseItemsTable.styled";
 import BaseTableItem, {BaseTableItemProps} from "./BaseTableItem";
-import type {Collection, Database} from "metabase-types/api";
+import type {Bookmark, Collection, CollectionItem, } from "metabase-types/api";
 import type {ItemWithLastEditInfo} from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
 import type {HTMLAttributes, ReactNode} from "react";
+import type {CreateBookmark, DeleteBookmark, OnCopy, OnMove} from "../types";
+import type Database from "metabase-lib/v1/metadata/Database";
 
 type SortingOptions = {
   sort_column: string;
@@ -70,13 +72,13 @@ const SortableColumnHeader = ({
 }
 
 interface BaseItemsTableProps {
-  items: ListableItem[];
-  databases?: Database[]
-  bookmarks?: any[];
-  createBookmark?: () => void;
-  deleteBookmark?: () => void;
+  items: CollectionItem[];
+  databases: Database[]
+  bookmarks?: Bookmark[];
+  createBookmark?: CreateBookmark;
+  deleteBookmark?: DeleteBookmark;
   collection?: Partial<Collection>; // TODO: consider: Partial seems needed because {} is the default value
-  selectedItems?: ListableItem[];
+  selectedItems?: CollectionItem[];
   hasUnselected?: boolean;
   isPinned?: boolean;
   renderItem?: (props: ItemRendererProps) => JSX.Element;
@@ -85,21 +87,16 @@ interface BaseItemsTableProps {
   onToggleSelected?: (item: any) => void;
   onSelectAll?: () => void;
   onSelectNone?: () => void;
-  onCopy?: () => void;
-  onMove?: () => void;
+  onCopy?: OnCopy;
+  onMove?: OnMove
   onDrop?: () => void;
   getIsSelected?: (item: any) => boolean;
   /** Used for dragging */
   headless?: boolean;
 }
 
-export type ListableItem = {
-  model: string;
-  id: number;
-} & Partial<ItemWithLastEditInfo>;
-
 type ItemRendererProps = {
-  item: ListableItem;
+  item: CollectionItem;
 } & BaseTableItemProps;
 
 const defaultItemRenderer = ({ item, ...props }: ItemRendererProps) => {
@@ -131,7 +128,7 @@ const BaseItemsTable = ({
   headless = false,
   ...props
 } : BaseItemsTableProps) => {
-  const itemRenderer = (item: ListableItem) =>
+  const itemRenderer = (item: CollectionItem) =>
     renderItem({
       databases,
       bookmarks,

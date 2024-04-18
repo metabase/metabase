@@ -17,6 +17,12 @@ import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { EntityItemMenu } from "./ActionMenu.styled";
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+  OnCopy,
+  OnMove,
+} from "metabase/collections/types";
 
 interface OwnProps {
   className?: string;
@@ -24,10 +30,10 @@ interface OwnProps {
   collection: Collection;
   databases?: Database[];
   bookmarks?: Bookmark[];
-  onCopy: (items: CollectionItem[]) => void;
-  onMove: (items: CollectionItem[]) => void;
-  createBookmark?: (id: string, collection: string) => void;
-  deleteBookmark?: (id: string, collection: string) => void;
+  onCopy: OnCopy;
+  onMove: OnMove;
+  createBookmark?: CreateBookmark;
+  deleteBookmark?: DeleteBookmark;
 }
 
 interface StateProps {

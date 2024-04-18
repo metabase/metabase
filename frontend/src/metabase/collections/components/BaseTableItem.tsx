@@ -26,6 +26,7 @@ import {
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { CollectionItem } from "./BaseItemsTable";
+import type { CreateBookmark, DeleteBookmark, OnCopy, OnMove } from "../types";
 
 // BaseTableItem.propTypes = {
 //   databases: PropTypes.arrayOf(PropTypes.object),
@@ -48,19 +49,19 @@ import type { CollectionItem } from "./BaseItemsTable";
 export type BaseTableItemProps = {
   databases: Database[];
   bookmarks?: Bookmark[];
-  createBookmark: (item: CollectionItem) => void; // TODO: not sure the parameter is a CollectionItem
-  deleteBookmark: (item: CollectionItem) => void; // TODO: not sure the parameter is a CollectionItem
+  createBookmark?: CreateBookmark;
+  deleteBookmark?: DeleteBookmark;
   item: CollectionItem;
   draggable?: boolean;
   collection?: Partial<Collection>; // TODO: not sure what the type is, but {} is the default value
-  selectedItems: CollectionItem[];
-  isSelected: boolean;
-  isPinned: boolean;
-  linkProps: any;
-  onCopy: () => void; // TODO: Not sure what the parameter is
-  onMove: () => void; // TODO: Not sure what the parameter is
-  onDrop: () => void; // TODO: Not sure what the parameter is
-  onToggleSelected: (item: CollectionItem) => void;
+  selectedItems?: CollectionItem[];
+  isSelected?: boolean;
+  isPinned?: boolean;
+  linkProps?: any;
+  onCopy?: OnCopy;
+  onMove?: OnMove;
+  onDrop?: () => void; // TODO: Not sure what the parameter is
+  onToggleSelected?: (item: CollectionItem) => void;
 };
 
 export const BaseTableItem = ({
@@ -88,7 +89,8 @@ export const BaseTableItem = ({
     const canSelect =
       collection.can_write && typeof onToggleSelected === "function";
 
-    const lastEditInfo = 'last-edit-info' in item ? item["last-edit-info"] : null;
+    const lastEditInfo =
+      "last-edit-info" in item ? item["last-edit-info"] : null;
     const lastEditedBy = getLastEditedBy(lastEditInfo);
     const lastEditedAt = lastEditInfo
       ? moment(lastEditInfo.timestamp).format("MMMM DD, YYYY")
