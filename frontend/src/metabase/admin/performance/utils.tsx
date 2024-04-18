@@ -163,7 +163,9 @@ const delay = (milliseconds: number) =>
 export const resolveSmoothly = async (
   promise: Promise<any>,
   timeout: number = 300,
-) => await Promise.all([delay(timeout), promise]);
+) => {
+  return await Promise.all([delay(timeout), promise]);
+};
 
 export const getFrequencyFromCron = (cron: string) => {
   const scheduleType = cronToScheduleSettings(cron)?.schedule_type;

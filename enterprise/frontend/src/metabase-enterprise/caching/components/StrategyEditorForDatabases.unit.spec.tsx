@@ -63,33 +63,12 @@ describe("StrategyEditorForDatabases", () => {
       screen.queryByRole("button", { name: "Save changes" }),
     ).not.toBeInTheDocument();
 
-    const multiplierStrategyRadioButton = await screen.findByRole("radio", {
-      name: /Query duration multiplier/i,
-    });
-    multiplierStrategyRadioButton.click();
-
-    expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
-
-    expect(await getSaveButton()).toBeInTheDocument();
-
-    await act(async () => {
-      await changeInput(/minimum query duration/i, 1, 5);
-      await changeInput(/multiplier/i, 10, 3);
-    });
-
-    (await screen.findByTestId("strategy-form-submit-button")).click();
-
-    expect(
-      await screen.findByLabelText(
-        `Edit default policy (currently: Query duration multiplier)`,
-      ),
-    ).toBeInTheDocument();
-
     await act(async () => {
       const durationStrategyRadioButton = await screen.findByRole("radio", {
         name: /after a specific number of hours/i,
       });
-      durationStrategyRadioButton.click();
+      // 'Hours' is the default
+      expect(durationStrategyRadioButton).toBeChecked();
 
       expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
 
@@ -109,13 +88,40 @@ describe("StrategyEditorForDatabases", () => {
       noCacheStrategyRadioButton.click();
 
       expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+
+      (await screen.findByTestId("strategy-form-submit-button")).click();
+    });
+
+    expect(
+      await screen.findByRole("button", { name: /Saved/i }),
+    ).toBeInTheDocument();
+
+    expect(await screen.findByLabelText(/Edit default policy/)).toHaveAttribute(
+      "aria-label",
+      "Edit default policy (currently: No caching)",
+    );
+
+    await act(async () => {
+      const multiplierStrategyRadioButton = await screen.findByRole("radio", {
+        name: /Query duration multiplier/i,
+      });
+      multiplierStrategyRadioButton.click();
+    });
+
+    expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
+
+    expect(await getSaveButton()).toBeInTheDocument();
+
+    await act(async () => {
+      await changeInput(/minimum query duration/i, 1, 5);
+      await changeInput(/multiplier/i, 10, 3);
     });
 
     (await screen.findByTestId("strategy-form-submit-button")).click();
 
     expect(
       await screen.findByLabelText(
-        `Edit default policy (currently: No caching)`,
+        `Edit default policy (currently: Query duration multiplier)`,
       ),
     ).toBeInTheDocument();
   });
@@ -129,46 +135,6 @@ describe("StrategyEditorForDatabases", () => {
     expect(
       screen.queryByRole("button", { name: "Save changes" }),
     ).not.toBeInTheDocument();
-
-    const multiplierStrategyRadioButton = await screen.findByRole("radio", {
-      name: /Query duration multiplier/i,
-    });
-    expect(multiplierStrategyRadioButton).toBeChecked();
-
-    expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
-
-    await act(async () => {
-      await changeInput(/minimum query duration/i, 1, 5);
-      await changeInput(/multiplier/i, 10, 3);
-    });
-
-    (await screen.findByTestId("strategy-form-submit-button")).click();
-
-    expect(
-      await screen.findByLabelText(
-        `Edit policy for database 'Database 1' (currently: Query duration multiplier)`,
-      ),
-    ).toBeInTheDocument();
-
-    await act(async () => {
-      const durationStrategyRadioButton = await screen.findByRole("radio", {
-        name: /specific number of hours/i,
-      });
-      durationStrategyRadioButton.click();
-
-      expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
-
-      await changeInput(/Cache results for this many hours/, 24, 48);
-    });
-
-    (await screen.findByTestId("strategy-form-submit-button")).click();
-
-    expect(
-      await screen.findByLabelText(/Edit policy for database 'Database 1'/),
-    ).toHaveAttribute(
-      "aria-label",
-      "Edit policy for database 'Database 1' (currently: Hours)",
-    );
 
     await act(async () => {
       const noCacheStrategyRadioButton = await screen.findByRole("radio", {
@@ -184,6 +150,49 @@ describe("StrategyEditorForDatabases", () => {
     expect(
       await screen.findByLabelText(
         `Edit policy for database 'Database 1' (currently: No caching)`,
+      ),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      const durationStrategyRadioButton = await screen.findByRole("radio", {
+        name: /specific number of hours/i,
+      });
+      durationStrategyRadioButton.click();
+
+      expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
+
+      await changeInput(/Cache results for this many hours/, 24, 48);
+    });
+    (await screen.findByTestId("strategy-form-submit-button")).click();
+    expect(
+      await screen.findByRole("button", { name: /Saved/i }),
+    ).toBeInTheDocument();
+
+    expect(
+      await screen.findByLabelText(/Edit policy for database 'Database 1'/),
+    ).toHaveAttribute(
+      "aria-label",
+      "Edit policy for database 'Database 1' (currently: Hours)",
+    );
+
+    // Switch to Query duration multiplier strategy
+    const multiplierStrategyRadioButton = await screen.findByRole("radio", {
+      name: /Query duration multiplier/i,
+    });
+    multiplierStrategyRadioButton.click();
+
+    expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
+
+    await act(async () => {
+      await changeInput(/minimum query duration/i, 1, 5);
+      await changeInput(/multiplier/i, 10, 3);
+    });
+
+    (await screen.findByTestId("strategy-form-submit-button")).click();
+
+    expect(
+      await screen.findByLabelText(
+        `Edit policy for database 'Database 1' (currently: Query duration multiplier)`,
       ),
     ).toBeInTheDocument();
   });

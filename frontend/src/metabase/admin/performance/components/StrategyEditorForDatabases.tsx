@@ -23,7 +23,6 @@ import {
   Strategies,
   translateConfigToAPI,
 } from "../strategies";
-import { resolveSmoothly } from "../utils";
 
 import { Panel, TabWrapper } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
@@ -146,8 +145,7 @@ const StrategyEditorForDatabases_Base = ({
         };
 
         const translatedConfig = translateConfigToAPI(newConfig);
-        const update = CacheConfigApi.update(translatedConfig);
-        await resolveSmoothly(update);
+        await CacheConfigApi.update(translatedConfig);
         setConfigs([...otherConfigs, newConfig]);
       }
     },
