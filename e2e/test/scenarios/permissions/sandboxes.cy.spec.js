@@ -5,7 +5,6 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  modifyPermission,
   describeEE,
   modal,
   openOrdersTable,
@@ -40,8 +39,6 @@ const {
 } = SAMPLE_DATABASE;
 
 const { DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
-
-const DATA_ACCESS_PERMISSION_INDEX = 0;
 
 describeEE("formatting > sandboxes", () => {
   describe("admin", () => {
