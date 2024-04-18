@@ -601,9 +601,64 @@
   [db table]
   (nil? (can-update-error db table)))
 
+(defn- can-delete-error
+  "Returns an ExceptionInfo object if the user cannot delete the given upload. Returns nil otherwise."
+  [table]
+  (cond
+    (not (:is_upload table))
+    (ex-info (tru "The table must be an uploaded table.")
+             {:status-code 422})
+
+    (not (mi/can-write? table))
+    (ex-info (tru "You don''t have permissions to do that.")
+             {:status-code 403})))
+
+(defn- check-can-delete
+  "Throws an error if the given table is not an upload, or if the user does not have permission to delete it."
+  [table]
+  ;; For now anyone that can update a table is allowed to delete it.
+  (when-let [error (can-delete-error table)]
+    (throw error)))
+
 ;;; +--------------------------------------------------
 ;;; |  public interface for updating an uploaded table
 ;;; +--------------------------------------------------
+
+(defn delete-upload!
+  "Delete the given table from both the app-db and the customer database."
+  [table & {:keys [archive-cards?]}]
+  (let [database   (table/database table)
+        driver     (driver.u/database->driver database)
+        table-name (table-identifier table)]
+    (check-can-delete table)
+
+    ;; Attempt to delete the underlying data from the customer database.
+    ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still
+    ;; visible to administrators and the operation is easy to retry again later.
+    (driver/drop-table! driver (:id database) table-name)
+
+    ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
+    (t2/update! :model/Table :id (:id table) {:active false})
+
+    ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
+    ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
+    ;; relies on their absence from the tables being described during the database sync itself.
+    ;; TODO update the [[metabase.sync]] module to support direct per-table clean-up
+    ;; Ideally this will also clean up more the metadata which we had created around it, e.g. advanced field values.
+    #_(future (sync/retire-table! (assoc table :active false)))
+
+    ;; Archive the related cards if the customer opted in.
+    ;;
+    ;; For now, this only covers instances where the card has this as its "primary table", i.e.
+    ;; 1. A MBQL question or model that has this table as their first or only data source, or
+    ;; 2. A MBQL question or model that depends on such a model as their first or only data source.
+    ;; Note that this does not include cases where we join to this table, or even native queries which depend .
+    (when archive-cards?
+      (t2/update-returning-pks! :model/Card
+                                {:table_id (:id table) :archived false}
+                                {:archived true}))
+
+    :done))
 
 (def update-action-schema
   "The :action values supported by [[update-csv!]]"

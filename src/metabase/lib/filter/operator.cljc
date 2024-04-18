@@ -21,7 +21,7 @@
     :short                tag
     :display-name-variant display-name-style}))
 
-(def ^:private key-operators
+(def ^:private numeric-key-operators
   [(operator-def :=)
    (operator-def :!=)
    (operator-def :>)
@@ -112,6 +112,11 @@
    (operator-def :<=)
    (operator-def :!=)])
 
+(defn- key-operators-for [column]
+  (if (lib.types.isa/field-type? :metabase.lib.types.constants/string column)
+    text-operators
+    numeric-key-operators))
+
 (mu/defn filter-operators :- [:sequential ::lib.schema.filter/operator]
   "The list of available filter operators.
    The order of operators is relevant for the front end.
@@ -122,8 +127,8 @@
   ;; on the effective-type rather than the semantic-type, eg boolean and number cannot become
   ;; string if semantic type is type/Category
   (condp lib.types.isa/field-type? column
-    :metabase.lib.types.constants/primary_key key-operators
-    :metabase.lib.types.constants/foreign_key key-operators
+    :metabase.lib.types.constants/primary_key (key-operators-for column)
+    :metabase.lib.types.constants/foreign_key (key-operators-for column)
     :metabase.lib.types.constants/location    location-operators
     :metabase.lib.types.constants/temporal    temporal-operators
     :metabase.lib.types.constants/coordinate  coordinate-operators

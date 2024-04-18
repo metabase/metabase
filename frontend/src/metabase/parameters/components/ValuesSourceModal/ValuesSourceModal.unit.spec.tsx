@@ -306,12 +306,10 @@ describe("ValuesSourceModal", () => {
         screen.getByRole("radio", { name: "From another model or question" }),
       );
       await userEvent.click(
-        screen.getByRole("button", { name: /Pick a model or question…/ }),
+        screen.getByRole("button", { name: /Pick a model or question/ }),
       );
 
-      expect(
-        await screen.findByPlaceholderText("Search for a question or model"),
-      ).toBeInTheDocument();
+      expect(await screen.findByPlaceholderText(/Search…/)).toBeInTheDocument();
     });
 
     it("should display a message when there is an error in the underlying query", async () => {

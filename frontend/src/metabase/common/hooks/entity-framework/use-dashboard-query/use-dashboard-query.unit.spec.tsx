@@ -31,7 +31,7 @@ const setup = () => {
   renderWithProviders(<TestComponent />);
 };
 
-describe("useDatabaseQuery", () => {
+describe("useDashboardQuery", () => {
   it("should be initially loading", () => {
     setup();
     expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
