@@ -8,7 +8,7 @@
   text-decoration: none;
   padding: 0.5rem 0.75rem;
   background: transparent;
-  border: 1px solid color-mod(var(--color-border) blackness(5%));
+  border: 1px solid color-mod(var(--mb-color-border) blackness(5%));
   color: var(--color-text-dark);
   cursor: pointer;
   font-weight: bold;
@@ -18,7 +18,7 @@
 
 .Button:hover {
   color: var(--color-brand);
-  border-color: color-mod(var(--color-border) blackness(12%));
+  border-color: color-mod(var(--mb-color-border) blackness(12%));
   background: var(--mb-color-bg-light);
   transition: all 200ms linear;
   transition-property: color, border-color, background-color;
@@ -91,7 +91,7 @@
 .ButtonWhite {
   background-color: white;
   color: var(--color-text-dark);
-  border-color: var(--color-border);
+  border-color: var(--mb-color-border);
 }
 
 .ButtonBorderless {
@@ -115,7 +115,7 @@
 .ButtonGroup {
   display: inline-block;
   border-radius: var(--default-button-border-radius);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--mb-color-border);
   overflow: hidden;
   clear: both;
 }

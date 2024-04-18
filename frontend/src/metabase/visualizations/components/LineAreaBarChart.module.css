@@ -25,7 +25,7 @@
 
 .LineAreaBarChart :global(.dc-chart .axis .domain),
 .LineAreaBarChart :global(.dc-chart .axis .tick line) {
-  stroke: var(--color-border);
+  stroke: var(--mb-color-border);
 }
 
 .LineAreaBarChart :global(.dc-chart .axis .tick text) {

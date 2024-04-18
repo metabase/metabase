@@ -122,15 +122,15 @@
   height: 8px;
   bottom: 6px;
   right: 6px;
-  border-bottom: 2px solid var(--color-border);
-  border-right: 2px solid var(--color-border);
+  border-bottom: 2px solid var(--mb-color-border);
+  border-right: 2px solid var(--mb-color-border);
   border-bottom-right-radius: 2px;
   transition: opacity 0.2s;
   opacity: 0.01;
 }
 
 .DashEditing .DashCard :global(.react-resizable-handle:hover::after) {
-  border-color: var(--color-border);
+  border-color: var(--mb-color-border);
 }
 
 .DashEditing .DashCard:hover :global(.react-resizable-handle::after) {

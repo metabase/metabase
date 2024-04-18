@@ -24,7 +24,7 @@
 
 .TableInteractiveHeader {
   box-sizing: border-box;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--mb-color-border);
 }
 
 .TableInteractive .TableInteractiveCellWrapper {
@@ -34,7 +34,7 @@
   border-top: 1px solid transparent;
   border-left: 1px solid transparent;
   border-right: 1px solid transparent;
-  border-bottom: 1px solid color-mod(var(--color-border) alpha(-70%));
+  border-bottom: 1px solid color-mod(var(--mb-color-border) alpha(-70%));
 }
 
 .TableInteractive .TableInteractiveHeader,
@@ -63,7 +63,7 @@
 /* pivot */
 .TableInteractive.TableInteractivePivot
   .TableInteractiveCellWrapperFirstColumn {
-  border-right: 1px solid var(--color-border);
+  border-right: 1px solid var(--mb-color-border);
 }
 
 .TableInteractive

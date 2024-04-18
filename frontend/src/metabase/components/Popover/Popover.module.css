@@ -54,7 +54,7 @@
 :global(.tippy-box[data-theme~="popover"]) {
   font-size: inherit;
   color: var(--color-text-default);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--mb-color-border);
   box-shadow: 0 4px 10px var(--color-shadow);
   background-color: var(--mb-color-bg-white);
   border-radius: 6px;
@@ -102,7 +102,7 @@
   background: white;
   position: absolute;
   bottom: 0;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--mb-color-border);
   border-bottom-right-radius: 6px;
   border-bottom-left-radius: 6px;
   padding-top: 8px;
@@ -116,7 +116,7 @@
 /* create a slightly larger arrow on the top for border purposes */
 :global(.tether-element-attached-top) .PopoverBodyWithArrow::before {
   top: -20px;
-  border-bottom-color: var(--color-border);
+  border-bottom-color: var(--mb-color-border);
 }
 
 /* create a smaller inset arrow on the top */
@@ -128,7 +128,7 @@
 /* create a slightly larger arrow on the bottom for border purposes */
 :global(.tether-element-attached-bottom) .PopoverBodyWithArrow::before {
   bottom: -20px;
-  border-top-color: var(--color-border);
+  border-top-color: var(--mb-color-border);
 }
 
 /* create a smaller inset arrow on the bottom */
