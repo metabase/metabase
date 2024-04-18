@@ -190,11 +190,11 @@
 
 /* when in night mode code snippets should have a more readable background-color */
 .DashboardNight pre code {
-  background-color: color-mod(var(--color-bg-white) alpha(-86%));
+  background-color: color-mod(var(--mb-color-bg-white) alpha(-86%));
 }
 
 .DashboardNight :global(.text-card-markdown code) {
-  background-color: color-mod(var(--color-bg-white) alpha(-86%));
+  background-color: color-mod(var(--mb-color-bg-white) alpha(-86%));
 }
 
 .Dashboard :global(text.value-label),

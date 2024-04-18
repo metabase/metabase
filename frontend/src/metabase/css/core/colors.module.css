@@ -16,7 +16,7 @@
   --mb-color-bg-dark: #93a1ab;
   --mb-color-bg-medium: #edf2f5;
   --mb-color-bg-light: #f9fbfc;
-  --color-bg-white: #fff;
+  --mb-color-bg-white: #fff;
   --color-bg-yellow: #fffcf2;
   --color-shadow: rgba(0, 0, 0, 0.13);
   --color-border: #eeecec;
@@ -46,7 +46,7 @@
 }
 
 .bgErrorInput {
-  background-color: var(--color-bg-white);
+  background-color: var(--mb-color-bg-white);
 }
 
 .textSlate {
@@ -87,7 +87,7 @@
 }
 
 .bgWhite {
-  background-color: var(--color-bg-white);
+  background-color: var(--mb-color-bg-white);
 }
 
 .bgLightBlue {
