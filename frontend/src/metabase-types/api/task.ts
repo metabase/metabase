@@ -1,8 +1,9 @@
+import type { DatabaseId } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 
 export interface Task {
   id: number;
-  db_id: number | null;
+  db_id: DatabaseId | null;
   duration: number;
   started_at: string;
   ended_at: string;
