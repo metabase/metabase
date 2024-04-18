@@ -17,12 +17,7 @@ import {
   type PickerState,
 } from "../../EntityPicker";
 import type { DashboardPickerOptions, DashboardPickerItem } from "../types";
-import {
-  generateKey,
-  getCollectionIdPath,
-  getStateFromIdPath,
-  isFolder,
-} from "../utils";
+import { getCollectionIdPath, getStateFromIdPath, isFolder } from "../utils";
 
 export const defaultOptions: DashboardPickerOptions = {
   showPersonalCollections: true,
@@ -197,7 +192,6 @@ const DashboardPickerInner = (
     <NestedItemPicker
       isFolder={isFolder}
       options={options}
-      generateKey={generateKey}
       onFolderSelect={onFolderSelect}
       onItemSelect={handleItemSelect}
       path={path}

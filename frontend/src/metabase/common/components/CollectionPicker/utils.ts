@@ -100,9 +100,6 @@ export const isFolder = (item: CollectionPickerItem): boolean => {
   );
 };
 
-export const generateKey = (query?: ListCollectionItemsRequest) =>
-  JSON.stringify(query ?? "root");
-
 export const getParentCollectionId = (
   location?: string | null,
 ): CollectionId => {
