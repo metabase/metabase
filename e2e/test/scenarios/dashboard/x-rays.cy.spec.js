@@ -11,7 +11,7 @@ import {
   getDashboardCards,
   saveDashboard,
   lineChartCircle,
-  chartPathWithColor,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -116,7 +116,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
           { visitQuestion: true },
         );
 
-        chartPathWithColor("#509EE3").first().click({ force: true });
+        chartPathWithFillColor("#509EE3").first().click({ force: true });
 
         popover().within(() => {
           cy.findByText("Automatic insights…").click();
@@ -160,7 +160,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
         display: "bar",
       });
 
-      chartPathWithColor("#509EE3").first().click();
+      chartPathWithFillColor("#509EE3").first().click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Automatic insights…").click();
@@ -293,8 +293,8 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       .should("be.visible");
 
     // Bars
-    chartPathWithColor("#509EE3").should("have.length", 5);
-    chartPathWithColor("#509EE3").eq(0).realHover();
+    chartPathWithFillColor("#509EE3").should("have.length", 5);
+    chartPathWithFillColor("#509EE3").eq(0).realHover();
 
     popover().within(() => {
       cy.findByText("Affiliate").should("be.visible");

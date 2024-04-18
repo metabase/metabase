@@ -40,6 +40,8 @@ import goalLineDisabled from "./goal-line-disabled.json";
 import goalLineOutOfBounds37848 from "./goal-line-out-of-bounds-37848.json";
 import goalLineUnderSeries38824 from "./goal-line-under-series-38824.json";
 import goalVerySmall from "./goal-very-small.json";
+import imageCutOff37275 from "./image-cut-off-37275.json";
+import incorrectLabelYAxisSplit41285 from "./incorrect-label-y-axis-split-41285.json";
 import lineCustomYAxisRangeEqualsExtents from "./line-custom-y-axis-range-equals-extents.json";
 import lineFullyNullDimension37902 from "./line-fully-null-dimension-37902.json";
 import lineLinearXScaleUnsorted from "./line-linear-x-scale-unsorted.json";
@@ -152,4 +154,6 @@ export const data = {
   barRelativeDatetimeOrdinalScale,
   barTwoDaysOfWeek,
   areaStackedAutoDataLabels,
+  imageCutOff37275,
+  incorrectLabelYAxisSplit41285,
 };
