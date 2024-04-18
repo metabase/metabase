@@ -11,9 +11,9 @@ import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { Icon, Box } from "metabase/ui";
 
+import styles from "./AccordionListCell.module.css";
 import {
   ListCellItem,
-  ListCellHeader,
   FilterContainer,
   Content,
   IconWrapper,
@@ -59,6 +59,9 @@ export const AccordionListCell = ({
     isLastSection,
   } = row;
   let content;
+  let borderTop;
+  let borderBottom;
+
   if (type === "header") {
     if (alwaysExpanded) {
       content = (
@@ -79,11 +82,16 @@ export const AccordionListCell = ({
     } else {
       const icon = renderSectionIcon(section);
       const name = section.name;
+
+      borderTop =
+        section.type === "back" ||
+        section.type === "action" ||
+        section.items?.length > 0;
+      borderBottom = section.type === "back";
+
       content = (
-        <ListCellHeader
+        <div
           data-element-id="list-section-header"
-          borderTop={section.type === "back" || section.items?.length > 0}
-          borderBottom={!isLastSection && section.type === "back"}
           className={cx(
             ListS.ListSectionHeader,
             CS.px2,
@@ -136,16 +144,17 @@ export const AccordionListCell = ({
               />
             </span>
           )}
-        </ListCellHeader>
+        </div>
       );
     }
   } else if (type === "action") {
     const icon = renderSectionIcon(section);
     const name = section.name;
+    borderTop = true;
+    borderBottom = !isLastSection;
+
     content = (
-      <ListCellHeader
-        borderTop
-        borderBottom={!isLastSection}
+      <div
         className={cx(
           "List-section-header",
           CS.px2,
@@ -182,7 +191,7 @@ export const AccordionListCell = ({
         <IconWrapper>
           <Icon name="chevronright" size={12} />
         </IconWrapper>
-      </ListCellHeader>
+      </div>
     );
   } else if (type === "header-hidden") {
     content = <div className={CS.my1} />;
@@ -199,6 +208,7 @@ export const AccordionListCell = ({
       </div>
     );
   } else if (type === "search") {
+    borderBottom = true;
     content = (
       <FilterContainer>
         <ListSearchField
@@ -305,6 +315,8 @@ export const AccordionListCell = ({
       className={cx(section.className, {
         [ListS.ListSectionExpanded]: sectionIsExpanded(sectionIndex),
         [ListS.ListSectionToggleAble]: canToggleSections,
+        [styles.borderTop]: borderTop,
+        [styles.borderBottom]: borderBottom,
       })}
     >
       {content}

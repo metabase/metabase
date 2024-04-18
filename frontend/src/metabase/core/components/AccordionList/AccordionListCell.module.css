@@ -1,0 +1,15 @@
+.borderTop {
+  border-top: 1px solid var(--color-bg-medium);
+
+  .borderBottom + & {
+    border-top: none;
+  }
+}
+
+.borderBottom {
+  border-bottom: 1px solid var(--color-bg-medium);
+
+  &:last-child {
+    border-top: none;
+  }
+}
