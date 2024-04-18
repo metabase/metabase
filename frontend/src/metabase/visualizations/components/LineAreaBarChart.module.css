@@ -217,7 +217,7 @@
 
 /* brush handles */
 .LineAreaBarChart :global(.dc-chart .brush .resize path) {
-  fill: var(--color-bg-light);
+  fill: var(--mb-color-bg-light);
   stroke: var(--color-text-medium);
 }
 

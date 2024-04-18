@@ -19,7 +19,7 @@
 .Button:hover {
   color: var(--color-brand);
   border-color: color-mod(var(--color-border) blackness(12%));
-  background: var(--color-bg-light);
+  background: var(--mb-color-bg-light);
   transition: all 200ms linear;
   transition-property: color, border-color, background-color;
 }
