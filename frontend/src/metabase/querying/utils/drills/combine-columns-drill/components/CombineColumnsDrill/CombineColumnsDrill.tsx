@@ -17,7 +17,6 @@ import * as Lib from "metabase-lib";
 import type { ColumnAndSeparator } from "../../types";
 import {
   formatSeparator,
-  getColumnOptions,
   getDefaultSeparator,
   getDrillExpressionClause,
   getExample,
@@ -51,10 +50,6 @@ export const CombineColumnsDrill = ({
     originalStageIndex,
   );
   const expressionableColumns = Lib.expressionableColumns(query, stageIndex);
-  const options = useMemo(
-    () => getColumnOptions(query, stageIndex, expressionableColumns),
-    [query, stageIndex, expressionableColumns],
-  );
   const defaultSeparator = getDefaultSeparator(column);
   const [isUsingDefaultSeparator, setIsUsingDefaultSeparator] = useState(true);
   const [columnsAndSeparators, setColumnsAndSeparators] = useState([
@@ -85,7 +80,6 @@ export const CombineColumnsDrill = ({
       getNextColumnAndSeparator(
         expressionableColumns,
         defaultSeparator,
-        options,
         columnsAndSeparators,
       ),
     ]);

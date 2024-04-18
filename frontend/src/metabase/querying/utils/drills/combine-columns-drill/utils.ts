@@ -1,54 +1,24 @@
 import { t } from "ttag";
 
-import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type { Dataset, RowValues } from "metabase-types/api";
 
-import type { ColumnAndSeparator, ColumnOption } from "./types";
-
-export const getColumnOptions = (
-  query: Lib.Query,
-  stageIndex: number,
-  columns: Lib.ColumnMetadata[],
-) => {
-  return columns.map((column, index) => {
-    const info = Lib.displayInfo(query, stageIndex, column);
-    const label = info.displayName;
-    const value = String(index);
-    return { column, label, value };
-  });
-};
-
-export const fromSelectValue = (
-  options: ColumnOption[],
-  value: string | null,
-): Lib.ColumnMetadata => {
-  const index = Number(checkNotNull(value));
-  return options[index].column;
-};
-
-export const toSelectValue = (
-  options: ColumnOption[],
-  column: Lib.ColumnMetadata,
-): string => {
-  const index = options.findIndex(option => option.column === column);
-  return String(index);
-};
+import type { ColumnAndSeparator } from "./types";
 
 export const getNextColumnAndSeparator = (
-  columns: Lib.ColumnMetadata[],
+  expressionableColumns: Lib.ColumnMetadata[],
   defaultSeparator: string,
-  options: ColumnOption[],
   columnsAndSeparators: ColumnAndSeparator[],
 ): ColumnAndSeparator => {
   const lastSeparator = columnsAndSeparators.at(-1)?.separator;
   const separator = lastSeparator ?? defaultSeparator;
-  const defaultColumn = columns[0];
-  const nextUnusedOption = options.find(option => {
-    return columnsAndSeparators.every(({ column }) => column !== option.column);
-  });
-  const column = nextUnusedOption ? nextUnusedOption.column : defaultColumn;
-  return { column, separator };
+
+  const nextUnusedColumn = expressionableColumns.find(candidate =>
+    columnsAndSeparators.every(({ column }) => candidate !== column),
+  );
+
+  const result = nextUnusedColumn ?? expressionableColumns[0];
+  return { column: result, separator };
 };
 
 export const formatSeparator = (separator: string): string => {
