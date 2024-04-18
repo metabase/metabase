@@ -23,26 +23,47 @@ import {
   ModelDetailLink,
   RowActionsContainer,
 } from "./BaseItemsTable.styled";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { CollectionItem } from "./BaseItemsTable";
 
-BaseTableItem.propTypes = {
-  databases: PropTypes.arrayOf(PropTypes.object),
-  bookmarks: PropTypes.arrayOf(PropTypes.object),
-  createBookmark: PropTypes.func,
-  deleteBookmark: PropTypes.func,
-  item: PropTypes.object,
-  draggable: PropTypes.bool,
-  collection: PropTypes.object,
-  selectedItems: PropTypes.arrayOf(PropTypes.object),
-  isSelected: PropTypes.bool,
-  isPinned: PropTypes.bool,
-  linkProps: PropTypes.object,
-  onCopy: PropTypes.func,
-  onMove: PropTypes.func,
-  onDrop: PropTypes.func,
-  onToggleSelected: PropTypes.func,
+// BaseTableItem.propTypes = {
+//   databases: PropTypes.arrayOf(PropTypes.object),
+//   bookmarks: PropTypes.arrayOf(PropTypes.object),
+//   createBookmark: PropTypes.func,
+//   deleteBookmark: PropTypes.func,
+//   item: PropTypes.object,
+//   draggable: PropTypes.bool,
+//   collection: PropTypes.object,
+//   selectedItems: PropTypes.arrayOf(PropTypes.object),
+//   isSelected: PropTypes.bool,
+//   isPinned: PropTypes.bool,
+//   linkProps: PropTypes.object,
+//   onCopy: PropTypes.func,
+//   onMove: PropTypes.func,
+//   onDrop: PropTypes.func,
+//   onToggleSelected: PropTypes.func,
+// };
+
+export type BaseTableItemProps = {
+  databases: Database[];
+  bookmarks?: Bookmark[];
+  createBookmark: (item: CollectionItem) => void; // TODO: not sure the parameter is a CollectionItem
+  deleteBookmark: (item: CollectionItem) => void; // TODO: not sure the parameter is a CollectionItem
+  item: CollectionItem;
+  draggable?: boolean;
+  collection?: Partial<Collection>; // TODO: not sure what the type is, but {} is the default value
+  selectedItems: CollectionItem[];
+  isSelected: boolean;
+  isPinned: boolean;
+  linkProps: any;
+  onCopy: () => void; // TODO: Not sure what the parameter is
+  onMove: () => void; // TODO: Not sure what the parameter is
+  onDrop: () => void; // TODO: Not sure what the parameter is
+  onToggleSelected: (item: CollectionItem) => void;
 };
 
-export function BaseTableItem({
+export const BaseTableItem = ({
   databases,
   bookmarks,
   createBookmark,
@@ -58,7 +79,7 @@ export function BaseTableItem({
   onMove,
   onDrop,
   onToggleSelected,
-}) {
+}: BaseTableItemProps) => {
   const handleSelectionToggled = useCallback(() => {
     onToggleSelected(item);
   }, [item, onToggleSelected]);
@@ -67,7 +88,7 @@ export function BaseTableItem({
     const canSelect =
       collection.can_write && typeof onToggleSelected === "function";
 
-    const lastEditInfo = item["last-edit-info"];
+    const lastEditInfo = 'last-edit-info' in item ? item["last-edit-info"] : null;
     const lastEditedBy = getLastEditedBy(lastEditInfo);
     const lastEditedAt = lastEditInfo
       ? moment(lastEditInfo.timestamp).format("MMMM DD, YYYY")
@@ -183,7 +204,7 @@ export function BaseTableItem({
       {renderRow()}
     </ItemDragSource>
   );
-}
+};
 
 function getLastEditedBy(lastEditInfo) {
   if (!lastEditInfo) {

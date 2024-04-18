@@ -3,14 +3,15 @@ import PropTypes from "prop-types";
 import PinDropZone from "metabase/collections/components/PinDropZone";
 import CS from "metabase/css/core/index.css";
 
-import BaseItemsTable from "./BaseItemsTable";
+import BaseItemsTable, { type ListableItem } from "./BaseItemsTable";
 import { ItemsTableRoot } from "./ItemsTable.styled";
 
-Item.propTypes = {
-  item: PropTypes.object.isRequired,
-};
-
-function Item({ item, ...props }) {
+const Item = ({
+  item,
+  ...props
+}: {
+  item: ListableItem; // FIXME:
+} & BaseItemsTable.ItemProps) => {
   return (
     <BaseItemsTable.Item
       key={`${item.model}-${item.id}`}
@@ -18,15 +19,12 @@ function Item({ item, ...props }) {
       item={item}
     />
   );
-}
-
-ItemsTable.propTypes = {
-  items: PropTypes.arrayOf(PropTypes.object).isRequired,
 };
 
-function ItemsTable(props) {
-  const { items } = props;
-
+const ItemsTable = ({
+  items,
+  ...props
+}: { items: ListableItem[] } & BaseItemsTableProps) => {
   if (items.length === 0) {
     return (
       <ItemsTableRoot>
@@ -41,6 +39,6 @@ function ItemsTable(props) {
       <BaseItemsTable {...props} renderItem={Item} />
     </div>
   );
-}
+};
 
 export default ItemsTable;

@@ -12,34 +12,42 @@ import {
   LastEditedByCol,
   BulkSelectWrapper,
 } from "./BaseItemsTable.styled";
-import BaseTableItem from "./BaseTableItem";
+import BaseTableItem, {BaseTableItemProps} from "./BaseTableItem";
+import type {Collection, Database} from "metabase-types/api";
+import type {ItemWithLastEditInfo} from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
+import type {HTMLAttributes, ReactNode} from "react";
 
-const sortingOptsShape = PropTypes.shape({
-  sort_column: PropTypes.string.isRequired,
-  sort_direction: PropTypes.oneOf(["asc", "desc"]).isRequired,
-});
-
-SortableColumnHeader.propTypes = {
-  name: PropTypes.string.isRequired,
-  sortingOptions: sortingOptsShape.isRequired,
-  onSortingOptionsChange: PropTypes.func.isRequired,
-  children: PropTypes.node,
+type SortingOptions = {
+  sort_column: string;
+  sort_direction: 'asc' | 'desc';
 };
 
-function SortableColumnHeader({
+type SortableColumnHeaderProps = {
+  name: string;
+  sortingOptions: SortingOptions;
+  onSortingOptionsChange: (newSortingOptions: SortingOptions) => void;
+  children?: ReactNode;
+} & Partial<HTMLAttributes<HTMLDivElement>>;
+
+export enum Sort {
+  Asc = "asc",
+  Desc = "desc",
+}
+
+const SortableColumnHeader = ({
   name,
   sortingOptions,
   onSortingOptionsChange,
   children,
   ...props
-}) {
+}: SortableColumnHeaderProps) => {
   const isSortingThisColumn = sortingOptions.sort_column === name;
   const direction = isSortingThisColumn
     ? sortingOptions.sort_direction
-    : "desc";
+    : Sort.Desc;
 
   const onSortingControlClick = () => {
-    const nextDirection = direction === "asc" ? "desc" : "asc";
+    const nextDirection = direction === Sort.Asc ? Sort.Desc : Sort.Asc;
     onSortingOptionsChange({
       sort_column: name,
       sort_direction: nextDirection,
@@ -55,46 +63,52 @@ function SortableColumnHeader({
         role="button"
       >
         {children}
-        <SortingIcon name={direction === "asc" ? "chevronup" : "chevrondown"} />
+        <SortingIcon name={direction === Sort.Asc ? "chevronup" : "chevrondown"} />
       </SortingControlContainer>
     </ColumnHeader>
   );
 }
 
-BaseItemsTable.Item = BaseTableItem;
+interface BaseItemsTableProps {
+  items: ListableItem[];
+  databases?: Database[]
+  bookmarks?: any[];
+  createBookmark?: () => void;
+  deleteBookmark?: () => void;
+  collection?: Partial<Collection>; // TODO: consider: Partial seems needed because {} is the default value
+  selectedItems?: ListableItem[];
+  hasUnselected?: boolean;
+  isPinned?: boolean;
+  renderItem?: (props: ItemRendererProps) => JSX.Element;
+  sortingOptions: SortingOptions;
+  onSortingOptionsChange: () => void;
+  onToggleSelected?: (item: any) => void;
+  onSelectAll?: () => void;
+  onSelectNone?: () => void;
+  onCopy?: () => void;
+  onMove?: () => void;
+  onDrop?: () => void;
+  getIsSelected?: (item: any) => boolean;
+  /** Used for dragging */
+  headless?: boolean;
+}
 
-BaseItemsTable.propTypes = {
-  databases: PropTypes.arrayOf(PropTypes.object),
-  bookmarks: PropTypes.arrayOf(PropTypes.object),
-  createBookmark: PropTypes.func,
-  deleteBookmark: PropTypes.func,
-  items: PropTypes.arrayOf(PropTypes.object),
-  collection: PropTypes.object,
-  selectedItems: PropTypes.arrayOf(PropTypes.object),
-  hasUnselected: PropTypes.bool,
-  isPinned: PropTypes.bool,
-  renderItem: PropTypes.func,
-  sortingOptions: sortingOptsShape,
-  onSortingOptionsChange: PropTypes.func,
-  onToggleSelected: PropTypes.func,
-  onSelectAll: PropTypes.func,
-  onSelectNone: PropTypes.func,
-  onCopy: PropTypes.func,
-  onMove: PropTypes.func,
-  onDrop: PropTypes.func,
-  getIsSelected: PropTypes.func,
+export type ListableItem = {
+  model: string;
+  id: number;
+} & Partial<ItemWithLastEditInfo>;
 
-  // Used for dragging
-  headless: PropTypes.bool,
-};
+type ItemRendererProps = {
+  item: ListableItem;
+} & BaseTableItemProps;
 
-function defaultItemRenderer({ item, ...props }) {
+const defaultItemRenderer = ({ item, ...props }: ItemRendererProps) => {
   return (
     <BaseTableItem key={`${item.model}-${item.id}`} item={item} {...props} />
   );
 }
 
-function BaseItemsTable({
+const BaseItemsTable = ({
   databases,
   bookmarks,
   createBookmark,
@@ -116,8 +130,8 @@ function BaseItemsTable({
   getIsSelected = () => false,
   headless = false,
   ...props
-}) {
-  const itemRenderer = item =>
+} : BaseItemsTableProps) => {
+  const itemRenderer = (item: ListableItem) =>
     renderItem({
       databases,
       bookmarks,
@@ -157,9 +171,9 @@ function BaseItemsTable({
               <ColumnHeader>
                 <BulkSelectWrapper>
                   <CheckBox
-                    checked={selectedItems?.length > 0 || false}
+                    checked={!!selectedItems?.length}
                     indeterminate={
-                      (selectedItems?.length > 0 && hasUnselected) || false
+                      (!!selectedItems?.length && !!hasUnselected)
                     }
                     onChange={hasUnselected ? onSelectAll : onSelectNone}
                     aria-label={t`Select all items`}
@@ -171,6 +185,7 @@ function BaseItemsTable({
               name="model"
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
+              // FIXME: Use marginInlineStart
               style={{ marginLeft: 6 }}
             >
               {t`Type`}
@@ -204,5 +219,7 @@ function BaseItemsTable({
     </Table>
   );
 }
+
+BaseItemsTable.Item = BaseTableItem;
 
 export default BaseItemsTable;
