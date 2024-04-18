@@ -10,7 +10,7 @@
   border-bottom: 1px solid var(--color-bg-medium);
 
   &:last-child {
-    border-top: none;
+    border-bottom: none;
   }
 }
 
