@@ -1,6 +1,5 @@
 :root {
   --title-color: var(--mb-color-text-dark);
-  --subtitle-color: var(--mb-color-text-medium);
 }
 
 .list {
@@ -62,7 +61,7 @@
 }
 
 .itemSubtitle {
-  color: var(--subtitle-color);
+  color: var(--mb-color-text-medium);
   max-width: 600px;
   font-size: 14px;
 }
