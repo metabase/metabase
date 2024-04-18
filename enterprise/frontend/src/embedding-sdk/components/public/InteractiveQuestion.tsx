@@ -1,6 +1,8 @@
 import cx from "classnames";
 import { useEffect } from "react";
 
+import { useSdkSelector } from "embedding-sdk/store";
+import { getIsInitialized, getIsLoggedIn } from "embedding-sdk/store/reducer";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -21,8 +23,6 @@ import { Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { CardId } from "metabase-types/api";
 
-import { useEmbeddingContext } from "../../context";
-
 interface InteractiveQuestionProps {
   questionId: CardId;
 }
@@ -30,7 +30,9 @@ interface InteractiveQuestionProps {
 export const InteractiveQuestion = ({
   questionId,
 }: InteractiveQuestionProps): JSX.Element | null => {
-  const { isInitialized, isLoggedIn } = useEmbeddingContext();
+  const isInitialized = useSdkSelector(getIsInitialized);
+  const isLoggedIn = useSdkSelector(getIsLoggedIn);
+
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
   const mode = question && getEmbeddingMode(question);
