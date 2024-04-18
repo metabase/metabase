@@ -156,7 +156,7 @@ export const AccordionListCell = ({
     content = (
       <div
         className={cx(
-          "List-section-header",
+          ListS.ListSectionHeader,
           CS.px2,
           CS.py2,
           CS.flex,
@@ -176,13 +176,23 @@ export const AccordionListCell = ({
       >
         {icon && (
           <span
-            className={cx(CS.mr1, CS.flex, CS.alignCenter, "List-section-icon")}
+            className={cx(
+              CS.mr1,
+              CS.flex,
+              CS.alignCenter,
+              ListS.ListSectionIcon,
+            )}
           >
             {icon}
           </span>
         )}
         {name && (
-          <h3 className={cx("List-section-title", CS.textWrap)}>{name}</h3>
+          <h3
+            data-element-id="list-section-title"
+            className={cx(ListS.ListSectionTitle, CS.textWrap)}
+          >
+            {name}
+          </h3>
         )}
         {showSpinner(section) && (
           <Box ml="0.5rem">
