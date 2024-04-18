@@ -9,6 +9,6 @@ export interface Task {
   task: string;
   task_details: object | null;
 }
-export type ListTasksRequest = PaginationRequest | null;
+export type ListTasksRequest = PaginationRequest;
 
 export type ListTasksResponse = { data: Task[] } & PaginationResponse;

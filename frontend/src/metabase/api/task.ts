@@ -8,7 +8,7 @@ import { Api } from "./api";
 
 export const taskApi = Api.injectEndpoints({
   endpoints: builder => ({
-    listTasks: builder.query<ListTasksResponse, ListTasksRequest>({
+    listTasks: builder.query<ListTasksResponse, ListTasksRequest | void>({
       query: params => ({
         method: "GET",
         url: "/api/task",
