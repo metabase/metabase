@@ -539,7 +539,7 @@
 ;; This conditional is here to cover the case of trend charts in Alerts (not subscriptions). Alerts
 ;; exist on Questions and thus have no associated dashcard, which causes `pu/execute-multi-card` to fail.
 (mu/defmethod render :javascript_visualization :- formatter/RenderedPulseCard
-  [_chart-type render-type _timezone-id card dashcard data]
+  [_chart-type render-type _timezone-id card dashcard _data]
   (let [combined-cards-results (if dashcard
                                  (pu/execute-multi-card card dashcard)
                                  [(pu/execute-card {:creator_id (:creator_id card)} (:id card))])
