@@ -327,6 +327,8 @@ export const getChartPadding = (
       CHART_STYLE.seriesLabels.size + CHART_STYLE.seriesLabels.offset;
   }
 
+  padding.bottom = ticksDimensions.xTicksHeight + CHART_STYLE.axisNameMargin;
+
   const yAxisNameTotalWidth =
     CHART_STYLE.axisName.size + CHART_STYLE.axisNameMargin;
 
