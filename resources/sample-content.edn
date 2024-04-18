@@ -3979,5 +3979,6 @@
    :entity_id "53YGAg4EE6MC76nxx-f5f",
    :location "/",
    :namespace nil,
+   :is_sample true,
    :created_at #t "2024-04-11T12:41:25.429317Z"}),
  :parameter_card ()}

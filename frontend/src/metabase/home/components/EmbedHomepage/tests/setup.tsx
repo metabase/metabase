@@ -6,7 +6,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
+import { screen, renderWithProviders } from "__support__/ui";
 import type { Settings, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
@@ -34,6 +34,7 @@ export async function setup({
   jest.clearAllMocks();
 
   fetchMock.put("path:/api/setting/embedding-homepage", 200);
+  fetchMock.post("path:/api/util/product-feedback", 200);
   setupSettingsEndpoints([createMockSettingDefinition()]);
   setupPropertiesEndpoints(createMockSettings());
 
@@ -53,3 +54,16 @@ export async function setup({
     withRouter: true,
   });
 }
+
+export const getLastHomepageSettingSettingCall = () =>
+  fetchMock.lastCall("path:/api/setting/embedding-homepage", {
+    method: "PUT",
+  });
+
+export const getLastFeedbackCall = () =>
+  fetchMock.lastCall("path:/api/util/product-feedback", {
+    method: "POST",
+  });
+
+export const queryFeedbackModal = () =>
+  screen.queryByText("How can we improve embedding?");

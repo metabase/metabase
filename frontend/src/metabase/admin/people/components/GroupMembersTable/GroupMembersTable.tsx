@@ -8,7 +8,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import PaginationControls from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
-import User from "metabase/entities/users";
+import Users from "metabase/entities/users";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { getFullName } from "metabase/lib/user";
@@ -150,7 +150,7 @@ function GroupMembersTable({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default User.loadList({
+export default Users.loadList({
   reload: true,
   pageSize: 25,
   listName: "groupUsers",
