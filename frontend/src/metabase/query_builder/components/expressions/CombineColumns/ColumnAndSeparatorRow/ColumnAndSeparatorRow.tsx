@@ -163,7 +163,7 @@ export function ColumnInput({
     button.current?.focus();
   }
 
-  function handleBlur(evt: MouseEvent) {
+  function handleBlur(evt: FocusEvent<HTMLDivElement>) {
     if (!evt.currentTarget || !evt.relatedTarget) {
       return;
     }
