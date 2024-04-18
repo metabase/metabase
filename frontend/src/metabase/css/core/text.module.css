@@ -88,7 +88,7 @@
 .textCode {
   font-family: monospace;
   color: var(--color-text-medium);
-  background-color: var(--color-bg-medium);
+  background-color: var(--mb-color-bg-medium);
   border-radius: 2px;
   padding: 0.2em 0.4em;
   line-height: 1.4em;

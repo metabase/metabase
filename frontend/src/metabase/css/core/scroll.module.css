@@ -23,7 +23,7 @@
   border: 4px solid transparent;
   border-radius: 7px;
   background-clip: padding-box;
-  background-color: var(--color-bg-medium);
+  background-color: var(--mb-color-bg-medium);
 }
 
 .scrollShow::-webkit-scrollbar-button {
@@ -53,14 +53,14 @@
 /* scroll light */
 .scrollShow.scrollLight::-webkit-scrollbar-thumb {
   border-radius: 0;
-  background-color: var(--color-bg-medium);
+  background-color: var(--mb-color-bg-medium);
 }
 
 .scrollShow.scrollLight::-webkit-scrollbar-thumb:horizontal:hover,
 .scrollShow.scrollLight::-webkit-scrollbar-thumb:vertical:hover,
 .scrollShow.scrollLight::-webkit-scrollbar-thumb:horizontal:active,
 .scrollShow.scrollLight::-webkit-scrollbar-thumb:vertical:active {
-  background-color: var(--color-bg-medium);
+  background-color: var(--mb-color-bg-medium);
 }
 
 .scrollHide {
