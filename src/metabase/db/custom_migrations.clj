@@ -1000,14 +1000,16 @@
 (define-reversible-migration CardRevisionAddType
   (case (mdb.connection/db-type)
     :postgres
+    ;; postgres doesn't allow `\u0000` in text when converting to jsonb, so we need to remove them before we can
+    ;; parse the json. We use negative look ahead to make sure we don't match `\\u0000` (metabase#40835)
     (t2/query ["UPDATE revision
                SET object = jsonb_set(
-                  object::jsonb, '{type}',
+                  (regexp_replace(object, '(?<!\\\\)\\\\u0000', '', 'g'))::jsonb, '{type}',
                   to_jsonb(CASE
-                              WHEN (object::jsonb->>'dataset')::boolean THEN 'model'
+                              WHEN ((regexp_replace(object, '(?<!\\\\)\\\\u0000', '', 'g'))::jsonb->>'dataset')::boolean THEN 'model'
                               ELSE 'question'
                            END)::jsonb, true)
-               WHERE model = 'Card' AND (object::jsonb->>'dataset') IS NOT NULL;"])
+               WHERE model = 'Card' AND ((regexp_replace(object, '(?<!\\\\)\\\\u0000', '', 'g'))::jsonb->>'dataset') IS NOT NULL;"])
 
     :mysql
     (t2/query ["UPDATE revision
