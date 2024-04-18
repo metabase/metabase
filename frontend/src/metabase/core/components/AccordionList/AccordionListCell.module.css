@@ -4,6 +4,10 @@
   .borderBottom + & {
     border-top: none;
   }
+
+  &:first-child {
+    border-top: none;
+  }
 }
 
 .borderBottom {
