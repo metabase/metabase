@@ -70,6 +70,15 @@ WHERE
 
 
 -- If all tables in a DB have the same view-data permission, insert a DB-level view-data permission instead
+INSERT INTO
+  data_permissions (
+    group_id,
+    perm_type,
+    db_id,
+    schema_name,
+    table_id,
+    perm_value
+  )
 WITH
   ConsistentPermissions AS (
     SELECT
@@ -86,15 +95,6 @@ WITH
       db_id
     HAVING
       COUNT(DISTINCT perm_value) = 1
-  )
-INSERT INTO
-  data_permissions (
-    group_id,
-    perm_type,
-    db_id,
-    schema_name,
-    table_id,
-    perm_value
   )
 SELECT
   cp.group_id,
