@@ -152,7 +152,7 @@ const StrategyFormBody = ({
             </Box>
           )}
           <Stack
-            maw="27.5rem"
+            maw="35rem"
             p="lg"
             pt={targetId === rootId ? undefined : 0}
             spacing="xl"
@@ -170,7 +170,7 @@ const StrategyFormBody = ({
                   />
                 </Field>
                 <Field
-                  title={t`Cache time-to-live (TTL) multiplier`}
+                  title={t`Multiplier`}
                   subtitle={<MultiplierFieldSubtitle />}
                 >
                   <PositiveNumberInput strategyType="ttl" name="multiplier" />
