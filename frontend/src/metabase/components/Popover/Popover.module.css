@@ -17,7 +17,7 @@
 
 .PopoverBody.PopoverBodyWithBackground {
   border: 1px solid #edf2f5;
-  box-shadow: 0 4px 10px var(--color-shadow);
+  box-shadow: 0 4px 10px var(--mb-color-shadow);
   background-color: var(--mb-color-bg-white);
   border-radius: 6px;
   overflow: auto;
@@ -39,7 +39,7 @@
   line-height: 1.26;
   font-size: 12px;
   border-radius: 6px;
-  box-shadow: 0 4px 10px var(--color-shadow);
+  box-shadow: 0 4px 10px var(--mb-color-shadow);
   overflow-wrap: break-word;
 }
 
@@ -55,7 +55,7 @@
   font-size: inherit;
   color: var(--color-text-default);
   border: 1px solid var(--mb-color-border);
-  box-shadow: 0 4px 10px var(--color-shadow);
+  box-shadow: 0 4px 10px var(--mb-color-shadow);
   background-color: var(--mb-color-bg-white);
   border-radius: 6px;
   overflow: auto;

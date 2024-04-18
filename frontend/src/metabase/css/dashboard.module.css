@@ -69,7 +69,7 @@
 
 /* .react-draggable*, .react-resizable* are 3rd party library classes */
 .DashEditing .DashCard:global(.react-draggable-dragging) .Card {
-  box-shadow: 3px 3px 8px var(--color-shadow);
+  box-shadow: 3px 3px 8px var(--mb-color-shadow);
 }
 
 .BrandColorResizeHandle :global(.react-resizable-handle::after) {

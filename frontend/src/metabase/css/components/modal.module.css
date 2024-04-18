@@ -5,7 +5,7 @@
 .Modal {
   margin: auto;
   width: 640px;
-  box-shadow: 0 0 6px var(--color-shadow);
+  box-shadow: 0 0 6px var(--mb-color-shadow);
   max-height: 90%;
   overflow-y: auto;
 }

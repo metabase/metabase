@@ -52,7 +52,7 @@
   border-radius: var(--default-border-radius);
   width: 266px;
   min-height: 300px;
-  box-shadow: inset -1px -1px 3px var(--color-shadow);
+  box-shadow: inset -1px -1px 3px var(--mb-color-shadow);
   padding-bottom: 0.75em;
 }
 
@@ -98,7 +98,7 @@
   margin-right: -0.5em;
   padding-left: 1.5em;
   padding-right: 1.5em;
-  box-shadow: 0 1px 2px var(--color-shadow);
+  box-shadow: 0 1px 2px var(--mb-color-shadow);
 }
 
 .AdminListSection {
