@@ -153,11 +153,6 @@
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})
 
-(mu/defn userland-query? :- :boolean
-  "Returns true if the query is an userland query, else false."
-  [query :- ::qp.schema/qp]
-  (boolean (get-in query [:middleware :userland-query?])))
-
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.
 
@@ -171,7 +166,7 @@
   [qp :- ::qp.schema/qp]
   (mu/fn [query :- ::qp.schema/query
           rff   :- ::qp.schema/rff]
-    (if-not (userland-query? query)
+    (if-not (qp.util/userland-query? query)
       (qp query rff)
       (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
             execution-info (query-execution-info query)]
@@ -179,8 +174,9 @@
                   (let [preprocessed-query (:preprocessed_query metadata)
                         ;; we only need the preprocessed query to find field usages, so make sure we don't return it
                         result             (rff (dissoc metadata :preprocessed_query))
-                        field-usages       (field-usage/pmbql->field-usages
-                                            (lib/query (qp.store/metadata-provider) preprocessed-query))]
+                        field-usages       (when-not (qp.util/internal-query? query)
+                                             (field-usage/pmbql->field-usages
+                                              (lib/query (qp.store/metadata-provider) preprocessed-query)))]
                     (add-and-save-execution-metadata-xform! execution-info field-usages result)))]
           (try
             (qp query rff*)
