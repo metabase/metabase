@@ -305,15 +305,6 @@ export const getTicksDimensions = (
   return { ticksDimensions, axisEnabledSetting };
 };
 
-const getExtraSidePadding = (
-  xAxisTickOverflow: number,
-  yAxisNameTotalWidth: number,
-  yAxisModel: YAxisModel | null,
-) => {
-  const nameWidth = yAxisModel?.label != null ? yAxisNameTotalWidth : 0;
-  return Math.max(xAxisTickOverflow, nameWidth);
-};
-
 export const getChartPadding = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
@@ -356,33 +347,33 @@ export const getChartPadding = (
   const dimensionWidth = getDimensionWidth(chartModel, currentBoundaryWidth);
 
   const firstTickOverflow = Math.min(
-    ticksDimensions.firstXTickWidth / 2 -
-      dimensionWidth / 2 -
-      ticksDimensions.yTicksWidthLeft,
-    chartWidth / 8, // don't allow overflow greater than 12.5% of the chart width
+    ticksDimensions.firstXTickWidth / 2 - dimensionWidth / 2 - chartWidth / 8, // don't allow overflow greater than 12.5% of the chart width
   );
 
   let lastTickOverflow = 0;
   if (settings["graph.x_axis.axis_enabled"] !== "rotate-45") {
     lastTickOverflow = Math.min(
-      ticksDimensions.lastXTickWidth / 2 -
-        dimensionWidth / 2 -
-        ticksDimensions.yTicksWidthRight,
-      chartWidth / 8,
+      ticksDimensions.lastXTickWidth / 2 - dimensionWidth / 2 - chartWidth / 8,
     );
   }
 
-  padding.left += getExtraSidePadding(
-    firstTickOverflow,
-    yAxisNameTotalWidth,
+  if (chartModel.leftAxisModel != null) {
+    const normalSidePadding =
+      CHART_STYLE.axisTicksMarginY +
+      ticksDimensions.yTicksWidthLeft +
+      yAxisNameTotalWidth;
 
-    chartModel.leftAxisModel,
-  );
-  padding.right += getExtraSidePadding(
-    lastTickOverflow,
-    yAxisNameTotalWidth,
-    chartModel.rightAxisModel,
-  );
+    padding.left = Math.max(normalSidePadding, firstTickOverflow);
+  }
+
+  if (chartModel.rightAxisModel != null) {
+    const normalSidePadding =
+      CHART_STYLE.axisTicksMarginY +
+      ticksDimensions.yTicksWidthRight +
+      yAxisNameTotalWidth;
+
+    padding.right = Math.max(normalSidePadding, lastTickOverflow);
+  }
 
   const hasXAxisName = settings["graph.x_axis.labels_enabled"];
   if (hasXAxisName) {
