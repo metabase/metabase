@@ -196,6 +196,7 @@ function setup({
 
 describe("AggregationPicker", () => {
   // FIXME metrics v2
+  // eslint-disable-next-line jest/no-disabled-tests
   it.skip("should allow switching between aggregation approaches", async () => {
     const metadata = createMetadata({ metrics: [TEST_METRIC] });
     const { getRecentClauseInfo } = setup({
@@ -348,6 +349,7 @@ describe("AggregationPicker", () => {
     });
 
     // FIXME metrics v2
+    // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should list metrics for the query table", async () => {
       await setupMetrics({
         metadata: createMetadata({ metrics: [TEST_METRIC] }),
@@ -356,6 +358,7 @@ describe("AggregationPicker", () => {
     });
 
     // FIXME metrics v2
+    // eslint-disable-next-line jest/no-disabled-tests
     it.skip("shouldn't list metrics for other tables", async () => {
       await setupMetrics({
         metadata: createMetadata({ metrics: [TEST_METRIC] }),
@@ -364,6 +367,7 @@ describe("AggregationPicker", () => {
     });
 
     // FIXME metrics v2
+    // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should allow picking a metric", async () => {
       const metadata = createMetadata({ metrics: [TEST_METRIC] });
       const { getRecentClauseInfo } = await setupMetrics({ metadata });
