@@ -1,44 +1,43 @@
 import cx from "classnames";
-import { useCallback, useRef } from "react";
+import { useField } from "formik";
+import { useCallback, useRef, useMemo } from "react";
 import { t } from "ttag";
 
+import { useGetFieldQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
-import Fields from "metabase/entities/fields";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
+import { Text } from "metabase/ui";
 import Field from "metabase-lib/v1/metadata/Field";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { FieldId } from "metabase-types/api";
 
 import { StyledSelectButton } from "./MappedFieldPicker.styled";
-import { useField } from "formik";
-import { useGetFieldQuery } from "metabase/api";
-import { entityForObject } from "metabase/lib/schema";
 
 type MappedFieldPickerProps = {
   name: string;
   databaseId: number | null;
   tabIndex?: number;
+  label: string;
 };
 
 function MappedFieldPicker({
   databaseId = null,
   name,
   tabIndex,
+  label,
 }: MappedFieldPickerProps) {
-  // const { value: selectedFieldId = null, onChange } = field;
-  // const { databaseId = null } = formField;
+  const [{ value: selectedFieldId = null }, _, { setValue }] = useField(name);
 
-  const [
-    { value: selectedFieldId = null },
-    { error, touched },
-    { setValue, setTouched },
-  ] = useField(name);
+  const { data: field = null } = useGetFieldQuery(
+    {
+      id: selectedFieldId,
+    },
+    { skip: selectedFieldId === null },
+  );
 
-  const { data: field = null, isLoading } = useGetFieldQuery({
-    id: selectedFieldId,
-  });
-
-  const fieldObject = new Field(field);
+  const fieldObject = useMemo(() => {
+    return field && selectedFieldId ? new Field(field) : null;
+  }, [field, selectedFieldId]);
 
   const selectButtonRef = useRef<HTMLButtonElement>();
 
@@ -81,24 +80,29 @@ function MappedFieldPicker({
       : fieldObject?.table?.id;
 
   return (
-    <SchemaTableAndFieldDataSelector
-      className={cx(
-        CS.flex,
-        CS.flexFull,
-        CS.flexBasisNone,
-        CS.justifyCenter,
-        CS.alignCenter,
-      )}
-      selectedDatabaseId={databaseId}
-      selectedTableId={selectedTableId}
-      selectedSchemaId={fieldObject?.table?.schema?.id}
-      selectedFieldId={selectedFieldId}
-      getTriggerElementContent={renderTriggerElement}
-      hasTriggerExpandControl={false}
-      triggerTabIndex={tabIndex}
-      setFieldFn={onFieldChange}
-      onClose={focusSelectButton}
-    />
+    <>
+      <Text fw="bold" color="text-medium">
+        {label}
+      </Text>
+      <SchemaTableAndFieldDataSelector
+        className={cx(
+          CS.flex,
+          CS.flexFull,
+          CS.flexBasisNone,
+          CS.justifyCenter,
+          CS.alignCenter,
+        )}
+        selectedDatabaseId={databaseId}
+        selectedTableId={selectedTableId}
+        selectedSchemaId={fieldObject?.table?.schema?.id}
+        selectedFieldId={selectedFieldId}
+        getTriggerElementContent={renderTriggerElement}
+        hasTriggerExpandControl={false}
+        triggerTabIndex={tabIndex}
+        setFieldFn={onFieldChange}
+        onClose={focusSelectButton}
+      />
+    </>
   );
 }
 // eslint-disable-next-line import/no-default-export -- deprecated usage

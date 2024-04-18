@@ -1,26 +1,24 @@
 import PropTypes from "prop-types";
-import {
-  memo,
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import RootForm from "metabase/containers/FormikForm";
-import Radio from "metabase/core/components/Radio";
 import { ModelIndexes } from "metabase/entities/model-indexes";
+import {
+  Form,
+  FormProvider,
+  FormRadioGroup,
+  FormTextInput,
+  FormTextarea,
+  FormSwitch,
+} from "metabase/forms";
 import {
   field_visibility_types,
   field_semantic_types,
 } from "metabase/lib/core";
-import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { Radio, Tabs, Box } from "metabase/ui";
 import ColumnSettings, {
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
@@ -33,19 +31,11 @@ import { EDITOR_TAB_INDEXES } from "../constants";
 
 import {
   MainFormContainer,
-  SecondaryFormContainer,
-  FormTabsContainer,
   ViewAsFieldContainer,
   Divider,
 } from "./DatasetFieldMetadataSidebar.styled";
 import MappedFieldPicker from "./MappedFieldPicker";
 import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
-import {
-  Form,
-  FormProvider,
-  FormTextInput,
-  FormTextarea,
-} from "metabase/forms";
 
 const propTypes = {
   dataset: PropTypes.object.isRequired,
@@ -77,64 +67,12 @@ function getSemanticTypeOptions() {
   ];
 }
 
-// function getFormFields({ dataset, field }) {
-//   const visibilityTypeOptions = field_visibility_types
-//     .filter(type => type.id !== "sensitive")
-//     .map(type => ({
-//       name: getVisibilityTypeName(type),
-//       value: type.id,
-//     }));
-
-//   const canIndex =
-//     dataset.isSaved() && ModelIndexes.utils.canIndexField(field, dataset);
-
-//   const { isNative } = Lib.queryDisplayInfo(dataset.query());
-
-//   return formFieldValues =>
-//     [
-//       {
-//         name: "display_name",
-//         title: t`Display name`,
-//         subtitle: field.name,
-//       },
-//       {
-//         name: "description",
-//         title: t`Description`,
-//         placeholder: t`It’s optional, but oh, so helpful`,
-//         type: "text",
-//       },
-//       isNative && {
-//         name: "id",
-//         title: t`Database column this maps to`,
-//         widget: MappedFieldPicker,
-//         databaseId: dataset.databaseId(),
-//       },
-//       {
-//         name: "semantic_type",
-//         title: t`Column type`,
-//         widget: SemanticTypePicker,
-//         options: getSemanticTypeOptions(),
-//         icon: getSemanticTypeIcon(formFieldValues?.semantic_type, "ellipsis"),
-//       },
-//       {
-//         name: "fk_target_field_id",
-//         hidden: !isFK(formFieldValues),
-//         widget: FKTargetPicker,
-//         databaseId: dataset.databaseId(),
-//       },
-//       {
-//         name: "visibility_type",
-//         title: t`This column should appear in…`,
-//         type: "radio",
-//         options: visibilityTypeOptions,
-//       },
-//       canIndex && {
-//         name: "should_index",
-//         title: t`Surface individual records in search by matching against this column`,
-//         type: "boolean",
-//       },
-//     ].filter(Boolean);
-// }
+const visibilityTypeOptions = field_visibility_types
+  .filter(type => type.id !== "sensitive")
+  .map(type => ({
+    name: getVisibilityTypeName(type),
+    value: type.id,
+  }));
 
 const VIEW_AS_FIELDS = ["view_as", "link_text", "link_url"];
 
@@ -166,6 +104,9 @@ function DatasetFieldMetadataSidebar({
   const displayNameInputRef = useRef();
   const previousField = usePrevious(field);
 
+  const canIndex =
+    dataset.isSaved() && ModelIndexes.utils.canIndexField(field, dataset);
+
   useEffect(() => {
     if (!isSameField(field.field_ref, previousField?.field_ref)) {
       // setTimeout is required as form fields are rerendered pretty frequently
@@ -193,14 +134,6 @@ function DatasetFieldMetadataSidebar({
     }
     return values;
   }, [field, dataset, modelIndexes]);
-  console.log(initialValues, field);
-
-  // const form = useMemo(
-  //   () => ({
-  //     fields: getFormFields({ dataset, field }),
-  //   }),
-  //   [field, dataset],
-  // );
 
   const [tab, setTab] = useState(TAB.SETTINGS);
 
@@ -253,146 +186,122 @@ function DatasetFieldMetadataSidebar({
     [onFieldMetadataChange],
   );
 
-  const onDisplayNameChange = useCallback(
-    e => {
-      onFieldMetadataChangeDebounced({
-        display_name: e.target.value,
-      });
-    },
-    [onFieldMetadataChangeDebounced],
-  );
-
-  const onDescriptionChange = useCallback(
-    e => {
-      onFieldMetadataChangeDebounced({
-        description: e.target.value,
-      });
-    },
-    [onFieldMetadataChangeDebounced],
-  );
-
-  const onMappedDatabaseColumnChange = useCallback(
-    fieldId => {
-      onFieldMetadataChangeDebounced({
-        id: fieldId,
-      });
-    },
-    [onFieldMetadataChangeDebounced],
-  );
-
-  const onSemanticTypeChange = useCallback(
-    e => {
-      onFieldMetadataChange({
-        semantic_type: e.target.value,
-      });
-    },
-    [onFieldMetadataChange],
-  );
-
-  const onFKTargetFieldChange = useCallback(
-    e => {
-      onFieldMetadataChange({
-        fk_target_field_id: e.target.value,
-      });
-    },
-    [onFieldMetadataChange],
-  );
-
-  const onVisibilityTypeChange = useCallback(
-    value => {
-      onFieldMetadataChange({
-        visibility_type: value,
-      });
-    },
-    [onFieldMetadataChange],
-  );
-
-  const onIndexChange = useCallback(
-    async value => {
-      // even though this isn't a real field metadata property, we want to hook into the
-      // question-saving process, so we'll use the same hook and remove this property before calling
-      // the API
-      onFieldMetadataChange({
-        should_index: value,
-      });
-    },
-    [onFieldMetadataChange],
-  );
-
   const { isNative } = Lib.queryDisplayInfo(dataset.query());
 
   return (
     <SidebarContent>
       <FormProvider initialValues={initialValues} enableReinitialize>
-        {() => (
-          <Form>
-            <MainFormContainer>
-              <FormTextInput
-                name="display_name"
-                label={t`Display name`}
-                tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-                ref={displayNameInputRef}
-              />
-              <FormTextarea
-                name="description"
-                label={t`Description`}
-                tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-              />
-              {isNative && (
-                <MappedFieldPicker
-                  name="id"
-                  tableId={field.table_id}
-                  onChange={onMappedDatabaseColumnChange}
+        {({ values: formFieldValues }) => {
+          return (
+            <Form onValuesChange={onFieldMetadataChangeDebounced}>
+              <MainFormContainer>
+                <FormTextInput
+                  name="display_name"
+                  label={t`Display name`}
                   tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-                  databaseId={dataset.databaseId()}
+                  ref={displayNameInputRef}
+                  description={field.name}
+                  mb="1.5rem"
                 />
-              )}
-              {/* <FormField
-                name="semantic_type"
-                onChange={onSemanticTypeChange}
-                tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-                onKeyDown={onLastEssentialFieldKeyDown}
-              /> */}
-              {/* <FormField
-                name="fk_target_field_id"
-                onChange={onFKTargetFieldChange}
-              /> */}
-            </MainFormContainer>
-            {/* {hasColumnFormattingOptions && (
-              <FormTabsContainer>
-                <Radio
-                  value={tab}
-                  options={TAB_OPTIONS}
-                  onChange={setTab}
-                  variant="underlined"
+                <FormTextarea
+                  name="description"
+                  label={t`Description`}
+                  tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                  mb="1.5rem"
                 />
-              </FormTabsContainer>
-            )}
-            <Divider />
-            <SecondaryFormContainer>
-              {tab === TAB.SETTINGS ? (
-                <Fragment>
-                  <FormField
-                    name="visibility_type"
-                    onChange={onVisibilityTypeChange}
+                {isNative && (
+                  <Box mb="1.5rem">
+                    <MappedFieldPicker
+                      name="id"
+                      label={t`Database column this maps to`}
+                      tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                      databaseId={dataset.databaseId()}
+                    />
+                  </Box>
+                )}
+                <Box mb="1.5rem">
+                  <SemanticTypePicker
+                    name="semantic_type"
+                    label={t`Column type`}
+                    tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                    onKeyDown={onLastEssentialFieldKeyDown}
+                    options={getSemanticTypeOptions()}
                   />
+                </Box>
+                {isFK(formFieldValues) && (
+                  <Box mb="1.5rem">
+                    <FKTargetPicker
+                      name="fk_target_field_id"
+                      databaseId={dataset.databaseId()}
+                    />
+                  </Box>
+                )}
+              </MainFormContainer>
+
+              <Tabs defaultValue={TAB.SETTINGS}>
+                {hasColumnFormattingOptions ? (
+                  <Tabs.List px="1rem">
+                    {TAB_OPTIONS.map(option => (
+                      <Tabs.Tab
+                        value={option.value}
+                        key={`tab-${option.value}`}
+                      >
+                        {option.name}
+                      </Tabs.Tab>
+                    ))}
+                  </Tabs.List>
+                ) : (
+                  <Divider />
+                )}
+                <Tabs.Panel value={TAB.SETTINGS} p="1.5rem">
+                  <Box mb="1.5rem">
+                    <FormRadioGroup
+                      name="visibility_type"
+                      label={t`This column should appear in…`}
+                      labelProps={{
+                        mb: "0.5rem",
+                      }}
+                    >
+                      {visibilityTypeOptions.map(option => (
+                        <Radio
+                          key={`visibility-type-${option.value}`}
+                          value={option.value}
+                          label={option.name}
+                          mb="0.5rem"
+                          fw="bold"
+                          styles={{
+                            label: {
+                              fontSize: "0.875rem",
+                            },
+                          }}
+                        />
+                      ))}
+                    </FormRadioGroup>
+                  </Box>
                   <ViewAsFieldContainer>
                     <ColumnSettings
                       {...columnSettingsProps}
                       allowlist={VIEW_AS_RELATED_FORMATTING_OPTIONS}
                     />
                   </ViewAsFieldContainer>
-                </Fragment>
-              ) : (
-                <ColumnSettings
-                  {...columnSettingsProps}
-                  denylist={HIDDEN_COLUMN_FORMATTING_OPTIONS}
+                </Tabs.Panel>
+                <Tabs.Panel value={TAB.FORMATTING} p="1.5rem">
+                  <ColumnSettings
+                    {...columnSettingsProps}
+                    denylist={HIDDEN_COLUMN_FORMATTING_OPTIONS}
+                  />
+                </Tabs.Panel>
+              </Tabs>
+
+              {canIndex && (
+                <FormSwitch
+                  name="should_index"
+                  label={t`Surface individual records in search by matching against this column`}
                 />
               )}
-              <FormField name="should_index" onChange={onIndexChange} />
-            </SecondaryFormContainer> */}
-          </Form>
-        )}
+            </Form>
+          );
+        }}
       </FormProvider>
     </SidebarContent>
   );
