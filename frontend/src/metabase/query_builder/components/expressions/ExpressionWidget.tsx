@@ -170,14 +170,14 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           onCommit={handleCommit}
           onError={(errorMessage: string) => setError(errorMessage)}
           shortcuts={[
-            {
+            !startRule && {
               shortcut: true,
               name: t`Combine columns`,
               action: () => setIsCombiningColumns(true),
               group: "shortcuts",
               icon: "combine",
             },
-          ]}
+          ].filter(Boolean)}
         />
       </ExpressionFieldWrapper>
       {withName && (
