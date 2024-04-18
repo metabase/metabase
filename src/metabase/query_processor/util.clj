@@ -193,3 +193,17 @@
                              (get by-key (field-ref->key field_ref)))]
         (merge col (select-keys existing preserved-keys))
         col))))
+
+(def ^:dynamic *execute-async?*
+  "Used to control `with-execute-async` to whether or not execute its body asynchronously."
+  true)
+
+(defmacro with-execute-async
+  "Execute body asynchronously in a pooled executor.
+
+  Used for side effects during query execution like saving query execution info or capturing FieldUsages."
+  [& body]
+  `(if ~*execute-async?*
+     (.submit clojure.lang.Agent/pooledExecutor ^Runnable (fn [] ~@body))
+     (do
+      ~@body)))

@@ -25,8 +25,6 @@
          (m/distinct-by :id))
         metadata-providers))
 
-
-
 (defn- bulk-metadata [providers metadata-type ids]
   (loop [[provider & more-providers] providers, unfetched-ids (set ids), fetched []]
     (cond

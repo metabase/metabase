@@ -5,15 +5,15 @@
    [metabase.pulse :as pulse]
    [metabase.pulse-test :as pulse-test]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.update-used-cards :as qp.update-used-cards]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (defmacro with-used-cards-setup
   [& body]
-  `(binding [qp.pipeline/*execute*                         (fn [_driver# _query# respond#] (respond# {} []))
-             qp.update-used-cards/*update-used-cards-async* false]
+  `(binding [qp.pipeline/*execute*    (fn [_driver# _query# respond#] (respond# {} []))
+             qp.util/*execute-async?* false]
      ~@body))
 
 (defn- card-last-used-at
