@@ -1,4 +1,5 @@
 import type { PaginationRequest, PaginationResponse } from "./pagination";
+
 export interface Task {
   id: number;
   db_id: number | null;
@@ -9,4 +10,5 @@ export interface Task {
   task_details: object | null;
 }
 export type ListTasksRequest = PaginationRequest | null;
+
 export type ListTasksResponse = { data: Task[] } & PaginationResponse;
