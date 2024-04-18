@@ -5,7 +5,6 @@
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
   (:require
    [cheshire.core :as json]
-   [clojure.string :as str]
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.render.js-engine :as js]
@@ -78,9 +77,20 @@
         (.setAttribute "fill-opacity" "0.0"))
       node)))
 
+(defn- clear-style-node
+  "The echarts library (whose output we get via the :javascript_visualization multimethod) adds a <style> tag that we don't need.
+  It has some invalid styles that Batik warns about, but they're all for :hover states,
+  which have no meaning or effect in the static-viz context anyway."
+  [^Node node]
+  (letfn [(element? [x] (instance? Element x))]
+    (if (and (element? node)
+             (= "style" (.getNodeName ^Element node)))
+      (doto ^Element node
+        (.setTextContent ""))
+      node)))
+
 (defn- parse-svg-string [^String s]
-  (let [s       (str/replace s #"<svg" "<svg xmlns=\"http://www.w3.org/2000/svg\"")
-        factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
+  (let [factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
     (with-open [is (ByteArrayInputStream. (.getBytes s StandardCharsets/UTF_8))]
       (.createDocument factory "file:///fake.svg" is))))
 
@@ -98,7 +108,7 @@
   ^bytes [^SVGOMDocument svg-document]
   (style/register-fonts-if-needed!)
   (with-open [os (ByteArrayOutputStream.)]
-    (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill)
+    (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill clear-style-node)
           in                           (TranscoderInput. fixed-svg-doc)
           out                          (TranscoderOutput. os)
           transcoder                   (PNGTranscoder.)]
@@ -173,7 +183,7 @@
 
 (defn- icon-svg-string
   [icon-name color]
-  (str "<svg><path d=\"" (get icon-paths icon-name) "\" fill=\"" color "\"/></svg>"))
+  (str "<svg xmlns=\"http://www.w3.org/2000/svg\"><path d=\"" (get icon-paths icon-name) "\" fill=\"" color "\"/></svg>"))
 
 (defn icon
   "Entrypoint for rendering an SVG icon as a PNG, with a specific color"

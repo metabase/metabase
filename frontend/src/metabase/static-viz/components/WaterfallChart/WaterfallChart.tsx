@@ -53,7 +53,7 @@ export function WaterfallChart({
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
 
   return (
-    <svg width={width} height={height}>
+    <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height}>
       <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
     </svg>
   );
