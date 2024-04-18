@@ -17,6 +17,7 @@ export * from "./metric";
 export * from "./models";
 export * from "./modelIndexes";
 export * from "./notifications";
+export * from "./pagination";
 export * from "./permissions";
 export * from "./performance";
 export * from "./query";
