@@ -16,6 +16,7 @@ import {
   describeWithSnowplow,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
+  entityPickerModal,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -160,7 +161,10 @@ describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
     });
 
     // Ensure can replace with a model
-    replaceQuestion(findTargetDashcard(), { nextQuestionName: "Orders Model" });
+    replaceQuestion(findTargetDashcard(), {
+      nextQuestionName: "Orders Model",
+      tab: "Models",
+    });
     findTargetDashcard().within(() => {
       assertDashCardTitle("Orders Model");
       cy.findByText("Product ID").should("exist");
@@ -260,10 +264,13 @@ function findTargetDashcard() {
 
 function replaceQuestion(
   dashcardElement,
-  { nextQuestionName, collectionName },
+  { nextQuestionName, collectionName, tab },
 ) {
   dashcardElement.realHover().findByLabelText("Replace").click();
-  modal().within(() => {
+  entityPickerModal().within(() => {
+    if (tab) {
+      cy.findByRole("tablist").findByText(tab).click();
+    }
     if (collectionName) {
       cy.findByText(collectionName).click();
     }

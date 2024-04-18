@@ -2,60 +2,57 @@ body {
   background-color: transparent;
 }
 
-:global(.EmbedFrame) {
+.EmbedFrame {
   background-color: white;
 }
 
-:global(.EmbedFrame-header),
-:global(.EmbedFrame-footer) {
+.EmbedFrameHeader,
+.EmbedFrameFooter {
   color: var(--color-text-dark);
   background-color: white;
 }
 
-:global(.Theme--night.EmbedFrame) {
+.ThemeNight.EmbedFrame {
   background-color: var(--color-bg-black);
-  border: 1px solid var(--color-bg-dark);
+  border-color: var(--color-bg-dark);
 }
 
-:global(.Theme--night .EmbedFrame-header),
-:global(.Theme--night .EmbedFrame-footer) {
+.ThemeNight .EmbedFrameHeader,
+.ThemeNight .EmbedFrameFooter {
   color: color-mod(var(--color-text-white) alpha(-14%));
   background-color: var(--color-bg-black);
   border-color: var(--color-bg-dark);
 }
 
-:global(.Theme--night.EmbedFrame) .fullscreenNightText {
+.ThemeNight.EmbedFrame .fullscreenNightText {
   color: color-mod(var(--color-text-white) alpha(-14%));
   transition: color 1s linear;
 }
 
-:global(.Theme--night.EmbedFrame svg text) {
+.ThemeNight.EmbedFrame svg text {
   fill: color-mod(var(--color-text-white) alpha(-14%)) !important;
   stroke: none !important;
 }
 
-:global(.Theme--night.EmbedFrame) .DashCard .Card {
+.ThemeNight.EmbedFrame .DashCard .Card {
   background-color: var(--color-bg-black);
   border: 1px solid var(--color-bg-dark);
 }
 
-:global(.Theme--night.EmbedFrame
-    .enable-dots-onhover
-    .dc-tooltip
-    circle.dot:hover),
-:global(.Theme--night.EmbedFrame .enable-dots .dc-tooltip circle.dot) {
+.ThemeNight.EmbedFrame .enableDotsOnHover :global(.dc-tooltip circle.dot:hover),
+.ThemeNight.EmbedFrame .enableDots :global(.dc-tooltip circle.dot) {
   fill: currentColor;
 }
 
-:global(.Theme--transparent.EmbedFrame) {
+.ThemeTransparent.EmbedFrame {
   background-color: transparent;
 }
 
-:global(.Theme--transparent .EmbedFrame-header),
-:global(.Theme--transparent .EmbedFrame-footer) {
+.ThemeTransparent .EmbedFrameHeader,
+.ThemeTransparent .EmbedFrameFooter {
   background-color: transparent;
 }
 
-:global(.Theme--transparent.EmbedFrame) .DashCard .Card {
+.ThemeTransparent.EmbedFrame .DashCard .Card {
   background-color: transparent;
 }

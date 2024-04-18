@@ -4,7 +4,7 @@ import type { Params } from "react-router/lib/Router";
 import { useUserQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
-import User from "metabase/entities/users";
+import Users from "metabase/entities/users";
 import { useDispatch } from "metabase/lib/redux";
 import type { User as UserType } from "metabase-types/api";
 
@@ -25,7 +25,7 @@ export const EditUserModal = ({ onClose, params }: EditUserModalProps) => {
   const initialValues = useMemo(() => getInitialValues(user), [user]);
 
   const handleSubmit = async (val: Partial<UserType>) => {
-    await dispatch(User.actions.update({ id: user?.id, ...val }));
+    await dispatch(Users.actions.update({ id: user?.id, ...val }));
     onClose();
   };
 

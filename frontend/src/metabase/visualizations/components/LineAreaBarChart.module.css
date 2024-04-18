@@ -152,12 +152,12 @@
   stroke-width: 3px;
 }
 
-.LineAreaBarChart :global(.dc-chart .enable-dots .dc-tooltip .dot),
+.LineAreaBarChart :global(.dc-chart) .enableDots :global(.dc-tooltip .dot),
 .LineAreaBarChart :global(.dc-chart .dc-tooltip .dot.selected),
 .LineAreaBarChart
-  :global(.dc-chart .enable-dots-onhover .dc-tooltip .dot:hover),
-.LineAreaBarChart
-  :global(.dc-chart .enable-dots-onhover .dc-tooltip .dot.hover) {
+  :global(.dc-chart)
+  .enableDotsOnHover
+  :global(.dc-tooltip .dot:hover) {
   fill: white;
   stroke: currentColor;
   fill-opacity: 1 !important;

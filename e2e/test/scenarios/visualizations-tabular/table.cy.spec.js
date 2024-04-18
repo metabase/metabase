@@ -19,6 +19,7 @@ import {
   sidebar,
   moveDnDKitElement,
   selectFilterOperator,
+  expressionEditorWidget,
 } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
@@ -130,7 +131,7 @@ describe("scenarios > visualizations > table", () => {
 
     cy.icon("add_data").click();
 
-    popover().within(() => {
+    expressionEditorWidget().within(() => {
       enterCustomColumnDetails({
         formula: "concat([Name], [Name])",
         name: ccName,

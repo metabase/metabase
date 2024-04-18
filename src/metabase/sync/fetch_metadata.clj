@@ -7,6 +7,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
+   [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]))
@@ -45,32 +46,40 @@
       (set (fields-metadata database :table-names [(:name table)] :schema-names [(:schema table)]))
       (:fields (driver/describe-table (driver.u/database->driver database) database table)))))
 
-(mu/defn fk-metadata
-  "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema."
-  [database :- i/DatabaseInstance & {:as args}]
-  (log-if-error "fk-metadata"
-    (cond->> (driver/describe-fks (driver.u/database->driver database) database args)
-      ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
-      (mu.fn/instrument-ns? *ns*)
-      (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %))))))
-
-(mu/defn table-fk-metadata :- [:maybe [:sequential i/FKMetadataEntry]]
-  "Get information about the foreign keys belonging to `table`."
-  [database :- i/DatabaseInstance
-   table    :- i/TableInstance]
-  (log-if-error "table-fk-metadata"
-    (let [driver (driver.u/database->driver database)]
-      (when (driver/database-supports? driver :foreign-keys database)
-        (if (driver/database-supports? driver :describe-fks database)
-          (vec (driver/describe-fks driver database :table-names [(:name table)] :schema-names [(:schema table)]))
-          #_{:clj-kondo/ignore [:deprecated-var]}
-          (vec (for [x (driver/describe-table-fks driver database table)]
+(defn backwards-compatible-describe-fks
+  "Replaces [[metabase.driver/describe-fks]] for drivers that haven't implemented it. Uses [[driver/describe-table-fks]]
+  which is deprecated."
+  [driver database & {:keys [schema-names table-names]}]
+  (let [tables (sync-util/db->reducible-sync-tables database :schema-names schema-names :table-names table-names)]
+    (eduction
+     (mapcat (fn [table]
+               #_{:clj-kondo/ignore [:deprecated-var]}
+               (for [x (driver/describe-table-fks driver database table)]
                  {:fk-table-name   (:name table)
                   :fk-table-schema (:schema table)
                   :fk-column-name  (:fk-column-name x)
                   :pk-table-name   (:name (:dest-table x))
                   :pk-table-schema (:schema (:dest-table x))
-                  :pk-column-name  (:dest-column-name x)})))))))
+                  :pk-column-name  (:dest-column-name x)})))
+     tables)))
+
+(mu/defn fk-metadata
+  "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema.
+  If the driver doesn't support [[metabase.driver/describe-fks]] it uses [[driver/describe-table-fks]] instead.
+  This will be deprecated in "
+  [database :- i/DatabaseInstance & {:as args}]
+  (log-if-error "fk-metadata"
+    (let [driver (driver.u/database->driver database)]
+      (when (driver/database-supports? driver :foreign-keys database)
+        (let [describe-fks-fn (if (driver/database-supports? driver :describe-fks database)
+                                driver/describe-fks
+                                ;; In version 52 we'll remove [[driver/describe-table-fks]]
+                                ;; and we'll just use [[driver/describe-fks]] here
+                                backwards-compatible-describe-fks)]
+          (cond->> (describe-fks-fn (driver.u/database->driver database) database args)
+            ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
+            (mu.fn/instrument-ns? *ns*)
+            (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %)))))))))
 
 (mu/defn nfc-metadata :- [:maybe [:set i/TableMetadataField]]
   "Get information about the nested field column fields within `table`."

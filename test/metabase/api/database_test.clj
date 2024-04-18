@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojurewerkz.quartzite.scheduler :as qs]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.database :as api.database]
@@ -303,7 +304,9 @@
   [& body]
   `(mt/with-temp-scheduler
      (#'task.sync-databases/job-init)
-     ~@body))
+     (u/prog1 ~@body
+       (qs/delete-job (#'task/scheduler) (.getKey @#'task.sync-databases/sync-analyze-job))
+       (qs/delete-job (#'task/scheduler) (.getKey @#'task.sync-databases/field-values-job)))))
 
 (deftest create-db-default-schedule-test
   (testing "POST /api/database"
@@ -1187,7 +1190,7 @@
             (is (not= (u.cron/schedule-map->cron-string schedule-map-for-last-friday-at-11pm)
                       (:cache_field_values_schedule db)))))
 
-        (testing "update db setting to never scan should remove scan field values trigger"
+        (testing "update db setting with a custom trigger should reschedule scan field values"
           (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
                                 {:details     {:let-user-control-scheduling true}
                                  :schedules   {:metadata_sync      schedule-map-for-weekly
@@ -1200,23 +1203,37 @@
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-last-friday-at-11pm)
-                   (:cache_field_values_schedule db))))
+                   (:cache_field_values_schedule db)))))
 
-          (testing "turn back to default settings should recreate all tasks with randomized schedule"
-            (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
-                                  {:details     {:let-user-control-scheduling false}
-                                   :schedules   {:metadata_sync      schedule-map-for-weekly
-                                                 :cache_field_values schedule-map-for-last-friday-at-11pm}
-                                   :is_full_sync true
-                                   :is_on_demand false})
-            (is (= (all-db-sync-triggers-name db)
-                   (query-all-db-sync-triggers-name db)))
-            (let [db (t2/select-one :model/Database (:id db))]
-              ;; make sure the new schedule is randomized, not from the payload
-              (is (not= (-> schedule-map-for-weekly u.cron/schedule-map->cron-string)
-                        (:metadata_sync_schedule db)))
-              (is (not= (-> schedule-map-for-last-friday-at-11pm u.cron/schedule-map->cron-string)
-                        (:cache_field_values_schedule db))))))))))
+       (testing "update db setting to never scan should remove scan field values trigger"
+         (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                               {:details     {:let-user-control-scheduling true}
+                                :schedules   {:metadata_sync      schedule-map-for-weekly
+                                              :cache_field_values schedule-map-for-last-friday-at-11pm}
+                                :is_full_sync false
+                                :is_on_demand false})
+         (is (= #{(sync-and-analyze-trigger-name db)}
+                (query-all-db-sync-triggers-name db)))
+         (let [db (t2/select-one :model/Database (:id db))]
+           (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
+                  (:metadata_sync_schedule db)))
+           (is (nil? (:cache_field_values_schedule db)))))
+
+       (testing "turn back to default settings should recreate all tasks with randomized schedule"
+         (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                               {:details     {:let-user-control-scheduling false}
+                                :schedules   {:metadata_sync      schedule-map-for-weekly
+                                              :cache_field_values schedule-map-for-last-friday-at-11pm}
+                                :is_full_sync true
+                                :is_on_demand false})
+         (is (= (all-db-sync-triggers-name db)
+                (query-all-db-sync-triggers-name db)))
+         (let [db (t2/select-one :model/Database (:id db))]
+           ;; make sure the new schedule is randomized, not from the payload
+           (is (not= (-> schedule-map-for-weekly u.cron/schedule-map->cron-string)
+                     (:metadata_sync_schedule db)))
+           (is (not= (-> schedule-map-for-last-friday-at-11pm u.cron/schedule-map->cron-string)
+                     (:cache_field_values_schedule db)))))))))
 
 (deftest update-db-to-never-scan-values-on-demand-test
   (with-db-scheduler-setup

@@ -10,6 +10,7 @@
    [macaw.core :as mac]
    [metabase.config :as config]
    [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
+   [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -24,10 +25,11 @@
 (defn- active?
   "Should the query run? Either we're not testing or it's been explicitly turned on.
 
-  c.f. [[*parse-queries-in-test?*]]"
+  c.f. [[*parse-queries-in-test?*]], [[public-settings/sql-parsing-enabled]]"
   []
-  (or (not config/is-test?)
-      *parse-queries-in-test?*))
+  (and (public-settings/sql-parsing-enabled)
+       (or (not config/is-test?)
+           *parse-queries-in-test?*)))
 
 (defn- normalize-name
   ;; TODO: This is wildly naive and will be revisited once the rest of the plumbing is sorted out

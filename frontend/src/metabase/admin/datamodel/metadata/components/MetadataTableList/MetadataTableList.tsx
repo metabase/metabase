@@ -295,7 +295,7 @@ const TableRow = ({
       >
         {table.displayName()}
         {isSyncCompleted(table) && (
-          <div className={cx(CS.hoverChild, "float-right")}>
+          <div className={cx(CS.hoverChild, CS.floatRight)}>
             <ToggleVisibilityButton
               tables={tables}
               isHidden={table.visibility_type != null}
