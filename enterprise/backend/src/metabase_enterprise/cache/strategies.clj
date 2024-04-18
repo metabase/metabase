@@ -74,7 +74,7 @@
 
 ;;; Strategy execution
 
-(defmulti fetch-cache-stmt-ee*
+(defmulti ^:private fetch-cache-stmt-ee*
   "Generate prepared statement for a db cache backend for a given strategy"
   (fn [strategy _hash _conn] (:type strategy)))
 

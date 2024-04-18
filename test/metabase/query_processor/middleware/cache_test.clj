@@ -326,15 +326,15 @@
                        (dissoc cached-result :cache/details))
                     "Cached result should be in the same format as the uncached result, except for added keys"))))))))
   (testing "Cached results don't impact average execution time"
-    (let [save-query-execution-count          (atom 0)
+    (let [save-execution-metadata-count       (atom 0)
           update-avg-execution-count          (atom 0)
           called-promise                      (promise)
-          save-query-execution-original       (var-get #'process-userland-query/save-query-execution!*)
+          save-execution-metadata-original    (var-get #'process-userland-query/save-execution-metadata!*)
           save-query-update-avg-time-original query/save-query-and-update-average-execution-time!]
-      (with-redefs [process-userland-query/save-query-execution!*       (fn [& args]
-                                                                          (swap! save-query-execution-count inc)
-                                                                          (apply save-query-execution-original args)
-                                                                          (deliver called-promise true))
+      (with-redefs [process-userland-query/save-execution-metadata!*     (fn [& args]
+                                                                           (swap! save-execution-metadata-count inc)
+                                                                           (apply save-execution-metadata-original args)
+                                                                           (deliver called-promise true))
                     query/save-query-and-update-average-execution-time! (fn [& args]
                                                                           (swap! update-avg-execution-count inc)
                                                                           (apply save-query-update-avg-time-original args))]
@@ -346,14 +346,14 @@
             (is (not (:cached (qp/process-query (qp/userland-query query)))))
             (a/alts!! [save-chan (a/timeout 200)]) ;; wait-for-result closes the channel
             (u/deref-with-timeout called-promise 500)
-            (is (= 1 @save-query-execution-count))
+            (is (= 1 @save-execution-metadata-count))
             (is (= 1 @update-avg-execution-count))
             (let [avg-execution-time (query/average-execution-time-ms q-hash)]
               (is (number? avg-execution-time))
               ;; rerun query getting cached results
               (is (:cached (qp/process-query (qp/userland-query query))))
               (mt/wait-for-result save-chan)
-              (is (= 2 @save-query-execution-count)
+              (is (= 2 @save-execution-metadata-count)
                   "Saving execution times of a cache lookup")
               (is (= 1 @update-avg-execution-count)
                   "Cached query execution should not update average query duration")

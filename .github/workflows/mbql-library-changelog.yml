@@ -1,0 +1,32 @@
+name: Update changelog for MBQL library changes
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - labeled
+      - unlabeled
+      - synchronize
+    paths:
+      - src/metabase/lib/js.cljs
+jobs:
+  mbql-library-changelog-check:
+    runs-on: ubuntu-latest
+    if: ${{ !contains( github.event.pull_request.labels.*.name, '.metabase-lib/no-change' ) }}
+    steps:
+      # - uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+      #   with:
+      #     github-token: '${{ secrets.GITHUB_TOKEN }}'
+      #     valid-labels: '.metabase-lib/no-change'
+      #     disable-reviews: true
+      - uses: actions/checkout@v4
+      - name: Check for updated MBQL library changelog
+        run: |
+          if [[ $(git show HEAD -- docs/developers-guide/mbql-library-changelog.md) ]]; then
+            echo "Library and changelog updated together - all good"
+          else
+            echo "metabase.lib.js namespace changed but docs/developers/guide/mbql-library-changelog.md did not"
+            echo "Update the changelog with the changes made to the library's API."
+            echo "If the edits did not change the API, add the `.metabase-lib/no-change` label."
+            exit 1
+          fi

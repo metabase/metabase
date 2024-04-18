@@ -107,7 +107,8 @@
              min-duration-ms (:min-duration-ms strategy 0)
              eligible?       (and @has-rows?
                                   (> duration-ms min-duration-ms))]
-         (log/infof "Query took %s to run; minimum for cache eligibility is %s; %s"
+         (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; %s"
+                    (i/short-hex-hash query-hash)
                     (u/format-milliseconds duration-ms)
                     (u/format-milliseconds min-duration-ms)
                     (if eligible? "eligible" "not eligible"))
