@@ -7,7 +7,7 @@ export interface Task {
   started_at: string;
   ended_at: string;
   task: string;
-  task_details: object | null;
+  task_details: Record<string, unknown> | null;
 }
 export type ListTasksRequest = PaginationRequest;
 
