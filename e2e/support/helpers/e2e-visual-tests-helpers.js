@@ -13,6 +13,25 @@ export function echartsContainer() {
   return cy.findByTestId("chart-container");
 }
 
+export function goalLine() {
+  return echartsContainer().find("path[stroke-dasharray='3,4']");
+}
+
+export function trendLine() {
+  return echartsContainer().find("path[stroke-dasharray='5,5']");
+}
+
+export function getXYTransform(element) {
+  const transform = element.prop("transform");
+  const {
+    baseVal: [{ matrix }],
+  } = transform;
+
+  const { e: x, f: y } = matrix;
+
+  return { x, y };
+}
+
 export function echartsIcon(name, color = undefined) {
   const iconSvg = setSvgColor(
     Icons[name].source,
