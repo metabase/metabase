@@ -9,7 +9,10 @@ import type {
 
 import type { PickerState } from "../EntityPicker";
 
-import type { DashboardPickerItem } from "./types";
+import type {
+  DashboardPickerInitialValueItem,
+  DashboardPickerItem,
+} from "./types";
 
 export const getCollectionIdPath = (
   collection: Pick<
@@ -91,7 +94,7 @@ export const getStateFromIdPath = ({
 };
 
 export const getCollectionId = (
-  item: DashboardPickerItem | null,
+  item: DashboardPickerItem | DashboardPickerInitialValueItem | null,
 ): CollectionId => {
   if (!item) {
     return "root";
@@ -101,7 +104,11 @@ export const getCollectionId = (
     return (item.id as CollectionId) ?? "root";
   }
 
-  return item.collection_id ?? "root";
+  if ("collection_id" in item) {
+    return item.collection_id ?? "root";
+  }
+
+  return "root";
 };
 
 export const isFolder = (item: DashboardPickerItem) => {

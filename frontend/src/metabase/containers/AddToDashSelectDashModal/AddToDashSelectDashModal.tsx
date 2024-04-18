@@ -7,6 +7,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { Card, CollectionId, Dashboard } from "metabase-types/api";
 
 import { useMostRecentlyViewedDashboard } from "./hooks";
@@ -28,7 +29,6 @@ interface AddToDashSelectDashModalProps {
   card: Card;
   onChangeLocation: (location: string) => void;
   onClose: () => void;
-  dashboards: Record<string, Dashboard>;
 }
 
 export const AddToDashSelectDashModal = ({
@@ -59,6 +59,8 @@ export const AddToDashSelectDashModal = ({
       entityId: openCollectionId,
     }),
   );
+
+  const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
   const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
   const showCreateNewDashboardOption =
     !isQuestionInPersonalCollection || isOpenCollectionInPersonalCollection;
@@ -88,22 +90,30 @@ export const AddToDashSelectDashModal = ({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
+  //TODO:handle initial value for question in personal collection
+
   return (
     <DashboardPickerModal
       title={getTitle(card)}
       onChange={onDashboardSelected}
       onClose={onClose}
       value={
-        mostRecentlyViewedDashboardQuery.data
+        mostRecentlyViewedDashboardQuery.data && !isQuestionInPersonalCollection
           ? {
               id: mostRecentlyViewedDashboardQuery.data?.id,
               model: "dashboard",
+            }
+          : isQuestionInPersonalCollection && userPersonalCollectionId
+          ? {
+              id: userPersonalCollectionId,
+              model: "collection",
             }
           : undefined
       }
       options={{
         allowCreateNew: showCreateNewDashboardOption,
         showPersonalCollections: isQuestionInPersonalCollection,
+        showRootCollection: !isQuestionInPersonalCollection,
       }}
     />
   );

@@ -115,7 +115,7 @@ export const DashboardPickerModal = ({
     pickerRef.current?.onNewDashboard(newDashboard);
   };
 
-  const parentCollectionId = getCollectionId(selectedItem);
+  const parentCollectionId = getCollectionId(selectedItem || value);
 
   return (
     <>

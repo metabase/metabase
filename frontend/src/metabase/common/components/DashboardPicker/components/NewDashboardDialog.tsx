@@ -36,7 +36,8 @@ export const NewDashboardDialog = ({
     } = await dispatch(
       Dashboard.actions.create({
         name,
-        parent_id: parentCollectionId === "root" ? null : parentCollectionId,
+        collection_id:
+          parentCollectionId === "root" ? null : parentCollectionId,
       }),
     );
     onNewDashboard({ ...newDashboard, model: "dashboard" });
