@@ -1,32 +1,26 @@
 import { useFormikContext } from "formik";
 import { useCallback } from "react";
-import { createPortal } from "react-dom";
 import { t } from "ttag";
 
 import { IconInButton } from "metabase/admin/performance/components/StrategyForm.styled";
-import { isErrorWithMessage } from "metabase/admin/performance/strategies";
+import {
+  isErrorWithMessage,
+  resolveSmoothly,
+} from "metabase/admin/performance/utils";
 import { Form, FormProvider } from "metabase/forms";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
+import type { InvalidateNowButtonProps } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
 import { CacheConfigApi } from "metabase/services";
-import { Group, Loader, Text } from "metabase/ui";
+import { Group, Icon, Loader, Text } from "metabase/ui";
 
 import { StyledInvalidateNowButton } from "./InvalidateNowButton.styled";
-
-const delay = (milliseconds: number) =>
-  new Promise(resolve => setTimeout(resolve, milliseconds));
-
 export const InvalidateNowButton = ({
   targetId,
-  containerRef,
-  databaseName,
-}: {
-  targetId: number;
-  containerRef: React.RefObject<HTMLElement>;
-  databaseName?: string;
-}) => {
+  targetName,
+}: InvalidateNowButtonProps) => {
   const dispatch = useDispatch();
 
   const invalidateTargetDatabase = useCallback(async () => {
@@ -35,8 +29,7 @@ export const InvalidateNowButton = ({
         { include: "overrides", database: targetId },
         { hasBody: false },
       );
-      // To prevent UI jumpiness, ensure a minimum delay before showing the success/failure message
-      await Promise.all([delay(300), invalidate]);
+      await resolveSmoothly(invalidate);
     } catch (e) {
       if (isErrorWithMessage(e)) {
         dispatch(
@@ -52,21 +45,14 @@ export const InvalidateNowButton = ({
     }
   }, [dispatch, targetId]);
 
-  if (!containerRef.current) {
-    return null;
-  }
-
-  return createPortal(
-    <>
-      <FormProvider initialValues={{}} onSubmit={invalidateTargetDatabase}>
-        <InvalidateNowFormBody databaseName={databaseName} />
-      </FormProvider>
-    </>,
-    containerRef.current,
+  return (
+    <FormProvider initialValues={{}} onSubmit={invalidateTargetDatabase}>
+      <InvalidateNowFormBody targetName={targetName} />
+    </FormProvider>
   );
 };
 
-const InvalidateNowFormBody = ({ databaseName }: { databaseName?: string }) => {
+const InvalidateNowFormBody = ({ targetName }: { targetName?: string }) => {
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
   const { submitForm } = useFormikContext();
@@ -75,13 +61,13 @@ const InvalidateNowFormBody = ({ databaseName }: { databaseName?: string }) => {
     () =>
       askConfirmation({
         title: t`Invalidate all cached results for ${
-          databaseName || t`this database`
+          targetName || t`this object`
         }?`,
         message: "",
         confirmButtonText: t`Invalidate`,
         onConfirm: submitForm,
       }),
-    [askConfirmation, databaseName, submitForm],
+    [askConfirmation, targetName, submitForm],
   );
 
   return (
@@ -95,7 +81,7 @@ const InvalidateNowFormBody = ({ databaseName }: { databaseName?: string }) => {
           }}
           label={
             <Group spacing="sm">
-              <IconInButton color={color("danger")} name="trash" />
+              <Icon color={color("danger")} name="trash" />
               <Text>Invalidate cache now</Text>
             </Group>
           }

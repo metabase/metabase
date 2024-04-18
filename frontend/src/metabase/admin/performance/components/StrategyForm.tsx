@@ -1,6 +1,6 @@
 import { useFormikContext } from "formik";
-import type { DispatchWithoutAction, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -15,7 +15,6 @@ import {
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
-import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
@@ -119,115 +118,105 @@ const StrategyFormBody = ({
     }
   }, [selectedStrategyType, values, setFieldValue]);
 
-  const invalidateFormContainerRef = useRef<HTMLDivElement>(null);
-
-  const forceUpdate = useForceUpdate();
-
   return (
-    <>
-      <div
+    <div
+      style={{
+        height: "100%",
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {targetDatabase && (
+        <Box lh="1rem" px="lg" py="xs" color="text-medium">
+          <Group spacing="sm">
+            <FixedSizeIcon name="database" color="inherit" />
+            <Text fw="bold" py="1rem">
+              {targetDatabase.displayName()}
+            </Text>
+          </Group>
+        </Box>
+      )}
+      <Form
         style={{
-          height: "100%",
-          position: "relative",
           display: "flex",
           flexDirection: "column",
+          flexGrow: 1,
+          overflow: "auto",
         }}
       >
-        {targetDatabase && (
-          <Box lh="1rem" px="lg" py="xs" color="text-medium">
-            <Group spacing="sm">
-              <FixedSizeIcon name="database" color="inherit" />
-              <Text fw="bold" py="1rem">
-                {targetDatabase.displayName()}
-              </Text>
-            </Group>
-          </Box>
-        )}
-        <Form
+        <Box
           style={{
-            display: "flex",
-            flexDirection: "column",
-            flexGrow: 1,
+            borderTop: `1px solid ${color("border")}`,
+            borderBottom: `1px solid ${color("border")}`,
             overflow: "auto",
+            flexGrow: 1,
           }}
         >
-          <Box
-            style={{
-              borderTop: `1px solid ${color("border")}`,
-              borderBottom: `1px solid ${color("border")}`,
-              overflow: "auto",
-              flexGrow: 1,
-            }}
-          >
-            <Stack maw="27.5rem" p="lg" spacing="xl">
-              <StrategySelector targetId={targetId} />
-              {selectedStrategyType === "ttl" && (
-                <>
-                  <Field
-                    title={t`Minimum query duration`}
-                    subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
-                  >
-                    <PositiveNumberInput
-                      strategyType="ttl"
-                      name="min_duration_seconds"
-                    />
-                  </Field>
-                  <Field
-                    title={t`Cache time-to-live (TTL) multiplier`}
-                    subtitle={<MultiplierFieldSubtitle />}
-                  >
-                    <PositiveNumberInput strategyType="ttl" name="multiplier" />
-                  </Field>
-                </>
-              )}
-              {selectedStrategyType === "duration" && (
-                <>
-                  <Field title={t`Cache results for this many hours`}>
-                    <PositiveNumberInput
-                      strategyType="duration"
-                      name="duration"
-                    />
-                  </Field>
-                  <input type="hidden" name="unit" />
-                </>
-              )}
-              {selectedStrategyType === "schedule" && (
-                <ScheduleStrategyFormFields />
-              )}
-            </Stack>
-          </Box>
-          <FormButtons
-            targetId={targetId}
-            shouldAllowInvalidation={shouldAllowInvalidation}
-            invalidateFormContainerRef={invalidateFormContainerRef}
-            forceFormUpdate={forceUpdate}
-          />
-        </Form>
-      </div>
-      {
-        // The 'Invalidate cache now' button is inserted into the FormButtons component
-        // via createPortal, to avoid nesting a form inside a form
-        <PLUGIN_CACHING.InvalidateNowButton
+          <Stack maw="27.5rem" p="lg" spacing="xl">
+            <StrategySelector targetId={targetId} />
+            {selectedStrategyType === "ttl" && (
+              <>
+                <Field
+                  title={t`Minimum query duration`}
+                  subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
+                >
+                  <PositiveNumberInput
+                    strategyType="ttl"
+                    name="min_duration_seconds"
+                  />
+                </Field>
+                <Field
+                  title={t`Cache time-to-live (TTL) multiplier`}
+                  subtitle={<MultiplierFieldSubtitle />}
+                >
+                  <PositiveNumberInput strategyType="ttl" name="multiplier" />
+                </Field>
+              </>
+            )}
+            {selectedStrategyType === "duration" && (
+              <>
+                <Field title={t`Cache results for this many hours`}>
+                  <PositiveNumberInput
+                    strategyType="duration"
+                    name="duration"
+                  />
+                </Field>
+                <input type="hidden" name="unit" />
+              </>
+            )}
+            {selectedStrategyType === "schedule" && (
+              <ScheduleStrategyFormFields />
+            )}
+          </Stack>
+        </Box>
+        <FormButtons
           targetId={targetId}
-          containerRef={invalidateFormContainerRef}
-          databaseName={targetDatabase?.displayName()}
+          shouldAllowInvalidation={shouldAllowInvalidation}
+          targetName={targetDatabase?.displayName()}
         />
-      }
-    </>
+      </Form>
+    </div>
   );
 };
 
-export const FormButtons = ({
-  targetId,
-  shouldAllowInvalidation,
-  invalidateFormContainerRef,
-  forceFormUpdate,
-}: {
+const FormButtonsGroup = ({ children }: { children: ReactNode }) => (
+  <Group p="md" px="lg" spacing="md" bg="white">
+    {children}
+  </Group>
+);
+
+type FormButtonsProps = {
   targetId: number | null;
   shouldAllowInvalidation: boolean;
-  invalidateFormContainerRef: React.RefObject<HTMLDivElement>;
-  forceFormUpdate: DispatchWithoutAction;
-}) => {
+  targetName?: string;
+};
+
+const FormButtons = ({
+  targetId,
+  shouldAllowInvalidation,
+  targetName,
+}: FormButtonsProps) => {
   const { dirty } = useFormikContext<Strategy>();
   const { status } = useFormContext();
 
@@ -238,28 +227,28 @@ export const FormButtons = ({
   const isFormPending = status === "pending";
   const [wasFormRecentlyPending] = useRecentlyTrue(isFormPending, 500);
 
-  useEffect(() => {
-    // Force a form update after the timeout to ensure that the form is re-rendered
-    if (!wasFormRecentlyPending) {
-      forceFormUpdate();
-    }
-  }, [wasFormRecentlyPending, forceFormUpdate]);
-
   const isSavingPossible = dirty || isFormPending || wasFormRecentlyPending;
 
-  if (!isSavingPossible && !shouldAllowInvalidation) {
-    return null;
+  if (isSavingPossible) {
+    return (
+      <FormButtonsGroup>
+        <SaveAndDiscardButtons dirty={dirty} isFormPending={isFormPending} />
+      </FormButtonsGroup>
+    );
   }
 
-  return (
-    <Group p="md" px="lg" spacing="md" bg="white">
-      {isSavingPossible ? (
-        <SaveAndDiscardButtons dirty={dirty} isFormPending={isFormPending} />
-      ) : (
-        <div ref={invalidateFormContainerRef} />
-      )}
-    </Group>
-  );
+  if (shouldAllowInvalidation && targetId && targetName) {
+    return (
+      <FormButtonsGroup>
+        <PLUGIN_CACHING.InvalidateNowButton
+          targetId={targetId}
+          targetName={targetName}
+        />
+      </FormButtonsGroup>
+    );
+  }
+
+  return null;
 };
 
 const ScheduleStrategyFormFields = () => {
@@ -320,7 +309,7 @@ const SaveAndDiscardButtons = ({
             <Icon name="check" /> {t`Saved`}
           </Group>
         }
-        activeLabel={<LoaderInButton size=".8rem" />}
+        activeLabel={<LoaderInButton size="1rem" />}
         variant="filled"
         data-testid="strategy-form-submit-button"
       />

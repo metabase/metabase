@@ -141,15 +141,6 @@ export const getFieldsForStrategyType = (strategyType: StrategyType) => {
   return fields;
 };
 
-type ErrorWithMessage = { data: { message: string } };
-
-export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
-  typeof error === "object" &&
-  error !== null &&
-  "data" in error &&
-  "message" in (error as { data: any }).data &&
-  typeof (error as { data: { message: any } }).data.message === "string";
-
 export const translateConfig = (
   config: Config,
   direction: "fromAPI" | "toAPI",
