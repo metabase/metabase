@@ -1,19 +1,21 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Flex, Icon, Select, Text, TextInput } from "metabase/ui";
+import { Box, Button, Flex, Icon, Text, TextInput } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-import type { ColumnAndSeparator, ColumnOption } from "../../types";
-import { formatSeparator, fromSelectValue, toSelectValue } from "../../utils";
+import type { ColumnAndSeparator } from "../../types";
+import { formatSeparator } from "../../utils";
 import { ColumnPicker } from "../ColumnPicker";
 
 import S from "./ColumnAndSeparatorRow.module.css";
 
 interface Props {
+  query: Lib.Query;
+  stageIndex: number;
   column: Lib.ColumnMetadata;
+  columns: Lib.ColumnMetadata[];
   index: number;
-  options: ColumnOption[];
   separator: string;
   showLabels: boolean;
   showRemove: boolean;
@@ -23,9 +25,11 @@ interface Props {
 }
 
 export const ColumnAndSeparatorRow = ({
+  query,
+  stageIndex,
   column,
+  columns,
   index,
-  options,
   separator,
   showLabels,
   showRemove,
@@ -72,27 +76,16 @@ export const ColumnAndSeparatorRow = ({
 
       <Box className={S.column}>
         <ColumnPicker
+          query={query}
+          stageIndex={stageIndex}
+          columns={columns}
           label={showLabels ? t`Column` : undefined}
-          options={options}
-          value={toSelectValue(options, column)}
-          onChange={value => {
-            const column = fromSelectValue(options, value);
+          value={column}
+          onChange={column => {
             onChange(index, { column });
           }}
         />
       </Box>
-
-      {/* <Select
-        className={S.column}
-        data={options}
-        label={showLabels ? t`Column` : undefined}
-        placeholder={t`Column`}
-        value={toSelectValue(options, column)}
-        onChange={value => {
-          const column = fromSelectValue(options, value);
-          onChange(index, { column });
-        }}
-      /> */}
 
       {showRemove && (
         <Button

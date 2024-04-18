@@ -1,59 +1,118 @@
-import { useState } from "react";
+import classNames from "classnames";
+import type { FocusEvent, MouseEvent, KeyboardEvent } from "react";
+import { useRef, useState, useMemo } from "react";
+import { t } from "ttag";
 
-import AccordionList from "metabase/core/components/AccordionList";
-import { Icon, Select } from "metabase/ui";
+import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { Button, Icon, Input, Popover, FocusTrap } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
-import type { ColumnOption } from "../../types";
+import styles from "./ColumnPicker.module.css";
 
-import S from "./ColumnPicker.module.css";
-
-interface Props {
+type ColumnInputProps = {
+  query: Lib.Query;
+  stageIndex: number;
+  columns: Lib.ColumnMetadata[];
   label?: string;
-  options: ColumnOption[];
-  value: string;
-  onChange: (value: string) => void;
-}
+  value: Lib.ColumnMetadata;
+  onChange: (column: Lib.ColumnMetadata) => void;
+};
 
-export const ColumnPicker = ({ label, options, value, onChange }: Props) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const sections = [];
+export function ColumnPicker({
+  query,
+  stageIndex,
+  columns,
+  label,
+  value,
+  onChange,
+}: ColumnInputProps) {
+  const columnGroups = useMemo(() => Lib.groupColumns(columns), [columns]);
 
-  const DropdownComponent = () => {
-    return (
-      <div>
-        asdasdasd
+  const [open, setOpen] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
+
+  function handleOpen() {
+    setOpen(true);
+  }
+
+  function handleClose() {
+    setOpen(false);
+    button.current?.focus();
+  }
+
+  function handleBlur(evt: FocusEvent<HTMLDivElement>) {
+    if (!evt.currentTarget || !evt.relatedTarget) {
+      return;
+    }
+    if (!evt.currentTarget.contains(evt.relatedTarget as Node)) {
+      setTimeout(() => setOpen(false), 100);
+    }
+  }
+
+  function handleButtonClick(evt: MouseEvent<HTMLButtonElement>) {
+    evt.preventDefault();
+    evt.stopPropagation();
+    setOpen(open => !open);
+  }
+
+  function handleKeyDown(evt: KeyboardEvent<HTMLButtonElement>) {
+    if (evt.key === "Enter") {
+      setOpen(true);
+    }
+  }
+
+  const dropdown = (
+    <FocusTrap active={open}>
+      <div onBlur={handleBlur}>
+        <QueryColumnPicker
+          query={query}
+          stageIndex={stageIndex}
+          columnGroups={columnGroups}
+          onSelect={onChange}
+          onClose={handleClose}
+          checkIsColumnSelected={item => item.column === value}
+          width="100%"
+        />
       </div>
-    );
-  };
-  // const DropdownComponent = () => {
-  //   return (
-  //     <AccordionList
-  //       className="text-brand"
-  //       maxHeight={600}
-  //       sections={[]}
-  //       onChange={item => this.props.onChange(item.target)}
-  //       itemIsSelected={item => _.isEqual(item.target, target)}
-  //       renderItemIcon={item => (
-  //         <Icon name={item.icon || "unknown"} size={18} />
-  //       )}
-  //       alwaysExpanded={true}
-  //       hideSingleSectionTitle={!hasForeignOption}
-  //     />
-  //   );
-  // };
+    </FocusTrap>
+  );
+
+  const text = useMemo(() => {
+    if (!value) {
+      return t`Select a column...`;
+    }
+    const info = Lib.displayInfo(query, stageIndex, value);
+    return info.longDisplayName;
+  }, [value, query, stageIndex]);
 
   return (
-    <>
-      <Select
-        className={S.column}
-        classNames={{
-          wrapper: S.wrapper,
-        }}
-        data={options}
-        label={label}
-        value={value}
-        dropdownComponent={DropdownComponent}
-      />
-    </>
+    <Input.Wrapper label={label} styles={{ root: { width: "100%" } }}>
+      <Popover
+        opened={open}
+        onClose={handleClose}
+        onOpen={handleOpen}
+        closeOnEscape
+        closeOnClickOutside
+        width="target"
+        returnFocus
+      >
+        <Popover.Target>
+          <Button
+            ref={button}
+            onMouseDownCapture={handleButtonClick}
+            onKeyDown={handleKeyDown}
+            fullWidth
+            classNames={{
+              root: classNames(styles.root, open && styles.open),
+              inner: styles.button,
+            }}
+            rightIcon={<Icon name="chevrondown" style={{ height: 14 }} />}
+          >
+            {text}
+          </Button>
+        </Popover.Target>
+        <Popover.Dropdown>{dropdown}</Popover.Dropdown>
+      </Popover>
+    </Input.Wrapper>
   );
-};
+}

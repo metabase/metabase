@@ -131,10 +131,12 @@ export const CombineColumnsDrill = ({
                 <Stack spacing="sm">
                   {columnsAndSeparators.map(({ column, separator }, index) => (
                     <ColumnAndSeparatorRow
+                      query={query}
+                      stageIndex={stageIndex}
                       column={column}
+                      columns={expressionableColumns}
                       index={index}
                       key={index}
-                      options={options}
                       separator={separator}
                       showLabels={index === 0}
                       showRemove={columnsAndSeparators.length > 1}
