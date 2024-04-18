@@ -10,7 +10,7 @@
   --color-warning: #f9cf48;
   --mb-color-text-dark: #4c5773;
   --color-text-medium: #696e7b;
-  --color-text-light: #949aab;
+  --mb-color-text-light: #949aab;
   --color-text-white: #fff;
   --mb-color-bg-black: #2e353b;
   --mb-color-bg-dark: #93a1ab;
@@ -54,11 +54,11 @@
 }
 
 .textSlateLight {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 .textLight {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 .textMedium,

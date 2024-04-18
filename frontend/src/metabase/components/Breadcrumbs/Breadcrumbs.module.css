@@ -1,5 +1,5 @@
 :root {
-  --mb-breadcrumb-color: var(--color-text-light);
+  --mb-breadcrumb-color: var(--mb-color-text-light);
   --mb-breadcrumb-page-color: var(--mb-color-text-dark);
   --mb-breadcrumb-divider-spacing: 0.75em;
 

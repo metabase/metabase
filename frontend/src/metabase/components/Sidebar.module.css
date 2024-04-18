@@ -16,7 +16,7 @@
   align-items: center;
   display: flex;
   font-size: 1em;
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 .item .icon {

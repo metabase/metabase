@@ -311,7 +311,7 @@
 }
 
 .QuestionTooltipTarget {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
   border: 2px solid currentColor;
   border-radius: 99px;
   width: 20px;

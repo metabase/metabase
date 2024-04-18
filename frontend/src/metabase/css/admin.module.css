@@ -66,7 +66,7 @@
   bottom: 0;
   margin: auto;
   margin-left: 1em;
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 .AdminListSearch .AdminInput {
@@ -105,7 +105,7 @@
   margin-top: 1em;
   padding: 0.5em 1em 0.5em 1em;
   text-transform: uppercase;
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
   font-weight: 700;
   font-size: smaller;
   padding-right: 15px; /* set so that table visibility icons align */

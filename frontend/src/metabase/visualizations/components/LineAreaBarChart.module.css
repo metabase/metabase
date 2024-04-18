@@ -69,7 +69,7 @@
 
 /* restyle grid-line for 0 to look like X axis */
 .LineAreaBarChart :global(.dc-chart .stacked line.zero) {
-  stroke: var(--color-text-light);
+  stroke: var(--mb-color-text-light);
   opacity: 1;
   stroke-dasharray: none;
 }
@@ -169,7 +169,7 @@
 }
 
 .LineAreaBarChart :global(.dc-chart .line.deselected) {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 .LineAreaBarChart :global(.dc-chart .area),
@@ -258,13 +258,13 @@
 
 /* Overrides dc:global .js styles */
 .LineAreaBarChart :global(.dc-chart .event-axis .event-icon path) {
-  fill: var(--color-text-light);
+  fill: var(--mb-color-text-light);
   stroke: unset;
   shape-rendering: geometricPrecision;
 }
 
 .LineAreaBarChart :global(.dc-chart .event-axis .event-text) {
-  fill: var(--color-text-light);
+  fill: var(--mb-color-text-light);
 }
 
 .LineAreaBarChart

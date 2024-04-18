@@ -27,7 +27,7 @@
 }
 
 .CalendarDay {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
   position: relative;
   border-radius: 99px;
   font-weight: 700;
