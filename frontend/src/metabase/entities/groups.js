@@ -71,9 +71,9 @@ const Groups = createEntity({
     if (type === CREATE_MEMBERSHIP && !error) {
       const { membership, group_id } = payload;
       const members = state[group_id]?.members;
+      const updatedMembers = [...members, membership];
       if (members) {
-        members.push(membership);
-        return assocIn(state, [group_id, "members"], members);
+        return assocIn(state, [group_id, "members"], updatedMembers);
       } else {
         return state;
       }
