@@ -224,4 +224,5 @@ WHERE
       table_id IS NULL
       AND perm_type = 'perms/view-data'
   )
+AND perm_type = 'perms/view-data'
 AND table_id IS NOT NULL;
