@@ -14,21 +14,21 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-import type { CreateBookmark, DeleteBookmark, OnCopy, OnMove, OnToggleSelected } from "../types";
+import type { Edit } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
+import type { CreateBookmark, DeleteBookmark, OnCopy, OnMove, OnToggleSelectedWithItem } from "../types";
 import {
   DescriptionIcon, EntityIconCheckBox, ItemCell, ItemLink, ItemNameCell, ModelDetailLink,
   RowActionsContainer, TableItemSecondaryField
 } from "./BaseItemsTable.styled";
-import type {Edit} from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
 
 export type BaseTableItemProps = {
-  databases: Database[];
+  databases?: Database[];
   bookmarks?: Bookmark[];
   createBookmark?: CreateBookmark;
   deleteBookmark?: DeleteBookmark;
   item: CollectionItem;
   draggable?: boolean;
-  collection: Collection; // TODO: not sure what the type is, but {} is the default value
+  collection?: Collection; // TODO: not sure what the type is, but {} is the default value
   selectedItems?: CollectionItem[];
   isSelected?: boolean;
   isPinned?: boolean;
@@ -36,7 +36,7 @@ export type BaseTableItemProps = {
   onCopy?: OnCopy;
   onMove?: OnMove;
   onDrop?: () => void; // TODO: Not sure what the parameter is
-  onToggleSelected?: OnToggleSelected;
+  onToggleSelected?: OnToggleSelectedWithItem;
 };
 
 export const BaseTableItem = ({
@@ -62,7 +62,7 @@ export const BaseTableItem = ({
 
   const renderRow = useCallback(() => {
     const canSelect =
-      collection.can_write && typeof onToggleSelected === "function";
+      collection?.can_write && typeof onToggleSelected === "function";
 
     const lastEditInfo =
       "last-edit-info" in item ? item["last-edit-info"] : undefined;
@@ -115,7 +115,7 @@ export const BaseTableItem = ({
               size={16}
               status={item.moderated_status}
             />
-            {item.description && (
+            {item.description?.trim() && (
               <DescriptionIcon
                 name="info"
                 size={16}
@@ -196,4 +196,5 @@ const getLastEditedBy = (lastEditInfo?: Edit) => {
   return name || lastEditInfo.email;
 }
 
+// eslint-disable-next-line import/no-default-export
 export default BaseTableItem;

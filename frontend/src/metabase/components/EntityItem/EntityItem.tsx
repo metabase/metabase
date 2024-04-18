@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { useMemo } from "react";
+import { ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import type {
@@ -10,6 +10,7 @@ import type {
   OnPin,
   OnToggleBookmark,
   OnTogglePreview,
+  OnToggleSelected,
 } from "metabase/collections/types";
 import {
   isPreviewShown,
@@ -25,6 +26,7 @@ import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
+import type { IconName } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
 import {
@@ -246,7 +248,11 @@ function EntityItemMenu({
     return null;
   }
   return (
-    <EntityMenuContainer align="center">
+    <EntityMenuContainer
+      // NOTE: The following line of code was originally align=center, which does nothing,
+      // so this change might have an undesired effect
+      style={{ textAlign: "center" }}
+    >
       <EntityMenu
         triggerAriaLabel={t`Actions`}
         className={className}
@@ -275,6 +281,23 @@ const EntityItem = ({
   pinned,
   loading,
   disabled,
+}: {
+  name: string;
+  iconName: IconName;
+  onPin?: OnPin;
+  onMove?: OnMove;
+  onCopy?: OnCopy;
+  onArchive?: OnArchive;
+  selected: boolean;
+  onToggleSelected: OnToggleSelected;
+  selectable?: boolean;
+  variant: string;
+  item: CollectionItem;
+  buttons?: ReactNode;
+  extraInfo?: ReactNode;
+  pinned?: boolean;
+  loading?: boolean;
+  disabled: boolean;
 }) => {
   const icon = useMemo(() => ({ name: iconName }), [iconName]);
 
@@ -287,7 +310,7 @@ const EntityItem = ({
       disabled={disabled}
     >
       <EntityIconCheckBox
-        item={item}
+        //item={item} // NOTE: This prop does not seem to be used
         variant={variant}
         icon={icon}
         pinned={pinned}

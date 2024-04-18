@@ -19,12 +19,13 @@ import {
   ItemLink,
   Title,
 } from "./PinnedItemCard.styled";
+import type {CreateBookmark, DeleteBookmark} from "metabase/collections/types";
 
 type Props = {
   databases?: Database[];
   bookmarks?: Bookmark[];
-  createBookmark: (id: string, collection: string) => void;
-  deleteBookmark: (id: string, collection: string) => void;
+  createBookmark: CreateBookmark;
+  deleteBookmark: DeleteBookmark;
   className?: string;
   item: CollectionItem;
   collection: Collection;

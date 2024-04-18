@@ -277,6 +277,7 @@ class QueryModals extends Component<QueryModalsProps> {
               entityType="questions"
               entityObject={{
                 ...question.card(),
+                // TODO: Why is collection_id used here? Shouldn't it be collectionId?
                 collection_id: question.canWrite()
                   ? question.collectionId()
                   : initialCollectionId,

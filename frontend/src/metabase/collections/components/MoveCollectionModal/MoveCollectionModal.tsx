@@ -1,24 +1,18 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { Collection, CollectionId } from "metabase-types/api";
+import type { OnMoveWithSourceAndDestination } from "metabase/collections/types";
 import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { MoveModal } from "metabase/containers/MoveModal";
 import Collections from "metabase/entities/collections";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type {
-  Collection,
-  CollectionItem,
-  CollectionId,
-} from "metabase-types/api";
 
 export interface MoveCollectionModalProps {
   collection: Collection;
-  onMove: (
-    source: Collection | CollectionItem,
-    destination: { id: CollectionId },
-  ) => void;
+  onMove: OnMoveWithSourceAndDestination;
   onClose: () => void;
 }
 

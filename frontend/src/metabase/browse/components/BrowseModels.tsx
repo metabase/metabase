@@ -11,6 +11,7 @@ import type { SearchResult } from "metabase-types/api";
 
 import { CenteredEmptyState } from "./BrowseApp.styled";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
+import type { SortingOptions } from "metabase/collections/components/BaseItemsTable";
 
 export const BrowseModels = ({
   modelsResult,
@@ -73,11 +74,16 @@ export const BrowseModels = ({
   /// };
   /// const groupsOfModels = groupModels(models, localeCode);
 
-  const sortingOptions = {
+  const sortingOptions: SortingOptions = {
     sort_column: "name",
     sort_direction: "asc",
   };
   const wrappedModels = models.map(model => Search.wrapEntity(model, dispatch));
+  const handleUnpinnedItemsSortingChange = (
+    newSortingOptions: SortingOptions,
+  ) => {
+    // TODO: Implement sorting
+  };
 
   if (models.length) {
     return (
@@ -86,12 +92,12 @@ export const BrowseModels = ({
         <ItemsTable
           items={wrappedModels}
           sortingOptions={sortingOptions}
+          onSortingOptionsChange={handleUnpinnedItemsSortingChange}
           // databases={databases}
           // bookmarks={bookmarks}
           // createBookmark={createBookmark}
           // deleteBookmark={deleteBookmark}
           // collection={collection}
-          // onSortingOptionsChange={handleUnpinnedItemsSortingChange}
           // selectedItems={selected}
           // hasUnselected={hasUnselected}
           // getIsSelected={getIsSelected}

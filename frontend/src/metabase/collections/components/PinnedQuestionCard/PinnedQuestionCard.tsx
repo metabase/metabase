@@ -19,6 +19,7 @@ import {
   CardStaticSkeleton,
 } from "./PinnedQuestionCard.styled";
 import PinnedQuestionLoader from "./PinnedQuestionLoader";
+import type {CreateBookmark, DeleteBookmark} from "metabase/collections/types";
 
 export interface PinnedQuestionCardProps {
   item: CollectionItem;
@@ -27,8 +28,8 @@ export interface PinnedQuestionCardProps {
   bookmarks?: Bookmark[];
   onCopy: (items: CollectionItem[]) => void;
   onMove: (items: CollectionItem[]) => void;
-  onCreateBookmark?: (id: string, model: string) => void;
-  onDeleteBookmark?: (id: string, model: string) => void;
+  onCreateBookmark?: CreateBookmark;
+  onDeleteBookmark?: DeleteBookmark;
 }
 
 const PinnedQuestionCard = ({

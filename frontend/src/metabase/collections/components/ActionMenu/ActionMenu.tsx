@@ -27,7 +27,7 @@ import type {
 interface OwnProps {
   className?: string;
   item: CollectionItem;
-  collection: Collection;
+  collection?: Collection;
   databases?: Database[];
   bookmarks?: Bookmark[];
   onCopy?: OnCopy;

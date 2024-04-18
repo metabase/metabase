@@ -6,14 +6,19 @@ import ModalContent from "metabase/components/ModalContent";
 import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import EntityForm from "metabase/entities/containers/EntityForm";
 import { Flex, Loader } from "metabase/ui";
+import type { CollectionItem } from "metabase-types/api";
+import type { FormikFormProps } from "formik";
+import type { BaseFieldValues } from "metabase-types/forms";
+import type { FormContainerProps } from "metabase/containers/FormikForm";
 
 interface EntityCopyModalProps {
   entityType: string;
-  entityObject: any;
+  entityObject: any; // TODO: Replace. Perhaps it should be a CollectionItem, but QueryModals assigns a collection_id to this object, and CollectionItems don't have those
   copy: (data: any) => void;
   title?: string;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (newEntityObject: any) => void;
+  form?: any;
 }
 
 const EntityCopyModal = ({
@@ -24,7 +29,7 @@ const EntityCopyModal = ({
   onClose,
   onSaved,
   ...props
-}: EntityCopyModalProps) => {
+}: EntityCopyModalProps & Partial<FormContainerProps<BaseFieldValues>>) => {
   const { data: collections } = useCollectionListQuery();
 
   return (

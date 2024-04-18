@@ -1,17 +1,18 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { CollectionId, CollectionItem } from "metabase-types/api";
+import type { OnMoveWithOneItem } from "metabase/collections/types";
 import { isItemCollection } from "metabase/collections/utils";
 import {
   CollectionPickerModal,
   type CollectionPickerItem,
 } from "metabase/common/components/CollectionPicker";
-import type { CollectionId, CollectionItem } from "metabase-types/api";
 
 interface MoveModalProps {
   title: string;
   onClose: () => void;
-  onMove: (item: { id: CollectionId }) => void;
+  onMove: OnMoveWithOneItem;
   initialCollectionId: CollectionId;
   movingCollectionId?: CollectionId;
 }
@@ -56,7 +57,7 @@ export const MoveModal = ({
 
 interface BulkMoveModalProps {
   onClose: () => void;
-  onMove: (item: { id: CollectionId }) => void;
+  onMove: OnMoveWithOneItem;
   selectedItems: CollectionItem[];
   initialCollectionId: CollectionId;
 }
@@ -84,7 +85,8 @@ export const BulkMoveModal = ({
 
   const title =
     selectedItems.length > 1
-      ? t`Move ${selectedItems.length} items?`
+      ? // TODO: Use ngettext pluralization
+        t`Move ${selectedItems.length} items?`
       : t`Move "${selectedItems[0].name}"?`;
 
   return (

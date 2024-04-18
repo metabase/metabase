@@ -1,17 +1,17 @@
-import PropTypes from "prop-types";
-
 import PinDropZone from "metabase/collections/components/PinDropZone";
 import CS from "metabase/css/core/index.css";
 
-import BaseItemsTable, { type ListableItem } from "./BaseItemsTable";
+import type { CollectionItem } from "metabase-types/api";
+import BaseItemsTable, { BaseItemsTableProps } from "./BaseItemsTable";
+import type { BaseTableItemProps } from "./BaseTableItem";
 import { ItemsTableRoot } from "./ItemsTable.styled";
 
 const Item = ({
   item,
   ...props
 }: {
-  item: ListableItem; // FIXME:
-} & BaseItemsTable.ItemProps) => {
+  item: CollectionItem;
+} & BaseTableItemProps) => {
   return (
     <BaseItemsTable.Item
       key={`${item.model}-${item.id}`}
@@ -24,7 +24,8 @@ const Item = ({
 const ItemsTable = ({
   items,
   ...props
-}: { items: ListableItem[] } & BaseItemsTableProps) => {
+}: { items: CollectionItem[] } & BaseItemsTableProps) => {
+
   if (items.length === 0) {
     return (
       <ItemsTableRoot>
@@ -36,9 +37,10 @@ const ItemsTable = ({
   return (
     <div className={CS.relative}>
       <PinDropZone variant="unpin" />
-      <BaseItemsTable {...props} renderItem={Item} />
+      <BaseItemsTable items={items} {...props} renderItem={Item} />
     </div>
   );
 };
 
+// eslint-disable-next-line import/no-default-export
 export default ItemsTable;

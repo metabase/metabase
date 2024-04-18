@@ -1,27 +1,32 @@
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import CheckBox from "metabase/core/components/CheckBox";
 
-import {
-  ColumnHeader,
-  Table,
-  SortingIcon,
-  SortingControlContainer,
-  TBody,
-  LastEditedByCol,
-  BulkSelectWrapper,
-} from "./BaseItemsTable.styled";
-import BaseTableItem, {BaseTableItemProps} from "./BaseTableItem";
-import type {Bookmark, Collection, CollectionItem, } from "metabase-types/api";
-import type {ItemWithLastEditInfo} from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
-import type {HTMLAttributes, ReactNode} from "react";
-import type {CreateBookmark, DeleteBookmark, OnCopy, OnMove, OnToggleSelected} from "../types";
 import type Database from "metabase-lib/v1/metadata/Database";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import type { HTMLAttributes, ReactNode } from "react";
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+  OnCopy,
+  OnMove,
+  OnToggleSelected,
+  OnToggleSelectedWithItem,
+} from "../types";
+import {
+  BulkSelectWrapper,
+  ColumnHeader,
+  LastEditedByCol,
+  SortingControlContainer,
+  SortingIcon,
+  Table,
+  TBody,
+} from "./BaseItemsTable.styled";
+import BaseTableItem, { type BaseTableItemProps } from "./BaseTableItem";
 
-type SortingOptions = {
+export type SortingOptions = {
   sort_column: string;
-  sort_direction: 'asc' | 'desc';
+  sort_direction: "asc" | "desc";
 };
 
 type SortableColumnHeaderProps = {
@@ -65,16 +70,18 @@ const SortableColumnHeader = ({
         role="button"
       >
         {children}
-        <SortingIcon name={direction === Sort.Asc ? "chevronup" : "chevrondown"} />
+        <SortingIcon
+          name={direction === Sort.Asc ? "chevronup" : "chevrondown"}
+        />
       </SortingControlContainer>
     </ColumnHeader>
   );
-}
+};
 
-interface BaseItemsTableProps {
+export interface BaseItemsTableProps {
   items: CollectionItem[];
-  collection: Collection;
-  databases: Database[]
+  collection?: Collection;
+  databases?: Database[];
   bookmarks?: Bookmark[];
   createBookmark?: CreateBookmark;
   deleteBookmark?: DeleteBookmark;
@@ -83,8 +90,8 @@ interface BaseItemsTableProps {
   isPinned?: boolean;
   renderItem?: (props: ItemRendererProps) => JSX.Element;
   sortingOptions: SortingOptions;
-  onSortingOptionsChange: () => void;
-  onToggleSelected?: OnToggleSelected;
+  onSortingOptionsChange: (newSortingOptions: SortingOptions) => void;
+  onToggleSelected?: OnToggleSelectedWithItem;
   onSelectAll?: () => void;
   onSelectNone?: () => void;
   onCopy?: OnCopy;
@@ -103,7 +110,7 @@ const defaultItemRenderer = ({ item, ...props }: ItemRendererProps) => {
   return (
     <BaseTableItem key={`${item.model}-${item.id}`} item={item} {...props} />
   );
-}
+};
 
 const BaseItemsTable = ({
   databases,
@@ -127,7 +134,7 @@ const BaseItemsTable = ({
   getIsSelected = () => false,
   headless = false,
   ...props
-} : BaseItemsTableProps) => {
+}: BaseItemsTableProps) => {
   const itemRenderer = (item: CollectionItem) =>
     renderItem({
       databases,
@@ -145,7 +152,7 @@ const BaseItemsTable = ({
       onToggleSelected,
     });
 
-  const canSelect = collection.can_write || false;
+  const canSelect = !!collection?.can_write;
 
   return (
     <Table canSelect={canSelect} {...props}>
@@ -169,9 +176,7 @@ const BaseItemsTable = ({
                 <BulkSelectWrapper>
                   <CheckBox
                     checked={!!selectedItems?.length}
-                    indeterminate={
-                      (!!selectedItems?.length && !!hasUnselected)
-                    }
+                    indeterminate={!!selectedItems?.length && !!hasUnselected}
                     onChange={hasUnselected ? onSelectAll : onSelectNone}
                     aria-label={t`Select all items`}
                   />
@@ -215,7 +220,7 @@ const BaseItemsTable = ({
       <TBody>{items.map(itemRenderer)}</TBody>
     </Table>
   );
-}
+};
 
 BaseItemsTable.Item = BaseTableItem;
 

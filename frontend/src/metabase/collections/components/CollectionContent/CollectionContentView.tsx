@@ -22,7 +22,10 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 
-import { ModelUploadModal } from "../ModelUploadModal";
+import {
+  CollectionOrTableIdProps,
+  ModelUploadModal,
+} from "../ModelUploadModal";
 import UploadOverlay from "../UploadOverlay";
 
 import {
@@ -32,6 +35,20 @@ import {
   CollectionTable,
 } from "./CollectionContent.styled";
 import { getComposedDragProps } from "./utils";
+import type {
+  Bookmark,
+  Collection,
+  CollectionId,
+  CollectionItem,
+} from "metabase-types/api";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+  OnFileUpload,
+  UploadFile,
+} from "metabase/collections/types";
+import { Sort, type SortingOptions } from "../BaseItemsTable";
 
 const PAGE_SIZE = 25;
 
@@ -44,9 +61,10 @@ const ALL_MODELS = [
   "collection",
 ];
 
-const itemKeyFn = item => `${item.id}:${item.model}`;
+// TODO: Not sure this type is right
+const itemKeyFn = (item: CollectionItem) => `${item.id}:${item.model}`;
 
-export function CollectionContentView({
+export const CollectionContentView = ({
   databases,
   bookmarks,
   collection,
@@ -59,36 +77,50 @@ export function CollectionContentView({
   uploadFile,
   uploadsEnabled,
   canUploadToDb,
-}) {
+}: {
+  databases?: Database[];
+  bookmarks?: Bookmark[];
+  collection: Collection;
+  collections: Collection[];
+  collectionId: CollectionId;
+  createBookmark: CreateBookmark;
+  deleteBookmark: DeleteBookmark;
+  isAdmin: boolean;
+  isNavbarOpen: boolean;
+  uploadFile: UploadFile;
+  uploadsEnabled: boolean;
+  canUploadToDb: boolean;
+}) => {
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [selectedItems, setSelectedItems] = useState(null);
-  const [selectedAction, setSelectedAction] = useState(null);
-  const [unpinnedItemsSorting, setUnpinnedItemsSorting] = useState({
-    sort_column: "name",
-    sort_direction: "asc",
-  });
+  const [selectedItems, setSelectedItems] = useState<CollectionItem[] | null>(
+    null,
+  );
+  const [selectedAction, setSelectedAction] = useState<string | null>(null);
+  const [unpinnedItemsSorting, setUnpinnedItemsSorting] =
+    useState<SortingOptions>({
+      sort_column: "name",
+      sort_direction: Sort.Asc,
+    });
 
   const [
     isModelUploadModalOpen,
     { turnOn: openModelUploadModal, turnOff: closeModelUploadModal },
   ] = useToggle(false);
-  const [uploadedFile, setUploadedFile] = useState(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
-  const saveFile = file => {
+  const saveFile = (file: File) => {
     setUploadedFile(file);
     openModelUploadModal();
   };
 
-  const handleUploadFile = useCallback(
-    ({ collectionId, tableId, modelId, uploadMode }) => {
+  const handleUploadFile = useCallback<OnFileUpload>(
+    (props: CollectionOrTableIdProps) => {
+      const { collectionId, tableId } = props;
       if (uploadedFile && (collectionId || tableId)) {
         closeModelUploadModal();
         uploadFile({
           file: uploadedFile,
-          collectionId,
-          tableId,
-          modelId,
-          uploadMode,
+          ...props,
         });
       }
     },
@@ -109,17 +141,16 @@ export function CollectionContentView({
   }, [previousCollection, collection, clear, resetPage]);
 
   useEffect(() => {
-    const shouldBeBookmarked = bookmarks.some(
+    const shouldBeBookmarked = !!bookmarks?.some(
       bookmark =>
         bookmark.type === "collection" && bookmark.item_id === collectionId,
     );
-
     setIsBookmarked(shouldBeBookmarked);
   }, [bookmarks, collectionId]);
 
   const dispatch = useDispatch();
 
-  const onDrop = acceptedFiles => {
+  const onDrop = (acceptedFiles: File[]) => {
     if (!acceptedFiles.length) {
       dispatch(
         addUndo({
@@ -143,7 +174,7 @@ export function CollectionContentView({
 
   const handleBulkArchive = useCallback(async () => {
     try {
-      await Promise.all(selected.map(item => item.setArchived(true)));
+      await Promise.all(selected.map(item => item.setArchived?.(true)));
     } finally {
       clear();
     }
@@ -155,11 +186,13 @@ export function CollectionContentView({
   };
 
   const handleBulkMove = useCallback(
-    async collection => {
+    async (collection: Pick<Collection, "id"> & Partial<Collection>) => {
       try {
-        await Promise.all(
-          selectedItems.map(item => item.setCollection(collection)),
-        );
+        if (selectedItems) {
+          await Promise.all(
+            selectedItems.map(item => item.setCollection?.(collection)),
+          );
+        }
         handleCloseModal();
       } finally {
         clear();
@@ -169,7 +202,7 @@ export function CollectionContentView({
   );
 
   const handleUnpinnedItemsSortingChange = useCallback(
-    sortingOpts => {
+    (sortingOpts: SortingOptions) => {
       setUnpinnedItemsSorting(sortingOpts);
       setPage(0);
     },
@@ -181,22 +214,22 @@ export function CollectionContentView({
     setSelectedAction(null);
   };
 
-  const handleMove = selectedItems => {
+  const handleMove = (selectedItems: CollectionItem[]) => {
     setSelectedItems(selectedItems);
     setSelectedAction("move");
   };
 
-  const handleCopy = selectedItems => {
+  const handleCopy = (selectedItems: CollectionItem[]) => {
     setSelectedItems(selectedItems);
     setSelectedAction("copy");
   };
 
   const handleCreateBookmark = () => {
-    createBookmark(collectionId, "collection");
+    createBookmark(collectionId.toString(), "collection");
   };
 
   const handleDeleteBookmark = () => {
-    deleteBookmark(collectionId, "collection");
+    deleteBookmark(collectionId.toString(), "collection");
   };
 
   const canUpload = uploadsEnabled && canUploadToDb && collection.can_write;
@@ -226,7 +259,13 @@ export function CollectionContentView({
       keepListWhileLoading
       wrapped
     >
-      {({ list: pinnedItems = [], loading: loadingPinnedItems }) => {
+      {({
+        list: pinnedItems = [],
+        loading: loadingPinnedItems,
+      }: {
+        list: CollectionItem[];
+        loading: boolean;
+      }) => {
         const hasPinnedItems = pinnedItems.length > 0;
 
         return (
@@ -272,7 +311,8 @@ export function CollectionContentView({
                   collection={collection}
                   onMove={handleMove}
                   onCopy={handleCopy}
-                  onToggleSelected={toggleItem}
+                  /// dead code I think
+                  /// onToggleSelected={toggleItem}
                 />
               </ErrorBoundary>
               <ErrorBoundary>
@@ -286,8 +326,13 @@ export function CollectionContentView({
                     list: unpinnedItems = [],
                     metadata = {},
                     loading: loadingUnpinnedItems,
+                  }: {
+                    list: CollectionItem[];
+                    metadata: { total?: number };
+                    loading: boolean;
                   }) => {
-                    const hasPagination = metadata.total > PAGE_SIZE;
+                    const hasPagination: boolean =
+                      !!metadata.total && metadata.total > PAGE_SIZE;
 
                     const unselected = unpinnedItems.filter(
                       item => !getIsSelected(item),
@@ -374,4 +419,4 @@ export function CollectionContentView({
       }}
     </Search.ListLoader>
   );
-}
+};
