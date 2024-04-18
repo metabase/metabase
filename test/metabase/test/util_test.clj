@@ -54,7 +54,8 @@
 (deftest ^:parallel with-dynamic-redefs-test
   (testing "Three threads can independently redefine a regular var"
     (let [n-threads  3
-          thread-id  #(.threadId (Thread/currentThread))
+          ;; Note that .getId is deprecated in favor of .threadId, but that method is only introduced in Java 19
+          thread-id  #(.getId (Thread/currentThread))
           latch      (CountDownLatch. (inc n-threads))
           take-latch #(do
                         (.countDown latch)
