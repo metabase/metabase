@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { t } from "ttag";
 
 import { updateSetting } from "metabase/admin/settings/settings";
 import { useSendProductFeedbackMutation } from "metabase/api/product-feedback";
@@ -6,6 +7,7 @@ import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isEEBuild } from "metabase/lib/utils";
+import { addUndo } from "metabase/redux/undo";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 
 import { EmbedHomepageView } from "./EmbedHomepageView";
@@ -82,6 +84,11 @@ export const EmbedHomepage = () => {
       email: email,
       source: "embedding-homepage-dismiss",
     });
+    if (comment || email) {
+      dispatch(
+        addUndo({ message: t`Your feedback was submitted, thank you.` }),
+      );
+    }
   };
 
   return (
