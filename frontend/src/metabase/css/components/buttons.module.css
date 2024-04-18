@@ -1,5 +1,5 @@
 :root {
-  --default-button-border-radius: 6px;
+  --mb-default-button-border-radius: 6px;
 }
 
 .Button {
@@ -13,7 +13,7 @@
   cursor: pointer;
   font-weight: bold;
   font-family: var(--default-font-family), sans-serif;
-  border-radius: var(--default-button-border-radius);
+  border-radius: var(--mb-default-button-border-radius);
 }
 
 .Button:hover {
@@ -114,7 +114,7 @@
 
 .ButtonGroup {
   display: inline-block;
-  border-radius: var(--default-button-border-radius);
+  border-radius: var(--mb-default-button-border-radius);
   border: 1px solid var(--mb-color-border);
   overflow: hidden;
   clear: both;
