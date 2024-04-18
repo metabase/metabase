@@ -1,3 +1,6 @@
+import { t } from "ttag";
+
+import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
   VisualizationGridSize,
@@ -43,4 +46,14 @@ export const getGridSizeAdjustedSettings = (
   }
 
   return newSettings;
+};
+
+export const MAX_SERIES = 100;
+
+export const validateChartModel = (chartModel: BaseCartesianChartModel) => {
+  if (chartModel.seriesModels.length > MAX_SERIES) {
+    throw new Error(
+      t`This chart type doesn't support more than ${MAX_SERIES} series of data.`,
+    );
+  }
 };
