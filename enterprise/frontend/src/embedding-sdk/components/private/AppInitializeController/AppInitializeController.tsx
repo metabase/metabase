@@ -17,20 +17,16 @@ export const AppInitializeController = ({
   config,
   children,
 }: AppInitializeControllerProps) => {
-  const { isLoggedIn, isInitialized } = useInitData({
+
+  useInitData({
     config,
   });
 
+  const isLoggedIn
+
   return (
-    <EmbeddingContext.Provider
-      value={{
-        isInitialized,
-        isLoggedIn,
-      }}
-    >
       <SdkContentWrapper font={config.font ?? DEFAULT_FONT}>
-        {!isInitialized ? <div>{t`Loading…`}</div> : children}
+        {loginStatus?.status === "loading" ? <div>{t`Loading…`}</div> : children}
       </SdkContentWrapper>
-    </EmbeddingContext.Provider>
   );
 };

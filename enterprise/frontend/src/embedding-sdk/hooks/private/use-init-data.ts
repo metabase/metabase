@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
 import _ from "underscore";
 
-import { store } from "embedding-sdk/store";
-import {
-  getOrRefreshSession,
-  getSessionTokenState,
-} from "embedding-sdk/store/reducer";
-import type { EmbeddingSessionTokenState } from "embedding-sdk/store/types";
-import type { SDKConfigType } from "embedding-sdk/types";
+import { getOrRefreshSession } from "embedding-sdk/store/reducer";
+import type { LoginStatus, SDKConfigType } from "embedding-sdk/types";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
 import { useDispatch } from "metabase/lib/redux";
@@ -20,28 +15,25 @@ interface InitDataLoaderParameters {
   config: SDKConfigType;
 }
 
-type LoginStatus =
-  | { status: "success" }
-  | { status: "loading" }
-  | {
-      status: "error";
-      error: Error;
-    }
-  | null;
+const getErrorMessage = (authType: SDKConfigType["authType"]) => {
+  if (authType === "jwt") {
+    return "JWT token is invalid";
+  }
+
+  if (authType === "apiKey") {
+    return "Invalid API key";
+  }
+};
 
 export const useInitData = ({
   config,
 }: InitDataLoaderParameters): {
   isLoggedIn: boolean;
-  isInitialized: boolean;
   loginStatus: LoginStatus;
 } => {
   const dispatch = useDispatch();
 
-  const [isInitialized, setIsInitialized] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [sessionTokenState, setSessionTokenState] =
-    useState<EmbeddingSessionTokenState | null>(null);
 
   const [loginStatus, setLoginStatus] = useState<LoginStatus>(null);
 
@@ -51,34 +43,16 @@ export const useInitData = ({
     setLoginStatus({ status: "loading" });
   }, []);
 
-  const jwtProviderUri =
-    config.authType === "jwt" ? config.jwtProviderUri : null;
-  useEffect(() => {
-    if (config.authType === "jwt") {
-      const updateToken = () => {
-        const currentState = store.getState();
-        setSessionTokenState(getSessionTokenState(currentState));
-      };
-
-      const unsubscribe = store.subscribe(updateToken);
-
-      if (jwtProviderUri) {
-        dispatch(getOrRefreshSession(jwtProviderUri));
-      }
-
-      updateToken();
-
-      return () => unsubscribe();
-    }
-  }, [config.authType, dispatch, jwtProviderUri]);
-
   useEffect(() => {
     api.basename = config.metabaseInstanceUrl;
 
-    if (config.authType === "jwt") {
-      api.onBeforeRequest = () =>
-        dispatch(getOrRefreshSession(config.jwtProviderUri));
-      api.sessionToken = sessionTokenState?.token?.id;
+    if (config.authType === "jwt" && config.jwtProviderUri) {
+      api.onBeforeRequest = async () => {
+        const response = await dispatch(
+          getOrRefreshSession(config.jwtProviderUri),
+        ).unwrap();
+        api.sessionToken = response?.id;
+      }
     } else if (config.authType === "apiKey" && config.apiKey) {
       api.apiKey = config.apiKey;
     } else {
@@ -87,28 +61,63 @@ export const useInitData = ({
         error: new Error("Invalid auth type"),
         status: "error",
       });
-      return;
     }
+  }, [
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    config.apiKey,
+    config.authType,
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    config.jwtProviderUri,
+    config.metabaseInstanceUrl,
+    dispatch,
+  ]);
 
-    Promise.all([dispatch(refreshCurrentUser()), dispatch(reloadSettings())])
-      .then(() => {
-        setIsInitialized(true);
-        setIsLoggedIn(true);
-        setLoginStatus({ status: "success" });
-      })
-      .catch(() => {
-        setLoginStatus({
-          status: "error",
-          error: new Error("Failed to login"),
+  useEffect(() => {
+    if (loginStatus?.status !== "error") {
+      Promise.all([dispatch(refreshCurrentUser()), dispatch(reloadSettings())])
+        .then(([currentUser]) => {
+          if (currentUser.meta.requestStatus === "rejected") {
+            setIsLoggedIn(false);
+            setLoginStatus({
+              error: new Error(
+                `Couldn't fetch current user: ${getErrorMessage(
+                  config.authType,
+                )}`,
+              ),
+              status: "error",
+            });
+            return;
+          }
+          setIsLoggedIn(true);
+          setLoginStatus({ status: "success" });
+        })
+        .catch(() => {
+          setLoginStatus({
+            status: "error",
+            error: new Error(
+              `Error when authenticating: ${getErrorMessage(config.authType)}`,
+            ),
+          });
+          setIsLoggedIn(false);
         });
-        setIsLoggedIn(false);
-        setIsInitialized(true);
-      });
-  }, [config, dispatch, sessionTokenState]);
+    }
+  }, [
+    loginStatus?.status,
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    config.apiKey,
+    config.authType,
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    config.jwtProviderUri,
+    config.metabaseInstanceUrl,
+    dispatch,
+  ]);
 
   return {
     isLoggedIn,
-    isInitialized,
     loginStatus,
   };
 };

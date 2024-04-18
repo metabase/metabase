@@ -30,7 +30,7 @@ interface InteractiveQuestionProps {
 export const InteractiveQuestion = ({
   questionId,
 }: InteractiveQuestionProps): JSX.Element | null => {
-  const { isInitialized, isLoggedIn } = useEmbeddingContext();
+  const { loginStatus } = useEmbeddingContext();
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
   const mode = question && getEmbeddingMode(question);
@@ -54,7 +54,7 @@ export const InteractiveQuestion = ({
     dispatch(initializeQB(mockLocation, params));
   }, [dispatch, questionId]);
 
-  if (!isInitialized || !isLoggedIn || !question) {
+  if (loginStatus?.status !== "success" || !question) {
     return null;
   }
 

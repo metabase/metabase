@@ -18,7 +18,7 @@ import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMo
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, Dataset } from "metabase-types/api";
 
-import { useEmbeddingContext } from "../../context";
+import { useEmbeddingContext } from "../../../context";
 
 interface QueryVisualizationProps {
   questionId: CardId;
@@ -37,7 +37,9 @@ export const StaticQuestion = ({
   questionId,
   showVisualizationSelector,
 }: QueryVisualizationProps): JSX.Element | null => {
-  const { isInitialized, isLoggedIn } = useEmbeddingContext();
+  const { loginStatus, isLoggedIn } = useEmbeddingContext();
+
+  console.log({loginStatus, isLoggedIn})
   const metadata = useSelector(getMetadata);
 
   const [{ loading, card, result, cardError, resultError }, setState] =
@@ -84,7 +86,7 @@ export const StaticQuestion = ({
   };
 
   useEffect(() => {
-    if (!isInitialized || !isLoggedIn) {
+    if (loginStatus?.status !== "success" || !isLoggedIn) {
       setState({
         loading: false,
         card: null,
@@ -95,7 +97,7 @@ export const StaticQuestion = ({
     } else {
       loadCardData({ questionId });
     }
-  }, [isInitialized, isLoggedIn, questionId]);
+  }, [isLoggedIn, loginStatus?.status, questionId]);
 
   const changeVisualization = (newQuestion: Question) => {
     setState({
@@ -105,7 +107,7 @@ export const StaticQuestion = ({
     });
   };
 
-  if (!isInitialized) {
+  if (loginStatus?.status !== "success") {
     return null;
   }
 

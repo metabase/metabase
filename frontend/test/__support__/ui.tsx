@@ -12,27 +12,33 @@ import { Router, useRouterHistory } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
 import _ from "underscore";
 
+import { AppInitializeController } from "embedding-sdk/components/private";
+import { SDK_REDUCERS } from "embedding-sdk/store";
 import { Api } from "metabase/api";
 import mainReducers from "metabase/reducers-main";
 import publicReducers from "metabase/reducers-public";
+import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { getStore } from "./entities-store";
+import type { SDKConfigType } from "embedding-sdk/types";
 
 type ReducerValue = ReducerObject | Reducer;
+
 interface ReducerObject {
   [slice: string]: ReducerValue;
 }
 
 export interface RenderWithProvidersOptions {
-  mode?: "default" | "public";
+  mode?: "default" | "public" | "sdk";
   initialRoute?: string;
   storeInitialState?: Partial<State>;
   withRouter?: boolean;
   withDND?: boolean;
   customReducers?: ReducerObject;
+  config?: SDKConfigType | null;
 }
 
 /**
@@ -49,6 +55,7 @@ export function renderWithProviders(
     withRouter = false,
     withDND = false,
     customReducers,
+    config = null,
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
@@ -58,6 +65,9 @@ export function renderWithProviders(
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
     initialState = _.pick(initialState, ...publicReducerNames) as State;
+  } else if (mode === "sdk") {
+    const sdkReducerNames = Object.keys(SDK_REDUCERS);
+    initialState = _.pick(initialState, ...sdkReducerNames) as State;
   }
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,
@@ -68,7 +78,14 @@ export function renderWithProviders(
   });
   const history = withRouter ? browserHistory : undefined;
 
-  let reducers = mode === "default" ? mainReducers : publicReducers;
+  let reducers;
+  if (mode === "public") {
+    reducers = publicReducers;
+  } else if (mode === "sdk") {
+    reducers = SDK_REDUCERS;
+  } else {
+    reducers = mainReducers;
+  }
 
   if (withRouter) {
     Object.assign(reducers, { routing: routerReducer });
@@ -88,15 +105,23 @@ export function renderWithProviders(
     storeMiddleware,
   ) as unknown as Store<State>;
 
-  const wrapper = (props: any) => (
-    <Wrapper
-      {...props}
-      store={store}
-      history={history}
-      withRouter={withRouter}
-      withDND={withDND}
-    />
-  );
+  let wrapper;
+
+  if (mode === "sdk") {
+    wrapper = (props: any) => (
+      <SdkWrapper {...props} config={config} store={store} />
+    );
+  } else {
+    wrapper = (props: any) => (
+      <Wrapper
+        {...props}
+        store={store}
+        history={history}
+        withRouter={withRouter}
+        withDND={withDND}
+      />
+    );
+  }
 
   const utils = render(ui, {
     wrapper,
@@ -108,6 +133,31 @@ export function renderWithProviders(
     store,
     history,
   };
+}
+
+function SdkWrapper({
+  config,
+  children,
+  store,
+}: {
+  config: SDKConfigType;
+  children: React.ReactElement;
+  store: any;
+  history?: History;
+  withRouter: boolean;
+  withDND: boolean;
+}) {
+  return (
+    <Provider store={store}>
+      <EmotionCacheProvider>
+        <ThemeProvider>
+          <AppInitializeController config={config}>
+            {children}
+          </AppInitializeController>
+        </ThemeProvider>
+      </EmotionCacheProvider>
+    </Provider>
+  );
 }
 
 function Wrapper({

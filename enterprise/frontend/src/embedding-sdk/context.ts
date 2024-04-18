@@ -1,13 +1,14 @@
 import { createContext, useContext } from "react";
+import type { LoginStatus } from "embedding-sdk/types";
 
 interface EmbeddingSdkContextData {
-  isInitialized: boolean;
   isLoggedIn: boolean;
+  loginStatus: LoginStatus;
 }
 
 export const EmbeddingContext = createContext<EmbeddingSdkContextData>({
-  isInitialized: false,
   isLoggedIn: false,
+  loginStatus: null,
 });
 
 export const useEmbeddingContext = () => {

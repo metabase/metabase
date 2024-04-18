@@ -19,7 +19,10 @@ const GET_OR_REFRESH_SESSION = "embeddingSessionToken/GET_OR_REFRESH_SESSION";
 
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
-  async (url: string, { dispatch, getState }) => {
+  async (
+    url: string,
+    { dispatch, getState },
+  ): Promise<EmbeddingSessionTokenState["token"] | null> => {
     const state = getSessionTokenState(getState() as SdkState);
     const token = state?.token;
 
@@ -28,7 +31,7 @@ export const getOrRefreshSession = createAsyncThunk(
     if (state.loading || isTokenValid) {
       return token;
     }
-    return dispatch(refreshTokenAsync(url));
+    return await dispatch(refreshTokenAsync(url)).unwrap();
   },
 );
 
@@ -49,19 +52,16 @@ const tokenReducer = createReducer(initialState, builder =>
   builder
     .addCase(refreshTokenAsync.pending, state => {
       state.loading = true;
-      return state;
     })
     .addCase(refreshTokenAsync.fulfilled, (state, action) => {
       state.token = action.payload;
       state.error = null;
       state.loading = false;
-      return state;
     })
     .addCase(refreshTokenAsync.rejected, (state, action) => {
       state.token = null;
       state.error = action.error;
       state.loading = false;
-      return state;
     }),
 );
 

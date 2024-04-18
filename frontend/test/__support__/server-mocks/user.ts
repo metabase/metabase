@@ -1,4 +1,4 @@
-import fetchMock from "fetch-mock";
+import fetchMock, {MockOptionsMethodGet} from "fetch-mock";
 
 import type { User, UserAttribute, UserListResult } from "metabase-types/api";
 
@@ -11,8 +11,8 @@ export function setupUsersEndpoints(users: UserListResult[]) {
   return fetchMock.get("path:/api/user", users);
 }
 
-export function setupCurrentUserEndpoint(user: User) {
-  fetchMock.get("path:/api/user/current", user);
+export function setupCurrentUserEndpoint(user: User, options?: MockOptionsMethodGet) {
+  return fetchMock.get("path:/api/user/current", user, options);
 }
 
 export function setupUserAttributesEndpoint(attributes: UserAttribute[]) {
