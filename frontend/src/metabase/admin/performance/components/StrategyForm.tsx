@@ -436,7 +436,7 @@ const MultiplierFieldSubtitle = () => (
       maw="20rem"
     >
       <Text tabIndex={0} lh="1" display="inline" c="brand">
-        Example
+        {t`Example`}
       </Text>
     </Tooltip>
   </div>

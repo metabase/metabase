@@ -1,6 +1,6 @@
 import { useFormikContext } from "formik";
 import { useCallback } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { IconInButton } from "metabase/admin/performance/components/StrategyForm.styled";
 import {
@@ -82,24 +82,25 @@ const InvalidateNowFormBody = ({ targetName }: { targetName?: string }) => {
           label={
             <Group spacing="sm">
               <Icon color={color("danger")} name="trash" />
-              <Text>Invalidate cache now</Text>
+              <Text>{t`Invalidate cache now`}</Text>
             </Group>
           }
           activeLabel={
             <Group spacing="sm">
               <Loader size="1rem" />
-              <Text>Invalidating… </Text>
+              <Text>{c("Shown when a cache is being invalidated")
+                .t`Invalidating… `}</Text>
             </Group>
           }
           successLabel={
             <Group spacing="sm">
               <IconInButton name="check" color={color("success")} />
-              <Text>Done</Text>
+              <Text>{t`Done`}</Text>
             </Group>
           }
           failedLabel={
             <Text fw="bold" lh="1">
-              Error
+              {t`Error`}
             </Text>
           }
         />
