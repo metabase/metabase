@@ -1,7 +1,6 @@
 :root {
   --title-color: var(--mb-color-text-dark);
   --subtitle-color: var(--mb-color-text-medium);
-  --muted-color: var(--mb-color-text-light);
 }
 
 .list {
@@ -83,8 +82,10 @@
 }
 
 .icon {
+  --mb-muted-color: var(--mb-color-text-light);
+
   position: relative;
-  color: var(--muted-color);
+  color: var(--mb-muted-color);
 }
 
 .item .icon {
