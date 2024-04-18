@@ -15,7 +15,7 @@ export const GlobalStyles = (): JSX.Element => {
 
   const styles = css`
     :root {
-      --default-font-family: "${font}";
+      --mb-default-font-family: "${font}";
       --mb-color-brand: ${color("brand")};
       --mb-color-brand-alpha-04: ${alpha("brand", 0.04)};
       --mb-color-brand-alpha-88: ${alpha("brand", 0.88)};

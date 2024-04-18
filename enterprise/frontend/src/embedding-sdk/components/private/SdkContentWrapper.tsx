@@ -6,7 +6,7 @@ import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEd
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
 export const SdkContentWrapper = styled.div<{ font: string }>`
-  --default-font-family: "${({ font }) => font}";
+  --mb-default-font-family: "${({ font }) => font}";
   --mb-color-brand: ${color("brand")};
   --mb-color-brand-alpha-04: ${alpha("brand", 0.04)};
   --mb-color-brand-alpha-88: ${alpha("brand", 0.88)};

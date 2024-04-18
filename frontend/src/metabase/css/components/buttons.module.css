@@ -12,7 +12,7 @@
   color: var(--mb-color-text-dark);
   cursor: pointer;
   font-weight: bold;
-  font-family: var(--default-font-family), sans-serif;
+  font-family: var(--mb-default-font-family), sans-serif;
   border-radius: var(--mb-default-button-border-radius);
 }
 

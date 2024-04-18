@@ -19,7 +19,7 @@
 
 .LineAreaBarChart :global(.dc-chart .axis text) {
   font-size: 12px;
-  font-family: var(--default-font-family), sans-serif;
+  font-family: var(--mb-default-font-family), sans-serif;
   font-weight: 700;
 }
 

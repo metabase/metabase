@@ -6,7 +6,7 @@ export const getRootStyle = (theme: Theme) => css`
   --default-font-color: ${theme.fn.themeColor("text-dark")};
   --default-bg-color: ${theme.fn.themeColor("bg-light")};
 
-  font-family: var(--default-font-family), sans-serif;
+  font-family: var(--mb-default-font-family), sans-serif;
   font-size: var(--default-font-size);
   font-weight: 400;
   font-style: normal;
@@ -79,7 +79,7 @@ export const baseStyle = css`
   button,
   input,
   textarea {
-    font-family: var(--default-font-family), "Helvetica Neue", Helvetica,
+    font-family: var(--mb-default-font-family), "Helvetica Neue", Helvetica,
       sans-serif;
   }
 
