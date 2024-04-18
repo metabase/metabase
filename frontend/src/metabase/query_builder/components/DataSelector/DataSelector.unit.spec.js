@@ -396,7 +396,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
   });
 
-  it("should open database picker with correct database selected", () => {
+  it("should open database picker with correct database selected", async () => {
     render(
       <DataSelector
         steps={["DATABASE"]}
