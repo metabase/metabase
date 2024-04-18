@@ -28,14 +28,16 @@ SELECT
           SELECT
             group_id,
             db_id,
-            CAST(NULL AS INTEGER) AS table_id
+            -- using -1 instead of NULL to avoid Postgres/MySQL compatibility issues with NULL typecasting.
+            -- -1 should not be a valid table_id or db_id so it's safe to use as a placeholder.
+            -1 AS table_id
           FROM
             connection_impersonations
           UNION
           SELECT
             group_id,
             db_id,
-            CAST(NULL AS INTEGER) AS table_id
+            -1 AS table_id
           FROM
             data_permissions
           WHERE
@@ -44,7 +46,7 @@ SELECT
           UNION
           SELECT
             group_id,
-            CAST(NULL AS INTEGER),
+            -1 as db_id,
             table_id
           FROM
             sandboxes
@@ -52,11 +54,11 @@ SELECT
       WHERE
         pgm.group_id <> dp.group_id
         AND (
-          sp.db_id IS NULL
+          sp.db_id = -1
           OR sp.db_id = dp.db_id
         )
         AND (
-          sp.table_id IS NULL
+          sp.table_id = -1
           OR sp.table_id = dp.table_id
         )
     ) THEN 'legacy-no-self-service'
@@ -212,17 +214,13 @@ WHERE
 
 
 -- Remove table-level view-data permissions for groups that have DB-level permissions set
-DELETE FROM data_permissions
-WHERE
-  (group_id, db_id) IN (
-    SELECT
-      group_id,
-      db_id
-    FROM
-      data_permissions
-    WHERE
-      table_id IS NULL
-      AND perm_type = 'perms/view-data'
-  )
-  AND perm_type = 'perms/view-data'
-  AND table_id IS NOT NULL;
+DELETE dp
+FROM data_permissions dp
+JOIN (
+  SELECT group_id, db_id
+  FROM data_permissions
+  WHERE table_id IS NULL
+    AND perm_type = 'perms/view-data'
+) as dp2 ON dp.group_id = dp2.group_id AND dp.db_id = dp2.db_id
+WHERE dp.table_id IS NOT NULL
+  AND dp.perm_type = 'perms/view-data';
