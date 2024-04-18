@@ -25,24 +25,3 @@
   left: 0.75rem;
   pointer-events: none;
 }
-
-.button {
-  justify-content: space-between !important;
-  font-weight: normal;
-}
-
-button.root {
-  &:hover {
-    background: none;
-  }
-
-  &:hover .button {
-    color: var(--color-text-dark);
-  }
-
-  &.open,
-  &:focus-visible {
-    border-color: var(--color-brand);
-    outline: none;
-  }
-}
