@@ -96,7 +96,7 @@ describe("command palette utils", () => {
       );
       const adminIndex = results.findIndex(action => action === "Admin");
 
-      [actionsIndex, recentsIndex, adminIndex, searchIndex].forEach(
+      [recentsIndex, actionsIndex, adminIndex, searchIndex].forEach(
         (val, i, arr) => {
           expect(val).not.toBe(-1);
           const next = arr[i + 1] || Infinity; //can't call expect in an if, so this lets us do the last comparison
