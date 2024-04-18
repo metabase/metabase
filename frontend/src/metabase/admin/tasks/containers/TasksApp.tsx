@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -11,6 +11,7 @@ import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import type { Database, Task } from "metabase-types/api";
 
 import {
   InfoIcon,
@@ -20,7 +21,11 @@ import {
   SectionTitle,
 } from "./TasksApp.styled";
 
-export const TasksApp = ({ children }) => {
+type TasksAppProps = {
+  children: ReactNode;
+};
+
+export const TasksApp = ({ children }: TasksAppProps) => {
   const [page, setPage] = useState(0);
   const { data: tasksData } = useListTasksQuery({
     limit: 50,
@@ -35,7 +40,7 @@ export const TasksApp = ({ children }) => {
     return null;
   }
 
-  const databaseByID = {};
+  const databaseByID: Record<number, Database> = {};
   // index databases by id for lookup
   databases.forEach(db => {
     databaseByID[db.id] = db;
@@ -78,7 +83,7 @@ export const TasksApp = ({ children }) => {
           </tr>
         </thead>
         <tbody>
-          {tasks.map(task => {
+          {tasks.map((task: Task) => {
             const db = task.db_id ? databaseByID[task.db_id] : null;
             const name = db ? db.name : null;
             const engine = db ? db.engine : null;
