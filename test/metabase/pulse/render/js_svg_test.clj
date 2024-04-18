@@ -27,14 +27,14 @@
       (thunk))))
 
 (deftest post-process-test
-  (let [svg   "<svg ><g><line/></g><g><rect/></g><g><circle/></g></svg>"
+  (let [svg   "<svg xmlns=\"http://www.w3.org/2000/svg\"><g><line/></g><g><rect/></g><g><circle/></g></svg>"
         nodes (atom [])]
     (#'js-svg/post-process (parse-svg svg)
                            (fn [^Node node] (swap! nodes conj (.getNodeName node))))
     (is (= ["svg" "g" "line" "g" "rect" "g" "circle"] @nodes))))
 
 (deftest fix-fill-test
-  (let [svg "<svg ><line x1=\"0\" y1=\"260\" x2=\"540\" y2=\"260\" fill=\"transparent\"></line></svg>"
+  (let [svg "<svg xmlns=\"http://www.w3.org/2000/svg\"><line x1=\"0\" y1=\"260\" x2=\"540\" y2=\"260\" fill=\"transparent\"></line></svg>"
 
         ^SVGOMDocument document (parse-svg svg)
         ^Element line           (..  document

@@ -101,7 +101,6 @@
         (chart-type :scalar "result has one row and one column")
 
         (#{:scalar
-           :smartscalar
            :row
            :progress
            :gauge

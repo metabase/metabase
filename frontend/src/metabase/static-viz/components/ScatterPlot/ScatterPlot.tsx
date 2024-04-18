@@ -71,7 +71,11 @@ export function ScatterPlot({
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
 
   return (
-    <svg width={width} height={height + legendHeight}>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={width}
+      height={height + legendHeight}
+    >
       <Legend items={legendLayoutItems} />
       <Group top={legendHeight}>
         <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>

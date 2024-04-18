@@ -22,24 +22,27 @@
   ([card results]
    (render/render-pulse-card-for-display (pulse/defaulted-timezone card) card results)))
 
-(defn- render-results [query]
-  (t2.with-temp/with-temp [Card card {:dataset_query query
-                                      :display       :line}]
-    (render-pulse-card card)))
-
 (deftest render-test
-  (testing "if the pulse rendered correctly it will have an img tag."
-    (is (some? (lib.util.match/match-one (render-results
-                                  (mt/mbql-query checkins
-                                    {:aggregation [[:count]]
-                                     :breakout    [!month.date]}))
-                                 [:img _])))))
+  (testing "If the pulse renders correctly, it will have an img tag."
+    (let [query {:database (mt/id)
+                 :type     :query
+                 :query
+                 {:source-table (mt/id :orders)
+                  :aggregation  [[:count]]
+                  :breakout     [[:field (mt/id :orders :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}]
+      (t2.with-temp/with-temp [Card card {:dataset_query          query
+                                          :display                :line
+                                          :visualization_settings {:graph.dimensions ["CREATED_AT"]
+                                                                   :graph.metrics    ["count"]}}]
+        (is (some? (lib.util.match/match-one
+                       (render-pulse-card card)
+                     [:img _])))))))
 
 (deftest render-error-test
   (testing "gives us a proper error if we have erroring card"
     (is (= (get-in (render/render-pulse-card-for-display
-                     nil nil
-                     {:error "some error"}) [1 2 4 2 2])
+                    nil nil
+                    {:error "some error"}) [1 2 4 2 2])
            "There was a problem with this question."))))
 
 (deftest detect-pulse-chart-type-test

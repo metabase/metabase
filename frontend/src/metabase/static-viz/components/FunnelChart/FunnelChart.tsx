@@ -70,7 +70,11 @@ const Funnel = ({ data, settings }: FunnelProps) => {
   const stepLabelTop = firstMeasureTop + measureTextHeight(layout.nameFontSize);
 
   return (
-    <svg width={layout.width} height={layout.height}>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={layout.width}
+      height={layout.height}
+    >
       <Group left={margin.left}>
         {steps.map((step, index) => {
           const isFirst = index === 0;

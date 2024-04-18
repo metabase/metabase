@@ -461,9 +461,9 @@
 (defn dashcard-timeline-events
   "Look for a timeline and corresponding events associated with this dashcard."
   [{{:keys [collection_id] :as _card} :card}]
-  (let [timelines (->> (t2/select :model/Timeline
-                         :collection_id collection_id
-                         :archived false))]
+  (let [timelines (t2/select :model/Timeline
+                             :collection_id collection_id
+                             :archived false)]
     (->> (t2/hydrate timelines :creator [:collection :can_write])
          (map #(timeline-event/include-events-singular % {:events/all? true})))))
 
@@ -539,16 +539,16 @@
 ;; This conditional is here to cover the case of trend charts in Alerts (not subscriptions). Alerts
 ;; exist on Questions and thus have no associated dashcard, which causes `pu/execute-multi-card` to fail.
 (mu/defmethod render :javascript_visualization :- formatter/RenderedPulseCard
-  [_chart-type render-type _timezone-id card dashcard data]
+  [_chart-type render-type _timezone-id card dashcard _data]
   (let [combined-cards-results (if dashcard
                                  (pu/execute-multi-card card dashcard)
-                                 (pu/execute-card {:creator_id (:creator_id card)} (:id card)))
+                                 [(pu/execute-card {:creator_id (:creator_id card)} (:id card))])
         cards-with-data        (map
                                 (comp
                                  add-dashcard-timeline-events
                                  (fn [c d] {:card c :data d}))
-                                (cons card (map :card combined-cards-results))
-                                (cons data (map #(get-in % [:result :data]) combined-cards-results)))
+                                (map :card combined-cards-results)
+                                (map #(get-in % [:result :data]) combined-cards-results))
         dashcard-viz-settings  (get dashcard :visualization_settings)
         {rendered-type :type content :content} (js-svg/javascript-visualization cards-with-data dashcard-viz-settings)]
     (case rendered-type
