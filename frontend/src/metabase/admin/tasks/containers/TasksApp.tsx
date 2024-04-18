@@ -61,11 +61,8 @@ export const TasksApp = ({ children }: TasksAppProps) => {
     return null;
   }
 
-  const databaseByID: Record<number, Database> = {};
   // index databases by id for lookup
-  databases.forEach(db => {
-    databaseByID[db.id] = db;
-  });
+  const databaseByID: Record<number, Database> = _.indexBy(databases, "id");
 
   return (
     <SectionRoot>
