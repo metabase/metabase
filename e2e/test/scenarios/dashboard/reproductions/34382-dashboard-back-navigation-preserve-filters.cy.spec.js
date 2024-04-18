@@ -21,36 +21,32 @@ describe("issue 34382", () => {
     );
   });
 
-  it(
-    "should preserve filter value when navigating between the dashboard and the query builder with auto-apply disabled (metabase#34382)",
-    { tags: "@flaky" },
-    () => {
-      createDashboardWithCards();
-      visitDashboard("@dashboardId");
+  it("should preserve filter value when navigating between the dashboard and the query builder with auto-apply disabled (metabase#34382)", () => {
+    createDashboardWithCards();
+    visitDashboard("@dashboardId");
 
-      addFilterValue("Gizmo");
-      applyFilter();
+    addFilterValue("Gizmo");
+    applyFilter();
 
-      cy.log("Navigate to Products question");
-      getDashboardCard().findByText("Products").click();
+    cy.log("Navigate to Products question");
+    getDashboardCard().findByText("Products").click();
 
-      cy.log("Navigate back to dashboard");
-      queryBuilderHeader()
-        .findByLabelText("Back to Products in a dashboard")
-        .click();
+    cy.log("Navigate back to dashboard");
+    queryBuilderHeader()
+      .findByLabelText("Back to Products in a dashboard")
+      .click();
 
-      cy.location("search").should("eq", "?category=Gizmo");
-      filterWidget().contains("Gizmo");
+    cy.location("search").should("eq", "?category=Gizmo");
+    filterWidget().contains("Gizmo");
 
-      getDashboardCard().within(() => {
-        // only products with category "Gizmo" are filtered
-        cy.findAllByTestId("table-row")
-          .find("td")
-          .eq(3)
-          .should("contain", "Gizmo");
-      });
-    },
-  );
+    getDashboardCard().within(() => {
+      // only products with category "Gizmo" are filtered
+      cy.findAllByTestId("table-row")
+        .find("td")
+        .eq(3)
+        .should("contain", "Gizmo");
+    });
+  });
 });
 
 const createDashboardWithCards = () => {

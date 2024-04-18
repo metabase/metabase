@@ -3,7 +3,6 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
-   [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -17,6 +16,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    #?@(:clj ([metabase.util.log :as log])))
   #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
 
@@ -52,7 +52,7 @@
   (binding [lib.schema.expression/*suppress-expression-type-check?* true]
     (loop [almost-stage almost-stage
            removals []]
-      (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/stage.mbql almost-stage)
+      (if-let [[error-type error-location] (->> (mr/explain ::lib.schema/stage.mbql almost-stage)
                                                 :errors
                                                 (filter (comp stage-keys first :in))
                                                 (map (juxt :type :in))
@@ -61,7 +61,7 @@
               error-desc (pr-str (or error-type
                                      ;; if `error-type` is missing, which seems to happen sometimes,
                                      ;; fall back to humanizing the entire error.
-                                     (me/humanize (mc/explain ::lib.schema/stage.mbql almost-stage))))]
+                                     (me/humanize (mr/explain ::lib.schema/stage.mbql almost-stage))))]
           #?(:cljs (js/console.warn "Clean: Removing bad clause due to error!" error-location error-desc
                                     (u/pprint-to-str (first (data/diff almost-stage new-stage))))
              :clj  (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"

@@ -8,6 +8,7 @@ import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import Button from "metabase/core/components/Button";
@@ -142,7 +143,23 @@ class TableInteractive extends Component {
     this._div.style.position = "absolute";
     this._div.style.visibility = "hidden";
     this._div.style.zIndex = "-1";
-    document.body.appendChild(this._div);
+
+    if (this.props.isEmbeddingSdk) {
+      const rootElement = document.getElementById(
+        EMBEDDING_SDK_ROOT_ELEMENT_ID,
+      );
+
+      if (rootElement) {
+        rootElement.appendChild(this._div);
+      } else {
+        console.warn(
+          // eslint-disable-next-line no-literal-metabase-strings -- not UI string
+          "Failed to find Embedding SDK provider component. Have you forgot to add MetabaseProvider?",
+        );
+      }
+    } else {
+      document.body.appendChild(this._div);
+    }
 
     this._measure();
     this._findIDColumn(this.props.data, this.props.isPivoted);

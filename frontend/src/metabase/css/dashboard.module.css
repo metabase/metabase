@@ -29,8 +29,9 @@
 }
 
 .Dashboard.DashboardNight
-  :global(.enable-dots-onhover .dc-tooltip circle.dot:hover),
-.Dashboard.DashboardNight :global(.enable-dots .dc-tooltip circle.dot) {
+  .enableDotsOnHover
+  :global(.dc-tooltip circle.dot:hover),
+.Dashboard.DashboardNight .enableDots :global(.dc-tooltip circle.dot) {
   fill: currentColor;
 }
 

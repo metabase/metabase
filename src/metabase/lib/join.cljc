@@ -191,7 +191,7 @@
     {:name (or (:alias join) display-name), :display-name display-name}))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/join
-  [_query _stage-number _query]
+  [_query _stage-number _join-query]
   ;; not i18n'ed because this shouldn't be developer-facing.
   (throw (ex-info "You can't calculate a metadata map for a join! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
@@ -1012,4 +1012,4 @@
   [query stage-number _key]
   (some->> (not-empty (joins query stage-number))
            (map #(lib.metadata.calculation/display-name query stage-number %))
-           (str/join " + " )))
+           (str/join " + ")))

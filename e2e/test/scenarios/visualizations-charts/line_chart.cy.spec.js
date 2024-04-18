@@ -130,7 +130,7 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     cy.findByTestId("query-visualization-root")
-      .get(".enable-dots")
+      .findAllByTestId("chart-series")
       .last()
       .find(".dot")
       .eq(3)

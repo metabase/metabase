@@ -50,7 +50,7 @@
                          :model_id int?
                          :details  {:model     "root"
                                     :model-id  0
-                                    :old-value nil
+                                    ;; no check for old value in case you had something in appdb
                                     :new-value {:strategy "nocache" :config {:name "root"}}}}
                         (last-audit-event)))))
 
@@ -112,7 +112,6 @@
                                          :model_id 0
                                          :strategy {:type     "schedule"
                                                     :schedule "0/2 * * * * ?"}})))))))))
-
 
 (deftest invalidation-test
   (mt/discard-setting-changes [enable-query-caching]

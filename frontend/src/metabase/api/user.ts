@@ -19,10 +19,11 @@ import {
 
 export const userApi = Api.injectEndpoints({
   endpoints: builder => ({
-    listUsers: builder.query<ListUsersResponse, ListUsersRequest | void>({
-      query: body => ({
+    listUsers: builder.query<ListUsersResponse, ListUsersRequest>({
+      query: ({ limit, offset, ...body }) => ({
         method: "GET",
         url: "/api/user",
+        params: { limit, offset },
         body,
       }),
       providesTags: response =>

@@ -254,7 +254,8 @@
   ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
   ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by the
   ;; QP code, and it should be powered by MLv2 in due course.
-  #_(testing "collisions with other column names are detected and rejected"
+  #_
+  (testing "collisions with other column names are detected and rejected"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
           ex    (try
                   (lib/expression query "ID" (meta/field-metadata :categories :name))
