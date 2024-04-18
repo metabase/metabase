@@ -49,6 +49,6 @@
 
 .FormInput:focus:not(.noFocus),
 .FormField:hover .FormInput:not(.noFocus) {
-  border-color: var(--color-brand);
+  border-color: var(--mb-color-brand);
   transition: border 300ms ease-in-out;
 }

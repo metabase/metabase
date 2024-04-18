@@ -27,7 +27,7 @@
 }
 
 .textBrand {
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }
 
 .textSuccess {

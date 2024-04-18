@@ -269,11 +269,11 @@
 
 .LineAreaBarChart
   :global(.dc-chart .event-axis .event-tick.hover .event-icon path) {
-  fill: var(--color-brand);
+  fill: var(--mb-color-brand);
 }
 
 .LineAreaBarChart :global(.dc-chart .event-axis .event-tick.hover .event-text) {
-  fill: var(--color-brand);
+  fill: var(--mb-color-brand);
 }
 
 .LineAreaBarChart :global(.dc-chart .event-line) {
@@ -284,5 +284,5 @@
 }
 
 .LineAreaBarChart :global(.dc-chart .event-line.hover) {
-  stroke: var(--color-brand);
+  stroke: var(--mb-color-brand);
 }

@@ -60,7 +60,7 @@
 }
 
 .borderBrand {
-  border-color: var(--color-brand) !important;
+  border-color: var(--mb-color-brand) !important;
 }
 
 .borderTransparent {

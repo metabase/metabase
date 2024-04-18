@@ -5,7 +5,7 @@
 .link {
   cursor: pointer;
   text-decoration: none;
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }
 
 .link:hover {
