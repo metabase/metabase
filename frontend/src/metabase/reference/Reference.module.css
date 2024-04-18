@@ -1,7 +1,7 @@
 :root {
   --title-color: var(--mb-color-text-medium);
   --subtitle-color: var(--mb-color-text-medium);
-  --icon-width: 60px;
+  --mb-icon-width: 60px;
 }
 
 .columnHeader {
@@ -13,12 +13,12 @@
 
 .revisionsWrapper {
   padding-top: 20px;
-  padding-left: var(--icon-width);
+  padding-left: var(--mb-icon-width);
 }
 
 .schemaSeparator {
   composes: textLight mt2 from "style";
-  margin-left: var(--icon-width);
+  margin-left: var(--mb-icon-width);
   font-size: 18px;
 }
 
