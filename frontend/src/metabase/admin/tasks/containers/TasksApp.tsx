@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import { useListTasksQuery, useListDatabasesQuery } from "metabase/api";
 import AdminHeader from "metabase/components/AdminHeader";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import PaginationControls from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
@@ -27,14 +28,33 @@ type TasksAppProps = {
 
 export const TasksApp = ({ children }: TasksAppProps) => {
   const [page, setPage] = useState(0);
-  const { data: tasksData } = useListTasksQuery({
+
+  const {
+    data: tasksData,
+    isFetching: isLoadingTasks,
+    error: tasksError,
+  } = useListTasksQuery({
     limit: 50,
     offset: page * 50,
   });
-  const { data: databasesData } = useListDatabasesQuery();
+
+  const {
+    data: databasesData,
+    isFetching: isLoadingDatabases,
+    error: databasesError,
+  } = useListDatabasesQuery();
 
   const tasks = tasksData?.data;
   const databases = databasesData?.data;
+
+  if (isLoadingTasks || isLoadingDatabases || tasksError || databasesError) {
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoadingTasks || isLoadingDatabases}
+        error={tasksError || databasesError}
+      />
+    );
+  }
 
   if (!tasks || !databases) {
     return null;
