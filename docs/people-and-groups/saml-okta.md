@@ -6,7 +6,7 @@ title: SAML with Okta
 
 {% include plans-blockquote.html feature="Okta SAML authentication" %}
 
-1. [Turn on SAML-based SSO in Metabase](./authenticating-with-saml.md#enabling-saml-authentication-in-metabase)
+1. [Turn on SAML-based SSO in Metabase](#turn-on-saml-based-sso-in-metabase)
 2. [Set up SAML in Okta](#set-up-saml-in-okta).
 3. [Set up SAML up in Metabase](#set-up-saml-in-metabase).
 
@@ -141,7 +141,7 @@ You can create a custom user profile attribute and fill it with the Metabase gro
 
    We recommend that you use the same names for the groups in Okta as you would use in Metabase.
 
-   Keep in mind that Metabase groups don't have to correspond to Okta User Groups. If you'd like to leverage Okta User Groups to set up Metabase Groups, see [Map Okta User Groups to Metabase groups](#).
+   Keep in mind that Metabase groups don't have to correspond to Okta User Groups. If you'd like to leverage Okta User Groups to set up Metabase Groups, see [Map Okta User Groups to Metabase groups](#map-okta-user-groups-to-metabase-groups).
 
    > Metabase needs the list of group names to be passed as an array. For this, your Okta account has to have `SAML_SUPPORT_ARRAY_ATTRIBUTES` enabled, otherwise Okta will concatenate the group names instead of passing them as an array. If your Okta account is old, you might need to reach out to Okta support to enable `SAML_SUPPORT_ARRAY_ATTRIBUTES`.
 
