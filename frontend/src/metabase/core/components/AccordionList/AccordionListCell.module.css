@@ -13,3 +13,11 @@
     border-top: none;
   }
 }
+
+.action {
+  color: var(--color-text-dark);
+
+  &:hover {
+    color: inherit;
+  }
+}
