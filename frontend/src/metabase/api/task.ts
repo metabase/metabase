@@ -5,6 +5,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import { provideTaskTags, provideTaskListTags } from "./tags";
 
 export const taskApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -14,12 +15,15 @@ export const taskApi = Api.injectEndpoints({
         url: "/api/task",
         params,
       }),
+      providesTags: response =>
+        response ? provideTaskListTags(response.data) : [],
     }),
     getTask: builder.query<Task, number>({
       query: id => ({
         method: "GET",
         url: `/api/task/${id}`,
       }),
+      providesTags: task => (task ? provideTaskTags(task) : []),
     }),
     getTasksInfo: builder.query<unknown, void>({
       query: () => ({
