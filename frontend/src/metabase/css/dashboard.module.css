@@ -14,7 +14,7 @@
 }
 
 .Dashboard.DashboardFullscreen .fullscreenNormalText {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
   transition: color 1s linear;
 }
 
@@ -174,7 +174,7 @@
   :global(.dc-chart .axis .tick text),
   :global(.dc-chart .x-axis-label),
   :global(.dc-chart .y-axis-label) {
-    fill: var(--color-text-dark);
+    fill: var(--mb-color-text-dark);
   }
 }
 

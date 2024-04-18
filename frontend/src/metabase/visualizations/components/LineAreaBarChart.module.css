@@ -52,7 +52,7 @@
 
 .LineAreaBarChart :global(.dc-chart .x-axis-label),
 .LineAreaBarChart :global(.dc-chart .y-axis-label) {
-  fill: var(--color-text-dark);
+  fill: var(--mb-color-text-dark);
   font-size: 12px;
   font-weight: 700;
 }
@@ -232,7 +232,7 @@
 
 :global(text.value-label) {
   pointer-events: none;
-  fill: var(--color-text-dark);
+  fill: var(--mb-color-text-dark);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.5px;
@@ -244,7 +244,7 @@
 :global(text.value-label-white) {
   fill: var(--color-text-white);
   font-weight: 800;
-  stroke: var(--color-text-dark);
+  stroke: var(--mb-color-text-dark);
   stroke-width: 3px;
   paint-order: stroke;
 }

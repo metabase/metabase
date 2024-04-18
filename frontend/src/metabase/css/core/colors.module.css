@@ -8,7 +8,7 @@
   --mb-color-success: #84bb4c;
   --mb-color-error: #ed6e6e;
   --color-warning: #f9cf48;
-  --color-text-dark: #4c5773;
+  --mb-color-text-dark: #4c5773;
   --color-text-medium: #696e7b;
   --color-text-light: #949aab;
   --color-text-white: #fff;
@@ -23,7 +23,7 @@
 }
 
 .textDefault {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
 }
 
 .textBrand {
@@ -68,7 +68,7 @@
 
 .textDark,
 .textDarkHover:hover {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
 }
 
 .bgLight,

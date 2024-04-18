@@ -1,6 +1,6 @@
 :root {
   --body-text-color: var(--color-text-medium);
-  --70-percent-black: var(--color-text-dark);
+  --70-percent-black: var(--mb-color-text-dark);
 }
 
 /* center */

@@ -32,7 +32,7 @@
 }
 
 .ContentTable th {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
   padding: 1em;
 }
 
@@ -112,7 +112,7 @@
 }
 
 .AdminInput {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
   padding: var(--padding-1);
   background-color: var(--mb-color-bg-light);
   border: 1px solid transparent;

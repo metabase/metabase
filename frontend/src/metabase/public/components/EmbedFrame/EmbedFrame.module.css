@@ -8,7 +8,7 @@ body {
 
 .EmbedFrameHeader,
 .EmbedFrameFooter {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
   background-color: white;
 }
 

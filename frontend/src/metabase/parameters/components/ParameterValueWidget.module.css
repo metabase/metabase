@@ -39,7 +39,7 @@
 
 .parameter.noPopover input:focus {
   outline: none;
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
 }
 
 .parameter.noPopover input::-webkit-input-placeholder {
