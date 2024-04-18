@@ -179,7 +179,8 @@
   border-radius: var(--mb-default-border-radius);
   border: 1px solid var(--mb-color-border);
   margin-top: var(--mb-margin-2);
-  padding: var(--padding-1) var(--padding-4) var(--padding-1) var(--padding-4);
+  padding: var(--mb-padding-1) var(--mb-padding-4) var(--mb-padding-1)
+    var(--mb-padding-4);
 }
 
 .QueryError-adminEmail::before {
@@ -188,8 +189,8 @@
   text-align: center;
   text-transform: uppercase;
   background-color: white;
-  padding-left: var(--padding-1);
-  padding-right: var(--padding-1);
+  padding-left: var(--mb-padding-1);
+  padding-right: var(--mb-padding-1);
   position: absolute;
   top: -0.75em;
   left: 50%;

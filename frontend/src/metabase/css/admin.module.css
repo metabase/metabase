@@ -113,7 +113,7 @@
 
 .AdminInput {
   color: var(--mb-color-text-dark);
-  padding: var(--padding-1);
+  padding: var(--mb-padding-1);
   background-color: var(--mb-color-bg-light);
   border: 1px solid transparent;
 }
@@ -158,7 +158,7 @@
 .AdminTable th {
   text-transform: uppercase;
   color: var(--mb-color-text-medium);
-  padding: var(--padding-1);
+  padding: var(--mb-padding-1);
   font-weight: normal;
 }
 

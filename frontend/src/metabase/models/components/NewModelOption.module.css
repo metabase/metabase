@@ -2,7 +2,7 @@
   text-decoration: none;
   display: block;
   background-color: var(--mb-color-bg-white);
-  padding: var(--padding-4);
+  padding: var(--mb-padding-4);
   align-items: center;
   border: var(--mb-border-size) var(--mb-border-style) var(--mb-color-border);
   border-radius: var(--mb-default-border-radius);
