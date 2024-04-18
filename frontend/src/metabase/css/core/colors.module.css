@@ -2,12 +2,9 @@
  * NOTE: KEEP SYNCRONIZED WITH COLORS.JS
  */
 :root {
-  --color-admin-navbar: #7172ad;
   --color-white: #fff;
-  --color-black: #2e353b;
   --color-success: #84bb4c;
   --color-error: #ed6e6e;
-  --color-warning: #f9cf48;
   --color-text-dark: #4c5773;
   --color-text-medium: #696e7b;
   --color-text-light: #949aab;
@@ -17,7 +14,6 @@
   --color-bg-medium: #edf2f5;
   --color-bg-light: #f9fbfc;
   --color-bg-white: #fff;
-  --color-bg-yellow: #fffcf2;
   --color-shadow: rgba(0, 0, 0, 0.13);
   --color-border: #eeecec;
 }
