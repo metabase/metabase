@@ -298,6 +298,11 @@ export const PLUGIN_MODERATION = {
   ) => [],
 };
 
+export type InvalidateNowButtonProps = {
+  targetId: number;
+  targetName: string;
+};
+
 export const PLUGIN_CACHING = {
   cacheTTLFormField: null as any,
   dashboardCacheTTLFormField: null,
@@ -308,6 +313,8 @@ export const PLUGIN_CACHING = {
   DatabaseCacheTimeField: PluginPlaceholder as any,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
   GranularControlsExplanation: PluginPlaceholder as any,
+  InvalidateNowButton:
+    PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
   isEnabled: () => false,
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,

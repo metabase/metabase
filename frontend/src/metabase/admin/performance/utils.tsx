@@ -148,6 +148,25 @@ export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
 export const hourTo24HourFormat = (hour: number, amPm: number) =>
   hour + amPm * 12;
 
+type ErrorWithMessage = { data: { message: string } };
+export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
+  typeof error === "object" &&
+  error !== null &&
+  "data" in error &&
+  "message" in (error as { data: any }).data &&
+  typeof (error as { data: { message: any } }).data.message === "string";
+
+const delay = (milliseconds: number) =>
+  new Promise(resolve => setTimeout(resolve, milliseconds));
+
+/** To prevent UI jumpiness, ensure a minimum delay before continuing. An example of jumpiness: clicking a save button results in displaying a loading spinner for 10 ms and then a success message */
+export const resolveSmoothly = async (
+  promise: Promise<any>,
+  timeout: number = 300,
+) => {
+  return await Promise.all([delay(timeout), promise]);
+};
+
 export const getFrequencyFromCron = (cron: string) => {
   const scheduleType = cronToScheduleSettings(cron)?.schedule_type;
   return isNullOrUndefined(scheduleType)
