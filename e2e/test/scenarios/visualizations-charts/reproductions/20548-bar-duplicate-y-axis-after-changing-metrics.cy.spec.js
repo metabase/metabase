@@ -4,7 +4,7 @@ import {
   summarize,
   popover,
   sidebar,
-  chartPathWithColor,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -38,13 +38,13 @@ describe("issue 20548", () => {
   it("should not display duplicate Y-axis after modifying/reordering metrics (metabase#20548)", () => {
     removeAggregationItem("Count");
     // Ensure bars of only one series exist
-    chartPathWithColor("#88BF4D").should("have.length", 4);
-    chartPathWithColor("#509EE3").should("not.exist");
+    chartPathWithFillColor("#88BF4D").should("have.length", 4);
+    chartPathWithFillColor("#509EE3").should("not.exist");
 
     addAggregationItem("Count");
     // Ensure bars of two series exist
-    chartPathWithColor("#88BF4D").should("have.length", 4);
-    chartPathWithColor("#509EE3").should("have.length", 4);
+    chartPathWithFillColor("#88BF4D").should("have.length", 4);
+    chartPathWithFillColor("#509EE3").should("have.length", 4);
 
     // Although the test already fails on the previous step, let's add some more assertions to prevent future regressions
     assertOnLegendItemFrequency("Count", 1);

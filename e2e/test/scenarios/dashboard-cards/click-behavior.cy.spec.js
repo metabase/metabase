@@ -6,7 +6,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
-  chartPathWithColor,
+  chartPathWithFillColor,
   createDashboardWithTabs,
   dashboardHeader,
   editDashboard,
@@ -2076,7 +2076,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     // test that normal values still work properly
     getDashboardCard().within(() => {
-      chartPathWithColor("#88BF4D").eq(2).click();
+      chartPathWithFillColor("#88BF4D").eq(2).click();
     });
     cy.get("@targetDashboardId").then(targetDashboardId => {
       cy.location().should(({ pathname, search }) => {
@@ -2089,7 +2089,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     // test that null and "empty"s do not get passed through
     getDashboardCard().within(() => {
-      chartPathWithColor("#88BF4D").eq(1).click();
+      chartPathWithFillColor("#88BF4D").eq(1).click();
     });
     cy.get("@targetDashboardId").then(targetDashboardId => {
       cy.location().should(({ pathname, search }) => {

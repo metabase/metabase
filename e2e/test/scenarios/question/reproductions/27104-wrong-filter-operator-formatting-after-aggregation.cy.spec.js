@@ -6,7 +6,7 @@ import {
   visitQuestionAdhoc,
   visualize,
   selectFilterOperator,
-  chartPathWithColor,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE } = SAMPLE_DATABASE;
@@ -48,6 +48,6 @@ describe("issue 27104", () => {
 
     cy.findByTestId("qb-filters-panel").findByText("Count is greater than 0");
     // Check bars count
-    chartPathWithColor("#509EE3").should("have.length", 5);
+    chartPathWithFillColor("#509EE3").should("have.length", 5);
   });
 });

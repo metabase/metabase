@@ -21,6 +21,7 @@ import {
   getNotebookStep,
   queryBuilderMain,
   selectFilterOperator,
+  lineChartCircleWithColors,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
@@ -823,7 +824,7 @@ describe("scenarios > question > filter", () => {
     });
 
     assertOnLegendLabels();
-    cy.get(".line").should("have.length", 3);
+    lineChartCircleWithColors(["#88BF4D", "#509EE3", "#A989C5"]);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
@@ -831,7 +832,8 @@ describe("scenarios > question > filter", () => {
     });
     cy.button("Not now").click();
     assertOnLegendLabels();
-    cy.get(".line").should("have.length", 3);
+
+    lineChartCircleWithColors(["#88BF4D", "#509EE3", "#A989C5"]);
 
     function assertOnLegendLabels() {
       cy.findAllByTestId("legend-item")

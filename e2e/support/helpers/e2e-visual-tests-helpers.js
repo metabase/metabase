@@ -1,3 +1,10 @@
+import { color as getColor } from "metabase/lib/colors";
+import { Icons } from "metabase/ui";
+import {
+  setSvgColor,
+  svgToDataUri,
+} from "metabase/visualizations/echarts/cartesian/timeline-events/option";
+
 export function ensureDcChartVisibility() {
   cy.get(".dc-chart");
 }
@@ -6,12 +13,22 @@ export function echartsContainer() {
   return cy.findByTestId("chart-container");
 }
 
-export function chartPathWithColor(color) {
+export function echartsIcon(name, color = undefined) {
+  const iconSvg = setSvgColor(
+    Icons[name].source,
+    color ?? getColor("text-light"),
+  );
+  const dataUri = svgToDataUri(iconSvg);
+
+  return echartsContainer().find(`image[href="${dataUri}"]`);
+}
+
+export function chartPathWithFillColor(color) {
   return echartsContainer().find(`path[fill="${color}"]`);
 }
 
-export function chartPathsWithColors(colors) {
-  return colors.map(color => chartPathWithColor(color));
+export function chartPathsWithFillColors(colors) {
+  return colors.map(color => chartPathWithFillColor(color));
 }
 
 const CIRCLE_PATH = "M1 0A1 1 0 1 1 1 -0.0001";
@@ -19,4 +36,14 @@ export function lineChartCircle() {
   return echartsContainer()
     .find(`path[d="${CIRCLE_PATH}"]`)
     .should("be.visible");
+}
+
+export function lineChartCircleWithColor(color) {
+  return echartsContainer()
+    .find(`path[d="${CIRCLE_PATH}"][stroke="${color}"]`)
+    .should("be.visible");
+}
+
+export function lineChartCircleWithColors(colors) {
+  return colors.map(color => lineChartCircleWithColor(color));
 }

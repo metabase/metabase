@@ -6,6 +6,7 @@ import {
   visitQuestion,
   visitDashboard,
   assertQueryBuilderRowCount,
+  lineChartCircle,
 } from "e2e/support/helpers";
 
 const questionDetails = {
@@ -80,7 +81,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
     visitQuestion("@nestedQuestionId");
 
     // We can click on any circle; this index was chosen randomly
-    cy.get("circle").eq(25).click({ force: true });
+    lineChartCircle().eq(25).click({ force: true });
     popover()
       .findByText(/^See these/)
       .click();
@@ -96,10 +97,10 @@ describe("issue 29517 - nested question based on native model with remapped valu
   it("click behavior to custom destination should work (metabase#29517-2)", () => {
     visitDashboard("@dashboardId");
 
-    cy
-      .intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`)
-      .as("loadTargetDashboard"),
-      cy.get("circle").eq(25).click({ force: true });
+    cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
+      "loadTargetDashboard",
+    );
+    lineChartCircle().eq(25).click({ force: true });
     cy.wait("@loadTargetDashboard");
 
     cy.location("pathname").should("eq", `/dashboard/${ORDERS_DASHBOARD_ID}`);
