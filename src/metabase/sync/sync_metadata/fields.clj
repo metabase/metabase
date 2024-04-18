@@ -67,18 +67,6 @@
      ;; `sync-instances`
      (sync-metadata/update-metadata! table db-metadata (fields.our-metadata/our-metadata table))))
 
-(mu/defn sync-fields-for-table!
-  "Sync the Fields in the Metabase application database for a specific `table`."
-  ([table :- i/TableInstance]
-   (sync-fields-for-table! (table/database table) table))
-
-  ([database :- i/DatabaseInstance
-    table    :- i/TableInstance]
-   (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
-     (let [db-metadata  (fetch-metadata/table-fields-metadata database table)]
-       {:total-fields   (count db-metadata)
-        :updated-fields (sync-and-update! table db-metadata)}))))
-
 (mu/defn sync-fields! :- [:map
                           [:updated-fields ms/IntGreaterThanOrEqualToZero]
                           [:total-fields   ms/IntGreaterThanOrEqualToZero]]
@@ -108,3 +96,15 @@
                  {:total-fields   0
                   :updated-fields 0}
                  fields-metadata))))
+
+(mu/defn sync-fields-for-table!
+  "Sync the Fields in the Metabase application database for a specific `table`."
+  ([table :- i/TableInstance]
+   (sync-fields-for-table! (table/database table) table))
+
+  ([database :- i/DatabaseInstance
+    table    :- i/TableInstance]
+   (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
+     (let [db-metadata  (fetch-metadata/table-fields-metadata database table)]
+       {:total-fields   (count db-metadata)
+        :updated-fields (sync-and-update! table db-metadata)}))))
