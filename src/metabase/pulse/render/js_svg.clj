@@ -78,6 +78,18 @@
         (.setAttribute "fill-opacity" "0.0"))
       node)))
 
+(defn- clear-style-node
+  "The echarts library (whose output we get via the :javascript_visualization multimethod) adds a <style> tag that we don't need.
+  It has some invalid styles that Batik warns about, but they're all for :hover states,
+  which have no meaning or effect in the static-viz context anyway."
+  [^Node node]
+  (letfn [(element? [x] (instance? Element x))]
+    (if (and (element? node)
+             (= "style" (.getNodeName ^Element node)))
+      (doto ^Element node
+        (.setTextContent ""))
+      node)))
+
 (defn- parse-svg-string [^String s]
   (let [s       (str/replace s #"rgba\(0,0,0,1\)" "rgb(0,0,0)") ;; todo: is there a more general way to do this? Perhaps js side?
         factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
@@ -98,7 +110,7 @@
   ^bytes [^SVGOMDocument svg-document]
   (style/register-fonts-if-needed!)
   (with-open [os (ByteArrayOutputStream.)]
-    (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill)
+    (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill clear-style-node)
           in                           (TranscoderInput. fixed-svg-doc)
           out                          (TranscoderOutput. os)
           transcoder                   (PNGTranscoder.)]

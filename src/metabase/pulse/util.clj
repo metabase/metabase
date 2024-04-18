@@ -58,9 +58,11 @@
           dashcard-id (u/the-id dashcard-or-id)
           dashcard    (t2/select-one :model/DashboardCard :id dashcard-id)
           multi-cards (dashboard-card/dashcard->multi-cards dashcard)]
-      (for [multi-card multi-cards]
+      (for [multi-card (if (seq multi-cards)
+                         multi-cards
+                         [card])]
         (execute-card {:creator_id (:creator_id card)} (:id multi-card))))
-    (let [card-id     (u/the-id card-or-id)
+    (let [card-id (u/the-id card-or-id)
           ;; NOTE/TODO - dashcard-or-id is nil with multiple time series
-          card        (t2/select-one :model/Card :id card-id, :archived false)]
+          card    (t2/select-one :model/Card :id card-id, :archived false)]
       [(execute-card {:creator_id (:creator_id card)} (:id card))])))
