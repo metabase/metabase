@@ -1,6 +1,6 @@
 import classNames from "classnames";
 import type { FocusEvent, MouseEvent, KeyboardEvent } from "react";
-import { useState, useMemo } from "react";
+import { useRef, useState, useMemo } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
@@ -152,6 +152,7 @@ export function ColumnInput({
   const columnGroups = useMemo(() => Lib.groupColumns(columns), [columns]);
 
   const [open, setOpen] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
 
   function handleOpen() {
     setOpen(true);
@@ -159,6 +160,7 @@ export function ColumnInput({
 
   function handleClose() {
     setOpen(false);
+    button.current?.focus();
   }
 
   function handleBlur(evt: MouseEvent) {
@@ -219,6 +221,7 @@ export function ColumnInput({
       >
         <Popover.Target>
           <Button
+            ref={button}
             onMouseDownCapture={handleButtonClick}
             onKeyDown={handleKeyDown}
             fullWidth
