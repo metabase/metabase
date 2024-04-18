@@ -33,7 +33,7 @@
 :global(.tippy-box[data-theme~="tooltip"]) {
   color: white;
   font-weight: bold;
-  background-color: var(--color-bg-black);
+  background-color: var(--mb-color-bg-black);
   border: none;
   pointer-events: none;
   line-height: 1.26;

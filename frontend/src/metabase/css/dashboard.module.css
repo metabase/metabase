@@ -6,7 +6,7 @@
 
 /* Night mode */
 .Dashboard.DashboardNight {
-  background-color: var(--color-bg-black);
+  background-color: var(--mb-color-bg-black);
 }
 
 .Dashboard.DashboardNight .Card {

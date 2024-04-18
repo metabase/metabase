@@ -12,7 +12,7 @@
   --color-text-medium: #696e7b;
   --color-text-light: #949aab;
   --color-text-white: #fff;
-  --color-bg-black: #2e353b;
+  --mb-color-bg-black: #2e353b;
   --color-bg-dark: #93a1ab;
   --color-bg-medium: #edf2f5;
   --color-bg-light: #f9fbfc;
@@ -95,7 +95,7 @@
 }
 
 .DashboardNight .bgLight {
-  background-color: var(--color-bg-black);
+  background-color: var(--mb-color-bg-black);
 }
 
 .DashboardNight .bgMedium {
