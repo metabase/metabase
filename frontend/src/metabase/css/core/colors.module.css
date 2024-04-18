@@ -6,7 +6,7 @@
   --color-white: #fff;
   --color-black: #2e353b;
   --color-success: #84bb4c;
-  --color-error: #ed6e6e;
+  --mb-color-error: #ed6e6e;
   --color-warning: #f9cf48;
   --color-text-dark: #4c5773;
   --color-text-medium: #696e7b;
@@ -38,11 +38,11 @@
 
 .textError,
 .textErrorHover {
-  color: var(--color-error);
+  color: var(--mb-color-error);
 }
 
 .bgErrorHover:hover {
-  background-color: var(--color-error);
+  background-color: var(--mb-color-error);
 }
 
 .bgErrorInput {
