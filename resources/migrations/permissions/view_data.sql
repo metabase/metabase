@@ -212,14 +212,16 @@ WHERE
 
 
 -- Remove table-level view-data permissions for groups that have DB-level permissions set
-DELETE FROM data_permissions dp
-USING (
-  SELECT group_id, db_id
-  FROM data_permissions
-  WHERE table_id IS NULL
-    AND perm_type = 'perms/view-data'
-) dp2
-WHERE dp.group_id = dp2.group_id
-  AND dp.db_id = dp2.db_id
-  AND dp.table_id IS NOT NULL
-  AND dp.perm_type = 'perms/view-data';
+DELETE FROM data_permissions
+WHERE
+  (group_id, db_id) IN (
+    SELECT
+      group_id,
+      db_id
+    FROM
+      data_permissions
+    WHERE
+      table_id IS NULL
+      AND perm_type = 'perms/view-data'
+  )
+AND table_id IS NOT NULL;
