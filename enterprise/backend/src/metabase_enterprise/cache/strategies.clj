@@ -48,7 +48,7 @@
 
 ;;; Querying DB
 
-(defn granular-duration-hours
+(defn- granular-duration-hours
   "Returns the granular cache duration (in hours) for a card. On EE, this first checking whether there is a stored value
    for the card, dashboard, or database (in that order of decreasing preference). Returns nil on OSS."
   [card dashboard-id]
@@ -89,7 +89,7 @@
 
 ;;; Strategy execution
 
-(defmulti fetch-cache-stmt-ee*
+(defmulti ^:private fetch-cache-stmt-ee*
   "Generate prepared statement for a db cache backend for a given strategy"
   (fn [strategy _hash _conn] (:type strategy)))
 

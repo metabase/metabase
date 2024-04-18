@@ -12,6 +12,8 @@ import {
   resyncDatabase,
   saveDashboard,
   filterWidget,
+  editDashboard,
+  setFilter,
 } from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -26,15 +28,11 @@ describe("scenarios > dashboard > chained filter", () => {
     it(`limit ${has_field_values} options based on linked filter`, () => {
       cy.request("PUT", `/api/field/${PEOPLE.CITY}`, { has_field_values }),
         visitDashboard(ORDERS_DASHBOARD_ID);
-      // start editing
-      cy.icon("pencil").click();
+
+      editDashboard();
 
       // add a state filter
-      cy.icon("filter").click();
-      popover().within(() => {
-        cy.findByText("Location").click();
-        cy.findByText("Is").click();
-      });
+      setFilter("Location", "Is");
 
       // connect that to people.state
       getDashboardCard().within(() => {

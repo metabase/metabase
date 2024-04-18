@@ -168,7 +168,7 @@ describe("scenarios > visualizations > bar chart", () => {
             .findByText(columnName)
             .should("not.exist");
           cy.findAllByTestId("legend-item").should("have.length", 3);
-          cy.get(".enable-dots").should("have.length", 3);
+          cy.findAllByTestId("chart-series").should("have.length", 3);
         });
 
       getDraggableElements()
@@ -185,7 +185,7 @@ describe("scenarios > visualizations > bar chart", () => {
             .findByText(columnName)
             .should("exist");
           cy.findAllByTestId("legend-item").should("have.length", 4);
-          cy.get(".enable-dots").should("have.length", 4);
+          cy.findAllByTestId("chart-series").should("have.length", 4);
         });
 
       cy.findAllByTestId("legend-item").contains("Gadget").click();

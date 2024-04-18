@@ -387,8 +387,8 @@
 
 (def ^:private TemporalRange
   [:map
-   [:start {:optional true} [:fn #(instance? Temporal %)]]
-   [:end   {:optional true} [:fn #(instance? Temporal %)]]
+   [:start {:optional true} (lib.schema.common/instance-of-class Temporal)]
+   [:end   {:optional true} (lib.schema.common/instance-of-class Temporal)]
    [:unit                   TemporalUnit]])
 
 (mu/defn ^:private adjust-inclusive-range-if-needed :- [:maybe TemporalRange]

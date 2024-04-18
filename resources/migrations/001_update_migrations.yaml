@@ -5552,6 +5552,49 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.DeleteTruncateAuditLogTask"
 
   - changeSet:
+      id: v49.2024-04-09T10:00:00
+      author: qnkhuat
+      comment: Drop not null constraint on metabase_database.cache_field_values_schedule
+      changes:
+        - dropNotNullConstraint:
+            tableName: metabase_database
+            columnName: cache_field_values_schedule
+            columnDataType: varchar(254)
+      # nothing because it should always be like this
+      rollback:
+
+  - changeSet:
+      id: v49.2024-04-09T10:00:01
+      author: qnkhuat
+      comment: Drop default value on metabase_database.cache_field_values_schedule
+      changes:
+        - dropDefaultValue:
+            tableName: metabase_database
+            columnName: cache_field_values_schedule
+      # nothing because it should always be like this
+      rollback:
+
+  - changeSet:
+      id: v49.2024-04-09T10:00:02
+      author: qnkhuat
+      comment: Add null as default value for metabase_database.cache_field_values_schedule
+      changes:
+        - addDefaultValue:
+            defaultValue: "null"
+            tableName: metabase_database
+            columnName: cache_field_values_schedule
+      # nothing because it should always be like this
+      rollback:
+
+  - changeSet:
+      id: v49.2024-04-09T10:00:03
+      author: qnkhuat
+      comment: This clears the schedule for caching field values for databases with period scanning disabled.
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteScanFieldValuesTriggerForDBThatTurnItOff"
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
@@ -6091,6 +6134,106 @@ databaseChangeLog:
                   remarks: The estimated row count
 
   - changeSet:
+      id: v50.2024-03-22T00:38:28
+      author: qnkhuat
+      comment: Add field_usage table
+      changes:
+        - createTable:
+            tableName: field_usage
+            remarks: Used to store field usage during query execution
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: field_id
+                  remarks: ID of the field
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
+                    foreignKeyName: fk_field_usage_field_id_metabase_field_id
+                    deleteCascade: true
+              - column:
+                  name: query_execution_id
+                  remarks: referenced query execution
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_execution
+                    referencedColumnNames: id
+                    foreignKeyName: fk_field_usage_query_execution_id
+                    deleteCascade: true
+              - column:
+                  name: used_in
+                  remarks: which part of the query the field was used in
+                  type: varchar(25)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: filter_op
+                  remarks: filter's operator that applied to the field
+                  type: varchar(25)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: aggregation_function
+                  remarks: the aggregation function that field applied to
+                  type: varchar(25)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: breakout_temporal_unit
+                  remarks: temporal unit options of the breakout
+                  type: varchar(25)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: breakout_binning_strategy
+                  remarks: the strategy of breakout
+                  type: varchar(25)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: breakout_binning_num_bins
+                  remarks: The numbin option of breakout
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: breakout_binning_bin_width
+                  remarks: The numbin option of breakout
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The time a field usage was recorded
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-03-22T00:39:28
+      author: qnkhuat
+      comment: Index field_usage.field_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: field_usage
+            indexName: idx_field_usage_field_id
+            columns:
+              column:
+                name: field_id
+
+  - changeSet:
       id: v50.2024-03-25T14:53:00
       author: tsmacdonald
       comment: Add query_field.direct_reference
@@ -6128,6 +6271,22 @@ databaseChangeLog:
                   remarks: 'An invalidation time that can supersede cache_config.invalidated_at'
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v50.2024-04-09T15:55:19
+      author: calherries
+      comment: Add collection.is_sample column
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: is_sample
+                  type: ${boolean.type}
+                  remarks: "Is the collection part of the sample content?"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
 
   - changeSet:
       id: v50.2024-04-09T15:55:22

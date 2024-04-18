@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
+   [metabase.db :as mdb]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models.card :refer [Card]]
@@ -284,3 +285,25 @@
                                          ["1-5"  [:int {:min 1}]]
                                          ["6-10" [:int {:min 1}]]]]]
                 (#'stats/alert-metrics)))))
+
+(deftest sample-content-metrics-test
+  (testing "Sample content doesn't contribute to stats"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? true)
+      (testing "sense check: Collection, Dashboard, and Cards exist"
+        (is (true? (t2/exists? :model/Collection)))
+        (is (true? (t2/exists? :model/Dashboard)))
+        (is (true? (t2/exists? :model/Card))))
+      (testing "All metrics should be empty"
+        (is (= {:collections 0, :cards_in_collections 0, :cards_not_in_collections 0, :num_cards_per_collection {}}
+               (#'stats/collection-metrics)))
+        (is (= {:questions {}, :public {}, :embedded {}}
+               (#'stats/question-metrics)))
+        (is (= {:dashboards         0
+                :with_params        0
+                :num_dashs_per_user {}
+                :num_cards_per_dash {}
+                :num_dashs_per_card {}
+                :public             {}
+                :embedded           {}}
+               (#'stats/dashboard-metrics)))))))

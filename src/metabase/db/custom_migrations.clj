@@ -1072,6 +1072,25 @@
                                            :from   [:revision]
                                            :where  [:= :model "Card"]})))))
 
+(define-migration DeleteScanFieldValuesTriggerForDBThatTurnItOff
+  ;; If you config scan field values for a DB to either "Only when adding a new filter widget" or "Never, I’ll do this manually if I need to"
+  ;; then we shouldn't schedule a trigger for scan field values. Turns out it wasn't like that since forever, so we need
+  ;; this migraiton to remove triggers for any existing DB that have this option on.
+  ;; See #40715
+  (when-let [;; find all dbs which are configured not to scan field values
+             dbs (seq (filter #(and (-> % :details :let-user-control-scheduling)
+                                    (false? (:is_full_sync %)))
+                              (t2/select :model/Database)))]
+    (classloader/the-classloader)
+    (set-jdbc-backend-properties!)
+    (let [scheduler (qs/initialize)]
+      (qs/start scheduler)
+      (doseq [db dbs]
+        (qs/delete-trigger scheduler (triggers/key (format "metabase.task.update-field-values.trigger.%d" (:id db)))))
+      ;; use the table, not model/Database because we don't want to trigger the hooks
+      (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil})
+      (qs/shutdown scheduler))))
+
 (defn- hash-bcrypt
   "Hashes a given plaintext password using bcrypt.  Should be used to hash
    passwords included in stored user credentials that are to be later verified
@@ -1118,7 +1137,7 @@
 (defn- load-edn
   "Loads edn from an EDN file. Parses values tagged with #t into the appropriate `java.time` class"
   [file-name]
-  (with-open [r (io/reader file-name)]
+  (with-open [r (io/reader (io/resource file-name))]
     (edn/read {:readers {'t u.date/parse}} (java.io.PushbackReader. r))))
 
 (defn- no-user?
@@ -1139,33 +1158,35 @@
   true)
 
 (define-migration CreateSampleContent
+  ;; Adds sample content to a fresh install. Adds curate permissions to the collection for the 'All Users' group.
   (when *create-sample-content*
     (when (and (config/load-sample-content?)
                (not (config/config-bool :mb-enable-test-endpoints)) ; skip sample content for e2e tests to avoid coupling the tests to the contents
                (no-user?)
                (no-db?))
-      (let [table-name->raw-rows (load-edn "resources/sample-content.edn")
-            replace-temporals    (fn [v]
-                                   (if (isa? (type v) java.time.temporal.Temporal)
-                                     :%now
-                                     v))
-            table-name->rows     (fn [table-name]
-                                   (->> (table-name->raw-rows table-name)
-                                    ;; We sort the rows by id and remove them so that auto-incrementing ids are
-                                    ;; generated in the same order. We can't insert the ids directly in H2 without
-                                    ;; creating sequences for all the generated id columns.
-                                        (sort-by :id)
-                                        (map (fn [row]
-                                               (dissoc (update-vals row replace-temporals) :id)))))
-            dbs                  (table-name->rows :metabase_database)
-            _                    (t2/query {:insert-into :metabase_database :values dbs})
-            db-ids               (set (map :id (t2/query {:select :id :from :metabase_database})))
-            example-dashboard-id 1
-            expected-db-ids      #{example-dashboard-id}]
+      (let [table-name->raw-rows  (load-edn "sample-content.edn")
+            example-dashboard-id  1
+            example-collection-id 1
+            expected-sample-db-id 1
+            replace-temporals     (fn [v]
+                                    (if (isa? (type v) java.time.temporal.Temporal)
+                                      :%now
+                                      v))
+            table-name->rows      (fn [table-name]
+                                    (->> (table-name->raw-rows table-name)
+                                         ;; We sort the rows by id and remove them so that auto-incrementing ids are
+                                         ;; generated in the same order. We can't insert the ids directly in H2 without
+                                         ;; creating sequences for all the generated id columns.
+                                         (sort-by :id)
+                                         (map (fn [row]
+                                                (dissoc (update-vals row replace-temporals) :id)))))
+            dbs                   (table-name->rows :metabase_database)
+            _                     (t2/query {:insert-into :metabase_database :values dbs})
+            db-ids                (set (map :id (t2/query {:select :id :from :metabase_database})))]
         ;; If that did not succeed in creating the metabase_database rows we could be reusing a database that
-        ;; previously had rows in it even if there are no users. in this rare care we delete the metabase_database row
+        ;; previously had rows in it even if there are no users. in this rare care we delete the metabase_database rows
         ;; and do nothing else, to be safe.
-        (if (not= db-ids expected-db-ids)
+        (if (not= db-ids #{expected-sample-db-id})
           (when (seq db-ids)
             (t2/query {:delete-from :metabase_database :where [:in :id db-ids]}))
           (do (doseq [table-name [:collection
@@ -1179,6 +1200,9 @@
                                   :dashboardcard_series]]
                 (when-let [values (seq (table-name->rows table-name))]
                   (t2/query {:insert-into table-name :values values})))
+              (t2/query {:insert-into :permissions
+                         :values      [{:object   (format "/collection/%s/" example-collection-id)
+                                        :group_id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))}]})
               (t2/query {:insert-into :setting
                          :values      [{:key   "example-dashboard-id"
                                         :value (str example-dashboard-id)}]})))))))

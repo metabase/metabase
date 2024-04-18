@@ -366,16 +366,19 @@
           (update-keys u/->snake_case_en)
           (dissoc :lib/type)))))
 
+(def ^:private LegacyInnerQuery
+  [:and
+   :map
+   [:fn
+    {:error/message "legacy inner-query with :source-table or :source-query"}
+    (some-fn :source-table :source-query)]])
+
 (mu/defn aggregation-name :- ::lib.schema.common/non-blank-string
   "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation
   or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
 
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
-  [inner-query :- [:and
-                   :map
-                   [:fn
-                    {:error/message "legacy inner-query with :source-table or :source-query"}
-                    (some-fn :source-table :source-query)]]
+  [inner-query :- LegacyInnerQuery
    ag-clause]
   (lib/column-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
 

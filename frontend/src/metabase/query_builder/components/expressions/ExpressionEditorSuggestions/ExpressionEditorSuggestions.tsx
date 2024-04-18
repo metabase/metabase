@@ -1,5 +1,11 @@
 import cx from "classnames";
-import { useEffect, useRef, useCallback, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useCallback,
+  type ReactNode,
+  type MouseEvent,
+} from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,65 +16,165 @@ import { color } from "metabase/lib/colors";
 import { isObscured } from "metabase/lib/dom";
 import { DelayGroup, Icon, type IconName, Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type { Suggestion } from "metabase-lib/v1/expressions/suggest";
+import type {
+  Suggestion,
+  GroupName,
+} from "metabase-lib/v1/expressions/suggest";
+import { GROUPS } from "metabase-lib/v1/expressions/suggest";
 
 import { ExpressionEditorHelpTextContent } from "../ExpressionEditorHelpText";
+import type { SuggestionFooter } from "../ExpressionEditorTextfield";
 
 import {
   ExpressionListItem,
+  ExpressionListFooter,
+  ExternalIcon,
   ExpressionList,
   SuggestionMatch,
   SuggestionTitle,
+  GroupTitle,
   QueryColumnInfoIcon,
   PopoverHoverTarget,
 } from "./ExpressionEditorSuggestions.styled";
+
+type WithIndex<T> = T & {
+  index: number;
+};
 
 export function ExpressionEditorSuggestions({
   query,
   stageIndex,
   suggestions = [],
   onSuggestionMouseDown,
+  open,
   highlightedIndex,
   children,
 }: {
   query: Lib.Query;
   stageIndex: number;
-  suggestions?: Suggestion[];
+  suggestions?: (Suggestion | SuggestionFooter)[];
   onSuggestionMouseDown: (index: number) => void;
+  open: boolean;
   highlightedIndex: number;
   children: ReactNode;
 }) {
+  const ref = useRef(null);
+
+  const withIndex = suggestions.map((suggestion, index) => ({
+    ...suggestion,
+    index,
+  }));
+
+  const items = withIndex.filter(
+    (suggestion): suggestion is WithIndex<Suggestion> =>
+      !("footer" in suggestion),
+  );
+
+  const footers = withIndex.filter(
+    (suggestion): suggestion is WithIndex<SuggestionFooter> =>
+      "footer" in suggestion,
+  );
+
+  const groups = group(items);
+
+  function handleMouseDown(evt: MouseEvent) {
+    if (evt.target === ref.current) {
+      evt.preventDefault();
+      evt.stopPropagation();
+    }
+  }
+
   return (
     <Popover
       position="bottom-start"
-      opened={suggestions?.length > 0}
+      opened={open && suggestions.length > 0}
       radius="xs"
       withinPortal
       zIndex={300}
-      returnFocus
     >
       <Popover.Target>{children}</Popover.Target>
       <Popover.Dropdown>
         <DelayGroup>
           <ExpressionList
             data-testid="expression-suggestions-list"
-            className={CS.pb1}
+            ref={ref}
+            onMouseDownCapture={handleMouseDown}
           >
-            {suggestions.map((suggestion: Suggestion, idx: number) => (
-              <ExpressionEditorSuggestionsListItem
-                key={`suggesion-${idx}`}
-                query={query}
-                stageIndex={stageIndex}
-                suggestion={suggestion}
-                isHighlighted={idx === highlightedIndex}
-                index={idx}
-                onMouseDown={onSuggestionMouseDown}
-              />
-            ))}
+            <ExpressionEditorSuggestionsListGroup
+              suggestions={groups._none}
+              query={query}
+              stageIndex={stageIndex}
+              highlightedIndex={highlightedIndex}
+              onSuggestionMouseDown={onSuggestionMouseDown}
+            />
+            <ExpressionEditorSuggestionsListGroup
+              name="popularAggregations"
+              suggestions={groups.popularAggregations}
+              query={query}
+              stageIndex={stageIndex}
+              highlightedIndex={highlightedIndex}
+              onSuggestionMouseDown={onSuggestionMouseDown}
+            />
+            <ExpressionEditorSuggestionsListGroup
+              name="popularExpressions"
+              suggestions={groups.popularExpressions}
+              query={query}
+              stageIndex={stageIndex}
+              highlightedIndex={highlightedIndex}
+              onSuggestionMouseDown={onSuggestionMouseDown}
+            />
           </ExpressionList>
+          {footers.map(suggestion => (
+            <Footer
+              key={suggestion.index}
+              suggestion={suggestion}
+              highlightedIndex={highlightedIndex}
+            />
+          ))}
         </DelayGroup>
       </Popover.Dropdown>
     </Popover>
+  );
+}
+
+function ExpressionEditorSuggestionsListGroup({
+  name,
+  query,
+  stageIndex,
+  suggestions = [],
+  onSuggestionMouseDown,
+  highlightedIndex,
+}: {
+  name?: GroupName;
+  query: Lib.Query;
+  stageIndex: number;
+  suggestions?: Suggestion[];
+  onSuggestionMouseDown: (index: number) => void;
+  highlightedIndex: number;
+}) {
+  const definition = name && GROUPS[name];
+
+  if (suggestions.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      {definition?.displayName && (
+        <GroupTitle isHighlighted={false}>{definition.displayName}</GroupTitle>
+      )}
+      {suggestions.map((suggestion: SuggestionWithIndex) => (
+        <ExpressionEditorSuggestionsListItem
+          key={`suggestion-${suggestion.index}`}
+          query={query}
+          stageIndex={stageIndex}
+          suggestion={suggestion}
+          isHighlighted={suggestion.index === highlightedIndex}
+          index={suggestion.index}
+          onMouseDown={onSuggestionMouseDown}
+        />
+      ))}
+    </>
   );
 }
 
@@ -87,8 +193,8 @@ function ExpressionEditorSuggestionsListItem({
   onMouseDown: (index: number) => void;
   suggestion: Suggestion;
 }) {
-  const { icon, helpText, name, range = [] } = suggestion;
-  const [start = 0, end = name.length - 1] = range;
+  const { icon, helpText, range = [] } = suggestion;
+  const [start = 0, end = 0] = range;
 
   const { normal, highlighted } = colorForIcon(icon);
 
@@ -157,6 +263,30 @@ function ExpressionEditorSuggestionsListItem({
   );
 }
 
+function Footer({
+  suggestion,
+  highlightedIndex,
+}: {
+  suggestion: WithIndex<SuggestionFooter>;
+  highlightedIndex: number;
+}) {
+  function handleMouseDownCapture(evt: MouseEvent) {
+    // prevent the dropdown from closing
+    evt.preventDefault();
+  }
+
+  return (
+    <ExpressionListFooter
+      target="_blank"
+      href={suggestion.href}
+      onMouseDownCapture={handleMouseDownCapture}
+      isHighlighted={highlightedIndex === suggestion.index}
+    >
+      {suggestion.name} <ExternalIcon name={suggestion.icon} />
+    </ExpressionListFooter>
+  );
+}
+
 function colorForIcon(icon: string | undefined | null) {
   switch (icon) {
     case "segment":
@@ -171,4 +301,30 @@ function colorForIcon(icon: string | undefined | null) {
         highlighted: color("brand-white"),
       };
   }
+}
+
+type SuggestionWithIndex = Suggestion & {
+  index: number;
+};
+
+type Groups = {
+  [key in GroupName | "_none"]: SuggestionWithIndex[];
+};
+
+function group(suggestions: Suggestion[]): Groups {
+  const groups: Groups = {
+    _none: [],
+    popularAggregations: [],
+    popularExpressions: [],
+  };
+
+  suggestions.forEach(function (suggestion) {
+    if (suggestion.group) {
+      groups[suggestion.group].push(suggestion);
+    } else {
+      groups._none.push(suggestion);
+    }
+  });
+
+  return groups;
 }

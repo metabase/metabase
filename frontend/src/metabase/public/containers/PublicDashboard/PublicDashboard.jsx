@@ -182,7 +182,11 @@ class PublicDashboardInner extends Component {
         actionButtons={
           buttons.length > 0 && <div className={CS.flex}>{buttons}</div>
         }
-        dashboardTabs={<DashboardTabs location={this.props.location} />}
+        dashboardTabs={
+          dashboard?.tabs?.length > 1 && (
+            <DashboardTabs location={this.props.location} />
+          )
+        }
       >
         <LoadingAndErrorWrapper
           className={cx({

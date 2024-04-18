@@ -366,7 +366,8 @@
 
 (defmulti describe-fks
   "Returns a reducible collection of maps, each containing information about foreign keys.
-  Takes keyword arguments to narrow down the results to a set of `schema-names` or `table-names`.
+  Takes optional keyword arguments to narrow down the results to a set of `schema-names`
+  and `table-names`.
 
   Results match [[metabase.sync.interface/FKMetadataEntry]].
   Results are optionally filtered by `schema-names` and `table-names` provided.

@@ -21,6 +21,7 @@ import {
   getNotebookStep,
   queryBuilderMain,
   selectFilterOperator,
+  expressionEditorWidget,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
@@ -274,7 +275,7 @@ describe("scenarios > question > filter", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".cellData").contains("Widget");
+    cy.get("[data-testid=cell-data]").contains("Widget");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 1 row");
   });
@@ -630,7 +631,7 @@ describe("scenarios > question > filter", () => {
       display: "table",
     });
 
-    cy.get(".cellData").contains("Count").click();
+    cy.get("[data-testid=cell-data]").contains("Count").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
     cy.findByPlaceholderText("Enter a number").type("42");
@@ -972,7 +973,7 @@ describe("scenarios > question > filter", () => {
         filter({ mode: "notebook" });
 
         popover().contains("Custom Expression").click();
-        popover().within(() => {
+        expressionEditorWidget().within(() => {
           enterCustomColumnDetails({ formula: `boolean = ${condition}` });
           cy.get("@formula").blur();
 
@@ -995,7 +996,10 @@ describe("scenarios > question > filter", () => {
       function assertOnTheResult() {
         // Filter name
         cy.findByTextEnsureVisible(`boolean is ${condition.toLowerCase()}`);
-        cy.get(".cellData").should("contain", integerAssociatedWithCondition);
+        cy.get("[data-testid=cell-data]").should(
+          "contain",
+          integerAssociatedWithCondition,
+        );
       }
     });
   });
@@ -1018,7 +1022,7 @@ describe("scenarios > question > filter", () => {
       filter({ mode: "notebook" });
 
       popover().contains("Custom Expression").click();
-      popover().within(() => {
+      expressionEditorWidget().within(() => {
         enterCustomColumnDetails({ formula: "boolean = true" });
         cy.get("@formula").blur();
 
@@ -1035,7 +1039,7 @@ describe("scenarios > question > filter", () => {
       cy.icon("notebook").click();
       summarize({ mode: "notebook" });
       popover().contains("Custom Expression").click();
-      popover().within(() => {
+      expressionEditorWidget().within(() => {
         enterCustomColumnDetails({
           formula: "CountIf(boolean)",
           name: "count if boolean is true",
@@ -1056,7 +1060,7 @@ describe("scenarios > question > filter", () => {
     openReviewsTable({ mode: "notebook" });
     filter({ mode: "notebook" });
 
-    popover().within(() => {
+    expressionEditorWidget().within(() => {
       cy.findByText("Custom Expression").click();
 
       enterCustomColumnDetails({ formula: "floor" });

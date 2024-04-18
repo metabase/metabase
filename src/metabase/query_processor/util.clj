@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -202,8 +203,17 @@
   "Execute body asynchronously in a pooled executor.
 
   Used for side effects during query execution like saving query execution info or capturing FieldUsages."
-  [& body]
+  [& thunk]
   `(if ~*execute-async?*
-     (.submit clojure.lang.Agent/pooledExecutor ^Runnable (fn [] ~@body))
-     (do
-      ~@body)))
+     (.submit clojure.lang.Agent/pooledExecutor ^Runnable ~thunk)
+     (~thunk)))
+
+(mu/defn userland-query? :- :boolean
+  "Returns true if the query is an userland query, else false."
+  [query :- ::qp.schema/qp]
+  (boolean (get-in query [:middleware :userland-query?])))
+
+(mu/defn internal-query? :- :boolean
+  "Returns `true` if query is an internal query."
+  [{query-type :type} :- ::qp.schema/qp]
+  (= :internal (keyword query-type)))

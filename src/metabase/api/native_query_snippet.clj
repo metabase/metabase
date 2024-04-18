@@ -16,7 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn ^:private hydrated-native-query-snippet :- [:maybe (mi/InstanceOf NativeQuerySnippet)]
+(mu/defn ^:private hydrated-native-query-snippet :- [:maybe (ms/InstanceOf NativeQuerySnippet)]
   [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one NativeQuerySnippet :id id))
       (t2/hydrate :creator)))

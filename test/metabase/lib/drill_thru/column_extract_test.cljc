@@ -281,19 +281,26 @@
   #?(:clj  @#'lib.drill-thru.column-extract/email->domain-regex
      :cljs lib.drill-thru.column-extract/email->domain-regex))
 
+(def ^:private homepage
+  (assoc (meta/field-metadata :people :email)
+         :id             9999001
+         :name           "HOMEPAGE"
+         :display-name   "Homepage URL"
+         :base-type      :type/Text
+         :effective-type :type/Text
+         :semantic-type  :type/URL))
+
+(defn- homepage-provider
+  ([] (homepage-provider meta/metadata-provider))
+  ([base-provider]
+   (lib/composed-metadata-provider
+     (lib.tu/mock-metadata-provider {:fields [homepage]})
+     base-provider)))
+
 (deftest ^:parallel column-extract-url->domain-test
   ;; There's no URL columns in the same dataset, but let's pretend there's one called People.HOMEPAGE.
-  (let [homepage (assoc (meta/field-metadata :people :email)
-                        :id             9999001
-                        :name           "HOMEPAGE"
-                        :display-name   "Homepage URL"
-                        :base-type      :type/Text
-                        :effective-type :type/Text
-                        :semantic-type  :type/URL)
-        mp       (lib/composed-metadata-provider
-                   (lib.tu/mock-metadata-provider {:fields [homepage]})
-                   meta/metadata-provider)
-        query    (lib/query mp (lib.metadata/table mp (meta/id :people)))]
+  (let [mp    (homepage-provider)
+        query (lib/query mp (lib.metadata/table mp (meta/id :people)))]
     (testing "Extracting Domain"
       (lib.drill-thru.tu/test-drill-application
         {:drill-type     :drill-thru/column-extract
@@ -328,6 +335,61 @@
                                                     [:field {} 9999001]
                                                     (u/regex->str url->host-regex)]
                                                    (u/regex->str host->subdomain-regex)]]}]}}))))
+
+(deftest ^:parallel column-extract-url-requires-regex-test
+  (let [query-regex    (lib/query (homepage-provider) (meta/table-metadata :people))
+        no-regex       (homepage-provider (meta/updated-metadata-provider update :features disj :regex))
+        query-no-regex (lib/query no-regex (meta/table-metadata :people))]
+    (testing "when the database supports :regex URL extraction is available"
+      (lib.drill-thru.tu/test-drill-application
+        {:drill-type     :drill-thru/column-extract
+         :click-type     :header
+         :query-type     :unaggregated
+         :column-name    "HOMEPAGE"
+         :custom-query   query-regex
+         :expected       {:type         :drill-thru/column-extract
+                          :display-name "Extract domain, subdomain…"
+                          :extractions  [{:key :domain,    :display-name "Domain"}
+                                         {:key :subdomain, :display-name "Subdomain"}]}
+         :drill-args     ["subdomain"]
+         :expected-query {:stages [{:expressions [[:regex-match-first {:lib/expression-name "Subdomain"}
+                                                   [:regex-match-first {}
+                                                    [:field {} 9999001]
+                                                    (u/regex->str url->host-regex)]
+                                                   (u/regex->str host->subdomain-regex)]]}]}}))
+    (testing "when the database does not support :regex URL extraction is not available"
+      (lib.drill-thru.tu/test-drill-not-returned
+        {:drill-type     :drill-thru/column-extract
+         :click-type     :header
+         :query-type     :unaggregated
+         :column-name    "HOMEPAGE"
+         :custom-query   query-no-regex}))))
+
+(deftest ^:parallel column-extract-email-requires-regex-test
+  (let [query-regex    (lib/query meta/metadata-provider (meta/table-metadata :people))
+        no-regex       (meta/updated-metadata-provider update :features disj :regex)
+        query-no-regex (lib/query no-regex (meta/table-metadata :people))]
+    (testing "when the database supports :regex email extraction is available"
+      (lib.drill-thru.tu/test-drill-application
+        {:drill-type     :drill-thru/column-extract
+         :click-type     :header
+         :query-type     :unaggregated
+         :column-name    "EMAIL"
+         :custom-query   query-regex
+         :expected       {:type         :drill-thru/column-extract
+                          :display-name "Extract domain"
+                          :extractions  [{:key :email-domain, :display-name "Domain"}]}
+         :drill-args     ["email-domain"]
+         :expected-query {:stages [{:expressions [[:regex-match-first {:lib/expression-name "Domain"}
+                                                   [:field {} (meta/id :people :email)]
+                                                   (u/regex->str email->domain-regex)]]}]}}))
+    (testing "when the database does not support :regex email extraction is not available"
+      (lib.drill-thru.tu/test-drill-not-returned
+        {:drill-type     :drill-thru/column-extract
+         :click-type     :header
+         :query-type     :unaggregated
+         :column-name    "EMAIL"
+         :custom-query   query-no-regex}))))
 
 (deftest ^:parallel url->host-regex-test
   (are [host url] (= host (second (re-find url->host-regex url)))
