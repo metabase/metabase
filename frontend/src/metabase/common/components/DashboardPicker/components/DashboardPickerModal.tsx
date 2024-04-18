@@ -17,6 +17,7 @@ import type {
   DashboardPickerValueItem,
   DashboardPickerInitialValueItem,
 } from "../types";
+import { getCollectionId } from "../utils";
 
 import {
   DashboardPicker,
@@ -116,6 +117,8 @@ export const DashboardPickerModal = ({
     pickerRef.current?.onNewDashboard(newDashboard);
   };
 
+  const parentCollectionId = getCollectionId(selectedItem);
+
   return (
     <>
       <EntityPickerModal
@@ -134,13 +137,7 @@ export const DashboardPickerModal = ({
       <NewDashboardDialog
         isOpen={isCreateDialogOpen}
         onClose={closeCreateDialog}
-        parentCollectionId={
-          !canSelectItem(selectedItem) && selectedItem
-            ? selectedItem.id
-            : canSelectItem(value)
-            ? value.id
-            : "root"
-        }
+        parentCollectionId={parentCollectionId}
         onNewDashboard={handleNewDashboardCreate}
       />
     </>

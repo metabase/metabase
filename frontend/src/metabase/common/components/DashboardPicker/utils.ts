@@ -13,7 +13,7 @@ import type { DashboardPickerItem } from "./types";
 
 export const getCollectionIdPath = (
   collection: Pick<
-  DashboardPickerItem,
+    DashboardPickerItem,
     "id" | "location" | "is_personal" | "effective_location"
   >,
   userPersonalCollectionId?: CollectionId,
@@ -90,13 +90,28 @@ export const getStateFromIdPath = ({
   return statePath;
 };
 
-export const isFolder = (item: DashboardPickerItem) => {
-  return (
-    item?.model === "collection" &&
-    _.intersection([...(item?.below ?? []), ...(item?.here ?? [])], ["dashboard"])
-      .length > 0
-  );
+export const getCollectionId = (
+  item: DashboardPickerItem | null,
+): CollectionId => {
+  if (!item) {
+    return "root";
+  }
+
+  if (item.model === "collection") {
+    return (item.id as CollectionId) ?? "root";
+  }
+
+  return item.collection_id ?? "root";
 };
 
-export const generateKey = (query?: SearchRequest) =>
-  JSON.stringify(query ?? "root");
+export const isFolder = (item: DashboardPickerItem) => {
+  return (
+    item.is_personal ||
+    item.id === "root" ||
+    (item?.model === "collection" &&
+      _.intersection(
+        [...(item?.below ?? []), ...(item?.here ?? [])],
+        ["dashboard"],
+      ).length > 0)
+  );
+};

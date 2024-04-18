@@ -106,28 +106,5 @@ export const AddToDashSelectDashModal = ({
         showPersonalCollections: isQuestionInPersonalCollection,
       }}
     />
-    // <ModalContent
-    //   id="AddToDashSelectDashModal"
-    //   title={getTitle(card)}
-    //   onClose={onClose}
-    // >
-    //   <DashboardPicker
-    //     onOpenCollectionChange={setOpenCollectionId}
-    //     filterPersonalCollections={
-    //       isQuestionInPersonalCollection ? "only" : undefined
-    //     }
-    //     onChange={onDashboardSelected}
-    //     collectionId={initialOpenCollectionId}
-    //     value={mostRecentlyViewedDashboardQuery.data?.id}
-    //   />
-    //   {showCreateNewDashboardOption && (
-    //     <Link onClick={() => setShouldCreateDashboard(true)} to="">
-    //       <LinkContent>
-    //         <Icon name="add" className={CS.mx1} />
-    //         <h4>{t`Create a new dashboard`}</h4>
-    //       </LinkContent>
-    //     </Link>
-    //   )}
-    // </ModalContent>
   );
 };
