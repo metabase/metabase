@@ -1,5 +1,6 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import type {
   Alert,
   ApiKey,
@@ -8,6 +9,7 @@ import type {
   Collection,
   CollectionItem,
   CollectionItemModel,
+  Dashboard,
   Database,
   DatabaseCandidate,
   Field,
@@ -56,6 +58,10 @@ export function invalidateTags(
   return !error ? tags : [];
 }
 
+// ----------------------------------------------------------------------- //
+// Keep the below list of entity-specific functions alphabetically sorted. //
+// ----------------------------------------------------------------------- //
+
 export function provideActivityItemListTags(
   items: RecentItem[] | PopularItem[],
 ): TagDescription<TagType>[] {
@@ -92,36 +98,6 @@ export function provideApiKeyListTags(
 
 export function provideApiKeyTags(apiKey: ApiKey): TagDescription<TagType>[] {
   return [idTag("api-key", apiKey.id)];
-}
-
-export function provideDatabaseCandidateListTags(
-  candidates: DatabaseCandidate[],
-): TagDescription<TagType>[] {
-  return [
-    listTag("schema"),
-    ...candidates.flatMap(provideDatabaseCandidateTags),
-  ];
-}
-
-export function provideDatabaseCandidateTags(
-  candidate: DatabaseCandidate,
-): TagDescription<TagType>[] {
-  return [idTag("schema", candidate.schema)];
-}
-
-export function provideDatabaseListTags(
-  databases: Database[],
-): TagDescription<TagType>[] {
-  return [listTag("database"), ...databases.flatMap(provideDatabaseTags)];
-}
-
-export function provideDatabaseTags(
-  database: Database,
-): TagDescription<TagType>[] {
-  return [
-    idTag("database", database.id),
-    ...(database.tables ? provideTableListTags(database.tables) : []),
-  ];
 }
 
 export function provideBookmarkListTags(
@@ -170,6 +146,58 @@ export function provideCollectionTags(
   collection: Collection,
 ): TagDescription<TagType>[] {
   return [idTag("collection", collection.id)];
+}
+
+export function provideDatabaseCandidateListTags(
+  candidates: DatabaseCandidate[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("schema"),
+    ...candidates.flatMap(provideDatabaseCandidateTags),
+  ];
+}
+
+export function provideDatabaseCandidateTags(
+  candidate: DatabaseCandidate,
+): TagDescription<TagType>[] {
+  return [idTag("schema", candidate.schema)];
+}
+
+export function provideDatabaseListTags(
+  databases: Database[],
+): TagDescription<TagType>[] {
+  return [listTag("database"), ...databases.flatMap(provideDatabaseTags)];
+}
+
+export function provideDatabaseTags(
+  database: Database,
+): TagDescription<TagType>[] {
+  return [
+    idTag("database", database.id),
+    ...(database.tables ? provideTableListTags(database.tables) : []),
+  ];
+}
+
+export function provideDashboardListTags(
+  dashboards: Dashboard[],
+): TagDescription<TagType>[] {
+  return [listTag("dashboard"), ...dashboards.flatMap(provideDashboardTags)];
+}
+
+export function provideDashboardTags(
+  dashboard: Dashboard,
+): TagDescription<TagType>[] {
+  const cards = dashboard.dashcards
+    .flatMap(dashcard => (isVirtualDashCard(dashcard) ? [] : [dashcard]))
+    .map(dashcard => dashcard.card);
+
+  return [
+    idTag("dashboard", dashboard.id),
+    ...provideCardListTags(cards),
+    ...(dashboard.collection
+      ? provideCollectionTags(dashboard.collection)
+      : []),
+  ];
 }
 
 export function provideFieldListTags(
@@ -321,6 +349,12 @@ export function provideTimelineTags(
     ...(timeline.collection ? provideCollectionTags(timeline.collection) : []),
     ...(timeline.events ? provideTimelineEventListTags(timeline.events) : []),
   ];
+}
+
+export function provideUserListTags(
+  users: UserInfo[],
+): TagDescription<TagType>[] {
+  return [listTag("user"), ...users.flatMap(user => provideUserTags(user))];
 }
 
 export function provideUserTags(user: UserInfo): TagDescription<TagType>[] {

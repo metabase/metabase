@@ -32,7 +32,7 @@ export function queryDrill(
       const drillInfo = Lib.displayInfo(query, stageIndex, drill);
       const drillHandler = DRILLS[drillInfo.type];
 
-      if (!isDrillEnabled(drillInfo)) {
+      if (!isDrillEnabled(drillInfo) || !drillHandler) {
         return null;
       }
 

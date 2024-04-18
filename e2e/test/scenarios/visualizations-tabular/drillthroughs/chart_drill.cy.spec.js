@@ -25,7 +25,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.signInAsAdmin();
   });
 
-  it("should allow brush date filter", { tags: "@flaky" }, () => {
+  it("should allow brush date filter", () => {
     cy.createQuestion(
       {
         name: "Brush Date Temporal Filter",
@@ -163,7 +163,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
             visitDashboard(DASHBOARD_ID);
 
             cy.log("The first series line");
-            cy.get(".sub.enable-dots._0")
+            cy.findAllByTestId("chart-series")
+              .eq(0)
               .find(".dot")
               .eq(0)
               .click({ force: true });
@@ -175,7 +176,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
             // Second line from the second question
             cy.log("The second series line");
-            cy.get(".sub.enable-dots._1")
+            cy.findAllByTestId("chart-series")
+              .eq(1)
               .find(".dot")
               .eq(0)
               .click({ force: true });
@@ -232,7 +234,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
             visitDashboard(DASHBOARD_ID);
 
             cy.log("The first series line");
-            cy.get(".sub.enable-dots._0")
+            cy.findAllByTestId("chart-series")
+              .eq(0)
               .find(".dot")
               .eq(0)
               .click({ force: true });
@@ -244,7 +247,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
             // Second line from the second question
             cy.log("The third series line");
-            cy.get(".sub.enable-dots._2")
+            cy.findAllByTestId("chart-series")
+              .eq(2)
               .find(".dot")
               .eq(0)
               .click({ force: true });
@@ -521,7 +525,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^10 –/)
-      .closest(".TableInteractive-cellWrapper")
+      .closest(".test-TableInteractive-cellWrapper")
       .next()
       .contains("85")
       .click();
@@ -565,7 +569,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findByText("Distinct values").click();
 
     // there should be 0 distinct values since they are all null
-    cy.get(".TableInteractive-cellWrapper").contains("0");
+    cy.get(".test-TableInteractive-cellWrapper").contains("0");
   });
 
   it("should parse value on click through on the first row of pie chart (metabase#15250)", () => {

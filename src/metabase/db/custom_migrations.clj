@@ -1072,6 +1072,25 @@
                                            :from   [:revision]
                                            :where  [:= :model "Card"]})))))
 
+(define-migration DeleteScanFieldValuesTriggerForDBThatTurnItOff
+  ;; If you config scan field values for a DB to either "Only when adding a new filter widget" or "Never, I’ll do this manually if I need to"
+  ;; then we shouldn't schedule a trigger for scan field values. Turns out it wasn't like that since forever, so we need
+  ;; this migraiton to remove triggers for any existing DB that have this option on.
+  ;; See #40715
+  (when-let [;; find all dbs which are configured not to scan field values
+             dbs (seq (filter #(and (-> % :details :let-user-control-scheduling)
+                                    (false? (:is_full_sync %)))
+                              (t2/select :model/Database)))]
+    (classloader/the-classloader)
+    (set-jdbc-backend-properties!)
+    (let [scheduler (qs/initialize)]
+      (qs/start scheduler)
+      (doseq [db dbs]
+        (qs/delete-trigger scheduler (triggers/key (format "metabase.task.update-field-values.trigger.%d" (:id db)))))
+      ;; use the table, not model/Database because we don't want to trigger the hooks
+      (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil})
+      (qs/shutdown scheduler))))
+
 (defn- hash-bcrypt
   "Hashes a given plaintext password using bcrypt.  Should be used to hash
    passwords included in stored user credentials that are to be later verified
@@ -1118,7 +1137,7 @@
 (defn- load-edn
   "Loads edn from an EDN file. Parses values tagged with #t into the appropriate `java.time` class"
   [file-name]
-  (with-open [r (io/reader file-name)]
+  (with-open [r (io/reader (io/resource file-name))]
     (edn/read {:readers {'t u.date/parse}} (java.io.PushbackReader. r))))
 
 (defn- no-user?
@@ -1144,7 +1163,7 @@
                (not (config/config-bool :mb-enable-test-endpoints)) ; skip sample content for e2e tests to avoid coupling the tests to the contents
                (no-user?)
                (no-db?))
-      (let [table-name->raw-rows (load-edn "resources/sample-content.edn")
+      (let [table-name->raw-rows (load-edn "sample-content.edn")
             replace-temporals    (fn [v]
                                    (if (isa? (type v) java.time.temporal.Temporal)
                                      :%now

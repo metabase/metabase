@@ -7,13 +7,18 @@
 
   Query transformation:
 
-  - Add an expression that extracts the specified value from this column."
+  - Add an expression that extracts the specified value from this column.
+
+  Extra constraints:
+
+  - Database must support `:regex` feature for the URL and Email extractions to work."
   (:require
    [medley.core :as m]
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
@@ -82,10 +87,17 @@
   ;;12         34        5  6       7                8       9      10
   #"^(?:www\.)?((?!www\.)(?![^\.]+\.(?:[^\.]{1,3}\.)?[^\.]+$)[^\.]+)\.")
 
-(defn- column-extract-drill-for-column [column]
+(defn- regex-available? [metadata-providerable]
+  ((:features (lib.metadata/database metadata-providerable)) :regex))
+
+(defn- column-extract-drill-for-column [query column]
   (cond
     (lib.types.isa/temporal? column) {:display-name (i18n/tru "Extract day, month…")
                                       :extractions  (column-extract-temporal-units column)}
+
+    ;; The URL and email extractions are powered by regular expressions, and not every database supports those.
+    ;; If the target database doesn't support :regex feature, return nil.
+    (not (regex-available? query))   nil
     (lib.types.isa/email? column)    {:display-name (i18n/tru "Extract domain")
                                       :extractions  [{:key          :email-domain
                                                       :display-name (i18n/tru "Domain")}]}
@@ -103,7 +115,7 @@
    stage-number                :- :int
    {:keys [column column-ref value]} :- ::lib.schema.drill-thru/context]
   (when (and column (nil? value))
-    (when-let [drill (column-extract-drill-for-column column)]
+    (when-let [drill (column-extract-drill-for-column query column)]
       (merge drill
              {:lib/type :metabase.lib.drill-thru/drill-thru
               :type     :drill-thru/column-extract}

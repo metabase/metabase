@@ -73,6 +73,13 @@
         (reset! (:status mdb.connection/*application-db*) ::setup-finished))))
   :done)
 
+(defn release-migration-locks!
+  "Wait up to `timeout-seconds` for the current process to release all migration locks, otherwise force release them."
+  [timeout-seconds]
+  (if (db-is-set-up?)
+    :done
+    (mdb.setup/release-migration-locks! (data-source) timeout-seconds)))
+
 (defn memoize-for-application-db
   "Like [[clojure.core/memoize]], but only memoizes for the current application database; memoized values will be
   ignored if the app DB is dynamically rebound. For TTL memoization with [[clojure.core.memoize]], set

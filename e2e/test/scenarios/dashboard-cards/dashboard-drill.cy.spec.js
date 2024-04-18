@@ -488,7 +488,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findAllByTestId("column-header").contains("ID").click().click();
 
-    cy.get(".Table-ID").contains(PK_VALUE).first().click();
+    cy.get(".test-Table-ID").contains(PK_VALUE).first().click();
 
     cy.wait("@dataset");
 
@@ -826,7 +826,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       });
     });
     cy.findByTextEnsureVisible("Quantity");
-    cy.get(".Table-ID")
+    cy.get(".test-Table-ID")
       .first()
       // Mid-point check that this cell actually contains ID = 1
       .contains("1")

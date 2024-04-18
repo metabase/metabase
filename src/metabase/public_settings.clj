@@ -859,3 +859,10 @@
                   (when (and id (t2/exists? :model/Dashboard :id id :archived false))
                     id)))
   :doc        false)
+
+(defsetting sql-parsing-enabled
+  (deferred-tru "SQL Parsing is disabled")
+  :visibility :internal
+  :export?    false
+  :default    true
+  :type       :boolean)

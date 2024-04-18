@@ -10,7 +10,7 @@ export default class AdminHeader extends Component {
       <div
         className={cx(
           "MetadataEditor-header",
-          "clearfix",
+          CS.clearfix,
           CS.relative,
           CS.flexNoShrink,
         )}

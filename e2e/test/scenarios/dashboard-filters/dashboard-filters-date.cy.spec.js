@@ -181,6 +181,7 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     visitDashboard(ORDERS_DASHBOARD_ID);
+    // we can't use helpers as they use english words
     cy.icon("pencil").click();
     cy.icon("filter").click();
 

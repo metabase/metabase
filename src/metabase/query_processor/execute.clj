@@ -73,15 +73,18 @@
                              (log/infof "%s changed, rebuilding %s" varr `execute*)
                              (rebuild-execute-fn!))))
 
+(def ^:private CompiledQuery
+  [:and
+   [:map
+    [:database ::lib.schema.id/database]]
+   [:fn
+    {:error/message "Query must be compiled -- should have either :native or :qp/compiled."}
+    (some-fn :native :qp/compiled)]])
+
 ;;; TODO -- consider whether this should return an `IReduceInit` that we can reduce as a separate step.
 (mu/defn execute :- some?
   "Execute a compiled query, then reduce the results."
-  [compiled-query :- [:and
-                      [:map
-                       [:database ::lib.schema.id/database]]
-                      [:fn
-                       {:error/message "Query must be compiled -- should have either :native or :qp/compiled."}
-                       (some-fn :native :qp/compiled)]]
+  [compiled-query :- CompiledQuery
    rff            :- ::qp.schema/rff]
   (qp.setup/with-qp-setup [compiled-query compiled-query]
     (execute* compiled-query rff)))
