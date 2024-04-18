@@ -63,7 +63,7 @@ export const TasksApp = ({ children }: TasksAppProps) => {
             onNextPage={() => setPage(page + 1)}
             page={page}
             pageSize={50}
-            itemsLength={tasks?.length}
+            itemsLength={tasks.length}
             total={tasksData.total}
           />
         </SectionControls>
