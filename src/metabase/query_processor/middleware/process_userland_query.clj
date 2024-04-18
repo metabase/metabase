@@ -174,6 +174,7 @@
                   (let [preprocessed-query (:preprocessed_query metadata)
                         ;; we only need the preprocessed query to find field usages, so make sure we don't return it
                         result             (rff (dissoc metadata :preprocessed_query))
+                        ;; skip internal queries as it use honeysql, not mbql
                         field-usages       (when-not (qp.util/internal-query? query)
                                              (field-usage/pmbql->field-usages
                                               (lib/query (qp.store/metadata-provider) preprocessed-query)))]
