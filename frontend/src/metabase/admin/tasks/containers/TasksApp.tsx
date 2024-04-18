@@ -8,9 +8,9 @@ import { useListTasksQuery, useListDatabasesQuery } from "metabase/api";
 import AdminHeader from "metabase/components/AdminHeader";
 import PaginationControls from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
-import Tooltip from "metabase/core/components/Tooltip";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { Tooltip } from "metabase/ui";
 import type { Database, Task } from "metabase-types/api";
 
 import {
@@ -53,7 +53,7 @@ export const TasksApp = ({ children }: TasksAppProps) => {
         <SectionTitle>
           <AdminHeader title={t`Troubleshooting logs`} />
           <Tooltip
-            tooltip={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
+            label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
           >
             <InfoIcon name="info" />
           </Tooltip>
