@@ -1,10 +1,8 @@
 export interface PaginationRequest {
-  limit?: number;
-  offset?: number;
+  limit?: number | null;
+  offset?: number | null;
 }
 
-export interface PaginationResponse {
-  limit: number;
-  offset: number;
+export interface PaginationResponse extends PaginationRequest {
   total: number;
 }
