@@ -1,21 +1,16 @@
-import { useState } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
+import ItemsTable from "metabase/collections/components/ItemsTable";
 import type { useSearchListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { useSelector } from "metabase/lib/redux";
-import { getLocale } from "metabase/setup/selectors";
-import { Box } from "metabase/ui";
-import type { SearchResult, CollectionId } from "metabase-types/api";
-
-import { BROWSE_MODELS_LOCALSTORAGE_KEY } from "../constants";
-import { getCollectionViewPreferences, groupModels } from "../utils";
+import Search from "metabase/entities/search";
+import { useDispatch } from "metabase/lib/redux";
+import { Box, Stack } from "metabase/ui";
+import type { SearchResult } from "metabase-types/api";
 
 import { CenteredEmptyState } from "./BrowseApp.styled";
-import { ModelGrid } from "./BrowseModels.styled";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
-import { ModelGroup } from "./ModelGroup";
 
 export const BrowseModels = ({
   modelsResult,
@@ -23,11 +18,15 @@ export const BrowseModels = ({
   modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
 }) => {
   const { data: models = [], error, isLoading } = modelsResult;
-  const locale = useSelector(getLocale);
-  const localeCode: string | undefined = locale?.code;
-  const [collectionViewPreferences, setCollectionViewPreferences] = useState(
-    getCollectionViewPreferences,
-  );
+
+  /// dead code, delenda est
+  /// const locale = useSelector(getLocale);
+  /// const localeCode: string | undefined = locale?.code;
+  /// const [collectionViewPreferences, setCollectionViewPreferences] = useState(
+  ///   getCollectionViewPreferences,
+  /// );
+
+  const dispatch = useDispatch();
 
   if (error || isLoading) {
     return (
@@ -39,67 +38,71 @@ export const BrowseModels = ({
     );
   }
 
-  const handleToggleCollectionExpand = (collectionId: CollectionId) => {
-    const newPreferences = {
-      ...collectionViewPreferences,
-      [collectionId]: {
-        expanded: !(
-          collectionViewPreferences?.[collectionId]?.expanded ?? true
-        ),
-        showAll: !!collectionViewPreferences?.[collectionId]?.showAll,
-      },
-    };
-    setCollectionViewPreferences(newPreferences);
-    localStorage.setItem(
-      BROWSE_MODELS_LOCALSTORAGE_KEY,
-      JSON.stringify(newPreferences),
-    );
-  };
+  /// dead code, delenda est
+  /// const handleToggleCollectionExpand = (collectionId: CollectionId) => {
+  ///   const newPreferences = {
+  ///     ...collectionViewPreferences,
+  ///     [collectionId]: {
+  ///       expanded: !(
+  ///         collectionViewPreferences?.[collectionId]?.expanded ?? true
+  ///       ),
+  ///       showAll: !!collectionViewPreferences?.[collectionId]?.showAll,
+  ///     },
+  ///   };
+  ///   setCollectionViewPreferences(newPreferences);
+  ///   localStorage.setItem(
+  ///     BROWSE_MODELS_LOCALSTORAGE_KEY,
+  ///     JSON.stringify(newPreferences),
+  ///   );
+  /// };
 
-  const handleToggleCollectionShowAll = (collectionId: CollectionId) => {
-    const newPreferences = {
-      ...collectionViewPreferences,
-      [collectionId]: {
-        expanded: collectionViewPreferences?.[collectionId]?.expanded ?? true,
-        showAll: !collectionViewPreferences?.[collectionId]?.showAll,
-      },
-    };
-    setCollectionViewPreferences(newPreferences);
-    localStorage.setItem(
-      BROWSE_MODELS_LOCALSTORAGE_KEY,
-      JSON.stringify(newPreferences),
-    );
-  };
+  /// dead code, delenda est
+  /// const handleToggleCollectionShowAll = (collectionId: CollectionId) => {
+  ///   const newPreferences = {
+  ///     ...collectionViewPreferences,
+  ///     [collectionId]: {
+  ///       expanded: collectionViewPreferences?.[collectionId]?.expanded ?? true,
+  ///       showAll: !collectionViewPreferences?.[collectionId]?.showAll,
+  ///     },
+  ///   };
+  ///   setCollectionViewPreferences(newPreferences);
+  ///   localStorage.setItem(
+  ///     BROWSE_MODELS_LOCALSTORAGE_KEY,
+  ///     JSON.stringify(newPreferences),
+  ///   );
+  /// };
+  /// const groupsOfModels = groupModels(models, localeCode);
 
-  const groupsOfModels = groupModels(models, localeCode);
+  const sortingOptions = {
+    sort_column: "name",
+    sort_direction: "asc",
+  };
+  const wrappedModels = models.map(model => Search.wrapEntity(model, dispatch));
 
   if (models.length) {
     return (
-      <>
+      <Stack spacing="md">
         <ModelExplanationBanner />
-        <ModelGrid role="grid">
-          {groupsOfModels.map(groupOfModels => {
-            const collectionId = groupOfModels[0].collection.id;
-            return (
-              <ModelGroup
-                expanded={
-                  collectionViewPreferences?.[collectionId]?.expanded ?? true
-                }
-                showAll={!!collectionViewPreferences?.[collectionId]?.showAll}
-                toggleExpanded={() =>
-                  handleToggleCollectionExpand(collectionId)
-                }
-                toggleShowAll={() =>
-                  handleToggleCollectionShowAll(collectionId)
-                }
-                models={groupOfModels}
-                key={`modelgroup-${collectionId}`}
-                localeCode={localeCode}
-              />
-            );
-          })}
-        </ModelGrid>
-      </>
+        <ItemsTable
+          items={wrappedModels}
+          sortingOptions={sortingOptions}
+          // databases={databases}
+          // bookmarks={bookmarks}
+          // createBookmark={createBookmark}
+          // deleteBookmark={deleteBookmark}
+          // collection={collection}
+          // onSortingOptionsChange={handleUnpinnedItemsSortingChange}
+          // selectedItems={selected}
+          // hasUnselected={hasUnselected}
+          // getIsSelected={getIsSelected}
+          // onToggleSelected={toggleItem}
+          // onDrop={clear}
+          // onMove={handleMove}
+          // onCopy={handleCopy}
+          // onSelectAll={handleSelectAll}
+          // onSelectNone={clear}
+        />
+      </Stack>
     );
   }
 

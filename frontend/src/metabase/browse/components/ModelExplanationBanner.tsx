@@ -33,7 +33,6 @@ export function ModelExplanationBanner() {
   return (
     <Paper
       mt="1rem"
-      mb="-0.5rem"
       p="1rem"
       color="text-dark"
       bg="brand-lighter"
