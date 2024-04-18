@@ -1,395 +1,347 @@
-// import userEvent from "@testing-library/user-event";
-// import fetchMock from "fetch-mock";
-// import _ from "underscore";
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+import _ from "underscore";
 
-// import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
-// import {
-//   mockGetBoundingClientRect,
-//   mockScrollBy,
-//   renderWithProviders,
-//   screen,
-//   waitFor,
-// } from "__support__/ui";
-// import type { CollectionId, CollectionItem } from "metabase-types/api";
-// import {
-//   createMockCard,
-//   createMockCollection,
-//   createMockCollectionItem,
-// } from "metabase-types/api/mocks";
+import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
+import {
+  mockGetBoundingClientRect,
+  mockScrollBy,
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
+import type {
+  CollectionId,
+  CollectionItem,
+  DashboardId,
+} from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockCollectionItem,
+  createMockDashboard,
+} from "metabase-types/api/mocks";
 
-// import type { QuestionPickerItem, QuestionPickerValueModel } from "../types";
+import type { DashboardPickerItem, DashboardPickerValueModel } from "../types";
 
-// import { QuestionPicker, defaultOptions } from "./DashboardPicker";
-// import { QuestionPickerModal } from "./DashboardPickerModal";
+import { DashboardPicker, defaultOptions } from "./DashboardPicker";
+import { DashboardPickerModal } from "./DashboardPickerModal";
 
-// type NestedCollectionItem = Partial<CollectionItem> & {
-//   id: any;
-//   is_personal?: boolean;
-//   descendants: NestedCollectionItem[];
-// };
+type NestedCollectionItem = Partial<Omit<CollectionItem, "id">> & {
+  id: any;
+  is_personal?: boolean;
+  descendants: NestedCollectionItem[];
+};
 
-// const myQuestion = createMockCard({
-//   id: 100,
-//   name: "My Question",
-//   collection_id: 3,
-// });
+const myDashboard = createMockDashboard({
+  id: 100,
+  name: "My Dashboard 1",
+  collection_id: 3,
+});
 
-// const myModel = createMockCard({
-//   id: 101,
-//   name: "My Model",
-//   collection_id: 3,
-//   type: "model",
-// });
+const myDashboard2 = createMockDashboard({
+  id: 101,
+  name: "My Dashboard 2",
+  collection_id: 3,
+});
 
-// const collectionTree: NestedCollectionItem[] = [
-//   {
-//     id: "root" as any,
-//     model: "collection",
-//     name: "Our Analytics",
-//     location: "",
-//     can_write: true,
-//     descendants: [
-//       {
-//         id: 4,
-//         name: "Collection 4",
-//         model: "collection",
-//         location: "/",
-//         can_write: true,
-//         descendants: [
-//           {
-//             id: 3,
-//             name: "Collection 3",
-//             model: "collection",
-//             descendants: [
-//               {
-//                 ...myQuestion,
-//                 model: "card",
-//               } as unknown as NestedCollectionItem,
-//               {
-//                 ...myModel,
-//                 model: "dataset",
-//               } as unknown as NestedCollectionItem,
-//             ],
-//             location: "/4/",
-//             can_write: true,
-//             is_personal: false,
-//           },
-//         ],
-//       },
-//       {
-//         id: 2,
-//         model: "collection",
-//         is_personal: false,
-//         name: "Collection 2",
-//         location: "/",
-//         can_write: true,
-//         descendants: [],
-//       },
-//     ],
-//   },
-//   {
-//     name: "My personal collection",
-//     id: 1,
-//     model: "collection",
-//     location: "/",
-//     is_personal: true,
-//     can_write: true,
-//     descendants: [
-//       {
-//         id: 5,
-//         model: "collection",
-//         location: "/1/",
-//         name: "personal sub_collection",
-//         is_personal: true,
-//         can_write: true,
-//         descendants: [],
-//       },
-//     ],
-//   },
-// ];
+const collectionTree: NestedCollectionItem[] = [
+  {
+    id: "root",
+    model: "collection",
+    name: "Our Analytics",
+    location: "",
+    can_write: true,
+    descendants: [
+      {
+        id: 4,
+        name: "Collection 4",
+        model: "collection",
+        location: "/",
+        can_write: true,
+        descendants: [
+          {
+            id: 3,
+            name: "Collection 3",
+            model: "collection",
+            descendants: [
+              {
+                ...myDashboard,
+                model: "dashboard",
+                descendants: [],
+              },
+              {
+                ...myDashboard2,
+                model: "dashboard",
+                descendants: [],
+              },
+            ],
+            location: "/4/",
+            can_write: true,
+            is_personal: false,
+          },
+        ],
+      },
+      {
+        id: 2,
+        model: "collection",
+        is_personal: false,
+        name: "Collection 2",
+        location: "/",
+        can_write: true,
+        descendants: [],
+      },
+    ],
+  },
+  {
+    name: "My personal collection",
+    id: 1,
+    model: "collection",
+    location: "/",
+    is_personal: true,
+    can_write: true,
+    descendants: [
+      {
+        id: 5,
+        model: "collection",
+        location: "/1/",
+        name: "personal sub_collection",
+        is_personal: true,
+        can_write: true,
+        descendants: [],
+      },
+    ],
+  },
+];
 
-// const flattenCollectionTree = (
-//   node: NestedCollectionItem[],
-// ): Omit<NestedCollectionItem, "descendants">[] => {
-//   if (!node) {
-//     return [];
-//   }
-//   return [...node.map(n => _.omit(n, "descendants"))].concat(
-//     ...node.map(n => flattenCollectionTree(n.descendants)),
-//   );
-// };
+const flattenCollectionTree = (
+  nodes: NestedCollectionItem[],
+): Omit<NestedCollectionItem, "descendants">[] => {
+  if (!nodes) {
+    return [];
+  }
+  return nodes.flatMap(({ descendants, ...node }) => [
+    node,
+    ...flattenCollectionTree(descendants),
+  ]);
+};
 
-// const walkForCollectionItems = (node: NestedCollectionItem[]) => {
-//   node.forEach(n => {
-//     if (!n.descendants) {
-//       return;
-//     }
-//     const collectionItems = n.descendants.map((c: NestedCollectionItem) =>
-//       createMockCollectionItem(c),
-//     );
+const setupCollectionTreeMocks = (node: NestedCollectionItem[]) => {
+  node.forEach(node => {
+    if (!node.descendants) {
+      return;
+    }
+    const collectionItems = node.descendants.map((c: NestedCollectionItem) =>
+      createMockCollectionItem(c),
+    );
 
-//     setupCollectionItemsEndpoint({
-//       collection: createMockCollection({ id: n.id }),
-//       collectionItems,
-//       models: ["collection", "dataset", "card"],
-//     });
+    setupCollectionItemsEndpoint({
+      collection: createMockCollection({ id: node.id }),
+      collectionItems,
+      models: ["collection", "dashboard"],
+    });
 
-//     if (collectionItems.length > 0) {
-//       walkForCollectionItems(n.descendants);
-//     }
-//   });
-// };
+    if (collectionItems.length > 0) {
+      setupCollectionTreeMocks(node.descendants);
+    }
+  });
+};
 
-// interface SetupOpts {
-//   initialValue?: {
-//     id: CollectionId;
-//     model: "collection" | "card" | "dataset";
-//   };
-//   onChange?: (item: QuestionPickerItem) => void;
-//   models?: [QuestionPickerValueModel, ...QuestionPickerValueModel[]];
-// }
+interface SetupOpts {
+  initialValue?: {
+    id: CollectionId | DashboardId;
+    model: "collection" | "dashboard";
+  };
+  onChange?: (item: DashboardPickerItem) => void;
+  models?: [DashboardPickerValueModel, ...DashboardPickerValueModel[]];
+  options?: typeof defaultOptions;
+}
 
-// const commonSetup = () => {
-//   mockGetBoundingClientRect();
-//   mockScrollBy();
+const commonSetup = () => {
+  mockGetBoundingClientRect();
+  mockScrollBy();
 
-//   const allItems = flattenCollectionTree(collectionTree).map(
-//     createMockCollectionItem,
-//   );
+  const allItems = flattenCollectionTree(collectionTree).map(
+    createMockCollectionItem,
+  );
 
-//   allItems.forEach(item => {
-//     if (item.model !== "collection") {
-//       fetchMock.get(`path:/api/card/${item.id}`, item);
-//     } else {
-//       fetchMock.get(`path:/api/collection/${item.id}`, item);
-//     }
-//   });
+  allItems.forEach(item => {
+    if (item.model !== "collection") {
+      fetchMock.get(`path:/api/dashboard/${item.id}`, item);
+    } else {
+      fetchMock.get(`path:/api/collection/${item.id}`, item);
+    }
+  });
 
-//   // Setup collection items mocks
-//   walkForCollectionItems(collectionTree);
-// };
+  setupCollectionTreeMocks(collectionTree);
+};
 
-// const setupPicker = async ({
-//   initialValue = { id: "root", model: "collection" },
-//   onChange = jest.fn<void, [QuestionPickerItem]>(),
-// }: SetupOpts = {}) => {
-//   commonSetup();
+const setupPicker = async ({
+  initialValue = { id: "root", model: "collection" },
+  onChange = jest.fn<void, [DashboardPickerItem]>(),
+}: SetupOpts = {}) => {
+  commonSetup();
 
-//   renderWithProviders(
-//     <QuestionPicker
-//       onItemSelect={onChange}
-//       initialValue={initialValue}
-//       models={["card"]}
-//       options={defaultOptions}
-//     />,
-//   );
+  renderWithProviders(
+    <DashboardPicker
+      onItemSelect={onChange}
+      initialValue={initialValue}
+      options={defaultOptions}
+    />,
+  );
 
-//   await waitFor(() =>
-//     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument(),
-//   );
-// };
+  await waitForLoaderToBeRemoved();
+};
 
-// const setupModal = async ({
-//   initialValue,
-//   models = ["card", "dataset"],
-//   onChange = jest.fn<void, [QuestionPickerItem]>(),
-// }: SetupOpts = {}) => {
-//   commonSetup();
+const setupModal = async ({
+  initialValue,
+  onChange = jest.fn<void, [DashboardPickerItem]>(),
+  options = defaultOptions,
+}: SetupOpts = {}) => {
+  commonSetup();
 
-//   renderWithProviders(
-//     <QuestionPickerModal
-//       onChange={onChange}
-//       value={initialValue}
-//       onClose={jest.fn()}
-//       models={models}
-//     />,
-//   );
+  renderWithProviders(
+    <DashboardPickerModal
+      onChange={onChange}
+      value={initialValue}
+      onClose={jest.fn()}
+      options={options}
+    />,
+  );
 
-//   await waitFor(() =>
-//     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument(),
-//   );
-// };
+  await waitForLoaderToBeRemoved();
+};
 
-// describe("QuestionPicker", () => {
-//   afterAll(() => {
-//     jest.restoreAllMocks();
-//   });
+describe("DashboardPicker", () => {
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
 
-//   it("should select the root collection by default", async () => {
-//     await setupPicker();
+  it("should select the root collection by default", async () => {
+    await setupPicker();
 
-//     expect(
-//       await screen.findByRole("button", { name: /Our Analytics/ }),
-//     ).toHaveAttribute("data-active", "true");
+    expect(
+      await screen.findByRole("button", { name: /Our Analytics/ }),
+    ).toHaveAttribute("data-active", "true");
 
-//     expect(
-//       await screen.findByRole("button", { name: /Collection 4/ }),
-//     ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Collection 4/ }),
+    ).toBeInTheDocument();
 
-//     expect(
-//       await screen.findByRole("button", { name: /Collection 2/ }),
-//     ).toBeInTheDocument();
-//   });
+    expect(
+      await screen.findByRole("button", { name: /Collection 2/ }),
+    ).toBeInTheDocument();
+  });
 
-//   it("should render the path to the collection provided", async () => {
-//     await setupPicker({ initialValue: { id: 3, model: "collection" } });
-//     expect(
-//       await screen.findByRole("button", { name: /Our Analytics/ }),
-//     ).toHaveAttribute("data-active", "true");
+  it("should render the path to the collection provided", async () => {
+    await setupPicker({ initialValue: { id: 3, model: "collection" } });
+    expect(
+      await screen.findByRole("button", { name: /Our Analytics/ }),
+    ).toHaveAttribute("data-active", "true");
 
-//     expect(
-//       await screen.findByRole("button", { name: /Collection 4/ }),
-//     ).toHaveAttribute("data-active", "true");
+    expect(
+      await screen.findByRole("button", { name: /Collection 4/ }),
+    ).toHaveAttribute("data-active", "true");
 
-//     expect(
-//       await screen.findByRole("button", { name: /Collection 3/ }),
-//     ).toHaveAttribute("data-active", "true");
-//   });
+    expect(
+      await screen.findByRole("button", { name: /Collection 3/ }),
+    ).toHaveAttribute("data-active", "true");
+  });
 
-//   it("should render the path to the question provided", async () => {
-//     await setupPicker({ initialValue: { id: 100, model: "card" } });
+  it("should render the path to the dashboard provided", async () => {
+    await setupPicker({ initialValue: { id: 100, model: "dashboard" } });
 
-//     expect(
-//       await screen.findByRole("button", { name: /Our Analytics/ }),
-//     ).toHaveAttribute("data-active", "true");
+    expect(
+      await screen.findByRole("button", { name: /Our Analytics/ }),
+    ).toHaveAttribute("data-active", "true");
 
-//     expect(
-//       await screen.findByRole("button", { name: /Collection 4/ }),
-//     ).toHaveAttribute("data-active", "true");
+    expect(
+      await screen.findByRole("button", { name: /Collection 4/ }),
+    ).toHaveAttribute("data-active", "true");
 
-//     expect(
-//       await screen.findByRole("button", { name: /Collection 3/ }),
-//     ).toHaveAttribute("data-active", "true");
+    expect(
+      await screen.findByRole("button", { name: /Collection 3/ }),
+    ).toHaveAttribute("data-active", "true");
 
-//     // question itself should start selected
-//     expect(
-//       await screen.findByRole("button", { name: /My Question/ }),
-//     ).toHaveAttribute("data-active", "true");
-//   });
-// });
+    // dashboard itself should start selected
+    expect(
+      await screen.findByRole("button", { name: /My Dashboard 1/ }),
+    ).toHaveAttribute("data-active", "true");
 
-// describe("QuestionPickerModal", () => {
-//   afterAll(() => {
-//     jest.restoreAllMocks();
-//   });
+    expect(
+      await screen.findByRole("button", { name: /My Dashboard 2/ }),
+    ).not.toHaveAttribute("data-active", "true");
+  });
+});
 
-//   it("should render the modal", async () => {
-//     await setupModal();
+describe("DashboardPickerModal", () => {
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
 
-//     expect(
-//       await screen.findByText(/choose a question or model/i),
-//     ).toBeInTheDocument();
-//     expect(
-//       await screen.findByRole("button", { name: /Our Analytics/ }),
-//     ).toBeInTheDocument();
-//     expect(
-//       await screen.findByRole("button", { name: /Select/ }),
-//     ).toBeInTheDocument();
-//   });
+  it("should render the modal", async () => {
+    await setupModal();
 
-//   it("should render model and question tabs by default", async () => {
-//     await setupModal();
+    expect(await screen.findByText(/choose a dashboard/i)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Our Analytics/ }),
+    ).toBeInTheDocument();
 
-//     expect(
-//       await screen.findByRole("tab", { name: /Questions/ }),
-//     ).toBeInTheDocument();
-//     expect(
-//       await screen.findByRole("tab", { name: /Models/ }),
-//     ).toBeInTheDocument();
-//   });
+    expect(screen.getByRole("button", { name: /Select/ })).toBeInTheDocument();
+  });
 
-//   it("can render a single tab (which hides the tab bar)", async () => {
-//     await setupModal({ models: ["dataset"] });
+  it("should render the modal with no select button", async () => {
+    await setupModal({
+      options: { ...defaultOptions, hasConfirmButtons: false },
+    });
 
-//     expect(
-//       await screen.findByText(/choose a question or model/i),
-//     ).toBeInTheDocument();
-//     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
-//     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
-//   });
+    expect(await screen.findByText(/choose a dashboard/i)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Our Analytics/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Select/ }),
+    ).not.toBeInTheDocument();
+  });
 
-//   it("should auto-select the question tab when a question is selected", async () => {
-//     await setupModal({
-//       initialValue: { id: 100, model: "card" },
-//     });
+  it("should render no tabs by default", async () => {
+    await setupModal();
 
-//     expect(
-//       await screen.findByRole("tab", { name: /Questions/ }),
-//     ).toHaveAttribute("aria-selected", "true");
-//     expect(await screen.findByRole("tab", { name: /Models/ })).toHaveAttribute(
-//       "aria-selected",
-//       "false",
-//     );
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+  });
 
-//     expect(
-//       await screen.findByRole("button", { name: /My Question/ }),
-//     ).toHaveAttribute("data-active", "true");
-//   });
+  it("should automatically switch to the search tab when a search query is provided", async () => {
+    await setupModal();
 
-//   it("should auto-select the model tab when a model is selected", async () => {
-//     await setupModal({
-//       initialValue: { id: 101, model: "dataset" },
-//     });
+    const searchInput = await screen.findByPlaceholderText(/search/i);
 
-//     expect(
-//       await screen.findByRole("tab", { name: /Questions/ }),
-//     ).toHaveAttribute("aria-selected", "false");
-//     expect(await screen.findByRole("tab", { name: /Models/ })).toHaveAttribute(
-//       "aria-selected",
-//       "true",
-//     );
+    await userEvent.type(searchInput, "sizzlipede");
 
-//     expect(
-//       await screen.findByRole("button", { name: /My Model/ }),
-//     ).toHaveAttribute("data-active", "true");
-//   });
+    expect(
+      await screen.findByRole("tab", { name: /Dashboards/ }),
+    ).toHaveAttribute("aria-selected", "false");
+    expect(await screen.findByRole("tab", { name: /Search/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
 
-//   it("should automatically switch to the search tab when a search query is provided", async () => {
-//     await setupModal();
+  it("should switch back to not having tabs when the search query is cleared", async () => {
+    await setupModal();
 
-//     const searchInput = await screen.findByPlaceholderText(/search/i);
+    const searchInput = await screen.findByPlaceholderText(/search/i);
 
-//     expect(
-//       await screen.findByRole("tab", { name: /Questions/ }),
-//     ).toHaveAttribute("aria-selected", "true");
+    await userEvent.type(searchInput, "sizzlipede");
 
-//     await userEvent.type(searchInput, "sizzlipede");
+    expect(
+      await screen.findByRole("tab", { name: /Dashboards/ }),
+    ).toHaveAttribute("aria-selected", "false");
+    expect(await screen.findByRole("tab", { name: /Search/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
 
-//     expect(
-//       await screen.findByRole("tab", { name: /Questions/ }),
-//     ).toHaveAttribute("aria-selected", "false");
-//     expect(await screen.findByRole("tab", { name: /Search/ })).toHaveAttribute(
-//       "aria-selected",
-//       "true",
-//     );
-//   });
+    await userEvent.clear(searchInput);
 
-//   it("should switch back to the default tab when the search query is cleared", async () => {
-//     await setupModal();
-
-//     const searchInput = await screen.findByPlaceholderText(/search/i);
-
-//     expect(
-//       await screen.findByRole("tab", { name: /Questions/ }),
-//     ).toHaveAttribute("aria-selected", "true");
-
-//     await userEvent.type(searchInput, "sizzlipede");
-
-//     expect(
-//       await screen.findByRole("tab", { name: /Questions/ }),
-//     ).toHaveAttribute("aria-selected", "false");
-//     expect(await screen.findByRole("tab", { name: /Search/ })).toHaveAttribute(
-//       "aria-selected",
-//       "true",
-//     );
-
-//     await userEvent.clear(searchInput);
-
-//     expect(
-//       await screen.findByRole("tab", { name: /Questions/ }),
-//     ).toHaveAttribute("aria-selected", "true");
-//     expect(
-//       screen.queryByRole("tab", { name: /Search/ }),
-//     ).not.toBeInTheDocument();
-//   });
-// });
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+  });
+});

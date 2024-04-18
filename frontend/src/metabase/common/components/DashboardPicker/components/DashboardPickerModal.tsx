@@ -13,7 +13,6 @@ import {
 import type {
   DashboardPickerItem,
   DashboardPickerOptions,
-  DashboardPickerModel,
   DashboardPickerValueItem,
   DashboardPickerInitialValueItem,
 } from "../types";
@@ -31,7 +30,6 @@ interface DashboardPickerModalProps {
   onClose: () => void;
   options?: DashboardPickerOptions;
   value?: DashboardPickerInitialValueItem;
-  models?: [DashboardPickerModel, ...DashboardPickerModel[]];
 }
 
 const canSelectItem = (
