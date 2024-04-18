@@ -122,21 +122,10 @@ const StrategyFormBody = ({
     <div
       style={{
         height: "100%",
-        position: "relative",
         display: "flex",
         flexDirection: "column",
       }}
     >
-      {targetDatabase && (
-        <Box lh="1rem" px="lg" py="xs" color="text-medium">
-          <Group spacing="sm">
-            <FixedSizeIcon name="database" color="inherit" />
-            <Text fw="bold" py="1rem">
-              {targetDatabase.displayName()}
-            </Text>
-          </Group>
-        </Box>
-      )}
       <Form
         style={{
           display: "flex",
@@ -147,13 +136,27 @@ const StrategyFormBody = ({
       >
         <Box
           style={{
-            borderTop: `1px solid ${color("border")}`,
             borderBottom: `1px solid ${color("border")}`,
             overflow: "auto",
             flexGrow: 1,
           }}
         >
-          <Stack maw="27.5rem" p="lg" spacing="xl">
+          {targetDatabase && (
+            <Box lh="1rem" px="lg" py="xs" color="text-medium">
+              <Group spacing="sm">
+                <FixedSizeIcon name="database" color="inherit" />
+                <Text fw="bold" py="1rem">
+                  {targetDatabase.displayName()}
+                </Text>
+              </Group>
+            </Box>
+          )}
+          <Stack
+            maw="27.5rem"
+            p="lg"
+            pt={targetId === rootId ? undefined : 0}
+            spacing="xl"
+          >
             <StrategySelector targetId={targetId} />
             {selectedStrategyType === "ttl" && (
               <>
