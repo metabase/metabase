@@ -6,6 +6,8 @@ import type { SchemaObjectDescription } from "yup/lib/schema";
 import type { Config, Strategy, StrategyType } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
+import { defaultCron, getFrequencyFromCron } from "./utils";
+
 export type UpdateTargetId = (
   newTargetId: number | null,
   isFormDirty: boolean,
@@ -55,7 +57,9 @@ export const durationStrategyValidationSchema = Yup.object({
 
 export const scheduleStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["schedule"]),
-  schedule: Yup.string().required(t`A cron expression is required`),
+  schedule: Yup.string()
+    .required(t`A cron expression is required`)
+    .default(defaultCron),
 });
 
 export const strategyValidationSchema = Yup.object().test(
@@ -94,20 +98,20 @@ export const strategyValidationSchema = Yup.object().test(
 
 /** Cache invalidation strategies and related metadata */
 export const Strategies: Record<StrategyType, StrategyData> = {
-  ttl: {
-    label: t`TTL: When the time-to-live (TTL) expires`,
-    shortLabel: c("'TTL' is short for 'time-to-live'").t`TTL`,
-    validateWith: ttlStrategyValidationSchema,
-  },
-  schedule: {
-    label: t`Schedule: at regular intervals`,
-    shortLabel: t`Schedule`,
-    validateWith: scheduleStrategyValidationSchema,
-  },
   duration: {
     label: t`Duration: after a specific number of hours`,
     validateWith: durationStrategyValidationSchema,
     shortLabel: t`Duration`,
+  },
+  schedule: {
+    label: t`Schedule: at regular intervals`,
+    shortLabel: t`Scheduled`,
+    validateWith: scheduleStrategyValidationSchema,
+  },
+  ttl: {
+    label: t`TTL: When the time-to-live (TTL) expires`,
+    shortLabel: c("'TTL' is short for 'time-to-live'").t`TTL`,
+    validateWith: ttlStrategyValidationSchema,
   },
   nocache: {
     label: t`Don't cache results`,
@@ -129,7 +133,13 @@ export const getShortStrategyLabel = (strategy?: Strategy) => {
     return null;
   }
   const type = Strategies[strategy.type];
-  return type.shortLabel ?? type.label;
+  const mainLabel = type.shortLabel ?? type.label;
+  if (strategy.type === "schedule") {
+    const frequency = getFrequencyFromCron(strategy.schedule);
+    return `${mainLabel}: ${frequency}`;
+  } else {
+    return mainLabel;
+  }
 };
 
 export const getFieldsForStrategyType = (strategyType: StrategyType) => {

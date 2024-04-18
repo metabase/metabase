@@ -1,11 +1,16 @@
-import { pick } from "underscore";
+import { memoize } from "underscore";
 
-import { Cron, weekdays } from "metabase/components/Schedule/constants";
+import {
+  Cron,
+  weekdays,
+  optionNameTranslations,
+} from "metabase/components/Schedule/constants";
+import { isNullOrUndefined } from "metabase/lib/types";
 import type {
-  ScheduleDayType,
-  ScheduleFrameType,
   ScheduleSettings,
   ScheduleType,
+  ScheduleDayType,
+  ScheduleFrameType,
 } from "metabase-types/api";
 
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
@@ -67,7 +72,7 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
 };
 
 /** Returns null if we can't convert the cron expression to a ScheduleSettings object */
-export const cronToScheduleSettings = (
+export const cronToScheduleSettings_unmemoized = (
   cron: string | null | undefined,
 ): ScheduleSettings | null => {
   if (!cron) {
@@ -129,12 +134,23 @@ export const cronToScheduleSettings = (
     schedule_frame,
   };
 };
+export const cronToScheduleSettings = memoize(
+  cronToScheduleSettings_unmemoized,
+);
 
 const defaultSchedule: ScheduleSettings = {
   schedule_type: "hourly",
   schedule_minute: 0,
 };
+export const defaultCron = scheduleSettingsToCron(defaultSchedule);
 
 export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
+export const hourTo24HourFormat = (hour: number, amPm: number) =>
+  hour + amPm * 12;
 
-export const removeFalsyValues = (obj: any) => pick(obj, val => val);
+export const getFrequencyFromCron = (cron: string) => {
+  const scheduleType = cronToScheduleSettings(cron)?.schedule_type;
+  return isNullOrUndefined(scheduleType)
+    ? ""
+    : optionNameTranslations[scheduleType];
+};
