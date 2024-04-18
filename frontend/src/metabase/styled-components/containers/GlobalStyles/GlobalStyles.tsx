@@ -19,7 +19,7 @@ export const GlobalStyles = (): JSX.Element => {
       --mb-color-brand: ${color("brand")};
       --mb-color-brand-alpha-04: ${alpha("brand", 0.04)};
       --mb-color-brand-alpha-88: ${alpha("brand", 0.88)};
-      --color-focus: ${color("focus")};
+      --mb-color-focus: ${color("focus")};
     }
 
     ${fontFiles?.map(

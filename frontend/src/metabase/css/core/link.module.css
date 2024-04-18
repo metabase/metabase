@@ -13,7 +13,7 @@
 }
 
 .link:focus {
-  outline: 2px solid var(--color-focus);
+  outline: 2px solid var(--mb-color-focus);
 }
 
 .link:focus:not(:focus-visible) {

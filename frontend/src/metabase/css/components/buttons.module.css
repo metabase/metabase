@@ -25,7 +25,7 @@
 }
 
 .Button:focus {
-  outline: 2px solid var(--color-focus);
+  outline: 2px solid var(--mb-color-focus);
 }
 
 .Button:focus:not(:focus-visible) {
