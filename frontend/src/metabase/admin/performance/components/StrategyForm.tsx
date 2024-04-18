@@ -40,7 +40,7 @@ import type {
 } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
-import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
+import { useIsFormPending } from "../hooks/useIsFormPending";
 import { rootId, Strategies, strategyValidationSchema } from "../strategies";
 import { cronToScheduleSettings, scheduleSettingsToCron } from "../utils";
 
@@ -218,14 +218,12 @@ const FormButtons = ({
   targetName,
 }: FormButtonsProps) => {
   const { dirty } = useFormikContext<Strategy>();
-  const { status } = useFormContext();
 
   if (targetId === rootId) {
     shouldAllowInvalidation = false;
   }
 
-  const isFormPending = status === "pending";
-  const [wasFormRecentlyPending] = useRecentlyTrue(isFormPending, 500);
+  const { isFormPending, wasFormRecentlyPending } = useIsFormPending();
 
   const isSavingPossible = dirty || isFormPending || wasFormRecentlyPending;
 

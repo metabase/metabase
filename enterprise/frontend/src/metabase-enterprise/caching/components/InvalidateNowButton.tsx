@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { c, t } from "ttag";
 
 import { IconInButton } from "metabase/admin/performance/components/StrategyForm.styled";
+import { useIsFormPending } from "metabase/admin/performance/hooks/useIsFormPending";
 import {
   isErrorWithMessage,
   resolveSmoothly,
@@ -17,6 +18,7 @@ import { CacheConfigApi } from "metabase/services";
 import { Group, Icon, Loader, Text } from "metabase/ui";
 
 import { StyledInvalidateNowButton } from "./InvalidateNowButton.styled";
+
 export const InvalidateNowButton = ({
   targetId,
   targetName,
@@ -56,6 +58,7 @@ const InvalidateNowFormBody = ({ targetName }: { targetName?: string }) => {
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
   const { submitForm } = useFormikContext();
+  const { wasFormRecentlyPending } = useIsFormPending(5000);
 
   const confirmInvalidation = useCallback(
     () =>
@@ -79,6 +82,7 @@ const InvalidateNowFormBody = ({ targetName }: { targetName?: string }) => {
             e.preventDefault();
             return false;
           }}
+          disabled={wasFormRecentlyPending}
           label={
             <Group spacing="sm">
               <Icon color={color("danger")} name="trash" />
