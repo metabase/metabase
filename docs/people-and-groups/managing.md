@@ -113,6 +113,32 @@ This action will delete any dashboard subscriptions or alerts the person has cre
 
 This action doesn't affect email distribution lists that are managed outside of Metabase.
 
+## Default user accounts
+
+Metabase includes default user accounts to handle various tasks. We're documenting these accounts here so you know they're legitimate accounts and not someone trying to spy on your Metabase. Some things to know about them:
+
+- Customers are not charged for these accounts.
+- No one can log in to these user accounts.
+- Metabase excludes these user accounts from the **Admin settings** > **People** tab.
+
+### Anonymous user account
+
+- ID: 0
+- First name: External
+- Last name: User
+- Email: null
+
+Metabase uses this anonymous user account to identify anonymous views, for example views of a [public question or dashboard](../questions/sharing/public-links.md). This account is a virtual user: the account doesn't exist in the application database. You'll see this account show up in [usage analytics](../usage-and-performance-tools/usage-analytics.md).
+
+### Metabase internal account
+
+- ID: 13371338
+- First name: Internal
+- Last name: Metabase
+- Email: internal@metabase.com
+
+Metabase uses this account to load content into Metabase (like the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection). You may see this `internal@metabase.com` account in the logs.
+
 ## Groups
 
 To determine [who has access to what](../permissions/start.md), you’ll need to

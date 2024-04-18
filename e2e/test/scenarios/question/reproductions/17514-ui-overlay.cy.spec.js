@@ -7,6 +7,7 @@ import {
   editDashboard,
   visitDashboard,
   openColumnOptions,
+  modal,
 } from "e2e/support/helpers";
 
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
@@ -177,7 +178,7 @@ function hideColumn(columnName) {
 }
 
 function closeModal() {
-  cy.get(".Modal").within(() => {
+  modal().within(() => {
     cy.button("Done").click();
   });
 }

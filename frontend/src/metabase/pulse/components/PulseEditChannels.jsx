@@ -259,7 +259,7 @@ export default class PulseEditChannels extends Component {
         >
           {CHANNEL_ICONS[channelSpec.type] && (
             <Icon
-              className={cx(CS.mr1, "text-light")}
+              className={cx(CS.mr1, CS.textLight)}
               name={CHANNEL_ICONS[channelSpec.type]}
               size={28}
             />
@@ -272,7 +272,7 @@ export default class PulseEditChannels extends Component {
           />
         </div>
         {channels.length > 0 && channelSpec.configured ? (
-          <ul className={cx("bg-light", CS.px3)}>{channels}</ul>
+          <ul className={cx(CS.bgLight, CS.px3)}>{channels}</ul>
         ) : channels.length > 0 && !channelSpec.configured ? (
           <div className={cx(CS.p4, CS.textCentered)}>
             <h3
@@ -293,7 +293,7 @@ export default class PulseEditChannels extends Component {
       slack: { name: t`Slack`, type: "slack" },
     };
     return (
-      <ul className="bordered rounded bg-white">
+      <ul className={cx(CS.bordered, CS.rounded, CS.bgWhite)}>
         {Object.values(channels).map(channelSpec =>
           this.renderChannelSection(channelSpec),
         )}

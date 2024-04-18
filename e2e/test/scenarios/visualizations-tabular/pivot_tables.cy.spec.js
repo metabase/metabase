@@ -669,7 +669,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
             .then($value => {
               cy.visit($value);
             });
-          cy.get(".EmbedFrame-header").contains(test.subject);
+          cy.findByTestId("embed-frame-header").contains(test.subject);
           assertOnPivotFields();
         });
 
@@ -699,7 +699,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           // visit the iframe src directly to ensure it's not sing preview endpoints
           visitIframe();
 
-          cy.get(".EmbedFrame-header").contains(test.subject);
+          cy.findByTestId("embed-frame-header").contains(test.subject);
           assertOnPivotFields();
         });
       });

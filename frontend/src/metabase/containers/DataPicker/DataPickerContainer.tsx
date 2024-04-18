@@ -158,7 +158,7 @@ const DataPickerContainer = _.compose(
   // at least one model, to offer for selection
   Search.loadList({
     query: {
-      models: "dataset",
+      models: ["dataset"],
       limit: 1,
     },
   }),

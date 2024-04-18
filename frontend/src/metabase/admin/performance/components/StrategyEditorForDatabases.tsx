@@ -4,7 +4,7 @@ import { withRouter } from "react-router";
 import { t } from "ttag";
 import { findWhere, pick } from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import useBeforeUnload from "metabase/hooks/use-before-unload";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { PLUGIN_CACHING } from "metabase/plugins";
@@ -15,10 +15,14 @@ import { DurationUnit } from "metabase-types/api";
 
 import { useCacheConfigs } from "../hooks/useCacheConfigs";
 import { useConfirmOnRouteLeave } from "../hooks/useConfirmOnRouteLeave";
-import { useDelayedLoadingSpinner } from "../hooks/useDelayedLoadingSpinner";
 import { useVerticallyOverflows } from "../hooks/useVerticallyOverflows";
 import type { UpdateTargetId } from "../strategies";
-import { getFieldsForStrategyType, rootId, Strategies } from "../strategies";
+import {
+  getFieldsForStrategyType,
+  rootId,
+  Strategies,
+  translateConfigToAPI,
+} from "../strategies";
 
 import { Panel, TabWrapper } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
@@ -138,7 +142,8 @@ const StrategyEditorForDatabases_Base = ({
           strategy: validatedStrategy,
         };
 
-        await CacheConfigApi.update(newConfig);
+        const translatedConfig = translateConfigToAPI(newConfig);
+        await CacheConfigApi.update(translatedConfig);
         setConfigs([...otherConfigs, newConfig]);
       }
     },
@@ -150,12 +155,8 @@ const StrategyEditorForDatabases_Base = ({
     ref: formPanelRef,
   } = useVerticallyOverflows();
 
-  const showSpinner = useDelayedLoadingSpinner();
-
   if (error || loading) {
-    return showSpinner ? (
-      <LoadingAndErrorWrapper error={error} loading={loading} />
-    ) : null;
+    return <DelayedLoadingAndErrorWrapper error={error} loading={loading} />;
   }
 
   return (

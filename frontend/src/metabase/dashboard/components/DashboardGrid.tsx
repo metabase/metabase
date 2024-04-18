@@ -8,6 +8,7 @@ import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+import ModalS from "metabase/css/components/modal.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import {
   isQuestionDashCard,
@@ -373,7 +374,11 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       !!addSeriesModalDashCard && isQuestionDashCard(addSeriesModalDashCard);
     return (
       <Modal
-        className={cx("Modal", DashboardS.AddSeriesModal)}
+        className={cx(
+          ModalS.Modal,
+          DashboardS.Modal,
+          DashboardS.AddSeriesModal,
+        )}
         data-testid="add-series-modal"
         isOpen={isOpen}
       >

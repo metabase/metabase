@@ -420,7 +420,7 @@ class Table extends Component<TableProps, TableState> {
             CS.flex,
             CS.flexColumn,
             CS.layoutCentered,
-            { "text-slate-light": isDashboard, "text-slate": !isDashboard },
+            { [CS.textSlateLight]: isDashboard, [CS.textSlate]: !isDashboard },
           )}
         >
           <img

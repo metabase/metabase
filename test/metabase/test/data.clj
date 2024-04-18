@@ -187,19 +187,22 @@
   [table-name & [query]]
   `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 
+(def ^:private FormattableName
+  [:or
+   :keyword
+   :string
+   :symbol
+   [:fn
+    {:error/message (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? "
+                         "(Change the form to `$table.field`, or specify a top-level default Table to "
+                         "`$ids` or `mbql-query`.)")}
+    (constantly false)]])
+
 (mu/defn format-name :- :string
   "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the current
   driver's implementation of [[ddl.i/format-name]]. (Most databases use the default implementation of `identity`; H2
   uses [[clojure.string/upper-case]].) This function DOES NOT quote the identifier."
-  [a-name :- [:or
-              :keyword
-              :string
-              :symbol
-              [:fn
-               {:error/message (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? "
-                                    "(Change the form to `$table.field`, or specify a top-level default Table to "
-                                    "`$ids` or `mbql-query`.)")}
-               (constantly false)]]]
+  [a-name :- FormattableName]
   (ddl.i/format-name (tx/driver) (name a-name)))
 
 (defn id
@@ -269,5 +272,5 @@
      ;; since the actual group defs are not dynamic, we need with-redefs to change them here
      (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-group-name)
                    perms-group/admin     (#'perms-group/magic-group perms-group/admin-group-name)]
-       (mdb/setup-db!)
+       (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
        ~@body)))

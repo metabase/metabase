@@ -9,6 +9,7 @@ import {
   sendEmailAndVisitIt,
   setTokenFeatures,
   setupSMTP,
+  setFilter,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -56,10 +57,8 @@ describeEE("issue 24223", () => {
 function addParametersToDashboard() {
   editDashboard();
 
-  // add Category > Dropdown "Category" filter
-  cy.icon("filter").click();
-  cy.findByText("Text or Category").click();
-  cy.findByText("Is").click();
+  setFilter("Text or Category", "Is");
+
   cy.findByText("Select…").click();
   popover().findByText("Category").click();
   cy.findByText("No default").click();
@@ -68,9 +67,8 @@ function addParametersToDashboard() {
     cy.button("Add filter").click();
   });
 
-  cy.icon("filter").click();
-  cy.findByText("Text or Category").click();
-  cy.findByText("Contains").click();
+  setFilter("Text or Category", "Contains");
+
   cy.findByText("Select…").click();
   popover().findByText("Title").click();
   cy.findByText("No default").click();

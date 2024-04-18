@@ -10,6 +10,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
@@ -124,7 +125,7 @@
   []
   (t2/select-one Database :id (public-settings/uploads-database-id)))
 
-(mu/defn ^:private table-identifier
+(mu/defn table-identifier
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
   [{:keys [schema name] :as _table}
    :- [:map
@@ -257,18 +258,18 @@
 ;;;; |  Create upload
 ;;;; +------------------+
 
-(def ^:dynamic *sync-synchronously?*
-  "For testing purposes, often we'd like to sync synchronously so that we can test the results immediately and avoid
-  race conditions."
-  false)
+(def ^:dynamic *auxiliary-sync-steps*
+  "For testing purposes, we'd like to control whether the analyze and field values steps of sync are run synchronously, or not at all.
+   In production this should always be asynchronous, so users can use the table earlier."
+  :asynchronous)
 
 (defn- scan-and-sync-table!
   [database table]
   (sync-fields/sync-fields-for-table! database table)
-  (if *sync-synchronously?*
-    (sync/sync-table! table)
-    (future
-      (sync/sync-table! table))))
+  (case *auxiliary-sync-steps*
+    :asynchronous (future (sync/sync-table! table))
+    :synchronous (sync/sync-table! table)
+    :never nil))
 
 (defn- can-use-uploads-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database for the subset of reasons common to all uploads
@@ -339,6 +340,25 @@
          :num-rows          (count (rest rows))
          :generated-columns 0}))))
 
+(defn- create-from-csv-and-sync!
+  "This is separated from `create-csv-upload!` for testing"
+  [{:keys [db file schema table-name]}]
+  (let [driver            (driver.u/database->driver db)
+        schema            (some->> schema (ddl.i/format-name driver))
+        table-name        (some->> table-name (ddl.i/format-name driver))
+        schema+table-name (table-identifier {:schema schema :name table-name})
+        stats             (create-from-csv! driver (:id db) schema+table-name file)
+        ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
+        table             (sync-tables/create-or-reactivate-table! db {:name table-name :schema (not-empty schema)})
+        _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
+        _sync             (scan-and-sync-table! db table)
+        ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
+        ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
+        auto-pk-field     (table-id->auto-pk-column (:id table))
+        _                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})]
+    {:table table
+     :stats stats}))
+
 (mu/defn create-csv-upload!
   "Main entry point for CSV uploading.
 
@@ -376,22 +396,14 @@
     (collection/check-write-perms-for-collection collection-id)
     (try
       (let [timer             (start-timer)
-            driver            (driver.u/database->driver database)
             filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv)$" filename))
                                   filename)
+            driver            (driver.u/database->driver database)
             table-name        (->> (str table-prefix filename-prefix)
                                    (unique-table-name driver)
                                    (u/lower-case-en))
-            schema+table-name (table-identifier {:schema schema-name :name table-name})
-            stats             (create-from-csv! driver (:id database) schema+table-name file)
-            ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-            table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
-            _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
-            _sync             (scan-and-sync-table! database table)
-            ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
-            ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
-            auto-pk-field     (table-id->auto-pk-column (:id table))
-            _                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})
+            {:keys [stats
+                    table]}   (create-from-csv-and-sync! {:db database :file file :schema schema-name :table-name table-name})
             card              (card/create-card!
                                {:collection_id          collection-id
                                 :type                   :model
@@ -589,9 +601,64 @@
   [db table]
   (nil? (can-update-error db table)))
 
+(defn- can-delete-error
+  "Returns an ExceptionInfo object if the user cannot delete the given upload. Returns nil otherwise."
+  [table]
+  (cond
+    (not (:is_upload table))
+    (ex-info (tru "The table must be an uploaded table.")
+             {:status-code 422})
+
+    (not (mi/can-write? table))
+    (ex-info (tru "You don''t have permissions to do that.")
+             {:status-code 403})))
+
+(defn- check-can-delete
+  "Throws an error if the given table is not an upload, or if the user does not have permission to delete it."
+  [table]
+  ;; For now anyone that can update a table is allowed to delete it.
+  (when-let [error (can-delete-error table)]
+    (throw error)))
+
 ;;; +--------------------------------------------------
 ;;; |  public interface for updating an uploaded table
 ;;; +--------------------------------------------------
+
+(defn delete-upload!
+  "Delete the given table from both the app-db and the customer database."
+  [table & {:keys [archive-cards?]}]
+  (let [database   (table/database table)
+        driver     (driver.u/database->driver database)
+        table-name (table-identifier table)]
+    (check-can-delete table)
+
+    ;; Attempt to delete the underlying data from the customer database.
+    ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still
+    ;; visible to administrators and the operation is easy to retry again later.
+    (driver/drop-table! driver (:id database) table-name)
+
+    ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
+    (t2/update! :model/Table :id (:id table) {:active false})
+
+    ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
+    ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
+    ;; relies on their absence from the tables being described during the database sync itself.
+    ;; TODO update the [[metabase.sync]] module to support direct per-table clean-up
+    ;; Ideally this will also clean up more the metadata which we had created around it, e.g. advanced field values.
+    #_(future (sync/retire-table! (assoc table :active false)))
+
+    ;; Archive the related cards if the customer opted in.
+    ;;
+    ;; For now, this only covers instances where the card has this as its "primary table", i.e.
+    ;; 1. A MBQL question or model that has this table as their first or only data source, or
+    ;; 2. A MBQL question or model that depends on such a model as their first or only data source.
+    ;; Note that this does not include cases where we join to this table, or even native queries which depend .
+    (when archive-cards?
+      (t2/update-returning-pks! :model/Card
+                                {:table_id (:id table) :archived false}
+                                {:archived true}))
+
+    :done))
 
 (def update-action-schema
   "The :action values supported by [[update-csv!]]"

@@ -10,6 +10,8 @@
     <Logger name="metabase-enterprise" level="FATAL"/>
     <Logger name="liquibase" level="FATAL"/>
     <Logger name="metabase.test.data.interface" level="INFO"/>
+    <Logger name="metabase.sync.fetch-metadata" level="ERROR"/>
+    <Logger name="metabase.test.util-test" level="DEBUG" />
 
     <Root level="FATAL">
       <AppenderRef ref="Console"/>

@@ -8,7 +8,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import PaginationControls from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
-import User from "metabase/entities/users";
+import Users from "metabase/entities/users";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { getFullName } from "metabase/lib/user";
@@ -140,7 +140,9 @@ function GroupMembersTable({
       )}
       {!hasMembers && (
         <div className={cx(CS.mt4, CS.pt4, CS.flex, CS.layoutCentered)}>
-          <h2 className="text-medium">{t`A group is only as good as its members.`}</h2>
+          <h2
+            className={CS.textMedium}
+          >{t`A group is only as good as its members.`}</h2>
         </div>
       )}
     </>
@@ -148,7 +150,7 @@ function GroupMembersTable({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default User.loadList({
+export default Users.loadList({
   reload: true,
   pageSize: 25,
   listName: "groupUsers",
@@ -205,7 +207,7 @@ const UserRow = ({
           className={cx(CS.textRight, CS.cursorPointer)}
           onClick={() => onMembershipRemove(groupMembership?.membership_id)}
         >
-          <Icon name="close" className="text-light" size={16} />
+          <Icon name="close" className={CS.textLight} size={16} />
         </td>
       ) : null}
     </tr>

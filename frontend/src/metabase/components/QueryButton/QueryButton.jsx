@@ -11,7 +11,7 @@ import S from "./QueryButton.module.css";
 const QueryButton = ({ className, text, icon, iconClass, onClick, link }) => (
   <div className={className}>
     <Link
-      className={cx(S.queryButton, "bg-light-hover", CS.px1, CS.rounded)}
+      className={cx(S.queryButton, CS.bgLightHover, CS.px1, CS.rounded)}
       onClick={onClick}
       to={link}
     >

@@ -245,13 +245,13 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
     visitQuestion(ORDERS_QUESTION_ID);
     convertToSql();
     saveSavedQuestion();
-    cy.get(".cellData").should("contain", "37.65");
+    cy.get("[data-testid=cell-data]").should("contain", "37.65");
 
     cy.log(
       "should be possible to `Explore results` after saving a question (metabase#32121)",
     );
     cy.findByTestId("qb-header").findByText("Explore results").click();
-    cy.get(".cellData").should("contain", "37.65");
+    cy.get("[data-testid=cell-data]").should("contain", "37.65");
   });
 
   it("should be possible to save a question based on another question after converting to SQL (metabase#40422)", () => {
@@ -261,7 +261,7 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
     );
     convertToSql();
     saveSavedQuestion();
-    cy.get(".cellData").should("contain", "37.65");
+    cy.get("[data-testid=cell-data]").should("contain", "37.65");
   });
 });
 
@@ -299,7 +299,7 @@ describe(
       cy.log("Database and table should be pre-selected (metabase#15946)");
       cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
       cy.findByTestId("selected-table").should("have.text", "Products");
-      cy.get(".cellData").should("contain", "Small Marble Shoes");
+      cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
 
       cy.log("Nested question");
       cy.log(
@@ -307,7 +307,7 @@ describe(
       );
       saveQuestion("foo");
       cy.findByTestId("qb-header").findByText("Explore results").click();
-      cy.get(".cellData").should("contain", "Small Marble Shoes");
+      cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
 
       // FIXME: Remove `onlyOn` wrapper block once the issue #38181 is fixed!
       onlyOn(false, () => {
@@ -329,7 +329,10 @@ describe(
         );
         cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
         cy.findByTestId("selected-table").should("have.text", "Products");
-        cy.get(".cellData").should("contain", "Small Marble Shoes");
+        cy.get("[data-testid=cell-data]").should(
+          "contain",
+          "Small Marble Shoes",
+        );
       });
     });
 
@@ -356,7 +359,7 @@ describe(
         });
       });
 
-      cy.get(".cellData").should("contain", "Small Marble Shoes");
+      cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
       openNotebook();
       cy.findByLabelText("View the native query").click();
 
@@ -374,7 +377,7 @@ describe(
       cy.log("Database and table should be pre-selected (metabase#40557)");
       cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
       cy.findByTestId("selected-table").should("have.text", "Products");
-      cy.get(".cellData").should("contain", "Small Marble Shoes");
+      cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
     });
   },
 );

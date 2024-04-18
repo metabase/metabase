@@ -11,12 +11,14 @@ interface SetupOpts {
   initialParameter: UiParameter;
   nextParameter?: UiParameter;
   otherParameters: UiParameter[];
+  hasMapping?: boolean;
 }
 
 const setup = ({
   initialParameter,
   nextParameter,
   otherParameters,
+  hasMapping,
 }: SetupOpts): {
   clickNextParameterButton: () => Promise<void>;
 } => {
@@ -26,6 +28,7 @@ const setup = ({
     initialParameter,
     nextParameter,
     otherParameters,
+    hasMapping = false,
   }: SetupOpts) => {
     const [parameter, setParameter] = useState(initialParameter);
 
@@ -56,6 +59,7 @@ const setup = ({
           onClose={jest.fn()}
           onChangeRequired={jest.fn()}
           getEmbeddedParameterVisibility={() => null}
+          hasMapping={hasMapping}
         />
       </div>
     );
@@ -66,6 +70,7 @@ const setup = ({
       initialParameter={initialParameter}
       nextParameter={nextParameter}
       otherParameters={otherParameters}
+      hasMapping={hasMapping}
     />,
   );
 
@@ -87,17 +92,19 @@ describe("ParameterSidebar", () => {
         id: "id2",
         name: "Foo",
         slug: "foo",
+        sectionId: "string",
       }),
       otherParameters: [
         createMockUiParameter({
           id: "id1",
           name: "Baz",
           slug: "baz",
+          sectionId: "string",
         }),
       ],
     });
 
-    await userEvent.click(screen.getByRole("radio", { name: "Settings" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Filter settings" }));
     const labelInput = screen.getByLabelText("Label");
     await fillValue(labelInput, "Baz");
     // expect there to be an error message with the text "This label is already in use"
@@ -120,11 +127,13 @@ describe("ParameterSidebar", () => {
       id: "id1",
       name: "Foo",
       slug: "foo",
+      sectionId: "string",
     });
     const nextParameter = createMockUiParameter({
       id: "id1",
       name: "Bar",
       slug: "Bar",
+      sectionId: "string",
     });
     const { clickNextParameterButton } = setup({
       initialParameter,
@@ -136,5 +145,89 @@ describe("ParameterSidebar", () => {
     expect(labelInput).toHaveValue("Foo");
     await clickNextParameterButton();
     expect(labelInput).toHaveValue("Bar");
+  });
+
+  describe("when parameter can't use link filters", () => {
+    it("resets tab to 'Filter settings' on parameter change", async () => {
+      const initialParameter = createMockUiParameter({
+        id: "id1",
+        name: "Foo",
+        slug: "foo",
+        sectionId: "string",
+      });
+      const nextParameter = createMockUiParameter({
+        id: "id2",
+        name: "Bar",
+        slug: "Bar",
+        type: "date/single",
+        sectionId: "date",
+      });
+
+      const { clickNextParameterButton } = setup({
+        initialParameter,
+        nextParameter,
+        otherParameters: [],
+      });
+
+      // switch tab
+      await userEvent.click(
+        screen.getByRole("tab", { name: "Linked filters" }),
+      );
+
+      await clickNextParameterButton();
+
+      // verify Linked filters tab is not rendered
+      expect(
+        screen.queryByRole("tab", { name: "Linked filters" }),
+      ).not.toBeInTheDocument();
+
+      // verify tab content corresponds to Filter settings
+      expect(
+        screen.queryByText("Limit this filter's choices"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("textbox", {
+          name: "Label",
+        }),
+      ).toHaveValue("Bar");
+    });
+  });
+
+  describe("disconnect from cards", () => {
+    it("renders button when there is mapping", () => {
+      const initialParameter = createMockUiParameter({
+        id: "id1",
+        name: "Foo",
+        slug: "foo",
+        sectionId: "string",
+      });
+
+      setup({
+        initialParameter,
+        otherParameters: [],
+        hasMapping: true,
+      });
+
+      expect(screen.getByText("Disconnect from cards")).toBeInTheDocument();
+    });
+
+    it("doesn't render button when there is no mapping", () => {
+      const initialParameter = createMockUiParameter({
+        id: "id1",
+        name: "Foo",
+        slug: "foo",
+        sectionId: "string",
+      });
+
+      setup({
+        initialParameter,
+        otherParameters: [],
+        hasMapping: false,
+      });
+
+      expect(
+        screen.queryByText("Disconnect from cards"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

@@ -5,6 +5,7 @@ import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnCli
 import type { BaseModalProps } from "metabase/components/Modal/utils";
 import { getModalContent } from "metabase/components/Modal/utils";
 import SandboxedPortal from "metabase/components/SandboxedPortal";
+import ModalS from "metabase/css/components/modal.module.css";
 import CS from "metabase/css/core/index.css";
 import { getScrollX, getScrollY } from "metabase/lib/dom";
 import { Transition } from "metabase/ui";
@@ -40,7 +41,7 @@ export class FullPageModal extends Component<
     };
 
     this._modalElement = document.createElement("div");
-    this._modalElement.className = "ModalContainer";
+    this._modalElement.className = ModalS.ModalContainer;
     document.body.appendChild(this._modalElement);
 
     // save the scroll position, scroll to the top left, and disable scrolling
@@ -92,7 +93,7 @@ export class FullPageModal extends Component<
       <Transition mounted={open} transition={slideIn} duration={300}>
         {styles => (
           <SandboxedPortal container={this._modalElement}>
-            <div className="Modal--full">
+            <div className={ModalS.ModalFull}>
               {/* Using an OnClickOutsideWrapper is weird since this modal
               occupies the entire screen. We do this to put this modal on top of
               the OnClickOutsideWrapper popover stack.  Otherwise, clicks within

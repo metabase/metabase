@@ -16,7 +16,7 @@ import type {
 } from "./actions";
 import type { Card, CardId, CardDisplayType } from "./card";
 import type { Dataset } from "./dataset";
-import type { SearchModelType } from "./search";
+import type { SearchModel } from "./search";
 
 // x-ray dashboard have string ids
 export type DashboardId = number | string;
@@ -39,7 +39,9 @@ export interface Dashboard {
   model?: string;
   dashcards: DashboardCard[];
   tabs?: DashboardTab[];
+  show_in_getting_started?: boolean | null;
   parameters?: Parameter[] | null;
+  point_of_interest?: string | null;
   collection_authority_level?: CollectionAuthorityLevel;
   can_write: boolean;
   cache_ttl: number | null;
@@ -179,7 +181,7 @@ export type UnrestrictedLinkEntity = {
   id: number;
   db_id?: number;
   database_id?: number;
-  model: SearchModelType;
+  model: SearchModel;
   name: string;
   display_name?: string;
   description?: string;
@@ -201,3 +203,52 @@ export interface GetCompatibleCardsPayload {
   query?: string;
   exclude_ids: number[];
 }
+
+export type ListDashboardsRequest = {
+  f?: "all" | "mine" | "archived";
+};
+
+export type GetDashboardRequest = {
+  id: DashboardId;
+  ignore_error?: boolean;
+};
+
+export type CreateDashboardRequest = {
+  name: string;
+  description?: string | null;
+  parameters?: Parameter[] | null;
+  cache_ttl?: number;
+  collection_id?: CollectionId | null;
+  collection_position?: number | null;
+};
+
+export type UpdateDashboardRequest = {
+  id: DashboardId;
+  parameters?: Parameter[] | null;
+  point_of_interest?: string | null;
+  description?: string | null;
+  archived?: boolean | null;
+  dashcards?: DashboardCard[] | null;
+  collection_position?: number | null;
+  tabs?: DashboardTab[];
+  show_in_getting_started?: boolean | null;
+  enable_embedding?: boolean | null;
+  collection_id?: CollectionId | null;
+  name?: string | null;
+  width?: DashboardWidth | null;
+  caveats?: string | null;
+  embedding_params?: EmbeddingParameters | null;
+  cache_ttl?: number;
+  position?: number | null;
+};
+
+export type SaveDashboardRequest = Omit<UpdateDashboardRequest, "id">;
+
+export type CopyDashboardRequest = {
+  id: DashboardId;
+  name?: string | null;
+  description?: string | null;
+  collection_id?: CollectionId | null;
+  collection_position?: number | null;
+  is_deep_copy?: boolean | null;
+};

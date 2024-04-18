@@ -9,7 +9,7 @@ import { Icon } from "metabase/ui";
 
 const MarginHostingCTA = ({ tagline }) => (
   <div
-    className={cx("border-left", CS.borderBrand, CS.textBrand, CS.px4)}
+    className={cx(CS.borderLeft, CS.borderBrand, CS.textBrand, CS.px4)}
     style={{ height: 172 }}
   >
     <Icon name="cloud" size={48} style={{ color: "#B9D8F4" }} />
