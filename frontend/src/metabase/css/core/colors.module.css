@@ -11,7 +11,7 @@
   --mb-color-text-dark: #4c5773;
   --mb-color-text-medium: #696e7b;
   --mb-color-text-light: #949aab;
-  --color-text-white: #fff;
+  --mb-color-text-white: #fff;
   --mb-color-bg-black: #2e353b;
   --mb-color-bg-dark: #93a1ab;
   --mb-color-bg-medium: #edf2f5;
@@ -83,7 +83,7 @@
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 .textWhite,
 .textWhiteHover:hover {
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
 }
 
 .bgWhite {

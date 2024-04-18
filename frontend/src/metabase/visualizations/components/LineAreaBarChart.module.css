@@ -236,13 +236,13 @@
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.5px;
-  stroke: var(--color-text-white);
+  stroke: var(--mb-color-text-white);
   stroke-width: 3px;
   paint-order: stroke;
 }
 
 :global(text.value-label-white) {
-  fill: var(--color-text-white);
+  fill: var(--mb-color-text-white);
   font-weight: 800;
   stroke: var(--mb-color-text-dark);
   stroke-width: 3px;

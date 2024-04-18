@@ -91,15 +91,15 @@
 }
 
 .SelectionItem:hover :global(.Icon) {
-  color: var(--color-text-white) !important;
+  color: var(--mb-color-text-white) !important;
 }
 
 .SelectionItem:hover .SelectionModuleDisplay {
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
 }
 
 .SelectionItem:hover .SelectionModuleDescription {
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
 }
 
 .SelectionItem.SelectionItemSelected :global(.Icon-check) {
