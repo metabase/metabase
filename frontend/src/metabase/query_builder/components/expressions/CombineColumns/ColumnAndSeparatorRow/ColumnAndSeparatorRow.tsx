@@ -1,3 +1,4 @@
+import classNames from "classnames";
 import type { FocusEvent, MouseEvent, KeyboardEvent } from "react";
 import { useState, useMemo } from "react";
 import { t } from "ttag";
@@ -222,6 +223,7 @@ export function ColumnInput({
             onKeyDown={handleKeyDown}
             fullWidth
             classNames={{
+              root: classNames(styles.root, open && styles.open),
               inner: styles.button,
             }}
             rightIcon={<Icon name="chevrondown" style={{ height: 14 }} />}
