@@ -1606,8 +1606,7 @@
     (let [user-id          (:id (new-instance-with-default :core_user))
           db-id            (:id (new-instance-with-default :metabase_database))
           card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
-          viz-settings     "{\"table.pivot_column\":\"\u0000ID\"}"
-          new-viz-settings "{\"table.pivot_column\":\"ID\"}"
+          viz-settings     "{\"table.pivot_column\":\"\u0000..\\u0000\"}" ; note the escaped and unescaped null characters
           card-revision-id (:id (new-instance-with-default :revision
                                                            {:object    (json/generate-string
                                                                         (assoc (dissoc card :type)
@@ -1623,31 +1622,6 @@
         (migrate!)
         (let [card-revision-object  (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
           (is (= "question" (get card-revision-object "type")))
-          (testing "original visualization_settings should be preserved"
-            (is (= new-viz-settings
-                   (get card-revision-object "visualization_settings")))))))))
-
-(deftest card-revision-add-type-escaped-null-character-test
-  (testing "CardRevisionAddType migration works even if there's a null character in revision.object #40835")
-  (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
-    (let [user-id          (:id (new-instance-with-default :core_user))
-          db-id            (:id (new-instance-with-default :metabase_database))
-          card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
-          viz-settings     "{\"table.pivot_column\":\"\\u0000ID\"}"
-          card-revision-id (:id (new-instance-with-default :revision
-                                                           {:object    (json/generate-string
-                                                                        (assoc (dissoc card :type)
-                                                                               :visualization_settings viz-settings))
-                                                            :model     "Card"
-                                                            :model_id  (:id card)
-                                                            :user_id   user-id}))]
-      (testing "sanity check revision object"
-        (let [card-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
-          (testing "doesn't have type"
-            (is (not (contains? card-revision-object "type"))))))
-      (testing "after migration card revisions should have type"
-        (migrate!)
-        (let [card-revision-object  (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
           (testing "original visualization_settings should be preserved"
             (is (= viz-settings
                    (get card-revision-object "visualization_settings")))))))))
