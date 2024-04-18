@@ -5,18 +5,13 @@ import type { DashboardPickerValueItem } from "metabase/common/components/Dashbo
 import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
 import { useDashboardQuery } from "metabase/common/hooks";
 import { Flex } from "metabase/ui";
-import type { Collection, DashboardId } from "metabase-types/api";
+import type { DashboardId } from "metabase-types/api";
 
 import { DashboardPickerButton } from "./DashboardSelector.styled";
 
 interface DashboardSelectorProps {
   onChange: (value?: DashboardId) => void;
   value?: DashboardId;
-  collectionFilter?: (
-    collection: Collection,
-    index: number,
-    allCollections: Collection[],
-  ) => boolean;
 }
 
 export const DashboardSelector = ({
