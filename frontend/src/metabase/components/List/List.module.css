@@ -1,7 +1,3 @@
-:root {
-  --title-color: var(--mb-color-text-dark);
-}
-
 .list {
   margin-left: auto;
   margin-right: auto;
@@ -15,7 +11,7 @@
   composes: mt4 mb2 from "style";
   flex-direction: row;
   display: flex;
-  color: var(--title-color);
+  color: var(--mb-color-text-dark);
   font-size: 24px;
   min-height: 48px;
 }

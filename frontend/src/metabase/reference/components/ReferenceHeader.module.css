@@ -1,7 +1,3 @@
-:root {
-  --title-color: var(--mb-color-text-medium);
-}
-
 .headerBody {
   composes: textDark textBold from "style";
   flex: 1 0 auto;
@@ -14,7 +10,7 @@
 .headerTextInput {
   composes: p1 from "style";
   font-size: 18px;
-  color: var(--title-color);
+  color: var(--mb-color-text-medium);
   max-width: 550px;
 }
 
