@@ -157,7 +157,7 @@
 
 .AdminTable th {
   text-transform: uppercase;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
   padding: var(--padding-1);
   font-weight: normal;
 }

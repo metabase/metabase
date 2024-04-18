@@ -1,6 +1,6 @@
 :root {
   --title-color: var(--mb-color-text-dark);
-  --subtitle-color: var(--color-text-medium);
+  --subtitle-color: var(--mb-color-text-medium);
   --muted-color: var(--mb-color-text-light);
 }
 

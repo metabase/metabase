@@ -12,7 +12,7 @@
 
 .FormField {
   margin-bottom: 1.5em;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .FormField.FormFieldError {

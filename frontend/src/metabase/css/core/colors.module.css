@@ -9,7 +9,7 @@
   --mb-color-error: #ed6e6e;
   --color-warning: #f9cf48;
   --mb-color-text-dark: #4c5773;
-  --color-text-medium: #696e7b;
+  --mb-color-text-medium: #696e7b;
   --mb-color-text-light: #949aab;
   --color-text-white: #fff;
   --mb-color-bg-black: #2e353b;
@@ -50,7 +50,7 @@
 }
 
 .textSlate {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .textSlateLight {
@@ -63,7 +63,7 @@
 
 .textMedium,
 .textMediumHover:hover {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .textDark,

@@ -97,12 +97,12 @@
 .ButtonBorderless {
   border-color: transparent;
   background: transparent;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .ButtonBorderless:hover {
   border-color: transparent;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .ButtonOnlyIcon {

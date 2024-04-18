@@ -4,7 +4,7 @@
   --mb-breadcrumb-divider-spacing: 0.75em;
 
   /* taken from Sidebar.css, should probably factor them out into variables */
-  --mb-sidebar-breadcrumbs-color: var(--color-text-medium);
+  --mb-sidebar-breadcrumbs-color: var(--mb-color-text-medium);
 }
 
 .breadcrumbs {

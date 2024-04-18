@@ -78,7 +78,7 @@
 .ListItemDescription {
   margin-top: 0.25em;
   margin-bottom: 0;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .ListItemDisabled .ListItemDescription {
