@@ -28,14 +28,15 @@ type TasksAppProps = {
 
 export const TasksApp = ({ children }: TasksAppProps) => {
   const [page, setPage] = useState(0);
+  const pageSize = 50;
 
   const {
     data: tasksData,
     isFetching: isLoadingTasks,
     error: tasksError,
   } = useListTasksQuery({
-    limit: 50,
-    offset: page * 50,
+    limit: pageSize,
+    offset: page * pageSize,
   });
 
   const {
