@@ -5895,7 +5895,12 @@ databaseChangeLog:
       comment: New `view-data` permission
       changes:
         - sqlFile:
+            dbms: postgresql,h2
             path: permissions/view_data.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_view_data.sql
             relativeToChangelogFile: true
       rollback:
         - sqlFile:

@@ -28,14 +28,14 @@ SELECT
           SELECT
             group_id,
             db_id,
-            CAST(NULL AS INTEGER) AS table_id
+            CAST(NULL AS UNSIGNED) AS table_id
           FROM
             connection_impersonations
           UNION
           SELECT
             group_id,
             db_id,
-            CAST(NULL AS INTEGER) AS table_id
+            CAST(NULL AS UNSIGNED) AS table_id
           FROM
             data_permissions
           WHERE
@@ -44,7 +44,7 @@ SELECT
           UNION
           SELECT
             group_id,
-            CAST(NULL AS INTEGER) as db_id,
+            CAST(NULL AS UNSIGNED) as db_id,
             table_id
           FROM
             sandboxes
@@ -212,14 +212,13 @@ WHERE
 
 
 -- Remove table-level view-data permissions for groups that have DB-level permissions set
-DELETE FROM data_permissions dp
-USING (
+DELETE dp
+FROM data_permissions dp
+JOIN (
   SELECT group_id, db_id
   FROM data_permissions
   WHERE table_id IS NULL
     AND perm_type = 'perms/view-data'
-) dp2
-WHERE dp.group_id = dp2.group_id
-  AND dp.db_id = dp2.db_id
-  AND dp.table_id IS NOT NULL
+) as dp2 ON dp.group_id = dp2.group_id AND dp.db_id = dp2.db_id
+WHERE dp.table_id IS NOT NULL
   AND dp.perm_type = 'perms/view-data';
