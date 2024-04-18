@@ -46,7 +46,6 @@ export const TasksApp = ({ children }: TasksAppProps) => {
     databaseByID[db.id] = db;
   });
 
-  // return null;
   return (
     <SectionRoot>
       <SectionHeader>
