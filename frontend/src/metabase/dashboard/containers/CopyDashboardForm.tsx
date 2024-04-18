@@ -29,14 +29,14 @@ const DASHBOARD_SCHEMA = Yup.object({
     .max(100, Errors.maxLength)
     .default(""),
   description: Yup.string().nullable().max(255, Errors.maxLength).default(null),
-  collection_id: Yup.number().nullable(),
+  collection_id: Yup.number().nullable().default(null),
   is_shallow_copy: Yup.boolean().default(false),
 });
 
 export interface CopyDashboardFormProperties {
   name: string;
   description: string | null;
-  collection_id: CollectionId;
+  collection_id: CollectionId | null;
 }
 
 export interface CopyDashboardFormProps {
@@ -44,13 +44,11 @@ export interface CopyDashboardFormProps {
   onSaved?: (dashboard?: Dashboard) => void;
   onClose?: () => void;
   initialValues?: CopyDashboardFormProperties | null;
-  initialCollectionId: CollectionId;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   onValuesChange?: (vals: CopyDashboardFormProperties) => void;
 }
 
 function CopyDashboardForm({
-  initialCollectionId,
   onSubmit,
   onSaved,
   onClose,
@@ -61,10 +59,9 @@ function CopyDashboardForm({
   const computedInitialValues = useMemo(
     () => ({
       ...DASHBOARD_SCHEMA.getDefault(),
-      collection_id: initialCollectionId,
       ...initialValues,
     }),
-    [initialCollectionId, initialValues],
+    [initialValues],
   );
 
   const handleSubmit = useCallback(

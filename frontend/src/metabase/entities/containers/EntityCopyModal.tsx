@@ -1,5 +1,10 @@
+import { dissoc } from "icepick";
 import { t } from "ttag";
 
+import {
+  getInstanceAnalyticsCustomCollection,
+  isInstanceAnalyticsCollection,
+} from "metabase/collections/utils";
 import { useCollectionListQuery } from "metabase/common/hooks";
 import ModalContent from "metabase/components/ModalContent";
 import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
@@ -28,7 +33,24 @@ const EntityCopyModal = ({
   onSaved,
   ...props
 }: EntityCopyModalProps & Partial<FormContainerProps<BaseFieldValues>>) => {
-  const { data: collections } = useCollectionListQuery();
+  const { data: collections = [] } = useCollectionListQuery();
+
+  const resolvedObject =
+    typeof entityObject?.getPlainObject === "function"
+      ? entityObject.getPlainObject()
+      : entityObject;
+
+  if (isInstanceAnalyticsCollection(resolvedObject?.collection)) {
+    const customCollection = getInstanceAnalyticsCustomCollection(collections);
+    if (customCollection) {
+      resolvedObject.collection_id = customCollection.id;
+    }
+  }
+
+  const initialValues = {
+    ...dissoc(resolvedObject, "id"),
+    name: resolvedObject.name + " - " + t`Duplicate`,
+  };
 
   const renderForm = (props: any) => {
     switch (entityType) {
@@ -59,7 +81,7 @@ const EntityCopyModal = ({
     <CreateCollectionOnTheGo>
       {({ resumedValues }) => (
         <ModalContent
-          title={title || t`Duplicate "${entityObject.name}"`}
+          title={title || t`Duplicate "${resolvedObject.name}"`}
           onClose={onClose}
         >
           {!collections?.length ? (
@@ -67,7 +89,7 @@ const EntityCopyModal = ({
               <Loader />
             </Flex>
           ) : (
-            renderForm({ ...props, resumedValues })
+            renderForm({ ...props, resumedValues, initialValues })
           )}
         </ModalContent>
       )}

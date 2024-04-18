@@ -58,7 +58,6 @@ function CollectionCopyEntityModal({
         ...entityObject,
         collection_id: initialCollectionId,
       }}
-      initialCollectionId={initialCollectionId}
       form={Dashboards.forms.duplicate}
       title={title}
       copy={async values => {

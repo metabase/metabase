@@ -65,7 +65,6 @@ const DashboardCopyModal = ({
         ...dashboard,
         collection_id: initialCollectionId,
       }}
-      initialCollectionId={initialCollectionId}
       form={Dashboards.forms.duplicate}
       title={title}
       overwriteOnInitialValuesChange
