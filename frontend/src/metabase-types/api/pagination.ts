@@ -3,6 +3,8 @@ export interface PaginationRequest {
   offset?: number | null;
 }
 
-export interface PaginationResponse extends PaginationRequest {
+export interface PaginationResponse {
+  limit?: number | null;
+  offset?: number | null;
   total: number;
 }
