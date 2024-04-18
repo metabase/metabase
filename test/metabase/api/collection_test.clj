@@ -785,16 +785,95 @@
              (testing "the unreadable collections are removed from the `ui-logical-path`"
                (is (= (path c3) effective_location))))))))))
 
-(deftest collection-items-archived-parameter-test
-  (testing "GET /api/collection/:id/items"
-    (testing "Let's make sure the `archived` option works."
-      (t2.with-temp/with-temp [Collection collection {:name "Art Collection"}]
+(deftest collections-are-moved-to-trash-when-archived
+  (let [items (fn [coll] (->> (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id coll) "/items"))
+                              :data
+                              mt/boolean-ids-and-timestamps))
+        set-of-item-names (fn [coll] (->> (items coll)
+                                          (map :name)
+                                          set))]
+    (testing "I can trash something by marking it as archived"
+      (t2.with-temp/with-temp [Collection collection {:name "Art Collection"}
+                               Collection _ {:name "Baby Collection"
+                                             :location (collection/children-location collection)}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-some-children-of-collection collection
-          (t2/update! Dashboard {:collection_id (u/the-id collection)} {:archived true})
-          (is (partial= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
-                        (mt/boolean-ids-and-timestamps
-                         (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))))
+          (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
+          (is (partial= [{:name "Art Collection", :description nil, :model "collection", :entity_id true}]
+                        (items collection/TRASH_COLLECTION_ID)))
+          (is (partial= [{:name "Baby Collection", :model "collection" :entity_id true}]
+                        (items collection))))))
+    (testing "I can untrash something by marking it as not archived"
+      (t2.with-temp/with-temp [Collection collection {:name "A"}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
+        (is (= 1 (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection/TRASH_COLLECTION_ID "/items"))))))
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived false})
+        (is (zero? (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection/TRASH_COLLECTION_ID "/items"))))))))
+    (testing "I can untrash something to a specific location if desired"
+      (t2.with-temp/with-temp [Collection collection-a {:name "A"}
+                               Collection collection-b {:name "B" :location (collection/children-location collection-a)}
+                               Collection destination {:name "Destination"}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection-a)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection-b)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) destination)
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived true})
+        (is (= #{"A"} (set-of-item-names collection/TRASH_COLLECTION_ID)))
+        (is (= #{} (set-of-item-names destination)))
+        ;; both A and B are marked as `archived`
+        (is (:archived (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection-b)))))
+        (is (:archived (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection-a)))))
+        ;; we can't unarchive collection B without specifying a location, because it wasn't trashed directly.
+        (is (= "You must specify a new `parent_id` to un-trash to." (mt/user-http-request :crowberto :put 400 (str "collection/" (u/the-id collection-b)) {:archived false})))
+
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-b)) {:archived false :parent_id (u/the-id destination)})
+        ;; collection A is still here!
+        (is (= #{"A"} (set-of-item-names collection/TRASH_COLLECTION_ID)))
+        ;; collection B got moved correctly
+        (is (= #{"B"} (set-of-item-names destination)))
+
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived false :parent_id (u/the-id destination)})
+        (is (= #{"A" "B"} (set-of-item-names destination)))))))
+
+(deftest collection-permissions-work-correctly
+  (let [items (fn [coll] (->> (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id coll) "/items"))
+                              :data
+                              mt/boolean-ids-and-timestamps))
+        set-of-item-names (fn [coll] (->> (items coll)
+                                          (map :name)
+                                          set))]
+    (t2.with-temp/with-temp [Collection collection-a {:name "A"}
+                             Collection subcollection-a {:name "sub-A" :location (collection/children-location collection-a)}
+                             Collection collection-b {:name "B"}
+                             Collection subcollection-b {:name "sub-B" :location (collection/children-location collection-b)}
+                             Collection collection-c {:name "C"}
+                             Collection subcollection-c {:name "sub-C" :location (collection/children-location collection-c)}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-a)
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-b)
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-c)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection-b)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-c)
+      (testing "i can't archive from a collection I have no permissions on"
+        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id subcollection-a)) {:archived true}))
+      (testing "i can't archive from a collection I have read permissions on"
+        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id subcollection-b)) {:archived true}))
+      (testing "i can archive from a collection i have no permissions on"
+        (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id subcollection-c)) {:archived true})))
+    (t2.with-temp/with-temp [Collection collection-a {:name "A"}
+                             Collection subcollection-a {:name "sub-A" :location (collection/children-location collection-a)}
+                             Collection collection-b {:name "B"}
+                             Collection subcollection-b {:name "sub-B" :location (collection/children-location collection-b)}
+                             Collection collection-c {:name "C"}
+                             Collection subcollection-c {:name "sub-C" :location (collection/children-location collection-c)}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-a)
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-b)
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-c)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection-b)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-c)
+      (doseq [coll [subcollection-a subcollection-b subcollection-c]]
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id coll)) {:archived true}))
+      (testing "rasta can see the collections in the trash"
+        (is (= #{"sub-A" "sub-C" "sub-B"} (set-of-item-names collection/TRASH_COLLECTION_ID)))))))
 
 (deftest collection-items-revision-history-and-ordering-test
   (testing "GET /api/collection/:id/items"
