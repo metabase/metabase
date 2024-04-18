@@ -5,7 +5,6 @@
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
   (:require
    [cheshire.core :as json]
-   [clojure.string :as str]
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.render.js-engine :as js]
@@ -91,8 +90,7 @@
       node)))
 
 (defn- parse-svg-string [^String s]
-  (let [s       (str/replace s #"rgba\(0,0,0,1\)" "rgb(0,0,0)") ;; todo: is there a more general way to do this? Perhaps js side?
-        factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
+  (let [factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
     (with-open [is (ByteArrayInputStream. (.getBytes s StandardCharsets/UTF_8))]
       (.createDocument factory "file:///fake.svg" is))))
 
