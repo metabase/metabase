@@ -14,7 +14,7 @@ const defaultSize = 16;
 export interface IconProps extends SVGAttributes<SVGSVGElement> {
   name: IconName;
   size?: string | number;
-  tooltip?: string | null;
+  tooltip?: string | null; // FIXME: Can this be a ReactNode?
   onClick?: (event: MouseEvent<HTMLImageElement | SVGElement>) => void;
   className?: string;
 }

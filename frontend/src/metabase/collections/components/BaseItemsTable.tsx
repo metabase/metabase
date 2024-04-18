@@ -16,7 +16,7 @@ import BaseTableItem, {BaseTableItemProps} from "./BaseTableItem";
 import type {Bookmark, Collection, CollectionItem, } from "metabase-types/api";
 import type {ItemWithLastEditInfo} from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
 import type {HTMLAttributes, ReactNode} from "react";
-import type {CreateBookmark, DeleteBookmark, OnCopy, OnMove} from "../types";
+import type {CreateBookmark, DeleteBookmark, OnCopy, OnMove, OnToggleSelected} from "../types";
 import type Database from "metabase-lib/v1/metadata/Database";
 
 type SortingOptions = {
@@ -73,22 +73,22 @@ const SortableColumnHeader = ({
 
 interface BaseItemsTableProps {
   items: CollectionItem[];
+  collection: Collection;
   databases: Database[]
   bookmarks?: Bookmark[];
   createBookmark?: CreateBookmark;
   deleteBookmark?: DeleteBookmark;
-  collection?: Partial<Collection>; // TODO: consider: Partial seems needed because {} is the default value
   selectedItems?: CollectionItem[];
   hasUnselected?: boolean;
   isPinned?: boolean;
   renderItem?: (props: ItemRendererProps) => JSX.Element;
   sortingOptions: SortingOptions;
   onSortingOptionsChange: () => void;
-  onToggleSelected?: (item: any) => void;
+  onToggleSelected?: OnToggleSelected;
   onSelectAll?: () => void;
   onSelectNone?: () => void;
   onCopy?: OnCopy;
-  onMove?: OnMove
+  onMove?: OnMove;
   onDrop?: () => void;
   getIsSelected?: (item: any) => boolean;
   /** Used for dragging */
@@ -111,7 +111,7 @@ const BaseItemsTable = ({
   createBookmark,
   deleteBookmark,
   items,
-  collection = {},
+  collection,
   selectedItems,
   hasUnselected,
   isPinned,

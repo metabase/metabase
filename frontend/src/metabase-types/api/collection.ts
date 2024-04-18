@@ -1,5 +1,5 @@
 import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName } from "metabase/ui";
+import type { IconName, IconProps } from "metabase/ui";
 import type { PaginationRequest, PaginationResponse } from "metabase-types/api";
 
 import type { CardDisplayType } from "./card";
@@ -103,7 +103,7 @@ export interface CollectionItem {
   "last-edit-info"?: LastEditInfo;
   location?: string;
   effective_location?: string;
-  getIcon: () => { name: IconName };
+  getIcon: () => IconProps;
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;
   setPinned?: (isPinned: boolean) => void;

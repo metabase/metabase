@@ -30,8 +30,8 @@ interface OwnProps {
   collection: Collection;
   databases?: Database[];
   bookmarks?: Bookmark[];
-  onCopy: OnCopy;
-  onMove: OnMove;
+  onCopy?: OnCopy;
+  onMove?: OnMove;
   createBookmark?: CreateBookmark;
   deleteBookmark?: DeleteBookmark;
 }
@@ -92,11 +92,11 @@ function ActionMenu({
   }, [item]);
 
   const handleCopy = useCallback(() => {
-    onCopy([item]);
+    onCopy?.([item]);
   }, [item, onCopy]);
 
   const handleMove = useCallback(() => {
-    onMove([item]);
+    onMove?.([item]);
   }, [item, onMove]);
 
   const handleArchive = useCallback(() => {
@@ -122,12 +122,12 @@ function ActionMenu({
         isBookmarked={isBookmarked}
         isXrayEnabled={isXrayEnabled}
         canUseMetabot={canUseMetabot}
-        onPin={canPin ? handlePin : null}
-        onMove={canMove ? handleMove : null}
-        onCopy={item.copy ? handleCopy : null}
-        onArchive={canArchive ? handleArchive : null}
+        onPin={canPin ? handlePin : undefined}
+        onMove={canMove ? handleMove : undefined}
+        onCopy={item.copy ? handleCopy : undefined}
+        onArchive={canArchive ? handleArchive : undefined}
         onToggleBookmark={handleToggleBookmark}
-        onTogglePreview={canPreview ? handleTogglePreview : null}
+        onTogglePreview={canPreview ? handleTogglePreview : undefined}
       />
     </EventSandbox>
   );
