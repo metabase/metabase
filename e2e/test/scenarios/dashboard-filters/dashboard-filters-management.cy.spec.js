@@ -159,7 +159,7 @@ describe("scenarios > dashboard > filters > management", () => {
       changeFilterType("Number");
 
       cy.log("verify Number default value: Between");
-      verifyOperatorValue("Between");
+      verifyOperatorValue("Equal to");
 
       changeFilterType("ID");
 

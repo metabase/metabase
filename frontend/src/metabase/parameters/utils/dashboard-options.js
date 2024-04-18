@@ -60,7 +60,7 @@ export function getDefaultOptionForParameterSection() {
       }
 
       if (sectionId === "number") {
-        defaultOption = options.find(o => o.type === "number/between");
+        defaultOption = options.find(o => o.type === "number/=");
       }
 
       if (sectionId === "string") {
