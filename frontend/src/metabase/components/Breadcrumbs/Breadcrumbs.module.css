@@ -1,16 +1,16 @@
 :root {
-  --mb-breadcrumb-color: var(--mb-color-text-light);
-  --mb-breadcrumb-page-color: var(--mb-color-text-dark);
-  --mb-breadcrumb-divider-spacing: 0.75em;
+  --breadcrumbs-color: var(--color-text-light);
+  --breadcrumb-page-color: var(--color-text-dark);
+  --breadcrumb-divider-spacing: 0.75em;
 
   /* taken from Sidebar.css, should probably factor them out into variables */
-  --mb-sidebar-breadcrumbs-color: var(--mb-color-text-medium);
+  --sidebar-breadcrumbs-color: var(--color-text-medium);
 }
 
 .breadcrumbs {
   display: flex;
   align-items: center;
-  color: var(--mb-breadcrumb-color);
+  color: var(--breadcrumbs-color);
 }
 
 .breadcrumb {
@@ -25,8 +25,8 @@
 }
 
 .breadcrumbDivider {
-  margin-left: var(--mb-breadcrumb-divider-spacing);
-  margin-right: var(--mb-breadcrumb-divider-spacing);
+  margin-left: var(--breadcrumb-divider-spacing);
+  margin-right: var(--breadcrumb-divider-spacing);
   flex-shrink: 0;
 }
 
@@ -38,19 +38,19 @@
 }
 
 .breadcrumb.breadcrumbPath:hover {
-  color: var(--mb-breadcrumb-page-color);
+  color: var(--breadcrumb-page-color);
   transition: color 0.3s linear;
 }
 
 /* the breadcrumb page (current page) should be a different contrasting color  */
 .breadcrumb.breadcrumbPage {
-  color: var(--mb-breadcrumb-page-color);
+  color: var(--breadcrumb-page-color);
 }
 
 .sidebarBreadcrumbs {
   display: flex;
   composes: breadcrumbs;
-  color: var(--mb-sidebar-breadcrumbs-color);
+  color: var(--sidebar-breadcrumbs-color);
   max-width: 100%;
 }
 
@@ -66,11 +66,11 @@
 }
 
 .sidebarBreadcrumb.breadcrumbPath:hover {
-  color: var(--mb-color-brand);
+  color: var(--color-brand);
   transition: color 0.3s linear;
 }
 
 /* the breadcrumb page (current page) should be a different contrasting color  */
 .sidebarBreadcrumb.breadcrumbPage {
-  color: var(--mb-color-brand);
+  color: var(--color-brand);
 }

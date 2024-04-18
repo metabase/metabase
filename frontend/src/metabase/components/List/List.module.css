@@ -1,3 +1,9 @@
+:root {
+  --title-color: var(--color-text-dark);
+  --subtitle-color: var(--color-text-medium);
+  --muted-color: var(--color-text-light);
+}
+
 .list {
   margin-left: auto;
   margin-right: auto;
@@ -11,7 +17,7 @@
   composes: mt4 mb2 from "style";
   flex-direction: row;
   display: flex;
-  color: var(--mb-color-text-dark);
+  color: var(--title-color);
   font-size: 24px;
   min-height: 48px;
 }
@@ -22,7 +28,7 @@
   display: flex;
   align-items: center;
   height: 100%;
-  border-color: var(--mb-color-brand);
+  border-color: var(--color-brand);
 }
 
 .headerButton {
@@ -57,7 +63,7 @@
 }
 
 .itemSubtitle {
-  color: var(--mb-color-text-medium);
+  color: var(--subtitle-color);
   max-width: 600px;
   font-size: 14px;
 }
@@ -77,10 +83,8 @@
 }
 
 .icon {
-  --mb-muted-color: var(--mb-color-text-light);
-
   position: relative;
-  color: var(--mb-muted-color);
+  color: var(--muted-color);
 }
 
 .item .icon {
@@ -92,7 +96,7 @@
 }
 
 .icon:hover {
-  color: var(--mb-color-brand);
+  color: var(--color-brand);
 }
 
 /* CHART ICON */

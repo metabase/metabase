@@ -1,3 +1,7 @@
+:root {
+  --page-header-padding: 2.375rem;
+}
+
 .ContentTable {
   width: 100%;
   border-collapse: collapse;
@@ -6,12 +10,12 @@
 }
 
 .ContentTable thead {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .PageHeader {
-  padding-top: 2.375rem;
-  padding-bottom: 2.375rem;
+  padding-top: var(--page-header-padding);
+  padding-bottom: var(--page-header-padding);
 }
 
 .TableActions {
@@ -28,13 +32,13 @@
 }
 
 .ContentTable th {
-  color: var(--mb-color-text-dark);
+  color: var(--color-text-dark);
   padding: 1em;
 }
 
 /* TODO: remove this and apply AdminHoverItem to content rows */
 .ContentTable tbody tr:hover {
-  background-color: var(--mb-color-brand-alpha-04);
+  background-color: var(--color-brand-alpha-04);
 }
 
 .ContentTable tr:hover .TableActions {
@@ -43,12 +47,12 @@
 }
 
 .AdminList {
-  background-color: var(--mb-color-bg-light);
-  border: var(--mb-border-size) var(--mb-border-style) var(--mb-color-border);
-  border-radius: var(--mb-default-border-radius);
+  background-color: var(--color-bg-light);
+  border: var(--border-size) var(--border-style) var(--color-border);
+  border-radius: var(--default-border-radius);
   width: 266px;
   min-height: 300px;
-  box-shadow: inset -1px -1px 3px var(--mb-color-shadow);
+  box-shadow: inset -1px -1px 3px var(--color-shadow);
   padding-bottom: 0.75em;
 }
 
@@ -62,7 +66,7 @@
   bottom: 0;
   margin: auto;
   margin-left: 1em;
-  color: var(--mb-color-text-light);
+  color: var(--color-text-light);
 }
 
 .AdminListSearch .AdminInput {
@@ -70,52 +74,52 @@
   padding-left: 2em;
   font-size: 18px;
   width: 100%;
-  border-top-left-radius: var(--mb-default-border-radius);
-  border-top-right-radius: var(--mb-default-border-radius);
-  border-bottom-color: var(--mb-color-border);
+  border-top-left-radius: var(--default-border-radius);
+  border-top-right-radius: var(--default-border-radius);
+  border-bottom-color: var(--color-border);
 }
 
 .AdminListItem {
   padding: 0.75em 1em 0.75em 1em;
-  border: var(--mb-border-size) var(--mb-border-style) transparent;
-  border-radius: var(--mb-default-border-radius);
+  border: var(--border-size) var(--border-style) transparent;
+  border-radius: var(--default-border-radius);
   margin-bottom: 0.25em;
 }
 
 .AdminListItem.selected {
-  color: var(--mb-color-brand);
+  color: var(--color-brand);
 }
 
 .AdminListItem.selected,
 .AdminListItem:hover {
   background-color: white;
-  border-color: var(--mb-color-border);
+  border-color: var(--color-border);
   margin-left: -0.5em;
   margin-right: -0.5em;
   padding-left: 1.5em;
   padding-right: 1.5em;
-  box-shadow: 0 1px 2px var(--mb-color-shadow);
+  box-shadow: 0 1px 2px var(--color-shadow);
 }
 
 .AdminListSection {
   margin-top: 1em;
   padding: 0.5em 1em 0.5em 1em;
   text-transform: uppercase;
-  color: var(--mb-color-text-light);
+  color: var(--color-text-light);
   font-weight: 700;
   font-size: smaller;
   padding-right: 15px; /* set so that table visibility icons align */
 }
 
 .AdminInput {
-  color: var(--mb-color-text-dark);
-  padding: var(--mb-padding-1);
-  background-color: var(--mb-color-bg-light);
+  color: var(--color-text-dark);
+  padding: var(--padding-1);
+  background-color: var(--color-bg-light);
   border: 1px solid transparent;
 }
 
 .AdminInput:focus {
-  border-color: var(--mb-color-brand);
+  border-color: var(--color-brand);
   box-shadow: none;
   outline: 0;
 }
@@ -153,16 +157,15 @@
 
 .AdminTable th {
   text-transform: uppercase;
-  color: var(--mb-color-text-medium);
-  padding: var(--mb-padding-1);
+  color: var(--color-text-medium);
+  padding: var(--padding-1);
   font-weight: normal;
 }
 
 .AdminTable thead {
-  border-bottom: var(--mb-border-size) var(--mb-border-style)
-    var(--mb-color-border);
+  border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
 .AdminTable tbody tr:first-child td {
-  padding-top: var(--mb-margin-1);
+  padding-top: var(--margin-1);
 }

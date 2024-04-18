@@ -1,22 +1,22 @@
 ::-webkit-input-placeholder {
-  color: var(--mb-color-text-light);
+  color: var(--color-text-light);
 }
 
 :-moz-placeholder {
-  color: var(--mb-color-text-light);
+  color: var(--color-text-light);
 }
 
 :-ms-input-placeholder {
-  color: var(--mb-color-text-light);
+  color: var(--color-text-light);
 }
 
 .FormField {
   margin-bottom: 1.5em;
-  color: var(--mb-color-text-medium);
+  color: var(--color-text-medium);
 }
 
 .FormField.FormFieldError {
-  color: var(--mb-color-error);
+  color: var(--color-error);
 }
 
 .FormLabel {
@@ -28,19 +28,19 @@
 }
 
 .FormInput {
-  font-family: var(--mb-default-font-family);
+  font-family: var(--default-font-family);
   font-weight: 700;
   font-size: 16px;
-  color: var(--mb-color-text-dark);
-  background-color: var(--mb-color-bg-white);
+  color: var(--color-text-dark);
+  background-color: var(--color-bg-white);
   padding: 0.75em;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   outline: none;
 }
 
 .FormField.FormFieldError .FormInput {
-  border-color: var(--mb-color-error);
+  border-color: var(--color-error);
 }
 
 .noFocus:focus {
@@ -49,6 +49,6 @@
 
 .FormInput:focus:not(.noFocus),
 .FormField:hover .FormInput:not(.noFocus) {
-  border-color: var(--mb-color-brand);
+  border-color: var(--color-brand);
   transition: border 300ms ease-in-out;
 }

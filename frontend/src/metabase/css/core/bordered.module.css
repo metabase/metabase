@@ -1,16 +1,16 @@
 :root {
-  --mb-border-size: 1px;
-  --mb-border-size-medium: 2px;
-  --mb-border-style: solid;
+  --border-size: 1px;
+  --border-size-medium: 2px;
+  --border-style: solid;
+  --border-color: var(--color-border);
 }
 
 .bordered {
-  border: var(--mb-border-size) var(--mb-border-style) var(--mb-color-border);
+  border: var(--border-size) var(--border-style) var(--color-border);
 }
 
 .borderBottom {
-  border-bottom: var(--mb-border-size) var(--mb-border-style)
-    var(--mb-color-border);
+  border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
 /* ensure that a border-top item inside of a bordered element won't double up */
@@ -19,8 +19,7 @@
 }
 
 .borderTop {
-  border-top: var(--mb-border-size) var(--mb-border-style)
-    var(--mb-color-border);
+  border-top: var(--border-size) var(--border-style) var(--color-border);
 }
 
 /* ensure that a border-top item inside of a bordered element won't double up */
@@ -29,8 +28,7 @@
 }
 
 .borderRowDivider {
-  border-bottom: var(--mb-border-size) var(--mb-border-style)
-    var(--mb-color-border);
+  border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
 .borderRowDivider:last-child {
@@ -38,29 +36,27 @@
 }
 
 .borderRight {
-  border-right: var(--mb-border-size) var(--mb-border-style)
-    var(--mb-color-border);
+  border-right: var(--border-size) var(--border-style) var(--color-border);
 }
 
 .borderLeft {
-  border-left: var(--mb-border-size) var(--mb-border-style)
-    var(--mb-color-border);
+  border-left: var(--border-size) var(--border-style) var(--color-border);
 }
 
 .borderLight {
-  border-color: color-mod(var(--mb-color-border) alpha(-80%)) !important;
+  border-color: color-mod(var(--color-border) alpha(-80%)) !important;
 }
 
 .borderError {
-  border-color: var(--mb-color-error) !important;
+  border-color: var(--color-error) !important;
 }
 
 .borderSuccess {
-  border-color: var(--mb-color-success) !important;
+  border-color: var(--color-success) !important;
 }
 
 .borderBrand {
-  border-color: var(--mb-color-brand) !important;
+  border-color: var(--color-brand) !important;
 }
 
 .borderTransparent {
@@ -75,5 +71,5 @@
 }
 
 .borderMedium {
-  border-width: var(--mb-border-size-medium);
+  border-width: var(--border-size-medium);
 }

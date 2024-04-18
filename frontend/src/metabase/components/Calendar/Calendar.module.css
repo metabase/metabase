@@ -27,7 +27,7 @@
 }
 
 .CalendarDay {
-  color: var(--mb-color-text-light);
+  color: var(--color-text-light);
   position: relative;
   border-radius: 99px;
   font-weight: 700;
@@ -57,7 +57,7 @@
 
 .CalendarDayInRange {
   border-radius: 0;
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--color-bg-medium);
 }
 
 .CalendarNoContext.CalendarDay {

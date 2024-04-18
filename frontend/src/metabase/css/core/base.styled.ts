@@ -78,7 +78,7 @@ export const baseStyle = css`
   button,
   input,
   textarea {
-    font-family: var(--mb-default-font-family), "Helvetica Neue", Helvetica,
+    font-family: var(--default-font-family), "Helvetica Neue", Helvetica,
       sans-serif;
   }
 

@@ -21,13 +21,13 @@
 }
 
 .Value {
-  color: var(--mb-color-text-dark);
+  color: var(--color-text-dark);
   font-size: 22px;
   font-weight: bolder;
 }
 
 .Title {
-  color: var(--mb-color-text-light);
+  color: var(--color-text-light);
   font-size: 14px;
   font-weight: bold;
   text-transform: uppercase;

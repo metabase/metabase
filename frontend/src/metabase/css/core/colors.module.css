@@ -3,99 +3,99 @@
  */
 :root {
   --color-admin-navbar: #7172ad;
-  --mb-color-white: #fff;
+  --color-white: #fff;
   --color-black: #2e353b;
-  --mb-color-success: #84bb4c;
-  --mb-color-error: #ed6e6e;
+  --color-success: #84bb4c;
+  --color-error: #ed6e6e;
   --color-warning: #f9cf48;
-  --mb-color-text-dark: #4c5773;
-  --mb-color-text-medium: #696e7b;
-  --mb-color-text-light: #949aab;
-  --mb-color-text-white: #fff;
-  --mb-color-bg-black: #2e353b;
-  --mb-color-bg-dark: #93a1ab;
-  --mb-color-bg-medium: #edf2f5;
-  --mb-color-bg-light: #f9fbfc;
-  --mb-color-bg-white: #fff;
+  --color-text-dark: #4c5773;
+  --color-text-medium: #696e7b;
+  --color-text-light: #949aab;
+  --color-text-white: #fff;
+  --color-bg-black: #2e353b;
+  --color-bg-dark: #93a1ab;
+  --color-bg-medium: #edf2f5;
+  --color-bg-light: #f9fbfc;
+  --color-bg-white: #fff;
   --color-bg-yellow: #fffcf2;
-  --mb-color-shadow: rgba(0, 0, 0, 0.13);
-  --mb-color-border: #eeecec;
+  --color-shadow: rgba(0, 0, 0, 0.13);
+  --color-border: #eeecec;
 }
 
 .textDefault {
-  color: var(--mb-color-text-dark);
+  color: var(--color-text-dark);
 }
 
 .textBrand {
-  color: var(--mb-color-brand);
+  color: var(--color-brand);
 }
 
 .textSuccess {
-  color: var(--mb-color-success);
+  color: var(--color-success);
 }
 
 /* error */
 
 .textError,
 .textErrorHover {
-  color: var(--mb-color-error);
+  color: var(--color-error);
 }
 
 .bgErrorHover:hover {
-  background-color: var(--mb-color-error);
+  background-color: var(--color-error);
 }
 
 .bgErrorInput {
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--color-bg-white);
 }
 
 .textSlate {
-  color: var(--mb-color-text-medium);
+  color: var(--color-text-medium);
 }
 
 .textSlateLight {
-  color: var(--mb-color-text-light);
+  color: var(--color-text-light);
 }
 
 .textLight {
-  color: var(--mb-color-text-light);
+  color: var(--color-text-light);
 }
 
 .textMedium,
 .textMediumHover:hover {
-  color: var(--mb-color-text-medium);
+  color: var(--color-text-medium);
 }
 
 .textDark,
 .textDarkHover:hover {
-  color: var(--mb-color-text-dark);
+  color: var(--color-text-dark);
 }
 
 .bgLight,
 .bgLightHover:hover {
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--color-bg-light);
 }
 
 .bgMedium {
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--color-bg-medium);
 }
 
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 .textWhite,
 .textWhiteHover:hover {
-  color: var(--mb-color-text-white);
+  color: var(--color-text-white);
 }
 
 .bgWhite {
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--color-bg-white);
 }
 
 .bgLightBlue {
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--color-bg-light);
 }
 
 .DashboardNight .bgLight {
-  background-color: var(--mb-color-bg-black);
+  background-color: var(--color-bg-black);
 }
 
 .DashboardNight .bgMedium {
@@ -103,5 +103,5 @@
 }
 
 .DashboardNight .textDark {
-  color: var(--mb-color-bg-light);
+  color: var(--color-bg-light);
 }

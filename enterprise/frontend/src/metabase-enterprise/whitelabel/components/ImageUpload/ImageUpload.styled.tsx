@@ -12,7 +12,7 @@ export const FileInput = styled.input`
     color: ${color("text-dark")};
     transition: 200ms;
     cursor: pointer;
-    font-family: var(--mb-default-font-family);
+    font-family: var(--default-font-family);
   }
 
   &::file-selector-button:hover {

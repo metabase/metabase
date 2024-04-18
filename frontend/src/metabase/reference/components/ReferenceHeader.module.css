@@ -1,16 +1,20 @@
+:root {
+  --title-color: var(--color-text-medium);
+}
+
 .headerBody {
   composes: textDark textBold from "style";
   flex: 1 0 auto;
   display: flex;
   overflow: hidden;
   align-items: center;
-  border-color: var(--mb-color-border);
+  border-color: var(--color-border);
 }
 
 .headerTextInput {
   composes: p1 from "style";
   font-size: 18px;
-  color: var(--mb-color-text-medium);
+  color: var(--title-color);
   max-width: 550px;
 }
 

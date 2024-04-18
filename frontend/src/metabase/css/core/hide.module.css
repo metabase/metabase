@@ -23,7 +23,7 @@
 }
 
 .TableInteractiveDetailButton {
-  color: var(--mb-color-brand);
+  color: var(--color-brand);
   transition: opacity 0.2s ease-in-out;
   margin: 0 4px;
   opacity: 0;

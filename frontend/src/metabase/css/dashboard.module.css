@@ -6,25 +6,25 @@
 
 /* Night mode */
 .Dashboard.DashboardNight {
-  background-color: var(--mb-color-bg-black);
+  background-color: var(--color-bg-black);
 }
 
 .Dashboard.DashboardNight .Card {
-  color: var(--mb-color-text-white);
+  color: var(--color-text-white);
 }
 
 .Dashboard.DashboardFullscreen .fullscreenNormalText {
-  color: var(--mb-color-text-dark);
+  color: var(--color-text-dark);
   transition: color 1s linear;
 }
 
 .Dashboard.DashboardNight.DashboardFullscreen .fullscreenNightText {
-  color: color-mod(var(--mb-color-text-white) alpha(-14%));
+  color: color-mod(var(--color-text-white) alpha(-14%));
   transition: color 1s linear;
 }
 
 .Dashboard.DashboardNight .DashCard .Card svg text {
-  fill: color-mod(var(--mb-color-text-white) alpha(-14%)) !important;
+  fill: color-mod(var(--color-text-white) alpha(-14%)) !important;
   stroke: none !important;
 }
 
@@ -64,16 +64,16 @@
 
 .PinMapUpdateButtonDisabled {
   pointer-events: none;
-  color: var(--mb-color-text-light);
+  color: var(--color-text-light);
 }
 
 /* .react-draggable*, .react-resizable* are 3rd party library classes */
 .DashEditing .DashCard:global(.react-draggable-dragging) .Card {
-  box-shadow: 3px 3px 8px var(--mb-color-shadow);
+  box-shadow: 3px 3px 8px var(--color-shadow);
 }
 
 .BrandColorResizeHandle :global(.react-resizable-handle::after) {
-  border-color: var(--mb-color-brand) !important;
+  border-color: var(--color-brand) !important;
 }
 
 .DashEditing .DashCard:global(.react-draggable-dragging),
@@ -83,8 +83,8 @@
 
 .DashEditing .DashCard:global(.react-draggable-dragging) .Card,
 .DashEditing .DashCard:global(.react-resizable-resizing) .Card {
-  background-color: var(--mb-color-bg-medium) !important;
-  border: 1px solid var(--mb-color-brand);
+  background-color: var(--color-bg-medium) !important;
+  border: 1px solid var(--color-brand);
 }
 
 .DashEditing .DashCard .VisualizationSlowSpinner {
@@ -122,15 +122,15 @@
   height: 8px;
   bottom: 6px;
   right: 6px;
-  border-bottom: 2px solid var(--mb-color-border);
-  border-right: 2px solid var(--mb-color-border);
+  border-bottom: 2px solid var(--color-border);
+  border-right: 2px solid var(--color-border);
   border-bottom-right-radius: 2px;
   transition: opacity 0.2s;
   opacity: 0.01;
 }
 
 .DashEditing .DashCard :global(.react-resizable-handle:hover::after) {
-  border-color: var(--mb-color-border);
+  border-color: var(--color-border);
 }
 
 .DashEditing .DashCard:hover :global(.react-resizable-handle::after) {
@@ -147,7 +147,7 @@
 /* .react-grid-placeholder is a global class from `react-grid-layout` */
 .DashEditing :global(.react-grid-placeholder) {
   z-index: 0;
-  background-color: var(--mb-color-bg-light) !important;
+  background-color: var(--color-bg-light) !important;
   transition: all 0.15s linear;
 }
 
@@ -174,7 +174,7 @@
   :global(.dc-chart .axis .tick text),
   :global(.dc-chart .x-axis-label),
   :global(.dc-chart .y-axis-label) {
-    fill: var(--mb-color-text-dark);
+    fill: var(--color-text-dark);
   }
 }
 
@@ -190,11 +190,11 @@
 
 /* when in night mode code snippets should have a more readable background-color */
 .DashboardNight pre code {
-  background-color: color-mod(var(--mb-color-bg-white) alpha(-86%));
+  background-color: color-mod(var(--color-bg-white) alpha(-86%));
 }
 
 .DashboardNight :global(.text-card-markdown code) {
-  background-color: color-mod(var(--mb-color-bg-white) alpha(-86%));
+  background-color: color-mod(var(--color-bg-white) alpha(-86%));
 }
 
 .Dashboard :global(text.value-label),

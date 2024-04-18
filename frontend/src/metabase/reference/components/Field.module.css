@@ -1,3 +1,7 @@
+:root {
+  --title-color: var(--color-text-medium);
+}
+
 .field {
   align-items: center;
   display: flex;
@@ -14,7 +18,7 @@
 
 .fieldNameTextInput {
   composes: input p1 from "style";
-  color: var(--mb-color-text-medium);
+  color: var(--title-color);
   width: 100%;
   font-size: 14px;
 }
