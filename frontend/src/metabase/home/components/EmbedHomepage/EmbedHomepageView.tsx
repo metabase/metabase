@@ -44,7 +44,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
       <Group position="apart">
         {/*  eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
         <Text fw="bold">{t`Get started with Embedding Metabase in your app`}</Text>
-        <Menu trigger="hover">
+        <Menu trigger="hover" closeDelay={200}>
           <Menu.Target>
             <Text
               fw="bold"
@@ -60,7 +60,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
               onClick={() => onDismiss("dismissed-run-into-issues")}
             >{t`I ran into issues`}</Menu.Item>
             <Menu.Item
-              onClick={() => onDismiss("dismissed-run-into-issues")}
+              onClick={() => onDismiss("dismissed-not-interested-now")}
             >{t`I'm not interested right now`}</Menu.Item>
           </Menu.Dropdown>
         </Menu>
