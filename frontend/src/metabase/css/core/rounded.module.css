@@ -1,9 +1,9 @@
 :root {
-  --default-border-radius: 8px;
+  --mb-default-border-radius: 8px;
 }
 
 .rounded {
-  border-radius: var(--default-border-radius);
+  border-radius: var(--mb-default-border-radius);
 }
 
 .circular {

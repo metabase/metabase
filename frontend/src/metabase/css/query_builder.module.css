@@ -176,7 +176,7 @@
 .QueryErrorAdminEmail {
   position: relative;
   display: inline-block;
-  border-radius: var(--default-border-radius);
+  border-radius: var(--mb-default-border-radius);
   border: 1px solid var(--mb-color-border);
   margin-top: var(--margin-2);
   padding: var(--padding-1) var(--padding-4) var(--padding-1) var(--padding-4);

@@ -49,7 +49,7 @@
 .AdminList {
   background-color: var(--mb-color-bg-light);
   border: var(--mb-border-size) var(--mb-border-style) var(--mb-color-border);
-  border-radius: var(--default-border-radius);
+  border-radius: var(--mb-default-border-radius);
   width: 266px;
   min-height: 300px;
   box-shadow: inset -1px -1px 3px var(--mb-color-shadow);
@@ -74,15 +74,15 @@
   padding-left: 2em;
   font-size: 18px;
   width: 100%;
-  border-top-left-radius: var(--default-border-radius);
-  border-top-right-radius: var(--default-border-radius);
+  border-top-left-radius: var(--mb-default-border-radius);
+  border-top-right-radius: var(--mb-default-border-radius);
   border-bottom-color: var(--mb-color-border);
 }
 
 .AdminListItem {
   padding: 0.75em 1em 0.75em 1em;
   border: var(--mb-border-size) var(--mb-border-style) transparent;
-  border-radius: var(--default-border-radius);
+  border-radius: var(--mb-default-border-radius);
   margin-bottom: 0.25em;
 }
 
