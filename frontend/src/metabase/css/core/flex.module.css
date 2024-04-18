@@ -1,9 +1,5 @@
 /* provide flex utilities in lieu of float based layouts */
 
-:root {
-  --gap-1: 0.5rem;
-}
-
 .flex {
   display: flex;
 }
@@ -121,5 +117,5 @@
 }
 
 .rowGap1 {
-  row-gap: var(--gap-1);
+  row-gap: 0.5rem;
 }
