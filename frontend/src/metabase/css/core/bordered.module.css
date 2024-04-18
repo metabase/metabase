@@ -1,16 +1,16 @@
 :root {
-  --border-size: 1px;
-  --border-size-medium: 2px;
-  --border-style: solid;
-  --border-color: var(--color-border);
+  --mb-border-size: 1px;
+  --mb-border-size-medium: 2px;
+  --mb-border-style: solid;
 }
 
 .bordered {
-  border: var(--border-size) var(--border-style) var(--color-border);
+  border: var(--mb-border-size) var(--mb-border-style) var(--color-border);
 }
 
 .borderBottom {
-  border-bottom: var(--border-size) var(--border-style) var(--color-border);
+  border-bottom: var(--mb-border-size) var(--mb-border-style)
+    var(--color-border);
 }
 
 /* ensure that a border-top item inside of a bordered element won't double up */
@@ -19,7 +19,7 @@
 }
 
 .borderTop {
-  border-top: var(--border-size) var(--border-style) var(--color-border);
+  border-top: var(--mb-border-size) var(--mb-border-style) var(--color-border);
 }
 
 /* ensure that a border-top item inside of a bordered element won't double up */
@@ -28,7 +28,8 @@
 }
 
 .borderRowDivider {
-  border-bottom: var(--border-size) var(--border-style) var(--color-border);
+  border-bottom: var(--mb-border-size) var(--mb-border-style)
+    var(--color-border);
 }
 
 .borderRowDivider:last-child {
@@ -36,11 +37,11 @@
 }
 
 .borderRight {
-  border-right: var(--border-size) var(--border-style) var(--color-border);
+  border-right: var(--mb-border-size) var(--mb-border-style) var(--color-border);
 }
 
 .borderLeft {
-  border-left: var(--border-size) var(--border-style) var(--color-border);
+  border-left: var(--mb-border-size) var(--mb-border-style) var(--color-border);
 }
 
 .borderLight {
@@ -71,5 +72,5 @@
 }
 
 .borderMedium {
-  border-width: var(--border-size-medium);
+  border-width: var(--mb-border-size-medium);
 }
