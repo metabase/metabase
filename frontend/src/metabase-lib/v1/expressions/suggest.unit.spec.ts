@@ -330,6 +330,7 @@ describe("metabase/lib/expression/suggest", () => {
 
     describe("aggregation", () => {
       // FIXME metrics v2
+      // eslint-disable-next-line jest/no-disabled-tests
       it.skip("should suggest aggregations and metrics", () => {
         const { startRule } = aggregationOpts;
         expect(
@@ -412,6 +413,7 @@ describe("metabase/lib/expression/suggest", () => {
       });
 
       // FIXME metrics v2
+      // eslint-disable-next-line jest/no-disabled-tests
       it.skip("should show suggestions with matched 2-char prefix", () => {
         expect(
           suggest({

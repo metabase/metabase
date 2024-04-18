@@ -808,6 +808,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
+  // FIXME metrics v2
+  // eslint-disable-next-line jest/no-disabled-tests
   it("should not crash notebook when metric is used as an aggregation and breakout is applied (metabase#40553)", () => {
     createMetric({
       name: "Revenue",

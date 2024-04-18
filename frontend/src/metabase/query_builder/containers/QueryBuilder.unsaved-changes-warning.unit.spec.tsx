@@ -71,6 +71,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
     });
 
     // FIXME metrics v2
+    // eslint-disable-next-line jest/no-disabled-tests
     it.skip("does not show custom warning modal when saving new model", async () => {
       await setup({
         card: null,
