@@ -1,7 +1,3 @@
-:root {
-  --page-header-padding: 2.375rem;
-}
-
 .ContentTable {
   width: 100%;
   border-collapse: collapse;
@@ -14,8 +10,8 @@
 }
 
 .PageHeader {
-  padding-top: var(--page-header-padding);
-  padding-bottom: var(--page-header-padding);
+  padding-top: 2.375rem;
+  padding-bottom: 2.375rem;
 }
 
 .TableActions {
