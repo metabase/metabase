@@ -92,28 +92,6 @@
                                                                 :schema (:fk-table-schema metadata))
                               (sync-util/field-name-for-logging :name (:pk-column-name metadata)))))))
 
-(mu/defn sync-fks-for-db!
-  "Sync the foreign keys for a `database`."
-  [database :- i/DatabaseInstance]
-  (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
-    (let [driver       (driver.u/database->driver database)
-          schema-names (when (driver/database-supports? driver :schemas database)
-                         (sync-util/db->sync-schemas database))
-          fk-metadata  (fetch-metadata/fk-metadata database :schema-names schema-names)]
-      (transduce (map (fn [x]
-                        (let [[updated failed] (try [(mark-fk! database x) 0]
-                                                    (catch Exception e
-                                                      (log/error e)
-                                                      [0 1]))]
-                          {:total-fks    1
-                           :updated-fks  updated
-                           :total-failed failed})))
-                 (partial merge-with +)
-                 {:total-fks    0
-                  :updated-fks  0
-                  :total-failed 0}
-                 fk-metadata))))
-
 (mu/defn sync-fks-for-table!
   "Sync the foreign keys for a specific `table`."
   ([table :- i/TableInstance]
@@ -130,13 +108,30 @@
 
 (mu/defn sync-fks!
   "Sync the foreign keys in a `database`. This sets appropriate values for relevant Fields in the Metabase application
-  DB based on values from the `FKMetadata` returned by [[metabase.driver/describe-table-fks]].
+  DB based on values returned by [[metabase.driver/describe-table-fks]].
 
   If the driver supports the `:describe-fks` feature, [[metabase.driver/describe-fks]] is used to fetch the FK metadata.
 
   This function also sets all the tables that should be synced to have `initial-sync-status=complete` once the sync is done."
   [database :- i/DatabaseInstance]
-  (u/prog1 (sync-fks-for-db! database)
+  (u/prog1 (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
+             (let [driver       (driver.u/database->driver database)
+                   schema-names (when (driver/database-supports? driver :schemas database)
+                                  (sync-util/db->sync-schemas database))
+                   fk-metadata  (fetch-metadata/fk-metadata database :schema-names schema-names)]
+               (transduce (map (fn [x]
+                                 (let [[updated failed] (try [(mark-fk! database x) 0]
+                                                             (catch Exception e
+                                                               (log/error e)
+                                                               [0 1]))]
+                                   {:total-fks    1
+                                    :updated-fks  updated
+                                    :total-failed failed})))
+                          (partial merge-with +)
+                          {:total-fks    0
+                           :updated-fks  0
+                           :total-failed 0}
+                          fk-metadata)))
     ;; Mark the table as done with its initial sync once this step is done even if it failed, because only
     ;; sync-aborting errors should be surfaced to the UI (see
     ;; `:metabase.sync.util/exception-classes-not-to-retry`).
