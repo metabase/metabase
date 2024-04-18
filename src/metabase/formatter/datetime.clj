@@ -98,8 +98,8 @@
         (cond-> (-> date-style (str/replace #"dddd" "EEEE"))
           date-separator (str/replace #"/" date-separator)
           date-abbreviate (-> (str/replace #"MMMM" "MMM")
-                         (str/replace #"EEEE" "EEE")
-                         (str/replace #"DDD" "D")))]
+                              (str/replace #"EEEE" "EEE")
+                              (str/replace #"DDD" "D")))]
     (-> conditional-changes
         ;; 'D' formats as Day of year, we want Day of month, which is  'd' (issue #27469)
         (str/replace #"D" "d")
@@ -142,8 +142,17 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
                          (-> (or date-style "EEEE, MMMM d, YYYY")
                              (post-process-date-style viz-settings))))
 
-(defmethod format-timestring :week [timezone-id temporal-str _col _viz-settings]
-  (str (tru "Week ") (reformat-temporal-str timezone-id temporal-str "w - YYYY")))
+(defmethod format-timestring :week [timezone-id temporal-str _col {:keys [date-style] :as viz-settings}]
+  (if date-style
+    (let [temporal-str-b (-> temporal-str
+                             u.date/parse
+                             (u.date/add :day 6)
+                             u.date/format)]
+      (str
+       (reformat-temporal-str timezone-id temporal-str (post-process-date-style date-style viz-settings))
+       " - "
+       (reformat-temporal-str timezone-id temporal-str-b (post-process-date-style date-style viz-settings))))
+    (str (tru "Week ") (reformat-temporal-str timezone-id temporal-str "w - YYYY"))))
 
 (defmethod format-timestring :month [timezone-id temporal-str _col {:keys [date-style] :as viz-settings}]
   (reformat-temporal-str timezone-id temporal-str
