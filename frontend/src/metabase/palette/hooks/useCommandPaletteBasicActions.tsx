@@ -145,12 +145,30 @@ export const useCommandPaletteBasicActions = ({
 
     const browseActions: Action[] = [
       {
-        id: "navigate_data",
-        name: t`Browse Data`,
+        id: "browse_data",
+        name: t`Browse data`,
         section: "basic",
         icon: "database",
         perform: () => {
           dispatch(push("/browse"));
+        },
+      },
+      {
+        id: "browse_databases",
+        name: t`Browse databases`,
+        section: "basic",
+        icon: "database",
+        perform: () => {
+          dispatch(push("/browse/databases"));
+        },
+      },
+      {
+        id: "browse_models",
+        name: t`Browse models`,
+        section: "basic",
+        icon: "database",
+        perform: () => {
+          dispatch(push("/browse/models"));
         },
       },
     ];
