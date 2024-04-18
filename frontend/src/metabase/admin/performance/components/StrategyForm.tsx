@@ -121,10 +121,7 @@ const StrategyFormBody = ({
                 name="min_duration_seconds"
               />
             </Field>
-            <Field
-              title={t`Cache time-to-live (TTL) multiplier`}
-              subtitle={<MultiplierFieldSubtitle />}
-            >
+            <Field title={t`Multiplier`} subtitle={<MultiplierFieldSubtitle />}>
               <PositiveNumberInput strategyType="ttl" name="multiplier" />
             </Field>
           </>

@@ -45,7 +45,7 @@ import {
 import CS from "metabase/css/core/index.css";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { Route } from "metabase/hoc/Title";
+import title, { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -164,7 +164,11 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         path="performance"
         component={createAdminRouteGuard("performance")}
       >
-        <IndexRoute title={t`Performance`} path="" component={PerformanceApp} />
+        <IndexRoute
+          title={t`Performance`}
+          path=""
+          component={title(t`Performance`)(PerformanceApp)}
+        />
       </Route>
       <Route
         path="tools"
