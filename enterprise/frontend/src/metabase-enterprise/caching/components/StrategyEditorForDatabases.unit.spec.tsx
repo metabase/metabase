@@ -54,7 +54,7 @@ describe("StrategyEditorForDatabases", () => {
     ).toBeInTheDocument();
   });
 
-  it("lets user change the default policy from Hours to Query duration multiplier to No caching", async () => {
+  it("lets user change the default policy from 'Hours' to Query duration multiplier to No caching", async () => {
     const editButton = await screen.findByLabelText(
       `Edit default policy (currently: Hours)`,
     );
@@ -120,7 +120,7 @@ describe("StrategyEditorForDatabases", () => {
     ).toBeInTheDocument();
   });
 
-  it("lets user change policy for Database 1 from Query duration multiplier to Duration to Don't cache to Use default", async () => {
+  it("lets user change policy for Database 1 from 'Query duration multiplier' to 'Hours' to 'Don't cache to 'Use default'", async () => {
     const editButton = await screen.findByLabelText(
       `Edit policy for database 'Database 1' (currently: Query duration multiplier)`,
     );
@@ -152,7 +152,7 @@ describe("StrategyEditorForDatabases", () => {
 
     await act(async () => {
       const durationStrategyRadioButton = await screen.findByRole("radio", {
-        name: /hours/i,
+        name: /specific number of hours/i,
       });
       durationStrategyRadioButton.click();
 
@@ -164,10 +164,11 @@ describe("StrategyEditorForDatabases", () => {
     (await screen.findByTestId("strategy-form-submit-button")).click();
 
     expect(
-      await screen.findByLabelText(
-        `Edit policy for database 'Database 1' (currently: Hours)`,
-      ),
-    ).toBeInTheDocument();
+      await screen.findByLabelText(/Edit policy for database 'Database 1'/),
+    ).toHaveAttribute(
+      "aria-label",
+      "Edit policy for database 'Database 1' (currently: Hours)",
+    );
 
     await act(async () => {
       const noCacheStrategyRadioButton = await screen.findByRole("radio", {

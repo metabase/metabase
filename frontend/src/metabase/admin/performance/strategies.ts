@@ -105,7 +105,7 @@ export const Strategies: Record<StrategyType, StrategyData> = {
   },
   schedule: {
     label: t`Schedule: at regular intervals`,
-    shortLabel: t`Schedule`,
+    shortLabel: t`Scheduled`,
     validateWith: scheduleStrategyValidationSchema,
   },
   ttl: {
