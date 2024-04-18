@@ -71,7 +71,7 @@ describe("PublicDashboard", () => {
     expect(firstTab).toHaveAttribute("aria-selected", "true");
   });
 
-  it("should work with filter value starting from '0' (metabase#41483)", async () => {
+  it("should render when a filter passed with value starting from '0' (metabase#41483)", async () => {
     // note: as all slugs this is ignored and we only use the id
     await setup({
       queryString: "?my-filter-value=01",
