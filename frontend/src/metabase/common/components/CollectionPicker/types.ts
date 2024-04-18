@@ -16,11 +16,14 @@ import type {
 
 export type CollectionItemId = CollectionId | CardId | DashboardId;
 
+// internally, this picker supports all items that live in collections
+// so that we can use its components for picking all of them
 export type CollectionPickerModel = Extract<
   SearchModel,
   "collection" | "card" | "dataset" | "dashboard"
 >;
 
+// we can enforce type safety at the boundary of a collection-only picker with this type
 export type CollectionPickerValueModel = Extract<
   CollectionPickerModel,
   "collection"
