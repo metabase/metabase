@@ -35,7 +35,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { ConnectedAddToDashSelectDashModal } from "./AddToDashSelectDashModal";
+import { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
 const CURRENT_USER = createMockUser({
   id: getNextId(),
@@ -138,6 +138,13 @@ const DASHBOARD_RESULT_IN_PERSONAL_COLLECTION = createMockSearchResult({
   collection: PERSONAL_COLLECTION,
 });
 
+const DASHBOARDS = [
+  DASHBOARD,
+  DASHBOARD_AT_ROOT,
+  DASHBOARD_RESULT_IN_PUBLIC_COLLECTION,
+  DASHBOARD_RESULT_IN_PERSONAL_COLLECTION,
+];
+
 const getCollectionParentId = (collection: Collection) => {
   const pathFromRoot =
     collection.location?.split("/").filter(Boolean).map(Number) ?? [];
@@ -219,11 +226,15 @@ const setup = async ({
     });
   });
 
+  DASHBOARDS.forEach(dashboard => {
+    fetchMock.get(`path:/api/dashboard/${dashboard.id}`, dashboard);
+  });
+
   renderWithProviders(
     <Route
       path="/"
       component={() => (
-        <ConnectedAddToDashSelectDashModal
+        <AddToDashSelectDashModal
           card={card}
           onChangeLocation={() => undefined}
           onClose={() => undefined}
@@ -300,9 +311,16 @@ describe("AddToDashSelectDashModal", () => {
           ),
         );
 
+        console.log("dashboardCollection", dashboardCollection);
+
+        await screen.findByText(/add this model to a dashboard/i);
+
         // breadcrumbs
-        assertBreadcrumbs([dashboardCollection]);
-        expect(screen.getByText(DASHBOARD.name)).toBeInTheDocument();
+        assertPath([dashboardCollection]);
+        expect(screen.getByText(DASHBOARD.name)).toHaveAttribute(
+          "data-active",
+          "true",
+        );
       });
 
       describe("when last visited dashboard belongs to root", () => {
@@ -313,7 +331,7 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           // breadcrumbs
-          assertBreadcrumbs([ROOT_COLLECTION]);
+          assertPath([ROOT_COLLECTION]);
           expect(screen.getByText(DASHBOARD_AT_ROOT.name)).toBeInTheDocument();
         });
       });
@@ -333,7 +351,7 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           // breadcrumbs
-          assertBreadcrumbs([ROOT_COLLECTION, COLLECTION, SUBCOLLECTION]);
+          assertPath([ROOT_COLLECTION, COLLECTION, SUBCOLLECTION]);
 
           // dashboard item
           expect(
@@ -348,7 +366,7 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           // breadcrumbs
-          assertBreadcrumbs([ROOT_COLLECTION]);
+          assertPath([ROOT_COLLECTION]);
 
           // Showing personal collection means we're viewing the root collection
           expect(
@@ -372,7 +390,7 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           // breadcrumbs
-          assertBreadcrumbs([
+          assertPath([
             ROOT_COLLECTION,
             PERSONAL_COLLECTION,
             PERSONAL_SUBCOLLECTION,
@@ -391,7 +409,7 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           // breadcrumbs
-          assertBreadcrumbs([
+          assertPath([
             ROOT_COLLECTION,
             PERSONAL_COLLECTION,
             PERSONAL_SUBCOLLECTION,
@@ -979,7 +997,7 @@ describe("AddToDashSelectDashModal", () => {
   });
 });
 
-function assertBreadcrumbs(collections: Collection[]) {
+function assertPath(collections: Collection[]) {
   collections.forEach(collection => {
     expect(screen.getByText(collection.name)).toBeInTheDocument();
   });
