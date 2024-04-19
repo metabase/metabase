@@ -693,7 +693,11 @@
                                             :location)
                    :archived will-be-trashed?}
           :where  [:like :location (str orig-children-location "%")]})
-        (doseq [model [:model/Card :model/Dashboard :model/NativeQuerySnippet :model/Pulse]]
+        (doseq [model [:model/Card
+                       :model/Dashboard
+                       :model/NativeQuerySnippet
+                       :model/Pulse
+                       :model/Timeline]]
           (t2/update! model
                       {:collection_id [:in affected-collection-ids]}
                       {:archived will-be-trashed?}))))))
@@ -917,6 +921,14 @@
   [collection]
   ;; Delete all the Children of this Collection
   (t2/delete! Collection :location (children-location collection))
+  (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))]
+    (doseq [model [:model/Card
+                   :model/Dashboard
+                   :model/NativeQuerySnippet
+                   :model/Pulse
+                   :model/Timeline]]
+      (t2/delete! model :collection_id [:in affected-collection-ids])))
+
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)

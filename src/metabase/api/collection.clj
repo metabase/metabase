@@ -1034,6 +1034,15 @@
     :parent_id (move-collection! collection-before-update collection-updates)
     :no-op))
 
+(api/defendpoint DELETE "/:id"
+  "Delete a collection entirely."
+  [id]
+  {id ms/PositiveInt}
+  (let [collection-before-delete (api/write-check :model/Collection id)]
+    ;; we can only delete archived collections
+    (api/check-400 (:archived collection-before-delete))
+    (t2/delete! :model/Collection :id id)))
+
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
   [id, :as {{:keys [name description archived parent_id authority_level], :as collection-updates} :body}]
