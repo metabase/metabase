@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { store, useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
@@ -25,14 +26,14 @@ interface InitDataLoaderParameters {
 
 const getErrorMessage = (authType: SDKConfigType["authType"]) => {
   if (authType === "jwt") {
-    return "Could not authenticate: invalid JWT token";
+    return t`Could not authenticate: invalid JWT token`;
   }
 
   if (authType === "apiKey") {
-    return "Could not authenticate: invalid API key";
+    return t`Could not authenticate: invalid API key`;
   }
 
-  return "Invalid auth type";
+  return t`Invalid auth type`;
 };
 
 export const useInitData = ({ config }: InitDataLoaderParameters) => {
