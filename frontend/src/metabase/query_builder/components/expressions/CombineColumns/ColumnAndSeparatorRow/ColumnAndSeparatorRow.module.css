@@ -19,4 +19,5 @@
   bottom: 0.5rem;
   left: 0.75rem;
   pointer-events: none;
+  user-select: none;
 }
