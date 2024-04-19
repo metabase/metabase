@@ -11,6 +11,12 @@ const Snippets = createEntity({
     getFetched: (state, props) =>
       getFetched(state, props) || getObject(state, props),
   }),
+
+  api: {
+    delete: () => {
+      throw new TypeError("Snippets.api.delete is not supported");
+    },
+  },
 });
 
 export default Snippets;
