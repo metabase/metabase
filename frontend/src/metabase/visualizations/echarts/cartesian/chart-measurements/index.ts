@@ -56,10 +56,15 @@ const getYAxisTicksWidth = (
     valuesToMeasure.push(settings["graph.goal_value"]);
   }
 
-  // This is a simplistic assumption to predict if ECharts will use decimal ticks.
-  // It checks if all values are within -5 to 5, assuming decimals are needed for this range.
-  // Note: This may not accurately reflect ECharts' internal logic for tick formatting.
-  const areDecimalTicksExpected = valuesToMeasure.every(
+  // This is a simplistic assumption to predict if ECharts will use decimal
+  // ticks. It checks if all values are within -5 to 5, assuming decimals are
+  // needed for this range. We check the original extents, instead of the
+  // untransformed values, because echarts will determine its ticks based on the
+  // original values (which we then untransform in the formatting function).
+
+  // Note: This may not accurately reflect ECharts' internal logic for tick
+  // formatting.
+  const areDecimalTicksExpected = axisModel.extent.every(
     value => value > -5 && value < 5,
   );
 
