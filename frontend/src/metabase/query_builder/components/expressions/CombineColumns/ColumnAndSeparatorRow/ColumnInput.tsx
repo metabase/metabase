@@ -40,23 +40,23 @@ export function ColumnInput({
     button.current?.focus();
   }
 
-  function handleBlur(evt: FocusEvent<HTMLDivElement>) {
-    if (!evt.currentTarget || !evt.relatedTarget) {
+  function handleBlur(event: FocusEvent<HTMLDivElement>) {
+    if (!event.currentTarget || !event.relatedTarget) {
       return;
     }
-    if (!evt.currentTarget.contains(evt.relatedTarget as Node)) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node)) {
       setTimeout(() => setOpen(false), 100);
     }
   }
 
-  function handleButtonClick(evt: MouseEvent<HTMLButtonElement>) {
-    evt.preventDefault();
-    evt.stopPropagation();
+  function handleButtonClick(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
     setOpen(open => !open);
   }
 
-  function handleKeyDown(evt: KeyboardEvent<HTMLButtonElement>) {
-    if (evt.key === "Enter") {
+  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === "Enter") {
       setOpen(true);
     }
   }

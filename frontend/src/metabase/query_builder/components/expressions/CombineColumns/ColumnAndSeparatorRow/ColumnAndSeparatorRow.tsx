@@ -94,13 +94,13 @@ function SeparatorInput({
     return null;
   }
 
-  function handleFocus(evt: FocusEvent<HTMLInputElement>) {
+  function handleFocus(event: FocusEvent<HTMLInputElement>) {
     setHasFocus(true);
-    evt.target.select();
+    event.target.select();
   }
 
-  function handleBlur(evt: FocusEvent<HTMLInputElement>) {
-    if (evt.target === document.activeElement) {
+  function handleBlur(event: FocusEvent<HTMLInputElement>) {
+    if (event.target === document.activeElement) {
       // avoid losing focus when the user switches to another window
       // but leaves the focus on the element.
       return;
