@@ -179,7 +179,7 @@ You can create a custom user profile attribute and fill it with the Metabase gro
 
    > Your Okta account has to have `SAML_SUPPORT_ARRAY_ATTRIBUTES` enabled, as Metabase expects Okta to pass attributes as an array. If your Okta account is old, you might need to reach out to Okta support to enable `SAML_SUPPORT_ARRAY_ATTRIBUTES`.
 
-   Next, you'll need to set up tell Metabase how to map Okta groups to Metabase groups.
+   Next, you'll need to tell Metabase how to map Okta groups to Metabase groups.
 
 3. In **Metabase SAML settings**:
 
