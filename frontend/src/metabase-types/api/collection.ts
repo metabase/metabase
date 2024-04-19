@@ -107,7 +107,6 @@ export interface CollectionItem {
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;
   setPinned?: (isPinned: boolean) => void;
-  // TODO: Can this be changed from Collection to Pick<Collection, "id">?
   setCollection?: (collection: Pick<Collection, "id">) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
 }
