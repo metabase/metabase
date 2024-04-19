@@ -285,7 +285,7 @@ const EntityItem = ({
   onCopy?: OnCopy;
   onArchive?: OnArchive;
   selected: boolean;
-  onToggleSelected: OnToggleSelected;
+  onToggleSelected?: OnToggleSelected;
   selectable?: boolean;
   variant: string;
   item: CollectionItem;
@@ -306,7 +306,6 @@ const EntityItem = ({
       disabled={disabled}
     >
       <EntityIconCheckBox
-        //item={item} // NOTE: This prop does not seem to be used
         variant={variant}
         icon={icon}
         pinned={pinned}
