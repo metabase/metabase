@@ -145,7 +145,6 @@ const getDatasetParams = ({
 
 export function getDatasetDownloadUrl(url: string, params?: URLSearchParams) {
   url = url.replace(api.basename, ""); // make url relative if it's not
-  url = api.basename + url;
   if (params) {
     url += `?${params.toString()}`;
   }
