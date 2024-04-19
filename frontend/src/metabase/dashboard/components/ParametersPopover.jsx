@@ -11,13 +11,18 @@ import {
   OptionItemRoot,
   OptionItemTitle,
 } from "metabase/dashboard/components/ParametersPopover.styled";
-import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
+import {
+  getDashboardParameterSections,
+  getDefaultOptionForParameterSection,
+} from "metabase/parameters/utils/dashboard-options";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Icon } from "metabase/ui";
 
 const PopoverBody = styled.div`
   max-width: 300px;
 `;
+
+const defaultOptionForParameterSection = getDefaultOptionForParameterSection();
 
 export class ParametersPopover extends Component {
   constructor(props, context) {
@@ -28,39 +33,26 @@ export class ParametersPopover extends Component {
   PARAMETER_SECTIONS = getDashboardParameterSections();
 
   render() {
-    const { section } = this.state;
     const { onClose, onAddParameter } = this.props;
-    if (section == null) {
-      return (
-        <ParameterOptionsSectionsPane
-          sections={this.PARAMETER_SECTIONS}
-          onSelectSection={selectedSection => {
-            const parameterSection = _.findWhere(this.PARAMETER_SECTIONS, {
-              id: selectedSection.id,
-            });
-            if (parameterSection && parameterSection.options.length === 1) {
-              onAddParameter(parameterSection.options[0]);
-              onClose();
-            } else {
-              this.setState({ section: selectedSection.id });
-            }
-          }}
-        />
-      );
-    } else {
-      const parameterSection = _.findWhere(this.PARAMETER_SECTIONS, {
-        id: section,
-      });
-      return (
-        <ParameterOptionsPane
-          options={parameterSection && parameterSection.options}
-          onSelectOption={option => {
-            onAddParameter(option);
+
+    return (
+      <ParameterOptionsSectionsPane
+        sections={this.PARAMETER_SECTIONS}
+        onSelectSection={selectedSection => {
+          const parameterSection = _.findWhere(this.PARAMETER_SECTIONS, {
+            id: selectedSection.id,
+          });
+
+          if (parameterSection) {
+            const defaultOption =
+              defaultOptionForParameterSection[parameterSection.id];
+
+            onAddParameter(defaultOption);
             onClose();
-          }}
-        />
-      );
-    }
+          }
+        }}
+      />
+    );
   }
 }
 

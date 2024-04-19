@@ -16,6 +16,8 @@ import type {
   FieldDimension,
   FieldId,
   ForeignKey,
+  GroupListQuery,
+  ListDashboardsResponse,
   Metric,
   PopularItem,
   RecentItem,
@@ -23,6 +25,7 @@ import type {
   SearchResult,
   Segment,
   Table,
+  Task,
   Timeline,
   TimelineEvent,
   UserInfo,
@@ -179,9 +182,12 @@ export function provideDatabaseTags(
 }
 
 export function provideDashboardListTags(
-  dashboards: Dashboard[],
+  dashboards: ListDashboardsResponse,
 ): TagDescription<TagType>[] {
-  return [listTag("dashboard"), ...dashboards.flatMap(provideDashboardTags)];
+  return [
+    listTag("dashboard"),
+    ...dashboards.map(dashboard => idTag("dashboard", dashboard.id)),
+  ];
 }
 
 export function provideDashboardTags(
@@ -266,6 +272,21 @@ export function provideMetricTags(metric: Metric): TagDescription<TagType>[] {
   ];
 }
 
+export function providePermissionsGroupListTags(
+  groups: GroupListQuery[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("permissions-group"),
+    ...groups.flatMap(providePermissionsGroupTags),
+  ];
+}
+
+export function providePermissionsGroupTags(
+  group: GroupListQuery,
+): TagDescription<TagType>[] {
+  return [idTag("permissions-group", group.id)];
+}
+
 export function provideSearchItemListTags(
   items: SearchResult[],
   models: SearchModel[] = Array.from(SEARCH_MODELS),
@@ -315,6 +336,14 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
     ...(table.metrics ? provideMetricListTags(table.metrics) : []),
   ];
+}
+
+export function provideTaskListTags(tasks: Task[]): TagDescription<TagType>[] {
+  return [listTag("task"), ...tasks.flatMap(provideTaskTags)];
+}
+
+export function provideTaskTags(task: Task): TagDescription<TagType>[] {
+  return [idTag("task", task.id)];
 }
 
 export function provideTimelineEventListTags(

@@ -38,12 +38,12 @@ const {
   PEOPLE_ID,
 } = SAMPLE_DATABASE;
 
-const { DATA_GROUP } = USER_GROUPS;
+const { DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 describeEE("formatting > sandboxes", () => {
   describe("admin", () => {
     beforeEach(() => {
-      restore();
+      restore("default-ee");
       cy.signInAsAdmin();
       setTokenFeatures("all");
       cy.visit("/admin/people");
@@ -86,7 +86,7 @@ describeEE("formatting > sandboxes", () => {
     const QUESTION_NAME = "Joined test";
 
     beforeEach(() => {
-      restore();
+      restore("default-ee");
       cy.signInAsAdmin();
       setTokenFeatures("all");
 
@@ -191,7 +191,7 @@ describeEE("formatting > sandboxes", () => {
 
   describe("Sandboxing reproductions", () => {
     beforeEach(() => {
-      restore();
+      restore("default-ee");
       cy.signInAsAdmin();
       setTokenFeatures("all");
     });
@@ -204,12 +204,17 @@ describeEE("formatting > sandboxes", () => {
         },
       });
 
-      cy.updatePermissionsSchemas({
-        schemas: {
-          PUBLIC: {
-            [ORDERS_ID]: "all",
-            [PRODUCTS_ID]: "all",
-            [REVIEWS_ID]: "all",
+      cy.updatePermissionsGraph({
+        [COLLECTION_GROUP]: {
+          [SAMPLE_DB_ID]: {
+            "view-data": "unrestricted",
+            "create-queries": {
+              PUBLIC: {
+                [ORDERS_ID]: "query-builder",
+                [PRODUCTS_ID]: "query-builder",
+                [REVIEWS_ID]: "query-builder",
+              },
+            },
           },
         },
       });
@@ -312,10 +317,19 @@ describeEE("formatting > sandboxes", () => {
           },
         });
 
-        cy.updatePermissionsSchemas({
-          schemas: {
-            PUBLIC: {
-              [PRODUCTS_ID]: "all",
+        cy.updatePermissionsGraph({
+          [COLLECTION_GROUP]: {
+            [SAMPLE_DB_ID]: {
+              "view-data": {
+                PUBLIC: {
+                  [PRODUCTS_ID]: "unrestricted",
+                },
+              },
+              "create-queries": {
+                PUBLIC: {
+                  [PRODUCTS_ID]: "query-builder",
+                },
+              },
             },
           },
         });
@@ -381,10 +395,15 @@ describeEE("formatting > sandboxes", () => {
         },
       });
 
-      cy.updatePermissionsSchemas({
-        schemas: {
-          PUBLIC: {
-            [PRODUCTS_ID]: "all",
+      cy.updatePermissionsGraph({
+        [COLLECTION_GROUP]: {
+          [SAMPLE_DB_ID]: {
+            "view-data": "unrestricted",
+            "create-queries": {
+              PUBLIC: {
+                [PRODUCTS_ID]: "query-builder",
+              },
+            },
           },
         },
       });
@@ -657,10 +676,14 @@ describeEE("formatting > sandboxes", () => {
             },
           });
 
-          cy.updatePermissionsSchemas({
-            schemas: {
-              PUBLIC: {
-                [PRODUCTS_ID]: "all",
+          cy.updatePermissionsGraph({
+            [COLLECTION_GROUP]: {
+              [SAMPLE_DB_ID]: {
+                "view-data": {
+                  PUBLIC: {
+                    [PRODUCTS_ID]: "unrestricted",
+                  },
+                },
               },
             },
           });
