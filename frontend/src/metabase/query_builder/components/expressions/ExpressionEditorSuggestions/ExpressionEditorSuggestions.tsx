@@ -23,7 +23,10 @@ import type {
 import { GROUPS } from "metabase-lib/v1/expressions/suggest";
 
 import { ExpressionEditorHelpTextContent } from "../ExpressionEditorHelpText";
-import type { SuggestionFooter } from "../ExpressionEditorTextfield";
+import type {
+  SuggestionFooter,
+  SuggestionShortcut,
+} from "../ExpressionEditorTextfield";
 
 import {
   ExpressionListItem,
@@ -52,7 +55,7 @@ export function ExpressionEditorSuggestions({
 }: {
   query: Lib.Query;
   stageIndex: number;
-  suggestions?: (Suggestion | SuggestionFooter)[];
+  suggestions?: (Suggestion | SuggestionFooter | SuggestionShortcut)[];
   onSuggestionMouseDown: (index: number) => void;
   open: boolean;
   highlightedIndex: number;

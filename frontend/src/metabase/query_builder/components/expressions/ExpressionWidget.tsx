@@ -142,7 +142,6 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           query={query}
           stageIndex={stageIndex}
           onSubmit={handleSubmit}
-          onCancel={handleCancel}
         />
       </Container>
     );
