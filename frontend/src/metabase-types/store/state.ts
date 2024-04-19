@@ -36,7 +36,7 @@ export interface State {
   modal: modalName;
 }
 
-export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;
+export type Dispatch<T = any> = (action: T) => void;
 
 export type GetState = () => State;
 
