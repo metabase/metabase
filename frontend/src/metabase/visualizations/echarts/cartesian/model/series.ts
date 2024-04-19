@@ -165,7 +165,7 @@ export const getCardSeriesModels = (
     // Unfortunately, breakout series include formatted breakout values in the key
     // which can be different based on a user's locale.
     const formattedBreakoutValue =
-      breakoutValue != null
+      breakoutValue != null && breakoutValue !== ""
         ? renderingContext.formatValue(breakoutValue, {
             column: breakout.column,
           })

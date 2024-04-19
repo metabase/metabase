@@ -655,15 +655,23 @@ export const getSortedSeriesModels = (
     return seriesModels;
   }
 
+  // TODO: series created from breakout values null and an empty string have the same
+  // name and vizSettingsKey so we should not match the series order item with the same series models.
+  // Overall, this is bad to not having a name and key distinction between breakout series with such values and we should fix this.
+  const usedDataKeys = new Set();
   const orderedSeriesModels = breakoutSeriesOrder
     .filter(orderSetting => orderSetting.enabled)
     .map(orderSetting => {
       const foundSeries = seriesModels.find(
-        seriesModel => seriesModel.vizSettingsKey === orderSetting.key,
+        seriesModel =>
+          seriesModel.vizSettingsKey === orderSetting.key &&
+          !usedDataKeys.has(seriesModel.dataKey),
       );
       if (foundSeries === undefined) {
         throw new TypeError("Series not found");
       }
+
+      usedDataKeys.add(foundSeries.dataKey);
       return foundSeries;
     });
 
