@@ -11,6 +11,12 @@ export type EmbeddingSessionTokenState = {
   error: SerializedError | null;
 };
 
-export interface SdkState extends State {
-  embeddingSessionToken: EmbeddingSessionTokenState;
+export type SdkState = {
+  token: EmbeddingSessionTokenState;
+  isLoggedIn: boolean;
+  isInitialized: boolean;
+};
+
+export interface SdkStoreState extends State {
+  sdk: SdkState;
 }

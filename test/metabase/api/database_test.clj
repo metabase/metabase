@@ -1554,10 +1554,11 @@
 
       (testing "...or just table read perms..."
         (mt/with-no-data-perms-for-all-users!
-          (mt/with-perm-for-group-and-table! (perms-group/all-users) (u/the-id t1) :perms/data-access :unrestricted
-            (mt/with-perm-for-group-and-table! (perms-group/all-users) (u/the-id t2) :perms/data-access :unrestricted
-              (is (= ["schema1"]
-                     (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))))
+          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/create-queries :query-builder)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t2) :perms/create-queries :query-builder)
+          (is (= ["schema1"]
+                 (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))
 
       (testing "should return a 403 for a user that doesn't have read permissions for the database"
         (mt/with-no-data-perms-for-all-users!
@@ -1566,19 +1567,21 @@
 
       (testing "should return a 403 if there are no perms for any schema"
         (mt/with-full-data-perms-for-all-users!
-          (mt/with-perm-for-group-and-table! (perms-group/all-users) (u/the-id t1) :perms/data-access :no-self-service
-            (mt/with-perm-for-group-and-table! (perms-group/all-users) (u/the-id t2) :perms/data-access :no-self-service
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id)))))))))
+          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/create-queries :no)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t2) :perms/create-queries :no)
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id)))))))
 
     (testing "should exclude schemas for which the user has no perms"
       (mt/with-temp [Database {database-id :id} {}
                      Table    {t1-id :id} {:db_id database-id :schema "schema-with-perms"}
                      Table    _ {:db_id database-id :schema "schema-without-perms"}]
         (mt/with-no-data-perms-for-all-users!
-          (mt/with-perm-for-group-and-table! (perms-group/all-users) t1-id :perms/data-access :unrestricted
-            (is (= ["schema-with-perms"]
-                   (mt/user-http-request :rasta :get 200 (format "database/%s/schemas" database-id))))))))))
+          (data-perms/set-database-permission! (perms-group/all-users) database-id :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) t1-id :perms/create-queries :query-builder)
+          (is (= ["schema-with-perms"]
+                 (mt/user-http-request :rasta :get 200 (format "database/%s/schemas" database-id)))))))))
 
 (deftest get-schema-tables-test
   (testing "GET /api/database/:id/schema/:schema"
@@ -1596,7 +1599,8 @@
                      Table    table-with-perms {:db_id database-id :schema "public" :name "table-with-perms"}
                      Table    _                {:db_id database-id :schema "public" :name "table-without-perms"}]
         (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-table-permission! (perms-group/all-users) table-with-perms :perms/data-access :unrestricted)
+          (data-perms/set-database-permission! (perms-group/all-users) database-id :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) table-with-perms :perms/create-queries :query-builder)
           (is (= ["table-with-perms"]
                  (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public"))))))))
 
@@ -1735,10 +1739,11 @@
 
       (testing "if we have Table perms for all tables in the schema"
         (mt/with-no-data-perms-for-all-users!
-          (mt/with-perm-for-group-and-table! (perms-group/all-users) t1 :perms/data-access :unrestricted
-            (mt/with-perm-for-group-and-table! (perms-group/all-users) t3 :perms/data-access :unrestricted
-              (is (= ["t1" "t3"]
-                     (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))))))
+          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/create-queries :query-builder)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t3) :perms/create-queries :query-builder)
+          (is (= ["t1" "t3"]
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))))
 
     (testing "should return a 403 for a user that doesn't have read permissions"
       (testing "for the DB"
@@ -1753,9 +1758,10 @@
                        Table    {t1-id :id} {:db_id database-id :schema "schema-with-perms"}
                        Table    _ {:db_id database-id :schema "schema-without-perms"}]
           (mt/with-no-data-perms-for-all-users!
-            (mt/with-perm-for-group-and-table! (perms-group/all-users) t1-id :perms/data-access :unrestricted
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "schema-without-perms")))))))))))
+            (data-perms/set-database-permission! (perms-group/all-users) database-id :perms/view-data :unrestricted)
+            (data-perms/set-table-permission! (perms-group/all-users) t1-id :perms/create-queries :query-builder)
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "schema-without-perms"))))))))))
 
 (deftest slashes-in-identifiers-test
   (testing "We should handle Databases with slashes in identifiers correctly (#12450)"

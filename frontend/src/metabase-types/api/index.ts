@@ -31,6 +31,7 @@ export * from "./slack";
 export * from "./snippets";
 export * from "./store";
 export * from "./table";
+export * from "./task";
 export * from "./timeline";
 export * from "./user";
 export * from "./util";
