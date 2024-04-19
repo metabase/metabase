@@ -1,8 +1,9 @@
 import PinDropZone from "metabase/collections/components/PinDropZone";
 import CS from "metabase/css/core/index.css";
-
 import type { CollectionItem } from "metabase-types/api";
-import BaseItemsTable, { BaseItemsTableProps } from "./BaseItemsTable";
+
+import type { BaseItemsTableProps } from "./BaseItemsTable";
+import BaseItemsTable from "./BaseItemsTable";
 import type { BaseTableItemProps } from "./BaseTableItem";
 import { ItemsTableRoot } from "./ItemsTable.styled";
 
@@ -25,7 +26,6 @@ const ItemsTable = ({
   items,
   ...props
 }: { items: CollectionItem[] } & BaseItemsTableProps) => {
-
   if (items.length === 0) {
     return (
       <ItemsTableRoot>

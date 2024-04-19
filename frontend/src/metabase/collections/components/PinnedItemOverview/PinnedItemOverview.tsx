@@ -1,25 +1,25 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import PinDropZone from "metabase/collections/components/PinDropZone";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";
 import PinnedQuestionCard from "metabase/collections/components/PinnedQuestionCard";
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+} from "metabase/collections/types";
 import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import CS from "metabase/css/core/index.css";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
-import type {
-  CreateBookmark,
-  DeleteBookmark
-} from "metabase/collections/types";
 import {
   Container,
   Grid,
   SectionHeader,
-  SectionSubHeader
+  SectionSubHeader,
 } from "./PinnedItemOverview.styled";
 
 type Props = {

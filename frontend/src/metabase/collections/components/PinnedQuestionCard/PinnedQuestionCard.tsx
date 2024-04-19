@@ -2,6 +2,10 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+} from "metabase/collections/types";
 import {
   isFullyParameterized,
   isPreviewShown,
@@ -19,7 +23,6 @@ import {
   CardStaticSkeleton,
 } from "./PinnedQuestionCard.styled";
 import PinnedQuestionLoader from "./PinnedQuestionLoader";
-import type {CreateBookmark, DeleteBookmark} from "metabase/collections/types";
 
 export interface PinnedQuestionCardProps {
   item: CollectionItem;

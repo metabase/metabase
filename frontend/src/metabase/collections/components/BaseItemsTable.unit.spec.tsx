@@ -1,17 +1,19 @@
 import userEvent from "@testing-library/user-event";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { Route } from "react-router";
 
-import type { CollectionItem } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import type { ItemWithLastEditInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
 import {
   DEFAULT_DATE_STYLE,
-  DEFAULT_TIME_STYLE
+  DEFAULT_TIME_STYLE,
 } from "metabase/lib/formatting/datetime-utils";
 import type { IconName } from "metabase/ui";
-import { Route } from "react-router";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import BaseItemsTable, { BaseItemsTableProps } from "./BaseItemsTable";
+import type { CollectionItem } from "metabase-types/api";
+import { createMockCollection } from "metabase-types/api/mocks";
+
+import type { BaseItemsTableProps } from "./BaseItemsTable";
+import BaseItemsTable from "./BaseItemsTable";
 
 const timestamp = "2021-06-03T19:46:52.128";
 

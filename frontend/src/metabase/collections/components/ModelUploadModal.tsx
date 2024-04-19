@@ -15,8 +15,9 @@ import {
 import type { CollectionId, TableId, CardId } from "metabase-types/api";
 import { UploadMode } from "metabase-types/store/upload";
 
+import type { OnFileUpload } from "../types";
+
 import { findLastEditedCollectionItem } from "./utils";
-import type {OnFileUpload} from "../types";
 
 export type CollectionOrTableIdProps =
   | {

@@ -3,6 +3,10 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+} from "metabase/collections/types";
 import Tooltip from "metabase/core/components/Tooltip";
 import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 import type { IconName } from "metabase/ui";
@@ -19,7 +23,6 @@ import {
   ItemLink,
   Title,
 } from "./PinnedItemCard.styled";
-import type {CreateBookmark, DeleteBookmark} from "metabase/collections/types";
 
 type Props = {
   databases?: Database[];
