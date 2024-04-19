@@ -403,7 +403,7 @@ describe("scenarios > visualizations > bar chart", () => {
     cy.get("[data-testid^=draggable-item]").should("have.length", 0);
   });
 
-  it.skip("should support showing data points with > 10 series (#33725)", () => {
+  it("should support showing data points with > 10 series (#33725)", () => {
     cy.signInAsAdmin();
     const stateFilter = [
       "=",
