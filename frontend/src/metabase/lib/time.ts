@@ -3,7 +3,6 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
-import type { RowValue } from "metabase-types/api";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
 addAbbreviatedLocale();
@@ -174,8 +173,11 @@ type NUMERIC_UNIT_FORMATS_KEY_TYPE =
 
 // only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
 // moment normally interprets the DD in YYYY-MM-DD as an offset :-/
+/**
+ * @deprecated use dayjs version from ./time-dayjs.ts
+ */
 export function parseTimestamp(
-  value: RowValue,
+  value: any,
   unit: DatetimeUnit | null = null,
   isLocal = false,
 ) {

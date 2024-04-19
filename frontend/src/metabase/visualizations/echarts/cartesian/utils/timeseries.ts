@@ -2,7 +2,7 @@ import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import _ from "underscore";
 
-import { parseTimestamp } from "metabase/lib/time";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import type {
   TimeSeriesInterval,
   ShowWarning,
@@ -23,7 +23,7 @@ export const tryGetDate = (rowValue: RowValue): Dayjs | null => {
   if (typeof rowValue === "boolean") {
     return null;
   }
-  const date = dayjs(rowValue);
+  const date = parseTimestamp(rowValue);
   return date.isValid() ? date : null;
 };
 

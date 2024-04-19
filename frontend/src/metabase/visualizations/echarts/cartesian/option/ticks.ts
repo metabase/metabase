@@ -36,7 +36,7 @@ export const getTicksOptions = (
   let maxInterval: number | undefined;
 
   const xDomain = range.map(day => {
-    const adjustedDate = dayjs(toEChartsAxisValue(day.valueOf()));
+    const adjustedDate = dayjs(toEChartsAxisValue(day.toISOString()));
     if (!adjustedDate) {
       throw new Error(`Invalid range dates: ${JSON.stringify(range)}`);
     }
