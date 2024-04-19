@@ -1,17 +1,12 @@
 import { useEffect, useState } from "react";
 import _ from "underscore";
 
-import { store, useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import { store, useSdkDispatch } from "embedding-sdk/store";
 import {
   getOrRefreshSession,
-  setIsInitialized,
-  setIsLoggedIn,
+  setLoginStatus,
 } from "embedding-sdk/store/reducer";
-import {
-  getIsInitialized,
-  getIsLoggedIn,
-  getSessionTokenState,
-} from "embedding-sdk/store/selectors";
+import { getSessionTokenState } from "embedding-sdk/store/selectors";
 import type { EmbeddingSessionTokenState } from "embedding-sdk/store/types";
 import type { SDKConfigType } from "embedding-sdk/types";
 import { reloadSettings } from "metabase/admin/settings/settings";
@@ -25,16 +20,8 @@ interface InitDataLoaderParameters {
   config: SDKConfigType;
 }
 
-export const useInitData = ({
-  config,
-}: InitDataLoaderParameters): {
-  isLoggedIn: boolean;
-  isInitialized: boolean;
-} => {
+export const useInitData = ({ config }: InitDataLoaderParameters) => {
   const dispatch = useSdkDispatch();
-
-  const isInitialized = useSdkSelector(getIsInitialized);
-  const isLoggedIn = useSdkSelector(getIsLoggedIn);
 
   const [sessionTokenState, setSessionTokenState] =
     useState<EmbeddingSessionTokenState | null>(null);
@@ -74,21 +61,35 @@ export const useInitData = ({
     } else if (config.authType === "apiKey" && config.apiKey) {
       api.apiKey = config.apiKey;
     } else {
-      dispatch(setIsLoggedIn(false));
+      dispatch(
+        setLoginStatus({
+          status: "error",
+          error: new Error("Invalid auth type"),
+        }),
+      );
       return;
     }
 
-    Promise.all([
-      dispatch(refreshCurrentUser()),
-      dispatch(reloadSettings()),
-    ]).then(() => {
-      dispatch(setIsInitialized(true));
-      dispatch(setIsLoggedIn(true));
-    });
+    Promise.all([dispatch(refreshCurrentUser()), dispatch(reloadSettings())])
+      .then(([userData]) => {
+        if (userData.meta.requestStatus === "rejected") {
+          dispatch(
+            setLoginStatus({
+              status: "error",
+              error: new Error("Failed to refresh current user"),
+            }),
+          );
+          return;
+        }
+        dispatch(setLoginStatus({ status: "success" }));
+      })
+      .catch(() => {
+        dispatch(
+          setLoginStatus({
+            status: "error",
+            error: new Error("Failed to refresh current user"),
+          }),
+        );
+      });
   }, [config, dispatch, sessionTokenState]);
-
-  return {
-    isLoggedIn,
-    isInitialized,
-  };
 };

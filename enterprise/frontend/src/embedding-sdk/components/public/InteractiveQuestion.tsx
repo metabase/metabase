@@ -1,8 +1,7 @@
 import cx from "classnames";
 import { useEffect } from "react";
 
-import { useSdkSelector } from "embedding-sdk/store";
-import { getIsInitialized, getIsLoggedIn } from "embedding-sdk/store/selectors";
+import { PublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -27,12 +26,9 @@ interface InteractiveQuestionProps {
   questionId: CardId;
 }
 
-export const InteractiveQuestion = ({
+export const _InteractiveQuestion = ({
   questionId,
 }: InteractiveQuestionProps): JSX.Element | null => {
-  const isInitialized = useSdkSelector(getIsInitialized);
-  const isLoggedIn = useSdkSelector(getIsLoggedIn);
-
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
   const mode = question && getEmbeddingMode(question);
@@ -56,7 +52,7 @@ export const InteractiveQuestion = ({
     dispatch(initializeQB(mockLocation, params));
   }, [dispatch, questionId]);
 
-  if (!isInitialized || !isLoggedIn || !question) {
+  if (!question) {
     return null;
   }
 
@@ -102,3 +98,9 @@ export const InteractiveQuestion = ({
     </LoadingAndErrorWrapper>
   );
 };
+
+export const InteractiveQuestion = (props: InteractiveQuestionProps) => (
+  <PublicComponentWrapper>
+    <_InteractiveQuestion {...props} />
+  </PublicComponentWrapper>
+);

@@ -2,16 +2,18 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
 import { createAction } from "redux-actions";
 
-import type { SdkState, SdkStoreState } from "embedding-sdk/store/types";
+import type {
+  LoginStatus,
+  SdkState,
+  SdkStoreState,
+} from "embedding-sdk/store/types";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 import { getSessionTokenState } from "./selectors";
 
-const SET_IS_LOGGED_IN = "sdk/SET_IS_LOGGED_IN";
-const SET_IS_INITIALIZED = "sdk/SET_IS_INITIALIZED";
+const SET_LOGIN_STATUS = "sdk/SET_LOGIN_STATUS";
 
-export const setIsLoggedIn = createAction<boolean>(SET_IS_LOGGED_IN);
-export const setIsInitialized = createAction<boolean>(SET_IS_INITIALIZED);
+export const setLoginStatus = createAction<LoginStatus>(SET_LOGIN_STATUS);
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 const REFRESH_TOKEN = "sdk/token/REFRESH_TOKEN";
@@ -48,8 +50,7 @@ const initialState: SdkState = {
     loading: false,
     error: null,
   },
-  isLoggedIn: false,
-  isInitialized: false,
+  loginStatus: { status: "uninitialized" },
 };
 
 export const sdk = createReducer(initialState, {
@@ -85,16 +86,10 @@ export const sdk = createReducer(initialState, {
       },
     };
   },
-  [SET_IS_LOGGED_IN]: (state, action: PayloadAction<boolean>) => {
+  [SET_LOGIN_STATUS]: (state, action: PayloadAction<LoginStatus>) => {
     return {
       ...state,
-      isLoggedIn: action.payload,
-    };
-  },
-  [SET_IS_INITIALIZED]: (state, action: PayloadAction<boolean>) => {
-    return {
-      ...state,
-      isInitialized: action.payload,
+      loginStatus: action.payload,
     };
   },
 });
