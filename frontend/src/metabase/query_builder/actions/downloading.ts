@@ -1,7 +1,8 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import api from "metabase/lib/api";
+import api, { GET, POST } from "metabase/lib/api";
+import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
 import { getCardKey } from "metabase/visualizations/lib/utils";
@@ -42,18 +43,18 @@ export const downloadQueryResults =
     }
   };
 
+const downloadChart = async ({ question }: DownloadQueryResultsOpts) => {
+  const fileName = getChartFileName(question);
+  const chartSelector = `[data-card-key='${getCardKey(question.id())}']`;
+  await saveChartImage(chartSelector, fileName);
+};
+
 const downloadDataset = async (opts: DownloadQueryResultsOpts) => {
   const params = getDatasetParams(opts);
   const response = await getDatasetResponse(params);
   const fileName = getDatasetFileName(response.headers, opts.type);
   const fileContent = await response.blob();
   openSaveDialog(fileName, fileContent);
-};
-
-const downloadChart = async ({ question }: DownloadQueryResultsOpts) => {
-  const fileName = getChartFileName(question);
-  const chartSelector = `[data-card-key='${getCardKey(question.id())}']`;
-  await saveChartImage(chartSelector, fileName);
 };
 
 const getDatasetParams = ({
@@ -148,8 +149,12 @@ export function getDatasetDownloadUrl(url: string, params?: URLSearchParams) {
   if (params) {
     url += `?${params.toString()}`;
   }
-  const requestUrl = new URL(url, location.origin);
-  return requestUrl.href;
+
+  return url;
+}
+
+interface TransformResponseProps {
+  response?: Response;
 }
 
 const getDatasetResponse = ({
@@ -162,15 +167,26 @@ const getDatasetResponse = ({
 
   if (method === "POST") {
     // BE expects the body to be form-encoded :(
-    const formattedBody = new URLSearchParams();
+    const formattedBody = new FormData();
     if (body != null) {
       for (const key in body) {
         formattedBody.append(key, JSON.stringify(body[key]));
       }
     }
-    return fetch(requestUrl, { method, body: formattedBody });
+    return POST(requestUrl, {
+      formData: true,
+      fetch: true,
+      transformResponse: ({ response }: TransformResponseProps) =>
+        checkNotNull(response),
+    })({
+      formData: formattedBody,
+    });
   } else {
-    return fetch(requestUrl);
+    return GET(requestUrl, {
+      fetch: true,
+      transformResponse: ({ response }: TransformResponseProps) =>
+        checkNotNull(response),
+    })();
   }
 };
 
