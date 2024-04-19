@@ -26,7 +26,8 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
@@ -53,6 +54,15 @@
 (doto :model/Database
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :before :model/Database
+  [_model _explicit-attributes f]
+  (fn [temp-object]
+    ;; Grant All Users full perms on the temp-object so that tests don't have to manually set permissions
+    (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/view-data :unrestricted)
+    (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/create-queries :query-builder-and-native)
+    (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/download-results :one-million-rows)
+    (f temp-object)))
 
 (defn- should-read-audit-db?
   "Audit Database should only be fetched if audit app is enabled."
@@ -144,18 +154,11 @@
         (doseq [group non-admin-groups]
           (data-perms/set-database-permission! group database :perms/view-data :unrestricted)
           (data-perms/set-database-permission! group database :perms/create-queries :no)
-          (data-perms/set-database-permission! group database :perms/download-results :one-million-rows))
-        (do
-          (data-perms/set-database-permission! all-users-group database :perms/view-data :unrestricted)
-          (data-perms/set-database-permission! all-users-group database :perms/create-queries :query-builder-and-native)
-          (data-perms/set-database-permission! all-users-group database :perms/download-results :one-million-rows)
-          (doseq [group non-magic-groups]
-            (data-perms/set-database-permission! group database :perms/view-data :unrestricted)
-            (data-perms/set-database-permission! group database :perms/create-queries :no)
-            (data-perms/set-database-permission! group database :perms/download-results :no))))
-      (doseq [group non-admin-groups]
-        (data-perms/set-database-permission! group database :perms/manage-table-metadata :no)
-        (data-perms/set-database-permission! group database :perms/manage-database :no)))))
+          (data-perms/set-database-permission! group database :perms/download-results :one-million-rows)
+          (data-perms/set-database-permission! group database :perms/manage-table-metadata :no)
+          (data-perms/set-database-permission! group database :perms/manage-database :no))
+        (doseq [group non-admin-groups]
+          (data-perms/set-new-database-permissions! group database))))))
 
 (t2/define-after-insert :model/Database
   [database]
