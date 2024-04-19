@@ -3,13 +3,15 @@ import _ from "underscore";
 
 import { store, useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
-  getIsInitialized,
-  getIsLoggedIn,
   getOrRefreshSession,
-  getSessionTokenState,
   setIsInitialized,
   setIsLoggedIn,
 } from "embedding-sdk/store/reducer";
+import {
+  getIsInitialized,
+  getIsLoggedIn,
+  getSessionTokenState,
+} from "embedding-sdk/store/selectors";
 import type { EmbeddingSessionTokenState } from "embedding-sdk/store/types";
 import type { SDKConfigType } from "embedding-sdk/types";
 import { reloadSettings } from "metabase/admin/settings/settings";

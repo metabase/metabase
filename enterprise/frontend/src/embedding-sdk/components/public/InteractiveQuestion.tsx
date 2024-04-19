@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useEffect } from "react";
 
 import { useSdkSelector } from "embedding-sdk/store";
-import { getIsInitialized, getIsLoggedIn } from "embedding-sdk/store/reducer";
+import { getIsInitialized, getIsLoggedIn } from "embedding-sdk/store/selectors";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";

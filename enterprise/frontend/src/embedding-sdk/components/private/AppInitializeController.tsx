@@ -7,7 +7,6 @@ import {
 } from "embedding-sdk/config";
 import { useInitData } from "embedding-sdk/hooks";
 import { useSdkSelector } from "embedding-sdk/store";
-import { getIsInitialized } from "embedding-sdk/store/reducer";
 import type { SDKConfigType } from "embedding-sdk/types";
 
 import { SdkContentWrapper } from "./SdkContentWrapper";

@@ -5,16 +5,13 @@ import { createAction } from "redux-actions";
 import type { SdkState, SdkStoreState } from "embedding-sdk/store/types";
 import { createAsyncThunk } from "metabase/lib/redux";
 
+import { getSessionTokenState } from "./selectors";
+
 const SET_IS_LOGGED_IN = "sdk/SET_IS_LOGGED_IN";
 const SET_IS_INITIALIZED = "sdk/SET_IS_INITIALIZED";
 
 export const setIsLoggedIn = createAction<boolean>(SET_IS_LOGGED_IN);
 export const setIsInitialized = createAction<boolean>(SET_IS_INITIALIZED);
-
-export const getIsLoggedIn = (state: SdkStoreState) => state.sdk.isLoggedIn;
-export const getIsInitialized = (state: SdkStoreState) =>
-  state.sdk.isInitialized;
-export const getSessionTokenState = (state: SdkStoreState) => state.sdk.token;
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 const REFRESH_TOKEN = "sdk/token/REFRESH_TOKEN";
