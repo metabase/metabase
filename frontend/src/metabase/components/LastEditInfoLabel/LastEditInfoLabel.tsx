@@ -23,7 +23,7 @@ export type Edit = {
   id?: number;
   timestamp: string;
   full_name?: string | null;
-} & Partial<NamedUser>
+} & Partial<NamedUser>;
 
 export const getHowLongAgo = (timestamp: string) => {
   const date = dayjs(timestamp);

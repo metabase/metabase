@@ -4,16 +4,14 @@ import { t } from "ttag";
 import { useCollectionListQuery } from "metabase/common/hooks";
 import ModalContent from "metabase/components/ModalContent";
 import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
+import type { FormContainerProps } from "metabase/containers/FormikForm";
 import EntityForm from "metabase/entities/containers/EntityForm";
 import { Flex, Loader } from "metabase/ui";
-import type { CollectionItem } from "metabase-types/api";
-import type { FormikFormProps } from "formik";
 import type { BaseFieldValues } from "metabase-types/forms";
-import type { FormContainerProps } from "metabase/containers/FormikForm";
 
 interface EntityCopyModalProps {
   entityType: string;
-  entityObject: any; // TODO: Replace. Perhaps it should be a CollectionItem, but QueryModals assigns a collection_id to this object, and CollectionItems don't have those
+  entityObject: any;
   copy: (data: any) => void;
   title?: string;
   onClose: () => void;

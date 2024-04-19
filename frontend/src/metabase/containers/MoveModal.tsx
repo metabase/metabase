@@ -1,13 +1,13 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { CollectionId, CollectionItem } from "metabase-types/api";
 import type { OnMoveWithOneItem } from "metabase/collections/types";
 import { isItemCollection } from "metabase/collections/utils";
 import {
   CollectionPickerModal,
   type CollectionPickerItem,
 } from "metabase/common/components/CollectionPicker";
+import type { CollectionId, CollectionItem } from "metabase-types/api";
 
 interface MoveModalProps {
   title: string;
@@ -85,8 +85,7 @@ export const BulkMoveModal = ({
 
   const title =
     selectedItems.length > 1
-      ? // TODO: Use ngettext pluralization
-        t`Move ${selectedItems.length} items?`
+      ? t`Move ${selectedItems.length} items?`
       : t`Move "${selectedItems[0].name}"?`;
 
   return (
