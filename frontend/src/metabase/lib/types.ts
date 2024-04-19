@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 export const isNotNull = <T>(value: T | null | undefined): value is T => {
   return value != null;
 };
@@ -19,3 +21,9 @@ export const checkNotNull = <T>(value: T | null | undefined): T => {
     throw new TypeError();
   }
 };
+
+export const isNullOrUndefined = (value: any): value is null | undefined =>
+  value === undefined || value === null;
+
+export const removeNullAndUndefinedValues = (obj: any) =>
+  _.pick(obj, val => !isNullOrUndefined(val));

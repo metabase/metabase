@@ -81,6 +81,11 @@ export const StrategyFormLauncher = ({
         position="bottom"
         disabled={!inheritsRootStrategy}
         label={t`Using default policy`}
+        events={{
+          hover: true,
+          focus: true,
+          touch: true,
+        }}
       >
         <PolicyToken
           onClick={() => {
