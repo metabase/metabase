@@ -369,6 +369,7 @@
 (defn- card-query [dataset? collection {:keys [pinned-state]}]
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                     :archived
                      :c.dataset_query
                      [(h2x/literal (if dataset? "dataset" "card")) :model]
                      [:u.id :last_edit_user]
@@ -475,6 +476,7 @@
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
                    [(h2x/literal "dashboard") :model]
                    [:u.id :last_edit_user]
+                   :archived
                    [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name]
                    [:u.last_name :last_edit_last_name]
@@ -518,6 +520,7 @@
              ;; We get from the effective-children-query a normal set of columns selected:
              ;; want to make it fit the others to make UNION ALL work
              :select [:id
+                      :archived
                       :name
                       :description
                       :entity_id
@@ -663,7 +666,7 @@
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
-   :collection_type
+   :collection_type [:archived :boolean]
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 
