@@ -56,8 +56,11 @@ function _CartesianChart(props: VisualizationProps) {
   const title = settings["card.title"] || card.name;
   const description = settings["card.description"];
 
-  const legendItems = useMemo(() => getLegendItems(chartModel), [chartModel]);
-  const hasLegend = legendItems.length > 1;
+  const legendItems = useMemo(
+    () => getLegendItems(chartModel.seriesModels),
+    [chartModel],
+  );
+  const hasLegend = legendItems.length > 0;
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
