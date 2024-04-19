@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { memo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
