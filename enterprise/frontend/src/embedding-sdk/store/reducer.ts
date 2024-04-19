@@ -1,24 +1,24 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { createReducer } from "@reduxjs/toolkit";
-import { createAction } from "redux-actions";
+import { createSlice } from "@reduxjs/toolkit";
 
-import type { SdkState, SdkStoreState } from "embedding-sdk/store/types";
+import type {
+  EmbeddingSessionTokenState,
+  SdkState,
+  SdkStoreState,
+} from "embedding-sdk/store/types";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 import { getSessionTokenState } from "./selectors";
-
-const SET_IS_LOGGED_IN = "sdk/SET_IS_LOGGED_IN";
-const SET_IS_INITIALIZED = "sdk/SET_IS_INITIALIZED";
-
-export const setIsLoggedIn = createAction<boolean>(SET_IS_LOGGED_IN);
-export const setIsInitialized = createAction<boolean>(SET_IS_INITIALIZED);
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 const REFRESH_TOKEN = "sdk/token/REFRESH_TOKEN";
 
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
-  async (url: string, { dispatch, getState }) => {
+  async (
+    url: string,
+    { dispatch, getState },
+  ): Promise<EmbeddingSessionTokenState["token"] | null> => {
     const state = getSessionTokenState(getState() as SdkStoreState);
     const token = state?.token;
 
@@ -27,7 +27,7 @@ export const getOrRefreshSession = createAsyncThunk(
     if (state.loading || isTokenValid) {
       return token;
     }
-    return dispatch(refreshTokenAsync(url));
+    return await dispatch(refreshTokenAsync(url)).unwrap();
   },
 );
 
@@ -52,49 +52,35 @@ const initialState: SdkState = {
   isInitialized: false,
 };
 
-export const sdk = createReducer(initialState, {
-  [refreshTokenAsync.pending.type]: state => {
-    return {
-      ...state,
-      token: {
-        ...state.token,
-        loading: true,
-      },
-    };
+export const sdkSlice = createSlice({
+  name: "sdk",
+  initialState,
+  reducers: {
+    setIsLoggedIn(state, action: PayloadAction<boolean>) {
+      state.isLoggedIn = action.payload;
+    },
+    setIsInitialized(state, action: PayloadAction<boolean>) {
+      state.isInitialized = action.payload;
+    },
   },
-  [refreshTokenAsync.fulfilled.type]: (state, action) => {
-    return {
-      ...state,
-      token: {
-        ...state.token,
-        token: action.payload,
-        error: null,
-        loading: false,
-      },
-    };
-  },
-  [refreshTokenAsync.rejected.type]: (state, action) => {
-    return {
-      ...state,
-      isLoggedIn: false,
-      token: {
-        ...state.token,
-        token: null,
-        error: action.error,
-        loading: false,
-      },
-    };
-  },
-  [SET_IS_LOGGED_IN]: (state, action: PayloadAction<boolean>) => {
-    return {
-      ...state,
-      isLoggedIn: action.payload,
-    };
-  },
-  [SET_IS_INITIALIZED]: (state, action: PayloadAction<boolean>) => {
-    return {
-      ...state,
-      isInitialized: action.payload,
-    };
+  extraReducers: builder => {
+    builder
+      .addCase(refreshTokenAsync.pending, state => {
+        state.token.loading = true;
+      })
+      .addCase(refreshTokenAsync.fulfilled, (state, action) => {
+        state.token.token = action.payload;
+        state.token.error = null;
+        state.token.loading = false;
+      })
+      .addCase(refreshTokenAsync.rejected, (state, action) => {
+        state.isLoggedIn = false;
+        state.token.token = null;
+        state.token.error = action.error;
+        state.token.loading = false;
+      });
   },
 });
+
+export const { setIsLoggedIn, setIsInitialized } = sdkSlice.actions;
+export const sdk = sdkSlice.reducer;
