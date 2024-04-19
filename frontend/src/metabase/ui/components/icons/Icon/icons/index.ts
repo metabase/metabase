@@ -1,5 +1,4 @@
 /* eslint-disable import/no-duplicates */
-import type { ComponentType, FC } from "react";
 import ten_thousand_component from "./10k.svg?component";
 import ten_thousand_source from "./10k.svg?source";
 import one_million_component from "./1m.svg?component";
@@ -368,7 +367,6 @@ import zoom_in_component from "./zoom_in.svg?component";
 import zoom_in_source from "./zoom_in.svg?source";
 import zoom_out_component from "./zoom_out.svg?component";
 import zoom_out_source from "./zoom_out.svg?source";
-import type { IconProps } from "../Icon";
 
 export const Icons = {
   add: {

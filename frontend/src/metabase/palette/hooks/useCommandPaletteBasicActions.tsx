@@ -145,8 +145,8 @@ export const useCommandPaletteBasicActions = ({
 
     const browseActions: Action[] = [
       {
-        id: "browse_data",
-        name: t`Browse data`,
+        id: "navigate_data",
+        name: t`Browse Data`,
         section: "basic",
         icon: "database",
         perform: () => {
