@@ -41,7 +41,7 @@
         (is (= "Thursday, July 16, 2020"
                (datetime/format-temporal-str "UTC" now {:unit :day}))))
       (testing :week
-        (is (= "Week 29 - 2020"
+        (is (= "July 16, 2020 - July 22, 2020"
                (datetime/format-temporal-str "UTC" now {:unit :week}))))
       (testing :month
         (is (= "July, 2020"
