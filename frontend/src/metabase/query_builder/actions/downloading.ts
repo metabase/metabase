@@ -167,7 +167,7 @@ const getDatasetResponse = ({
 
   if (method === "POST") {
     // BE expects the body to be form-encoded :(
-    const formattedBody = new FormData();
+    const formattedBody = new URLSearchParams();
     if (body != null) {
       for (const key in body) {
         formattedBody.append(key, JSON.stringify(body[key]));
