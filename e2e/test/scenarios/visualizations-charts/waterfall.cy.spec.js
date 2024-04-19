@@ -233,9 +233,7 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
-    // paint-order='stroke' targets the waterfall labels only
-    echartsContainer()
-      .get("text[paint-order='stroke']")
+    getWaterfallDataLabels()
       .as("labels")
       .eq(-3)
       .invoke("text")
@@ -261,8 +259,7 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
-    echartsContainer()
-      .get("text[paint-order='stroke']")
+    getWaterfallDataLabels()
       .as("labels")
       .eq(-3)
       .invoke("text")
@@ -327,3 +324,8 @@ const switchToWaterfallDisplay = () => {
     cy.icon("gear").click();
   });
 };
+
+function getWaterfallDataLabels() {
+  // paint-order='stroke' targets the waterfall labels only
+  return echartsContainer().get("text[paint-order='stroke']");
+}
