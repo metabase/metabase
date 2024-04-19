@@ -23,9 +23,6 @@ import type {
 
 import { CollectionContentView } from "./CollectionContentView";
 
-// FIXME: collectionId can be a number up here but it is passed
-// down to PinnedItemCard where it is passed as the first argument to createBookmark,
-// which expects a string, not a number
 export function CollectionContent({
   collectionId,
 }: {
