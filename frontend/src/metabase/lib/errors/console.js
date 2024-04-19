@@ -11,5 +11,7 @@ export function captureConsoleErrors() {
     }
     console.errorBuffer.unshift(Array.from(args));
     originalError(...args);
+    // eslint-disable-next-line no-console
+    console.trace();
   };
 }
