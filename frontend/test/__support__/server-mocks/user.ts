@@ -8,7 +8,7 @@ export function setupUserEndpoints(user: UserListResult) {
 
 export function setupUsersEndpoints(users: UserListResult[]) {
   users.forEach(user => setupUserEndpoints(user));
-  return fetchMock.get("path:/api/user", users);
+  return fetchMock.get("path:/api/user", { data: users });
 }
 
 export function setupCurrentUserEndpoint(user: User, options?: MockOptionsMethodGet) {

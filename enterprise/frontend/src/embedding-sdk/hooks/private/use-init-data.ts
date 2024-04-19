@@ -1,11 +1,20 @@
 import { useEffect, useState } from "react";
 import _ from "underscore";
 
-import { getOrRefreshSession } from "embedding-sdk/store/reducer";
-import type { LoginStatus, SDKConfigType } from "embedding-sdk/types";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import {
+  getOrRefreshSession,
+  setIsInitialized,
+  setIsLoggedIn,
+} from "embedding-sdk/store/reducer";
+import {
+  getIsInitialized,
+  getIsLoggedIn,
+
+} from "embedding-sdk/store/selectors";
+import type { SDKConfigType, LoginStatus } from "embedding-sdk/types";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
-import { useDispatch } from "metabase/lib/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
 
@@ -30,10 +39,12 @@ export const useInitData = ({
 }: InitDataLoaderParameters): {
   isLoggedIn: boolean;
   loginStatus: LoginStatus;
+  isInitialized: boolean;
 } => {
-  const dispatch = useDispatch();
+  const dispatch = useSdkDispatch();
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const isInitialized = useSdkSelector(getIsInitialized);
+  const isLoggedIn = useSdkSelector(getIsLoggedIn);
 
   const [loginStatus, setLoginStatus] = useState<LoginStatus>(null);
 
@@ -52,11 +63,11 @@ export const useInitData = ({
           getOrRefreshSession(config.jwtProviderUri),
         ).unwrap();
         api.sessionToken = response?.id;
-      }
+      };
     } else if (config.authType === "apiKey" && config.apiKey) {
       api.apiKey = config.apiKey;
     } else {
-      setIsLoggedIn(false);
+      dispatch(setIsLoggedIn(false));
       setLoginStatus({
         error: new Error("Invalid auth type"),
         status: "error",
@@ -79,7 +90,7 @@ export const useInitData = ({
       Promise.all([dispatch(refreshCurrentUser()), dispatch(reloadSettings())])
         .then(([currentUser]) => {
           if (currentUser.meta.requestStatus === "rejected") {
-            setIsLoggedIn(false);
+            dispatch(setIsLoggedIn(false));
             setLoginStatus({
               error: new Error(
                 `Couldn't fetch current user: ${getErrorMessage(
@@ -90,7 +101,8 @@ export const useInitData = ({
             });
             return;
           }
-          setIsLoggedIn(true);
+          dispatch(setIsInitialized(true));
+          dispatch(setIsLoggedIn(true));
           setLoginStatus({ status: "success" });
         })
         .catch(() => {
@@ -100,7 +112,8 @@ export const useInitData = ({
               `Error when authenticating: ${getErrorMessage(config.authType)}`,
             ),
           });
-          setIsLoggedIn(false);
+          dispatch(setIsInitialized(false));
+          dispatch(setIsLoggedIn(false));
         });
     }
   }, [
@@ -118,6 +131,7 @@ export const useInitData = ({
 
   return {
     isLoggedIn,
+    isInitialized,
     loginStatus,
   };
 };

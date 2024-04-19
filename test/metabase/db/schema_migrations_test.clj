@@ -9,6 +9,7 @@
 
   See `metabase.db.schema-migrations-test.impl` for the implementation of this functionality."
   (:require
+   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -28,7 +29,8 @@
             Permissions
             PermissionsGroup
             Table
-            User]]
+            User
+            Dashboard]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -471,24 +473,26 @@
 (deftest fks-are-indexed-test
   (mt/test-driver :postgres
     (testing "FKs are not created automatically in Postgres, check that migrations add necessary indexes"
-     (is (= [] (t2/query
-                "SELECT
-                     conrelid::regclass AS table_name,
-                     a.attname AS column_name
-                 FROM
-                     pg_constraint AS c
-                     JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
-                 WHERE
-                     c.contype = 'f'
-                     AND NOT EXISTS (
-                         SELECT 1
-                         FROM pg_index AS i
-                         WHERE i.indrelid = c.conrelid
-                           AND a.attnum = ANY(i.indkey)
-                     )
-                 ORDER BY
-                     table_name,
-                     column_name;"))))))
+     (is (= [{:table_name  "field_usage"
+              :column_name "query_execution_id"}]
+            (t2/query
+              "SELECT
+                   conrelid::regclass::text AS table_name,
+                   a.attname AS column_name
+               FROM
+                   pg_constraint AS c
+                   JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
+               WHERE
+                   c.contype = 'f'
+                   AND NOT EXISTS (
+                       SELECT 1
+                       FROM pg_index AS i
+                       WHERE i.indrelid = c.conrelid
+                         AND a.attnum = ANY(i.indkey)
+                   )
+               ORDER BY
+                   table_name,
+                   column_name;"))))))
 
 (deftest remove-collection-color-test
   (testing "Migration v48.00-019"
@@ -1430,3 +1434,58 @@
           :date_joined      :%now})
         (migrate!)
         (is (false? (sample-content-created?)))))))
+
+(deftest cache-config-migration-test
+  (testing "Caching config is correctly copied over"
+    (impl/test-migrations "v50.2024-04-12T12:33:09" [migrate!]
+      (mdb.query/update-or-insert! :model/Setting {:key "enable-query-caching"} (constantly {:value "true"}))
+      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
+      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"}))
+
+      (let [db   (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
+                                                                 (update :details json/generate-string)
+                                                                 (update :engine str)
+                                                                 (assoc :cache_ttl 10)))
+            dash (t2/insert-returning-pk! :report_dashboard (-> (mt/with-temp-defaults Dashboard)
+                                                                (assoc :cache_ttl 20
+                                                                       :parameters "")))
+            card (t2/insert-returning-pk! :report_card (-> (mt/with-temp-defaults Card)
+                                                           (update :display str)
+                                                           (update :visualization_settings json/generate-string)
+                                                           (update :dataset_query json/generate-string)
+                                                           (assoc :cache_ttl 30)))]
+
+        (migrate!)
+
+        (is (=? [{:model    "root"
+                  :model_id 0
+                  :strategy :ttl
+                  :config   {:multiplier      100
+                             :min_duration_ms 123}}
+                 {:model    "database"
+                  :model_id db
+                  :strategy :duration
+                  :config   {:duration 10 :unit "hours"}}
+                 {:model    "dashboard"
+                  :model_id dash
+                  :strategy :duration
+                  :config   {:duration 20 :unit "hours"}}
+                 {:model    "question"
+                  :model_id card
+                  :strategy :duration
+                  :config   {:duration 30 :unit "hours"}}]
+                (t2/select :model/CacheConfig))))))
+  (testing "And not copied if caching is disabled"
+    (impl/test-migrations "v50.2024-04-12T12:33:09" [migrate!]
+      (mdb.query/update-or-insert! :model/Setting {:key "enable-query-caching"} (constantly {:value "false"}))
+      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
+      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"}))
+
+      ;; this one to have custom configuration to check they are not copied over
+      (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
+                                                      (update :details json/generate-string)
+                                                      (update :engine str)
+                                                      (assoc :cache_ttl 10)))
+      (migrate!)
+      (is (= []
+             (t2/select :model/CacheConfig))))))

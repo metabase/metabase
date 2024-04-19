@@ -12,9 +12,10 @@ export const collectionApi = Api.injectEndpoints({
       ListCollectionItemsResponse,
       ListCollectionItemsRequest
     >({
-      query: ({ id, ...body }) => ({
+      query: ({ id, limit, offset, ...body }) => ({
         method: "GET",
         url: `/api/collection/${id}/items`,
+        params: { limit, offset },
         body,
       }),
       providesTags: (response, error, { models }) =>

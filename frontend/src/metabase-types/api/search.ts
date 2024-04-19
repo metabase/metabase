@@ -4,6 +4,7 @@ import type { CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
+import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
 
@@ -57,19 +58,16 @@ interface BaseSearchResult<
   name: string;
 }
 
-export interface SearchResponse<
+export type SearchResponse<
   Id extends SearchResultId = SearchResultId,
   Model extends SearchModel = SearchModel,
   Result extends BaseSearchResult<Id, Model> = SearchResult<Id, Model>,
-> {
+> = {
   data: Result[];
   models: Model[] | null;
   available_models: SearchModel[];
-  limit: number;
-  offset: number;
   table_db_id: DatabaseId | null;
-  total: number;
-}
+} & PaginationResponse;
 
 export type CollectionEssentials = Pick<
   Collection,
@@ -121,7 +119,7 @@ export interface SearchResult<
   can_write: boolean | null;
 }
 
-export interface SearchRequest {
+export type SearchRequest = {
   q?: string;
   archived?: boolean;
   table_db_id?: DatabaseId;
@@ -134,10 +132,8 @@ export interface SearchRequest {
   last_edited_by?: UserId[];
   search_native_query?: boolean | null;
   verified?: boolean | null;
-  limit?: number;
-  offset?: number;
 
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;
   namespace?: "snippets";
-}
+} & PaginationRequest;

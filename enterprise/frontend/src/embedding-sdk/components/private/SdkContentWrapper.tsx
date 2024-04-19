@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 
+import { baseStyle, getRootStyle } from "metabase/css/core/base.styled";
 import { alpha, color } from "metabase/lib/colors";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
@@ -13,22 +14,11 @@ export const SdkContentWrapper = styled.div<{ font: string }>`
 
   ${aceEditorStyles}
   ${saveDomImageStyles}
+  ${({ theme }) => getRootStyle(theme)}
+  ${baseStyle}
 
-  --default-font-size: 0.875em;
-  --default-font-color: var(--color-text-dark);
-  --default-bg-color: var(--color-bg-light);
 
-  font-family: var(--default-font-family), sans-serif;
-  font-size: var(--default-font-size);
-  font-weight: 400;
-  font-style: normal;
-  color: var(--color-text-dark);
-  margin: 0;
-  height: 100%; /* ensure the entire page will fill the window */
-  display: flex;
-  flex-direction: column;
-  background-color: var(--color-bg-light);
-
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  svg {
+    display: inline;
+  }
 `;

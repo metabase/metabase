@@ -43,7 +43,6 @@
 (p/import-vars
  [models.dispatch
   toucan-instance?
-  InstanceOf
   instance-of?
   model
   instance])

@@ -1,6 +1,8 @@
 import cx from "classnames";
 import { useEffect, useState } from "react";
 
+import { useSdkSelector } from "embedding-sdk/store";
+import { getIsInitialized, getIsLoggedIn } from "embedding-sdk/store/selectors";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
@@ -17,8 +19,6 @@ import { Box, Group, Text } from "metabase/ui";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, Dataset } from "metabase-types/api";
-
-import { useEmbeddingContext } from "../../../context";
 
 interface QueryVisualizationProps {
   questionId: CardId;
@@ -37,9 +37,9 @@ export const StaticQuestion = ({
   questionId,
   showVisualizationSelector,
 }: QueryVisualizationProps): JSX.Element | null => {
-  const { loginStatus, isLoggedIn } = useEmbeddingContext();
+  const isInitialized = useSdkSelector(getIsInitialized);
+  const isLoggedIn = useSdkSelector(getIsLoggedIn);
 
-  console.log({loginStatus, isLoggedIn})
   const metadata = useSelector(getMetadata);
 
   const [{ loading, card, result, cardError, resultError }, setState] =
@@ -86,7 +86,7 @@ export const StaticQuestion = ({
   };
 
   useEffect(() => {
-    if (loginStatus?.status !== "success" || !isLoggedIn) {
+    if (!isInitialized || !isLoggedIn) {
       setState({
         loading: false,
         card: null,
@@ -97,7 +97,7 @@ export const StaticQuestion = ({
     } else {
       loadCardData({ questionId });
     }
-  }, [isLoggedIn, loginStatus?.status, questionId]);
+  }, [isInitialized, isLoggedIn, questionId]);
 
   const changeVisualization = (newQuestion: Question) => {
     setState({
@@ -107,7 +107,7 @@ export const StaticQuestion = ({
     });
   };
 
-  if (loginStatus?.status !== "success") {
+  if (!isInitialized) {
     return null;
   }
 
