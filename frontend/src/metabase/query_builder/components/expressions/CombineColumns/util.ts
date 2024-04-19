@@ -47,41 +47,6 @@ export type ColumnOption = {
   column: Lib.ColumnMetadata;
 };
 
-export const getColumnOptions = (
-  query: Lib.Query,
-  stageIndex: number,
-  columns: Lib.ColumnMetadata[],
-) => {
-  return columns.map((column, index) => {
-    const info = Lib.displayInfo(query, stageIndex, column);
-    const label = info.displayName;
-    const value = String(index);
-    return { column, label, value };
-  });
-};
-
-export const fromSelectValue = (
-  options: ColumnOption[],
-  value: string | null,
-): Lib.ColumnMetadata | null => {
-  if (isNotNull(value)) {
-    const index = Number(value);
-    return options[index].column;
-  }
-  return null;
-};
-
-export const toSelectValue = (
-  options: ColumnOption[],
-  column: Lib.ColumnMetadata | null,
-): string | undefined => {
-  if (!column) {
-    return undefined;
-  }
-  const index = options.findIndex(option => option.column === column);
-  return String(index);
-};
-
 export const formatSeparator = (separator: string) => {
   if (!separator) {
     return `(${t`empty`})`;
