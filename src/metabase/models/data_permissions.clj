@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -616,6 +617,43 @@
       (when (= [:perms/view-data :blocked] [perm-type value])
         (set-database-permission! group-or-id db-or-id :perms/create-queries :no)
         (set-database-permission! group-or-id db-or-id :perms/download-results :no)))))
+
+(defn- lowest-permission-level-in-any-database
+  "Given a group and a permission type, returns the lowest permission level for that group in any database, at the DB or table-level.
+  This is used to determine the default permission level for the group when a new database is added."
+  [group-id perm-type]
+  (let [lowest-to-highest-values (-> Permissions perm-type :values reverse)]
+    (first (filter
+            (fn [value]
+              (t2/exists? :model/DataPermissions
+                          :perm_type perm-type
+                          :perm_value value
+                          :group_id group-id))
+            lowest-to-highest-values))))
+
+(defenterprise new-database-view-data-permission-level
+  "Returns the default view-data permission level for a new database for a given group. On OSS, this is always `unrestricted`."
+  metabase-enterprise.advanced-permissions.common
+  [_group-id]
+  :unrestricted)
+
+(defn set-new-database-permissions!
+  "Sets permissions for a newly-added database to their appropriate values for a single group. For certain permission
+  types, the value computed based on the existing permissions the group has for other databases."
+  [group-or-id db-or-id]
+  (let [group-id             (u/the-id group-or-id)
+        view-data-level      (new-database-view-data-permission-level group-id)
+        create-queries-level (or (lowest-permission-level-in-any-database group-id :perms/create-queries)
+                                 :query-builder-and-native)
+        download-level       (if (= view-data-level :blocked)
+                               :no
+                               (or (lowest-permission-level-in-any-database group-id :perms/download-results)
+                                   :one-million-rows))]
+    (set-database-permission! group-or-id db-or-id :perms/view-data view-data-level)
+    (set-database-permission! group-or-id db-or-id :perms/create-queries create-queries-level)
+    (set-database-permission! group-or-id db-or-id :perms/download-results download-level)
+    (set-database-permission! group-or-id db-or-id :perms/manage-table-metadata :no)
+    (set-database-permission! group-or-id db-or-id :perms/manage-database :no)))
 
 (mu/defn set-table-permissions!
   "Sets table permissions to specified values for a given group. If a permission value already exists for a specified

@@ -1,10 +1,16 @@
 (ns metabase-enterprise.advanced-permissions.common-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.advanced-permissions.api.util-test
+    :as advanced-perms.api.tu]
+   [metabase-enterprise.advanced-permissions.common
+    :as advanced-permissions.common]
+   [metabase-enterprise.test :as met]
    [metabase.api.database :as api.database]
    [metabase.driver :as driver]
    [metabase.models
     :refer [Dashboard DashboardCard Database Field FieldValues Table]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -58,6 +64,31 @@
           (mt/with-all-users-data-perms-graph! {(mt/id) {:details :yes}}
             (is (partial= {:can_access_db_details true}
                           (user-permissions :rasta)))))))))
+
+(deftest new-database-view-data-permission-level-test
+  (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
+                   :model/Database         {db-id :id}      {}]
+      ;; First delete the default permissions for the group so we start with a clean slate
+      (testing "A new database defaults to `:unrestricted` if no other perms are set"
+        (t2/delete! :model/DataPermissions :group_id group-id)
+        (is (= :unrestricted (advanced-permissions.common/new-database-view-data-permission-level group-id))))
+
+      (testing "A new database defaults to `:blocked` if the group has `:blocked` for any other database"
+        (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)
+        (is (= :blocked (advanced-permissions.common/new-database-view-data-permission-level group-id))))
+
+      (testing "A new database defaults to `:blocked` if the group has any connection impersonation"
+        (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+        (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id db-id :attribute "impersonation_attr"
+                                                                       :attributes     {"impersonation_attr" "impersonation_role"}}]}
+          (is (= :blocked (advanced-permissions.common/new-database-view-data-permission-level (u/the-id &group))))))
+
+      (testing "A new database defaults to `:blocked` if the group has any sandbox"
+        (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+        (met/with-gtaps! {:gtaps {:venues {}}, :attributes {"a" 50}}
+          (is (= :blocked (advanced-permissions.common/new-database-view-data-permission-level (u/the-id &group)))))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Data model permission enforcement                                       |
