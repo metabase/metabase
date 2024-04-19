@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import {
   Anchor,
   Card,
@@ -49,7 +50,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
             <Text
               fw="bold"
               color="brand"
-              style={{ cursor: "default" }}
+              className={CS.cursorDefault}
             >{t`Hide these`}</Text>
           </Menu.Target>
           <Menu.Dropdown>
