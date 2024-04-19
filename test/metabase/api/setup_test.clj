@@ -35,7 +35,7 @@
 (defn- do-with-setup!* [request-body thunk]
   (try
     (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
-                                (thunk))
+      (thunk))
     (finally
       (t2/delete! User :email (get-in request-body [:user :email]))
       (when-let [invited (get-in request-body [:invite :name])]
