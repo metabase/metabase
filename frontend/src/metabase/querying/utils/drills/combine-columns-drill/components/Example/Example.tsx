@@ -22,7 +22,9 @@ export const Example = ({ example }: Props) => {
         shadow="none"
         withBorder
       >
-        <Text size="sm">{example}</Text>
+        <Text size="sm" data-testid="combine-column-example">
+          {example}
+        </Text>
       </Card>
     </Stack>
   );
