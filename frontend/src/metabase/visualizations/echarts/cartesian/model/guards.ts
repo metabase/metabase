@@ -1,6 +1,8 @@
 import type {
+  BreakoutSeriesModel,
   CategoryXAxisModel,
   NumericXAxisModel,
+  SeriesModel,
   TimeSeriesXAxisModel,
   XAxisModel,
 } from "./types";
@@ -21,4 +23,10 @@ export const isCategoryAxis = (
   axisModel: XAxisModel,
 ): axisModel is CategoryXAxisModel => {
   return axisModel.axisType === "category";
+};
+
+export const isBreakoutSeries = (
+  seriesModel: SeriesModel,
+): seriesModel is BreakoutSeriesModel => {
+  return "breakoutColumn" in seriesModel;
 };

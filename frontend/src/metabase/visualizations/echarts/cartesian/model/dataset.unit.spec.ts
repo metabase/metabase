@@ -1,3 +1,4 @@
+import { createMockSeriesModel } from "__support__/echarts";
 import { checkNumber } from "metabase/lib/types";
 import {
   POSITIVE_STACK_TOTAL_DATA_KEY,
@@ -31,25 +32,10 @@ import {
 } from "./dataset";
 import type {
   ChartDataset,
-  DataKey,
   LegacySeriesSettingsObjectKey,
   NumericAxisScaleTransforms,
-  SeriesModel,
   XAxisModel,
 } from "./types";
-
-const createMockSeriesModel = (
-  dataKey: DataKey,
-  columnIndex: number = 1,
-): SeriesModel => ({
-  dataKey,
-  name: `name for ${dataKey}`,
-  color: "red",
-  legacySeriesSettingsObjectKey: { card: { _seriesKey: dataKey } },
-  vizSettingsKey: dataKey,
-  column: createMockColumn({ name: dataKey }),
-  columnIndex,
-});
 
 const createMockComputedVisualizationSettings = (
   opts: Partial<ComputedVisualizationSettings> = {},
@@ -321,8 +307,8 @@ describe("dataset transform functions", () => {
     ];
 
     const seriesModels = [
-      createMockSeriesModel("series1"),
-      createMockSeriesModel("series2"),
+      createMockSeriesModel({ dataKey: "series1" }),
+      createMockSeriesModel({ dataKey: "series2" }),
     ];
 
     it("should populate dataset with min numeric values for positive and negative stack totals", () => {
@@ -470,7 +456,9 @@ describe("dataset transform functions", () => {
 
   describe("getTransformedDataset", () => {
     const seriesKey = "value";
-    const seriesModels = [createMockSeriesModel("value", 0)];
+    const seriesModels = [
+      createMockSeriesModel({ dataKey: "value", columnIndex: 0 }),
+    ];
 
     it("should sort time-series datasets", () => {
       const dataset = [
