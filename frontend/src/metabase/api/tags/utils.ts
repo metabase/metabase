@@ -17,6 +17,7 @@ import type {
   FieldId,
   ForeignKey,
   GroupListQuery,
+  ListDashboardsResponse,
   Metric,
   PopularItem,
   RecentItem,
@@ -181,9 +182,12 @@ export function provideDatabaseTags(
 }
 
 export function provideDashboardListTags(
-  dashboards: Dashboard[],
+  dashboards: ListDashboardsResponse,
 ): TagDescription<TagType>[] {
-  return [listTag("dashboard"), ...dashboards.flatMap(provideDashboardTags)];
+  return [
+    listTag("dashboard"),
+    ...dashboards.map(dashboard => idTag("dashboard", dashboard.id)),
+  ];
 }
 
 export function provideDashboardTags(
