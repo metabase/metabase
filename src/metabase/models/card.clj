@@ -455,7 +455,7 @@
                                                           :where  [:= :action.model_id model-id]})]
     (t2/delete! :model/Action :id [:in action-ids])))
 
-(defn- pre-update [{archived? :archived, id :id, :as changes}]
+(defn- pre-update [{id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint? (#40013)
   (u/prog1 changes
@@ -464,9 +464,6 @@
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
                           (t2/select-one [:model/Card :dataset_query :type] :id (u/the-id id)))]
-      ;; if the Card is archived, then remove it from any Dashboards
-      (when archived?
-        (t2/delete! :model/DashboardCard :card_id id))
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (get-in changes [:dataset_query :native])
