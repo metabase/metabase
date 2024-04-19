@@ -34,7 +34,7 @@ export interface State {
   upload: FileUploadState;
 }
 
-export type Dispatch<T = any> = (action: T) => void;
+export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;
 
 export type GetState = () => State;
 
