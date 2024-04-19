@@ -46,7 +46,10 @@ export const permissionApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("permissions-group", id)]),
+        invalidateTags(error, [
+          listTag("permissions-group"),
+          idTag("permissions-group", id),
+        ]),
     }),
     deletePermissionsGroup: builder.mutation<void, GroupId>({
       query: id => ({
@@ -54,7 +57,10 @@ export const permissionApi = Api.injectEndpoints({
         url: `/api/permissions/group/${id}`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("permissions-group", id)]),
+        invalidateTags(error, [
+          listTag("permissions-group"),
+          idTag("permissions-group", id),
+        ]),
     }),
     clearGroupMembership: builder.mutation<void, GroupId>({
       query: id => ({
@@ -62,7 +68,10 @@ export const permissionApi = Api.injectEndpoints({
         url: `/api/permissions/membership/${id}/clear`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("permissions-group", id)]),
+        invalidateTags(error, [
+          listTag("permissions-group"),
+          idTag("permissions-group", id),
+        ]),
     }),
   }),
 });
