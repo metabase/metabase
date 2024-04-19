@@ -9,6 +9,7 @@ import {
   getDefaultBubbleSizeCol,
   getDefaultDataLabelsFrequency,
   getDefaultGoalLabel,
+  getDefaultIsAutoSplitEnabled,
   getDefaultIsHistogram,
   getDefaultIsNumeric,
   getDefaultIsTimeSeries,
@@ -234,6 +235,12 @@ export const computeStaticComboChartSettings = (
     settings,
     "graph.x_axis._is_histogram",
     getDefaultIsHistogram(dimensionModel.column),
+  );
+
+  fillWithDefaultValue(
+    settings,
+    "graph.y_axis.auto_split",
+    getDefaultIsAutoSplitEnabled(),
   );
 
   fillWithDefaultValue(

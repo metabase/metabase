@@ -570,6 +570,20 @@ IncorrectLabelYAxisSplit41285.args = {
   renderingContext,
 };
 
+export const NativeAutoYSplit = Template.bind({});
+NativeAutoYSplit.args = {
+  rawSeries: data.nativeAutoYSplit as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const TimeSeriesYyyymmddNumbersFormat = Template.bind({});
+TimeSeriesYyyymmddNumbersFormat.args = {
+  rawSeries: data.timeSeriesYyyymmddNumbersFormat as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,

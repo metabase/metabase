@@ -84,13 +84,12 @@ function getLineAreaBarComparisonSettings(
   });
 }
 
-const getAggregateColumnsCount = (seriesModels: SeriesModel[]) => {
-  return _.uniq(
-    seriesModels
-      .map(seriesModel => seriesModel.column)
-      .filter(column => column.source === "aggregation")
-      .map(column => column.name),
-  ).length;
+const uniqueCards = (seriesModels: SeriesModel[]) =>
+  _.uniq(seriesModels.map(({ cardId }) => cardId)).length;
+
+const getMetricColumnsCount = (seriesModels: SeriesModel[]) => {
+  return _.uniq(seriesModels.map(seriesModel => seriesModel.column.name))
+    .length;
 };
 
 function shouldAutoSplitYAxis(
@@ -98,15 +97,15 @@ function shouldAutoSplitYAxis(
   seriesModels: SeriesModel[],
   seriesExtents: SeriesExtents,
 ) {
-  const hasSingleCard =
-    seriesModels.reduce((cardIds, seriesModel) => {
-      cardIds.add(seriesModel.cardId);
-      return cardIds;
-    }, new Set<number | undefined>()).size === 1;
+  if (!settings["graph.y_axis.auto_split"]) {
+    return false;
+  }
+
+  const isSingleCardWithSingleMetricColumn =
+    uniqueCards(seriesModels) <= 1 && getMetricColumnsCount(seriesModels) <= 1;
 
   if (
-    settings["graph.y_axis.auto_split"] === false ||
-    (hasSingleCard && getAggregateColumnsCount(seriesModels) < 2) ||
+    isSingleCardWithSingleMetricColumn ||
     settings["stackable.stack_type"] != null
   ) {
     return false;

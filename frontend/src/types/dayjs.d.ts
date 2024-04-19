@@ -18,4 +18,11 @@ declare module "dayjs" {
 
     isAfter(date?: ConfigType, unit?: SupportedUnit): boolean;
   }
+
+  export function parseZone(
+    date?: ConfigType,
+    format?: string,
+    locale?: string,
+    strict?: boolean,
+  ): Dayjs;
 }
