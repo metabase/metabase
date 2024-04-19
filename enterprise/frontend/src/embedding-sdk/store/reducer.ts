@@ -76,6 +76,7 @@ export const sdk = createReducer(initialState, {
   [refreshTokenAsync.rejected.type]: (state, action) => {
     return {
       ...state,
+      isLoggedIn: false,
       token: {
         ...state.token,
         token: null,
