@@ -103,7 +103,7 @@ export function ColumnInput({
             onKeyDown={handleKeyDown}
             fullWidth
             classNames={{
-              root: classNames(styles.root, open && styles.open),
+              root: classNames(styles.root, {[styles.open]: open}),
               inner: styles.button,
             }}
             rightIcon={<Icon name="chevrondown" style={{ height: 14 }} />}
