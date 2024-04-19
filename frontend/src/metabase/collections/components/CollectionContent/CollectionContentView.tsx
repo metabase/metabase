@@ -11,6 +11,12 @@ import CollectionEmptyState from "metabase/collections/components/CollectionEmpt
 import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+  OnFileUpload,
+  UploadFile,
+} from "metabase/collections/types";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 import PaginationControls from "metabase/components/PaginationControls";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
@@ -21,11 +27,17 @@ import { usePagination } from "metabase/hooks/use-pagination";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type {
+  Bookmark,
+  Collection,
+  CollectionId,
+  CollectionItem,
+} from "metabase-types/api";
 
-import {
-  CollectionOrTableIdProps,
-  ModelUploadModal,
-} from "../ModelUploadModal";
+import { Sort, type SortingOptions } from "../BaseItemsTable";
+import type { CollectionOrTableIdProps } from "../ModelUploadModal";
+import { ModelUploadModal } from "../ModelUploadModal";
 import UploadOverlay from "../UploadOverlay";
 
 import {
@@ -35,20 +47,6 @@ import {
   CollectionTable,
 } from "./CollectionContent.styled";
 import { getComposedDragProps } from "./utils";
-import type {
-  Bookmark,
-  Collection,
-  CollectionId,
-  CollectionItem,
-} from "metabase-types/api";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type {
-  CreateBookmark,
-  DeleteBookmark,
-  OnFileUpload,
-  UploadFile,
-} from "metabase/collections/types";
-import { Sort, type SortingOptions } from "../BaseItemsTable";
 
 const PAGE_SIZE = 25;
 
@@ -61,7 +59,6 @@ const ALL_MODELS = [
   "collection",
 ];
 
-// TODO: Not sure this type is right
 const itemKeyFn = (item: CollectionItem) => `${item.id}:${item.model}`;
 
 export const CollectionContentView = ({
