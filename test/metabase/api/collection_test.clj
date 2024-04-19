@@ -800,16 +800,16 @@
         (with-some-children-of-collection collection
           (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
           (is (partial= [{:name "Art Collection", :description nil, :model "collection", :entity_id true}]
-                        (items collection/TRASH_COLLECTION_ID)))
+                        (items collection/trash-collection-id)))
           (is (partial= [{:name "Baby Collection", :model "collection" :entity_id true}]
                         (items collection))))))
     (testing "I can untrash something by marking it as not archived"
       (t2.with-temp/with-temp [Collection collection {:name "A"}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
-        (is (= 1 (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection/TRASH_COLLECTION_ID "/items"))))))
+        (is (= 1 (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection/trash-collection-id))))))
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived false})
-        (is (zero? (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection/TRASH_COLLECTION_ID "/items"))))))))
+        (is (zero? (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection/trash-collection-id))))))))
     (testing "I can untrash something to a specific location if desired"
       (t2.with-temp/with-temp [Collection collection-a {:name "A"}
                                Collection collection-b {:name "B" :location (collection/children-location collection-a)}
@@ -818,7 +818,7 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection-b)
         (perms/grant-collection-read-permissions! (perms-group/all-users) destination)
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived true})
-        (is (= #{"A"} (set-of-item-names collection/TRASH_COLLECTION_ID)))
+        (is (= #{"A"} (set-of-item-names collection/trash-collection-id)))
         (is (= #{} (set-of-item-names destination)))
         ;; both A and B are marked as `archived`
         (is (:archived (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection-b)))))
@@ -828,7 +828,7 @@
 
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-b)) {:archived false :parent_id (u/the-id destination)})
         ;; collection A is still here!
-        (is (= #{"A"} (set-of-item-names collection/TRASH_COLLECTION_ID)))
+        (is (= #{"A"} (set-of-item-names collection/trash-collection-id)))
         ;; collection B got moved correctly
         (is (= #{"B"} (set-of-item-names destination)))
 
@@ -873,7 +873,7 @@
       (doseq [coll [subcollection-a subcollection-b subcollection-c]]
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id coll)) {:archived true}))
       (testing "rasta can see the collections in the trash"
-        (is (= #{"sub-A" "sub-C" "sub-B"} (set-of-item-names collection/TRASH_COLLECTION_ID)))))))
+        (is (= #{"sub-A" "sub-C" "sub-B"} (set-of-item-names collection/trash-collection-id)))))))
 
 (deftest collection-items-revision-history-and-ordering-test
   (testing "GET /api/collection/:id/items"

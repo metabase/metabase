@@ -1005,7 +1005,7 @@
   ;; sanity check
   (when (contains? collection-updates :archived)
     (let [new-parent-id (cond
-                          (:archived collection-updates) collection/TRASH_COLLECTION_ID
+                          (:archived collection-updates) collection/trash-collection-id
                           (contains? collection-updates :parent_id) (:parent_id collection-updates)
                           (and (= (:location collection-before-update)
                                   collection/trash-path)

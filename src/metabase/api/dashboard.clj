@@ -706,7 +706,7 @@
                          ;; changing `archived` also means changing the `collection_id` and `trashed_from_collection_id`
                          (contains? dash-updates :archived)
                          (assoc :collection_id (if (:archived dash-updates)
-                                                 collection/TRASH_COLLECTION_ID
+                                                 collection/trash-collection-id
                                                  (:trashed_from_collection_id current-dash))
                                 :trashed_from_collection_id (when (:archived dash-updates)
                                                               (:collection_id current-dash))))]

@@ -500,6 +500,13 @@
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
         card-updates           (cond-> card-updates
+                                 (contains? card-updates :archived)
+                                 (assoc :collection_id (if (:archived card-updates)
+                                                         collection/trash-collection-id
+                                                         (:trashed_from_collection_id card-before-update))
+                                        :trashed_from_collection_id (when (:archived card-updates)
+                                                                      (:collection_id card-before-update)))
+
                                  (:type card-updates) (update :type keyword))
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
