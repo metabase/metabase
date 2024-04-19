@@ -24,18 +24,22 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(defn- uses-default-describe-table? [driver]
+  (and (identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table driver))
+       (not (driver/database-supports? driver :describe-fields nil))))
+
+(defn- uses-default-describe-fields? [driver]
+  (and (identical? (get-method driver/describe-fields :sql-jdbc) (get-method driver/describe-fields driver))
+       (driver/database-supports? driver :describe-fields nil)))
+
 (defn- sql-jdbc-drivers-using-default-describe-table-or-fields-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`, or `describe-fields`."
   []
   (set
    (filter
     (fn [driver]
-      (let [uses-default-describe-table? (and (identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table driver))
-                                              (not (driver/database-supports? driver :describe-fields nil)))
-            uses-default-describe-fields? (and (identical? (get-method driver/describe-fields :sql-jdbc) (get-method driver/describe-fields driver))
-                                               (driver/database-supports? driver :describe-fields nil))]
-        (or uses-default-describe-table?
-            uses-default-describe-fields?)))
+      (or (uses-default-describe-table? driver)
+          (uses-default-describe-fields? driver)))
     (descendants driver/hierarchy :sql-jdbc))))
 
 (deftest ^:parallel describe-fields-nested-field-columns-test
@@ -45,7 +49,7 @@
                         (mt/normal-drivers-with-feature :nested-field-columns))))))
 
 (deftest ^:parallel describe-table-test
-  ;; see also [[metabase.driver-test/describe-table-test]]
+  (assert (uses-default-describe-table? :h2) "H2 should use the default describe-table implementation")
   (is (= {:name "VENUES",
           :fields
           #{{:name                       "ID"
@@ -90,7 +94,7 @@
              :database-required          false
              :database-is-auto-increment false
              :json-unfolding             false}}}
-         (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
+         (driver/describe-table :h2 (mt/id) {:name "VENUES"}))))
 
 (deftest describe-auto-increment-on-non-pk-field-test
   (testing "a non-pk field with auto-increment should be have metabase_field.database_is_auto_increment=true"
