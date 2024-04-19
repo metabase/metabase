@@ -150,6 +150,8 @@ export const getDefaultIsHistogram = (dimensionColumn: DatasetColumn) => {
   return dimensionColumn.binning_info != null;
 };
 
+export const getDefaultIsAutoSplitEnabled = () => true;
+
 export const getDefaultIsNumeric = (
   data: DatasetData,
   dimensionIndex: number,
