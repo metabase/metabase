@@ -35,7 +35,7 @@
         (is (= "July, 2020, 6:04 PM"
                (datetime/format-temporal-str "UTC" now {:unit :minute}))))
       (testing :hour
-        (is (= "July, 2020, 6 PM"
+        (is (= "July 16, 2020, 6 PM"
                (datetime/format-temporal-str "UTC" now {:unit :hour}))))
       (testing :day
         (is (= "Thursday, July 16, 2020"

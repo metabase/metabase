@@ -132,7 +132,7 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
 
 (defmethod format-timestring :hour [timezone-id temporal-str _col {:keys [date-style time-style] :as viz-settings}]
   (reformat-temporal-str timezone-id temporal-str
-                         (-> (or date-style "MMMM, yyyy")
+                         (-> (or date-style "MMMM d, yyyy")
                              (str ", " (fix-time-style time-style "h a"))
                              (post-process-date-style viz-settings))))
 
