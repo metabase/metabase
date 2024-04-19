@@ -158,18 +158,15 @@
           (is (=? [{:name              (format-name "id"),
                     :database-type     string?,
                     :database-position 0,
-                    :base-type         #(isa? % :type/Number),
-                    :json-unfolding    false}
+                    :base-type         #(isa? % :type/Number)}
                    {:name              (format-name "date"),
                     :database-type     string?,
                     :database-position 1,
-                    :base-type         #(isa? % :type/Date),
-                    :json-unfolding    false}
+                    :base-type         #(isa? % :type/Date)}
                    {:name              (format-name "count"),
                     :database-type     string?,
                     :database-position 2,
-                    :base-type         #(isa? % :type/Number),
-                    :json-unfolding    false}]
+                    :base-type         #(isa? % :type/Number)}]
                   (describe-fields-for-table (mt/db) table))))))))
 
 (deftest database-types-fallback-test
