@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { dissoc } from "icepick";
 import { useState } from "react";
 import { connect } from "react-redux";

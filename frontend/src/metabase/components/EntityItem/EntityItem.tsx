@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { useMemo } from "react";

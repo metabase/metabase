@@ -8,13 +8,14 @@ import { canArchiveItem, canMoveItem } from "metabase/collections/utils";
 import Modal from "metabase/components/Modal";
 import { BulkMoveModal } from "metabase/containers/MoveModal";
 import { Transition } from "metabase/ui";
-
 import type { Collection, CollectionItem } from "metabase-types/api";
+
 import type {
   OnArchive,
   OnCopyWithoutArguments,
   OnMoveWithOneItem,
 } from "../types";
+
 import {
   BulkActionsToast,
   CardButton,
@@ -124,4 +125,5 @@ const BulkActions = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export
 export default memo(BulkActions);
