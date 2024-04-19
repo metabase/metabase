@@ -17,7 +17,7 @@ const DEFAULT_OPTIONS = {
   json: true,
   hasBody: false,
   noEvent: false,
-  transformResponse: o => o,
+  transformResponse: ({ body }) => body,
   raw: {},
   headers: {},
   retry: false,
