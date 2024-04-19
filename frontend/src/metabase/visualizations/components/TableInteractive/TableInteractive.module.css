@@ -10,7 +10,7 @@
   padding: 0.25em 0.65em;
   border-radius: 6px;
   min-width: 35px;
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }
 
 .TableInteractiveHeaderCellData .cellData:hover {
@@ -85,11 +85,11 @@
   border-radius: 99px;
   min-width: 35px;
   text-align: center;
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }
 
 .TableInteractiveHeaderCellDataSorted {
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }
 
 .TableInteractiveHeaderCellDataSorted :global(.Icon-chevrondown),

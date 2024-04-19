@@ -5,8 +5,9 @@ import {
   DEFAULT_FONT,
   EMBEDDING_SDK_ROOT_ELEMENT_ID,
 } from "embedding-sdk/config";
-import { EmbeddingContext } from "embedding-sdk/context";
 import { useInitData } from "embedding-sdk/hooks";
+import { useSdkSelector } from "embedding-sdk/store";
+import { getIsInitialized } from "embedding-sdk/store/selectors";
 import type { SDKConfigType } from "embedding-sdk/types";
 
 import { SdkContentWrapper } from "./SdkContentWrapper";
@@ -20,24 +21,19 @@ export const AppInitializeController = ({
   config,
   children,
 }: AppInitializeControllerProps) => {
-  const { isLoggedIn, isInitialized } = useInitData({
+  useInitData({
     config,
   });
 
+  const isInitialized = useSdkSelector(getIsInitialized);
+
   return (
-    <EmbeddingContext.Provider
-      value={{
-        isInitialized,
-        isLoggedIn,
-      }}
+    <SdkContentWrapper
+      baseUrl={config.metabaseInstanceUrl}
+      id={EMBEDDING_SDK_ROOT_ELEMENT_ID}
+      font={config.font ?? DEFAULT_FONT}
     >
-      <SdkContentWrapper
-        baseUrl={config.metabaseInstanceUrl}
-        id={EMBEDDING_SDK_ROOT_ELEMENT_ID}
-        font={config.font ?? DEFAULT_FONT}
-      >
-        {!isInitialized ? <div>{t`Loading…`}</div> : children}
-      </SdkContentWrapper>
-    </EmbeddingContext.Provider>
+      {!isInitialized ? <div>{t`Loading…`}</div> : children}
+    </SdkContentWrapper>
   );
 };

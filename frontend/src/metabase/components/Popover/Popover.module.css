@@ -53,7 +53,6 @@
 
 :global(.tippy-box[data-theme~="popover"]) {
   font-size: inherit;
-  color: var(--color-text-default);
   border: 1px solid var(--color-border);
   box-shadow: 0 4px 10px var(--color-shadow);
   background-color: var(--color-bg-white);
