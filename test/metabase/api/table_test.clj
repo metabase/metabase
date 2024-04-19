@@ -2,7 +2,6 @@
   "Tests for /api/table endpoints."
   (:require
    [clojure.test :refer :all]
-   [java-time.api :as t]
    [medley.core :as m]
    [metabase.api.table :as api.table]
    [metabase.driver :as driver]
@@ -144,31 +143,6 @@
          ~@body
          (finally
            (t2/update! :model/Table where-clause# {:is_upload false}))))))
-
-(deftest list-uploaded-tables-test
-  (testing "GET /api/table/uploaded"
-    (testing "These should come back in alphabetical order and include relevant metadata"
-      (with-tables-as-uploads [:categories :reviews]
-        (t2.with-temp/with-temp [Card {} {:table_id (mt/id :categories)}
-                                 Card {} {:table_id (mt/id :reviews)}
-                                 Card {} {:table_id (mt/id :reviews)}]
-          (let [result (mt/user-http-request :rasta :get 200 "table/uploaded")]
-            ;; =? doesn't seem to allow predicates inside maps, inside a set
-            (is (every? t/offset-date-time? (map :created_at result)))
-            (is (= #{{:name         (mt/format-name "categories")
-                      :display_name "Categories"
-                      :id           (mt/id :categories)
-                      :schema       "PUBLIC"
-                      :entity_type  "entity/GenericTable"}
-                     {:name         (mt/format-name "reviews")
-                      :display_name "Reviews"
-                      :id           (mt/id :reviews)
-                      :schema       "PUBLIC"
-                      :entity_type  "entity/GenericTable"}}
-                   (->> result
-                        (filter #(= (:db_id %) (mt/id)))    ; prevent stray tables from affecting unit test results
-                        (map #(select-keys % [:name :display_name :id :entity_type :schema :usage_count]))
-                        set)))))))))
 
 (deftest get-table-test
   (testing "GET /api/table/:id"
@@ -965,19 +939,22 @@
 ;;; |                                          POST /api/table/:id/append-csv                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- append-csv! [options]
-  (@#'api.table/update-csv! (assoc options :action :metabase.upload/append)))
-
-(defn- append-csv-via-api!
-  "Upload a small CSV file to the given collection ID. Default args can be overridden"
-  []
+(defn create-csv! []
   (mt/with-current-user (mt/user->id :rasta)
-    (mt/with-empty-db
-      (let [file  (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] (mt/random-name))
-            table (upload-test/create-upload-table!)]
-        (mt/with-current-user (mt/user->id :crowberto)
-          (append-csv! {:table-id (:id table)
-                        :file     file}))))))
+    (upload-test/create-upload-table!)))
+
+(defn- update-csv! [options]
+  (@#'api.table/update-csv! options))
+
+(defn- update-csv-via-api!
+  "Upload a small CSV file to the given collection ID. Default args can be overridden"
+  [action]
+  (let [table (create-csv!)
+        file  (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] (mt/random-name))]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (update-csv! {:action   action
+                    :table-id (:id table)
+                    :file     file}))))
 
 (deftest append-csv-test
   (mt/test-driver :h2
@@ -985,11 +962,11 @@
       (testing "Happy path"
         (mt/with-temporary-setting-values [uploads-enabled true]
           (is (= {:status 200, :body nil}
-                 (append-csv-via-api!)))))
+                 (update-csv-via-api! :metabase.upload/append)))))
       (testing "Failure paths return an appropriate status code and a message in the body"
         (mt/with-temporary-setting-values [uploads-enabled false]
           (is (= {:status 422, :body {:message "Uploads are not enabled."}}
-                 (append-csv-via-api!))))))))
+                 (update-csv-via-api! :metabase.upload/append))))))))
 
 (deftest append-csv-deletes-file-test
   (testing "File gets deleted after appending"
@@ -1001,7 +978,8 @@
                 table (upload-test/create-upload-table!)]
             (is (.exists file) "File should exist before append-csv!")
             (mt/with-current-user (mt/user->id :crowberto)
-              (append-csv! {:table-id (:id table)
+              (update-csv! {:action :metabase.upload/append
+                            :table-id (:id table)
                             :file     file}))
             (is (not (.exists file)) "File should be deleted after append-csv!")))))))
 
@@ -1009,31 +987,17 @@
 ;;; |                                          POST /api/table/:id/replace-csv                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- replace-csv! [options]
-  (@#'api.table/update-csv! (assoc options :action :metabase.upload/replace)))
-
-(defn- replace-csv-via-api!
-  "Upload a small CSV file to the given collection ID. Default args can be overridden"
-  []
-  (mt/with-current-user (mt/user->id :rasta)
-                        (mt/with-empty-db
-                         (let [file  (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] (mt/random-name))
-                               table (upload-test/create-upload-table!)]
-                           (mt/with-current-user (mt/user->id :crowberto)
-                             (replace-csv! {:table-id (:id table)
-                                            :file     file}))))))
-
 (deftest replace-csv-test
   (mt/test-driver :h2
     (mt/with-empty-db
      (testing "Happy path"
        (mt/with-temporary-setting-values [uploads-enabled true]
          (is (= {:status 200, :body nil}
-                (replace-csv-via-api!)))))
+                (update-csv-via-api! :metabase.upload/replace)))))
      (testing "Failure paths return an appropriate status code and a message in the body"
        (mt/with-temporary-setting-values [uploads-enabled false]
          (is (= {:status 422, :body {:message "Uploads are not enabled."}}
-                (replace-csv-via-api!))))))))
+                (update-csv-via-api! :metabase.upload/replace))))))))
 
 (deftest replace-csv-deletes-file-test
   (testing "File gets deleted after replacing"
@@ -1045,6 +1009,7 @@
                table    (upload-test/create-upload-table!)]
            (is (.exists file) "File should exist before replace-csv!")
            (mt/with-current-user (mt/user->id :crowberto)
-             (replace-csv! {:table-id (:id table)
-                            :file     file}))
+             (update-csv! {:action   :metabase.upload/replace
+                           :table-id (:id table)
+                           :file     file}))
            (is (not (.exists file)) "File should be deleted after replace-csv!")))))))

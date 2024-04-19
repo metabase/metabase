@@ -182,8 +182,6 @@ export const DashboardApi = {
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),
-  favorite: POST("/api/dashboard/:dashId/favorite"),
-  unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
   parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
   validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
@@ -472,7 +470,6 @@ export const I18NApi = {
 };
 
 export const TaskApi = {
-  get: GET("/api/task"),
   getJobsInfo: GET("/api/task/info"),
 };
 
@@ -573,4 +570,5 @@ export const CacheConfigApi = {
   list: GET("/api/cache"),
   update: PUT("/api/cache"),
   delete: DELETE("/api/cache"),
+  invalidate: POST("/api/cache/invalidate"),
 };

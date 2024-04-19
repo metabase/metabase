@@ -53,13 +53,6 @@
                    (map fix-schema))
           tables)))
 
-(api/defendpoint GET "/uploaded"
-  "Get all `Tables` visible to the current user which were created by uploading a file."
-  []
-  (as-> (t2/select Table, :active true, :is_upload true, {:order-by [[:name :asc]]}) tables
-        (map #(update % :schema str) tables)
-        (filterv mi/can-read? tables)))
-
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
   [id include_editable_data_model]
@@ -520,15 +513,16 @@
   (-> (t2/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
 (mu/defn ^:private update-csv!
-  "This helper function exists to make testing the POST /api/table/:id/append-csv endpoint easier."
+  "This helper function exists to make testing the POST /api/table/:id/{action}-csv endpoints easier."
   [options :- [:map
                [:table-id ms/PositiveInt]
                [:file (ms/InstanceOfClass java.io.File)]
                [:action upload/update-action-schema]]]
   (try
-    (let [model (upload/update-csv! options)]
+    (let [_result (upload/update-csv! options)]
       {:status 200
-       :body   (:id model)})
+       ;; There is scope to return something more interesting.
+       :body   nil})
     (catch Throwable e
       {:status (or (-> e ex-data :status-code)
                    500)

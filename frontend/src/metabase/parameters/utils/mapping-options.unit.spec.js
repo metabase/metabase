@@ -76,6 +76,7 @@ describe("parameters/utils/mapping-options", () => {
       });
 
       // FIXME metrics v2
+      // eslint-disable-next-line jest/no-disabled-tests
       it.skip("should return fields from the model question's virtual card table, as though it is already nested", () => {
         const options = getParameterMappingOptions(
           new Question(dataset.card(), metadata),

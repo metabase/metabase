@@ -9,11 +9,11 @@ import _ from "underscore";
 
 import ArchiveModal from "metabase/components/ArchiveModal";
 import Collection from "metabase/entities/collections";
-import Dashboard from "metabase/entities/dashboards";
+import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
 
 const mapDispatchToProps = {
-  setDashboardArchived: Dashboard.actions.setArchived,
+  setDashboardArchived: Dashboards.actions.setArchived,
   push,
 };
 
@@ -56,7 +56,7 @@ class ArchiveDashboardModal extends Component {
 
 export const ArchiveDashboardModalConnected = _.compose(
   connect(null, mapDispatchToProps),
-  Dashboard.load({
+  Dashboards.load({
     id: (state, props) => Urls.extractCollectionId(props.params.slug),
   }),
   Collection.load({

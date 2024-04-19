@@ -763,6 +763,7 @@ describe("QB Actions > initializeQB", () => {
     });
 
     // FIXME metrics v2
+    // eslint-disable-next-line jest/no-disabled-tests
     it.skip("applies 'metric' param correctly", async () => {
       const { query } = await setupOrdersTable({
         metric: Number(METRIC.id),
@@ -780,6 +781,7 @@ describe("QB Actions > initializeQB", () => {
     });
 
     // FIXME metrics v2
+    // eslint-disable-next-line jest/no-disabled-tests
     it.skip("applies both 'metric' and 'segment' params", async () => {
       const { query } = await setupOrdersTable({
         segment: SEGMENT.id,

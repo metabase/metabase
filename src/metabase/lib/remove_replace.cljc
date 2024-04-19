@@ -12,10 +12,12 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- stage-paths
   [query stage-number]
@@ -339,7 +341,7 @@
    replacement      :- :metabase.lib.schema.expression/expression]
   (mu/disable-enforcement
     (loop [query (tweak-expression unmodified-query stage-number target replacement)]
-      (let [explanation (mc/explain :metabase.lib.schema/query query)
+      (let [explanation (mr/explain ::lib.schema/query query)
             error-paths (->> (:errors explanation)
                              (keep #(on-stage-path query %))
                              distinct)]
