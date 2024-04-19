@@ -211,7 +211,7 @@ const mockModels: SearchResult[] = [
   }),
 ].map(model => createMockModelResult(model));
 
-describe.skip("BrowseModels", () => {
+describe("BrowseModels", () => {
   beforeEach(() => {
     localStorage.clear();
   });
