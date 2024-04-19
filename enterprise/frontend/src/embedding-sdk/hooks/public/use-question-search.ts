@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 
-import { useEmbeddingContext } from "embedding-sdk/context";
+import { useSdkSelector } from "embedding-sdk/store";
+import { getIsInitialized, getIsLoggedIn } from "embedding-sdk/store/selectors";
 import { useSearchListQuery } from "metabase/common/hooks";
 
 export const useQuestionSearch = (searchQuery?: string) => {
-  const { isInitialized, isLoggedIn } = useEmbeddingContext();
+  const isInitialized = useSdkSelector(getIsInitialized);
+  const isLoggedIn = useSdkSelector(getIsLoggedIn);
 
   const query = useMemo(() => {
     return searchQuery
