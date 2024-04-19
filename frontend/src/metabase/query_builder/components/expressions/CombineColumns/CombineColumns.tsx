@@ -123,12 +123,7 @@ export function CombineColumns({
   const handleSubmit: FormEventHandler = event => {
     event.preventDefault();
 
-    const name = getExpressionName(
-      // Ok
-      query,
-      stageIndex,
-      columnsAndSeparators,
-    );
+    const name = getExpressionName(query, stageIndex, columnsAndSeparators);
 
     const expression = Lib.expressionClause(
       "concat",
