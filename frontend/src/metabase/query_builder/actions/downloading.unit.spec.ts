@@ -18,7 +18,7 @@ describe("getDatasetResponse", () => {
       const url = "/embed/question/123.xlsx";
 
       expect(downloading.getDatasetDownloadUrl(url)).toBe(
-        `${origin}/embed/question/123.xlsx`,
+        `/embed/question/123.xlsx`,
       );
     });
   });
