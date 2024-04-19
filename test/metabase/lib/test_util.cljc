@@ -72,11 +72,18 @@
    (providers.mock/mock-metadata-provider cards)))
 
 (def metadata-provider-with-model
-  "[[meta/metadata-provider]], but with a Card with ID 1."
+  "[[meta/metadata-provider]], but with a Model with ID 1."
   (lib/composed-metadata-provider
    meta/metadata-provider
    (providers.mock/mock-metadata-provider
     (assoc-in cards [:cards 0 :type] :model))))
+
+(def metadata-provider-with-metric
+  "[[meta/metadata-provider]], but with a Metric with ID 1."
+  (lib/composed-metadata-provider
+   meta/metadata-provider
+   (providers.mock/mock-metadata-provider
+    (assoc-in cards [:cards 0 :type] :metric))))
 
 (def query-with-source-card
   "A query against `:source-card 1`, with a metadata provider that has that Card. Card's name is `My Card`. Card

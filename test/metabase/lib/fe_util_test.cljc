@@ -190,6 +190,18 @@
                         {:type :card,     :id 1}]
                        (lib/dependent-metadata query))
         query
+        (lib/append-stage query))))
+  (testing "metric based query"
+    (let [query (assoc lib.tu/query-with-source-card :lib/metadata lib.tu/metadata-provider-with-metric)]
+      (are [query] (=? [{:type :database, :id (meta/id)}
+                        {:type :schema,   :id (meta/id)}
+                        {:type :table,    :id "card__1"}
+                        {:type :card,     :id 1}
+                        {:type :table,    :id (meta/id :checkins)}
+                        {:type :table,    :id (meta/id :users)}
+                        {:type :table,    :id (meta/id :venues)}]
+                       (lib/dependent-metadata query))
+        query
         (lib/append-stage query)))))
 
 (deftest ^:parallel maybe-expand-temporal-expression-test

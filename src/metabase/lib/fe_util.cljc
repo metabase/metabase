@@ -1,6 +1,8 @@
 (ns metabase.lib.fe-util
   (:require
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
@@ -170,17 +172,20 @@
      (when (pos? database-id)
        [{:type :database, :id database-id}
         {:type :schema,   :id database-id}])
-     ;; cf. frontend/src/metabase-lib/queries/NativeQuery.ts
      (when (= (:lib/type base-stage) :mbql.stage/native)
        (for [{tag-type :type, [dim-tag _opts id] :dimension} (vals (:template-tags base-stage))
              :when (and (= tag-type :dimension)
                         (= dim-tag :field)
                         (integer? id))]
          {:type :field, :id id}))
-     ;; cf. frontend/src/metabase-lib/Question.ts and frontend/src/metabase-lib/queries/StructuredQuery.ts
      (when-let [card-id (:source-card base-stage)]
-       [{:type :table, :id (str "card__" card-id)}
-        {:type :card,  :id card-id}])
+       (let [card-metadata (lib.metadata/card metadata-providerable card-id)
+             definition (:dataset-query card-metadata)]
+         (list* {:type :table, :id (str "card__" card-id)}
+                {:type :card, :id card-id}
+                (when (and (= (:type card-metadata) :metric) definition)
+                  (query-dependents metadata-providerable
+                                    (-> definition mbql.normalize/normalize lib.convert/->pMBQL))))))
      (when-let [table-id (:source-table base-stage)]
        (cons {:type :table, :id table-id}
              (query-dependents-foreign-keys metadata-providerable
