@@ -8,7 +8,7 @@ export type ColumnAndSeparator = {
   column: Lib.ColumnMetadata | null;
 };
 
-export function label(index: number) {
+export const label = (index: number) => {
   const ordinal = index + 1;
   if (ordinal === 1) {
     return t`First column`;
@@ -39,7 +39,7 @@ export function label(index: number) {
   }
 
   return t`Column ${ordinal}`;
-}
+};
 
 export type ColumnOption = {
   label: string;
