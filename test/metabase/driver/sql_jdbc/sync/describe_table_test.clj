@@ -7,7 +7,6 @@
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
-   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -46,6 +45,7 @@
                         (mt/normal-drivers-with-feature :nested-field-columns))))))
 
 (deftest ^:parallel describe-table-test
+  ;; see also [[metabase.driver-test/describe-table-test]]
   (is (= {:name "VENUES",
           :fields
           #{{:name                       "ID"
@@ -92,16 +92,6 @@
              :json-unfolding             false}}}
          (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
 
-(defn- describe-fields-for-table [db table]
-  (let [driver (driver.u/database->driver db)]
-    (sort-by :database-position
-             (if (driver/database-supports? driver :describe-fields db)
-               (vec (sql-jdbc.describe-table/describe-fields driver db
-                                                             :schema-names [(:schema table)]
-                                                             :table-names [(:name table)]))
-               (:fields (sql-jdbc.describe-table/describe-table driver db table))))))
-
-
 (deftest describe-auto-increment-on-non-pk-field-test
   (testing "a non-pk field with auto-increment should be have metabase_field.database_is_auto_increment=true"
     (one-off-dbs/with-blank-db
@@ -140,37 +130,15 @@
               :name "employee_counter"}
              (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "employee_counter"}))))))
 
-(deftest ^:parallel describe-table-fks-test
-  (is (= #{{:fk-column-name   "CATEGORY_ID"
-            :dest-table       {:name "CATEGORIES", :schema "PUBLIC"}
-            :dest-column-name "ID"}}
-         (sql-jdbc.describe-table/describe-table-fks :h2 (mt/id) {:name "VENUES"})))
-  (is (= #{{:fk-column-name "USER_ID", :dest-table {:name "USERS", :schema "PUBLIC"}, :dest-column-name "ID"}
-           {:fk-column-name "VENUE_ID", :dest-table {:name "VENUES", :schema "PUBLIC"}, :dest-column-name "ID"}}
-         (sql-jdbc.describe-table/describe-table-fks :h2 (mt/id) {:name "CHECKINS"}))))
-
-(deftest describe-fields-or-table-test
-  (testing "test `describe-fields` or `describe-table` returns some basic metadata"
-    (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
-      (mt/dataset daily-bird-counts
-        (let [table       (t2/select-one :model/Table :id (mt/id :bird-count))
-              format-name #(ddl.i/format-name driver/*driver* %)]
-          (is (=? [{:name              (format-name "id"),
-                    :database-type     string?,
-                    :database-position 0,
-                    :base-type         #(isa? % :type/Number),
-                    :json-unfolding    false}
-                   {:name              (format-name "date"),
-                    :database-type     string?,
-                    :database-position 1,
-                    :base-type         #(isa? % :type/Date),
-                    :json-unfolding    false}
-                   {:name              (format-name "count"),
-                    :database-type     string?,
-                    :database-position 2,
-                    :base-type         #(isa? % :type/Number),
-                    :json-unfolding    false}]
-                  (describe-fields-for-table (mt/db) table))))))))
+(defn- describe-fields-for-table [db table]
+  (let [driver (driver.u/database->driver db)]
+    (sort-by :database-position
+             (if (driver/database-supports? driver :describe-fields db)
+               (vec (driver/describe-fields driver
+                                            db
+                                            :schema-names [(:schema table)]
+                                            :table-names [(:name table)]))
+               (:fields (driver/describe-table driver db table))))))
 
 (deftest database-types-fallback-test
   (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)

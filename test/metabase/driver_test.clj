@@ -3,7 +3,6 @@
    [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.h2 :as h2]
@@ -204,103 +203,36 @@
 ;;; Begin tests for `describe-*` methods used in sync
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest ^:parallel describe-table-h2-test
-  (testing "`describe-table` should work for H2")
-  (let [venues (t2/select-one :model/Table :id (mt/id :venues))]
-    (is (= #{{:name              "ID"
-              :database-type     "BIGINT"
-              :base-type         :type/BigInteger
-              :pk?               true
-              :database-position 0
-              :database-required false
-              :database-is-auto-increment true
-              :json-unfolding    false}
-             {:name              "NAME"
-              :database-type     "CHARACTER VARYING"
-              :base-type         :type/Text
-              :database-position 1
-              :database-required false
-              :database-is-auto-increment false
-              :json-unfolding    false}
-             {:name              "CATEGORY_ID"
-              :database-type     "INTEGER"
-              :base-type         :type/Integer
-              :database-position 2
-              :database-required false
-              :database-is-auto-increment false
-              :json-unfolding    false}
-             {:name              "LATITUDE"
-              :database-type     "DOUBLE PRECISION"
-              :base-type         :type/Float
-              :database-position 3
-              :database-required false
-              :database-is-auto-increment false
-              :json-unfolding    false}
-             {:name              "LONGITUDE"
-              :database-type     "DOUBLE PRECISION"
-              :base-type         :type/Float
-              :database-position 4
-              :database-required false
-              :database-is-auto-increment false
-              :json-unfolding    false}
-             {:name              "PRICE"
-              :database-type     "INTEGER"
-              :base-type         :type/Integer
-              :database-position 5
-              :database-required false
-              :database-is-auto-increment false
-              :json-unfolding    false}}
-           (:fields (driver/describe-table :h2 (mt/db) venues))))))
+(defn- describe-fields-for-table [db table]
+  (sort-by :database-position
+           (if (driver/database-supports? driver/*driver* :describe-fields db)
+             (vec (driver/describe-fields driver/*driver* db
+                                          :schema-names [(:schema table)]
+                                          :table-names [(:name table)]))
+             (:fields (driver/describe-table driver/*driver* db table)))))
 
-(deftest ^:parallel describe-table-test
-  (testing "`describe-table` should work for drivers that don't support `describe-fields`"
-    (mt/test-drivers (set/difference (mt/normal-drivers)
-                                     (mt/normal-drivers-with-feature :describe-fields))
-      (let [venues (t2/select-one :model/Table (mt/id :venues))
-            fmt    (partial ddl.i/format-name driver/*driver*)]
-        (is (=? {(fmt "id")          {:name                       (fmt "id")
-                                      :database-type              string?
-                                      :base-type                  #(isa? % :type/Integer)
-                                      :database-position          0
-                                      :database-required          false
-                                      :database-is-auto-increment boolean?
-                                      :json-unfolding             false}
-                 (fmt "name")        {:name                       (fmt "name")
-                                      :database-type              string?
-                                      :base-type                  :type/Text
-                                      :database-position          1
-                                      :database-required          false
-                                      :database-is-auto-increment false
-                                      :json-unfolding             false}
-                 (fmt "category_id") {:name                       (fmt "category_id")
-                                      :database-type              string?
-                                      :base-type                  :type/Integer
-                                      :database-position          2
-                                      :database-required          false
-                                      :database-is-auto-increment false
-                                      :json-unfolding             false}
-                 (fmt "latitude")    {:name                       (fmt "latitude")
-                                      :database-type              string?
-                                      :base-type                  :type/Float
-                                      :database-position          3
-                                      :database-required          false
-                                      :database-is-auto-increment false
-                                      :json-unfolding             false}
-                 (fmt "longitude")   {:name                       (fmt "longitude")
-                                      :database-type              string?
-                                      :base-type                  :type/Float
-                                      :database-position          4
-                                      :database-required          false
-                                      :database-is-auto-increment false
-                                      :json-unfolding             false}
-                 (fmt "price")       {:name                       (fmt "price")
-                                      :database-type              string?
-                                      :base-type                  :type/Integer
-                                      :database-position          5
-                                      :database-required          false
-                                      :database-is-auto-increment false
-                                      :json-unfolding             false}}
-                (m/index-by :name (:fields (driver/describe-table driver/*driver* (mt/db) venues)))))))))
+(deftest ^:parallel describe-fields-or-table-test
+  (testing "test `describe-fields` or `describe-table` returns some basic metadata"
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/dataset daily-bird-counts
+        (let [table (t2/select-one :model/Table :id (mt/id :bird-count))
+              fmt   #(ddl.i/format-name driver/*driver* %)]
+          (is (=? [{:name              (fmt "id"),
+                    :database-type     string?,
+                    :database-position 0,
+                    :base-type         #(isa? % :type/Number),
+                    :json-unfolding    false}
+                   {:name              (fmt "date"),
+                    :database-type     string?,
+                    :database-position 1,
+                    :base-type         #(isa? % :type/Date),
+                    :json-unfolding    false}
+                   {:name              (fmt "count"),
+                    :database-type     string?,
+                    :database-position 2,
+                    :base-type         #(isa? % :type/Number),
+                    :json-unfolding    false}]
+                  (describe-fields-for-table (mt/db) table))))))))
 
 (deftest ^:parallel describe-table-fks-test
   (testing "`describe-table-fks` should work for drivers that do not support `describe-fks`"
@@ -322,25 +254,45 @@
 (deftest ^:parallel describe-fks-test
   (testing "`describe-fks` works for drivers that support `describe-fks`"
     (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :describe-fks)
-      (let [fmt      (partial ddl.i/format-name driver/*driver*)
-            orders   (t2/select-one :model/Table (mt/id :orders))
-            products (t2/select-one :model/Table (mt/id :products))
-            people   (t2/select-one :model/Table (mt/id :people))]
-        (is (= #{{:fk-column-name  (fmt "user_id")
-                  :fk-table-name   (:name orders)
-                  :fk-table-schema (:schema orders)
-                  :pk-column-name  (fmt "id")
-                  :pk-table-name   (:name people)
-                  :pk-table-schema (:schema people)}
-                 {:fk-column-name  (fmt "product_id")
-                  :fk-table-name   (:name orders)
-                  :fk-table-schema (:schema orders)
-                  :pk-column-name  (fmt "id")
-                  :pk-table-name   (:name products)
-                  :pk-table-schema (:schema products)}}
-               (into #{}
-                     (filter #(= (:fk-table-name %) (:name orders)))
-                     (driver/describe-fks driver/*driver* (mt/db)))))))))
+      (let [fmt           (partial ddl.i/format-name driver/*driver*)
+            orders        (t2/select-one :model/Table (mt/id :orders))
+            products      (t2/select-one :model/Table (mt/id :products))
+            people        (t2/select-one :model/Table (mt/id :people))
+            entire-db-fks (driver/describe-fks driver/*driver* (mt/db))
+            schema-db-fks (driver/describe-fks driver/*driver* (mt/db)
+                                               :schema-names (when (:schema orders) [(:schema orders)]))
+            table-db-fks  (driver/describe-fks driver/*driver* (mt/db)
+                                               :schema-names (when (:schema orders) [(:schema orders)])
+                                               :table-names [(:name orders)])]
+        (doseq [[description orders-fks]
+                {"describe-fks results for entire DB includes the orders table FKs"
+                 (into #{}
+                       (filter (fn [x]
+                                 (and (= (:fk-table-name x) (:name orders))
+                                      (= (:fk-table-schema x) (:schema orders)))))
+                       entire-db-fks)
+                 "describe-fks results for a schema includes the orders table FKs"
+                 (into #{}
+                       (filter (fn [x]
+                                 (and (= (:fk-table-name x) (:name orders))
+                                      (= (:fk-table-schema x) (:schema orders)))))
+                       schema-db-fks)
+                 "describe-fks results for a table includes the orders table FKs"
+                 (into #{} table-db-fks)}]
+          (testing description
+            (is (= #{{:fk-column-name  (fmt "user_id")
+                      :fk-table-name   (:name orders)
+                      :fk-table-schema (:schema orders)
+                      :pk-column-name  (fmt "id")
+                      :pk-table-name   (:name people)
+                      :pk-table-schema (:schema people)}
+                     {:fk-column-name  (fmt "product_id")
+                      :fk-table-name   (:name orders)
+                      :fk-table-schema (:schema orders)
+                      :pk-column-name  (fmt "id")
+                      :pk-table-name   (:name products)
+                      :pk-table-schema (:schema products)}}
+                   orders-fks))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; End tests for `describe-*` methods used in sync
