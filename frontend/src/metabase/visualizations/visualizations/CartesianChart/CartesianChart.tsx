@@ -1,5 +1,5 @@
 import type { EChartsType } from "echarts";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
@@ -14,7 +14,7 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
-import { getGridSizeAdjustedSettings } from "./utils";
+import { getGridSizeAdjustedSettings, validateChartModel } from "./utils";
 
 function _CartesianChart(props: VisualizationProps) {
   // The width and height from props reflect the dimensions of the entire container which includes legend,
@@ -61,6 +61,10 @@ function _CartesianChart(props: VisualizationProps) {
     [chartModel],
   );
   const hasLegend = legendItems.length > 0;
+
+  useEffect(() => {
+    validateChartModel(chartModel);
+  }, [chartModel]);
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
