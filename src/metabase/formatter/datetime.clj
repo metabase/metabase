@@ -8,7 +8,6 @@
    [metabase.shared.formatting.constants :as constants]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
    (com.ibm.icu.text RuleBasedNumberFormat)
@@ -143,16 +142,15 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
                              (post-process-date-style viz-settings))))
 
 (defmethod format-timestring :week [timezone-id temporal-str _col {:keys [date-style] :as viz-settings}]
-  (if date-style
-    (let [temporal-str-b (-> temporal-str
+  (let [date-style (or date-style "MMMM d, YYYY")
+        end-temporal-str (-> temporal-str
                              u.date/parse
                              (u.date/add :day 6)
                              u.date/format)]
-      (str
-       (reformat-temporal-str timezone-id temporal-str (post-process-date-style date-style viz-settings))
-       " - "
-       (reformat-temporal-str timezone-id temporal-str-b (post-process-date-style date-style viz-settings))))
-    (str (tru "Week ") (reformat-temporal-str timezone-id temporal-str "w - YYYY"))))
+    (str
+     (reformat-temporal-str timezone-id temporal-str (post-process-date-style date-style viz-settings))
+     " - "
+     (reformat-temporal-str timezone-id end-temporal-str (post-process-date-style date-style viz-settings)))))
 
 (defmethod format-timestring :month [timezone-id temporal-str _col {:keys [date-style] :as viz-settings}]
   (reformat-temporal-str timezone-id temporal-str
