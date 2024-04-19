@@ -1,6 +1,12 @@
 import { useCallback } from "react";
 import { connect } from "react-redux";
 
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+  OnCopy,
+  OnMove,
+} from "metabase/collections/types";
 import {
   canArchiveItem,
   canMoveItem,
@@ -17,12 +23,6 @@ import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { EntityItemMenu } from "./ActionMenu.styled";
-import type {
-  CreateBookmark,
-  DeleteBookmark,
-  OnCopy,
-  OnMove,
-} from "metabase/collections/types";
 
 interface OwnProps {
   className?: string;
