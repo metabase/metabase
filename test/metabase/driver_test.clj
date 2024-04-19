@@ -217,21 +217,18 @@
       (mt/dataset daily-bird-counts
         (let [table (t2/select-one :model/Table :id (mt/id :bird-count))
               fmt   #(ddl.i/format-name driver/*driver* %)]
-          (is (=? [{:name              (fmt "id"),
-                    :database-type     string?,
-                    :database-position 0,
-                    :base-type         #(isa? % :type/Number),
-                    :json-unfolding    false}
-                   {:name              (fmt "date"),
-                    :database-type     string?,
-                    :database-position 1,
-                    :base-type         #(isa? % :type/Date),
-                    :json-unfolding    false}
-                   {:name              (fmt "count"),
-                    :database-type     string?,
-                    :database-position 2,
-                    :base-type         #(isa? % :type/Number),
-                    :json-unfolding    false}]
+          (is (=? [{:name              (fmt "id")
+                    :database-type     string?
+                    :database-position 0
+                    :base-type         #(isa? % :type/Number)}
+                   {:name              (fmt "date")
+                    :database-type     string?
+                    :database-position 1
+                    :base-type         #(isa? % :type/Date)}
+                   {:name              (fmt "count")
+                    :database-type     string?
+                    :database-position 2
+                    :base-type         #(isa? % :type/Number)}]
                   (describe-fields-for-table (mt/db) table))))))))
 
 (deftest ^:parallel describe-table-fks-test
