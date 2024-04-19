@@ -96,8 +96,7 @@ function SeparatorInput({
 
   function handleFocus(evt: FocusEvent<HTMLInputElement>) {
     setHasFocus(true);
-    evt.target.selectionStart = 0;
-    evt.target.selectionEnd = evt.target.value.length;
+    evt.target.select();
   }
 
   function handleBlur() {
