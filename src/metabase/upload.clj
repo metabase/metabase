@@ -515,10 +515,10 @@
            args)))
 
 (defn- invalidate-cached-models! [table]
-  ;; Find all the models for which this is the "primary table", and there are no joins, filters, transformations, etc.
+  ;; Find all the models for which this is the "primary table", and there is no meaningful filtering or transformation.
   (let [model-ids (->> (t2/select [:model/Card :id :dataset_query] :table_id (:id table) :type :model)
                        (remove (fn [{query :dataset_query}]
-                                 ;; notably there are no joins or expressions
+                                 ;; Notably there are no joins or custom columns, which might be expensive.
                                  (every? #{:source-table :fields :limit} (keys query))))
                        (map :id))]
     ;; Ideally we would do all the filtering in the query, but we would need an agnostic way to handle the JSON column.
