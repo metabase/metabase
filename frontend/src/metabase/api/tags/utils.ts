@@ -23,6 +23,7 @@ import type {
   SearchResult,
   Segment,
   Table,
+  Task,
   Timeline,
   TimelineEvent,
   UserInfo,
@@ -315,6 +316,14 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
     ...(table.metrics ? provideMetricListTags(table.metrics) : []),
   ];
+}
+
+export function provideTaskListTags(tasks: Task[]): TagDescription<TagType>[] {
+  return [listTag("task"), ...tasks.flatMap(provideTaskTags)];
+}
+
+export function provideTaskTags(task: Task): TagDescription<TagType>[] {
+  return [idTag("task", task.id)];
 }
 
 export function provideTimelineEventListTags(
