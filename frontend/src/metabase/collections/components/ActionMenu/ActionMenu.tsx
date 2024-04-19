@@ -84,12 +84,15 @@ function ActionMenu({
   const dispatch = useDispatch();
 
   const database = databases?.find(({ id }) => id === item.database_id);
+
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
+  const isArchived = isItemArchived(item);
+
   const canPin = canPinItem(item, collection);
   const canPreview = canPreviewItem(item, collection);
   const canMove = canMoveItem(item, collection);
   const canArchive = canArchiveItem(item, collection);
-  const isArchived = isItemArchived(item);
+  const canCopy = item.copy && !isArchived;
   const canUseMetabot =
     database != null && canUseMetabotOnDatabase(database) && isMetabotEnabled;
 
@@ -134,7 +137,7 @@ function ActionMenu({
         className={className}
         item={item}
         isBookmarked={isBookmarked}
-        isXrayEnabled={isXrayEnabled}
+        isXrayEnabled={!isArchived && isXrayEnabled}
         canUseMetabot={canUseMetabot}
         onPin={canPin ? handlePin : undefined}
         onMove={canMove ? handleMove : undefined}

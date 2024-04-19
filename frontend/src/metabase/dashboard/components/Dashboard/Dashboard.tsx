@@ -5,6 +5,7 @@ import type { Route } from "react-router";
 import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
+import { ArchivedEntityBanner } from "metabase/collections/components/CollectionArchiveBanner";
 import type {
   NewDashCardOpts,
   SetDashboardAttributesOpts,
@@ -533,6 +534,10 @@ function DashboardInner(props: DashboardProps) {
     >
       {() => (
         <DashboardStyled>
+          {dashboard.archived && (
+            <ArchivedEntityBanner entity="dashboard" entityId={dashboard.id} />
+          )}
+
           <DashboardHeaderContainer
             data-element-id="dashboard-header-container"
             id="Dashboard-Header-Container"

@@ -1,30 +1,45 @@
 import { t } from "ttag";
 
 import Collections from "metabase/entities/collections";
+import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex, Icon, Paper, Text } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, DashboardId, CardId } from "metabase-types/api";
 
-export const CollectionArchiveBanner = ({
-  collectionId,
-}: {
-  collectionId: CollectionId;
-}) => {
+type CollectionArchiveBannerProps =
+  | { entity: "collection"; entityId: CollectionId }
+  | { entity: "question"; entityId: CardId }
+  | { entity: "dashboard"; entityId: DashboardId }
+  | { entity: "model"; entityId: number };
+
+const entityMap: Record<CollectionArchiveBannerProps["entity"], any> = {
+  collection: Collections,
+  dashboard: Dashboards,
+  model: Questions,
+  question: Questions,
+};
+
+export const ArchivedEntityBanner = ({
+  entity,
+  entityId,
+}: CollectionArchiveBannerProps) => {
   const dispatch = useDispatch();
+
+  const Entity = entityMap[entity];
 
   // TODO: use some other non-deprecated solution...
   const handleUnarchive = () => {
-    dispatch(Collections.actions.setArchived({ id: collectionId }, false));
+    dispatch(Entity.actions.setArchived({ id: entityId }, false));
   };
 
   // TODO: use some other non-deprecated solution...
   const handleDeletePermanently = () => {
-    dispatch(Collections.actions.delete({ id: collectionId }));
+    dispatch(Entity.actions.delete({ id: entityId }));
   };
 
   return (
     <Paper
-      mb="-0.5rem"
       px="1.5rem"
       py=".75rem"
       bg="error"
@@ -42,7 +57,7 @@ export const CollectionArchiveBanner = ({
             style={{ marginInlineEnd: "1rem" }}
           />
           <Text color="white" size="md" lh="1rem">
-            {t`This collection is in the trash. `}
+            {t`This ${entity} is in the trash. `}
           </Text>
         </Flex>
         <Flex gap="md">

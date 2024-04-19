@@ -56,13 +56,6 @@ type QueryParams = BlankQueryOptions & {
 
 type UIControls = Partial<QueryBuilderUIControls>;
 
-const ARCHIVED_ERROR = {
-  data: {
-    error_code: "archived",
-  },
-  context: "query-builder",
-};
-
 const NOT_FOUND_ERROR = {
   data: {
     error_code: "not-found",
@@ -287,11 +280,6 @@ async function handleQBInit(
     dispatch,
     getState,
   });
-
-  if (isSavedCard(card) && card.archived) {
-    dispatch(setErrorPage(ARCHIVED_ERROR));
-    return;
-  }
 
   if (
     isSavedCard(card) &&

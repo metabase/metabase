@@ -7,7 +7,7 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import BulkActions from "metabase/collections/components/BulkActions";
-import { CollectionArchiveBanner } from "metabase/collections/components/CollectionArchiveBanner";
+import { ArchivedEntityBanner } from "metabase/collections/components/CollectionArchiveBanner";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
@@ -294,7 +294,10 @@ export const CollectionContentView = ({
 
             {isTrashedCollection(collection) &&
               !isRootTrashCollection(collection) && (
-                <CollectionArchiveBanner collectionId={collection.id} />
+                <ArchivedEntityBanner
+                  entity="collection"
+                  entityId={collection.id}
+                />
               )}
 
             <CollectionMain>

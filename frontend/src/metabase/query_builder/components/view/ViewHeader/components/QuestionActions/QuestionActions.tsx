@@ -324,10 +324,10 @@ export const QuestionActions = ({
       )}
       {extraButtons.length > 0 && (
         <EntityMenu
-          triggerAriaLabel={t`Move, archive, and more...`}
+          triggerAriaLabel={t`Move, trash, and more...`}
           items={extraButtons}
           triggerIcon="ellipsis"
-          tooltip={t`Move, archive, and more...`}
+          tooltip={t`Move, trash, and more...`}
         />
       )}
     </>

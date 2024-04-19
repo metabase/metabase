@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import { isItemArchived } from "metabase/collections/utils";
+import {
+  isRootTrashCollection,
+  isTrashedCollection,
+} from "metabase/collections/utils";
 import NewItemMenu from "metabase/containers/NewItemMenu";
 import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
@@ -21,15 +24,19 @@ export interface CollectionEmptyStateProps {
 const CollectionEmptyState = ({
   collection,
 }: CollectionEmptyStateProps): JSX.Element => {
-  const isArchived = !!collection && isItemArchived(collection as any);
-  return isArchived ? (
-    <ArchiveCollectionEmptyState />
-  ) : (
-    <DefaultCollectionEmptyState collection={collection} />
-  );
+  const isTrashCollection = !!collection && isRootTrashCollection(collection);
+  const isArchived = !!collection && isTrashedCollection(collection);
+
+  if (isTrashCollection) {
+    return <TrashEmptState />;
+  } else if (isArchived) {
+    return <ArchivedCollectionEmptyState />;
+  } else {
+    return <DefaultCollectionEmptyState collection={collection} />;
+  }
 };
 
-const ArchiveCollectionEmptyState = () => {
+const TrashEmptState = () => {
   return (
     <EmptyStateRoot data-testid="collection-empty-state">
       <Icon name="trash" size={80} color={color("brand-light")} />
@@ -37,6 +44,15 @@ const ArchiveCollectionEmptyState = () => {
       <Text size="1rem" color="text-medium" align="center" mb="1.5rem">
         {t`Deleted items will appear here.`}
       </Text>
+    </EmptyStateRoot>
+  );
+};
+
+const ArchivedCollectionEmptyState = () => {
+  return (
+    <EmptyStateRoot data-testid="collection-empty-state">
+      <CollectionEmptyIcon />
+      <EmptyStateTitle>{t`This collection is empty`}</EmptyStateTitle>
     </EmptyStateRoot>
   );
 };

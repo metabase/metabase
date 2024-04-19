@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { ArchivedEntityBanner } from "metabase/collections/components/CollectionArchiveBanner";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
@@ -213,6 +214,13 @@ class View extends Component {
 
     return (
       <QueryBuilderViewHeaderContainer>
+        {question.card().archived && (
+          <ArchivedEntityBanner
+            entity={question.type()}
+            entityId={question.card().id}
+          />
+        )}
+
         <BorderedViewTitleHeader
           {...this.props}
           style={{
@@ -383,6 +391,7 @@ class View extends Component {
           data-testid="query-builder-root"
         >
           {isHeaderVisible && this.renderHeader()}
+
           <QueryBuilderContentContainer>
             {!isNative && (
               <NotebookContainer

@@ -40,6 +40,7 @@ import {
 import type { FetchDashboardResult } from "metabase/dashboard/types";
 import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import Bookmark from "metabase/entities/bookmarks";
+import Dashboards from "metabase/entities/dashboards";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
 import { fetchPulseFormInput } from "metabase/pulse/actions";
@@ -558,7 +559,9 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
         extraButtons.push({
           title: t`Move to trash`,
           icon: "trash",
-          link: `${location.pathname}/trash`,
+          // TODO: refactor to not use entities
+          action: () =>
+            dispatch(Dashboards.actions.setArchived(dashboard, true)),
           event: "Dashboard;Archive",
         });
       }
@@ -598,7 +601,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
             triggerAriaLabel="dashboard-menu-button"
             items={extraButtons}
             triggerIcon="ellipsis"
-            tooltip={t`Move, archive, and more...`}
+            tooltip={t`Move, trash, and more...`}
             // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
             transitionDuration={0}
           />,
