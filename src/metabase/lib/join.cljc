@@ -191,7 +191,7 @@
     {:name (or (:alias join) display-name), :display-name display-name}))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/join
-  [_query _stage-number _query]
+  [_query _stage-number _join-query]
   ;; not i18n'ed because this shouldn't be developer-facing.
   (throw (ex-info "You can't calculate a metadata map for a join! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
@@ -783,7 +783,9 @@
                                                                  (:id target-column)))
                                                             @target-columns)]
                        (assoc col ::target target-column)))))
-           (lib.metadata.calculation/visible-columns query stage-number source)))))
+           (lib.metadata.calculation/visible-columns query stage-number source
+                                                     {:include-implicitly-joinable?                 false
+                                                      :include-implicitly-joinable-for-source-card? false})))))
 
 (mu/defn suggested-join-conditions :- [:maybe [:sequential {:min 1} ::lib.schema.expression/boolean]] ; i.e., a filter clause
   "Return suggested default join conditions when constructing a join against `joinable`, e.g. a Table, Saved
@@ -791,20 +793,34 @@
   primary key of the thing we're joining (see #31175 for more info); otherwise this will return `nil` if no default
   conditions are suggested."
   ([query joinable]
-   (suggested-join-conditions query -1 joinable))
+   (suggested-join-conditions query -1 joinable nil))
+
+  ([query stage-number joinable]
+   (suggested-join-conditions query stage-number joinable nil))
 
   ([query         :- ::lib.schema/query
     stage-number  :- :int
-    joinable]
-   (let [stage (lib.util/query-stage query stage-number)]
-     (letfn [ ;; only keep one FK to each target column e.g. for
+    joinable
+    position      :- [:maybe :int]]
+   (let [unjoined (if position
+                    ;; Drop this join and any later ones so they won't be used as suggestions.
+                    (let [new-joins (-> (lib.util/query-stage query stage-number)
+                                        :joins
+                                        (subvec 0 position)
+                                        not-empty)]
+                      (lib.util/update-query-stage query stage-number
+                                                   u/assoc-dissoc :joins new-joins))
+                    ;; If this is a new joinable, use the entire current query.
+                    query)
+         stage    (lib.util/query-stage unjoined stage-number)]
+     (letfn [;; only keep one FK to each target column e.g. for
              ;;
              ;;    messages (sender_id REFERENCES user(id),  recipient_id REFERENCES user(id))
              ;;
              ;; we only want join on one or the other, not both, because that makes no sense. However with a composite
              ;; FK -> composite PK suggest multiple conditions. See #34184
              (fks [source target]
-               (->> (fk-columns-to query stage-number source target)
+               (->> (fk-columns-to unjoined stage-number source target)
                     (m/distinct-by #(-> % ::target :id))
                     not-empty))
              (filter-clause [x y]
@@ -996,4 +1012,4 @@
   [query stage-number _key]
   (some->> (not-empty (joins query stage-number))
            (map #(lib.metadata.calculation/display-name query stage-number %))
-           (str/join " + " )))
+           (str/join " + ")))

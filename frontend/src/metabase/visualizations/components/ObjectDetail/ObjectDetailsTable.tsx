@@ -61,7 +61,7 @@ export function DetailsTableCell({
     isLink = false;
   } else {
     if (value === null || value === undefined || value === "") {
-      cellValue = <span className="text-light">{t`Empty`}</span>;
+      cellValue = <span className={CS.textLight}>{t`Empty`}</span>;
     } else if (isa(column.semantic_type, TYPE.SerializedJSON)) {
       let formattedJson;
       try {
@@ -111,7 +111,7 @@ export function DetailsTableCell({
       <span
         className={cx(
           {
-            "cursor-pointer": onVisualizationClick,
+            [CS.cursorPointer]: onVisualizationClick,
             link: isClickable && isLink,
           },
           className,
@@ -164,12 +164,12 @@ export function DetailsTable({
 
   if (!cols?.length) {
     return (
-      <EmptyState message={t`Select at least one column`} className="p3" />
+      <EmptyState message={t`Select at least one column`} className={CS.p3} />
     );
   }
 
   if (!row?.length) {
-    return <EmptyState message={t`No details found`} className="p3" />;
+    return <EmptyState message={t`No details found`} className={CS.p3} />;
   }
 
   return (
@@ -186,7 +186,7 @@ export function DetailsTable({
                   value={row[columnIndex] ?? t`Empty`}
                   isColumnName
                   settings={settings}
-                  className={cx(CS.textBold, "text-medium")}
+                  className={cx(CS.textBold, CS.textMedium)}
                   onVisualizationClick={onVisualizationClick}
                   visualizationIsClickable={visualizationIsClickable}
                 />
@@ -199,7 +199,7 @@ export function DetailsTable({
                   settings={settings}
                   className={cx(
                     CS.textBold,
-                    "text-dark",
+                    CS.textDark,
                     CS.textSpaced,
                     CS.textWrap,
                   )}

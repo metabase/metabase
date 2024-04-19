@@ -65,3 +65,19 @@ export const setTokenFeatures = featuresScope => {
     },
   });
 };
+
+export const deleteToken = () => {
+  if (!isEE) {
+    throw new Error(
+      "You must run Metabase® Enterprise Edition™ for token to make sense.\nMake sure you have `MB_EDITION=ee` in your environment variables.",
+    );
+  }
+  return cy.request({
+    method: "PUT",
+    url: "/api/setting/premium-embedding-token",
+    failOnStatusCode: false,
+    body: {
+      value: null,
+    },
+  });
+};

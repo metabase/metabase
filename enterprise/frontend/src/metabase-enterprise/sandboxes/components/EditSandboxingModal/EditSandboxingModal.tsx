@@ -5,16 +5,17 @@ import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import { useGetCardQuery, skipToken } from "metabase/api";
+import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
 import ActionButton from "metabase/components/ActionButton";
 import QuestionLoader from "metabase/containers/QuestionLoader";
-import QuestionPicker from "metabase/containers/QuestionPicker";
-import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
 import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
+import { useToggle } from "metabase/hooks/use-toggle";
 import { GTAPApi } from "metabase/services";
 import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Icon, Button } from "metabase/ui";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
@@ -92,6 +93,9 @@ const EditSandboxingModal = ({
   const normalizedPolicy = getNormalizedPolicy(policy, shouldUseSavedQuestion);
   const isValid = isPolicyValid(normalizedPolicy, shouldUseSavedQuestion);
 
+  const [showPickerModal, { turnOn: showModal, turnOff: hideModal }] =
+    useToggle(false);
+
   const [{ error }, savePolicy] = useAsyncFn(async () => {
     const shouldValidate = normalizedPolicy.card_id != null;
     if (shouldValidate) {
@@ -113,16 +117,20 @@ const EditSandboxingModal = ({
     (!_.isEqual(originalPolicy, normalizedPolicy) ||
       normalizedPolicy.id == null);
 
+  const { data: currentQuestion } = useGetCardQuery(
+    policy.card_id != null ? { id: policy.card_id } : skipToken,
+  );
+
   return (
     <div>
-      <h2 className="p3">{t`Grant sandboxed access to this table`}</h2>
+      <h2 className={CS.p3}>{t`Grant sandboxed access to this table`}</h2>
 
       <div>
-        <div className="px3 pb3">
-          <div className="pb3">
+        <div className={cx(CS.px3, CS.pb3)}>
+          <div className={CS.pb3}>
             {t`When users in this group view this table they'll see a version of it that's filtered by their user attributes, or a custom view of it based on a saved question.`}
           </div>
-          <h4 className="pb1">
+          <h4 className={CS.pb1}>
             {t`How do you want to filter this table for users in this group?`}
           </h4>
           <Radio
@@ -141,22 +149,49 @@ const EditSandboxingModal = ({
           />
         </div>
         {shouldUseSavedQuestion && (
-          <div className="px3 pb3">
-            <div className="pb2">
+          <div className={cx(CS.px3, CS.pb3)}>
+            <div className={CS.pb2}>
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
-            <QuestionPicker
-              maxHeight={undefined}
-              value={policy.card_id}
-              onChange={(card_id: number) => setPolicy({ ...policy, card_id })}
-            />
+            <Button
+              data-testid="collection-picker-button"
+              onClick={showModal}
+              fullWidth
+              rightIcon={<Icon name="ellipsis" />}
+              styles={{
+                inner: {
+                  justifyContent: "space-between",
+                },
+                root: { "&:active": { transform: "none" } },
+              }}
+            >
+              {currentQuestion?.name ?? t`Select a question`}
+            </Button>
+            {showPickerModal && (
+              <QuestionPickerModal
+                value={
+                  currentQuestion && policy.card_id != null
+                    ? {
+                        id: policy.card_id,
+                        model:
+                          currentQuestion.type === "model" ? "dataset" : "card",
+                      }
+                    : undefined
+                }
+                onChange={newCard => {
+                  setPolicy({ ...policy, card_id: newCard.id });
+                  hideModal();
+                }}
+                onClose={hideModal}
+              />
+            )}
           </div>
         )}
         {(!shouldUseSavedQuestion || policy.card_id != null) &&
           (hasAttributesOptions || hasValidMappings ? (
             <div className={cx(CS.p3, CS.borderTop, CS.borderBottom)}>
               {shouldUseSavedQuestion && (
-                <div className="pb2">
+                <div className={CS.pb2}>
                   {t`You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question.`}
                 </div>
               )}
@@ -171,7 +206,7 @@ const EditSandboxingModal = ({
               />
             </div>
           ) : (
-            <div className="px3">
+            <div className={CS.px3}>
               <AttributeOptionsEmptyState
                 title={
                   shouldUseSavedQuestion
@@ -183,9 +218,9 @@ const EditSandboxingModal = ({
           ))}
       </div>
 
-      <div className="p3">
+      <div className={CS.p3}>
         {isValid && (
-          <div className="pb1">
+          <div className={CS.pb1}>
             <PolicySummary policy={normalizedPolicy} />
           </div>
         )}
@@ -194,7 +229,7 @@ const EditSandboxingModal = ({
           <Button onClick={onCancel}>{t`Cancel`}</Button>
           <ActionButton
             error={error}
-            className="ml1"
+            className={CS.ml1}
             actionFn={savePolicy}
             primary
             disabled={!canSave}
@@ -237,9 +272,7 @@ interface PolicySummaryProps {
 const PolicySummary = ({ policy }: PolicySummaryProps) => {
   return (
     <div>
-      <div
-        className={cx("px1 pb2", CS.textUppercase, CS.textSmall, "text-grey-4")}
-      >
+      <div className={cx(CS.px1, CS.pb2, CS.textUppercase, CS.textSmall)}>
         {t`Summary`}
       </div>
       <SummaryRow

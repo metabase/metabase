@@ -173,7 +173,7 @@ function GroupMappingsWidget({
         </div>
       </Root>
       {saveError?.data?.message && (
-        <div className={cx("text-error", CS.textBold, "m1")}>
+        <div className={cx(CS.textError, CS.textBold, CS.m1)}>
           {saveError.data.message}
         </div>
       )}

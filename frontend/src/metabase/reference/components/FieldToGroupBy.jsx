@@ -22,12 +22,12 @@ const FieldToGroupBy = ({
   <div className={className}>
     <a className={Q.queryButton} onClick={onClick}>
       <div className={S.fieldToGroupByText}>
-        <div className={cx("text-brand", CS.textBold)}>
+        <div className={cx(CS.textBrand, CS.textBold)}>
           {field.display_name}
         </div>
       </div>
       <Icon
-        className={cx(iconClass, "pr1")}
+        className={cx(iconClass, CS.pr1)}
         tooltip={field.description ? field.description : t`Look up this field`}
         size={16}
         name="reference"

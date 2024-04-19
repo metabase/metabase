@@ -7,7 +7,6 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [ring.util.codec :as codec]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -74,8 +73,7 @@
 (defn- fetch-access-and-refresh-tokens* [scopes, ^String client-id, ^String client-secret, ^String auth-code]
   {:pre  [(seq client-id) (seq client-secret) (seq auth-code)]
    :post [(seq (:access-token %)) (seq (:refresh-token %))]}
-
-  (log/info (u/format-color 'magenta (trs "Fetching Google access/refresh tokens with auth-code {0}..." (pr-str auth-code))))
+  (log/info (u/format-color :magenta "Fetching Google access/refresh tokens with auth-code %s..." (pr-str auth-code)))
   (let [^GoogleAuthorizationCodeFlow flow
         (.build (doto (GoogleAuthorizationCodeFlow$Builder. http-transport json-factory client-id client-secret scopes)
                   (.setAccessType "offline")))

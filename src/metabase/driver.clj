@@ -14,7 +14,7 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -35,7 +35,7 @@
     (try
       (notify-database-updated driver database)
       (catch Throwable e
-        (log/error e (trs "Failed to notify {0} Database {1} updated" driver id))))))
+        (log/errorf e "Failed to notify %s Database %s updated" driver id)))))
 
 (defn- short-timezone-name [timezone-id]
   (let [^java.time.ZoneId zone (if (seq timezone-id)
@@ -366,7 +366,8 @@
 
 (defmulti describe-fks
   "Returns a reducible collection of maps, each containing information about foreign keys.
-  Takes keyword arguments to narrow down the results to a set of `schema-names` or `table-names`.
+  Takes optional keyword arguments to narrow down the results to a set of `schema-names`
+  and `table-names`.
 
   Results match [[metabase.sync.interface/FKMetadataEntry]].
   Results are optionally filtered by `schema-names` and `table-names` provided.
@@ -589,7 +590,10 @@
     :describe-fields
 
     ;; Does the driver support fingerprint the fields. Default is true
-    :fingerprint})
+    :fingerprint
+
+    ;; Does this driver support window functions like cumulative count and cumulative sum? (default: false)
+    :window-functions})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -609,8 +613,11 @@
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database]), :added "0.41.0"}
   (fn [driver feature _database]
-    (when-not (features feature)
-      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
+    ;; only make sure unqualified keywords are explicitly defined in [[features]].
+    (when (simple-keyword? feature)
+      (when-not (features feature)
+        (throw (ex-info (tru "Invalid driver feature: {0}" feature)
+                        {:feature feature}))))
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 

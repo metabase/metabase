@@ -6,16 +6,18 @@ import Button from "metabase/core/components/Button";
 import { alpha, color, lighten } from "metabase/lib/colors";
 import { TableRoot } from "metabase/visualizations/components/TableRoot";
 
+import TableS from "./TableInteractive.module.css";
+
 export const TableInteractiveRoot = styled(TableRoot)`
-  .TableInteractive-headerCellData .cellData {
+  .${TableS.TableInteractiveHeaderCellData} .${TableS.cellData} {
     border: 1px solid ${alpha("brand", 0.2)};
   }
 
-  .TableInteractive-headerCellData .cellData:hover {
+  .${TableS.TableInteractiveHeaderCellData} .${TableS.cellData}:hover {
     border: 1px solid ${alpha("brand", 0.56)};
   }
 
-  .TableInteractive-cellWrapper:hover {
+  .${TableS.TableInteractiveCellWrapper}:hover {
     background-color: ${alpha("brand", 0.1)};
   }
 `;

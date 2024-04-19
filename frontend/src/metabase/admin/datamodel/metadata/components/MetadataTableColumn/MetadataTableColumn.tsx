@@ -78,7 +78,7 @@ const MetadataTableColumn = ({
     >
       <div className={cx(CS.flex, CS.flexColumn, CS.flexAuto)}>
         <div
-          className={cx(CS.textMonospace, "mb1")}
+          className={cx(CS.textMonospace, CS.mb1)}
           style={{ fontSize: "12px" }}
         >
           {getFieldRawName(field)}
@@ -92,7 +92,7 @@ const MetadataTableColumn = ({
               value={field.displayName()}
               onBlurChange={handleChangeName}
             />
-            <div className="clearfix">
+            <div className={CS.clearfix}>
               <div className={cx(CS.flex, CS.flexAuto)}>
                 <div className={cx(CS.pl1, CS.flexAuto)}>
                   <FieldVisibilityPicker

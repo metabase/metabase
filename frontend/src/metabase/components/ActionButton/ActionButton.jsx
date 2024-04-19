@@ -6,6 +6,7 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import { cancelable } from "metabase/lib/promise";
 import { Icon } from "metabase/ui";
 
@@ -131,7 +132,7 @@ export default class ActionButton extends Component {
             : cx(className, {
                 [successClassName]: result === "success",
                 [failedClassName]: result === "failed",
-                "pointer-events-none": isActionDisabled,
+                [CS.pointerEventsNone]: isActionDisabled,
               })
         }
         onClick={this.onClick}
@@ -145,7 +146,7 @@ export default class ActionButton extends Component {
         ) : result === "success" ? (
           <span>
             {forceActiveStyle ? null : <Icon name="check" size={12} />}
-            <span className="ml1">{successText}</span>
+            <span className={CS.ml1}>{successText}</span>
           </span>
         ) : result === "failed" ? (
           failedText

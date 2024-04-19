@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -8,8 +9,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli :as mu])
   (:import
    (clojure.lang ExceptionInfo)
    (java.sql SQLException)))
@@ -65,7 +65,7 @@
 
 (mu/defn exception-response :- [:map [:status :keyword]]
   "Convert an Exception to a nicely-formatted Clojure map suitable for returning in userland QP responses."
-  [^Throwable e :- (ms/InstanceOfClass Throwable)]
+  [^Throwable e :- (lib.schema.common/instance-of-class Throwable)]
   (let [[m & more :as maps] (for [e (exception-chain e)]
                               (format-exception e))]
     (merge
@@ -96,7 +96,7 @@
 (mu/defn ^:private format-exception* :- [:map [:status :keyword]]
   "Format a `Throwable` into the usual userland error-response format."
   [query        :- :map
-   ^Throwable e :- (ms/InstanceOfClass Throwable)
+   ^Throwable e :- (lib.schema.common/instance-of-class Throwable)
    extra-info   :- [:maybe :map]]
   (try
     ;; [[metabase.query-processor.middleware.process-userland-query/process-userland-query-middleware]] wraps exceptions
@@ -129,11 +129,9 @@
           (catch Throwable e
             ;; format the Exception and return it
             (let [formatted-exception (format-exception* query e @extra-info)]
-              (log/error (str (trs "Error processing query: {0}"
-                                   (or (:error formatted-exception)
-                                       ;; log in server locale, respond in user locale
-                                       (trs "Error running query")))
-                              "\n" (u/pprint-to-str formatted-exception)))
+              (log/errorf "Error processing query: %s\n%s"
+                          (or (:error formatted-exception) "Error running query")
+                          (u/pprint-to-str formatted-exception))
               ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
               (let [result (update formatted-exception
                                    :error (fnil identity (trs "Error running query")))]

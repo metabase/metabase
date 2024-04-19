@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback } from "react";
 import type { Route } from "react-router";
@@ -18,6 +19,7 @@ import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationMod
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import fitViewport from "metabase/hoc/FitViewPort";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { IconName } from "metabase/ui";
@@ -107,8 +109,8 @@ function PermissionsPageLayout({
             formModal
             onClose={clearSaveError}
           >
-            <p className="mb4">{saveError}</p>
-            <div className="ml-auto">
+            <p className={CS.mb4}>{saveError}</p>
+            <div className={cx(CS.mlAuto)}>
               <Button onClick={clearSaveError}>{t`OK`}</Button>
             </div>
           </ModalContent>
@@ -116,13 +118,13 @@ function PermissionsPageLayout({
 
         <LeaveConfirmationModal isEnabled={isDirty} route={route} />
 
-        <TabsContainer className="border-bottom">
+        <TabsContainer className={CS.borderBottom}>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
           <ToolbarButtonsContainer>
             {toolbarRightContent}
             {helpContent && !isHelpReferenceOpen && (
               <ToolbarButton
-                text={t`Permission help`}
+                text={t`Permissions help`}
                 icon="info"
                 onClick={handleToggleHelpReference}
               />

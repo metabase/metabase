@@ -10,9 +10,9 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.models.cache-config :as cache-config]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.query :as query]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -30,19 +30,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defenterprise granular-cache-strategy
-  "Returns cache strategy for a card. On EE, this checks the hierarchy for the card, dashboard, or
-   database (in that order). Returns nil on OSS."
+(defenterprise cache-strategy
+  "Returns cache strategy for a card. In EE, this checks the hierarchy for the card, dashboard, or
+   database (in that order). In OSS returns root configuration."
   metabase-enterprise.cache.strategies
-  [_card _dashboard-id])
-
-(defn- cache-strategy
-  [card dashboard-id]
-  (when (public-settings/enable-query-caching)
-    (or (granular-cache-strategy card dashboard-id)
-        {:type            :ttl
-         :multiplier      (public-settings/query-caching-ttl-ratio)
-         :min_duration_ms (long (* (public-settings/query-caching-min-ttl) 1000))})))
+  [_card _dashboard-id]
+  (cache-config/card-strategy (cache-config/root-strategy) nil))
 
 (defn- enrich-strategy [strategy query]
   (case (:type strategy)
@@ -209,8 +202,9 @@
   (let [dash-viz (when (and (not= context :question)
                             dashcard-id)
                    (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
-        card     (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
-                                                 :type :result_metadata :visualization_settings]
+        card     (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :collection_id
+                                                 :type :result_metadata :visualization_settings
+                                                 :cache_invalidated_at]
                                                 :id card-id))
         query    (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                      (update :viz-settings (fn [viz] (merge viz dash-viz)))

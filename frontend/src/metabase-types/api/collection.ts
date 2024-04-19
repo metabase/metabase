@@ -1,5 +1,6 @@
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
+import type { PaginationRequest, PaginationResponse } from "metabase-types/api";
 
 import type { CardDisplayType } from "./card";
 import type { DatabaseId } from "./database";
@@ -52,7 +53,7 @@ export interface Collection {
   authority_level?: "official" | null;
   type?: "instance-analytics" | null;
 
-  parent_id?: CollectionId;
+  parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
   is_personal?: boolean;
 
@@ -68,14 +69,15 @@ export interface Collection {
   path?: CollectionId[];
 }
 
-export type CollectionItemModel =
-  | "card"
-  | "dataset"
-  | "dashboard"
-  | "pulse"
-  | "snippet"
-  | "collection"
-  | "indexed-entity";
+export const COLLECTION_ITEM_MODELS = [
+  "card",
+  "dataset",
+  "dashboard",
+  "snippet",
+  "collection",
+  "indexed-entity",
+] as const;
+export type CollectionItemModel = typeof COLLECTION_ITEM_MODELS[number];
 
 export type CollectionItemId = number;
 
@@ -95,6 +97,8 @@ export interface CollectionItem {
   database_id?: DatabaseId;
   moderated_status?: string;
   type?: string;
+  here?: CollectionItemModel[];
+  below?: CollectionItemModel[];
   can_write?: boolean;
   "last-edit-info"?: LastEditInfo;
   location?: string;
@@ -115,3 +119,17 @@ export interface CollectionListQuery {
   namespace?: string;
   tree?: boolean;
 }
+
+export type ListCollectionItemsRequest = {
+  id: CollectionId;
+  models?: CollectionItemModel[];
+  archived?: boolean;
+  pinned_state?: "all" | "is_pinned" | "is_not_pinned";
+  sort_column?: "name" | "last_edited_at" | "last_edited_by" | "model";
+  sort_direction?: "asc" | "desc";
+} & PaginationRequest;
+
+export type ListCollectionItemsResponse = {
+  data: CollectionItem[];
+  models: CollectionItemModel[] | null;
+} & PaginationResponse;

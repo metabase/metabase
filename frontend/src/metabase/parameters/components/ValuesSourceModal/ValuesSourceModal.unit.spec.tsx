@@ -1,12 +1,15 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupDatabaseEndpoints,
   setupErrorParameterValuesEndpoints,
   setupParameterValuesEndpoints,
+  setupSearchEndpoints,
   setupUnauthorizedCardsEndpoints,
   setupUnauthorizedCollectionsEndpoints,
 } from "__support__/server-mocks";
@@ -26,6 +29,7 @@ import {
   createMockDatabase,
   createMockField,
   createMockParameterValues,
+  createMockTable,
 } from "metabase-types/api/mocks";
 
 import ValuesSourceModal from "./ValuesSourceModal";
@@ -275,6 +279,25 @@ describe("ValuesSourceModal", () => {
     });
 
     it("should allow searching for a card without access to the root collection (metabase#30355)", async () => {
+      fetchMock.get(
+        { url: "path:/api/collection", overwriteRoutes: false },
+        [],
+      );
+      fetchMock.get(
+        {
+          url: "path:/api/collection/tree",
+          query: { tree: true, "exclude-archived": true },
+          overwriteRoutes: false,
+        },
+        [],
+      );
+      setupDatabaseEndpoints(
+        createMockDatabase({
+          id: -1337,
+          tables: [createMockTable({ schema: "Everything%20else" })],
+        }),
+      );
+
       await setup({
         hasCollectionAccess: false,
       });
@@ -283,12 +306,10 @@ describe("ValuesSourceModal", () => {
         screen.getByRole("radio", { name: "From another model or question" }),
       );
       await userEvent.click(
-        screen.getByRole("button", { name: /Pick a model or question…/ }),
+        screen.getByRole("button", { name: /Pick a model or question/ }),
       );
 
-      expect(
-        screen.getByPlaceholderText("Search for a question or model"),
-      ).toBeInTheDocument();
+      expect(await screen.findByPlaceholderText(/Search…/)).toBeInTheDocument();
     });
 
     it("should display a message when there is an error in the underlying query", async () => {
@@ -412,6 +433,7 @@ const setup = async ({
   const onClose = jest.fn();
 
   setupDatabasesEndpoints(databases);
+  setupSearchEndpoints([]);
 
   if (hasCollectionAccess) {
     setupCollectionsEndpoints({ collections });

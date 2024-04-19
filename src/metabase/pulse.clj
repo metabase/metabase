@@ -27,6 +27,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.retry :as retry]
    [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
@@ -86,7 +87,7 @@
          :result   result
          :type     :card}))
     (catch Throwable e
-      (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
+      (log/warnf e "Error running query for Card %s" card-or-id))))
 
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
@@ -220,7 +221,7 @@
 
 (mu/defn defaulted-timezone :- :string
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
-  [card :- (mi/InstanceOf :model/Card)]
+  [card :- (ms/InstanceOf :model/Card)]
   (or (some->> card database-id (t2/select-one Database :id) qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))
 
@@ -429,8 +430,8 @@
 
 (defmethod notification [:pulse :email]
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} parts {:keys [recipients]}]
-  (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
-                                        pulse-id (pr-str pulse-name) (parts->cards-count parts))))
+  (log/debug (u/format-color :cyan "Sending Pulse (%s: %s) with %s Cards via email"
+                             pulse-id (pr-str pulse-name) (parts->cards-count parts)))
   (let [user-recipients     (filter (fn [recipient] (and (u/email? (:email recipient))
                                                          (some? (:id recipient)))) recipients)
         non-user-recipients (filter (fn [recipient] (and (u/email? (:email recipient))
@@ -449,8 +450,8 @@
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse}
    parts
    {{channel-id :channel} :details}]
-  (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
-                                        pulse-id (pr-str pulse-name) (parts->cards-count parts))))
+  (log/debug (u/format-color :cyan "Sending Pulse (%s: %s) with %s Cards via Slack"
+                             pulse-id (pr-str pulse-name) (parts->cards-count parts)))
   (let [dashboard (t2/select-one Dashboard :id dashboard-id)]
     {:channel-id  channel-id
      :attachments (remove nil?
@@ -460,7 +461,7 @@
 
 (defmethod notification [:alert :email]
   [{:keys [id] :as pulse} parts channel]
-  (log/debug (trs "Sending Alert ({0}: {1}) via email" id name))
+  (log/debugf "Sending Alert (%s: %s) via email" id name)
   (let [condition-kwd       (messages/pulse->alert-condition-kwd pulse)
         email-subject       (trs "Alert: {0} has {1}"
                                  (first-question-name pulse)
@@ -481,7 +482,7 @@
 
 (defmethod notification [:alert :slack]
   [pulse parts {{channel-id :channel} :details}]
-  (log/debug (u/format-color 'cyan (trs "Sending Alert ({0}: {1}) via Slack" (:id pulse) (:name pulse))))
+  (log/debug (u/format-color :cyan "Sending Alert (%s: %s) via Slack" (:id pulse) (:name pulse)))
   {:channel-id  channel-id
    :attachments (cons {:blocks [{:type "header"
                                  :text {:type "plain_text"
@@ -568,7 +569,7 @@
     (try
       (send-notification-retrying! notification)
       (catch Throwable e
-        (log/error e (trs "Error sending notification!"))))))
+        (log/error e "Error sending notification!")))))
 
 (defn send-pulse!
   "Execute and Send a `Pulse`, optionally specifying the specific `PulseChannels`.  This includes running each

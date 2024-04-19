@@ -25,7 +25,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.setup :as setup]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -76,7 +76,7 @@
 (defn- setup-maybe-create-and-invite-user! [{:keys [email] :as user}, invitor]
   (when email
     (if-not (email/email-configured?)
-      (log/error (trs "Could not invite user because email is not configured."))
+      (log/error "Could not invite user because email is not configured.")
       (u/prog1 (user/create-and-invite-user! user invitor true)
         (user/set-permissions-groups! <> [(perms-group/all-users) (perms-group/admin)])
         (events/publish-event! :event/user-invited {:object (assoc <> :invite_method "email")})

@@ -12,6 +12,7 @@
    [metabase.query-processor-test.timezones-test :as timezones-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -765,6 +766,49 @@
                    (mt/formatted-rows [int]
                      (mt/run-mbql-query airport {:aggregation [:count], :filter [:not-empty $code]}))))))))))
 
+(deftest ^:parallel is-empty-not-empty-with-not-emptyable-args-test
+  (mt/test-drivers
+   ;; TODO: Investigate how to make the test work with Athena!
+   (disj (mt/normal-drivers) :athena)
+   (mt/dataset
+    test-data-null-date
+    (testing ":is-empty works with not emptyable type argument (#40883)"
+      (is (= [[1 1]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query
+               checkins
+               {:expressions {"caseExpr" [:case
+                                          [[[:is-empty [:field %null_only_date {:base-type :type/Date}]] 1]]
+                                          {:default 0}]}
+                :fields [$id [:expression "caseExpr"]]
+                :order-by [[$id :asc]]
+                :limit 1})))))
+    (testing ":not-empty works with not emptyable type argument (#40883)"
+      (is (= [[1 0]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query
+               checkins
+               {:expressions {"caseExpr" [:case
+                                          [[[:not-empty [:field %null_only_date {:base-type :type/Date}]] 1]]
+                                          {:default 0}]}
+                :fields [$id [:expression "caseExpr"]]
+                :order-by [[$id :asc]]
+                :limit 1})))))
+    (testing (str "nil base-type arg of :not-empty should behave as not emptyable")
+      (is (= [[1 1]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query
+               checkins
+               {:expressions {"caseExpr" [:case
+                                          [[[:is-empty [:field %null_only_date nil]] 1]]
+                                          {:default 0}]}
+                :fields [$id [:expression "caseExpr"]]
+                :order-by [[$id :asc]]
+                :limit 1}))))))))
+
 (deftest ^:parallel order-by-nulls-test
   (testing "Check that we can sort by numeric columns that contain NULLs (#6615)"
     (mt/dataset daily-bird-counts
@@ -821,3 +865,19 @@
                              ;; WRONG => [[991 "2014-05-09T00:00:00-07:00"]]
                              (mt/formatted-rows [int str]
                                results))))))))))))))
+
+(deftest ^:parallel date-filter-on-datetime-column-test
+  (testing "Filtering a DATETIME expression by a DATE literal string should do something sane (#17807)"
+    (qp.store/with-metadata-provider (mt/id)
+      (let [people     (lib.metadata/table (qp.store/metadata-provider) (mt/id :people))
+            created-at (lib.metadata/field (qp.store/metadata-provider) (mt/id :people :created_at))
+            query      (as-> (lib/query (qp.store/metadata-provider) people) query
+                         (lib/expression query "CC Created At" created-at)
+                         (lib/filter query (lib/=
+                                            (lib/expression-ref query "CC Created At")
+                                            "2017-10-07"))
+                         (lib/aggregate query (lib/count)))]
+        (testing (str "\nquery =\n" (u/pprint-to-str query))
+          (mt/with-native-query-testing-context query
+            (is (= [[2]]
+                   (mt/rows (qp/process-query query))))))))))

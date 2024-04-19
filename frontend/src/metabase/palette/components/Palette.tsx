@@ -35,7 +35,7 @@ export const Palette = withRouter(props => {
 });
 
 const PaletteContainer = () => {
-  const { query } = useKBar();
+  const { query } = useKBar(state => ({ actions: state.actions }));
   const ref = useRef(null);
 
   useOnClickOutside(ref, () => {
@@ -43,11 +43,11 @@ const PaletteContainer = () => {
   });
 
   return (
-    <Overlay blur="2" opacity={0.2}>
+    <Overlay opacity={0.5}>
       <Center>
         <Card
           ref={ref}
-          w="60vw"
+          w="640px"
           mt="10vh"
           p="0"
           style={{

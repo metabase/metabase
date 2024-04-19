@@ -17,7 +17,6 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (java.sql ResultSet ResultSetMetaData Types)))
@@ -28,10 +27,10 @@
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
                                       ::sql.qp.empty-string-is-null/empty-string-is-null})
 
-(doseq [[feature supported?] {:percentile-aggregations   false
+(doseq [[feature supported?] {:convert-timezone          true
                               :datetime-diff             true
                               :now                       true
-                              :convert-timezone          true
+                              :percentile-aggregations   false
                               :test/jvm-timezone-setting false}]
   (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))
 
@@ -244,7 +243,7 @@
   (try (set (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                         ["SELECT TABLE_SCHEMA AS \"schema\", TABLE_NAME AS \"name\" FROM V_CATALOG.VIEWS;"]))
        (catch Throwable e
-         (log/error e (trs "Failed to fetch materialized views for this database")))))
+         (log/error e "Failed to fetch materialized views for this database"))))
 
 (defmethod driver/describe-database :vertica
   [driver database]

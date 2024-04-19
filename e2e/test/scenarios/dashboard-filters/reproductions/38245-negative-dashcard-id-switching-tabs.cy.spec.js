@@ -8,6 +8,7 @@ import {
   sidebar,
   visitDashboard,
 } from "e2e/support/helpers";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 const TAB_1 = {
   id: 1,
@@ -19,12 +20,12 @@ const TAB_2 = {
   name: "Tab 2",
 };
 
-const DASHBOARD_TEXT_FILTER = {
+const DASHBOARD_TEXT_FILTER = createMockParameter({
   id: "3",
   name: "Text filter",
   slug: "filter-text",
   type: "string/contains",
-};
+});
 
 describe("issue 38245", () => {
   beforeEach(() => {

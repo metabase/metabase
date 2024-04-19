@@ -20,6 +20,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -119,7 +120,7 @@
   {:pre [((some-fn clause? #(= (:lib/type %) :mbql/join)) target-clause)]}
   (let [new-clause (if (= :expressions (first location))
                      (top-level-expression-clause new-clause (or (custom-name new-clause)
-                                                             (expression-name target-clause)))
+                                                                 (expression-name target-clause)))
                      new-clause)]
     (m/update-existing-in
      stage
@@ -475,6 +476,16 @@
   [query :- :map]
   (= (first-stage-type query) :mbql.stage/native))
 
+(def ^:dynamic ^{:arglists '(^java.lang.String [^java.lang.String s])} *escape-alias-fn*
+  "Function to use for escaping a unique alias when generating `:lib/desired-alias`."
+  identity)
+
+(defn- unique-alias [original suffix]
+  (->> (str original \_ suffix)
+       *escape-alias-fn*
+       ;; truncate alias to 60 characters (actually 51 characters plus a hash).
+       truncate-alias))
+
 (mu/defn unique-name-generator :- [:=>
                                    [:cat ::lib.schema.common/non-blank-string]
                                    ::lib.schema.common/non-blank-string]
@@ -488,10 +499,11 @@
   (comp truncate-alias
         (mbql.u/unique-name-generator
          ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
+         ;;
+         ;; some databases treat aliases as case-insensitive so make sure the generated aliases are unique regardless
+         ;; of case
          :name-key-fn     u/lower-case-en
-         ;; truncate alias to 60 characters (actually 51 characters plus a hash).
-         :unique-alias-fn (fn [original suffix]
-                            (truncate-alias (str original \_ suffix))))))
+         :unique-alias-fn unique-alias)))
 
 (def ^:private strip-id-regex
   #?(:cljs (js/RegExp. " id$" "i")
@@ -558,5 +570,12 @@
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
   [query :- [:maybe :map]]
   (when (map? query)
-    (keyword (some #(get query %)
-                   [:lib/type :type "lib/type" "type"]))))
+    (when-let [query-type (keyword (some #(get query %)
+                                         [:lib/type :type "lib/type" "type"]))]
+      (when (#{:mbql/query :query :native :internal} query-type)
+        query-type))))
+
+(mu/defn referenced-field-ids :- [:maybe [:sequential ::lib.schema.id/field]]
+  "Find all the integer field IDs in ``, Which can arbitrarily be anything that is part of MLv2 query schema."
+  [coll]
+  (lib.util.match/match coll [:field _ (id :guard int?)] id))

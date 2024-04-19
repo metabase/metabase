@@ -19,13 +19,13 @@ describe("scenarios > models > revision history", () => {
     cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
 
     cy.location("pathname").should("match", /^\/question\/\d+/);
-    cy.get(".LineAreaBarChart");
+    cy.get("[data-element-id=line-area-bar-chart]");
 
     revertTo("You edited this");
     cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
 
     cy.location("pathname").should("match", /^\/model\/\d+/);
-    cy.get(".cellData");
+    cy.get("[data-testid=cell-data]");
   });
 });
 

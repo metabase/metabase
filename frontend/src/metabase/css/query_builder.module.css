@@ -41,7 +41,7 @@
 }
 
 .SelectionModule {
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }
 
 .SelectionList {
@@ -149,12 +149,6 @@
 .QueryErrorImage {
   background-repeat: no-repeat;
   margin-bottom: 1rem;
-}
-
-.QueryErrorImageNoRows {
-  width: 120px;
-  height: 120px;
-  background-image: url("~assets/img/no_results.svg");
 }
 
 .QueryErrorImageQueryError {
@@ -314,11 +308,6 @@
   border: 1px solid var(--color-border);
   border-radius: 2px;
   white-space: pre-wrap;
-}
-
-:global(.List-item:not(.List-item--disabled):hover) .FieldListGroupingTrigger,
-:global(.List-item--selected) .FieldListGroupingTrigger {
-  visibility: visible;
 }
 
 .QuestionTooltipTarget {

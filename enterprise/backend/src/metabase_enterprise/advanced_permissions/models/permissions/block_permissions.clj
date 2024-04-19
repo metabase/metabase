@@ -14,7 +14,7 @@
   :feature :advanced-permissions
   [{database-id :database}]
   (or
-   (not (data-perms/user-has-block-perms-for-database? api/*current-user-id* database-id))
+   (not= :blocked (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
    (throw (ex-info (tru "Blocked: you are not allowed to run queries against Database {0}." database-id)
                    {:type               qp.error-type/missing-required-permissions
                     :actual-permissions @api/*current-user-permissions-set*

@@ -9,6 +9,7 @@ import { updateSettings } from "metabase/admin/settings/settings";
 import type { SettingElement } from "metabase/admin/settings/types";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { FormSection } from "metabase/containers/FormikForm";
+import CS from "metabase/css/core/index.css";
 import {
   Form,
   FormErrorMessage,
@@ -67,7 +68,7 @@ export const SettingsJWTForm = ({
   }, [settings, settingValues]);
 
   const handleSubmit = useCallback(
-    values => {
+    (values: SettingValues) => {
       return onSubmit({ ...values, "jwt-enabled": true });
     },
     [onSubmit],
@@ -82,7 +83,7 @@ export const SettingsJWTForm = ({
       {({ dirty }) => (
         <Form m={"0 1rem"} maw={rem(520)}>
           <Breadcrumbs
-            className="mb3"
+            className={CS.mb3}
             crumbs={[
               [t`Authentication`, "/admin/settings/authentication"],
               [t`JWT`],

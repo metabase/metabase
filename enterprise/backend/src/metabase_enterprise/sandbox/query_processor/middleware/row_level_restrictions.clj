@@ -12,6 +12,8 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.query.permissions :as query-perms]
@@ -24,7 +26,6 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -43,7 +44,7 @@
 (defn- query->all-table-ids [query]
   (let [ids (all-table-ids query)]
     (when (seq ids)
-      (qp.store/bulk-metadata :metadata/table ids)
+      (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/table ids)
       (set ids))))
 
 (defn assert-one-gtap-per-table
@@ -77,7 +78,7 @@
 ;;; |                                                Applying a GTAP                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private target-field->base-type :- [:maybe ms/FieldType]
+(mu/defn ^:private target-field->base-type :- [:maybe ::lib.schema.common/base-type]
   "If the `:target` of a parameter contains a `:field` clause, return the base type corresponding to the Field it
   references. Otherwise returns `nil`."
   [[_ target-field-clause]]
@@ -187,8 +188,8 @@
   "Add `:source-metadata` to a `source-query` if needed. If the source metadata had to be resolved (because Card with
   `card-id`) didn't already have it, save it so we don't have to resolve it again next time around."
   [{:keys [source-metadata], :as source-query} :- [:and [:map-of :keyword :any] [:map [:source-query :any]]]
-   table-id                                    :- ms/PositiveInt
-   card-id                                     :- [:maybe ms/PositiveInt]]
+   table-id                                    :- ::lib.schema.id/table
+   card-id                                     :- [:maybe ::lib.schema.id/card]]
   (let [table-metadata   (original-table-metadata table-id)
         ;; make sure source query has `:source-metadata`; add it if needed
         [metadata save?] (cond
@@ -213,7 +214,7 @@
       (t2/update! Card card-id {:result_metadata metadata}))
     ;; make sure the fetched Fields are present the QP store
     (when-let [field-ids (not-empty (filter some? (map :id metadata)))]
-      (qp.store/bulk-metadata :metadata/column field-ids))
+      (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column field-ids))
     (assoc source-query :source-metadata metadata)))
 
 
@@ -257,11 +258,38 @@
     (qp.store/cached card-id
                      (query-perms/required-perms (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
                                                  :throw-exceptions? true))
-    {:perms/data-access (zipmap (sandbox->table-ids sandbox) (repeat :unrestricted))}))
+    {:perms/view-data :unrestricted
+     :perms/create-queries (zipmap (sandbox->table-ids sandbox) (repeat :query-builder))}))
+
+(defn- merge-perms
+  "The shape of permissions maps is a little odd, and using `m/deep-merge` doesn't give us exactly what we want.
+  In particular, if we need query-builder-and-native at the *database* level, but :query-builder at the *table* level,
+  the permissions maps will look like:
+
+  - `{:perms/create-queries :query-builder-and-native}`
+  - `{:perms/create-queries {1 :query-builder}}`
+
+  Currently, we never require a *lower* level permission at the database level, so it's ok to just say that the
+  db-level permissions always win. If we ever wanted to merge something like `{:perms/create-queries
+  {1 :query-builder-and-native}}` with `{:perms/create-queries :query-builder}`, this would break down and we'd
+  probably want to modify the shape of the permissions-maps themselves."
+  ([perms-a] perms-a)
+  ([perms-a perms-b]
+   (reduce (fn [merged [k v]]
+             (update merged k (fn [old-v]
+                                (cond
+                                  (keyword? old-v) old-v
+                                  (keyword? v) v
+                                  (and (map? old-v) (map? v))
+                                  (merge old-v v)
+                                  :else v))))
+           (or perms-a {})
+           (seq perms-b)))
+  ([perms-a perms-b & more]
+   (reduce merge-perms perms-a (cons perms-b more))))
 
 (defn- sandboxes->required-perms [sandboxes]
-  (apply m/deep-merge (map sandbox->required-perms sandboxes)))
-
+  (apply merge-perms (map sandbox->required-perms sandboxes)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |

@@ -4,22 +4,31 @@ import type { CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
+import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
 
-export type EnabledSearchModelType =
-  | "collection"
-  | "dashboard"
-  | "card"
-  | "database"
-  | "table"
-  | "dataset"
-  | "action"
-  | "indexed-entity";
+const ENABLED_SEARCH_MODELS = [
+  "collection",
+  "dashboard",
+  "card",
+  "database",
+  "table",
+  "dataset",
+  "action",
+  "indexed-entity",
+] as const;
 
-export type SearchModelType =
-  | ("segment" | "metric" | "pulse" | "snippet")
-  | EnabledSearchModelType;
+export const SEARCH_MODELS = [
+  ...ENABLED_SEARCH_MODELS,
+  "segment",
+  "metric",
+  "snippet",
+] as const;
+
+export type EnabledSearchModel = typeof ENABLED_SEARCH_MODELS[number];
+
+export type SearchModel = typeof SEARCH_MODELS[number];
 
 export interface SearchScore {
   weight: number;
@@ -42,26 +51,23 @@ export interface SearchScore {
 
 interface BaseSearchResult<
   Id extends SearchResultId,
-  Model extends SearchModelType,
+  Model extends SearchModel,
 > {
   id: Id;
   model: Model;
   name: string;
 }
 
-export interface SearchResults<
+export type SearchResponse<
   Id extends SearchResultId = SearchResultId,
-  Model extends SearchModelType = SearchModelType,
+  Model extends SearchModel = SearchModel,
   Result extends BaseSearchResult<Id, Model> = SearchResult<Id, Model>,
-> {
+> = {
   data: Result[];
   models: Model[] | null;
-  available_models: SearchModelType[];
-  limit: number;
-  offset: number;
+  available_models: SearchModel[];
   table_db_id: DatabaseId | null;
-  total: number;
-}
+} & PaginationResponse;
 
 export type CollectionEssentials = Pick<
   Collection,
@@ -77,7 +83,7 @@ export type SearchResultId =
 
 export interface SearchResult<
   Id extends SearchResultId = SearchResultId,
-  Model extends SearchModelType = SearchModelType,
+  Model extends SearchModel = SearchModel,
 > {
   id: Id;
   name: string;
@@ -89,6 +95,7 @@ export interface SearchResult<
   table_id: TableId;
   bookmark: boolean | null;
   database_id: DatabaseId;
+  database_name: string | null;
   pk_ref: FieldReference | null;
   table_schema: string | null;
   collection_authority_level: "official" | null;
@@ -112,14 +119,21 @@ export interface SearchResult<
   can_write: boolean | null;
 }
 
-export interface SearchListQuery {
+export type SearchRequest = {
   q?: string;
-  models?: SearchModelType | SearchModelType[];
   archived?: boolean;
   table_db_id?: DatabaseId;
-  limit?: number;
-  offset?: number;
-  collection?: CollectionId;
+  models?: SearchModel[];
   filter_items_in_personal_collection?: "only" | "exclude";
+  context?: "search-bar" | "search-app";
+  created_at?: string | null;
+  created_by?: UserId[] | null;
+  last_edited_at?: string | null;
+  last_edited_by?: UserId[];
+  search_native_query?: boolean | null;
+  verified?: boolean | null;
+
+  // this should be in ListCollectionItemsRequest but legacy code expects them here
+  collection?: CollectionId;
   namespace?: "snippets";
-}
+} & PaginationRequest;

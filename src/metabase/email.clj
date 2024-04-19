@@ -3,7 +3,7 @@
    [malli.core :as mc]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -184,7 +184,7 @@
   `:metabase.email/error`, which will either be `nil` (indicating no error) or an instance of [[java.lang.Throwable]]
   with the error."
   [:map {:closed true}
-   [::error [:maybe [:fn #(instance? Throwable %)]]]])
+   [::error [:maybe (ms/InstanceOfClass Throwable)]]])
 
 (defn send-message!
   "Send an email to one or more `:recipients`. `:recipients` is a sequence of email addresses; `:message-type` must be
@@ -202,7 +202,7 @@
   (try
     (send-email-retrying! msg-args)
     (catch Throwable e
-      (log/warn e (trs "Failed to send email"))
+      (log/warn e "Failed to send email")
       {::error e})))
 
 (def ^:private SMTPSettings
@@ -235,7 +235,7 @@
         (.connect transport host port user pass)))
     {::error nil}
     (catch Throwable e
-      (log/error e (trs "Error testing SMTP connection"))
+      (log/error e "Error testing SMTP connection")
       {::error e})))
 
 (def ^:private email-security-order [:tls :starttls :ssl])

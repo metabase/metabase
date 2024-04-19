@@ -179,18 +179,6 @@
   [database-id-or-metadata-providerable & body]
   `(do-with-metadata-provider ~database-id-or-metadata-providerable (^:once fn* [] ~@body)))
 
-;;; TODO -- mark this deprecated in favor of the version in `lib.metadata`
-(mu/defn bulk-metadata :- [:maybe [:sequential [:map
-                                                [:lib/type :keyword]
-                                                [:id pos-int?]]]]
-  "DEPRECATED -- prefer [[metabase.lib.metadata/bulk-metadata-or-throw]] instead."
-  [metadata-type :- [:enum :metadata/card :metadata/column :metadata/metric :metadata/segment :metadata/table]
-   ids           :- [:maybe
-                     [:or
-                      [:set pos-int?]
-                      [:sequential pos-int?]]]]
-  (lib.metadata/bulk-metadata-or-throw (metadata-provider) metadata-type ids))
-
 ;;;;
 ;;;; DEPRECATED STUFF
 ;;;;

@@ -90,7 +90,7 @@ describe("scenarios > dashboard > filters > number", () => {
   });
 
   it("should support being required", () => {
-    setFilter("Number", "Equal to");
+    setFilter("Number", "Equal to", "Equal to");
     selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
 
     // Can't save without a default value

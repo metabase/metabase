@@ -49,7 +49,7 @@ describe("issue 20627", () => {
 
     visualize();
 
-    cy.get(".cellData")
+    cy.get("[data-testid=cell-data]")
       .should("contain", "Math")
       .and("contain", "Doohickey")
       .and("contain", "3,976");
