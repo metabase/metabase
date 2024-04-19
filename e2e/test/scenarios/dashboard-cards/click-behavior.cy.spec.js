@@ -15,7 +15,7 @@ import {
   getHeadingCardDetails,
   getLinkCardDetails,
   getTextCardDetails,
-  lineChartCircle,
+  cartesianChartCircle,
   modal,
   openStaticEmbeddingModal,
   popover,
@@ -2127,7 +2127,7 @@ const deserializeCardFromUrl = serialized =>
   JSON.parse(b64hash_to_utf8(serialized));
 
 const clickLineChartPoint = () => {
-  lineChartCircle()
+  cartesianChartCircle()
     .eq(POINT_INDEX)
     /**
      * calling .click() here will result in clicking both

@@ -8,6 +8,8 @@ import type { CartesianChartModel } from "../model/types";
 
 import { getSeriesYAxisIndex } from "./utils";
 
+export const TREND_LINE_DASH = [5, 5];
+
 export function getTrendLinesOption(
   chartModel: CartesianChartModel,
 ): RegisteredSeriesOption["line"][] {
@@ -25,7 +27,7 @@ export function getTrendLinesOption(
       showSymbol: false,
       lineStyle: {
         color: trendSeries.color,
-        type: [5, 5],
+        type: TREND_LINE_DASH,
         width: 2,
       },
       z: CHART_STYLE.trendLine.zIndex,

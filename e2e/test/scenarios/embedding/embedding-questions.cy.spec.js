@@ -7,7 +7,7 @@ import {
   visitIframe,
   openStaticEmbeddingModal,
   echartsContainer,
-  lineChartCircle,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 import {
@@ -102,7 +102,7 @@ describe("scenarios > embedding > questions", () => {
     echartsContainer().should("contain", "60");
 
     // Check the tooltip for the last point on the line
-    lineChartCircle().last().realHover();
+    cartesianChartCircle().last().realHover();
 
     popover().within(() => {
       testPairedTooltipValues("Created At", "Aug 2022");

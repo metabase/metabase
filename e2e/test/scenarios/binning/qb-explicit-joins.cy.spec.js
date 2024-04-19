@@ -6,7 +6,7 @@ import {
   summarize,
   startNewQuestion,
   echartsContainer,
-  lineChartCircle,
+  cartesianChartCircle,
   chartPathWithFillColor,
 } from "e2e/support/helpers";
 
@@ -227,7 +227,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
         .and("contain", "January 1972")
         .and("contain", "January 2000");
 
-      lineChartCircle();
+      cartesianChartCircle();
 
       // Make sure time series footer works as well
       cy.findByTestId("timeseries-bucket-button").contains("Month").click();
@@ -313,7 +313,7 @@ function assertQueryBuilderState({
   const visualizationSelector = columnType === "time" ? "circle" : "bar";
 
   if (visualizationSelector === "circle") {
-    lineChartCircle();
+    cartesianChartCircle();
   } else {
     chartPathWithFillColor("#509EE3");
   }

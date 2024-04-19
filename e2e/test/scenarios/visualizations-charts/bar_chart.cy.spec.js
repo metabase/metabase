@@ -9,6 +9,8 @@ import {
   visitDashboard,
   cypressWaitAll,
   moveDnDKitElement,
+  chartPathWithFillColor,
+  echartsContainer,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -81,7 +83,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.get(".bar").should("have.length", 5); // there are six bars when null isn't filtered
+      chartPathWithFillColor("#509EE3").should("have.length", 5); // there are six bars when null isn't filtered
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1,800"); // correct data has this on the y-axis
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -112,7 +114,10 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.get(".value-labels").should("contain", "19").and("contain", "20.0M");
+      echartsContainer()
+        .get("text")
+        .should("contain", "19")
+        .and("contain", "20.0M");
     });
   });
 
@@ -168,7 +173,9 @@ describe("scenarios > visualizations > bar chart", () => {
             .findByText(columnName)
             .should("not.exist");
           cy.findAllByTestId("legend-item").should("have.length", 3);
-          cy.findAllByTestId("chart-series").should("have.length", 3);
+          chartPathWithFillColor("#F2A86F").should("be.visible");
+          chartPathWithFillColor("#F9D45C").should("be.visible");
+          chartPathWithFillColor("#88BF4D").should("be.visible");
         });
 
       getDraggableElements()
@@ -185,7 +192,10 @@ describe("scenarios > visualizations > bar chart", () => {
             .findByText(columnName)
             .should("exist");
           cy.findAllByTestId("legend-item").should("have.length", 4);
-          cy.findAllByTestId("chart-series").should("have.length", 4);
+          chartPathWithFillColor("#F2A86F").should("be.visible");
+          chartPathWithFillColor("#F9D45C").should("be.visible");
+          chartPathWithFillColor("#88BF4D").should("be.visible");
+          chartPathWithFillColor("#A989C5").should("be.visible");
         });
 
       cy.findAllByTestId("legend-item").contains("Gadget").click();
@@ -272,7 +282,10 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.get("g.axis.yr").should("be.visible");
+      echartsContainer().within(() => {
+        cy.get("text").contains("Average of Total").should("be.visible");
+        cy.get("text").contains("Min of Total").should("be.visible");
+      });
     });
 
     it("should not split the y-axis when semantic_type, column settings are same and values are not far", () => {
@@ -317,7 +330,10 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      cy.get("g.axis.yr").should("be.visible");
+      echartsContainer().within(() => {
+        cy.get("text").contains("m1").should("not.exist");
+        cy.get("text").contains("m2").should("not.exist");
+      });
     });
   });
 
