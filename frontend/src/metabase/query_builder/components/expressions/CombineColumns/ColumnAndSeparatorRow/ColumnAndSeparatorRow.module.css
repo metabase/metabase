@@ -10,11 +10,6 @@
   flex: 1;
 }
 
-button.remove {
-  flex: 0 0 auto;
-  border-color: transparent;
-}
-
 .dropdown {
   display: none;
 }
