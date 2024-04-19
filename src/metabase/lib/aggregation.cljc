@@ -245,7 +245,7 @@
   [:or
    ::lib.schema.aggregation/aggregation
    ::lib.schema.common/external-op
-   lib.metadata/LegacyMetricMetadata])
+   lib.metadata/MetricMetadata])
 
 (mu/defn aggregate :- ::lib.schema/query
   "Adds an aggregation to query."

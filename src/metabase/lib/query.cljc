@@ -197,13 +197,13 @@
       (let [metric-query (query metadata-providerable (:dataset-query card-metadata))
             metric-breakouts (:breakout (lib.util/query-stage metric-query -1))
             base-query (reduce
-                         #(lib.util/add-summary-clause %1 0 :breakout %2)
-                         base-query
-                         metric-breakouts)]
+                        #(lib.util/add-summary-clause %1 0 :breakout %2)
+                        base-query
+                        metric-breakouts)]
         (-> base-query
             (lib.util/add-summary-clause
-              0 :aggregation
-              (lib.options/ensure-uuid [:metric {} card-id]))))
+             0 :aggregation
+             (lib.options/ensure-uuid [:metric {} card-id]))))
       base-query)))
 
 (defmethod query-method :mbql.stage/mbql

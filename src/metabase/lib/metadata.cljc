@@ -45,6 +45,14 @@
   see [[metabase.query-processor.middleware.expand-macros]]."
   [:ref ::lib.schema.metadata/legacy-metric])
 
+(def MetricMetadata
+  "Malli schema for a v2 metric. Metrics are implemented as cards, they are defined by a query specifying an
+  aggregation and possibly some filters and breakouts breakouts. Metrics are consumed by creating a question
+  using a metric as the source or by joining them. These metrics can be referenced as aggregations:
+  you can add a `:metric` reference to the `:aggregations` in an MBQL stage, and the QP treats it like a macro
+  and expands it to the underlying clauses -- see [[metabase.query-processor.middleware.metrics]]."
+  [:ref ::lib.schema.metadata/metric])
+
 (def TableMetadata
   "Schema for metadata about a specific [[metabase.models.table]]. More or less the same as a [[metabase.models.table]],
   but with kebab-case keys."
@@ -167,6 +175,14 @@
   [metadata-providerable :- MetadataProviderable
    metric-id             :- ::lib.schema.id/legacy-metric]
   (lib.metadata.protocols/legacy-metric (->metadata-provider metadata-providerable) metric-id))
+
+(mu/defn metric :- [:maybe MetricMetadata]
+  "Get metadata for the Metric with `metric-id`, if it can be found."
+  [metadata-providerable :- MetadataProviderable
+   metric-id             :- ::lib.schema.id/metric]
+  (when-let [card-meta (lib.metadata.protocols/card (->metadata-provider metadata-providerable) metric-id)]
+    (when (= (:type card-meta) :metric)
+      (assoc card-meta :lib/type :metadata/metric))))
 
 (mu/defn table-or-card :- [:maybe [:or ::lib.schema.metadata/card TableMetadata]]
   "Convenience, for frontend JS usage (see #31915): look up metadata based on Table ID, handling legacy-style
