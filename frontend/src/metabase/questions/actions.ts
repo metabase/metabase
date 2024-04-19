@@ -53,7 +53,7 @@ const questionDependentMetadata = (question: Question): Lib.DependentItem[] => {
 
   if (shouldLoadAdhocMetadata(question)) {
     const tableId = getQuestionVirtualTableId(question.id());
-    dependencies.push({ id: tableId, type: "table" });
+    return [...dependencies, { id: tableId, type: "table" }];
   }
 
   return dependencies;
