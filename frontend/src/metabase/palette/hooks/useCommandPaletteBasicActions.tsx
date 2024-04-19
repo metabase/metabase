@@ -153,24 +153,6 @@ export const useCommandPaletteBasicActions = ({
           dispatch(push("/browse"));
         },
       },
-      {
-        id: "browse_databases",
-        name: t`Browse databases`,
-        section: "basic",
-        icon: "database",
-        perform: () => {
-          dispatch(push("/browse/databases"));
-        },
-      },
-      {
-        id: "browse_models",
-        name: t`Browse models`,
-        section: "basic",
-        icon: "database",
-        perform: () => {
-          dispatch(push("/browse/models"));
-        },
-      },
     ];
 
     return [...actions, ...browseActions];
