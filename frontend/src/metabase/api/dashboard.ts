@@ -31,7 +31,7 @@ export const dashboardApi = Api.injectEndpoints({
         body,
       }),
       providesTags: dashboards =>
-        dashboards ? provideDashboardListTags() : [],
+        dashboards ? provideDashboardListTags(dashboards) : [],
     }),
     getDashboard: builder.query<Dashboard, GetDashboardRequest>({
       query: ({ id, ignore_error }) => ({

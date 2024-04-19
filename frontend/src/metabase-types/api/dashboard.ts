@@ -213,6 +213,7 @@ export type ListDashboardsResponse = Omit<
   Dashboard,
   | "dashcards"
   | "tabs"
+  | "collection"
   | "collection_authority_level"
   | "can_write"
   | "param_fields"
