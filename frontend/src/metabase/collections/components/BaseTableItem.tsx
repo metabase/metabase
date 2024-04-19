@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import DateTime from "metabase/components/DateTime";
 import EntityItem from "metabase/components/EntityItem";
+import type { Edit } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
@@ -11,14 +12,27 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-import type { Edit } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
-import type { CreateBookmark, DeleteBookmark, OnCopy, OnMove, OnToggleSelectedWithItem } from "../types";
+
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+  OnCopy,
+  OnDrop,
+  OnMove,
+  OnToggleSelectedWithItem,
+} from "../types";
+
 import {
-  DescriptionIcon, EntityIconCheckBox, ItemCell, ItemLink, ItemNameCell, ModelDetailLink,
-  RowActionsContainer, TableItemSecondaryField
+  DescriptionIcon,
+  EntityIconCheckBox,
+  ItemCell,
+  ItemLink,
+  ItemNameCell,
+  ModelDetailLink,
+  RowActionsContainer,
+  TableItemSecondaryField,
 } from "./BaseItemsTable.styled";
 
 export type BaseTableItemProps = {
@@ -28,14 +42,14 @@ export type BaseTableItemProps = {
   deleteBookmark?: DeleteBookmark;
   item: CollectionItem;
   draggable?: boolean;
-  collection?: Collection; // TODO: not sure what the type is, but {} is the default value
+  collection?: Collection;
   selectedItems?: CollectionItem[];
   isSelected?: boolean;
   isPinned?: boolean;
   linkProps?: any;
   onCopy?: OnCopy;
   onMove?: OnMove;
-  onDrop?: () => void; // TODO: Not sure what the parameter is
+  onDrop?: OnDrop;
   onToggleSelected?: OnToggleSelectedWithItem;
 };
 
@@ -46,7 +60,7 @@ export const BaseTableItem = ({
   deleteBookmark,
   item,
   draggable = true,
-  collection, // TODO: Removed the default value of {} because that can't be a Collection
+  collection,
   selectedItems,
   isSelected,
   isPinned,
@@ -97,16 +111,11 @@ export const BaseTableItem = ({
               onToggleSelected={handleSelectionToggled}
               selectable
               showCheckbox
-              disabled={false} // TODO: make this no longer required
             />
           </ItemCell>
         )}
         <ItemCell data-testid={`${testId}-type`}>
-          <EntityIconCheckBox
-            variant="list"
-            icon={icon}
-            pinned={isPinned}
-          />
+          <EntityIconCheckBox variant="list" icon={icon} pinned={isPinned} />
         </ItemCell>
         <ItemNameCell data-testid={`${testId}-name`}>
           <ItemLink {...linkProps} to={item.getUrl()}>
@@ -194,7 +203,7 @@ const getLastEditedBy = (lastEditInfo?: Edit) => {
   }
   const name = getFullName(lastEditInfo);
   return name || lastEditInfo.email;
-}
+};
 
 // eslint-disable-next-line import/no-default-export
 export default BaseTableItem;

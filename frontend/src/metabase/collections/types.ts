@@ -5,6 +5,7 @@ import type {
   CollectionId,
   CollectionItem,
 } from "metabase-types/api";
+
 import type { CollectionOrTableIdProps } from "./components/ModelUploadModal";
 
 export type OnCopy = (items: CollectionItem[]) => void | null;
@@ -25,6 +26,7 @@ export type OnPin = () => void | null;
 export type OnArchive = (() => Promise<any> | void) | null;
 export type OnTogglePreview = () => void | null;
 export type OnToggleBookmark = () => void | null;
+export type OnDrop = () => void;
 
 // perhaps both of these are needed in different places
 export type OnToggleSelected = () => void | null; // TODO: Not sure the parameter here is right
