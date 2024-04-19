@@ -39,54 +39,6 @@
            {:key          unit
             :display-name (lib.temporal-bucket/describe-temporal-unit unit)}))))
 
-(def ^:private url->host-regex
-  ;;    protocol       host    etc.
-  #"^(?:[^:/?#]*:?//)?([^/?#]*).*$")
-
-(def ^:private host->domain-regex
-  ;; Deliberately no ^ at the start; there might be several subdomains before this spot.
-  ;; By "short tail" below, I mean a pseudo-TLD nested under a proper TLD. For example, mycompany.co.uk.
-  ;; This can accidentally capture a short domain name, eg. "subdomain.aol.com" -> "subdomain", oops.
-  ;; But there's a load of these, not a short list we can include here, so it's either preprocess the (huge) master list
-  ;; from Mozilla or accept that this regex is a bit best-effort.
-
-  ;; Skip www  domain   maybe short tail  TLD
-  #"(?:www\.)?([^\.]+)\.(?:[^\.]{1,3}\.)?[^\.]+$")
-
-(def ^:private email->domain-regex
-  ;; See [[host->domain-regex]] on the challenges of parsing domains with regexes.
-  ;; Referencing the indexes below:
-  ;; 1. Positive lookbehind: Starting after @ or .
-  ;; 2. Negative lookahead: Don't capture www as the domain
-  ;; 3. One domain segment
-  ;; 4. Positive lookahead:
-  ;;      Either:
-  ;; 5.     Short final segment (eg. .co.uk)
-  ;; 6.     Top-level domain
-  ;; 7.     Anchor to end
-  ;;      Or:
-  ;; 8.     Top-level domain
-  ;; 9.     Anchor to end
-  ;;1         2        3      (4   5            6      7|  8      9)
-  #"(?<=[@\.])(?!www\.)[^@\.]+(?=\.[^@\.]{1,3}\.[^@\.]+$|\.[^@\.]+$)")
-
-(def ^:private host->subdomain-regex
-  ;; This grabs the first segment that isn't "www", AND excludes the main domain name.
-  ;; See [[host->domain-regex]] for more details about how those are matched.
-  ;; Referencing the indexes below:
-  ;; 1.  Only at the start of the input
-  ;; 2.  Consume "www." if present
-  ;; 3.  Start capturing the subdomain we want
-  ;; 4.  Negative lookahead: That subdomain can't be "www"; we don't want to backtrack and find "www".
-  ;; 5.  Negative lookahead to make sure this isn't the proper domain:
-  ;; 6.      Main domain name
-  ;; 7.      Optional short tail (eg. co.uk)
-  ;; 8.      Top-level domain, ending the input
-  ;; 9.  Matching the actual subdomain
-  ;; 10. And its dot, which is outside the capture.
-  ;;12         34        5  6       7                8       9      10
-  #"^(?:www\.)?((?!www\.)(?![^\.]+\.(?:[^\.]{1,3}\.)?[^\.]+$)[^\.]+)\.")
-
 (defn- regex-available? [metadata-providerable]
   ((:features (lib.metadata/database metadata-providerable)) :regex))
 
@@ -99,13 +51,17 @@
     ;; If the target database doesn't support :regex feature, return nil.
     (not (regex-available? query))   nil
     (lib.types.isa/email? column)    {:display-name (i18n/tru "Extract domain")
-                                      :extractions  [{:key          :email-domain
-                                                      :display-name (i18n/tru "Domain")}]}
+                                      :extractions  [{:key          :domain
+                                                      :display-name (i18n/tru "Domain")}
+                                                     {:key          :host
+                                                      :display-name (i18n/tru "Host")}]}
     (lib.types.isa/URL? column)      {:display-name (i18n/tru "Extract domain, subdomain…")
                                       :extractions  [{:key          :domain
                                                       :display-name (i18n/tru "Domain")}
                                                      {:key          :subdomain
-                                                      :display-name (i18n/tru "Subdomain")}]}))
+                                                      :display-name (i18n/tru "Subdomain")}
+                                                     {:key          :host
+                                                      :display-name (i18n/tru "Host")}]}))
 
 (mu/defn column-extract-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.column-extract]
   "Column clicks on temporal columns only.
@@ -143,15 +99,10 @@
     :month-of-year   (case-expression #(lib.expression/get-month column) tag 12)
     :quarter-of-year (case-expression #(lib.expression/get-quarter column) tag 4)
     :year            (lib.expression/get-year column)
-    ;; URLs
-    :domain          (-> column
-                         (lib.expression/regex-match-first url->host-regex)
-                         (lib.expression/regex-match-first host->domain-regex))
-    :subdomain       (-> column
-                         (lib.expression/regex-match-first url->host-regex)
-                         (lib.expression/regex-match-first host->subdomain-regex))
-    ;; Emails
-    :email-domain    (lib.expression/regex-match-first column email->domain-regex)))
+    ;; URLs and emails
+    :domain          (lib.expression/domain column)
+    :subdomain       (lib.expression/subdomain column)
+    :host            (lib.expression/host column)))
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/column-extract
   [_query _stage-number {:keys [query stage-number column extractions]} & [tag]]
