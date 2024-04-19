@@ -19,6 +19,7 @@ import type {
   GroupListQuery,
   ListDashboardsResponse,
   Metric,
+  NativeQuerySnippet,
   PopularItem,
   RecentItem,
   SearchModel,
@@ -319,6 +320,18 @@ export function provideSegmentTags(
     idTag("segment", segment.id),
     ...(segment.table ? provideTableTags(segment.table) : []),
   ];
+}
+
+export function provideSnippetListTags(
+  snippets: NativeQuerySnippet[],
+): TagDescription<TagType>[] {
+  return [listTag("snippet"), ...snippets.flatMap(provideSnippetTags)];
+}
+
+export function provideSnippetTags(
+  snippet: NativeQuerySnippet,
+): TagDescription<TagType>[] {
+  return [idTag("snippet", snippet.id)];
 }
 
 export function provideTableListTags(
