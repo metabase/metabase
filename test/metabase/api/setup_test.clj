@@ -427,7 +427,7 @@
             (is (= ["Get connected" "Curate your data"]
                    (map :name checklist)))))))
     (testing "setup-embedding"
-            (testing "should be done when a dashboard as been published"
+      (testing "should be done when a dashboard as been published"
         (with-redefs [api.setup/state-for-checklist
                       (constantly
                        (update default-checklist-state
@@ -439,7 +439,7 @@
                       (constantly
                        (update default-checklist-state
                                :configured #(merge %  {:embedding-app-origin true
-                                                       :sso true})))]
+                                                       :sso                  true})))]
           (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
             (is (partial= {:completed true} (get-embedding-step checklist))))))
       (testing "should be done when dismissed-done"
