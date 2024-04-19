@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { ReactNode, useMemo } from "react";
+import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import type {
@@ -24,9 +25,8 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Swapper from "metabase/core/components/Swapper";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
-import type { IconProps } from "metabase/ui";
+import type { IconProps, IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
-import type { IconName } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
 import {
@@ -248,11 +248,7 @@ function EntityItemMenu({
     return null;
   }
   return (
-    <EntityMenuContainer
-      // NOTE: The following line of code was originally align=center, which does nothing,
-      // so this change might have an undesired effect
-      style={{ textAlign: "center" }}
-    >
+    <EntityMenuContainer style={{ textAlign: "center" }}>
       <EntityMenu
         triggerAriaLabel={t`Actions`}
         className={className}

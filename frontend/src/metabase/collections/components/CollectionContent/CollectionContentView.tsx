@@ -308,8 +308,6 @@ export const CollectionContentView = ({
                   collection={collection}
                   onMove={handleMove}
                   onCopy={handleCopy}
-                  /// dead code I think
-                  /// onToggleSelected={toggleItem}
                 />
               </ErrorBoundary>
               <ErrorBoundary>
