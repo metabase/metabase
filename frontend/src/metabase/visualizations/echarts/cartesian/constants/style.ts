@@ -23,7 +23,7 @@ export const CHART_STYLE = {
   },
   axisNameMargin: 12,
   padding: {
-    x: 20,
+    x: 8,
     y: 12,
   },
   symbolSize: 6,

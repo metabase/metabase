@@ -327,8 +327,6 @@ export const getChartPadding = (
       CHART_STYLE.seriesLabels.size + CHART_STYLE.seriesLabels.offset;
   }
 
-  padding.bottom = ticksDimensions.xTicksHeight + CHART_STYLE.axisNameMargin;
-
   const yAxisNameTotalWidth =
     CHART_STYLE.axisName.size + CHART_STYLE.axisNameMargin;
 
@@ -349,33 +347,43 @@ export const getChartPadding = (
   const dimensionWidth = getDimensionWidth(chartModel, currentBoundaryWidth);
 
   const firstTickOverflow = Math.min(
-    ticksDimensions.firstXTickWidth / 2 - dimensionWidth / 2 - chartWidth / 8, // don't allow overflow greater than 12.5% of the chart width
+    ticksDimensions.firstXTickWidth / 2 -
+      dimensionWidth / 2 -
+      ticksDimensions.yTicksWidthLeft,
+    chartWidth / 8, // don't allow overflow greater than 12.5% of the chart width
   );
 
   let lastTickOverflow = 0;
   if (settings["graph.x_axis.axis_enabled"] !== "rotate-45") {
     lastTickOverflow = Math.min(
-      ticksDimensions.lastXTickWidth / 2 - dimensionWidth / 2 - chartWidth / 8,
+      ticksDimensions.lastXTickWidth / 2 -
+        dimensionWidth / 2 -
+        ticksDimensions.yTicksWidthRight,
+      chartWidth / 8,
     );
   }
 
+  let paddingLeft = padding.left;
   if (chartModel.leftAxisModel != null) {
-    const normalSidePadding =
-      CHART_STYLE.axisTicksMarginY +
-      ticksDimensions.yTicksWidthLeft +
-      yAxisNameTotalWidth;
+    paddingLeft += ticksDimensions.yTicksWidthLeft;
 
-    padding.left = Math.max(normalSidePadding, firstTickOverflow);
+    if (chartModel.leftAxisModel.label) {
+      paddingLeft += yAxisNameTotalWidth;
+    }
   }
+  padding.left = Math.max(paddingLeft, firstTickOverflow);
 
+  let paddingRight = padding.right;
   if (chartModel.rightAxisModel != null) {
-    const normalSidePadding =
-      CHART_STYLE.axisTicksMarginY +
-      ticksDimensions.yTicksWidthRight +
-      yAxisNameTotalWidth;
+    paddingRight += ticksDimensions.yTicksWidthRight;
 
-    padding.right = Math.max(normalSidePadding, lastTickOverflow);
+    if (chartModel.rightAxisModel.label) {
+      paddingRight += yAxisNameTotalWidth;
+    }
   }
+  padding.right = Math.max(paddingRight, lastTickOverflow);
+
+  padding.bottom += ticksDimensions.xTicksHeight;
 
   const hasXAxisName = settings["graph.x_axis.labels_enabled"];
   if (hasXAxisName) {
