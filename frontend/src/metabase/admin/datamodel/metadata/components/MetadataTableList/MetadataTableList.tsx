@@ -54,7 +54,7 @@ interface DispatchProps {
   onUpdateTableVisibility: (
     tables: Table[],
     visibility: TableVisibilityType,
-  ) => Promise<void>;
+  ) => Promise<unknown>;
 }
 
 type MetadataTableListProps = OwnProps & TableLoaderProps & DispatchProps;
