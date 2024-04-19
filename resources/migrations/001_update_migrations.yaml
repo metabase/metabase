@@ -6364,6 +6364,16 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback: # no rollback necessary, we're not removing the columns yet
 
+  - changeSet:
+      id: v50.2024-04-19T17:04:04
+      author: noahmoss
+      comment: Clean up deprecated view-data and native-query-editing permissions (again)
+      rollback: # handled by the rollbacks for `v50.2024-02-26T22:15:54` and `v50.2024-02-26T22:15:55`
+      changes:
+        - sql:
+            sql: >
+              DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
