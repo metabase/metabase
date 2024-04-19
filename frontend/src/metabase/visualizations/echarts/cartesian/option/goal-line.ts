@@ -10,6 +10,8 @@ import { GOAL_LINE_SERIES_ID, X_AXIS_DATA_KEY } from "../constants/dataset";
 import { CHART_STYLE } from "../constants/style";
 import type { CartesianChartModel, ChartDataset } from "../model/types";
 
+export const GOAL_LINE_DASH = [3, 4];
+
 function getFirstNonNullXValue(dataset: ChartDataset) {
   for (let i = 0; i < dataset.length; i++) {
     const xValue = dataset[i][X_AXIS_DATA_KEY];
@@ -69,7 +71,7 @@ export function getGoalLineSeriesOption(
           lineWidth: 2,
           stroke: renderingContext.getColor("text-medium"),
           color: renderingContext.getColor("text-medium"),
-          lineDash: [3, 4],
+          lineDash: GOAL_LINE_DASH,
         },
       };
 

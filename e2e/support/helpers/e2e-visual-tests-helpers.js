@@ -1,5 +1,7 @@
 import { color as getColor } from "metabase/lib/colors";
 import { Icons } from "metabase/ui";
+import { GOAL_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/goal-line.ts";
+import { TREND_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/trend-line.ts";
 import {
   setSvgColor,
   svgToDataUri,
@@ -14,11 +16,15 @@ export function echartsContainer() {
 }
 
 export function goalLine() {
-  return echartsContainer().find("path[stroke-dasharray='3,4']");
+  return echartsContainer().find(
+    `path[stroke-dasharray='${GOAL_LINE_DASH.join(",")}']`,
+  );
 }
 
 export function trendLine() {
-  return echartsContainer().find("path[stroke-dasharray='5,5']");
+  return echartsContainer().find(
+    `path[stroke-dasharray='${TREND_LINE_DASH.join(",")}']`,
+  );
 }
 
 export function getXYTransform(element) {
