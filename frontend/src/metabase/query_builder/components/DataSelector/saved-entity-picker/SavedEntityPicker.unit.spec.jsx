@@ -73,7 +73,11 @@ async function setup() {
   mockCollectionItemsEndpoint();
 
   renderWithProviders(
-    <SavedEntityPicker onSelect={jest.fn()} onBack={jest.fn()} />,
+    <SavedEntityPicker
+      type="question"
+      onSelect={jest.fn()}
+      onBack={jest.fn()}
+    />,
   );
   await waitForLoaderToBeRemoved();
 }

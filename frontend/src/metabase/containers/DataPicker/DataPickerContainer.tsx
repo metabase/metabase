@@ -78,6 +78,7 @@ function DataPicker({
   const dataTypes = useMemo(
     () =>
       getDataTypes({
+        hasMetrics: false,
         hasModels: modelLookupResult.length > 0,
         hasSavedQuestions: allDatabases.some(
           database => database.is_saved_questions,

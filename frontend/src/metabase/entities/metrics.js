@@ -1,7 +1,6 @@
 import { metricApi } from "metabase/api";
 import { color } from "metabase/lib/colors";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
 import { MetricSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -56,8 +55,7 @@ const Metrics = createEntity({
 
   objectSelectors: {
     getName: metric => metric && metric.name,
-    getUrl: metric =>
-      Urls.tableRowsQuery(metric.database_id, metric.table_id, metric.id),
+    getUrl: metric => `/metric/${metric.id}`,
     getColor: metric => color("summarize"),
     getIcon: metric => ({ name: "sum" }),
   },

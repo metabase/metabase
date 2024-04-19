@@ -4,6 +4,7 @@ describe("DataPicker > utils", () => {
   describe("when nested queries are enabled", () => {
     it("should return all non empty buckets - models & saved questions", () => {
       const result = getDataTypes({
+        hasMetrics: false,
         hasModels: true,
         hasSavedQuestions: true,
         hasNestedQueriesEnabled: true,
@@ -18,6 +19,7 @@ describe("DataPicker > utils", () => {
 
     it("should return all non empty buckets - saved questions", () => {
       const result = getDataTypes({
+        hasMetrics: false,
         hasModels: false,
         hasSavedQuestions: true,
         hasNestedQueriesEnabled: true,
@@ -31,6 +33,7 @@ describe("DataPicker > utils", () => {
 
     it("should return all non empty buckets - models", () => {
       const result = getDataTypes({
+        hasMetrics: false,
         hasModels: true,
         hasSavedQuestions: false,
         hasNestedQueriesEnabled: true,
@@ -43,6 +46,7 @@ describe("DataPicker > utils", () => {
   describe("when nested queries are disabled", () => {
     it("should not return models nor saved questions", () => {
       const result = getDataTypes({
+        hasMetrics: false,
         hasModels: true,
         hasSavedQuestions: true,
         hasNestedQueriesEnabled: false,
