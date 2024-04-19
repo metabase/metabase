@@ -1,7 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   editDashboard,
-  lineChartCircle,
+  cartesianChartCircle,
   popover,
   restore,
   saveDashboard,
@@ -122,7 +122,7 @@ function setupDashcardAndDrillToQuestion({
     cy.wait("@getCardQuery");
 
     cy.findByTestId("visualization-root").within(() => {
-      lineChartCircle().first().click({ force: true });
+      cartesianChartCircle().first().click({ force: true });
     });
 
     cy.url().should("include", "/question");

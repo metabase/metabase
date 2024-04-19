@@ -6,7 +6,7 @@ import {
   changeBinningForDimension,
   summarize,
   chartPathWithFillColor,
-  lineChartCircle,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -43,7 +43,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Created At: Quarter");
 
-      lineChartCircle();
+      cartesianChartCircle();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q1 2023");
     });
@@ -92,7 +92,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Created At: Quarter");
 
-      lineChartCircle();
+      cartesianChartCircle();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q1 2023");
     });
@@ -138,7 +138,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Created At: Month");
 
-      lineChartCircle();
+      cartesianChartCircle();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("January 2023");
     });

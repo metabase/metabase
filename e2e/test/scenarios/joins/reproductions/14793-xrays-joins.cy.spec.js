@@ -6,7 +6,7 @@ import {
   restore,
   visitQuestionAdhoc,
   popover,
-  lineChartCircle,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -51,7 +51,7 @@ describe("issue 14793", () => {
   it("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
     visitQuestionAdhoc(QUESTION_DETAILS);
 
-    lineChartCircle().eq(2).click({ force: true });
+    cartesianChartCircle().eq(2).click({ force: true });
 
     popover().findByText("Automatic insights…").click();
     popover().findByText("X-ray").click();

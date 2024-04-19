@@ -57,18 +57,18 @@ export function chartPathsWithFillColors(colors) {
 }
 
 const CIRCLE_PATH = "M1 0A1 1 0 1 1 1 -0.0001";
-export function lineChartCircle() {
+export function cartesianChartCircle() {
   return echartsContainer()
     .find(`path[d="${CIRCLE_PATH}"]`)
     .should("be.visible");
 }
 
-export function lineChartCircleWithColor(color) {
+export function cartesianChartCircleWithColor(color) {
   return echartsContainer()
     .find(`path[d="${CIRCLE_PATH}"][stroke="${color}"]`)
     .should("be.visible");
 }
 
-export function lineChartCircleWithColors(colors) {
-  return colors.map(color => lineChartCircleWithColor(color));
+export function cartesianChartCircleWithColors(colors) {
+  return colors.map(color => cartesianChartCircleWithColor(color));
 }

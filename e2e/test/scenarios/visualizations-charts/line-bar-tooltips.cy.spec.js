@@ -6,7 +6,7 @@ import {
   saveDashboard,
   addOrUpdateDashboardCard,
   modal,
-  lineChartCircle,
+  cartesianChartCircle,
   chartPathWithFillColor,
 } from "e2e/support/helpers";
 
@@ -48,7 +48,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ["Custom", "42,156.87"],
       ];
 
-      lineChartCircle().first().trigger("mousemove");
+      cartesianChartCircle().first().trigger("mousemove");
       testTooltipText(originalTooltipText);
 
       openDashCardVisualizationOptions();
@@ -57,7 +57,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      lineChartCircle().first().trigger("mousemove");
+      cartesianChartCircle().first().trigger("mousemove");
       testTooltipText(updatedTooltipText);
     });
   });
@@ -169,7 +169,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ["Custom 2", "3,236"],
       ];
 
-      lineChartCircle().first().trigger("mousemove");
+      cartesianChartCircle().first().trigger("mousemove");
       testTooltipText(originalTooltipText);
 
       openDashCardVisualizationOptions();
@@ -179,7 +179,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      lineChartCircle().first().trigger("mousemove");
+      cartesianChartCircle().first().trigger("mousemove");
       testTooltipText(updatedTooltipText);
     });
   });

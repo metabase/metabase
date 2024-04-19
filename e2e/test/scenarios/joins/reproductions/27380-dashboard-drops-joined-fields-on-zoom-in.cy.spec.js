@@ -2,7 +2,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitDashboard,
-  lineChartCircle,
+  cartesianChartCircle,
   echartsContainer,
 } from "e2e/support/helpers";
 
@@ -38,7 +38,7 @@ describe("issue 27380", () => {
     );
 
     // Doesn't really matter which 'circle" we click on the graph
-    lineChartCircle().last().click();
+    cartesianChartCircle().last().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See this month by week").click();
     cy.wait("@dataset");

@@ -13,7 +13,7 @@ import {
   getNotebookStep,
   rightSidebar,
   chartPathWithFillColor,
-  lineChartCircle,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -179,7 +179,7 @@ describe("binning related reproductions", () => {
     );
 
     visualize();
-    lineChartCircle();
+    cartesianChartCircle();
   });
 
   it("should display date granularity on Summarize when opened from saved question (metabase#10441, metabase#11439)", () => {

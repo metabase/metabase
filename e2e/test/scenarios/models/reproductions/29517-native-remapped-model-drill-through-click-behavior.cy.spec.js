@@ -6,7 +6,7 @@ import {
   visitQuestion,
   visitDashboard,
   assertQueryBuilderRowCount,
-  lineChartCircle,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const questionDetails = {
@@ -81,7 +81,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
     visitQuestion("@nestedQuestionId");
 
     // We can click on any circle; this index was chosen randomly
-    lineChartCircle().eq(25).click({ force: true });
+    cartesianChartCircle().eq(25).click({ force: true });
     popover()
       .findByText(/^See these/)
       .click();
@@ -104,7 +104,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
     cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
       "loadTargetDashboard",
     );
-    lineChartCircle().eq(25).click({ force: true });
+    cartesianChartCircle().eq(25).click({ force: true });
     cy.wait("@loadTargetDashboard");
 
     cy.location("pathname").should("eq", `/dashboard/${ORDERS_DASHBOARD_ID}`);

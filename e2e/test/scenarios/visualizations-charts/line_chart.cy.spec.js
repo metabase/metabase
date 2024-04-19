@@ -11,8 +11,8 @@ import {
   modal,
   echartsContainer,
   getXYTransform,
-  lineChartCircleWithColor,
-  lineChartCircle,
+  cartesianChartCircleWithColor,
+  cartesianChartCircle,
   trendLine,
 } from "e2e/support/helpers";
 
@@ -148,7 +148,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    lineChartCircleWithColor("#509EE3").eq(3).realHover();
+    cartesianChartCircleWithColor("#509EE3").eq(3).realHover();
     popover().within(() => {
       testPairedTooltipValues("Product → Rating", "2.7");
       testPairedTooltipValues("Count", "191");
@@ -217,7 +217,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    lineChartCircle().should("have.length", 2);
+    cartesianChartCircle().should("have.length", 2);
   });
 
   it("should show the trend line", () => {

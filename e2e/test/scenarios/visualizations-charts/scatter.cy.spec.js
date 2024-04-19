@@ -4,7 +4,7 @@ import {
   restore,
   visitQuestionAdhoc,
   popover,
-  lineChartCircle,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -109,7 +109,7 @@ select 10 as size, 2 as x, 5 as y`,
       },
     });
 
-    lineChartCircle().each(([circle], index) => {
+    cartesianChartCircle().each(([circle], index) => {
       const { width, height } = circle.getBoundingClientRect();
       const TOLERANCE = 0.1;
       expect(width).to.be.greaterThan(0);
@@ -133,7 +133,7 @@ function triggerPopoverForBubble(index = 13) {
     cy.findByLabelText("Switch to visualization").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
   });
 
-  lineChartCircle()
+  cartesianChartCircle()
     .eq(index) // Random bubble
     .trigger("mousemove");
 }

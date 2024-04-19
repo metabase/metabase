@@ -10,7 +10,7 @@ import {
   popover,
   getDashboardCards,
   saveDashboard,
-  lineChartCircle,
+  cartesianChartCircle,
   chartPathWithFillColor,
 } from "e2e/support/helpers";
 
@@ -77,7 +77,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    lineChartCircle()
+    cartesianChartCircle()
       .eq(23) // Random dot
       .click({ force: true });
 
@@ -323,7 +323,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
         cy.findByRole("tab", { name: "Tab 1" }).click();
         saveDashboard();
 
-        lineChartCircle().eq(0).click({ force: true });
+        cartesianChartCircle().eq(0).click({ force: true });
         popover().findByText("Automatic insights…").click();
         popover().findByText("X-ray").click();
         cy.wait("@dataset", { timeout: 60000 });
