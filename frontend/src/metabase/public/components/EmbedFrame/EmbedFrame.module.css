@@ -56,3 +56,43 @@ body {
 .ThemeTransparent.EmbedFrame .DashCard .Card {
   background-color: transparent;
 }
+
+/** MindDig custom theme **/
+
+.ThemeMindDig.EmbedFrame {
+  --color-bg-black: #181818;
+
+  background-color: var(--color-bg-black);
+  /* border-color: var(--color-bg-dark); */
+  border: none;
+}
+
+.ThemeMindDig .EmbedFrameHeader,
+.ThemeMindDig .EmbedFrameFooter {
+  color: color-mod(var(--color-text-white) alpha(-14%));
+  background-color: var(--color-bg-black);
+  /* border-color: var(--color-bg-dark); */
+  border: none;
+}
+
+.ThemeMindDig.EmbedFrame .fullscreenNightText {
+  color: color-mod(var(--color-text-white) alpha(-14%));
+  transition: color 1s linear;
+}
+
+.ThemeMindDig.EmbedFrame svg text {
+  fill: color-mod(var(--color-text-white) alpha(-14%)) !important;
+  stroke: none !important;
+}
+
+.ThemeMindDig.EmbedFrame .DashCard .Card {
+  background-color: var(--color-bg-black);
+  border: 1px solid var(--color-bg-dark);
+}
+
+.ThemeMindDig.EmbedFrame
+  .enableDotsOnHover
+  :global(.dc-tooltip circle.dot:hover),
+.ThemeMindDig.EmbedFrame .enableDots :global(.dc-tooltip circle.dot) {
+  fill: currentColor;
+}

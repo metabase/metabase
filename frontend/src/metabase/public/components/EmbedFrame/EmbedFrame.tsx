@@ -86,7 +86,7 @@ type Props = OwnProps &
 interface HashOptions {
   bordered?: boolean;
   titled?: boolean;
-  theme?: "night" | "transparent";
+  theme?: "night" | "transparent" | "minddig";
   hide_parameters?: string;
   hide_download_button?: boolean;
 }
@@ -104,6 +104,10 @@ const EMBED_THEME_CLASSES = (theme: HashOptions["theme"]) => {
 
   if (theme === "night") {
     return cx(ParameterValueWidgetS.ThemeNight, EmbedFrameS.ThemeNight);
+  }
+
+  if (theme === "minddig") {
+    return cx(ParameterValueWidgetS.ThemeMindDig, EmbedFrameS.ThemeMindDig);
   }
 
   if (theme === "transparent") {
@@ -265,7 +269,7 @@ function EmbedFrame({
         )}
         <Body>{children}</Body>
       </ContentContainer>
-      {showFooter && (
+      {showFooter && false && (
         <Footer
           className={EmbedFrameS.EmbedFrameFooter}
           variant={footerVariant}
