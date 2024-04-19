@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import _ from "underscore";
 
-import { store, useSdkDispatch } from "embedding-sdk/store";
+import { store, useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   getOrRefreshSession,
   setLoginStatus,
 } from "embedding-sdk/store/reducer";
-import { getSessionTokenState } from "embedding-sdk/store/selectors";
+import {
+  getLoginStatus,
+  getSessionTokenState,
+} from "embedding-sdk/store/selectors";
 import type { EmbeddingSessionTokenState } from "embedding-sdk/store/types";
 import type { SDKConfigType } from "embedding-sdk/types";
 import { reloadSettings } from "metabase/admin/settings/settings";
@@ -20,18 +23,34 @@ interface InitDataLoaderParameters {
   config: SDKConfigType;
 }
 
+const getErrorMessage = (authType: SDKConfigType["authType"]) => {
+  if (authType === "jwt") {
+    return "Could not authenticate: invalid JWT token";
+  }
+
+  if (authType === "apiKey") {
+    return "Could not authenticate: invalid API key";
+  }
+
+  return "Invalid auth type";
+};
+
 export const useInitData = ({ config }: InitDataLoaderParameters) => {
   const dispatch = useSdkDispatch();
+
+  const loginStatus = useSdkSelector(getLoginStatus);
 
   const [sessionTokenState, setSessionTokenState] =
     useState<EmbeddingSessionTokenState | null>(null);
 
   useEffect(() => {
     registerVisualizationsOnce();
-  }, []);
+    dispatch(setLoginStatus({ status: "uninitialized" }));
+  }, [dispatch]);
 
   const jwtProviderUri =
     config.authType === "jwt" ? config.jwtProviderUri : null;
+
   useEffect(() => {
     if (config.authType === "jwt") {
       const updateToken = () => {
@@ -54,42 +73,57 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
   useEffect(() => {
     api.basename = config.metabaseInstanceUrl;
 
-    if (config.authType === "jwt") {
+    if (config.authType === "jwt" && config.jwtProviderUri) {
       api.onBeforeRequest = () =>
         dispatch(getOrRefreshSession(config.jwtProviderUri));
       api.sessionToken = sessionTokenState?.token?.id;
+      dispatch(setLoginStatus({ status: "initialized" }));
     } else if (config.authType === "apiKey" && config.apiKey) {
       api.apiKey = config.apiKey;
+      dispatch(setLoginStatus({ status: "initialized" }));
     } else {
       dispatch(
         setLoginStatus({
           status: "error",
-          error: new Error("Invalid auth type"),
+          error: new Error(getErrorMessage(config.authType)),
         }),
       );
-      return;
     }
+  }, [config, dispatch, sessionTokenState]);
 
-    Promise.all([dispatch(refreshCurrentUser()), dispatch(reloadSettings())])
-      .then(([userData]) => {
-        if (userData.meta.requestStatus === "rejected") {
+  useEffect(() => {
+    const fetchData = async () => {
+      if (loginStatus.status === "initialized") {
+        dispatch(setLoginStatus({ status: "loading" }));
+
+        try {
+          const [userData] = await Promise.all([
+            dispatch(refreshCurrentUser()),
+            dispatch(reloadSettings()),
+          ]);
+
+          if (userData.meta.requestStatus === "rejected") {
+            dispatch(
+              setLoginStatus({
+                status: "error",
+                error: new Error(getErrorMessage(config.authType)),
+              }),
+            );
+            return;
+          }
+
+          dispatch(setLoginStatus({ status: "success" }));
+        } catch (error) {
           dispatch(
             setLoginStatus({
               status: "error",
-              error: new Error("Failed to refresh current user"),
+              error: new Error(getErrorMessage(config.authType)),
             }),
           );
-          return;
         }
-        dispatch(setLoginStatus({ status: "success" }));
-      })
-      .catch(() => {
-        dispatch(
-          setLoginStatus({
-            status: "error",
-            error: new Error("Failed to refresh current user"),
-          }),
-        );
-      });
-  }, [config, dispatch, sessionTokenState]);
+      }
+    };
+
+    fetchData();
+  }, [config.authType, dispatch, loginStatus.status]);
 };

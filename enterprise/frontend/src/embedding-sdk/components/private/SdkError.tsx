@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
 import type { LoginStatusError } from "embedding-sdk/store/types";
@@ -8,7 +10,7 @@ export const SdkError = () => {
 
   return (
     <div>
-      <div>Error</div>
+      <div>{t`Error`}</div>
       <div>{loginStatus.error.message}</div>
     </div>
   );
