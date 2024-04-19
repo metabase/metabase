@@ -179,10 +179,8 @@ export function provideDatabaseTags(
   ];
 }
 
-export function provideDashboardListTags(
-  dashboards: Dashboard[],
-): TagDescription<TagType>[] {
-  return [listTag("dashboard"), ...dashboards.flatMap(provideDashboardTags)];
+export function provideDashboardListTags(): TagDescription<TagType>[] {
+  return [listTag("dashboard")];
 }
 
 export function provideDashboardTags(

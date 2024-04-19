@@ -208,6 +208,17 @@ export type ListDashboardsRequest = {
   f?: "all" | "mine" | "archived";
 };
 
+// GET /api/dashboard endpoint does not hydrate all Dashboard attributes
+export type ListDashboardsResponse = Omit<
+  Dashboard,
+  | "dashcards"
+  | "tabs"
+  | "collection_authority_level"
+  | "can_write"
+  | "param_fields"
+  | "param_values"
+>[];
+
 export type GetDashboardRequest = {
   id: DashboardId;
   ignore_error?: boolean;
