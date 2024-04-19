@@ -45,18 +45,18 @@
   "Maximum number of characters allowed in a Collection `slug`."
   510)
 
-(def ^:const TRASH_COLLECTION_ID
+(def ^:const trash-collection-id
   "The fixed ID of the trash collection."
   13371339)
 
 (defn trash-collection
   "Gets the Trash collection from the database."
   []
-  (t2/select-one :model/Collection :id TRASH_COLLECTION_ID))
+  (t2/select-one :model/Collection :id trash-collection-id))
 
 (def ^:private trash-path
   "The fixed location path for the trash collection."
-  (format "/%s/" TRASH_COLLECTION_ID))
+  (format "/%s/" trash-collection-id))
 
 (defn is-trash-or-descendant?
   "Is this the trash collection, or a descendant of it?"
@@ -67,7 +67,7 @@
   "Creates the trash collection if it does not already exist."
   []
   (when (nil? (trash-collection))
-    (t2/insert! :model/Collection {:id TRASH_COLLECTION_ID
+    (t2/insert! :model/Collection {:id trash-collection-id
                                    :name "Trash"
                                    :type "trash"})))
 
