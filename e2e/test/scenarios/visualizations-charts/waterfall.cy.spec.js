@@ -20,10 +20,8 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   function verifyWaterfallRendering(xLabel = null, yLabel = null) {
-    // a waterfall chart is just a stacked bar chart, with 4 bars
-    // (not all of them will be visible at once, but they should exist)
-    chartPathWithFillColor("#88BF4D");
-    chartPathWithFillColor("#4C5773");
+    chartPathWithFillColor("#88BF4D").should("be.visible");
+    chartPathWithFillColor("#4C5773").should("be.visible");
     echartsContainer().get("text").contains("Total");
 
     if (xLabel) {
@@ -215,7 +213,7 @@ describe("scenarios > visualizations > waterfall", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
     cy.icon("waterfall").click({ force: true });
-    chartPathWithFillColor("#88BF4D");
+    chartPathWithFillColor("#88BF4D").should("be.visible");
   });
 
   it("should display correct values when one of them is 0 (metabase#16246)", () => {
