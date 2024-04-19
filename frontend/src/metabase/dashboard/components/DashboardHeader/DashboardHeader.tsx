@@ -556,9 +556,9 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
         extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
 
         extraButtons.push({
-          title: t`Archive`,
-          icon: "view_archive",
-          link: `${location.pathname}/archive`,
+          title: t`Move to trash`,
+          icon: "trash",
+          link: `${location.pathname}/trash`,
           event: "Dashboard;Archive",
         });
       }

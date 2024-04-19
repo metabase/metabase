@@ -7,6 +7,7 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import BulkActions from "metabase/collections/components/BulkActions";
+import { CollectionArchiveBanner } from "metabase/collections/components/CollectionArchiveBanner";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
@@ -16,12 +17,16 @@ import type {
   OnFileUpload,
   UploadFile,
 } from "metabase/collections/types";
-import { isPersonalCollectionChild } from "metabase/collections/utils";
 import { ItemsTable } from "metabase/components/ItemsTable";
 import {
   Sort,
   type SortingOptions,
 } from "metabase/components/ItemsTable/BaseItemsTable";
+import {
+  isPersonalCollectionChild,
+  isTrashedCollection,
+  isRootTrashCollection,
+} from "metabase/collections/utils";
 import PaginationControls from "metabase/components/PaginationControls";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import CS from "metabase/css/core/index.css";
@@ -63,6 +68,8 @@ const ALL_MODELS = [
 ];
 
 const itemKeyFn = (item: CollectionItem) => `${item.id}:${item.model}`;
+
+// TODO: check if the collection is archived, if so, show a different bulk actions modal...
 
 export const CollectionContentView = ({
   databases,
@@ -284,6 +291,12 @@ export const CollectionContentView = ({
                 />
               </>
             )}
+
+            {isTrashedCollection(collection) &&
+              !isRootTrashCollection(collection) && (
+                <CollectionArchiveBanner collectionId={collection.id} />
+              )}
+
             <CollectionMain>
               <ErrorBoundary>
                 <Header

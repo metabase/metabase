@@ -223,8 +223,8 @@ export const QuestionActions = ({
 
   if (canWrite) {
     extraButtons.push({
-      title: t`Archive`,
-      icon: "archive",
+      title: t`Move to trash`,
+      icon: "trash",
       action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
       testId: ARCHIVE_TESTID,
     });

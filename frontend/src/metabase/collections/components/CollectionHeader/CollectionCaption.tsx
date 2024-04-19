@@ -2,11 +2,12 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import {
-  isRootPersonalCollection,
-  isRootCollection,
+  isEditableCollection,
+  isRootTrashCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+import { Icon } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 import {
@@ -25,9 +26,7 @@ export const CollectionCaption = ({
   collection,
   onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
-  const isRoot = isRootCollection(collection);
-  const isPersonal = isRootPersonalCollection(collection);
-  const isEditable = !isRoot && !isPersonal && collection.can_write;
+  const isEditable = isEditableCollection(collection);
   const hasDescription = Boolean(collection.description);
 
   const handleChangeName = useCallback(
@@ -75,7 +74,10 @@ export const CollectionCaption = ({
 };
 
 const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
-  if (!collection.type) {
+  if (isRootTrashCollection(collection)) {
+    // TODO: adjust margin/spacing
+    return <Icon name="trash" size={24} />;
+  } else if (!collection.type) {
     return (
       <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
         collection={collection}

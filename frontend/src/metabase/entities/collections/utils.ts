@@ -1,6 +1,7 @@
 import {
   isRootCollection,
   isRootPersonalCollection,
+  isRootTrashCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -9,7 +10,11 @@ import type { IconName, IconProps } from "metabase/ui";
 import type { Collection, CollectionContentModel } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { ROOT_COLLECTION, PERSONAL_COLLECTIONS } from "./constants";
+import {
+  ROOT_COLLECTION,
+  PERSONAL_COLLECTIONS,
+  TRASH_COLLECTION,
+} from "./constants";
 
 export function normalizedCollection(collection: Collection) {
   return isRootCollection(collection) ? ROOT_COLLECTION : collection;
@@ -26,6 +31,11 @@ export function getCollectionIcon(
   if (collection.id === PERSONAL_COLLECTIONS.id) {
     return { name: "group" };
   }
+
+  if (collection.id === TRASH_COLLECTION.id) {
+    return { name: TRASH_COLLECTION.icon };
+  }
+
   if (isRootPersonalCollection(collection)) {
     return { name: "person" };
   }
@@ -66,6 +76,8 @@ export function buildCollectionTree(
 ): CollectionTreeItem[] {
   return collections.flatMap(collection => {
     const isPersonalRoot = collection.id === PERSONAL_COLLECTIONS.id;
+    const isTrash = isRootTrashCollection(collection);
+
     const isMatchedByFilter =
       !modelFilter ||
       collection.here?.some(modelFilter) ||
@@ -75,10 +87,12 @@ export function buildCollectionTree(
       return [];
     }
 
-    const children = buildCollectionTree(
-      collection.children?.filter(child => !child.archived) || [],
-      modelFilter,
-    );
+    const children = isTrash
+      ? []
+      : buildCollectionTree(
+          collection.children?.filter(child => !child.archived) || [],
+          modelFilter,
+        );
 
     if (isPersonalRoot && children.length === 0) {
       return [];

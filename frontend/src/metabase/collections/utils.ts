@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { TRASH_COLLECTION } from "metabase/entities/collections/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
   Collection,
@@ -26,10 +27,31 @@ export function isPersonalCollection(
   return collection.is_personal;
 }
 
+export function isRootTrashCollection(
+  collection: Pick<Collection, "id">,
+): boolean {
+  return collection.id === TRASH_COLLECTION.id;
+}
+
+export function isTrashedCollection(
+  collection: Pick<Collection, "id" | "archived">,
+): boolean {
+  return isRootTrashCollection(collection) || collection.archived;
+}
+
 export function isPublicCollection(
   collection: Pick<Collection, "is_personal">,
 ) {
   return !isPersonalCollection(collection);
+}
+
+export function isEditableCollection(collection: Collection) {
+  return (
+    collection.can_write &&
+    !isRootCollection(collection) &&
+    !isRootPersonalCollection(collection) &&
+    !isTrashedCollection(collection)
+  );
 }
 
 export function isInstanceAnalyticsCollection(
@@ -129,16 +151,36 @@ export function isItemCollection(item: CollectionItem) {
   return item.model === "collection";
 }
 
+// TODO: fixed this "archived" key not being on the collection item...
+export function isItemArchived(
+  item: Pick<CollectionItem, "id" | "location"> & { archived?: boolean },
+) {
+  // TODO: rework this once john fixes migration / bugs
+  return (
+    (item.id === TRASH_COLLECTION.id ||
+      item.archived ||
+      item.location?.startsWith(`/${TRASH_COLLECTION.id}/`)) ??
+    false
+  );
+}
+
 export function isReadOnlyCollection(collection: CollectionItem) {
   return isItemCollection(collection) && !collection.can_write;
 }
 
 export function canPinItem(item: CollectionItem, collection?: Collection) {
-  return collection?.can_write && item.setPinned != null;
+  return (
+    collection?.can_write && item.setPinned != null && !isItemArchived(item)
+  );
 }
 
 export function canPreviewItem(item: CollectionItem, collection?: Collection) {
-  return collection?.can_write && isItemPinned(item) && isItemQuestion(item);
+  return (
+    collection?.can_write &&
+    isItemPinned(item) &&
+    isItemQuestion(item) &&
+    !isItemArchived(item)
+  );
 }
 
 export function canMoveItem(item: CollectionItem, collection?: Collection) {
@@ -146,7 +188,8 @@ export function canMoveItem(item: CollectionItem, collection?: Collection) {
     collection?.can_write &&
     !isReadOnlyCollection(item) &&
     item.setCollection != null &&
-    !(isItemCollection(item) && isRootPersonalCollection(item))
+    !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    !isItemArchived(item)
   );
 }
 
@@ -154,7 +197,8 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
   return (
     collection?.can_write &&
     !isReadOnlyCollection(item) &&
-    !(isItemCollection(item) && isRootPersonalCollection(item))
+    !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    !isItemArchived(item)
   );
 }
 

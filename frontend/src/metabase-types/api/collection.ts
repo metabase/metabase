@@ -15,7 +15,7 @@ export type CollectionContentModel = "card" | "dataset";
 
 export type CollectionAuthorityLevel = "official" | null;
 
-export type CollectionType = "instance-analytics" | null;
+export type CollectionType = "instance-analytics" | "trash" | null;
 
 export type LastEditInfo = {
   email: string;
@@ -51,7 +51,7 @@ export interface Collection {
   archived: boolean;
   children?: Collection[];
   authority_level?: "official" | null;
-  type?: "instance-analytics" | null;
+  type?: "instance-analytics" | "trash" | null;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
@@ -110,6 +110,7 @@ export interface CollectionItem {
   setPinned?: (isPinned: boolean) => void;
   setCollection?: (collection: Pick<Collection, "id">) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
+  delete?: () => void;
 }
 
 export interface CollectionListQuery {

@@ -6,6 +6,8 @@ import {
   isRootCollection,
 } from "metabase/collections/utils";
 import EntityMenu from "metabase/components/EntityMenu";
+import Collections from "metabase/entities/collections";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";
@@ -23,6 +25,8 @@ export const CollectionMenu = ({
   isPersonalCollectionChild,
   onUpdateCollection,
 }: CollectionMenuProps): JSX.Element | null => {
+  const dispatch = useDispatch();
+
   const items = [];
   const url = Urls.collection(collection);
   const isRoot = isRootCollection(collection);
@@ -54,10 +58,11 @@ export const CollectionMenu = ({
       icon: "move",
       link: `${url}/move`,
     });
+
     items.push({
-      title: t`Archive`,
-      icon: "archive",
-      link: `${url}/archive`,
+      title: t`Move to trash`,
+      icon: "trash",
+      action: () => dispatch(Collections.actions.setArchived(collection, true)),
     });
   }
 
@@ -66,7 +71,7 @@ export const CollectionMenu = ({
       <EntityMenu
         items={items}
         triggerIcon="ellipsis"
-        tooltip={t`Move, archive, and more...`}
+        tooltip={t`Move, trash, and more...`}
         tooltipPlacement="bottom"
       />
     );

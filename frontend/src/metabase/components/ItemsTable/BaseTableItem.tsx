@@ -90,7 +90,7 @@ export const BaseTableItem = ({
     };
 
     const icon = item.getIcon();
-    if (item.model === "card") {
+    if (item.archived || item.model === "card") {
       icon.color = color("text-light");
     }
 
