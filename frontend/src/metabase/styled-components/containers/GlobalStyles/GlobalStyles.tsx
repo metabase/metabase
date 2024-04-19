@@ -1,5 +1,6 @@
-import { css, Global } from "@emotion/react";
+import { css, Global, useTheme } from "@emotion/react";
 
+import { baseStyle, getRootStyle } from "metabase/css/core/base.styled";
 import { alpha, color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
@@ -11,6 +12,7 @@ import { getFont, getFontFiles } from "../../selectors";
 export const GlobalStyles = (): JSX.Element => {
   const font = useSelector(getFont);
   const fontFiles = useSelector(getFontFiles);
+  const theme = useTheme();
 
   const styles = css`
     :root {
@@ -22,21 +24,25 @@ export const GlobalStyles = (): JSX.Element => {
     }
 
     ${defaultFontFiles()}
-
     ${fontFiles?.map(
-      file => css`
-        @font-face {
-          font-family: "${font}";
-          src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
-          font-weight: ${file.fontWeight};
-          font-style: normal;
-          font-display: swap;
-        }
-      `,
+            file => css`
+              @font-face {
+                font-family: "${font}";
+                src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
+                font-weight: ${file.fontWeight};
+                font-style: normal;
+                font-display: swap;
+              }
+            `,
     )}
+    
+    ${aceEditorStyles}
+    ${saveDomImageStyles}
+    body {
+      ${getRootStyle(theme)}
+    }
 
-      ${aceEditorStyles}
-      ${saveDomImageStyles}
+    ${baseStyle}
   `;
 
   return <Global styles={styles} />;

@@ -12,7 +12,7 @@ export const ResetButtonContainer = () => {
     <Box
       pb="1rem"
       mt="auto"
-      style={{ marginInlineStart: "auto", marginInlineEnd: ".75rem" }}
+      style={{ marginInlineStart: "auto", marginInlineEnd: "1.5rem" }}
     >
       <ResetAllToDefaultButtonFormBody />
     </Box>

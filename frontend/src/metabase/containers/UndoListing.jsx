@@ -95,7 +95,11 @@ function UndoToast({ undo, onUndo, onDismiss }) {
                 </UndoButton>
               )}
               {undo.canDismiss && (
-                <DismissIcon name="close" onClick={onDismiss} />
+                <DismissIcon
+                  color={undo.dismissIconColor || "inherit"}
+                  name="close"
+                  onClick={onDismiss}
+                />
               )}
             </ControlsCardContent>
           </CardContent>

@@ -173,7 +173,8 @@
   with-perm-for-group-and-table!]
 
  [qp
-  process-query]
+  process-query
+  userland-query]
 
  [qp.store
   with-metadata-provider]
