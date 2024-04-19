@@ -33,17 +33,16 @@
   [{card-id :id, query :dataset_query}]
   (when query
     (try
-      (let [{:keys [direct indirect]
-             :as   res}           (if (= (:type query) :native)
-                                    (query-analyzer/field-ids-for-sql query)
-                                    (field-ids-for-mbql query))
-            id->record          (fn [direct? field-id]
-                                  {:card_id          card-id
-                                   :field_id         field-id
-                                   :direct_reference direct?})
-            query-field-records (concat
-                                 (map (partial id->record true) direct)
-                                 (map (partial id->record false) indirect))]
+      (let [{:keys [direct indirect] :as res} (if (= (:type query) :native)
+                                                (query-analyzer/field-ids-for-sql query)
+                                                (field-ids-for-mbql query))
+            id->record                        (fn [direct? field-id]
+                                                {:card_id          card-id
+                                                 :field_id         field-id
+                                                 :direct_reference direct?})
+            query-field-records               (concat
+                                               (map (partial id->record true) direct)
+                                               (map (partial id->record false) indirect))]
         ;; when response is `nil`, it's a disabled parser, not unknown columns
         (when (some? res)
           ;; This feels inefficient at first glance, but the number of records should be quite small and doing some

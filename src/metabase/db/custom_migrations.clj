@@ -22,6 +22,7 @@
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.date-2 :as u.date]
@@ -1255,13 +1256,27 @@
     (qs/shutdown scheduler)))
 
 (define-migration BackfillQueryField
-  (let [update-query-fields! (requiring-resolve 'metabase.native-query-analyzer/update-query-fields-for-card!)
-        cards                (t2/select :model/Card :id [:in {:from      [[:report_card :c]]
-                                                              :left-join [[:query_field :f] [:= :f.card_id :c.id]]
-                                                              :select    [:c.id]
-                                                              :where     [:and
-                                                                          [:not :c.archived]
-                                                                          [:= :c.query_type "native"]
-                                                                          [:= :f.id nil]]}])]
-    (doseq [card cards]
-      (update-query-fields! card))))
+  (let [field-ids-for-sql  (requiring-resolve 'metabase.native-query-analyzer/field-ids-for-sql)
+        ;; practically #'metabase.models.query-field/field-ids-for-mbql
+        field-ids-for-mbql (fn [query]
+                             {:direct (some-> (lib.util.match/match query ["field" (id :guard integer?) _] id)
+                                              set)})
+        cards              (t2/select :report_card :id [:in {:from      [[:report_card :c]]
+                                                             :left-join [[:query_field :f] [:= :f.card_id :c.id]]
+                                                             :select    [:c.id]
+                                                             :where     [:and
+                                                                         [:not :c.archived]
+                                                                         [:= :f.id nil]]}])]
+    (doseq [{card-id :id query :dataset_query :as card} cards]
+      (let [query                             (json/parse-string query true)
+            {:keys [direct indirect] :as res} (if (= (:type query) "native")
+                                                (field-ids-for-sql query)
+                                                (field-ids-for-mbql query))
+            id->record                        (fn [direct? field-id]
+                                                {:card_id          card-id
+                                                 :field_id         field-id
+                                                 :direct_reference direct?})
+            query-field-records               (concat
+                                               (map (partial id->record true) direct)
+                                               (map (partial id->record false) indirect))]
+        (t2/insert! :query_field query-field-records)))))
