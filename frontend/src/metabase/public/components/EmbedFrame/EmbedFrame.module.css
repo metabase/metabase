@@ -62,8 +62,7 @@ body {
 .ThemeMindDig.EmbedFrame {
   --color-bg-black: #181818;
 
-  background-color: var(--color-bg-black);
-  /* border-color: var(--color-bg-dark); */
+  background-color: #181818;
   border: none;
 }
 
