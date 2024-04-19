@@ -142,11 +142,11 @@ export function getNativeDashCardEmptyMappingText(parameter: Parameter) {
   }
 
   if (isNumberParameter(parameter)) {
-    return t`Add a number variable to this question to connect it to a dashboard filter.`;
+    return t`A number variable in this card can only be connected to a number filter with Equal to operator.`;
   }
 
   if (isStringParameter(parameter)) {
-    return t`Add a string variable to this question to connect it to a dashboard filter.`;
+    return t`A text variable in this card can only be connected to a text filter with Is operator.`;
   }
 
   return t`Add a variable to this question to connect it to a dashboard filter.`;
