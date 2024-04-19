@@ -76,7 +76,10 @@ const dashboardDetails = {
         if (test === "nosql") {
           cy.updatePermissionsGraph({
             [COLLECTION_GROUP]: {
-              1: { data: { schemas: "all", native: "none" } },
+              1: {
+                "view-data": "unrestricted",
+                "create-queries": "query-builder",
+              },
             },
           });
         }
@@ -97,7 +100,7 @@ const dashboardDetails = {
       });
 
       cy.get(".ace_content").should("not.be.visible");
-      cy.get(".cellData").should("contain", "51");
+      cy.get("[data-testid=cell-data]").should("contain", "51");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row");
     });

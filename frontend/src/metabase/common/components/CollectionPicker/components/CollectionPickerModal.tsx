@@ -3,26 +3,32 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
-import type { SearchModelType } from "metabase-types/api";
+import type { SearchModel } from "metabase-types/api";
 
 import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
-import type { CollectionPickerItem, CollectionPickerOptions } from "../types";
+import type {
+  CollectionPickerItem,
+  CollectionPickerOptions,
+  CollectionPickerValueItem,
+} from "../types";
 
 import { CollectionPicker } from "./CollectionPicker";
 import { NewCollectionDialog } from "./NewCollectionDialog";
 
 interface CollectionPickerModalProps {
   title?: string;
-  onChange: (item: CollectionPickerItem) => void;
+  onChange: (item: CollectionPickerValueItem) => void;
   onClose: () => void;
   options?: CollectionPickerOptions;
-  value: Pick<CollectionPickerItem, "id" | "model">;
+  value: Pick<CollectionPickerValueItem, "id" | "model">;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
 }
 
-const canSelectItem = (item: CollectionPickerItem | null): boolean => {
-  return !!item && item?.can_write !== false;
+const canSelectItem = (
+  item: Pick<CollectionPickerItem, "can_write" | "model"> | null,
+): item is CollectionPickerValueItem => {
+  return !!item && item.can_write !== false && item.model === "collection";
 };
 
 const searchFilter = (
@@ -57,7 +63,7 @@ export const CollectionPickerModal = ({
     async (item: CollectionPickerItem) => {
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
-      } else {
+      } else if (canSelectItem(item)) {
         await onChange(item);
       }
     },
@@ -65,7 +71,7 @@ export const CollectionPickerModal = ({
   );
 
   const handleConfirm = async () => {
-    if (selectedItem) {
+    if (selectedItem && canSelectItem(selectedItem)) {
       await onChange(selectedItem);
     }
   };
@@ -84,7 +90,7 @@ export const CollectionPickerModal = ({
       ]
     : [];
 
-  const tabs: [EntityTab<SearchModelType>] = [
+  const tabs: [EntityTab<SearchModel>] = [
     {
       displayName: t`Collections`,
       model: "collection",
@@ -123,7 +129,13 @@ export const CollectionPickerModal = ({
       <NewCollectionDialog
         isOpen={isCreateDialogOpen}
         onClose={closeCreateDialog}
-        parentCollectionId={selectedItem?.id || value?.id || "root"}
+        parentCollectionId={
+          canSelectItem(selectedItem)
+            ? selectedItem.id
+            : canSelectItem(value)
+            ? value.id
+            : "root"
+        }
         onNewCollection={handleNewCollectionCreate}
       />
     </>

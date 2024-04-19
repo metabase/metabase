@@ -157,3 +157,9 @@
 (def ^:dynamic *disable-setting-cache*
   "Whether to disable database cache. Here for loading circularity reasons."
   false)
+
+(defn load-sample-content?
+  "Load sample content on fresh installs?
+  Using this effectively means `MB_LOAD_SAMPLE_CONTENT` defaults to true."
+  []
+  (not (false? (config-bool :mb-load-sample-content))))

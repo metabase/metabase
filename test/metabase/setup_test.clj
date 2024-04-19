@@ -3,9 +3,14 @@
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.db :as mdb]
+   [metabase.models.interface :as mi]
+   [metabase.public-settings :as public-settings]
    [metabase.setup :as setup]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (deftest has-user-setup-ignores-internal-user-test
   (mt/with-empty-h2-app-db
@@ -33,7 +38,7 @@
     ;; create a new completely empty database.
     (mt/with-temp-empty-app-db [_conn :h2]
       ;; make sure the DB is setup (e.g., run all the Liquibase migrations)
-      (mdb/setup-db!)
+      (mdb/setup-db! :create-sample-content? true)
       (t2/with-call-count [call-count]
         (dotimes [_ 5]
           (is (= false
@@ -46,3 +51,27 @@
       (is (= true
              (setup/has-user-setup)))
       (is (zero? (call-count))))))
+
+(deftest has-example-dashboard-id-setting-test
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? true)
+    (testing "The example-dashboard-id setting should be set if the example content is loaded"
+      (is (= 1
+             (public-settings/example-dashboard-id))))
+    (testing "Rasta (as a member of 'All Users') should have sufficient privileges to edit the example content"
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [dashboard (t2/select-one :model/Dashboard (public-settings/example-dashboard-id))
+              collection (t2/select-one :model/Collection (:collection_id dashboard))]
+          (mi/can-write? dashboard)
+          (mi/can-write? collection)))))
+  (testing "The example-dashboard-id setting should be nil if the example content isn't loaded"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (is (nil? (public-settings/example-dashboard-id)))))
+  (testing "The example-dashboard-id setting should be reset to nil if the example dashboard is archived"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? true)
+      (is (= 1
+             (public-settings/example-dashboard-id)))
+      (t2/update! :model/Dashboard 1 {:archived true})
+      (is (nil? (public-settings/example-dashboard-id))))))

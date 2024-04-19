@@ -80,7 +80,12 @@ export const StrategyFormLauncher = ({
       <Tooltip
         position="bottom"
         disabled={!inheritsRootStrategy}
-        label={t`Inheriting from default policy`}
+        label={t`Using default policy`}
+        events={{
+          hover: true,
+          focus: true,
+          touch: true,
+        }}
       >
         <PolicyToken
           onClick={() => {

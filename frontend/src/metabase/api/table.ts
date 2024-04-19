@@ -11,7 +11,14 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, invalidateTags, listTag, tag } from "./tags";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideTableListTags,
+  provideTableTags,
+  tag,
+} from "./tags";
 
 export const tableApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -21,17 +28,14 @@ export const tableApi = Api.injectEndpoints({
         url: "/api/table",
         body,
       }),
-      providesTags: (tables = []) => [
-        listTag("table"),
-        ...(tables.map(({ id }) => idTag("table", id)) ?? []),
-      ],
+      providesTags: (tables = []) => provideTableListTags(tables),
     }),
     getTable: builder.query<Table, GetTableRequest>({
       query: ({ id }) => ({
         method: "GET",
         url: `/api/table/${id}`,
       }),
-      providesTags: table => (table ? [idTag("table", table.id)] : []),
+      providesTags: table => (table ? provideTableTags(table) : []),
     }),
     getTableMetadata: builder.query<Table, GetTableMetadataRequest>({
       query: ({ id, ...body }) => ({
@@ -39,7 +43,7 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}/query_metadata`,
         body,
       }),
-      providesTags: table => (table ? [idTag("table", table.id)] : []),
+      providesTags: table => (table ? provideTableTags(table) : []),
     }),
     listTableForeignKeys: builder.query<Field[], TableId>({
       query: id => ({

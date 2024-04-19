@@ -61,14 +61,13 @@
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 ;; Features that are supported by Postgres and all of its child drivers like Redshift
-(doseq [[feature supported?] {:connection-impersonation                            true
-                              :convert-timezone                                    true
-                              :datetime-diff                                       true
-                              :now                                                 true
-                              :persist-models                                      true
-                              :schemas                                             true
-                              :sql/window-functions.order-by-output-column-numbers false
-                              :table-privileges                                    true}]
+(doseq [[feature supported?] {:connection-impersonation true
+                              :convert-timezone         true
+                              :datetime-diff            true
+                              :now                      true
+                              :persist-models           true
+                              :schemas                  true
+                              :uploads                  true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -78,7 +77,7 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
-                 :uploads
+                 :table-privileges
                  :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
@@ -274,7 +273,7 @@
 (defmethod driver/describe-database :postgres
   [_driver database]
   ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
-  ;; memrory in a set like this
+  ;; memory in a set like this
   {:tables (into #{} (describe-syncable-tables database))})
 
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
@@ -706,7 +705,7 @@
    (keyword "time without time zone")     :type/Time
    ;; TODO postgres also supports `timestamp(p) with time zone` where p is the precision
    ;; maybe we should switch this to use `sql-jdbc.sync/pattern-based-database-type->base-type`
-   (keyword "timestamp with time zone")    :type/DateTimeWithTZ
+   (keyword "timestamp with time zone")    :type/DateTimeWithLocalTZ
    (keyword "timestamp without time zone") :type/DateTime})
 
 (defmethod sql-jdbc.sync/database-type->base-type :postgres

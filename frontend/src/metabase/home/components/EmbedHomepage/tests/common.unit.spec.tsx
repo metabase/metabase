@@ -1,9 +1,13 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, waitForElementToBeRemoved } from "__support__/ui";
 
-import { setup } from "./setup";
+import {
+  queryFeedbackModal,
+  getLastHomepageSettingSettingCall,
+  setup,
+  getLastFeedbackCall,
+} from "./setup";
 
 describe("EmbedHomepage (OSS)", () => {
   it("should default to the static tab for OSS builds", () => {
@@ -13,6 +17,7 @@ describe("EmbedHomepage (OSS)", () => {
     ).toBeInTheDocument();
 
     // making sure Tabs isn't just rendering both tabs, making the test always pass
+
     expect(
       screen.queryByText("Use interactive embedding", { exact: false }),
     ).not.toBeInTheDocument();
@@ -24,6 +29,34 @@ describe("EmbedHomepage (OSS)", () => {
       "href",
       "https://www.metabase.com/docs/latest/embedding/static-embedding.html",
     );
+  });
+
+  it("should link to the example dashboard if `example-dashboard-id` is set", () => {
+    setup({ settings: { "example-dashboard-id": 1 } });
+
+    expect(
+      screen.getByText("Select a question", { exact: false }),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("link", {
+        name: /Embed this example dashboard/i,
+      }),
+    ).toHaveAttribute("href", "/dashboard/1");
+  });
+
+  it("should prompt to create a question if `example-dashboard-id` is not set", () => {
+    setup({ settings: { "example-dashboard-id": null } });
+
+    expect(
+      screen.getByText("Create a question", { exact: false }),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByRole("link", {
+        name: "Embed this example dashboard",
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it("should prompt to enable embedding if it wasn't auto enabled", () => {
@@ -56,14 +89,120 @@ describe("EmbedHomepage (OSS)", () => {
 
     await userEvent.click(screen.getByText("Embedding done, all good"));
 
-    const lastCall = fetchMock.lastCall(
-      "path:/api/setting/embedding-homepage",
-      {
-        method: "PUT",
-      },
-    );
+    const lastCall = getLastHomepageSettingSettingCall();
 
     const body = await lastCall?.request?.json();
     expect(body).toEqual({ value: "dismissed-done" });
+  });
+
+  it("should set 'embedding-homepage' to 'dismissed-not-interested-now' when dismissing because not interested", async () => {
+    setup();
+    await userEvent.hover(screen.getByText("Hide these"));
+
+    await userEvent.click(screen.getByText("I'm not interested right now"));
+
+    const lastCall = getLastHomepageSettingSettingCall();
+
+    const body = await lastCall?.request?.json();
+    expect(body).toEqual({ value: "dismissed-not-interested-now" });
+  });
+
+  describe("Feedback modal", () => {
+    const setupForFeedbackModal = async () => {
+      setup();
+      await userEvent.hover(screen.getByText("Hide these"));
+
+      await userEvent.click(screen.getByText("I ran into issues"));
+    };
+
+    it("should ask for feedback when dismissing because of issues", async () => {
+      await setupForFeedbackModal();
+
+      expect(
+        screen.getByText("How can we improve embedding?"),
+      ).toBeInTheDocument();
+    });
+
+    it("should display 'Skip' in the button when inputs are empty, 'Send' if any input has content", async () => {
+      await setupForFeedbackModal();
+
+      expect(screen.getByText("Skip")).toBeInTheDocument();
+
+      await userEvent.type(
+        screen.getByLabelText("Feedback"),
+        "I had an issue with X",
+      );
+
+      expect(screen.queryByText("Skip")).not.toBeInTheDocument();
+      expect(screen.getByText("Send")).toBeInTheDocument();
+
+      await userEvent.clear(screen.getByLabelText("Feedback"));
+      await userEvent.type(screen.getByLabelText("Feedback"), "   ");
+      expect(screen.getByText("Skip")).toBeInTheDocument();
+
+      await userEvent.type(
+        screen.getByLabelText("Email"),
+        "example@example.org",
+      );
+
+      expect(screen.queryByText("Skip")).not.toBeInTheDocument();
+      expect(screen.getByText("Send")).toBeInTheDocument();
+    });
+
+    it("should not dismiss the homepage when the user cancels the feedback modal", async () => {
+      await setupForFeedbackModal();
+
+      await userEvent.click(screen.getByText("Cancel"));
+
+      expect(getLastHomepageSettingSettingCall()).toBeUndefined();
+
+      await waitForElementToBeRemoved(() => queryFeedbackModal());
+    });
+
+    it("should dismiss when submitting feedback - even if empty", async () => {
+      await setupForFeedbackModal();
+
+      await userEvent.click(screen.getByText("Skip"));
+
+      const lastCall = getLastHomepageSettingSettingCall();
+
+      const body = await lastCall?.request?.json();
+      expect(body).toEqual({ value: "dismiss-run-into-issues" });
+
+      const feedbackBody = await getLastFeedbackCall()?.request?.json();
+
+      expect(feedbackBody).toEqual({
+        source: "embedding-homepage-dismiss",
+      });
+
+      await waitForElementToBeRemoved(() => queryFeedbackModal());
+    });
+
+    it("should send feedback when submitting the modal", async () => {
+      await setupForFeedbackModal();
+
+      await userEvent.type(
+        screen.getByLabelText("Feedback"),
+        "I had an issue with X",
+      );
+
+      await userEvent.type(screen.getByLabelText("Email"), "user@example.org");
+
+      await userEvent.click(screen.getByText("Send"));
+
+      const lastCall = getLastHomepageSettingSettingCall();
+      const body = await lastCall?.request?.json();
+      expect(body).toEqual({ value: "dismiss-run-into-issues" });
+
+      const feedbackBody = await getLastFeedbackCall()?.request?.json();
+
+      expect(feedbackBody).toEqual({
+        comments: "I had an issue with X",
+        email: "user@example.org",
+        source: "embedding-homepage-dismiss",
+      });
+
+      await waitForElementToBeRemoved(() => queryFeedbackModal());
+    });
   });
 });

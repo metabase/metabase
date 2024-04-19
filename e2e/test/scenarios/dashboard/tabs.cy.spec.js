@@ -44,6 +44,7 @@ import {
   dashboardGrid,
   modal,
   addHeadingWhileEditing,
+  setFilter,
 } from "e2e/support/helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
@@ -504,14 +505,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findByText("Orders, Count").click();
     });
 
-    cy.findByTestId("dashboard-header").within(() => {
-      cy.icon("filter").click();
-    });
-
-    popover().within(() => {
-      cy.contains("Time").click();
-      cy.findByText("Relative Date").click();
-    });
+    setFilter("Time", "Relative Date");
 
     // Auto-connection happens here
     selectDashboardFilter(getDashboardCard(0), "Created At");
@@ -523,10 +517,8 @@ describe("scenarios > dashboard > tabs", () => {
       delayResponse(500),
     ).as("saveCard");
 
-    filterWidget().contains("Relative Date").click();
-    popover().within(() => {
-      cy.findByText("Past 7 days").click();
-    });
+    filterWidget().click();
+    popover().findByText("Past 7 days").click();
 
     // Loader in the 2nd tab
     getDashboardCard(0).within(() => {

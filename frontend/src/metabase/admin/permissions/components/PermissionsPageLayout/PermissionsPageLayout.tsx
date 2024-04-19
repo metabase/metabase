@@ -118,13 +118,13 @@ function PermissionsPageLayout({
 
         <LeaveConfirmationModal isEnabled={isDirty} route={route} />
 
-        <TabsContainer className="border-bottom">
+        <TabsContainer className={CS.borderBottom}>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
           <ToolbarButtonsContainer>
             {toolbarRightContent}
             {helpContent && !isHelpReferenceOpen && (
               <ToolbarButton
-                text={t`Permission help`}
+                text={t`Permissions help`}
                 icon="info"
                 onClick={handleToggleHelpReference}
               />

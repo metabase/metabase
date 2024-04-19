@@ -35,7 +35,7 @@ const TestComponent = () => {
     error,
   } = useSearchListQuery({
     query: {
-      models: TEST_ITEM.model,
+      models: [TEST_ITEM.model],
       limit: TEST_SEARCH_METADATA.limit,
       offset: TEST_SEARCH_METADATA.offset,
       table_db_id: TEST_TABLE_DB_ID,

@@ -148,7 +148,7 @@ describe("EntityPickerModal", () => {
       }),
     );
 
-    fetchMock.get("path:/api/user/recipients", []);
+    fetchMock.get("path:/api/user/recipients", { data: [] });
 
     const onItemSelect = jest.fn();
     const onConfirm = jest.fn();

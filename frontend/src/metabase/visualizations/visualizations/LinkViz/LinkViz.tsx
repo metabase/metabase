@@ -5,10 +5,11 @@ import _ from "underscore";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Search from "metabase/entities/search";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { getUrlTarget } from "metabase/lib/dom";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import type {
   LinkCardSettings,
-  SearchModelType,
+  SearchModel,
   UnrestrictedLinkEntity,
   VirtualDashboardCard,
 } from "metabase-types/api";
@@ -32,7 +33,7 @@ import { settings } from "./LinkVizSettings";
 import type { WrappedUnrestrictedLinkEntity } from "./types";
 import { isUrlString } from "./utils";
 
-const MODELS_TO_SEARCH: SearchModelType[] = [
+const MODELS_TO_SEARCH: SearchModel[] = [
   "card",
   "dataset",
   "dashboard",
@@ -181,7 +182,11 @@ function LinkVizInner({
       data-testid="custom-view-text-link"
       fade={isEditingParameter}
     >
-      <ExternalLink href={url ?? ""} target="_blank" rel="noreferrer">
+      <ExternalLink
+        href={url ?? ""}
+        target={getUrlTarget(url)}
+        rel="noreferrer"
+      >
         <UrlLinkDisplay url={url} />
       </ExternalLink>
     </DisplayLinkCardWrapper>

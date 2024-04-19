@@ -774,3 +774,19 @@
       (is (=? {:type  :query
                :query {:expressions {"expr" [:+ 1 2]}}}
               (lib.convert/->legacy-MBQL query))))))
+
+(deftest ^:parallel convert-with-broken-expression-types-test
+  (testing "be flexible when converting from legacy, metadata type overrides are soometimes dropped (#41122)"
+    (let [legacy {:database (meta/id)
+                  :type     :query
+                  :query    {:filter [:between [:+
+                                                [:field 40 {:base-type :type/Integer}]
+                                                [:interval 1 :year]]
+                                      [:relative-datetime -2 :month]
+                                      [:relative-datetime 0 :month]]}}]
+      (is (=? {:stages [{:filters [[:between {} [:+ {}
+                                                 [:field {:base-type :type/Integer} 40]
+                                                 [:interval {} 1 :year]]
+                                    [:relative-datetime {} -2 :month]
+                                    [:relative-datetime {} 0 :month]]]}]}
+              (lib.convert/->pMBQL legacy))))))

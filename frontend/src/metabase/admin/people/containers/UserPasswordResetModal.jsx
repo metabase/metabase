@@ -10,7 +10,7 @@ import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
-import User from "metabase/entities/users";
+import Users from "metabase/entities/users";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { clearTemporaryPassword } from "../people";
@@ -77,7 +77,7 @@ class UserPasswordResetModal extends Component {
 }
 
 export default _.compose(
-  User.load({
+  Users.load({
     id: (state, props) => props.params.userId,
     wrapped: true,
   }),

@@ -6,22 +6,26 @@ import {
   getPermissionWarning,
   getPermissionWarningModal,
 } from "metabase/admin/permissions/selectors/confirmations";
-import type {
-  EntityId,
-  PermissionSubject,
+import {
+  DataPermission,
+  DataPermissionType,
+  DataPermissionValue,
+  type EntityId,
+  type PermissionSectionConfig,
+  type PermissionSubject,
 } from "metabase/admin/permissions/types";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 export const DETAILS_PERMISSION_OPTIONS = {
   no: {
     label: t`No`,
-    value: "no",
+    value: DataPermissionValue.NO,
     icon: "close",
     iconColor: "danger",
   },
   yes: {
     label: t`Yes`,
-    value: "yes",
+    value: DataPermissionValue.YES,
     icon: "check",
     iconColor: "success",
   },
@@ -37,7 +41,7 @@ const getDetailsPermission = (
   groupId: number,
   databaseId: number,
 ) =>
-  getIn(permissions, [groupId, databaseId, "details"]) ??
+  getIn(permissions, [groupId, databaseId, DataPermission.DETAILS]) ??
   DETAILS_PERMISSION_OPTIONS.no.value;
 
 export const buildDetailsPermission = (
@@ -47,7 +51,7 @@ export const buildDetailsPermission = (
   permissions: GroupsPermissions,
   defaultGroup: Group,
   permissionSubject: PermissionSubject,
-) => {
+): PermissionSectionConfig | null => {
   if (permissionSubject !== "schemas") {
     return null;
   }
@@ -68,7 +72,7 @@ export const buildDetailsPermission = (
     DETAILS_PERMISSIONS_DESC,
   );
 
-  const confirmations = (newValue: string) => [
+  const confirmations = (newValue: DataPermissionValue) => [
     getPermissionWarningModal(
       newValue,
       defaultGroupValue,
@@ -80,8 +84,8 @@ export const buildDetailsPermission = (
   ];
 
   return {
-    permission: "details",
-    type: "details",
+    permission: DataPermission.DETAILS,
+    type: DataPermissionType.DETAILS,
     value,
     isDisabled: isAdmin,
     isHighlighted: isAdmin,

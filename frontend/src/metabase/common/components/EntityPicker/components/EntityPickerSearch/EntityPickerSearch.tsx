@@ -11,7 +11,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";
 import type { WrappedResult } from "metabase/search/types";
 import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
-import type { SearchModelType, SearchResultId } from "metabase-types/api";
+import type { SearchModel, SearchResultId } from "metabase-types/api";
 
 import type { TypeWithModel } from "../../types";
 
@@ -28,7 +28,7 @@ const defaultSearchFilter = <
 
 export function EntityPickerSearchInput<
   Id extends SearchResultId,
-  Model extends SearchModelType,
+  Model extends SearchModel,
   Item extends TypeWithModel<Id, Model>,
 >({
   searchQuery,
@@ -40,7 +40,7 @@ export function EntityPickerSearchInput<
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   setSearchResults: (results: Item[] | null) => void;
-  models: SearchModelType[];
+  models: SearchModel[];
   searchFilter?: (results: Item[]) => Item[];
 }) {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -97,10 +97,16 @@ export const EntityPickerSearchResults = <
   }
 
   return (
-    <Box p="lg" h="100%">
+    <Box h="100%">
       {searchResults.length > 0 ? (
         <Stack h="100%">
-          <VirtualizedList>
+          <VirtualizedList
+            Wrapper={({ children, ...props }) => (
+              <Box p="lg" {...props}>
+                {children}
+              </Box>
+            )}
+          >
             {searchResults?.map(item => (
               <EntityPickerSearchResult
                 key={item.model + item.id}
@@ -136,11 +142,13 @@ export const EntityPickerSearchTab = <
 >({
   searchResults,
   searchQuery,
+  onClick,
 }: {
   searchResults: Item[] | null;
   searchQuery: string;
+  onClick: () => void;
 }) => (
-  <Tabs.Tab key="search" value="search" icon={<Icon name="search" />}>
+  <Tabs.Tab value="search" icon={<Icon name="search" />} onClick={onClick}>
     {getSearchTabText(searchResults, searchQuery)}
   </Tabs.Tab>
 );

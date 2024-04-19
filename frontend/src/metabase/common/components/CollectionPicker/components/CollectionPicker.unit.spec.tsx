@@ -90,7 +90,7 @@ const flattenCollectionTree = (
   ].concat(...node.map(n => flattenCollectionTree(n.collections)));
 };
 
-const walkForCollectionItems = (node: MockCollection[]) => {
+const setupCollectionTreeMocks = (node: MockCollection[]) => {
   node.forEach(n => {
     const collectionItems = n.collections.map((c: MockCollection) =>
       createMockCollectionItem({
@@ -108,7 +108,7 @@ const walkForCollectionItems = (node: MockCollection[]) => {
     });
 
     if (collectionItems.length > 0) {
-      walkForCollectionItems(n.collections);
+      setupCollectionTreeMocks(n.collections);
     }
   });
 };
@@ -136,9 +136,7 @@ const setup = ({
     fetchMock.get(`path:/api/collection/${collection.id}`, collection);
   });
 
-  //Setup collection items mocks
-
-  walkForCollectionItems(collectionTree);
+  setupCollectionTreeMocks(collectionTree);
 
   return renderWithProviders(
     <CollectionPicker

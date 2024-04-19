@@ -153,9 +153,16 @@ export type Drill<
   applyDrill: (drill: Lib.DrillThru, ...args: any[]) => Question;
 }) => ClickAction[];
 
-export interface QueryClickActionsMode {
+export type QueryClickActionsMode = {
   name: string;
-  hasDrills: boolean;
   clickActions: LegacyDrill[];
   fallback?: LegacyDrill;
-}
+} & (
+  | {
+      hasDrills: false;
+    }
+  | {
+      hasDrills: true;
+      availableOnlyDrills?: Lib.DrillThruType[];
+    }
+);

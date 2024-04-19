@@ -321,5 +321,5 @@ function assertOnRequest(xhr_alias) {
   cy.findByText("Sorry, you don’t have permission to see that.").should(
     "not.exist",
   );
-  cy.get(".Modal").should("not.exist");
+  modal().should("not.exist");
 }

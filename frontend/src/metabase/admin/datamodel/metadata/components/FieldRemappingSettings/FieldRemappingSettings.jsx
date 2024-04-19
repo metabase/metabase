@@ -263,7 +263,7 @@ class FieldRemappingSettings extends Component {
                     {fkMappingField ? (
                       fkMappingField.display_name
                     ) : (
-                      <span className="text-medium">{t`Choose a field`}</span>
+                      <span className={CS.textMedium}>{t`Choose a field`}</span>
                     )}
                   </FieldSelectButton>
                 }
@@ -468,7 +468,7 @@ const RemappingNamingTip = () => (
       CS.borderBrand,
     )}
   >
-    <span className={cx("text-brand", CS.textBold)}>{t`Tip: `}</span>
+    <span className={cx(CS.textBrand, CS.textBold)}>{t`Tip: `}</span>
     {t`You might want to update the field name to make sure it still makes sense based on your remapping choices.`}
   </div>
 );
