@@ -125,6 +125,10 @@ const getColumnExample = (
     return "12345";
   }
 
+  if (Lib.isInteger(column)) {
+    return "123";
+  }
+
   if (Lib.isNumeric(column)) {
     return "123.45678901234567";
   }
