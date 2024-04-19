@@ -47,6 +47,10 @@ export function listTag(type: TagType): TagDescription<TagType> {
   return { type, id: "LIST" };
 }
 
+export function partialListTag(type: TagType): TagDescription<TagType> {
+  return { type, id: "PARTIAL-LIST" };
+}
+
 export function idTag(
   type: TagType,
   id: string | number,
@@ -339,7 +343,7 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
 }
 
 export function provideTaskListTags(tasks: Task[]): TagDescription<TagType>[] {
-  return [listTag("task"), ...tasks.flatMap(provideTaskTags)];
+  return [partialListTag("task"), ...tasks.flatMap(provideTaskTags)];
 }
 
 export function provideTaskTags(task: Task): TagDescription<TagType>[] {
