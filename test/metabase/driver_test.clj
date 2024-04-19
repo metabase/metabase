@@ -13,7 +13,6 @@
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]
-   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -307,16 +306,15 @@
   (testing "`describe-table-fks` should work for drivers that do not support `describe-fks`"
     (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :foreign-keys)
                                      (mt/normal-drivers-with-feature :describe-fks))
-      (let [orders (t2/select-one :model/Table (mt/id :orders))
-            fmt    (partial ddl.i/format-name driver/*driver*)
-            schema (some-> (sql.tx/session-schema driver/*driver*) fmt)]
+      (let [orders   (t2/select-one :model/Table (mt/id :orders))
+            products (t2/select-one :model/Table (mt/id :products))
+            people   (t2/select-one :model/Table (mt/id :people))
+            fmt      (partial ddl.i/format-name driver/*driver*)]
         (is (= #{{:fk-column-name   (fmt "user_id")
-                  :dest-table       {:name   (fmt "people")
-                                     :schema schema}
+                  :dest-table       (select-keys people [:name :schema])
                   :dest-column-name (fmt "id")}
                  {:fk-column-name   (fmt "product_id")
-                  :dest-table       {:name   (fmt "products")
-                                     :schema schema}
+                  :dest-table       (select-keys products [:name :schema])
                   :dest-column-name (fmt "id")}}
                #_{:clj-kondo/ignore [:deprecated-var]}
                (driver/describe-table-fks driver/*driver* (mt/db) orders)))))))
@@ -324,24 +322,24 @@
 (deftest ^:parallel describe-fks-test
   (testing "`describe-fks` works for drivers that support `describe-fks`"
     (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :describe-fks)
-      (let [fmt        (partial ddl.i/format-name driver/*driver*)
-            ;; TODO: this works for redshift but not necessarily for all drivers
-            table-name #(tx/db-qualified-table-name (:name (mt/db)) %)
-            schema     (some-> (sql.tx/session-schema driver/*driver*) fmt)]
+      (let [fmt      (partial ddl.i/format-name driver/*driver*)
+            orders   (t2/select-one :model/Table (mt/id :orders))
+            products (t2/select-one :model/Table (mt/id :products))
+            people   (t2/select-one :model/Table (mt/id :people))]
         (is (= #{{:fk-column-name  (fmt "user_id")
-                  :fk-table-name   (table-name (fmt "orders"))
-                  :fk-table-schema schema
+                  :fk-table-name   (:name orders)
+                  :fk-table-schema (:schema orders)
                   :pk-column-name  (fmt "id")
-                  :pk-table-name   (table-name (fmt "people"))
-                  :pk-table-schema schema}
+                  :pk-table-name   (:name people)
+                  :pk-table-schema (:schema people)}
                  {:fk-column-name  (fmt "product_id")
-                  :fk-table-name   (table-name (fmt "orders"))
-                  :fk-table-schema schema
+                  :fk-table-name   (:name orders)
+                  :fk-table-schema (:schema orders)
                   :pk-column-name  (fmt "id")
-                  :pk-table-name   (table-name (fmt "products"))
-                  :pk-table-schema schema}}
+                  :pk-table-name   (:name products)
+                  :pk-table-schema (:schema products)}}
                (into #{}
-                     (filter #(= (:fk-table-name %) (table-name (fmt "orders"))))
+                     (filter #(= (:fk-table-name %) (:name orders)))
                      (driver/describe-fks driver/*driver* (mt/db)))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
