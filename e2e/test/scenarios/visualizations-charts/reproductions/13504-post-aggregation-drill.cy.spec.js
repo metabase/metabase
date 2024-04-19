@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, popover, lineChartCircle } from "e2e/support/helpers";
+import { restore, popover, cartesianChartCircle } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -31,7 +31,7 @@ describe("issue 13504", () => {
   it("should remove post-aggregation filters from a multi-stage query (metabase#13504)", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    lineChartCircle().eq(0).click({ force: true });
+    cartesianChartCircle().eq(0).click({ force: true });
 
     popover().findByText("See these Orders").click();
     cy.wait("@dataset");

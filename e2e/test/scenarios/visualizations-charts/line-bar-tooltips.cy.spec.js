@@ -6,6 +6,8 @@ import {
   saveDashboard,
   addOrUpdateDashboardCard,
   modal,
+  cartesianChartCircle,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -46,9 +48,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ["Custom", "42,156.87"],
       ];
 
-      const seriesIndex = 0;
-
-      showTooltipForFirstCircleInSeries(seriesIndex);
+      cartesianChartCircle().first().trigger("mousemove");
       testTooltipText(originalTooltipText);
 
       openDashCardVisualizationOptions();
@@ -57,7 +57,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      showTooltipForFirstCircleInSeries(seriesIndex);
+      cartesianChartCircle().first().trigger("mousemove");
       testTooltipText(updatedTooltipText);
     });
   });
@@ -169,9 +169,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ["Custom 2", "3,236"],
       ];
 
-      const seriesIndex = 0;
-
-      showTooltipForFirstCircleInSeries(seriesIndex);
+      cartesianChartCircle().first().trigger("mousemove");
       testTooltipText(originalTooltipText);
 
       openDashCardVisualizationOptions();
@@ -181,7 +179,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      showTooltipForFirstCircleInSeries(seriesIndex);
+      cartesianChartCircle().first().trigger("mousemove");
       testTooltipText(updatedTooltipText);
     });
   });
@@ -319,9 +317,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ["Custom", "42,156.87"],
       ];
 
-      const seriesIndex = 0;
-
-      showTooltipForFirstBarInSeries(seriesIndex);
+      chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
       testTooltipText(originalTooltipText);
 
       openDashCardVisualizationOptions();
@@ -330,7 +326,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      showTooltipForFirstBarInSeries(seriesIndex);
+      chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
       testTooltipText(updatedTooltipText);
     });
   });

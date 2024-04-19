@@ -1,4 +1,4 @@
-import { restore, popover, lineChartCircle } from "e2e/support/helpers";
+import { restore, popover, cartesianChartCircle } from "e2e/support/helpers";
 
 const questionDetails = {
   name: "11435",
@@ -36,5 +36,5 @@ describe("issue 11435", () => {
 });
 
 const hoverLineDot = ({ index } = {}) => {
-  lineChartCircle().eq(index).realHover();
+  cartesianChartCircle().eq(index).realHover();
 };

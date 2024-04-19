@@ -7,7 +7,7 @@ import {
   summarize,
   openTable,
   visitQuestionAdhoc,
-  lineChartCircle,
+  cartesianChartCircle,
   chartPathWithFillColor,
   echartsContainer,
 } from "e2e/support/helpers";
@@ -72,7 +72,7 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Year");
-      lineChartCircle();
+      cartesianChartCircle();
     });
 
     it("should work for number", () => {
@@ -139,7 +139,7 @@ describe("scenarios > binning > from a saved sql question", () => {
         assertOnResponse(response);
       });
 
-      lineChartCircle();
+      cartesianChartCircle();
     });
 
     it("should work for number", () => {
@@ -195,7 +195,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       assertOnXYAxisLabels({ xLabel: "CREATED_AT", yLabel: "Count" });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Month");
-      lineChartCircle();
+      cartesianChartCircle();
 
       // Open a popover with bucket options from the time series footer
       cy.findByTestId("timeseries-bucket-button").contains("Month").click();

@@ -3,7 +3,7 @@ import {
   restore,
   popover,
   visitQuestion,
-  lineChartCircle,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 import { createMetric as apiCreateMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
@@ -21,7 +21,7 @@ describe("issue 6010", () => {
       .then(({ body: { id } }) => createQuestion(id))
       .then(({ body: { id } }) => visitQuestion(id));
 
-    lineChartCircle().eq(0).click();
+    cartesianChartCircle().eq(0).click();
 
     popover().findByText("See these Orders").click();
     cy.wait("@dataset");

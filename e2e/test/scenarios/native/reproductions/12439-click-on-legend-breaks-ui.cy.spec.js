@@ -3,7 +3,7 @@ import {
   restore,
   visitQuestionAdhoc,
   sidebar,
-  lineChartCircle,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const nativeQuery = `
@@ -46,7 +46,7 @@ describe("issue 12439", () => {
       cy.findByText("Gizmo").should("be.visible");
       cy.findByText("Doohickey").should("be.visible");
 
-      lineChartCircle();
+      cartesianChartCircle();
     });
 
     // Make sure buttons are clickable

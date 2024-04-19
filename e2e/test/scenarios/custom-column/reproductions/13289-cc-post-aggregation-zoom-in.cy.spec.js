@@ -5,7 +5,7 @@ import {
   enterCustomColumnDetails,
   visualize,
   summarize,
-  lineChartCircle,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const CC_NAME = "Math";
@@ -45,7 +45,7 @@ describe("issue 13289", () => {
     visualize();
 
     cy.findByTestId("query-visualization-root").within(() => {
-      lineChartCircle()
+      cartesianChartCircle()
         .eq(5) // random circle in the graph (there is no specific reason for this index)
         .click();
     });

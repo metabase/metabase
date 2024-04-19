@@ -3,7 +3,7 @@ import {
   withDatabase,
   popover,
   openSeriesSettings,
-  lineChartCircle,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const externalDatabaseId = 2;
@@ -42,7 +42,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
       assertOnTheYAxis();
 
-      lineChartCircle().eq(-2).trigger("mousemove", { force: true });
+      cartesianChartCircle().eq(-2).trigger("mousemove", { force: true });
 
       popover().within(() => {
         testPairedTooltipValues("Created At", "2019");

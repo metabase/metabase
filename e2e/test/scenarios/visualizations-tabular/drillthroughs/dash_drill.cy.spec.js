@@ -6,7 +6,7 @@ import {
   queryBuilderMain,
   restore,
   visitDashboard,
-  lineChartCircle,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -129,7 +129,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       it("should result in a correct query result", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Affiliate");
-        lineChartCircle().should("have.length.of.at.least", 100);
+        cartesianChartCircle().should("have.length.of.at.least", 100);
       });
     });
 

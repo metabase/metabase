@@ -8,7 +8,7 @@ import {
   rightSidebar,
   updateDashboardCards,
   addOrUpdateDashboardCard,
-  lineChartCircle,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -191,7 +191,7 @@ describe("scenarios > question > null", () => {
         "not.exist",
       );
 
-      lineChartCircle().should("have.length.of.at.least", 40);
+      cartesianChartCircle().should("have.length.of.at.least", 40);
     });
   });
 });
