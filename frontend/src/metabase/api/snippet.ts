@@ -1,27 +1,39 @@
+import type {
+  CreateSnippetRequest,
+  ListSnippetsParams,
+  NativeQuerySnippet,
+  NativeQuerySnippetId,
+  UpdateSnippetRequest,
+} from "metabase-types/api";
+
 import { Api } from "./api";
 
 export const snippetApi = Api.injectEndpoints({
   endpoints: builder => ({
-    listSnippets: builder.query<unknown, unknown>({
-      query: () => ({
+    listSnippets: builder.query<
+      NativeQuerySnippet[],
+      ListSnippetsParams | void
+    >({
+      query: params => ({
         method: "GET",
         url: "/api/native-query-snippet",
+        params,
       }),
     }),
-    getSnippet: builder.query<unknown, unknown>({
+    getSnippet: builder.query<NativeQuerySnippet, NativeQuerySnippetId>({
       query: id => ({
         method: "GET",
         url: `/api/native-query-snippet/${id}`,
       }),
     }),
-    createSnippet: builder.mutation<unknown, unknown>({
+    createSnippet: builder.mutation<NativeQuerySnippet, CreateSnippetRequest>({
       query: body => ({
         method: "POST",
         url: "/api/native-query-snippet",
         body,
       }),
     }),
-    updateSnippet: builder.mutation<unknown, unknown>({
+    updateSnippet: builder.mutation<unknown, UpdateSnippetRequest>({
       query: ({ id, ...body }) => ({
         method: "PUT",
         url: `/api/native-query-snippet/${id}`,
