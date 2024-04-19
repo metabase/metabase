@@ -1,4 +1,4 @@
-import type * as React from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import {
@@ -13,7 +13,7 @@ import type { SDKConfigType } from "embedding-sdk/types";
 import { SdkContentWrapper } from "./SdkContentWrapper";
 
 interface AppInitializeControllerProps {
-  children: React.ReactNode;
+  children: ReactNode;
   config: SDKConfigType;
 }
 
