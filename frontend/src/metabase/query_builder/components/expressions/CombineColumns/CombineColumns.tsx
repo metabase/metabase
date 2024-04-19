@@ -29,6 +29,8 @@ type State = {
   defaultSeparator: string;
 };
 
+const initialDefaultSeparator = " ";
+
 export function CombineColumns({
   query: originalQuery,
   stageIndex: originalStageIndex,
@@ -42,11 +44,11 @@ export function CombineColumns({
       },
       {
         column: null,
-        separator: " ",
+        separator: initialDefaultSeparator,
       },
     ],
     isUsingDefaultSeparator: true,
-    defaultSeparator: " ",
+    defaultSeparator: initialDefaultSeparator,
   });
 
   const { columnsAndSeparators, isUsingDefaultSeparator } = state;
