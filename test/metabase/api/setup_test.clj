@@ -35,7 +35,7 @@
 (defn- do-with-setup!* [request-body thunk]
   (try
     (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
-      (thunk))
+                                (thunk))
     (finally
       (t2/delete! User :email (get-in request-body [:user :email]))
       (when-let [invited (get-in request-body [:invite :name])]
@@ -346,17 +346,28 @@
 (def ^:private default-checklist-state
   {:db-type    :h2
    :hosted?    false
-   :configured {:email true
-                :slack false}
+   :interested-in-embedding false
+   :embedding-homepage-dismissed-as-done false
+   :configured {:email                true
+                :slack                false
+                :sso                  false
+                :embedding-app-origin false}
    :counts     {:user  5
                 :card  5
                 :table 5}
-   :exists     {:non-sample-db true
-                :dashboard     true
-                :pulse         true
-                :hidden-table  false
-                :collection    true
-                :model         true}})
+   :exists     {:non-sample-db     true
+                :dashboard         true
+                :pulse             true
+                :hidden-table      false
+                :collection        true
+                :model             true
+                :embedded-resource false}})
+
+
+(defn get-embedding-step
+  [checklist]
+  (let [[{:keys [tasks]}] checklist]
+    (first (filter #(= (get % :title) "Setup embedding") tasks))))
 
 (deftest admin-checklist-test
   (testing "GET /api/setup/admin_checklist"
@@ -374,6 +385,10 @@
                                :completed    false
                                :triggered    true
                                :is_next_step true}
+                              {:completed false,
+                               :is_next_step false,
+                               :title "Setup embedding",
+                               :triggered false}
                               {:title        "Invite team members"
                                :completed    true
                                :triggered    true
@@ -411,6 +426,29 @@
           (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
             (is (= ["Get connected" "Curate your data"]
                    (map :name checklist)))))))
+    (testing "setup-embedding"
+            (testing "should be done when a dashboard as been published"
+        (with-redefs [api.setup/state-for-checklist
+                      (constantly
+                       (update default-checklist-state
+                               :exists #(merge %  {:embedded-resource true})))]
+          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+            (is (partial= {:completed true} (get-embedding-step checklist))))))
+      (testing "should be done when sso and embed-app-origin has been configured"
+        (with-redefs [api.setup/state-for-checklist
+                      (constantly
+                       (update default-checklist-state
+                               :configured #(merge %  {:embedding-app-origin true
+                                                       :sso true})))]
+          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+            (is (partial= {:completed true} (get-embedding-step checklist))))))
+      (testing "should be done when dismissed-done"
+        (with-redefs [api.setup/state-for-checklist
+                      (constantly
+                       (merge default-checklist-state
+                              {:embedding-homepage-dismissed-as-done true }))]
+          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+            (is (partial= {:completed true} (get-embedding-step checklist)))))))
 
     (testing "require superusers"
       (is (= "You don't have permissions to do that."
