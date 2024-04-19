@@ -43,7 +43,7 @@ describe("scenarios > dashboard > filters > SQL > management", () => {
       editDashboard();
     });
 
-    it("should reset mappings in some cases", () => {
+    it("should reset mappings when current operator is '=' and new operator is not '='", () => {
       setFilter("Number", "Equal to");
 
       getDashboardCard().findByRole("button").click();
