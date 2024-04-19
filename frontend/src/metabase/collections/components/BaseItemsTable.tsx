@@ -1,18 +1,18 @@
+import type { HTMLAttributes, ReactNode } from "react";
 import { t } from "ttag";
 
 import CheckBox from "metabase/core/components/CheckBox";
-
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-import type { HTMLAttributes, ReactNode } from "react";
+
 import type {
   CreateBookmark,
   DeleteBookmark,
   OnCopy,
   OnMove,
-  OnToggleSelected,
   OnToggleSelectedWithItem,
 } from "../types";
+
 import {
   BulkSelectWrapper,
   ColumnHeader,
@@ -187,8 +187,7 @@ const BaseItemsTable = ({
               name="model"
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
-              // FIXME: Use marginInlineStart
-              style={{ marginLeft: 6 }}
+              style={{ marginInlineStart: 6 }}
             >
               {t`Type`}
             </SortableColumnHeader>
@@ -224,4 +223,5 @@ const BaseItemsTable = ({
 
 BaseItemsTable.Item = BaseTableItem;
 
+// eslint-disable-next-line import/no-default-export
 export default BaseItemsTable;
