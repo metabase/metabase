@@ -678,7 +678,7 @@
     (log/infof "Moving Collection %s and its descendants from %s to %s"
                (u/the-id collection) (:location collection) new-location)
     (let [affected-collection-ids (cons (u/the-id collection)
-                                        (collection->descendant-ids collection, :archived false))]
+                                        (collection->descendant-ids collection))]
       (t2/with-transaction [_conn]
         (t2/update! Collection (u/the-id collection)
                     {:location new-location
