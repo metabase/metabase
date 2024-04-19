@@ -117,6 +117,14 @@
   ([conditions-map state]
    (t2/update! PersistedInfo conditions-map {:active false, :state state, :state_change_at :%now})))
 
+(defn invalidate!
+  "Invalidates any caches corresponding to the `conditions-map`. Equivalent to toggling the caching off and on again."
+  [conditions-map]
+  ;; TODO confirm that the corresponding tables will still be cleaned up.
+  (t2/update! PersistedInfo
+              (merge {:active true} conditions-map)
+              {:active false, :state "creating", :state_change_at :%now}))
+
 (defn- create-row
   "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."
   [user-id card]

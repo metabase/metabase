@@ -22,6 +22,7 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
+   [metabase.models.persisted-info :as persisted-info]
    [metabase.models.table :as table]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -513,6 +514,16 @@
            (field->db-type driver field->new-type)
            args)))
 
+(defn- invalidate-cached-models! [table]
+  ;; Find all the models for which this is the "primary table", and there are no joins, filters, transformations, etc.
+  (let [model-ids (->> (t2/select [:model/Card :id :dataset_query] :table_id (:id table) :type :model)
+                       (remove (fn [{query :dataset_query}]
+                                 ;; notably there are no joins or expressions
+                                 (every? #{:source-table :fields :limit} (keys query))))
+                       (map :id))]
+    ;; Ideally we would do all the filtering in the query, but we would need an agnostic way to handle the JSON column.
+    (persisted-info/invalidate! {:id [:in model-ids]})))
+
 (defn- update-with-csv! [database table file & {:keys [replace-rows?]}]
   (try
     (let [parse (infer-parser file)]
@@ -568,6 +579,8 @@
           (when create-auto-pk?
             (let [auto-pk-field (table-id->auto-pk-column (:id table))]
               (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
+
+          (invalidate-cached-models! table)
 
           (events/publish-event! :event/upload-append
                                  {:user-id  (:id @api/*current-user*)
