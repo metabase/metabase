@@ -49,7 +49,7 @@ const shouldLoadAdhocMetadata = (question: Question): boolean => {
 };
 
 const questionDependentMetadata = (question: Question): Lib.DependentItem[] => {
-  const dependencies = [...Lib.dependentMetadata(question.query())];
+  const dependencies = Lib.dependentMetadata(question.query());
 
   if (shouldLoadAdhocMetadata(question)) {
     const tableId = getQuestionVirtualTableId(question.id());
