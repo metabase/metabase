@@ -49,52 +49,55 @@
                         (mt/normal-drivers-with-feature :nested-field-columns))))))
 
 (deftest ^:parallel describe-table-test
-  (assert (uses-default-describe-table? :h2) "H2 should use the default describe-table implementation")
-  (is (= {:name "VENUES",
-          :fields
-          #{{:name                       "ID"
-             :database-type              "BIGINT"
-             :base-type                  :type/BigInteger
-             :database-position          0
-             :pk?                        true
-             :database-required          false
-             :database-is-auto-increment true :json-unfolding false}
-            {:name                       "NAME"
-             :database-type              "CHARACTER VARYING"
-             :base-type                  :type/Text
-             :database-position          1
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "CATEGORY_ID"
-             :database-type              "INTEGER"
-             :base-type                  :type/Integer
-             :database-position          2
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "LATITUDE"
-             :database-type              "DOUBLE PRECISION"
-             :base-type                  :type/Float
-             :database-position          3
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "LONGITUDE"
-             :database-type              "DOUBLE PRECISION"
-             :base-type                  :type/Float
-             :database-position          4
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "PRICE"
-             :database-type              "INTEGER"
-             :base-type                  :type/Integer
-             :database-position          5
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}}}
-         (driver/describe-table :h2 (mt/id) {:name "VENUES"}))))
+  (mt/test-driver :h2
+    (assert (uses-default-describe-table? :h2)
+            "Make sure H2 uses the default `describe-table` implementation")
+    (is (= {:name "VENUES",
+            :fields
+            #{{:name                       "ID"
+               :database-type              "BIGINT"
+               :base-type                  :type/BigInteger
+               :database-position          0
+               :pk?                        true
+               :database-required          false
+               :database-is-auto-increment true
+               :json-unfolding             false}
+              {:name                       "NAME"
+               :database-type              "CHARACTER VARYING"
+               :base-type                  :type/Text
+               :database-position          1
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "CATEGORY_ID"
+               :database-type              "INTEGER"
+               :base-type                  :type/Integer
+               :database-position          2
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "LATITUDE"
+               :database-type              "DOUBLE PRECISION"
+               :base-type                  :type/Float
+               :database-position          3
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "LONGITUDE"
+               :database-type              "DOUBLE PRECISION"
+               :base-type                  :type/Float
+               :database-position          4
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "PRICE"
+               :database-type              "INTEGER"
+               :base-type                  :type/Integer
+               :database-position          5
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}}}
+           (driver/describe-table :h2 (mt/db) {:name "VENUES"})))))
 
 (deftest describe-auto-increment-on-non-pk-field-test
   (testing "a non-pk field with auto-increment should be have metabase_field.database_is_auto_increment=true"
