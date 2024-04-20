@@ -7,7 +7,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   #_[metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util.date-2 :as u.date])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -35,15 +35,18 @@
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? query]
                    :or   {format-rows? true}} :data} viz-settings]
-        (when-let [opts (qp.pivot/pivot-options query viz-settings)]
-          (reset! pivot-options opts))
-        #_(let [col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings))])
-        (vreset! ordered-formatters
-                 (if format-rows?
-                   (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
-                   (vec (repeat (count ordered-cols) identity))))
-        #_(csv/write-csv writer [col-names])
-        (.flush writer))
+        (let [opts      (when query (qp.pivot/pivot-options query viz-settings))
+              col-names (when-not opts (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings)))]
+          ;; when pivot options exist, we want to save them to access later when processing the complete set of results for export.
+          (when opts
+            (reset! pivot-options opts))
+          (vreset! ordered-formatters
+                   (if format-rows?
+                     (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
+                     (vec (repeat (count ordered-cols) identity))))
+          (when col-names
+            (csv/write-csv writer [col-names])
+            (.flush writer))))
 
       (write-row! [_ row _row-num _ {:keys [output-order]}]
         (let [ordered-row (if output-order
@@ -53,15 +56,20 @@
               xf-row      (mapv (fn [formatter r]
                                   (formatter (common/format-value r)))
                                 @ordered-formatters ordered-row)]
-          (vswap! rows! conj xf-row)
-          #_(csv/write-csv writer xf-row)
-          #_(.flush writer)))
+          (if @pivot-options
+            ;; if we're processing a pivot result, we don't write it out yet, just store it
+            ;; so that we can post process the full set of results in finish!
+            (vswap! rows! conj xf-row)
+            (do
+              (csv/write-csv writer [xf-row])
+              (.flush writer)))))
 
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
-        (let [pivot-table-rows (pivot-export/pivot-builder @rows! @pivot-options)]
-          (doseq [xf-row pivot-table-rows]
-            (csv/write-csv writer [xf-row])))
+        (when @pivot-options
+          (let [pivot-table-rows (pivot-export/pivot-builder @rows! @pivot-options)]
+            (doseq [xf-row pivot-table-rows]
+              (csv/write-csv writer [xf-row]))))
         (.flush writer)
         (.flush os)
         (.close writer)))))
