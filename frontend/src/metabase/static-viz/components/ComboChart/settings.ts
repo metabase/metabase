@@ -24,7 +24,7 @@ import {
   getIsYAxisLabelEnabledDefault,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
-  getYAxisAutoRangeIncludeZero,
+  getYAxisUnpinFromZero,
   isStackingValueValid,
   isXAxisScaleValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
@@ -179,8 +179,8 @@ export const computeStaticComboChartSettings = (
 
   fillWithDefaultValue(
     settings,
-    "graph.y_axis.auto_range_include_zero",
-    getYAxisAutoRangeIncludeZero(mainCard.display),
+    "graph.y_axis.unpin_from_zero",
+    getYAxisUnpinFromZero(mainCard.display),
   );
 
   fillWithDefaultValue(
