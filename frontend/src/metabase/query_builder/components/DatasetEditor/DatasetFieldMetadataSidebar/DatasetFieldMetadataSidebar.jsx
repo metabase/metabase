@@ -1,6 +1,5 @@
 import PropTypes from "prop-types";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,7 +11,9 @@ import {
   FormTextInput,
   FormTextarea,
   FormSwitch,
+  FormObserver,
 } from "metabase/forms";
+import { color } from "metabase/lib/colors";
 import {
   field_visibility_types,
   field_semantic_types,
@@ -24,7 +25,6 @@ import ColumnSettings, {
 } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
-import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 import { isFK } from "metabase-lib/v1/types/utils/isa";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
@@ -43,6 +43,7 @@ const propTypes = {
   isLastField: PropTypes.bool.isRequired,
   handleFirstFieldFocus: PropTypes.func.isRequired,
   onFieldMetadataChange: PropTypes.func.isRequired,
+  onMappedDatabaseColumnChange: PropTypes.func.isRequired,
   modelIndexes: PropTypes.array.isRequired,
 };
 
@@ -99,24 +100,13 @@ function DatasetFieldMetadataSidebar({
   isLastField,
   handleFirstFieldFocus,
   onFieldMetadataChange,
+  onMappedDatabaseColumnChange,
   modelIndexes,
 }) {
   const displayNameInputRef = useRef();
-  const previousField = usePrevious(field);
 
   const canIndex =
     dataset.isSaved() && ModelIndexes.utils.canIndexField(field, dataset);
-
-  useEffect(() => {
-    if (!isSameField(field.field_ref, previousField?.field_ref)) {
-      // setTimeout is required as form fields are rerendered pretty frequently
-      setTimeout(() => {
-        if (_.isFunction(displayNameInputRef.current?.select)) {
-          displayNameInputRef.current.select();
-        }
-      });
-    }
-  }, [field, previousField]);
 
   const initialValues = useMemo(() => {
     const values = {
@@ -193,15 +183,33 @@ function DatasetFieldMetadataSidebar({
       <FormProvider initialValues={initialValues} enableReinitialize>
         {({ values: formFieldValues }) => {
           return (
-            <Form onValuesChange={onFieldMetadataChangeDebounced}>
+            <Form>
+              <FormObserver onChange={onFieldMetadataChangeDebounced} />
               <MainFormContainer>
                 <FormTextInput
                   name="display_name"
                   label={t`Display name`}
                   tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                   ref={displayNameInputRef}
-                  description={field.name}
                   mb="1.5rem"
+                  styles={{
+                    wrapper: {
+                      position: "relative",
+                      "&::before": {
+                        content: `"${field.name}"`,
+                        position: "absolute",
+                        left: "0.75rem",
+                        top: "0.5rem",
+                        fontSize: "0.625rem",
+                        color: color("text-light"),
+                      },
+                    },
+                    input: {
+                      paddingTop: "1.375rem",
+                      paddingBottom: "0.5rem",
+                      height: "auto",
+                    },
+                  }}
                 />
                 <FormTextarea
                   name="description"
@@ -216,6 +224,7 @@ function DatasetFieldMetadataSidebar({
                       label={t`Database column this maps to`}
                       tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                       databaseId={dataset.databaseId()}
+                      onChange={onMappedDatabaseColumnChange}
                     />
                   </Box>
                 )}
@@ -238,7 +247,7 @@ function DatasetFieldMetadataSidebar({
                 )}
               </MainFormContainer>
 
-              <Tabs defaultValue={TAB.SETTINGS}>
+              <Tabs value={tab} onTabChange={setTab}>
                 {hasColumnFormattingOptions ? (
                   <Tabs.List px="1rem">
                     {TAB_OPTIONS.map(option => (

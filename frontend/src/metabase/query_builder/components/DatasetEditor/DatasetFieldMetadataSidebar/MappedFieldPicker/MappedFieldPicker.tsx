@@ -18,15 +18,17 @@ type MappedFieldPickerProps = {
   databaseId: number | null;
   tabIndex?: number;
   label: string;
+  onChange: (value: FieldId | null) => void;
 };
 
 function MappedFieldPicker({
   databaseId = null,
+  onChange,
   name,
   tabIndex,
   label,
 }: MappedFieldPickerProps) {
-  const [{ value: selectedFieldId = null }, _, { setValue }] = useField(name);
+  const [{ value: selectedFieldId = null }] = useField(name);
 
   const { data: field = null } = useGetFieldQuery(
     {
@@ -47,27 +49,29 @@ function MappedFieldPicker({
 
   const onFieldChange = useCallback(
     (fieldId: FieldId) => {
-      setValue(fieldId);
+      // use onChange instead of setValue because this value gets passed to a parent
+      // component which adjusts the rest of the fields values.
+      onChange(fieldId);
       selectButtonRef.current?.focus();
     },
-    [setValue],
+    [onChange],
   );
 
   const renderTriggerElement = useCallback(() => {
-    const label = fieldObject
-      ? fieldObject.displayName({ includeTable: true })
-      : t`None`;
+    const label = fieldObject?.display_name || t`None`;
+    const tableName = fieldObject?.table?.display_name;
+
     return (
       <StyledSelectButton
         hasValue={!!fieldObject}
         tabIndex={tabIndex}
         ref={selectButtonRef as any}
-        onClear={() => setValue(null)}
+        onClear={() => onChange(null)}
       >
-        {label}
+        {`${tableName ? `${tableName} → ` : ""}${label}`}
       </StyledSelectButton>
     );
-  }, [fieldObject, setValue, tabIndex]);
+  }, [fieldObject, onChange, tabIndex]);
 
   // DataSelector doesn't handle selectedTableId change prop nicely.
   // During the initial load, fieldObject might have `table_id` set to `card__$ID` (retrieved from metadata)

@@ -116,7 +116,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
 
 function mapModelColumnToDatabase({ table, field }) {
   cy.findByText("Database column this maps to")
-    .closest("#formField-id")
+    .parent()
     .findByTestId("select-button")
     .click();
   popover().findByRole("option", { name: table }).click();

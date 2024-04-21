@@ -75,6 +75,10 @@ describe("issue 40252", () => {
     cy.findAllByTestId("header-cell").contains("Model B - A1 → B1").click();
     cy.findByLabelText("Display name").type("Upd");
 
+    //Because the field is debounced, we wait to see it in the metadata editor table before saving
+    cy.findAllByTestId("header-cell").contains("Model B - A1 → B1Upd");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     cy.findByTestId("dataset-edit-bar")
       .findByRole("button", { name: "Save changes" })
       .should("be.enabled")
@@ -82,10 +86,7 @@ describe("issue 40252", () => {
 
     cy.url().should("not.contain", "/metadata");
 
-    cy.findByTestId("query-builder-main").within(() => {
-      cy.findByText("Doing science...").should("be.visible");
-      cy.findByText("Doing science...").should("not.exist");
-    });
+    cy.wait("@dataset");
 
     cy.findAllByTestId("header-cell").contains("Model B - A1 → B1Upd");
   });
