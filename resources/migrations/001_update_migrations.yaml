@@ -5890,6 +5890,37 @@ databaseChangeLog:
               DROP VIEW IF EXISTS v_content;
 
   - changeSet:
+      id: v50.2024-02-26T22:15:54
+      author: noahmoss
+      comment: New `view-data` permission
+      changes:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: permissions/view_data.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/mysql_view_data.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: permissions/rollback/view_data.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-02-26T22:15:55
+      author: noahmoss
+      comment: New `create_queries` permission
+      changes:
+        - sqlFile:
+            path: permissions/create_queries.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: permissions/rollback/create_queries.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
       id: v50.2024-02-29T15:06:43
       author: tsmacdonald
       comment: Add the query_field join table
@@ -6234,6 +6265,16 @@ databaseChangeLog:
                 name: field_id
 
   - changeSet:
+      id: v50.2024-03-24T19:34:11
+      author: noahmoss
+      comment: Clean up deprecated view-data and native-query-editing permissions
+      rollback: # handled by the rollbacks for `v50.2024-02-26T22:15:54` and `v50.2024-02-26T22:15:55`
+      changes:
+        - sql:
+            sql: >
+              DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
+
+  - changeSet:
       id: v50.2024-03-25T14:53:00
       author: tsmacdonald
       comment: Add query_field.direct_reference
@@ -6322,6 +6363,16 @@ databaseChangeLog:
             path: custom_sql/fill_cache_config.h2.sql
             relativeToChangelogFile: true
       rollback: # no rollback necessary, we're not removing the columns yet
+
+  - changeSet:
+      id: v50.2024-04-19T17:04:04
+      author: noahmoss
+      comment: Clean up deprecated view-data and native-query-editing permissions (again)
+      rollback: # handled by the rollbacks for `v50.2024-02-26T22:15:54` and `v50.2024-02-26T22:15:55`
+      changes:
+        - sql:
+            sql: >
+              DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

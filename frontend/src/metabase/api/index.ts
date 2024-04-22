@@ -12,6 +12,8 @@ export * from "./dataset";
 export * from "./field";
 export * from "./login-history";
 export * from "./metric";
+export * from "./permission";
+export * from "./revision";
 export * from "./search";
 export * from "./segment";
 export * from "./session";
