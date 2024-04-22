@@ -17,6 +17,7 @@ export * from "./revision";
 export * from "./search";
 export * from "./segment";
 export * from "./session";
+export * from "./snippet";
 export * from "./table";
 export * from "./task";
 export * from "./timeline";
