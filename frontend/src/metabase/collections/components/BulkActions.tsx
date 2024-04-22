@@ -58,6 +58,8 @@ const BulkActions = ({
   const canArchive = selected.every(item => canArchiveItem(item, collection));
   const isVisible = selected.length > 0;
 
+  const areSomeItemsSelected = !!selectedItems && !_.isEmpty(selectedItems);
+
   return (
     <>
       <Transition
@@ -96,30 +98,26 @@ const BulkActions = ({
           </BulkActionsToast>
         )}
       </Transition>
-      {!!selectedItems &&
-        !_.isEmpty(selectedItems) &&
-        selectedAction === "copy" && (
-          <Modal onClose={onCloseModal}>
-            <CollectionCopyEntityModal
-              entityObject={selectedItems[0]}
-              onClose={onCloseModal}
-              onSaved={() => {
-                onCloseModal?.();
-                onCopy?.();
-              }}
-            />
-          </Modal>
-        )}
-      {!!selectedItems &&
-        !_.isEmpty(selectedItems) &&
-        selectedAction === "move" && (
-          <BulkMoveModal
-            selectedItems={selectedItems}
+      {areSomeItemsSelected && selectedAction === "copy" && (
+        <Modal onClose={onCloseModal}>
+          <CollectionCopyEntityModal
+            entityObject={selectedItems[0]}
             onClose={onCloseModal}
-            onMove={onMove}
-            initialCollectionId={collection.id}
+            onSaved={() => {
+              onCloseModal?.();
+              onCopy?.();
+            }}
           />
-        )}
+        </Modal>
+      )}
+      {areSomeItemsSelected && selectedAction === "move" && (
+        <BulkMoveModal
+          selectedItems={selectedItems}
+          onClose={onCloseModal}
+          onMove={onMove}
+          initialCollectionId={collection.id}
+        />
+      )}
     </>
   );
 };
