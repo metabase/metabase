@@ -13,6 +13,7 @@
    [metabase.driver.postgres]
    [metabase.events :as events]
    [metabase.logger :as logger]
+   [metabase.models.collection :as collection]
    [metabase.models.setting :as settings]
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
@@ -145,6 +146,7 @@
         (sample-data/update-sample-database-if-needed!)))
     (init-status/set-progress! 0.9))
 
+  (collection/ensure-trash-collection-created!)
   (ensure-audit-db-installed!)
   (init-status/set-progress! 0.95)
 
