@@ -1,16 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import cx from "classnames";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
-import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 import type { SettingElement } from "metabase/admin/settings/types";
-import Button from "metabase/core/components/Button";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
+import {
+  FormProvider,
+  Form,
+  FormTextInput,
+  FormRadioGroup,
+  FormSubmitButton,
+} from "metabase/forms";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
-import { Flex, Stack } from "metabase/ui";
+import { Group, Radio, Stack, Button } from "metabase/ui";
 import type { Settings } from "metabase-types/api";
 
 import {
@@ -18,7 +26,7 @@ import {
   updateEmailSettings,
   clearEmailSettings,
 } from "../../settings";
-import SettingsBatchForm from "../SettingsBatchForm";
+import MarginHostingCTA from "../widgets/MarginHostingCTA";
 
 const BREADCRUMBS = [[t`Email`, "/admin/settings/email"], [t`SMTP`]];
 
@@ -40,6 +48,15 @@ interface SMTPConnectionFormProps {
   settingValues: Settings;
 }
 
+type FormValueProps = Pick<
+  Settings,
+  | "email-smtp-host"
+  | "email-smtp-port"
+  | "email-smtp-security"
+  | "email-smtp-username"
+  | "email-smtp-password"
+>;
+
 export const SMTPConnectionForm = ({
   elements,
   settingValues,
@@ -50,14 +67,23 @@ export const SMTPConnectionForm = ({
   const isHosted = useSelector(getIsHosted);
   const isPaidPlan = useSelector(getIsPaidPlan);
   const isEmailConfigured = useSelector(getIsEmailConfigured);
-
   const dispatch = useDispatch();
+
+  const elementMap = useMemo(() => _.indexBy(elements, "key"), [elements]);
+
+  const initialValues = useMemo<FormValueProps>(
+    () => ({
+      "email-smtp-host": settingValues["email-smtp-host"],
+      "email-smtp-port": settingValues["email-smtp-port"],
+      "email-smtp-security": settingValues["email-smtp-security"] || "none",
+      "email-smtp-username": settingValues["email-smtp-username"],
+      "email-smtp-password": settingValues["email-smtp-password"],
+    }),
+    [settingValues],
+  );
 
   const handleClearEmailSettings = useCallback(async () => {
     await dispatch(clearEmailSettings());
-    // NOTE: reaching into form component is not ideal
-
-    formRef.current?.setState({ formData: {}, dirty: false });
   }, [dispatch]);
 
   const handleUpdateEmailSettings = useCallback(
@@ -113,50 +139,78 @@ export const SMTPConnectionForm = ({
   }, [dispatch, isHosted]);
 
   return (
-    <Stack spacing="sm">
-      <Flex justify="space-between">
-        <SettingsBatchForm
-          ref={formRef}
-          breadcrumbs={isEmailConfigured ? BREADCRUMBS : null}
-          elements={elements}
-          settingValues={settingValues}
-          updateSettings={handleUpdateEmailSettings}
-          renderExtraButtons={({
-            disabled,
-            valid,
-            pristine,
-            submitting,
-          }: {
-            disabled: boolean;
-            valid: boolean;
-            pristine: boolean;
-            submitting: ButtonStateType;
-          }) => (
-            <>
-              {valid && pristine && submitting === "default" ? (
-                <Button
-                  className={CS.mr1}
-                  success={sendingEmail === "success"}
-                  disabled={disabled}
-                  onClick={handleSendTestEmail}
-                >
-                  {SEND_TEST_BUTTON_STATES[sendingEmail]}
-                </Button>
-              ) : null}
-              <Button
-                className={CS.mr1}
-                disabled={disabled}
-                onClick={handleClearEmailSettings}
-              >
-                {t`Clear`}
+    <Stack spacing="sm" maw={400}>
+      {isEmailConfigured && (
+        <Breadcrumbs crumbs={BREADCRUMBS} className={cx(CS.ml2, CS.mb3)} />
+      )}
+      <FormProvider
+        initialValues={initialValues}
+        onSubmit={handleUpdateEmailSettings}
+        enableReinitialize
+      >
+        {({ dirty, isValid, isSubmitting }) => (
+          <Form>
+            <FormTextInput
+              name="email-smtp-host"
+              label={elementMap["email-smtp-host"]["display_name"]}
+              description={elementMap["email-smtp-host"]["description"]}
+              placeholder={elementMap["email-smtp-host"]["placeholder"]}
+              mb="1.5rem"
+            />
+            <FormTextInput
+              name="email-smtp-port"
+              label={elementMap["email-smtp-port"]["display_name"]}
+              description={elementMap["email-smtp-port"]["description"]}
+              placeholder={elementMap["email-smtp-port"]["placeholder"]}
+              mb="1.5rem"
+            />
+            <FormRadioGroup
+              name="email-smtp-security"
+              label={elementMap["email-smtp-security"]["display_name"]}
+              description={elementMap["email-smtp-security"]["description"]}
+              mb="1.5rem"
+            >
+              <Group>
+                {Object.entries(
+                  elementMap["email-smtp-security"].options || {},
+                ).map(([value, name]) => (
+                  <Radio value={value} label={name} key={value} />
+                ))}
+              </Group>
+            </FormRadioGroup>
+            <FormTextInput
+              name="email-smtp-username"
+              label={elementMap["email-smtp-username"]["display_name"]}
+              description={elementMap["email-smtp-username"]["description"]}
+              placeholder={elementMap["email-smtp-username"]["placeholder"]}
+              mb="1.5rem"
+            />
+            <FormTextInput
+              name="email-smtp-password"
+              type="password"
+              label={elementMap["email-smtp-password"]["display_name"]}
+              description={elementMap["email-smtp-password"]["description"]}
+              placeholder={elementMap["email-smtp-password"]["placeholder"]}
+              mb="1.5rem"
+            />
+
+            <Button
+              onClick={handleClearEmailSettings}
+              mr="1.5rem"
+            >{t`Clear`}</Button>
+            {!dirty && isValid && !isSubmitting && (
+              <Button onClick={handleSendTestEmail} mr="1.5rem">
+                {SEND_TEST_BUTTON_STATES[sendingEmail]}
               </Button>
-            </>
-          )}
-        />
-        {!isPaidPlan && (
-          <MarginHostingCTA tagline={t`Have your email configured for you.`} />
+            )}
+            <FormSubmitButton label={t`Save changes`} disabled={!dirty} />
+          </Form>
         )}
-      </Flex>
+      </FormProvider>
+
+      {!isPaidPlan && (
+        <MarginHostingCTA tagline={t`Have your email configured for you.`} />
+      )}
     </Stack>
   );
 };
