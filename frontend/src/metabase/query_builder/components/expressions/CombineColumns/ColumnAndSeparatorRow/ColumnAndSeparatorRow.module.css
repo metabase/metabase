@@ -1,9 +1,5 @@
 .separator {
   flex: 0 0 auto;
-
-  input {
-    font-family: Monaco, monospace;
-  }
 }
 
 .column {

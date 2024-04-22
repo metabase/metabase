@@ -3,6 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Button, Icon, Flex, TextInput, Text } from "metabase/ui";
+import { getThemeOverrides } from "metabase/ui/theme";
 import type * as Lib from "metabase-lib";
 
 import { label, formatSeparator } from "../util";
@@ -79,6 +80,8 @@ export const ColumnAndSeparatorRow = ({
   );
 };
 
+const { fontFamilyMonospace } = getThemeOverrides();
+
 function SeparatorInput({
   showSeparator,
   value,
@@ -119,6 +122,11 @@ function SeparatorInput({
         onChange={event => onChange(event.target.value)}
         onFocus={handleFocus}
         onBlur={handleBlur}
+        styles={{
+          input: {
+            fontFamily: fontFamilyMonospace as string,
+          },
+        }}
       />
       {!hasFocus && formatSeparator(value) !== value && (
         <Text color="text-light" className={styles.placeholder}>
