@@ -83,7 +83,7 @@ export type UrlClickAction = ClickActionBase & UrlClickActionBase;
 
 export type CustomClickAction = ClickActionBase & {
   type: "custom";
-  onClick?: (close: () => void) => void;
+  onClick?: (closePopover: () => void) => void;
 };
 
 export type RegularClickAction =
@@ -173,3 +173,8 @@ export type QueryClickActionsMode = {
       availableOnlyDrills?: Lib.DrillThruType[];
     }
 );
+
+export const isCustomClickAction = (
+  clickAction: ClickAction,
+): clickAction is CustomClickAction =>
+  (clickAction as CustomClickAction).type === "custom";

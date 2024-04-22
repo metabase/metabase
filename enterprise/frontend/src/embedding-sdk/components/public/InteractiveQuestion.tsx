@@ -99,7 +99,6 @@ export const InteractiveQuestion =
 
 const getQuestionParameters = (questionId: CardId) => {
   return {
-    // TODO: change pathname based on isInteractive value to trigger proper QB viewMode
     location: {
       query: {}, // TODO: add here wrapped parameterValues
       hash: "",

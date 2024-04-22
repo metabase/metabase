@@ -12,7 +12,7 @@ import type {
 export class Mode {
   _question: Question;
   _queryMode: QueryClickActionsMode;
-  _extensions?: SdkClickActionExtensionsConfig | undefined;
+  _extensions?: SdkClickActionExtensionsConfig;
 
   constructor(
     question: Question,

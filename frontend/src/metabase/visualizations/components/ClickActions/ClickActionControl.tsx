@@ -2,9 +2,10 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
-import type {
-  ClickAction,
-  CustomClickAction,
+import {
+  type ClickAction,
+  type CustomClickAction,
+  isCustomClickAction,
 } from "metabase/visualizations/types";
 import { isRegularClickAction } from "metabase/visualizations/types";
 
@@ -36,9 +37,10 @@ export const ClickActionControl = ({
 
   const { buttonType } = action;
 
-  const handleClick = (action as CustomClickAction).onClick
-    ? () => (action as CustomClickAction).onClick?.(close)
-    : () => onClick(action);
+  const handleClick =
+    isCustomClickAction(action) && action.onClick
+      ? () => (action as CustomClickAction).onClick?.(close)
+      : () => onClick(action);
 
   switch (buttonType) {
     case "token-filter":
