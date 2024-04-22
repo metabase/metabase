@@ -7,7 +7,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [macaw.core :as mac]
+   [macaw.core :as macaw]
    [metabase.config :as config]
    [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
    [metabase.public-settings :as public-settings]
@@ -91,7 +91,7 @@
   (let [query        (:dataset_query card)
         db-id        (:database query)
         sql-string   (:query (nqa.sub/replace-tags query))
-        parsed-query (mac/query->components (mac/parsed-query sql-string))
+        parsed-query (macaw/query->components (macaw/parsed-query sql-string))
         direct-ids   (direct-field-ids-for-query parsed-query db-id)
         indirect-ids (set/difference
                       (indirect-field-ids-for-query parsed-query db-id)

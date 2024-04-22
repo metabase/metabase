@@ -19,8 +19,10 @@ import type {
   GroupListQuery,
   ListDashboardsResponse,
   Metric,
+  NativeQuerySnippet,
   PopularItem,
   RecentItem,
+  Revision,
   SearchModel,
   SearchResult,
   Segment,
@@ -287,6 +289,18 @@ export function providePermissionsGroupTags(
   return [idTag("permissions-group", group.id)];
 }
 
+export function provideRevisionListTags(
+  revisions: Revision[],
+): TagDescription<TagType>[] {
+  return [listTag("revision"), ...revisions.flatMap(provideRevisionTags)];
+}
+
+export function provideRevisionTags(
+  revision: Revision,
+): TagDescription<TagType>[] {
+  return [idTag("revision", revision.id)];
+}
+
 export function provideSearchItemListTags(
   items: SearchResult[],
   models: SearchModel[] = Array.from(SEARCH_MODELS),
@@ -319,6 +333,18 @@ export function provideSegmentTags(
     idTag("segment", segment.id),
     ...(segment.table ? provideTableTags(segment.table) : []),
   ];
+}
+
+export function provideSnippetListTags(
+  snippets: NativeQuerySnippet[],
+): TagDescription<TagType>[] {
+  return [listTag("snippet"), ...snippets.flatMap(provideSnippetTags)];
+}
+
+export function provideSnippetTags(
+  snippet: NativeQuerySnippet,
+): TagDescription<TagType>[] {
+  return [idTag("snippet", snippet.id)];
 }
 
 export function provideTableListTags(
