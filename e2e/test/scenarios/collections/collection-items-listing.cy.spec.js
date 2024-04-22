@@ -26,7 +26,7 @@ describe("scenarios > collection items listing", () => {
   const PAGE_SIZE = 25;
 
   describe("pagination", () => {
-    const SUBCOLLECTIONS = 1;
+    const SUBCOLLECTIONS = 2;
     const ADDED_QUESTIONS = 15;
     const ADDED_DASHBOARDS = 14;
 
