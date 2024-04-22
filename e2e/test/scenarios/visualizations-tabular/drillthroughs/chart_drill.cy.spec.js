@@ -15,6 +15,7 @@ import {
   queryBuilderMain,
   cartesianChartCircle,
   chartPathWithFillColor,
+  echartsContainer,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -50,9 +51,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     queryBuilderMain().within(() => {
       cy.findByLabelText("Legend").findByText("Gadget").should("exist");
-      cy.get("[data-element-id=line-area-bar-chart]")
-        .findByText("January 2023")
-        .should("exist");
+      echartsContainer().findByText("January 2023").should("exist");
     });
 
     cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
@@ -69,7 +68,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     );
 
     queryBuilderMain().within(() => {
-      cy.get("[data-element-id=line-area-bar-chart]").findByText("June 2022"); // more granular axis labels
+      echartsContainer().findByText("June 2022"); // more granular axis labels
 
       // confirm that product category is still broken out
       cy.findByLabelText("Legend").within(() => {
@@ -400,13 +399,17 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    cartesianChartCircle().eq(0).trigger("mousemove");
+    cartesianChartCircle().eq(0).realHover();
     popover().within(() => {
       cy.findByText("January 1, 2026");
       cy.findByText("10");
     });
 
-    cartesianChartCircle().eq(1).trigger("mousemove");
+    queryBuilderMain()
+      .findByText("This question is written in SQL.")
+      .realHover();
+
+    cartesianChartCircle().eq(1).realHover();
     popover().within(() => {
       cy.findByText("January 2, 2026");
       cy.findByText("5");
