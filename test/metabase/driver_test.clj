@@ -224,7 +224,7 @@
                    {:name              (fmt "date")
                     :database-type     string?
                     :database-position 1
-                    :base-type         #(isa? % :type/Date)}
+                    :base-type         #(isa? % :type/Temporal)}
                    {:name              (fmt "count")
                     :database-type     string?
                     :database-position 2
