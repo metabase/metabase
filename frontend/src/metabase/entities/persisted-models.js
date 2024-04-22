@@ -1,6 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { createEntity } from "metabase/lib/entities";
+import { persistApi } from "metabase/api";
+import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { PersistedModelSchema } from "metabase/schema";
 import { CardApi, PersistedModelsApi } from "metabase/services";
 
@@ -27,6 +28,12 @@ const PersistedModels = createEntity({
         ? PersistedModelsApi.getForModel({ id }, ...args)
         : PersistedModelSchema.get({ id }, ...args);
     },
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        persistApi.endpoints.listTasks,
+      ),
   },
 
   objectActions: {

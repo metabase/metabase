@@ -13,6 +13,7 @@ export * from "./field";
 export * from "./login-history";
 export * from "./metric";
 export * from "./permission";
+export * from "./persist";
 export * from "./revision";
 export * from "./search";
 export * from "./segment";
