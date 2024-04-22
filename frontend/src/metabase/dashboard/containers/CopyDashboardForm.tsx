@@ -17,6 +17,7 @@ import {
   FormCheckbox,
   Form,
   FormProvider,
+  FormObserver,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import type { CollectionId, Dashboard } from "metabase-types/api";
@@ -73,6 +74,13 @@ function CopyDashboardForm({
     [onSubmit, onSaved],
   );
 
+  const handleChange = useCallback(
+    (values: CopyDashboardFormProperties) => {
+      onValuesChange?.(values);
+    },
+    [onValuesChange],
+  );
+
   return (
     <FormProvider
       initialValues={computedInitialValues}
@@ -80,41 +88,40 @@ function CopyDashboardForm({
       onSubmit={handleSubmit}
       enableReinitialize
     >
-      {() => (
-        <Form onValuesChange={onValuesChange}>
-          <FormTextInput
-            name="name"
-            label={t`Name`}
-            placeholder={t`What is the name of your dashboard?`}
-            autoFocus
-            mb="1.5rem"
-          />
-          <FormTextarea
-            name="description"
-            label={t`Description`}
-            placeholder={t`It's optional but oh, so helpful`}
-            nullable
-            mb="1.5rem"
-            minRows={6}
-          />
-          <FormCollectionPicker
-            name="collection_id"
-            title={t`Which collection should this go in?`}
-            filterPersonalCollections={filterPersonalCollections}
-          />
-          <FormCheckbox
-            name="is_shallow_copy"
-            label={<DashboardCopyModalShallowCheckboxLabel />}
-          />
-          <FormFooter>
-            <FormErrorMessage inline />
-            {!!onClose && (
-              <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
-            )}
-            <FormSubmitButton label={t`Duplicate`} />
-          </FormFooter>
-        </Form>
-      )}
+      <Form>
+        <FormObserver onChange={handleChange} />
+        <FormTextInput
+          name="name"
+          label={t`Name`}
+          placeholder={t`What is the name of your dashboard?`}
+          autoFocus
+          mb="1.5rem"
+        />
+        <FormTextarea
+          name="description"
+          label={t`Description`}
+          placeholder={t`It's optional but oh, so helpful`}
+          nullable
+          mb="1.5rem"
+          minRows={6}
+        />
+        <FormCollectionPicker
+          name="collection_id"
+          title={t`Which collection should this go in?`}
+          filterPersonalCollections={filterPersonalCollections}
+        />
+        <FormCheckbox
+          name="is_shallow_copy"
+          label={<DashboardCopyModalShallowCheckboxLabel />}
+        />
+        <FormFooter>
+          <FormErrorMessage inline />
+          {!!onClose && (
+            <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
+          )}
+          <FormSubmitButton label={t`Duplicate`} />
+        </FormFooter>
+      </Form>
     </FormProvider>
   );
 }

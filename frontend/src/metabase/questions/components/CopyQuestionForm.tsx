@@ -63,36 +63,34 @@ export const CopyQuestionForm = ({
       validationSchema={QUESTION_SCHEMA}
       onSubmit={handleDuplicate}
     >
-      {() => (
-        <Form>
-          <FormTextInput
-            name="name"
-            label={t`Name`}
-            placeholder={t`What is the name of your dashboard?`}
-            autoFocus
-            mb="1.5rem"
-          />
-          <FormTextarea
-            name="description"
-            label={t`Description`}
-            placeholder={t`It's optional but oh, so helpful`}
-            nullable
-            mb="1.5rem"
-            minRows={4}
-          />
-          <FormCollectionPicker
-            name="collection_id"
-            title={t`Which collection should this go in?`}
-          />
-          <FormFooter>
-            <FormErrorMessage inline />
-            {!!onCancel && (
-              <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
-            )}
-            <FormSubmitButton label={t`Duplicate`} />
-          </FormFooter>
-        </Form>
-      )}
+      <Form>
+        <FormTextInput
+          name="name"
+          label={t`Name`}
+          placeholder={t`What is the name of your dashboard?`}
+          autoFocus
+          mb="1.5rem"
+        />
+        <FormTextarea
+          name="description"
+          label={t`Description`}
+          placeholder={t`It's optional but oh, so helpful`}
+          nullable
+          mb="1.5rem"
+          minRows={4}
+        />
+        <FormCollectionPicker
+          name="collection_id"
+          title={t`Which collection should this go in?`}
+        />
+        <FormFooter>
+          <FormErrorMessage inline />
+          {!!onCancel && (
+            <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+          )}
+          <FormSubmitButton label={t`Duplicate`} />
+        </FormFooter>
+      </Form>
     </FormProvider>
   );
 };

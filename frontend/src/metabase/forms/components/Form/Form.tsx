@@ -1,8 +1,6 @@
 import { useFormikContext } from "formik";
 import type { Ref, FormHTMLAttributes, SyntheticEvent } from "react";
-import { forwardRef, useEffect } from "react";
-import { usePrevious } from "react-use";
-import _ from "underscore";
+import { forwardRef } from "react";
 
 import type { BoxProps } from "metabase/ui";
 import { Box } from "metabase/ui";
@@ -11,22 +9,13 @@ export interface FormProps
   extends BoxProps,
     FormHTMLAttributes<HTMLFormElement> {
   disabled?: boolean;
-  onValuesChange?: (vals: any) => void;
 }
 
 export const Form = forwardRef(function Form(
-  { disabled, onValuesChange, ...props }: FormProps,
+  { disabled, ...props }: FormProps,
   ref: Ref<HTMLFormElement>,
 ) {
-  const { handleSubmit, handleReset, values } = useFormikContext();
-
-  const previousValues = usePrevious(values);
-
-  useEffect(() => {
-    if (!_.isEqual(previousValues, values)) {
-      onValuesChange?.(values);
-    }
-  }, [previousValues, values, onValuesChange]);
+  const { handleSubmit, handleReset } = useFormikContext();
 
   return (
     <Box
