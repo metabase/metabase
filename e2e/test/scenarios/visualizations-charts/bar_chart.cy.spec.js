@@ -310,7 +310,7 @@ describe("scenarios > visualizations > bar chart", () => {
       cy.get("g.axis.yr").should("not.exist");
     });
 
-    it("should not split the y-axis on native queries with two numeric columns", () => {
+    it("should split the y-axis on native queries with two numeric columns", () => {
       visitQuestionAdhoc({
         display: "bar",
         dataset_query: {
@@ -331,8 +331,8 @@ describe("scenarios > visualizations > bar chart", () => {
       });
 
       echartsContainer().within(() => {
-        cy.get("text").contains("m1").should("not.exist");
-        cy.get("text").contains("m2").should("not.exist");
+        cy.get("text").contains("m1").should("exist");
+        cy.get("text").contains("m2").should("exist");
       });
     });
   });
