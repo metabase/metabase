@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FocusEvent } from "react";
 import { t } from "ttag";
 
 import { Box, Button, Flex, Icon, Text, TextInput } from "metabase/ui";
@@ -39,6 +39,11 @@ export const ColumnAndSeparatorRow = ({
 }: Props) => {
   const [isFocused, setIsFocused] = useState(false);
 
+  function handleFocus(event: FocusEvent<HTMLInputElement>) {
+    setIsFocused(true);
+    event.target.select();
+  }
+
   return (
     <Flex align="flex-end" gap={12}>
       {showSeparator && (
@@ -54,7 +59,7 @@ export const ColumnAndSeparatorRow = ({
               onChange(index, { separator });
             }}
             onBlur={() => setIsFocused(false)}
-            onFocus={() => setIsFocused(true)}
+            onFocus={handleFocus}
           />
 
           {separator === " " && !isFocused && (
