@@ -24,7 +24,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -109,11 +108,11 @@
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
 
-(mu/defn ^:private get-table :- (ms/InstanceOfClass Table)
+(mu/defn ^:private get-table :- (lib.schema.common/instance-of-class Table)
   (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
    (get-table (database-details->client (:details database)) project-id dataset-id table-id))
 
-  (^Table [^BigQuery client :- (ms/InstanceOfClass BigQuery)
+  (^Table [^BigQuery client :- (lib.schema.common/instance-of-class BigQuery)
            project-id       :- [:maybe ::lib.schema.common/non-blank-string]
            dataset-id       :- ::lib.schema.common/non-blank-string
            table-id         :- ::lib.schema.common/non-blank-string]
@@ -179,7 +178,7 @@
       :type/*)))
 
 (mu/defn ^:private table-schema->metabase-field-info
-  [^Schema schema :- (ms/InstanceOfClass Schema)]
+  [^Schema schema :- (lib.schema.common/instance-of-class Schema)]
   (for [[idx ^Field field] (m/indexed (.getFields schema))]
     (let [type-name (.. field getType name)
           f-mode    (.getMode field)]
@@ -456,19 +455,17 @@
 ;;; |                                           Other Driver Method Impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:percentile-aggregations true
+(doseq [[feature supported?] {:convert-timezone        true
+                              :datetime-diff           true
                               :expressions             true
                               :foreign-keys            true
-                              :datetime-diff           true
                               :now                     true
-                              :convert-timezone        true
+                              :percentile-aggregations true
                               ;; BigQuery uses timezone operators and arguments on calls like extract() and
                               ;; timezone_trunc() rather than literally using SET TIMEZONE, but we need to flag it as
                               ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
                               ;; tests expect the converted values.
-                              :set-timezone            true
-                              ;; temporarily disabled -- will be fixed by #40982
-                              :window-functions        false}]
+                              :set-timezone            true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC

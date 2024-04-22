@@ -149,3 +149,29 @@
         result))
      []
      dbs)))
+
+(defenterprise new-database-view-data-permission-level
+  "Returns the default view-data permission level for a new database for a given group. This is `blocked` if the
+  group has block permissions for any existing database, or if any connection impersonation policies or sandboxes
+  exist. Otherwise, it is `unrestricted`."
+  ;; We use :feature :none here since sandboxing uses a different feature flag from block perms & connection
+  ;; impersonation, so we need to check the flags in the function body.
+  :feature :none
+  [group-id]
+  (if (or
+       (and
+        (premium-features/enable-advanced-permissions?)
+        (t2/exists? :model/DataPermissions
+                    :perm_type :perms/view-data
+                    :perm_value :blocked
+                    :group_id group-id))
+       (and
+        (premium-features/enable-advanced-permissions?)
+        (t2/exists? :model/ConnectionImpersonation
+                    :group_id group-id))
+       (and
+        (premium-features/enable-sandboxes?)
+        (t2/exists? :model/GroupTableAccessPolicy
+                    :group_id group-id)))
+    :blocked
+    :unrestricted))

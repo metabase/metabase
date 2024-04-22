@@ -7,6 +7,7 @@ import {
   visitDashboard,
   setModelMetadata,
   getDashboardCard,
+  setFilter,
 } from "e2e/support/helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -51,12 +52,7 @@ describe("issue 23024", () => {
   it("should be possible to apply the dashboard filter to the native model (metabase#23024)", () => {
     editDashboard();
 
-    cy.icon("filter").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Text or Category").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Is").click();
+    setFilter("Text or Category", "Is");
 
     getDashboardCard().within(() => {
       cy.findByText("Column to filter on");

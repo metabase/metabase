@@ -79,14 +79,14 @@ function NewVersionAvailable({ currentVersion }) {
           CS.p2,
           CS.bordered,
           CS.rounded,
-          "border-success",
+          CS.borderSuccess,
           CS.flex,
           CS.flexRow,
           CS.alignCenter,
           CS.justifyBetween,
         )}
       >
-        <span className={cx("text-white", CS.textBold)}>
+        <span className={cx(CS.textWhite, CS.textBold)}>
           {t`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
           {t`You're running ${currentVersion}`}
         </span>
@@ -142,7 +142,7 @@ function HostingCTA() {
     <HostingCTARoot
       className={cx(
         CS.rounded,
-        "bg-light",
+        CS.bgLight,
         CS.mt4,
         CS.textBrand,
         CS.py2,
@@ -152,8 +152,8 @@ function HostingCTA() {
       <HostingCTAContent>
         <HostingCTAIconContainer
           className={cx(
-            "circular",
-            "bg-medium",
+            CS.circular,
+            CS.bgMedium,
             CS.alignCenter,
             CS.justifyCenter,
             CS.ml1,
@@ -185,7 +185,7 @@ function Version({ version }) {
 
   return (
     <div className={CS.pb3}>
-      <h3 className="text-medium">
+      <h3 className={CS.textMedium}>
         {formatVersion(version.version)}{" "}
         {version.patch ? "(" + t`patch release` + ")" : null}
       </h3>

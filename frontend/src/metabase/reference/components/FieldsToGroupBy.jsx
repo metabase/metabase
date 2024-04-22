@@ -31,14 +31,14 @@ class FieldsToGroupBy extends Component {
       <div>
         <div className={D.detailBody}>
           <div className={D.detailTitle}>
-            <span className={D.detailName}>{title}</span>
+            <span>{title}</span>
           </div>
           <div className={S.usefulQuestions}>
             {fields &&
               Object.values(fields).map((field, index, fields) => (
                 <FieldToGroupBy
                   key={field.id}
-                  className={cx(CS.px1, CS.mb1, CS.rounded, "bg-light-hover")}
+                  className={cx(CS.px1, CS.mb1, CS.rounded, CS.bgLightHover)}
                   iconClass={L.icon}
                   field={field}
                   metric={metric}

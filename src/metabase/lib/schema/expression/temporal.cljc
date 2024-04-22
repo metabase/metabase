@@ -1,7 +1,6 @@
 (ns metabase.lib.schema.expression.temporal
   (:require
    [clojure.set :as set]
-   [malli.core :as mc]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
@@ -152,7 +151,7 @@
    (when (= value :current)
      (cond
        (= unit :default)                                 :type/DateTime
-       (mc/validate ::temporal-bucketing/unit.date unit) :type/Date
+       (mr/validate ::temporal-bucketing/unit.date unit) :type/Date
        :else                                             :type/DateTime))
    ;; handle year-month and year string regexes, which are not allowed as date literals unless wrapped in
    ;; `:absolute-datetime`.

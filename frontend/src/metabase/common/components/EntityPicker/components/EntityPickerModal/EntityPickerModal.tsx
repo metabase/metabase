@@ -5,7 +5,7 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
-import type { SearchModelType, SearchResultId } from "metabase-types/api";
+import type { SearchModel, SearchResultId } from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
@@ -40,11 +40,12 @@ export const defaultOptions: EntityPickerModalOptions = {
 export interface EntityPickerModalProps<Model extends string, Item> {
   title?: string;
   selectedItem: Item | null;
+  initialValue?: Partial<Item>;
   onConfirm: () => void;
   onItemSelect: (item: Item) => void;
   canSelectItem: boolean;
   onClose: () => void;
-  tabs: [EntityTab<Model>, ...EntityTab<Model>[]]; // Enforces that the array is not empty
+  tabs: EntityTab<Model>[];
   options?: Partial<EntityPickerOptions>;
   searchResultFilter?: (results: Item[]) => Item[];
   actionButtons?: JSX.Element[];
@@ -53,7 +54,7 @@ export interface EntityPickerModalProps<Model extends string, Item> {
 
 export function EntityPickerModal<
   Id extends SearchResultId,
-  Model extends SearchModelType,
+  Model extends SearchModel,
   Item extends TypeWithModel<Id, Model>,
 >({
   title = t`Choose an item`,
@@ -61,6 +62,7 @@ export function EntityPickerModal<
   canSelectItem,
   onConfirm,
   selectedItem,
+  initialValue,
   onClose,
   tabs,
   options,
@@ -103,6 +105,8 @@ export function EntityPickerModal<
       trapFocus={trapFocus}
       zIndex={400} // needed to put this above the BulkActionsToast
       closeOnEscape={false} // we're doing this manually in useWindowEvent
+      xOffset="10vw"
+      yOffset="10dvh"
     >
       <Modal.Overlay />
       <ModalContent h="100%">
@@ -130,6 +134,7 @@ export function EntityPickerModal<
                 searchQuery={searchQuery}
                 searchResults={searchResults}
                 selectedItem={selectedItem}
+                initialValue={initialValue}
               />
             ) : (
               <SinglePickerView>{tabs[0].element}</SinglePickerView>

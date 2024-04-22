@@ -215,7 +215,7 @@
 
 (t2/define-before-update :model/PulseChannel
   [pulse-channel]
-  (validate-email-domains (mi/pre-update-changes pulse-channel)))
+  (validate-email-domains (mi/changes-with-pk pulse-channel)))
 
 (defmethod serdes/hash-fields PulseChannel
   [_pulse-channel]

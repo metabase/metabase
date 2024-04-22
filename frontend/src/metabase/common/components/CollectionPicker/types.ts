@@ -1,9 +1,11 @@
 import type {
   CollectionId,
   SearchRequest,
-  SearchModelType,
+  SearchModel,
   SearchResult,
   CollectionItemModel,
+  DashboardId,
+  CardId,
 } from "metabase-types/api";
 
 import type {
@@ -12,9 +14,24 @@ import type {
   TypeWithModel,
 } from "../EntityPicker";
 
+export type CollectionItemId = CollectionId | CardId | DashboardId;
+
+// internally, this picker supports all items that live in collections
+// so that we can use its components for picking all of them
+export type CollectionPickerModel = Extract<
+  SearchModel,
+  "collection" | "card" | "dataset" | "dashboard"
+>;
+
+// we can enforce type safety at the boundary of a collection-only picker with this type
+export type CollectionPickerValueModel = Extract<
+  CollectionPickerModel,
+  "collection"
+>;
+
 export type CollectionPickerItem = TypeWithModel<
-  CollectionId,
-  SearchModelType
+  CollectionItemId,
+  CollectionPickerModel
 > &
   Pick<Partial<SearchResult>, "description" | "can_write"> & {
     location?: string | null;
@@ -25,6 +42,11 @@ export type CollectionPickerItem = TypeWithModel<
     below?: CollectionItemModel[];
   };
 
+export type CollectionPickerValueItem = Omit<CollectionPickerItem, "model"> & {
+  id: CollectionId;
+  model: CollectionPickerValueModel;
+};
+
 export type CollectionPickerOptions = EntityPickerModalOptions & {
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
@@ -32,8 +54,8 @@ export type CollectionPickerOptions = EntityPickerModalOptions & {
 };
 
 export type CollectionItemListProps = ListProps<
-  CollectionId,
-  SearchModelType,
+  CollectionItemId,
+  CollectionPickerModel,
   CollectionPickerItem,
   SearchRequest,
   CollectionPickerOptions

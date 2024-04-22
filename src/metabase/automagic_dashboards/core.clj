@@ -163,7 +163,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [LegacyMetric]]
+   [metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.query :refer [Query]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]

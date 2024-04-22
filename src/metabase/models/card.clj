@@ -548,11 +548,13 @@
       pre-update
       populate-query-fields
       maybe-populate-initially-published-at
-      ;; TODO: this should go in after-update once camsaul/toucan2#129 is fixed
-      ;; It's at the end for now so that all the before-update validations have a chance to run
-      ;; TODO the Second: No reason this couldn't be async, especially once it's in the after-update
-      (u/prog1 (query-analyzer/update-query-fields-for-card! <>))
       (dissoc :id)))
+
+(t2/define-after-update :model/Card
+  [card]
+  (u/prog1 card
+    (when (contains? (t2/changes card) :dataset_query)
+      (query-analyzer/update-query-fields-for-card! card))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
@@ -872,8 +874,8 @@ saved later when it is ready."
 (defmethod serdes/extract-query "Card" [_ opts]
   (serdes/extract-query-collections Card opts))
 
-(defn- export-result-metadata [card metadata]
-  (when (and metadata (model? card))
+(defn- export-result-metadata [metadata]
+  (when metadata
     (for [m metadata]
       (-> (dissoc m :fingerprint)
           (m/update-existing :table_id  serdes/*export-table-fk*)
@@ -912,7 +914,7 @@ saved later when it is ready."
         (update :parameters             serdes/export-parameters)
         (update :parameter_mappings     serdes/export-parameter-mappings)
         (update :visualization_settings serdes/export-visualization-settings)
-        (update :result_metadata        (partial export-result-metadata card))
+        (update :result_metadata        export-result-metadata)
         (dissoc :cache_invalidated_at))
     (catch Exception e
       (throw (ex-info (format "Failed to export Card: %s" (ex-message e)) {:card card} e)))))

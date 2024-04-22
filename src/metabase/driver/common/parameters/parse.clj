@@ -2,12 +2,12 @@
   (:require
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli :as mu])
   (:import
    (metabase.driver.common.parameters Optional Param)))
 
@@ -22,8 +22,8 @@
 (def ^:private ParsedToken
   [:or
    :string
-   (ms/InstanceOfClass Param)
-   (ms/InstanceOfClass Optional)])
+   (lib.schema.common/instance-of-class Param)
+   (lib.schema.common/instance-of-class Optional)])
 
 (defn- combine-adjacent-strings
   "Returns any adjacent strings in coll combined together"

@@ -45,7 +45,7 @@ describe("issue 23851", () => {
       "have.text",
       "Created At: Day of week is equal to 6",
     );
-    cy.get(".cellData").should("contain", "109.22");
+    cy.get("[data-testid=cell-data]").should("contain", "109.22");
     cy.icon("notebook").click();
     getNotebookStep("filter")
       .findByText("Created At: Day of week is equal to 6")

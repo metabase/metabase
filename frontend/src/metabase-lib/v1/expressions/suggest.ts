@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
@@ -11,6 +12,9 @@ import {
   EXPRESSION_FUNCTIONS,
   getMBQLName,
   MBQL_CLAUSES,
+  POPULAR_AGGREGATIONS,
+  POPULAR_FILTERS,
+  POPULAR_FUNCTIONS,
 } from "metabase-lib/v1/expressions/config";
 import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import type {
@@ -31,6 +35,8 @@ export type Suggestion = {
   order: number;
   range?: [number, number];
   column?: Lib.ColumnMetadata;
+  helpText?: HelpText;
+  group?: GroupName;
 };
 
 const suggestionText = (func: MBQLClauseFunctionConfig) => {
@@ -39,7 +45,18 @@ const suggestionText = (func: MBQLClauseFunctionConfig) => {
   return displayName + suffix;
 };
 
-type SuggestArgs = {
+export const GROUPS = {
+  popularExpressions: {
+    displayName: t`Most used functions`,
+  },
+  popularAggregations: {
+    displayName: t`Most used aggregations`,
+  },
+} as const;
+
+export type GroupName = keyof typeof GROUPS;
+
+export type SuggestArgs = {
   source: string;
   query: Lib.Query;
   stageIndex: number;
@@ -69,13 +86,13 @@ export function suggest({
 
   const partialSource = source.slice(0, targetOffset);
   const matchPrefix = partialMatch(partialSource);
+  const database = getDatabase(query, metadata);
 
   if (!matchPrefix || _.last(matchPrefix) === "]") {
     // no keystroke to match? show help text for the enclosing function
     const functionDisplayName = enclosingFunction(partialSource);
     if (functionDisplayName) {
       const name = getMBQLName(functionDisplayName);
-      const database = getDatabase(query, metadata);
 
       if (name && database) {
         const helpText = getHelpText(name, database, reportTimezone);
@@ -89,6 +106,55 @@ export function suggest({
         }
       }
     }
+
+    if (source === "") {
+      let popular: string[] = [];
+      if (startRule === "expression") {
+        popular = POPULAR_FUNCTIONS;
+      }
+      if (startRule === "boolean") {
+        popular = POPULAR_FILTERS;
+      }
+      if (startRule === "aggregation") {
+        popular = POPULAR_AGGREGATIONS;
+      }
+
+      suggestions.push(
+        ...popular
+          .map((name: string): Suggestion | null => {
+            const clause = MBQL_CLAUSES[name];
+            if (!clause) {
+              return null;
+            }
+
+            const isSupported =
+              !database || database?.hasFeature(clause.requiresFeature);
+
+            if (!isSupported) {
+              return null;
+            }
+
+            return {
+              type: "functions",
+              name: clause.displayName,
+              text: suggestionText(clause),
+              index: targetOffset,
+              icon: "function",
+              order: 1,
+              group:
+                startRule === "aggregation"
+                  ? "popularAggregations"
+                  : "popularExpressions",
+              helpText: database
+                ? getHelpText(name, database, reportTimezone)
+                : undefined,
+            };
+          })
+          .filter((suggestion): suggestion is Suggestion => Boolean(suggestion))
+          .slice(0, 5),
+      );
+    }
+
     return { suggestions };
   }
 
@@ -111,7 +177,6 @@ export function suggest({
     },
   );
 
-  const database = getDatabase(query, metadata);
   if (_.first(matchPrefix) !== "[") {
     suggestions.push({
       type: "functions",
@@ -199,7 +264,7 @@ export function suggest({
     }
 
     if (startRule === "aggregation") {
-      const metrics = Lib.availableMetrics(query, stageIndex);
+      const metrics = Lib.availableLegacyMetrics(query, stageIndex);
 
       if (metrics) {
         suggestions.push(
@@ -257,7 +322,6 @@ export function suggest({
     const { icon } = suggestions[0];
     if (icon === "function") {
       const name = getMBQLName(matchPrefix);
-      const database = getDatabase(query, metadata);
 
       if (name && database) {
         const helpText = getHelpText(name, database, reportTimezone);
@@ -267,6 +331,19 @@ export function suggest({
         }
       }
     }
+  }
+
+  if (database) {
+    suggestions = suggestions.map(suggestion => {
+      const name = getMBQLName(suggestion.name);
+      if (!name) {
+        return suggestion;
+      }
+      return {
+        ...suggestion,
+        helpText: getHelpText(name, database, reportTimezone),
+      };
+    });
   }
 
   return { suggestions };

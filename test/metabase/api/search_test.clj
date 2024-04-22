@@ -54,6 +54,7 @@
    :creator_id                 false
    :dashboardcard_count        nil
    :database_id                false
+   :database_name              nil
    :dataset_query              nil
    :description                nil
    :display                    nil
@@ -168,7 +169,7 @@
                                                      :type :model)
                    Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
                    LegacyMetric      metric         (assoc (data-map "metric %s metric")
-                                                     :table_id (mt/id :checkins))
+                                                           :table_id (mt/id :checkins))
                    Segment     segment        (data-map "segment %s segment")]
       (f {:action     action
           :collection coll
@@ -255,6 +256,7 @@
              [:like [:lower :table_schema]      "%foo%"] [:inline 0]
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]
+             [:like [:lower :database_name]     "%foo%"] [:inline 0]
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
              [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
              :else [:inline 1]]]
@@ -498,7 +500,7 @@
                    Table    {table-id :id} {:db_id  db-id
                                             :schema nil}
                    LegacyMetric   _ {:table_id table-id
-                               :name     "test metric"}]
+                                     :name     "test metric"}]
       (mt/with-no-data-perms-for-all-users!
         (is (= []
                (search-request-data :rasta :q "test"))))))
@@ -635,7 +637,8 @@
           (model-index/add-values! model-index-2)
 
           (testing "Indexed entities returned if a non-admin user has full data perms and collection access"
-            (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :all :native :write}}}
+            (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted
+                                                           :create-queries :query-builder-and-native}}
               (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
                                  :name           "Rome"
                                  :model_id       (:id root-model)
@@ -650,27 +653,31 @@
                             (search! "rom" :rasta))))))
 
           (testing "Indexed entities are not returned if a user doesn't have full data perms for the DB"
-            (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :none :native :none}}}
+            (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted
+                                                           :create-queries :no}}
               (is (= #{}
                      (into #{} (comp relevant-1 (map (juxt :name normalize)))
                            (search! "rom" :rasta)))))
 
-            (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :all :native :none}}}
+            (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted
+                                                           :create-queries :query-builder}}
               (is (= #{}
                      (into #{} (comp relevant-1 (map (juxt :name normalize)))
                            (search! "rom" :rasta)))))
 
             (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
-              (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas {"PUBLIC" {id-1 :all
-                                                                                        id-2 :all
-                                                                                        id-3 :all
-                                                                                        id-4 :none}}}}}
+              (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted
+                                                             :create-queries {"PUBLIC" {id-1 :query-builder
+                                                                                        id-2 :query-builder
+                                                                                        id-3 :query-builder
+                                                                                        id-4 :no}}}}
                 (is (= #{}
                        (into #{} (comp relevant-1 (map (juxt :name normalize)))
                              (search! "rom" :rasta))))))
 
             (mt/with-additional-premium-features #{:advanced-permissions}
-              (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :block :native :none}}}
+              (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :blocked
+                                                             :create-queries :no}}
                 (is (= #{}
                        (into #{} (comp relevant-1 (map (juxt :name normalize)))
                              (search! "rom" :rasta)))))))
@@ -704,7 +711,7 @@
                      Dashboard   _ (archived {:name "dashboard test dashboard 2"})
                      Collection  _ (archived {:name "collection test collection 2"})
                      LegacyMetric      _ (archived {:name     "metric test metric 2"
-                                              :table_id (mt/id :checkins)})
+                                                    :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment 2"})]
         (is (= (default-search-results)
                (search-request-data :crowberto :q "test"))))))
@@ -725,7 +732,7 @@
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
                      Collection  _ (archived {:name "collection test collection"})
                      LegacyMetric      _ (archived {:name     "metric test metric"
-                                              :table_id (mt/id :checkins)})
+                                                    :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment"})]
         (is (= (default-archived-results)
                (search-request-data :crowberto :q "test", :archived "true"))))))
@@ -742,7 +749,7 @@
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
                      Collection  _ (archived {:name "collection test collection"})
                      LegacyMetric      _ (archived {:name     "metric test metric"
-                                              :table_id (mt/id :checkins)})
+                                                    :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment"})]
         (is (ordered-subset? (default-archived-results)
                              (search-request-data :crowberto :archived "true")))))))
@@ -769,6 +776,7 @@
     :archived            nil
     :model               "table"
     :database_id         true
+    :database_name       "test-data"
     :pk_ref              nil
     :initial_sync_status "complete"}))
 
@@ -782,66 +790,67 @@
   (testing "You should see Tables in the search results!\n"
     (mt/with-temp [Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
-        (is (= [(default-table-search-row "RoundTable")]
-               (search-request-data user :q "RoundTable"))))))
+                     (is (= [(default-table-search-row "RoundTable")]
+                            (search-request-data user :q "RoundTable"))))))
   (testing "You should not see hidden tables"
     (mt/with-temp [Table _normal {:name "Foo Visible"}
                    Table _hidden {:name "Foo Hidden", :visibility_type "hidden"}]
       (do-test-users [user [:crowberto :rasta]]
-        (is (= [(default-table-search-row "Foo Visible")]
-               (search-request-data user :q "Foo"))))))
+                     (is (= [(default-table-search-row "Foo Visible")]
+                            (search-request-data user :q "Foo"))))))
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
-                 (search-request-data user :q "Lancelot")))))))
+                       (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
+                              (search-request-data user :q "Lancelot")))))))
   (testing "You should be able to search by their description"
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [Table _ {:name "RoundTable" :description lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
-                 (search-request-data user :q "Lancelot")))))))
+                       (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
+                              (search-request-data user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
       (mt/with-temp [Table _ {:name table-name}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= []
-                 (search-request-data user :q table-name :archived true)))))))
+                       (is (= []
+                              (search-request-data user :q table-name :archived true)))))))
   (testing "*archived* tables should not appear in search results"
     (let [table-name (mt/random-name)]
       (mt/with-temp [Table _ {:name table-name, :active false}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= []
-                 (search-request-data user :q table-name)))))))
+                       (is (= []
+                              (search-request-data user :q table-name)))))))
   (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
     (mt/with-temp [Database {db-id :id} {}
                    Table    table {:db_id db-id}]
       (mt/with-no-data-perms-for-all-users!
         (is (= []
-             (binding [*search-request-results-database-id* db-id]
-               (search-request-data :rasta :q (:name table)))))))))
+               (binding [*search-request-results-database-id* db-id]
+                 (search-request-data :rasta :q (:name table)))))))))
 
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
                 "does have perms, they should still be able to see it (#12332)")
-    (mt/with-temp [Database                   {db-id :id} {}
+    (mt/with-temp [Database                   {db-id :id} {:name "test-data"}
                    Table                      table {:name "RoundTable" :db_id db-id}
                    PermissionsGroup           {group-id :id} {}
                    PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
       (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-table-permission! group-id table :perms/data-access :unrestricted)
+        (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! group-id table :perms/create-queries :query-builder)
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(default-table-search-row "RoundTable")]
-                 (binding [*search-request-results-database-id* db-id]
-                   (search-request-data user :q "RoundTable")))))))))
+                       (is (= [(default-table-search-row "RoundTable")]
+                              (binding [*search-request-results-database-id* db-id]
+                                (search-request-data user :q "RoundTable")))))))))
 
 (deftest all-users-no-data-perms-table-test
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
     (mt/with-temp [Database                   {db-id :id} {}
                    Table                      table {:name "RoundTable", :db_id db-id}]
       (mt/with-restored-data-perms-for-group! (:id (perms-group/all-users))
-        (data-perms/set-table-permission! (perms-group/all-users) table :perms/data-access :no-self-service)
+        (data-perms/set-table-permission! (perms-group/all-users) table :perms/create-queries :no)
         (is (= []
                (filter #(= (:name %) "RoundTable")
                        (binding [*search-request-results-database-id* db-id]
@@ -893,11 +902,11 @@
        Table     {table-id :id} {:db_id  db-id
                                  :schema nil}
        LegacyMetric    _              {:table_id table-id
-                                 :name     (str "metric 1 " search-string)}
+                                       :name     (str "metric 1 " search-string)}
        LegacyMetric    _              {:table_id table-id
-                                 :name     (str "metric 1 " search-string)}
+                                       :name     (str "metric 1 " search-string)}
        LegacyMetric    _              {:table_id table-id
-                                 :name     (str "metric 2 " search-string)}
+                                       :name     (str "metric 2 " search-string)}
        Segment   _              {:table_id table-id
                                  :name     (str "segment 1 " search-string)}
        Segment   _              {:table_id table-id
@@ -1334,8 +1343,8 @@
          :model/Segment    {_segment-new :id} {:name       search-term
                                                :created_at new}
          :model/LegacyMetric     {_metric-new :id}  {:name       search-term
-                                               :created_at new
-                                               :table_id (mt/id :checkins)}]
+                                                     :created_at new
+                                                     :table_id (mt/id :checkins)}]
         ;; with clock doesn't work if calling via API, so we call the search function directly
         (let [test-search (fn [created-at expected]
                             (testing (format "searching with created-at = %s" created-at)

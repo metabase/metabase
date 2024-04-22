@@ -50,7 +50,7 @@
                          :model_id int?
                          :details  {:model     "root"
                                     :model-id  0
-                                    :old-value nil
+                                    ;; no check for old value in case you had something in appdb
                                     :new-value {:strategy "nocache" :config {:name "root"}}}}
                         (last-audit-event)))))
 
@@ -113,7 +113,6 @@
                                          :strategy {:type     "schedule"
                                                     :schedule "0/2 * * * * ?"}})))))))))
 
-
 (deftest invalidation-test
   (mt/discard-setting-changes [enable-query-caching]
     (public-settings/enable-query-caching! true)
@@ -172,14 +171,15 @@
                 (is (=? {:cached false :data some?}
                         (run-query! card-id {:ignore_cache true})))))
 
-            (testing "when invalidating database config with no overrides, dashboard-related queries will still have it"
+            (testing "when invalidating database config directly, dashboard-related queries are still cached"
               (is (=? {:count 1}
                       (invalidate! 200 :database (mt/id))))
               (is (=? {:cached true :data some?}
                       (run-query! card1-id {:dashboard_id (:id dash)}))))
 
             (testing "but with overrides - will go through every card and mark cache invalidated"
-              (is (=? {:count 2}
+              ;; not a concrete number here since (mt/id) can have a bit more than 2 cards we've currently defined
+              (is (=? {:count pos-int?}
                       (invalidate! 200 :include :overrides :database (mt/id))))
               (is (=? {:cached false :data some?}
                       (run-query! card1-id {:dashboard_id (:id dash)}))))))))))

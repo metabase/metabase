@@ -18,22 +18,6 @@ export const ActivityApi = {
   ),
 };
 
-export const BookmarkApi = {
-  card: {
-    create: POST("/api/bookmark/card/:id"),
-    delete: DELETE("/api/bookmark/card/:id"),
-  },
-  collection: {
-    create: POST("/api/bookmark/collection/:id"),
-    delete: DELETE("/api/bookmark/collection/:id"),
-  },
-  dashboard: {
-    create: POST("/api/bookmark/dashboard/:id"),
-    delete: DELETE("/api/bookmark/dashboard/:id"),
-  },
-  reorder: PUT("/api/bookmark/ordering"),
-};
-
 // only available with token loaded
 export const GTAPApi = {
   list: GET("/api/mt/gtap"),
@@ -198,8 +182,6 @@ export const DashboardApi = {
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),
-  favorite: POST("/api/dashboard/:dashId/favorite"),
-  unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
   parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
   validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
@@ -383,15 +365,6 @@ export const PulseApi = {
   unsubscribe: DELETE("/api/pulse/:id/subscription"),
 };
 
-export const AlertApi = {
-  list: GET("/api/alert"),
-  list_for_question: GET("/api/alert/question/:questionId"),
-  get: GET("/api/alert/:id"),
-  create: POST("/api/alert"),
-  update: PUT("/api/alert/:id"),
-  unsubscribe: DELETE("/api/alert/:id/subscription"),
-};
-
 export const SegmentApi = {
   list: GET("/api/segment"),
   create: POST("/api/segment"),
@@ -442,7 +415,6 @@ export const PermissionsApi = {
   graphForGroup: GET("/api/permissions/graph/group/:groupId"),
   graphForDB: GET("/api/permissions/graph/db/:databaseId"),
   updateGraph: PUT("/api/permissions/graph"),
-  createGroup: POST("/api/permissions/group"),
   memberships: GET("/api/permissions/membership"),
   createMembership: POST("/api/permissions/membership"),
   deleteMembership: DELETE("/api/permissions/membership/:id"),
@@ -467,16 +439,9 @@ export const SetupApi = {
 };
 
 export const UserApi = {
-  create: POST("/api/user"),
   list: GET("/api/user/recipients"),
   current: GET("/api/user/current"),
-  // get:                         GET("/api/user/:userId"),
-  update: PUT("/api/user/:id"),
-  update_password: PUT("/api/user/:id/password"),
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
-  delete: DELETE("/api/user/:userId"),
-  reactivate: PUT("/api/user/:userId/reactivate"),
-  send_invite: POST("/api/user/:id/send_invite"),
 };
 
 export const UtilApi = {
@@ -504,7 +469,6 @@ export const I18NApi = {
 };
 
 export const TaskApi = {
-  get: GET("/api/task"),
   getJobsInfo: GET("/api/task/info"),
 };
 
@@ -605,4 +569,5 @@ export const CacheConfigApi = {
   list: GET("/api/cache"),
   update: PUT("/api/cache"),
   delete: DELETE("/api/cache"),
+  invalidate: POST("/api/cache/invalidate"),
 };

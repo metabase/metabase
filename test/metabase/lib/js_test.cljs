@@ -308,7 +308,7 @@
              (->> query lib/available-segments (map to-legacy-refs)))))
     (testing "metric refs come without options"
       (is (= [["metric" metric-id]]
-             (->> query lib/available-metrics (map to-legacy-refs)))))
+             (->> query lib/available-legacy-metrics (map to-legacy-refs)))))
     (testing "aggregation references (#37698)"
       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                       (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
@@ -330,7 +330,7 @@
         (let [segment-expr (lib.js/expression-clause-for-legacy-expression query -1 (first legacy-refs))]
           (is (=? [:segment {} segment-id] segment-expr))
           (is (= ["segment" segment-id] (js->clj (lib.js/legacy-expression-for-expression-clause query -1 segment-expr)))))))
-    (let [legacy-refs (->> query lib/available-metrics (map #(lib.js/legacy-ref query -1 %)))]
+    (let [legacy-refs (->> query lib/available-legacy-metrics (map #(lib.js/legacy-ref query -1 %)))]
       (testing "metric refs come without options"
         (is (= [["metric" metric-id]] (map array-checker legacy-refs))))
       (testing "metric legacy ref can be converted to an expression and back (#37173)"
@@ -564,3 +564,43 @@
              (-> (lib.js/diagnose-expression
                   query 0 "expression" #js ["+" #js ["expression" "x"] 1] c-pos)
                  .-message))))))
+
+;; TODO: This wants `=?` to work on JS values. See https://github.com/metabase/hawk/issues/24
+(deftest ^:parallel as-returned-test
+  (testing `as-returned
+    (let [simple-query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          ;; Two-stage query with no aggregations in second stage.
+          base          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                            (lib/aggregate (lib/count))
+                            (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)))
+          base-cols     (lib/returned-columns base)
+          two-stage     (-> base
+                            lib/append-stage
+                            (lib/filter (lib/> (m/find-first #(= (:name "count") %) base-cols)
+                                               100)))
+          two-stage-agg (lib/aggregate two-stage (lib/count))]
+      (testing "does not change a query with no aggregations"
+        (doseq [stage [0 -1]]
+          (let [obj (lib.js/as-returned simple-query stage)]
+            (is (=? simple-query (.-query obj)))
+            (is (=? stage        (.-stageIndex obj)))))
+
+        (testing "in the target stage"
+          (doseq [stage [1 -1]]
+            (let [obj (lib.js/as-returned two-stage stage)]
+              (is (=? two-stage (.-query obj)))
+              (is (=? stage     (.-stageIndex obj)))))))
+
+      (testing "uses an existing later stage if it exists"
+        (let [obj (lib.js/as-returned two-stage 0)]
+          (is (=? two-stage (.-query obj)))
+          (is (=? 1         (.-stageIndex obj))))
+        (let [obj   (lib.js/as-returned two-stage-agg 0)]
+          (is (=? two-stage-agg (.-query obj)))
+          (is (=? 1             (.-stageIndex obj)))))
+
+      (testing "appends a new stage if necessary"
+        (let [obj (lib.js/as-returned two-stage-agg 1)]
+          (is (=? (lib/append-stage two-stage-agg)
+                  (.-query obj)))
+          (is (=? -1 (.-stageIndex obj))))))))

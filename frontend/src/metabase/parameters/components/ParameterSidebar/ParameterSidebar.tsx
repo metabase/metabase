@@ -1,10 +1,11 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import Radio from "metabase/core/components/Radio";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { slugify } from "metabase/lib/formatting";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import { Tabs } from "metabase/ui";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
@@ -15,15 +16,19 @@ import type {
 } from "metabase-types/api";
 
 import { canUseLinkedFilters } from "../../utils/linked-filters";
-import ParameterLinkedFilters from "../ParameterLinkedFilters";
+import { ParameterLinkedFilters } from "../ParameterLinkedFilters";
 import { ParameterSettings } from "../ParameterSettings";
-
-import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 
 export interface ParameterSidebarProps {
   parameter: Parameter;
   otherParameters: Parameter[];
+  hasMapping: boolean;
   onChangeName: (parameterId: ParameterId, name: string) => void;
+  onChangeType: (
+    parameterId: ParameterId,
+    nextType: string,
+    nextSectionId: string,
+  ) => void;
   onChangeDefaultValue: (parameterId: ParameterId, value: unknown) => void;
   onChangeIsMultiSelect: (
     parameterId: ParameterId,
@@ -58,6 +63,7 @@ export const ParameterSidebar = ({
   parameter,
   otherParameters,
   onChangeName,
+  onChangeType,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
   onChangeQueryType,
@@ -69,10 +75,18 @@ export const ParameterSidebar = ({
   onShowAddParameterPopover,
   onClose,
   getEmbeddedParameterVisibility,
+  hasMapping,
 }: ParameterSidebarProps): JSX.Element => {
   const parameterId = parameter.id;
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
-  const [tab, setTab] = useState(tabs[0].value);
+  const [tab, setTab] = useState<"filters" | "settings">(tabs[0].value);
+  const prevParameterId = usePrevious(parameterId);
+
+  useEffect(() => {
+    if (prevParameterId !== parameterId) {
+      setTab(tabs[0].value);
+    }
+  }, [parameterId, prevParameterId, tabs]);
 
   const missingRequiredDefault =
     parameter.required && parameterHasNoDisplayValue(parameter.default);
@@ -82,6 +96,13 @@ export const ParameterSidebar = ({
       onChangeName(parameterId, name);
     },
     [parameterId, onChangeName],
+  );
+
+  const handleTypeChange = useCallback(
+    (type: string, sectionId: string) => {
+      onChangeType(parameterId, type, sectionId);
+    },
+    [parameterId, onChangeType],
   );
 
   const handleDefaultValueChange = useCallback(
@@ -140,6 +161,14 @@ export const ParameterSidebar = ({
   const handleChangeRequired = (value: boolean) =>
     onChangeRequired(parameterId, value);
 
+  const handleTabChange = (newTab: string | null) => {
+    if (!newTab || (newTab !== "settings" && newTab !== "filters")) {
+      return;
+    }
+
+    return setTab(newTab);
+  };
+
   return (
     <Sidebar
       onClose={onClose}
@@ -152,16 +181,25 @@ export const ParameterSidebar = ({
       onRemove={handleRemove}
       data-testid="dashboard-parameter-sidebar"
     >
-      <SidebarHeader>
-        <Radio
-          value={tab}
-          options={tabs}
-          variant="underlined"
-          onChange={setTab}
-        />
-      </SidebarHeader>
-      <SidebarBody>
-        {tab === "settings" ? (
+      <Tabs radius={0} value={tab} onTabChange={handleTabChange}>
+        <Tabs.List grow>
+          {tabs.map(tab => {
+            return (
+              <Tabs.Tab
+                pl={0}
+                pr={0}
+                pt="md"
+                pb="md"
+                value={tab.value}
+                key={tab.value}
+              >
+                {tab.name}
+              </Tabs.Tab>
+            );
+          })}
+        </Tabs.List>
+
+        <Tabs.Panel pr="md" pl="md" value="settings" key="settings">
           <ParameterSettings
             parameter={parameter}
             embeddedParameterVisibility={getEmbeddedParameterVisibility(
@@ -169,31 +207,46 @@ export const ParameterSidebar = ({
             )}
             isParameterSlugUsed={isParameterSlugUsed}
             onChangeName={handleNameChange}
+            onChangeType={handleTypeChange}
             onChangeDefaultValue={handleDefaultValueChange}
             onChangeIsMultiSelect={handleIsMultiSelectChange}
             onChangeQueryType={handleQueryTypeChange}
             onChangeSourceType={handleSourceTypeChange}
             onChangeSourceConfig={handleSourceConfigChange}
             onChangeRequired={handleChangeRequired}
+            hasMapping={hasMapping}
           />
-        ) : (
+        </Tabs.Panel>
+
+        <Tabs.Panel pr="md" pl="md" value="filters" key="filters">
           <ParameterLinkedFilters
             parameter={parameter}
             otherParameters={otherParameters}
             onChangeFilteringParameters={handleFilteringParametersChange}
             onShowAddParameterPopover={onShowAddParameterPopover}
           />
-        )}
-      </SidebarBody>
+        </Tabs.Panel>
+      </Tabs>
     </Sidebar>
   );
 };
 
+const settingsTab = {
+  value: "settings",
+  name: t`Filter settings`,
+  icon: "gear",
+} as const;
+const filtersTab = {
+  value: "filters",
+  name: t`Linked filters`,
+  icon: "link",
+} as const;
+
 const getTabs = (parameter: Parameter) => {
-  const tabs = [{ value: "settings", name: t`Settings`, icon: "gear" }];
+  const tabs: (typeof settingsTab | typeof filtersTab)[] = [settingsTab];
 
   if (canUseLinkedFilters(parameter)) {
-    tabs.push({ value: "filters", name: t`Linked filters`, icon: "link" });
+    tabs.push(filtersTab);
   }
 
   return tabs;

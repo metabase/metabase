@@ -879,3 +879,64 @@
                                              ::add/desired-alias "CREATED_AT_2"
                                              ::add/position      1}]]]}}
                   (add/add-alias-info (qp.preprocess/preprocess query)))))))))
+
+(deftest ^:parallel preserve-field-options-name-test
+  (qp.store/with-metadata-provider meta/metadata-provider
+    (driver/with-driver :h2
+      (is (=? {:source-query {:source-table (meta/id :orders)
+                              :breakout     [[:field (meta/id :orders :id) {}]]
+                              :aggregation  [[:aggregation-options
+                                              [:cum-sum [:field (meta/id :orders :id) {}]]
+                                              {:name "sum"}]]}
+               :breakout     [[:field "id" {:base-type :type/Integer, ::add/desired-alias "id"}]
+                              [:field "sum" {:base-type :type/Integer, ::add/desired-alias "__cumulative_sum"}]]
+               :aggregation  [[:aggregation-options
+                               [:cum-sum [:field "sum" {:base-type :type/Integer}]]
+                               {::add/desired-alias "sum"}]]}
+              (add/add-alias-info
+               {:source-query {:source-table (meta/id :orders)
+                               :breakout     [[:field (meta/id :orders :id) nil]]
+                               :aggregation  [[:aggregation-options
+                                               [:cum-sum [:field (meta/id :orders :id) nil]]
+                                               {:name "sum"}]]}
+                :breakout     [[:field "id" {:base-type :type/Integer}]
+                               [:field "sum" {:base-type :type/Integer, :name "__cumulative_sum"}]],
+                :aggregation  [[:aggregation-options
+                                [:cum-sum [:field "sum" {:base-type :type/Integer}]]
+                                {:name "sum"}]]}))))))
+
+(deftest ^:parallel nested-query-field-literals-test
+  (testing "Correctly handle similar column names in nominal field literal refs (#41325)"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (driver/with-driver :h2
+        (is (=? {:source-query {:fields [[:field (meta/id :orders :created-at)
+                                          {::add/source-alias "CREATED_AT"
+                                           ::add/desired-alias "CREATED_AT"}]
+                                         [:field (meta/id :orders :created-at)
+                                          {::add/source-alias "CREATED_AT"
+                                           ::add/desired-alias "CREATED_AT_2"}]
+                                         [:field (meta/id :orders :total)
+                                          {::add/source-alias "TOTAL"
+                                           ::add/desired-alias "TOTAL"}]]}
+                 :aggregation [[:aggregation-options
+                                [:cum-sum
+                                 [:field "TOTAL" {::add/source-table ::add/source
+                                                  ::add/source-alias "TOTAL"}]]
+                                {:name "sum"
+                                 ::add/source-alias "sum" ; FIXME This key shouldn't be here, this doesn't come from the source query.
+                                 ::add/desired-alias "sum"}]]
+                 :breakout [[:field "CREATED_AT" {::add/source-alias "CREATED_AT"
+                                                  ::add/desired-alias "CREATED_AT"}]
+                            [:field "CREATED_AT_2" {::add/source-alias "CREATED_AT_2"
+                                                    ::add/desired-alias "CREATED_AT_2"}]]}
+                (-> (lib.tu.macros/mbql-query orders
+                      {:source-query {:source-table $$orders
+                                      :fields [!year.created-at
+                                               !month.created-at
+                                               $total]}
+                       :aggregation [[:cum-sum [:field "TOTAL" {:base-type :type/Integer}]]]
+                       :breakout    [[:field "CREATED_AT" {:base-type :type/Date, :temporal-unit :default}]
+                                     [:field "CREATED_AT_2" {:base-type :type/Date, :temporal-unit :default}]]})
+                    qp.preprocess/preprocess
+                    add/add-alias-info
+                    :query)))))))

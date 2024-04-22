@@ -28,8 +28,8 @@ const getItemPadding = (variant: string) => {
 };
 
 export const EntityIconWrapper = styled(IconButtonWrapper)<{
-  isPinned: boolean;
-  disabled: boolean;
+  isPinned?: boolean;
+  disabled?: boolean;
 }>`
   background-color: transparent;
   padding: 12px;
@@ -37,8 +37,8 @@ export const EntityIconWrapper = styled(IconButtonWrapper)<{
 
   color: ${props =>
     props.isPinned
-      ? getPinnedForeground(props.disabled)
-      : getForeground("", props.disabled)};
+      ? getPinnedForeground(!!props.disabled)
+      : getForeground("", !!props.disabled)};
 `;
 
 export const EntityItemWrapper = styled.div<{

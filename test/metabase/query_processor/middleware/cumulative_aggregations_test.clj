@@ -3,14 +3,12 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.lib.test-metadata :as meta]
-   [metabase.query-processor.middleware.cumulative-aggregations
-    :as
-    qp.cumulative-aggregations]
+   [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
    [metabase.query-processor.store :as qp.store]))
 
 (deftest ^:parallel add-values-from-last-row-test
   (are [expected indecies] (= expected
-                              (#'qp.cumulative-aggregations/add-values-from-last-row indecies [1 2 3] [1 2 3]))
+                              (#'qp.cumulative-aggregations/add-values-from-last-row 0 indecies [1 2 3] [1 2 3]))
     [1 2 3] #{}
     [2 2 3] #{0}
     [2 4 3] #{0 1}
@@ -18,27 +16,27 @@
 
   (is (thrown?
        IndexOutOfBoundsException
-       (#'qp.cumulative-aggregations/add-values-from-last-row #{4} [1 2 3] [1 2 3]))
+       (#'qp.cumulative-aggregations/add-values-from-last-row 0 #{4} [1 2 3] [1 2 3]))
       "should throw an Exception if index is out of bounds")
 
   (testing "Do we handle nils correctly"
-    (is (= [1] (#'qp.cumulative-aggregations/add-values-from-last-row #{0} [nil] [1])))
-    (is (= [0] (#'qp.cumulative-aggregations/add-values-from-last-row #{0} [nil] [nil])))
-    (is (= [1] (#'qp.cumulative-aggregations/add-values-from-last-row #{0} [1] [nil])))))
+    (is (= [1] (#'qp.cumulative-aggregations/add-values-from-last-row 0 #{0} [nil] [1])))
+    (is (= [0] (#'qp.cumulative-aggregations/add-values-from-last-row 0 #{0} [nil] [nil])))
+    (is (= [1] (#'qp.cumulative-aggregations/add-values-from-last-row 0 #{0} [1] [nil])))))
 
 (deftest ^:parallel diff-indicies-test
   (testing "collections are the same"
     (is (= #{}
-           (#'qp.cumulative-aggregations/diff-indices [:a :b :c] [:a :b :c]))))
+           (#'qp.cumulative-aggregations/diff-indexes [:a :b :c] [:a :b :c]))))
   (testing "one index is different"
     (is (= #{1}
-           (#'qp.cumulative-aggregations/diff-indices [:a :b :c] [:a 100 :c])))))
+           (#'qp.cumulative-aggregations/diff-indexes [:a :b :c] [:a 100 :c])))))
 
-(defn- sum-rows [replaced-indices rows]
-  (let [rf (#'qp.cumulative-aggregations/cumulative-ags-xform replaced-indices (fn
-                                                                                 ([] [])
-                                                                                 ([acc] acc)
-                                                                                 ([acc row] (conj acc row))))]
+(defn- sum-rows [replaced-indexes rows]
+  (let [rf (#'qp.cumulative-aggregations/cumulative-ags-xform 0 replaced-indexes (fn
+                                                                                   ([] [])
+                                                                                   ([acc] acc)
+                                                                                   ([acc row] (conj acc row))))]
     (transduce identity rf rows)))
 
 (deftest ^:parallel transduce-results-test
@@ -121,3 +119,29 @@
                :query    {:source-table 1
                           :breakout     [[:field 1 nil]]
                           :aggregation  [[:+ [:cum-count] 1]]}}))))))
+
+(deftest ^:parallel multiple-breakouts-reset-counts-test
+  (testing "Multiple breakouts: reset counts after breakouts other than last get new values (#2862)"
+    (let [rows [["Long Beach"    #t "2016-04-01" 2]
+                ["Long Beach"    #t "2016-04-03" 4]   ; 2 + 4 = 6
+                ["Long Beach"    #t "2016-04-03" 6]   ; 6 + 6 = 12
+                ["Long Beach"    #t "2016-04-06" 8]   ; 12 + 8 = 20
+                ["San Francisco" #t "2016-04-01" 10]  ; RESET VALUES HERE!
+                ["San Francisco" #t "2016-04-01" 20]  ; 10 + 20 = 30
+                ["San Francisco" #t "2016-04-02" 30]  ; 30 + 30 = 60
+                ["San Francisco" #t "2016-04-04" 40]] ; 60 + 40 = 100
+          rff (qp.cumulative-aggregations/sum-cumulative-aggregation-columns
+               {::qp.cumulative-aggregations/replaced-indexes #{2}
+                :query                                        {:breakout [:a :b]}}
+               (fn [_metadata]
+                 conj))
+          rf (rff nil)]
+      (is (= [["Long Beach"    #t "2016-04-01" 2]
+              ["Long Beach"    #t "2016-04-03" 6]
+              ["Long Beach"    #t "2016-04-03" 12]
+              ["Long Beach"    #t "2016-04-06" 20]
+              ["San Francisco" #t "2016-04-01" 10]
+              ["San Francisco" #t "2016-04-01" 30]
+              ["San Francisco" #t "2016-04-02" 60]
+              ["San Francisco" #t "2016-04-04" 100]]
+             (reduce rf [] rows))))))

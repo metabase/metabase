@@ -23,50 +23,34 @@ title: Driver interface changelog
 
   Non-SQL drivers should be updated to implement cumulative aggregations natively if possible.
 
-  SQL drivers that support ordering by output column numbers in `OVER` `ORDER BY` expressions, e.g.
+  The SQL implementation uses `OVER (...)` expressions. It will automatically move `GROUP BY` expressions like
+  `date_trunc()` into a `SUBSELECT` so fussy databases like BigQuery can reference plain column identifiers. The
+  actual SQL generated will look something like
 
   ```sql
   SELECT
-    sum(sum(my_column) OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING) AS cumulative_sum
-    date_trunc(my_timestamp, 'month') AS my_timestamp_month
-  FROM
-    my_table
+    created_at_month,
+    sum(sum(total) OVER (ORDER BY created_at_month ROWS UNBOUNDED PRECEDING) AS cumulative_sum
+  FROM (
+    SELECT
+      date_trunc('month', created_at) AS created_at_month,
+      total
+    FROM
+      my_table
+    ) source
   GROUP BY
-    date_trunc(my_timestamp, 'month')
+    created_at_month
   ORDER BY
-    date_trunc(my_timestamp, 'month')
+    created_at_month
   ```
 
-  will work without any changes; this is the new default behavior for drivers based on the `:sql` or `:sql-jdbc`
-  drivers.
+  Non-SQL drivers can use
+  `metabase.query-processor.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation`
+  if they want to leverage the same query transformation. See the default `:sql` implementation of
+  `metabase.driver.sql.query-processor/preprocess` for an example of using this transformation when needed.
 
-  For databases that do not support ordering by output column numbers (e.g. MySQL/MariaDB), you can mark your driver
-  as not supporting the `:sql/window-functions.order-by-output-column-numbers` feature flag, e.g.
-
-  ```clj
-  (defmethod driver/database-supports? [:my-driver :sql/window-functions.order-by-output-column-numbers]
-    [_driver _feature _database]
-    false)
-   ```
-
-  In this case, the `:sql` driver will instead generate something like
-
-  ```sql
-  SELECT
-    sum(sum(my_column) OVER (ORDER BY date_trunc(my_timestamp, 'month') ROWS UNBOUNDED PRECEDING) AS cumulative_sum
-    date_trunc(my_timestamp, 'month') AS my_timestamp_month
-  FROM
-    my_table
-  GROUP BY
-    date_trunc(my_timestamp, 'month')
-  ORDER BY
-    date_trunc(my_timestamp, 'month')
-  ```
-
-  If neither of these strategies work for you, you might need to do something more complicated -- see
-  [#40982](https://github.com/metabase/metabase/pull/40982) for an example of complex query transformations to get
-  fussy BigQuery working. (More on this soon.) If all else fails, you can always specify that your driver does not
-  support `:window-functions`, and it will fall back to using the old broken implementation.
+  You can run the new tests in `metabase.query-processor-test.cumulative-aggregation-test` to verify that your driver
+  implementation is working correctly.
 
 - `metabase.driver.common/class->base-type` no longer supports Joda Time classes. They have been deprecated since 2019.
 

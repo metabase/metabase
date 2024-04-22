@@ -12,6 +12,7 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
+   [metabase.api.database-test :as api.database-test]
    [metabase.db :as mdb]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
@@ -21,6 +22,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
+   [metabase.native-query-analyzer :as query-analyzer]
    [metabase.task :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -1597,3 +1599,107 @@
           (is (contains? model-revision-object "dataset"))
           (is (not (contains? card-revision-object "type")))
           (is (not (contains? model-revision-object "type"))))))))
+
+(deftest card-revision-add-type-null-character-test
+  (testing "CardRevisionAddType migration works even if there's a null character in revision.object (metabase#40835)")
+  (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
+    (let [user-id          (:id (new-instance-with-default :core_user))
+          db-id            (:id (new-instance-with-default :metabase_database))
+          card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
+          viz-settings     "{\"table.pivot_column\":\"\u0000..\\u0000\"}" ; note the escaped and unescaped null characters
+          card-revision-id (:id (new-instance-with-default :revision
+                                                           {:object    (json/generate-string
+                                                                        (assoc (dissoc card :type)
+                                                                               :visualization_settings viz-settings))
+                                                            :model     "Card"
+                                                            :model_id  (:id card)
+                                                            :user_id   user-id}))]
+      (testing "sanity check revision object"
+        (let [card-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
+          (testing "doesn't have type"
+            (is (not (contains? card-revision-object "type"))))))
+      (testing "after migration card revisions should have type"
+        (migrate!)
+        (let [card-revision-object  (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
+          (is (= "question" (get card-revision-object "type")))
+          (testing "original visualization_settings should be preserved"
+            (is (= viz-settings
+                   (get card-revision-object "visualization_settings")))))))))
+
+(deftest delete-scan-field-values-trigger-test
+  (testing "We should delete the triggers for DBs that are configured not to scan their field values\n"
+    (impl/test-migrations "v49.2024-04-09T10:00:03" [migrate!]
+      (api.database-test/with-db-scheduler-setup
+        (let [db-with-full-schedules (new-instance-with-default :metabase_database
+                                                                {:metadata_sync_schedule      "0 0 * * * ? *"
+                                                                 :cache_field_values_schedule "0 0 1 * * ? *"
+                                                                 :is_full_sync                true
+                                                                 :is_on_demand                false})
+              db-manual-schedule     (new-instance-with-default :metabase_database
+                                                                {:details                     (json/generate-string {:let-user-control-scheduling true})
+                                                                 :is_full_sync                true
+                                                                 :is_on_demand                false
+                                                                 :metadata_sync_schedule      "0 0 * * * ? *"
+                                                                 :cache_field_values_schedule "0 0 2 * * ? *"})
+              db-on-demand           (new-instance-with-default :metabase_database
+                                                                {:details                     (json/generate-string {:let-user-control-scheduling true})
+                                                                 :is_full_sync                false
+                                                                 :is_on_demand                true
+                                                                 :metadata_sync_schedule      "0 0 * * * ? *"
+                                                                 :cache_field_values_schedule "0 0 2 * * ? *"})
+              db-never-scan          (new-instance-with-default :metabase_database
+                                                                {:details                     (json/generate-string {:let-user-control-scheduling true})
+                                                                 :is_full_sync                false
+                                                                 :is_on_demand                false
+                                                                 :metadata_sync_schedule      "0 0 * * * ? *"
+                                                                 :cache_field_values_schedule "0 0 2 * * ? *"})
+              db-with-scan-fv        [db-with-full-schedules db-manual-schedule]
+              db-without-scan-fv     [db-on-demand db-never-scan]]
+          (doseq [db (concat db-with-scan-fv db-without-scan-fv)]
+            (#'database/check-and-schedule-tasks-for-db! (t2/instance :model/Database db))
+            (testing "sanity check that the schedule exists"
+              (is (= (#'api.database-test/all-db-sync-triggers-name db)
+                     (#'api.database-test/query-all-db-sync-triggers-name db)))))
+
+          (migrate!)
+          (testing "default options and scan with manual schedules should have scan field values"
+            (doseq [db db-with-scan-fv]
+              (is (= (#'api.database-test/all-db-sync-triggers-name db)
+                     (#'api.database-test/query-all-db-sync-triggers-name db)))))
+
+          (testing "never scan and on demand should not have scan field values"
+            (doseq [db (t2/select :model/Database :id [:in (map :id db-without-scan-fv)])]
+              (is (= #{(#'api.database-test/sync-and-analyze-trigger-name db)}
+                     (#'api.database-test/query-all-db-sync-triggers-name db)))
+              (is (nil? (:cache_field_values_schedule db))))))))))
+
+(deftest backfill-query-field-test
+  (impl/test-migrations "v50.2024-04-09T15:55:23" [migrate!]
+    (let [user-id     (:id (new-instance-with-default :core_user))
+          ;; it is already `false`, but binding it anyway to indicate it's important
+          card-id     (binding [query-analyzer/*parse-queries-in-test?* false]
+                        (:id (new-instance-with-default
+                              :report_card
+                              {:creator_id    user-id
+                               :database_id   (mt/id)
+                               :query_type    "native"
+                               :dataset_query (json/generate-string (mt/native-query {:query "SELECT id FROM venues"}))})))
+          archived-id (binding [query-analyzer/*parse-queries-in-test?* false]
+                        (:id (new-instance-with-default
+                              :report_card
+                              {:archived      true
+                               :creator_id    user-id
+                               :database_id   (mt/id)
+                               :query_type    "native"
+                               :dataset_query (json/generate-string (mt/native-query {:query "SELECT id FROM venues"}))})))
+          ;; (first (vals %)) are necessary since h2 generates :count(id) as name for column
+          get-count   #(t2/select-one-fn (comp first vals) [:model/QueryField [[:count :id]]] :card_id %)]
+      (testing "QueryField is empty - queries weren't analyzed"
+        (is (zero? (get-count card-id)))
+        (is (zero? (get-count archived-id))))
+      (binding [query-analyzer/*parse-queries-in-test?* true]
+        (migrate!))
+      (testing "QueryField is filled now"
+        (is (pos? (get-count card-id)))
+        (testing "but not for archived card"
+          (is (zero? (get-count archived-id))))))))

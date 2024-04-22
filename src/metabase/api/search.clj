@@ -239,7 +239,6 @@
                              [:= :query_action.action_id :action.id])
       (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
 
-
 (defmethod search-query-for-model "card"
   [_model search-ctx]
   (shared-card-impl "card" search-ctx))
@@ -320,10 +319,10 @@
 (defmethod search-query-for-model "table"
   [model {:keys [current-user-perms table-db-id], :as search-ctx}]
   (when (seq current-user-perms)
-    (let [base-query (base-query-for-model model search-ctx)]
-      (add-table-db-id-clause
-       base-query
-       table-db-id))))
+
+    (-> (base-query-for-model model search-ctx)
+        (add-table-db-id-clause table-db-id)
+        (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
 
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
@@ -354,18 +353,27 @@
 (defmethod check-permissions-for-model :table
   [_archived instance]
   ;; we've already filtered out tables w/o collection permissions in the query itself.
-  (data-perms/user-has-permission-for-table?
-   api/*current-user-id*
-   :perms/data-access
-   :unrestricted
-   (database/table-id->database-id (:id instance))
-   (:id instance)))
+  (and
+   (data-perms/user-has-permission-for-table?
+    api/*current-user-id*
+    :perms/view-data
+    :unrestricted
+    (database/table-id->database-id (:id instance))
+    (:id instance))
+   (data-perms/user-has-permission-for-table?
+    api/*current-user-id*
+    :perms/create-queries
+    :query-builder
+    (database/table-id->database-id (:id instance))
+    (:id instance))))
 
 (defmethod check-permissions-for-model :indexed-entity
   [_archived? instance]
   (and
-   (data-perms/user-has-permission-for-database? api/*current-user-id* :perms/native-query-editing :yes (:database_id instance))
-   (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id* :perms/data-access (:database_id instance)))))
+   (= :query-builder-and-native
+      (data-perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries (:database_id instance)))
+   (= :unrestricted
+      (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data (:database_id instance)))))
 
 (defmethod check-permissions-for-model :metric
   [archived? instance]
@@ -478,7 +486,6 @@
      :offset           (:offset-int search-ctx)
      :table_db_id      (:table-db-id search-ctx)
      :models           (:models search-ctx)}))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |
