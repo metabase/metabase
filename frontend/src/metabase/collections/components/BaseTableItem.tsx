@@ -123,7 +123,7 @@ export const BaseTableItem = ({
               size={16}
               status={item.moderated_status}
             />
-            {item.description?.trim() && (
+            {item.description && (
               <DescriptionIcon
                 name="info"
                 size={16}
