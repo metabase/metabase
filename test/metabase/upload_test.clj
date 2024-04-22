@@ -16,6 +16,7 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.persisted-info :as persisted-info]
    [metabase.query-processor :as qp]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
@@ -1411,6 +1412,54 @@
                       (last-audit-event :upload-append)))
 
               (io/delete-file file))))))))
+
+(deftest ^:mb/once update-invalidate-model-cache-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (doseq [action (actions-to-test driver/*driver*)]
+      (testing (action-testing-str action)
+        (with-upload-table! [table (create-upload-table!)]
+          (let [table-id (:id table)
+                csv-rows ["name" "Luke Skywalker"]
+                file     (csv-file-with csv-rows)]
+
+            (mt/with-temp [:model/Card {question-id         :id} {:table_id table-id}
+                           :model/Card {model-id            :id} {:table_id table-id, :type :model}
+                           :model/Card {complex-model-id    :id} {:table_id table-id, :type :model
+                                                                  :dataset_query
+                                                                  {:expressions
+                                                                   {"NAME" [:upper [:field :name {:base-type "type/Text"}]]}}}
+                           :model/Card {_archived-model-id  :id} {:table_id table-id, :type :model, :archived true}
+
+                           :model/Table {other-table-id     :id} {}
+                           :model/Card {_unrelated-model-id :id} {:table_id other-table-id, :type :model,}
+                           :model/Card {_joined-model-id    :id} {:table_id other-table-id, :type :model
+                                                                  :dataset_query
+                                                                  {:joins
+                                                                   [{:alias (:name table),
+                                                                     :condition
+                                                                     [:=
+                                                                      [:field "_mb_row_id"
+                                                                       {:base-type "type/BigInteger"}]
+                                                                      [:field
+                                                                       (t2/select-one-pk :model/Field
+                                                                                         :name "_mb_row_id"
+                                                                                         :table_id table-id)
+                                                                       {:base-type  "type/BigInteger",
+                                                                        :join-alias "other PK"}]],
+                                                                     :fields :all,
+                                                                     :source-table table-id}]}}]
+
+              (is (= #{question-id model-id complex-model-id}
+                     (into #{} (map :id) (t2/select :model/Card :table_id table-id :archived false))))
+
+              (let [captured (atom [])]
+                (mt/with-dynamic-redefs [persisted-info/invalidate! #(swap! captured conj %)]
+                  (update-csv! action {:file file, :table-id (:id table)}))
+                (testing "Active, simple models with this as their primary, have their caches invalidated"
+                  (is (= [{:id [:in [model-id]]}]
+                         @captured)))))
+
+            (io/delete-file file)))))))
 
 (deftest update-mb-row-id-csv-and-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
