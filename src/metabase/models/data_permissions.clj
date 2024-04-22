@@ -637,10 +637,9 @@
   [_group-id]
   :unrestricted)
 
-(defn set-new-group-permissions!
-  "Sets permissions for a newly-added group to their appropriate values for a single database. This is generally based
-  on the permissions of the All Users group."
-  [group-or-id db-or-id all-users-group-id]
+(defn- new-group-permissions
+  "Returns a map of {perm-type value} to be set for a new group, for the provided databse."
+  [db-or-id all-users-group-id]
   (let [db-id                (u/the-id db-or-id)
         view-data-level      (new-group-view-data-permission-level db-id)
         create-queries-level (or (->> (t2/select-fn-set :value
@@ -657,11 +656,18 @@
                                                        :group_id all-users-group-id)
                                      (coalesce-most-restrictive :perms/download-results))
                                 :one-million-rows)]
-    (set-database-permission! group-or-id db-or-id :perms/view-data view-data-level)
-    (set-database-permission! group-or-id db-or-id :perms/create-queries create-queries-level)
-    (set-database-permission! group-or-id db-or-id :perms/download-results download-level)
-    (set-database-permission! group-or-id db-or-id :perms/manage-table-metadata :no)
-    (set-database-permission! group-or-id db-or-id :perms/manage-database :no)))
+    {:perms/view-data view-data-level
+     :perms/create-queries create-queries-level
+     :perms/download-results download-level
+     :perms/manage-table-metadata :no
+     :perms/manage-database :no}))
+
+(defn set-new-group-permissions!
+  "Sets permissions for a newly-added group to their appropriate values for a single database. This is generally based
+  on the permissions of the All Users group."
+  [group-or-id db-or-id all-users-group-id]
+  (doseq [[perm-type perm-value] (new-group-permissions db-or-id all-users-group-id)]
+    (set-database-permission! group-or-id db-or-id perm-type perm-value)))
 
 (defenterprise new-database-view-data-permission-level
   "Returns the default view-data permission level for a new database for a given group. On OSS, this is always `unrestricted`."
