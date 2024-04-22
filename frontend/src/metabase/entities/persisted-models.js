@@ -34,6 +34,15 @@ const PersistedModels = createEntity({
         dispatch,
         persistApi.endpoints.listTasks,
       ),
+    create: () => {
+      throw new TypeError("PersistedModels.api.create is not supported");
+    },
+    update: () => {
+      throw new TypeError("PersistedModels.api.update is not supported");
+    },
+    delete: () => {
+      throw new TypeError("PersistedModels.api.delete is not supported");
+    },
   },
 
   objectActions: {
