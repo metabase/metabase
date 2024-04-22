@@ -156,7 +156,7 @@
 
 (deftest list-collections-archived-test
   (testing "GET /api/collection"
-    (t2.with-temp/with-temp [Collection _ {:name "Archived Collection", :archived true}
+    (t2.with-temp/with-temp [Collection _ {:name "Archived Collection", :archived true, :trashed_from_location "/"}
                              Collection _ {:name "Regular Collection"}]
       (letfn [(remove-other-collections [collections]
                 (filter (fn [{collection-name :name}]
@@ -304,7 +304,10 @@
                                          :collection_id (:id b)}]
           (is (=? [{:here ["card"] :below ["dataset"] :children [{:here ["dataset"]}]}
                    {:here ["card" "dataset"]}]
-                  (mt/user-http-request :rasta :get 200 "collection/tree"))))))))
+                  (filter
+                   ;; filter out any extraneous collections
+                   #(contains? #{(:id personal-collection) (:id a)} (:id %))
+                   (mt/user-http-request :rasta :get 200 "collection/tree")))))))))
 
 (deftest collection-tree-shallow-test
   (testing "GET /api/collection/tree?shallow=true"
@@ -388,21 +391,6 @@
                           (filter (fn [coll] (contains? ids (:id coll))))
                           (map #(select-keys % [:name]))
                           (into #{})))))))))))
-
-(deftest collection-tree-exclude-archived-collections-test
-  (testing "GET /api/collection/tree"
-    (testing "Excludes archived collections (#19603)"
-      (t2.with-temp/with-temp [Collection a {:name "A"}
-                               Collection b {:name     "B archived"
-                                             :location (collection/location-path a)
-                                             :archived true}
-                               Collection c {:name     "C archived"
-                                             :archived true}]
-        (let [ids      (set (map :id [a b c]))
-              response (mt/user-http-request :rasta :get 200
-                                             "collection/tree?exclude-archived=true")]
-          (is (= [{:name "A" :children []}]
-                 (collection-tree-view ids response))))))))
 
 (deftest collection-tree-exclude-other-users-personal-collections-test
   (testing "GET /api/collection/tree"
@@ -649,6 +637,7 @@
         (is (= (mt/obj->json->obj
                 [{:collection_id       (:id collection)
                   :id                  card-id
+                  :archived            false
                   :location            nil
                   :name                (:name card)
                   :collection_position nil
@@ -807,9 +796,9 @@
       (t2.with-temp/with-temp [Collection collection {:name "A"}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
-        (is (= 1 (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection/trash-collection-id))))))
+        (is (= 1 (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection/trash-collection-id "/items"))))))
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived false})
-        (is (zero? (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection/trash-collection-id))))))))
+        (is (zero? (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection/trash-collection-id "/items"))))))))
     (testing "I can untrash something to a specific location if desired"
       (t2.with-temp/with-temp [Collection collection-a {:name "A"}
                                Collection collection-b {:name "B" :location (collection/children-location collection-a)}

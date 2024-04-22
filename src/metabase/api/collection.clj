@@ -82,10 +82,12 @@
 
   To select only personal collections, pass in `personal-only` as `true`.
   This will select only collections where `personal_owner_id` is not `nil`."
-  [{:keys [exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
+  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
+                       (when (some? archived)
+                         [:= :archived archived])
                        (when shallow
                          (location-from-collection-id-clause collection-id))
                        (when personal-only
@@ -120,6 +122,7 @@
    personal-only                  [:maybe ms/BooleanValue]}
   (as->
    (select-collections {:exclude-other-user-collections exclude-other-user-collections
+                        :archived                       archived
                         :namespace                      namespace
                         :shallow                        false
                         :personal-only                  personal-only
