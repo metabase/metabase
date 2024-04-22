@@ -584,6 +584,13 @@ TimeSeriesYyyymmddNumbersFormat.args = {
   renderingContext,
 };
 
+export const BreakoutNullAndEmptyString = Template.bind({});
+BreakoutNullAndEmptyString.args = {
+  rawSeries: data.breakoutNullAndEmptyString as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
