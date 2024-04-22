@@ -23,9 +23,8 @@ import {
   type SortingOptions,
 } from "metabase/components/ItemsTable/BaseItemsTable";
 import {
-  isPersonalCollectionChild,
-  isTrashedCollection,
   isRootTrashCollection,
+  isPersonalCollectionChild,
 } from "metabase/collections/utils";
 import PaginationControls from "metabase/components/PaginationControls";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
@@ -248,7 +247,9 @@ export const CollectionContentView = ({
     models: ALL_MODELS,
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
-    pinned_state: "is_not_pinned",
+    ...(isRootTrashCollection(collection)
+      ? {}
+      : { pinned_state: "is_not_pinned" }),
     ...unpinnedItemsSorting,
   };
 
@@ -267,12 +268,14 @@ export const CollectionContentView = ({
       wrapped
     >
       {({
-        list: pinnedItems = [],
+        list,
         loading: loadingPinnedItems,
       }: {
         list: CollectionItem[];
         loading: boolean;
       }) => {
+        const pinnedItems =
+          list && !isRootTrashCollection(collection) ? list : [];
         const hasPinnedItems = pinnedItems.length > 0;
 
         return (
@@ -292,13 +295,12 @@ export const CollectionContentView = ({
               </>
             )}
 
-            {isTrashedCollection(collection) &&
-              !isRootTrashCollection(collection) && (
-                <ArchivedEntityBanner
-                  entity="collection"
-                  entityId={collection.id}
-                />
-              )}
+            {collection.archived && (
+              <ArchivedEntityBanner
+                entity="collection"
+                entityId={collection.id}
+              />
+            )}
 
             <CollectionMain>
               <ErrorBoundary>

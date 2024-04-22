@@ -62,7 +62,7 @@ const Questions = createEntity({
       Questions.actions.update(
         { id: card.id },
         { archived },
-        undo(opts, getLabel(card), archived ? t`archived` : t`unarchived`),
+        undo(opts, getLabel(card), archived ? t`trashed` : t`restored`),
       ),
 
     setCollection: (card, collection, opts) => {

@@ -261,13 +261,15 @@ export const QuestionActions = ({
   return (
     <>
       <QuestionActionsDivider />
-      <ViewHeaderIconButtonContainer>
-        <BookmarkToggle
-          onCreateBookmark={handleBookmark}
-          onDeleteBookmark={handleBookmark}
-          isBookmarked={isBookmarked}
-        />
-      </ViewHeaderIconButtonContainer>
+      {!question.isArchived() && (
+        <ViewHeaderIconButtonContainer>
+          <BookmarkToggle
+            onCreateBookmark={handleBookmark}
+            onDeleteBookmark={handleBookmark}
+            isBookmarked={isBookmarked}
+          />
+        </ViewHeaderIconButtonContainer>
+      )}
       <Tooltip tooltip={t`More info`}>
         <ViewHeaderIconButtonContainer>
           <Button
@@ -322,7 +324,7 @@ export const QuestionActions = ({
           </Tooltip>
         </>
       )}
-      {extraButtons.length > 0 && (
+      {extraButtons.length > 0 && !question.isArchived() && (
         <EntityMenu
           triggerAriaLabel={t`Move, trash, and more...`}
           items={extraButtons}

@@ -25,7 +25,7 @@ export const QuestionInfoSidebar = ({
   onSave,
 }: QuestionInfoSidebarProps) => {
   const description = question.description();
-  const canWrite = question.canWrite();
+  const canWrite = question.canWrite() && !question.isArchived();
   const isPersisted = question.isPersisted();
   const hasCacheSection = PLUGIN_CACHING.hasQuestionCacheSection(question);
 

@@ -70,7 +70,7 @@ export function DashboardInfoSidebar({
   );
 
   const autoApplyFilterToggleId = useUniqueId();
-  const canWrite = dashboard.can_write;
+  const canWrite = dashboard.can_write && !dashboard.archived;
 
   return (
     <DashboardInfoSidebarRoot data-testid="sidebar-right">

@@ -68,15 +68,17 @@ export const getDashboardActions = props => {
       );
     }
 
-    buttons.push(
-      <DashboardEmbedAction
-        key="dashboard-embed-action"
-        dashboard={dashboard}
-      />,
-    );
+    if (!dashboard.archived) {
+      buttons.push(
+        <DashboardEmbedAction
+          key="dashboard-embed-action"
+          dashboard={dashboard}
+        />,
+      );
+    }
   }
 
-  if (!isEditing && !isEmpty) {
+  if (!isEditing && !isEmpty && !dashboard.archived) {
     buttons.push(
       <RefreshWidgetButton
         key="refresh"
