@@ -301,6 +301,8 @@
                             EXTRACT(YEAR FROM T.example_timestamp)                AS example_year,
                             EXTRACT(MONTH FROM T.example_timestamp)               AS example_month,
                             EXTRACT(DAY FROM T.example_timestamp)                 AS example_day,
+                            EXTRACT(WEEK FROM T.example_timestamp)                AS example_week_number,
+                            T.example_timestamp                                   AS example_week,
                             EXTRACT(HOUR FROM T.example_timestamp)                AS example_hour,
                             EXTRACT(MINUTE FROM T.example_timestamp)              AS example_minute,
                             EXTRACT(SECOND FROM T.example_timestamp)              AS example_second
@@ -321,6 +323,8 @@
                   [:field "EXAMPLE_YEAR" {:base-type :type/Integer}]
                   [:field "EXAMPLE_MONTH" {:base-type :type/Integer}]
                   [:field "EXAMPLE_DAY" {:base-type :type/Integer}]
+                  [:field "EXAMPLE_WEEK_NUMBER" {:base-type :type/Integer}]
+                  [:field "EXAMPLE_WEEK" {:base-type :type/DateTime, :temporal-unit :week}]
                   [:field "EXAMPLE_HOUR" {:base-type :type/Integer}]
                   [:field "EXAMPLE_MINUTE" {:base-type :type/Integer}]
                   [:field "EXAMPLE_SECOND" {:base-type :type/Integer}]]
@@ -346,15 +350,15 @@
                                                                              :query    {:source-table
                                                                                         (format "card__%s" model-card-id)}}
                                                     :result_metadata        (mapv
-                                                                              (fn [{column-name :name :as col}]
-                                                                                (cond-> col
-                                                                                  (= "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" column-name)
-                                                                                  (assoc :settings {:date_separator "-"
-                                                                                                    :date_style     "YYYY/M/D"
-                                                                                                    :time_style     "HH:mm"})
-                                                                                  (= "EXAMPLE_TIMESTAMP" column-name)
-                                                                                  (assoc :settings {:time_enabled "seconds"})))
-                                                                              model-metadata)
+                                                                             (fn [{column-name :name :as col}]
+                                                                               (cond-> col
+                                                                                 (= "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" column-name)
+                                                                                 (assoc :settings {:date_separator "-"
+                                                                                                   :date_style     "YYYY/M/D"
+                                                                                                   :time_style     "HH:mm"})
+                                                                                 (= "EXAMPLE_TIMESTAMP" column-name)
+                                                                                 (assoc :settings {:time_enabled "seconds"})))
+                                                                             model-metadata)
                                                     :visualization_settings {:column_settings {"[\"name\",\"FULL_DATETIME_UTC\"]"
                                                                                                {:date_abbreviate true
                                                                                                 :time_enabled    "milliseconds"
@@ -411,10 +415,14 @@
                     "EXAMPLE_YEAR"                     "2,023"
                     "EXAMPLE_MONTH"                    "12"
                     "EXAMPLE_DAY"                      "11"
+                    "EXAMPLE_WEEK_NUMBER"              "50"
                     "EXAMPLE_HOUR"                     "15"
                     "EXAMPLE_MINUTE"                   "30"
                     "EXAMPLE_SECOND"                   "45"}
-                   native-results)))
+                   ;; the EXAMPLE_WEEK is a normal timestamp.
+                   ;; We care about it in the context of the Model, not the native results
+                   ;; so dissoc it here.
+                   (dissoc native-results "EXAMPLE_WEEK"))))
           (testing "An exported model retains the base format, but does use display names for column names."
             (is (= {"Full Datetime Utc"                "December 11, 2023, 3:30 PM"
                     "Full Datetime Pacific"            "December 11, 2023, 3:30 PM"
@@ -425,6 +433,8 @@
                     "Example Year"                     "2,023"
                     "Example Month"                    "12"
                     "Example Day"                      "11"
+                    "Example Week Number"              "50"
+                    "Example Week"                     "December 10, 2023 - December 16, 2023"
                     "Example Hour"                     "15"
                     "Example Minute"                   "30"
                     "Example Second"                   "45"}
@@ -443,7 +453,10 @@
                    (metamodel-results "Full Datetime Pacific"))))
           (testing "Setting time-enabled to nil for a time column just returns an empty string"
             (is (= ""
-                   (metamodel-results "Example Time")))))))))
+                   (metamodel-results "Example Time"))))
+          (testing "Week Units Are Displayed as a Date Range"
+            (is (= "December 10, 2023 - December 16, 2023"
+                   (metamodel-results "Example Week")))))))))
 
 (deftest renamed-column-names-are-applied-test
   (testing "CSV attachments should have the same columns as displayed in Metabase (#18572)"
