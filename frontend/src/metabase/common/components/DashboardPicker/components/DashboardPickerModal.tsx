@@ -131,6 +131,11 @@ export const DashboardPickerModal = ({
         options={options}
         searchResultFilter={results => results}
         actionButtons={modalActions}
+        searchParams={
+          options.showRootCollection === false
+            ? { filter_items_in_personal_collection: "only" }
+            : undefined
+        }
       />
       <NewDashboardDialog
         isOpen={isCreateDialogOpen}

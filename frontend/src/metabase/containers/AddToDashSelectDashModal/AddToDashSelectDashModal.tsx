@@ -1,17 +1,12 @@
-import { useState } from "react";
 import { t } from "ttag";
 
 import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
-import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
-import { useSelector } from "metabase/lib/redux";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { Card, CollectionId, Dashboard } from "metabase-types/api";
+import type { Card, Dashboard } from "metabase-types/api";
 
 import { useMostRecentlyViewedDashboard } from "./hooks";
-import { getInitialOpenCollectionId } from "./utils";
 
 const getTitle = ({ type }: Card) => {
   if (type === "model") {
@@ -36,61 +31,39 @@ export const AddToDashSelectDashModal = ({
   onClose,
   onChangeLocation,
 }: AddToDashSelectDashModalProps) => {
-  const mostRecentlyViewedDashboardQuery = useMostRecentlyViewedDashboard();
-  const mostRecentlyViewedDashboard = mostRecentlyViewedDashboardQuery.data;
-  const questionCollection = card.collection ?? ROOT_COLLECTION;
-  const isQuestionInPersonalCollection = Boolean(
-    questionCollection.is_personal,
-  );
-  const initialOpenCollectionId = getInitialOpenCollectionId({
-    isQuestionInPersonalCollection,
-    mostRecentlyViewedDashboard,
-  });
-  // when collectionId is null and loading is completed, show root collection
-  // as user didn't visit any dashboard last 24hrs
-  const collectionQuery = useCollectionQuery({
-    id: initialOpenCollectionId,
-    enabled: initialOpenCollectionId !== undefined,
-  });
-
-  const [openCollectionId] = useState<CollectionId | undefined>();
-  const openCollection = useSelector(state =>
-    Collections.selectors.getObject(state, {
-      entityId: openCollectionId,
-    }),
-  );
-
-  const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
-  const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
-  const showCreateNewDashboardOption =
-    !isQuestionInPersonalCollection || isOpenCollectionInPersonalCollection;
-
-  const navigateToDashboard = (dashboard: Pick<Dashboard, "id" | "name">) => {
-    onChangeLocation(
-      Urls.dashboard(dashboard, {
-        editMode: true,
-        addCardWithId: card.id,
-      }),
-    );
-  };
+  const {
+    data: mostRecentlyViewedDashboard,
+    isLoading,
+    error,
+  } = useMostRecentlyViewedDashboard();
 
   const onDashboardSelected = (
     selectedDashboard?: Pick<Dashboard, "id" | "name">,
   ) => {
     if (selectedDashboard?.id) {
-      navigateToDashboard(selectedDashboard);
+      onChangeLocation(
+        Urls.dashboard(selectedDashboard, {
+          editMode: true,
+          addCardWithId: card.id,
+        }),
+      );
     }
   };
-
-  const isLoading =
-    mostRecentlyViewedDashboardQuery.isLoading || collectionQuery.isLoading;
-  const error = mostRecentlyViewedDashboardQuery.error ?? collectionQuery.error;
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  //TODO:handle initial value for question in personal collection
+  const questionCollection = card.collection ?? ROOT_COLLECTION;
+  const isQuestionInPersonalCollection = !!questionCollection.is_personal;
+  const isRecentDashboardInPersonalCollection =
+    mostRecentlyViewedDashboard?.collection?.is_personal;
+
+  // we can only show the most recently viewed dashboard if it's not in a personal collection
+  // OR the question and dashboard are both in personal collections
+  const showRecentDashboard =
+    mostRecentlyViewedDashboard?.id &&
+    (!isQuestionInPersonalCollection || isRecentDashboardInPersonalCollection);
 
   return (
     <DashboardPickerModal
@@ -98,21 +71,19 @@ export const AddToDashSelectDashModal = ({
       onChange={onDashboardSelected}
       onClose={onClose}
       value={
-        mostRecentlyViewedDashboardQuery.data && !isQuestionInPersonalCollection
+        showRecentDashboard
           ? {
-              id: mostRecentlyViewedDashboardQuery.data?.id,
+              id: mostRecentlyViewedDashboard.id,
               model: "dashboard",
             }
-          : isQuestionInPersonalCollection && userPersonalCollectionId
-          ? {
-              id: userPersonalCollectionId,
+          : {
+              id: card.collection_id ?? "root",
               model: "collection",
             }
-          : undefined
       }
       options={{
-        allowCreateNew: showCreateNewDashboardOption,
-        showPersonalCollections: isQuestionInPersonalCollection,
+        allowCreateNew: true,
+        showPersonalCollections: true,
         showRootCollection: !isQuestionInPersonalCollection,
       }}
     />

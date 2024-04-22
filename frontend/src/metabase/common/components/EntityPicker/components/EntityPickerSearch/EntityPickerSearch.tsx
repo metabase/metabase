@@ -9,6 +9,7 @@ import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
 import type {
   SearchModel,
+  SearchRequest,
   SearchResult,
   SearchResultId,
 } from "metabase-types/api";
@@ -33,12 +34,14 @@ export function EntityPickerSearchInput({
   setSearchResults,
   models,
   searchFilter = defaultSearchFilter,
+  searchParams = {},
 }: {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   setSearchResults: (results: SearchResult[] | null) => void;
   models: SearchModel[];
   searchFilter?: (results: SearchResult[]) => SearchResult[];
+  searchParams?: Partial<SearchRequest>;
 }) {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
@@ -47,6 +50,7 @@ export function EntityPickerSearchInput({
     {
       q: debouncedSearchQuery,
       models,
+      ...searchParams,
     },
     {
       skip: !debouncedSearchQuery,
