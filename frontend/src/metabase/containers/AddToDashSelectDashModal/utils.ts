@@ -3,15 +3,15 @@ import {
   isPublicCollection,
 } from "metabase/collections/utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import type { CollectionId, Dashboard } from "metabase-types/api";
+import type { Collection, CollectionId, Dashboard } from "metabase-types/api";
 
 interface GetInitialOpenCollectionIdProps {
-  isQuestionInPersonalCollection: boolean;
+  questionCollection: Pick<Collection, "id" | "is_personal">;
   mostRecentlyViewedDashboard: Dashboard | undefined;
 }
 
 export const getInitialOpenCollectionId = ({
-  isQuestionInPersonalCollection,
+  questionCollection,
   mostRecentlyViewedDashboard,
 }: GetInitialOpenCollectionIdProps): undefined | CollectionId => {
   if (!mostRecentlyViewedDashboard) {
@@ -19,10 +19,10 @@ export const getInitialOpenCollectionId = ({
   }
 
   if (
-    isQuestionInPersonalCollection &&
+    questionCollection?.is_personal &&
     isInPublicCollection(mostRecentlyViewedDashboard)
   ) {
-    return ROOT_COLLECTION.id;
+    return coerceCollectionId(questionCollection.id ?? ROOT_COLLECTION.id);
   }
 
   return coerceCollectionId(mostRecentlyViewedDashboard.collection_id);

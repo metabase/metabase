@@ -51,7 +51,7 @@ const AddToDashSelectDashModal = ({
     questionCollection.is_personal,
   );
   const initialOpenCollectionId = getInitialOpenCollectionId({
-    isQuestionInPersonalCollection,
+    questionCollection,
     mostRecentlyViewedDashboard,
   });
   // when collectionId is null and loading is completed, show root collection
