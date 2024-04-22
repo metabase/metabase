@@ -2,8 +2,6 @@ import { t } from "ttag";
 
 import { Card, ScrollArea, Stack, Text } from "metabase/ui";
 
-import S from "./Example.module.css";
-
 interface Props {
   example: string;
 }
@@ -15,7 +13,6 @@ export const Example = ({ example }: Props) => {
 
       <Card
         bg="bg-light"
-        className={S.scrollArea}
         component={ScrollArea}
         p="sm"
         radius="xs"
@@ -24,8 +21,9 @@ export const Example = ({ example }: Props) => {
       >
         <Text
           size="sm"
-          style={{ fontFamily: "Monaco, monospace", minHeight: "1rem" }}
+          style={{ minHeight: "1rem" }}
           data-testid="combine-example"
+          variant="monospace"
         >
           {example}
         </Text>
