@@ -18,8 +18,8 @@
     :refer [Card Collection Dashboard DashboardCard Database Field LegacyMetric
             PermissionsGroup Pulse PulseCard PulseChannel QueryCache Segment
             Table User]]
-   [metabase.models.interface :as mi]
    [metabase.models.humanization :as humanization]
+   [metabase.models.interface :as mi]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
