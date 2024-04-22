@@ -1,10 +1,10 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import PropTypes from "prop-types";
 import { useCallback } from "react";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import DateTime from "metabase/components/DateTime";
 import EntityItem from "metabase/components/EntityItem";
+import type { Edit } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
@@ -12,44 +12,55 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+  OnCopy,
+  OnDrop,
+  OnMove,
+  OnToggleSelectedWithItem,
+} from "../types";
 
 import {
-  ItemCell,
-  ItemNameCell,
-  EntityIconCheckBox,
-  ItemLink,
-  TableItemSecondaryField,
   DescriptionIcon,
+  EntityIconCheckBox,
+  ItemCell,
+  ItemLink,
+  ItemNameCell,
   ModelDetailLink,
   RowActionsContainer,
+  TableItemSecondaryField,
 } from "./BaseItemsTable.styled";
 
-BaseTableItem.propTypes = {
-  databases: PropTypes.arrayOf(PropTypes.object),
-  bookmarks: PropTypes.arrayOf(PropTypes.object),
-  createBookmark: PropTypes.func,
-  deleteBookmark: PropTypes.func,
-  item: PropTypes.object,
-  draggable: PropTypes.bool,
-  collection: PropTypes.object,
-  selectedItems: PropTypes.arrayOf(PropTypes.object),
-  isSelected: PropTypes.bool,
-  isPinned: PropTypes.bool,
-  linkProps: PropTypes.object,
-  onCopy: PropTypes.func,
-  onMove: PropTypes.func,
-  onDrop: PropTypes.func,
-  onToggleSelected: PropTypes.func,
+export type BaseTableItemProps = {
+  databases?: Database[];
+  bookmarks?: Bookmark[];
+  createBookmark?: CreateBookmark;
+  deleteBookmark?: DeleteBookmark;
+  item: CollectionItem;
+  draggable?: boolean;
+  collection?: Collection;
+  selectedItems?: CollectionItem[];
+  isSelected?: boolean;
+  isPinned?: boolean;
+  linkProps?: any;
+  onCopy?: OnCopy;
+  onMove?: OnMove;
+  onDrop?: OnDrop;
+  onToggleSelected?: OnToggleSelectedWithItem;
 };
 
-export function BaseTableItem({
+export const BaseTableItem = ({
   databases,
   bookmarks,
   createBookmark,
   deleteBookmark,
   item,
   draggable = true,
-  collection = {},
+  collection,
   selectedItems,
   isSelected,
   isPinned,
@@ -58,14 +69,14 @@ export function BaseTableItem({
   onMove,
   onDrop,
   onToggleSelected,
-}) {
+}: BaseTableItemProps) => {
   const handleSelectionToggled = useCallback(() => {
-    onToggleSelected(item);
+    onToggleSelected?.(item);
   }, [item, onToggleSelected]);
 
   const renderRow = useCallback(() => {
     const canSelect =
-      collection.can_write && typeof onToggleSelected === "function";
+      collection?.can_write && typeof onToggleSelected === "function";
 
     const lastEditInfo = item["last-edit-info"];
     const lastEditedBy = getLastEditedBy(lastEditInfo);
@@ -183,14 +194,15 @@ export function BaseTableItem({
       {renderRow()}
     </ItemDragSource>
   );
-}
+};
 
-function getLastEditedBy(lastEditInfo) {
+const getLastEditedBy = (lastEditInfo?: Edit) => {
   if (!lastEditInfo) {
     return "";
   }
   const name = getFullName(lastEditInfo);
   return name || lastEditInfo.email;
-}
+};
 
+// eslint-disable-next-line import/no-default-export
 export default BaseTableItem;

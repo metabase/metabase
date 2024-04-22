@@ -1,45 +1,60 @@
-import PropTypes from "prop-types";
+import type { HTMLAttributes, PropsWithChildren } from "react";
 import { t } from "ttag";
 
 import CheckBox from "metabase/core/components/CheckBox";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+  OnCopy,
+  OnMove,
+  OnToggleSelectedWithItem,
+} from "../types";
 
 import {
-  ColumnHeader,
-  Table,
-  SortingIcon,
-  SortingControlContainer,
-  TBody,
-  LastEditedByCol,
   BulkSelectWrapper,
+  ColumnHeader,
+  LastEditedByCol,
+  SortingControlContainer,
+  SortingIcon,
+  Table,
+  TBody,
 } from "./BaseItemsTable.styled";
-import BaseTableItem from "./BaseTableItem";
+import BaseTableItem, { type BaseTableItemProps } from "./BaseTableItem";
 
-const sortingOptsShape = PropTypes.shape({
-  sort_column: PropTypes.string.isRequired,
-  sort_direction: PropTypes.oneOf(["asc", "desc"]).isRequired,
-});
-
-SortableColumnHeader.propTypes = {
-  name: PropTypes.string.isRequired,
-  sortingOptions: sortingOptsShape.isRequired,
-  onSortingOptionsChange: PropTypes.func.isRequired,
-  children: PropTypes.node,
+export type SortingOptions = {
+  sort_column: string;
+  sort_direction: "asc" | "desc";
 };
 
-function SortableColumnHeader({
+interface SortableColumnHeaderProps
+  extends PropsWithChildren<Partial<HTMLAttributes<HTMLDivElement>>> {
+  name: string;
+  sortingOptions: SortingOptions;
+  onSortingOptionsChange: (newSortingOptions: SortingOptions) => void;
+}
+
+export enum Sort {
+  Asc = "asc",
+  Desc = "desc",
+}
+
+const SortableColumnHeader = ({
   name,
   sortingOptions,
   onSortingOptionsChange,
   children,
   ...props
-}) {
+}: SortableColumnHeaderProps) => {
   const isSortingThisColumn = sortingOptions.sort_column === name;
   const direction = isSortingThisColumn
     ? sortingOptions.sort_direction
-    : "desc";
+    : Sort.Desc;
 
   const onSortingControlClick = () => {
-    const nextDirection = direction === "asc" ? "desc" : "asc";
+    const nextDirection = direction === Sort.Asc ? Sort.Desc : Sort.Asc;
     onSortingOptionsChange({
       sort_column: name,
       sort_direction: nextDirection,
@@ -55,52 +70,55 @@ function SortableColumnHeader({
         role="button"
       >
         {children}
-        <SortingIcon name={direction === "asc" ? "chevronup" : "chevrondown"} />
+        <SortingIcon
+          name={direction === Sort.Asc ? "chevronup" : "chevrondown"}
+        />
       </SortingControlContainer>
     </ColumnHeader>
   );
-}
-
-BaseItemsTable.Item = BaseTableItem;
-
-BaseItemsTable.propTypes = {
-  databases: PropTypes.arrayOf(PropTypes.object),
-  bookmarks: PropTypes.arrayOf(PropTypes.object),
-  createBookmark: PropTypes.func,
-  deleteBookmark: PropTypes.func,
-  items: PropTypes.arrayOf(PropTypes.object),
-  collection: PropTypes.object,
-  selectedItems: PropTypes.arrayOf(PropTypes.object),
-  hasUnselected: PropTypes.bool,
-  isPinned: PropTypes.bool,
-  renderItem: PropTypes.func,
-  sortingOptions: sortingOptsShape,
-  onSortingOptionsChange: PropTypes.func,
-  onToggleSelected: PropTypes.func,
-  onSelectAll: PropTypes.func,
-  onSelectNone: PropTypes.func,
-  onCopy: PropTypes.func,
-  onMove: PropTypes.func,
-  onDrop: PropTypes.func,
-  getIsSelected: PropTypes.func,
-
-  // Used for dragging
-  headless: PropTypes.bool,
 };
 
-function defaultItemRenderer({ item, ...props }) {
+export interface BaseItemsTableProps {
+  items: CollectionItem[];
+  collection?: Collection;
+  databases?: Database[];
+  bookmarks?: Bookmark[];
+  createBookmark?: CreateBookmark;
+  deleteBookmark?: DeleteBookmark;
+  selectedItems?: CollectionItem[];
+  hasUnselected?: boolean;
+  isPinned?: boolean;
+  renderItem?: (props: ItemRendererProps) => JSX.Element;
+  sortingOptions: SortingOptions;
+  onSortingOptionsChange: (newSortingOptions: SortingOptions) => void;
+  onToggleSelected?: OnToggleSelectedWithItem;
+  onSelectAll?: () => void;
+  onSelectNone?: () => void;
+  onCopy?: OnCopy;
+  onMove?: OnMove;
+  onDrop?: () => void;
+  getIsSelected?: (item: any) => boolean;
+  /** Used for dragging */
+  headless?: boolean;
+}
+
+type ItemRendererProps = {
+  item: CollectionItem;
+} & BaseTableItemProps;
+
+const defaultItemRenderer = ({ item, ...props }: ItemRendererProps) => {
   return (
     <BaseTableItem key={`${item.model}-${item.id}`} item={item} {...props} />
   );
-}
+};
 
-function BaseItemsTable({
+const BaseItemsTable = ({
   databases,
   bookmarks,
   createBookmark,
   deleteBookmark,
   items,
-  collection = {},
+  collection,
   selectedItems,
   hasUnselected,
   isPinned,
@@ -116,8 +134,8 @@ function BaseItemsTable({
   getIsSelected = () => false,
   headless = false,
   ...props
-}) {
-  const itemRenderer = item =>
+}: BaseItemsTableProps) => {
+  const itemRenderer = (item: CollectionItem) =>
     renderItem({
       databases,
       bookmarks,
@@ -134,7 +152,7 @@ function BaseItemsTable({
       onToggleSelected,
     });
 
-  const canSelect = collection.can_write || false;
+  const canSelect = !!collection?.can_write;
 
   return (
     <Table canSelect={canSelect} {...props}>
@@ -157,10 +175,8 @@ function BaseItemsTable({
               <ColumnHeader>
                 <BulkSelectWrapper>
                   <CheckBox
-                    checked={selectedItems?.length > 0 || false}
-                    indeterminate={
-                      (selectedItems?.length > 0 && hasUnselected) || false
-                    }
+                    checked={!!selectedItems?.length}
+                    indeterminate={!!selectedItems?.length && hasUnselected}
                     onChange={hasUnselected ? onSelectAll : onSelectNone}
                     aria-label={t`Select all items`}
                   />
@@ -171,7 +187,7 @@ function BaseItemsTable({
               name="model"
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
-              style={{ marginLeft: 6 }}
+              style={{ marginInlineStart: 6 }}
             >
               {t`Type`}
             </SortableColumnHeader>
@@ -203,6 +219,9 @@ function BaseItemsTable({
       <TBody>{items.map(itemRenderer)}</TBody>
     </Table>
   );
-}
+};
 
+BaseItemsTable.Item = BaseTableItem;
+
+// eslint-disable-next-line import/no-default-export
 export default BaseItemsTable;
