@@ -725,7 +725,7 @@
   "Returns a HoneySQL expression to exclude instances of the model that were created automatically as part of internally
    used content, such as Metabase Analytics, the sample database, or the sample dashboard. If a `table-alias` (string
    or keyword) is provided any columns will have a table alias in the returned expression."
-  {:added "0.32.0", :arglists '([model & {:keys [table-alias]}])}
+  {:arglists '([model & {:keys [table-alias]}])}
   dispatch-on-model)
 
 (defmethod exclude-internal-content-hsql :default
