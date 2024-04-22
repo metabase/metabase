@@ -3,7 +3,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { persistApi } from "metabase/api";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { PersistedModelSchema } from "metabase/schema";
-import { CardApi, PersistedModelsApi } from "metabase/services";
+import { CardApi } from "metabase/services";
 
 const REFRESH_CACHE = "metabase/entities/persistedModels/REFRESH_CACHE";
 
@@ -23,10 +23,18 @@ const PersistedModels = createEntity({
   schema: PersistedModelSchema,
 
   api: {
-    get: ({ id, type }, ...args) => {
+    get: ({ id, type }, dispatch) => {
       return type === "byModelId"
-        ? PersistedModelsApi.getForModel({ id }, ...args)
-        : PersistedModelSchema.get({ id }, ...args);
+        ? entityCompatibleQuery(
+            id,
+            dispatch,
+            persistApi.endpoints.getPersistedInfoByCard,
+          )
+        : entityCompatibleQuery(
+            id,
+            dispatch,
+            persistApi.endpoints.getPersistedInfo,
+          );
     },
     list: (entityQuery, dispatch) =>
       entityCompatibleQuery(
