@@ -37,7 +37,8 @@ export type ClickActionSection =
   | "standalone_filter"
   | "sum"
   | "summarize"
-  | "zoom";
+  | "zoom"
+  | "custom";
 
 export type ClickActionSectionDirection = "row" | "column";
 
@@ -80,11 +81,17 @@ type UrlClickActionBase = {
 
 export type UrlClickAction = ClickActionBase & UrlClickActionBase;
 
+export type CustomClickAction = ClickActionBase & {
+  type: "custom";
+  onClick?: (close: () => void) => void;
+};
+
 export type RegularClickAction =
   | ReduxClickAction
   | QuestionChangeClickAction
   | PopoverClickAction
-  | UrlClickAction;
+  | UrlClickAction
+  | CustomClickAction;
 
 export type DefaultClickAction = ClickActionBase & {
   default: true;

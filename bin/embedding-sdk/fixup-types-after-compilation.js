@@ -22,6 +22,8 @@ const REPLACES_MAP = {
 
   "metabase/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase/`,
 
+  "embedding-sdk/": `${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/embedding-sdk/`,
+
   "cljs/": `${SDK_PACKAGE_NAME}/dist/target/cljs_release/`,
 };
 

@@ -11,12 +11,13 @@ import {
 
 interface Props {
   clickActions: RegularClickAction[];
-
+  close: () => void;
   onClick: (action: RegularClickAction) => void;
 }
 
 export const ClickActionsView = ({
   clickActions,
+  close,
   onClick,
 }: Props): JSX.Element => {
   const sections = getGroupedAndSortedActions(clickActions);
@@ -43,6 +44,7 @@ export const ClickActionsView = ({
               <ClickActionControl
                 key={action.name}
                 action={action}
+                close={close}
                 onClick={() => onClick(action)}
               />
             ))}
