@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
+   [metabase.core :as mbc]
    [metabase.db :as mdb]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
@@ -290,6 +291,7 @@
   (testing "Internal content doesn't contribute to stats"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? true)
+      (mbc/ensure-audit-db-installed!)
       (testing "sense check: internal content exists"
         (is (true? (t2/exists? :model/User)))
         (is (true? (t2/exists? :model/Database)))
