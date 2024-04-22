@@ -62,11 +62,12 @@
     (testing (str "fails when a group has a block permission set, and the instance doesn't have the "
                   ":advanced-permissions premium feature enabled")
       (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
+        ;; Revoke native perms so that we can set block perms
+        (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
         (let [current-graph (data-perms.graph/api-graph)
               new-graph     (assoc-in current-graph [:groups group-id (mt/id) :view-data] :blocked)
               result        (mt/with-premium-features #{} ; disable premium features
                               (mt/user-http-request :crowberto :put 402 "permissions/graph" new-graph))]
-          (def result result)
           (is (= "The blocked permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                  result)))))))
 
@@ -84,24 +85,24 @@
           (testing "Group should have unrestricted view-data perms upon creation"
             (is (= :unrestricted
                    (test-db-perms group-id))))
+          ;; Revoke native perms so that we can set block perms
+          (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
           (testing "group has no existing permissions"
-            (mt/with-model-cleanup [Permissions]
-              (mt/with-restored-data-perms-for-group! group-id
-                (grant! group-id)
-                (is (nil? (test-db-perms group-id))))))
+            (mt/with-restored-data-perms-for-group! group-id
+              (grant! group-id)
+              (is (nil? (test-db-perms group-id)))))
           (testing "group has existing data permissions... :block should remove them"
-            (mt/with-model-cleanup [Permissions]
-              (mt/with-restored-data-perms-for-group! group-id
-                (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
-                (grant! group-id)
-                (is (nil? (test-db-perms group-id)))
-                (is (= #{:blocked}
-                       (t2/select-fn-set :perm_value
-                                         :model/DataPermissions
-                                         {:where [:and
-                                                  [:= :db_id (mt/id)]
-                                                  [:= :group_id group-id]
-                                                  [:= :perm_type (u/qualified-name :perms/view-data)]]})))))))))))
+            (mt/with-restored-data-perms-for-group! group-id
+              (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+              (grant! group-id)
+              (is (nil? (test-db-perms group-id)))
+              (is (= #{:blocked}
+                     (t2/select-fn-set :perm_value
+                                       :model/DataPermissions
+                                       {:where [:and
+                                                [:= :db_id (mt/id)]
+                                                [:= :group_id group-id]
+                                                [:= :perm_type (u/qualified-name :perms/view-data)]]}))))))))))
 
 (deftest update-graph-delete-sandboxes-test
   (testing "When setting `:blocked` permissions any GTAP rows for that Group/Database should get deleted."

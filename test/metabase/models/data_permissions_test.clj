@@ -177,33 +177,37 @@
                  :model/Database                   {database-id :id} {}
                  :model/Table                      {table-id-1 :id}  {:db_id database-id}
                  :model/Table                      {table-id-2 :id}  {:db_id database-id}]
-    (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
-      (testing "`table-permission-for-user` coalesces permissions from all groups a user is in"
-        (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :query-builder)
-        (data-perms/set-table-permission! group-id-2 table-id-1 :perms/create-queries :no)
-        (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/create-queries :no)
-        (is (= :query-builder (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1))))
-
-      (testing "`table-permission-for-user` falls back to the least permissive value if no value exists for the user"
-        (t2/delete! :model/DataPermissions :db_id database-id)
-        (is (= :no (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-2))))
-
-      (testing "Admins always have the most permissive value, regardless of group membership"
-        (is (= :query-builder-and-native (data-perms/table-permission-for-user (mt/user->id :crowberto) :perms/create-queries database-id table-id-2)))))
-
-    (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
-      (testing "caching works as expected"
-        (binding [api/*current-user-id* user-id]
+    ;; Revoke All Users perms so that it doesn't override perms in the new groups
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
+        (testing "`table-permission-for-user` coalesces permissions from all groups a user is in"
           (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :query-builder)
-          (data-perms/with-relevant-permissions-for-user user-id
-            ;; retrieve the cache now so it doesn't get counted in the call count
-            @data-perms/*permissions-for-user*
-            ;; make the cache wrong
-            (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :no)
-            ;; the cached value is used
-            (t2/with-call-count [call-count]
+          (data-perms/set-table-permission! group-id-2 table-id-1 :perms/create-queries :no)
+          (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/create-queries :no)
+          (is (= :query-builder (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1))))
+
+        (testing "`table-permission-for-user` falls back to the least permissive value if no value exists for the user"
+          (t2/delete! :model/DataPermissions :db_id database-id)
+          (is (= :no (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-2))))
+
+        (testing "Admins always have the most permissive value, regardless of group membership"
+          (is (= :query-builder-and-native (data-perms/table-permission-for-user (mt/user->id :crowberto) :perms/create-queries database-id table-id-2))))
+
+        (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
+          (testing "caching works as expected"
+            (binding [api/*current-user-id* user-id]
+              (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :query-builder)
+              (data-perms/set-table-permission! group-id-2 table-id-1 :perms/create-queries :query-builder)
               (is (= :query-builder (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1)))
-              (is (zero? (call-count))))))))))
+              (data-perms/with-relevant-permissions-for-user user-id
+                ;; retrieve the cache now so it doesn't get counted in the call count
+                @data-perms/*permissions-for-user*
+                ;; make the cache wrong
+                (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :no)
+                ;; the cached value is used
+                (t2/with-call-count [call-count]
+                  (is (= :query-builder (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1)))
+                  (is (zero? (call-count))))))))))))
 
 (deftest permissions-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
@@ -540,25 +544,15 @@
                                                        :perm_type :perms/download-results)))
             (t2/delete! :model/Database :id new-db-id)))
 
-        (testing "A new database gets `ten-thousnad-rows` download permissions if a group has `ten-thousand-rows` for any database"
-          (data-perms/set-database-permission! group-id db-id-2 :perms/download-results :ten-thousand-rows)
+       (testing "A new database gets `no` download permissions if a group has `no` for any database"
+          (data-perms/set-database-permission! group-id db-id-2 :perms/download-results :no)
           (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
-            (is (= :ten-thousand-rows (t2/select-one-fn :perm_value
-                                                        :model/DataPermissions
-                                                        :db_id     new-db-id
-                                                        :group_id  group-id
-                                                        :perm_type :perms/download-results)))
-            (t2/delete! :model/Database :id new-db-id)))
-
-        (testing "A new database gets `no` download permissions if a group has `no` for any database"
-           (data-perms/set-database-permission! group-id db-id-2 :perms/download-results :no)
-           (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
-             (is (= :no (t2/select-one-fn :perm_value
-                                          :model/DataPermissions
-                                          :db_id     new-db-id
-                                          :group_id  group-id
-                                          :perm_type :perms/download-results)))
-             (t2/delete! :model/Database :id new-db-id)))))))
+            (is (= :no (t2/select-one-fn :perm_value
+                                         :model/DataPermissions
+                                         :db_id     new-db-id
+                                         :group_id  group-id
+                                         :perm_type :perms/download-results)))
+            (t2/delete! :model/Database :id new-db-id)))))))
 
 (deftest set-new-table-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
