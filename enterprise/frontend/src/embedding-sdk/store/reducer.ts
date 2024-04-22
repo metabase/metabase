@@ -2,7 +2,11 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
 import { createAction } from "redux-actions";
 
-import type { SdkState, SdkStoreState } from "embedding-sdk/store/types";
+import type {
+  EmbeddingSessionTokenState,
+  SdkState,
+  SdkStoreState,
+} from "embedding-sdk/store/types";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 import { getSessionTokenState } from "./selectors";
@@ -27,13 +31,14 @@ export const getOrRefreshSession = createAsyncThunk(
     if (state.loading || isTokenValid) {
       return token;
     }
-    return dispatch(refreshTokenAsync(url));
+
+    return dispatch(refreshTokenAsync(url)).unwrap();
   },
 );
 
 export const refreshTokenAsync = createAsyncThunk(
   REFRESH_TOKEN,
-  async (url: string) => {
+  async (url: string): Promise<EmbeddingSessionTokenState["token"]> => {
     const response = await fetch(url, {
       method: "GET",
       credentials: "include",
