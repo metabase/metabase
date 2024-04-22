@@ -84,7 +84,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "68");
+        testPairedTooltipValues("count", "68");
       });
 
       openFilterOptions("City");
@@ -105,7 +105,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "1");
+        testPairedTooltipValues("count", "1");
       });
     });
 
@@ -157,7 +157,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "68");
+        testPairedTooltipValues("count", "68");
       });
 
       openFilterOptions("City");
@@ -181,7 +181,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "1");
+        testPairedTooltipValues("count", "1");
       });
     });
 
@@ -203,7 +203,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "68");
+        testPairedTooltipValues("count", "68");
       });
 
       openFilterOptions("City");
@@ -224,7 +224,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "1");
+        testPairedTooltipValues("count", "1");
       });
     });
 
@@ -245,7 +245,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "68");
+        testPairedTooltipValues("count", "68");
       });
 
       filterWidget().should("have.length", 1).and("contain", "City").click();
@@ -266,7 +266,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "1");
+        testPairedTooltipValues("count", "1");
       });
     });
 
