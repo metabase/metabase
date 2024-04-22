@@ -157,7 +157,7 @@
     honeysql.helpers                                              hh
     honeysql.types                                                htypes
     java-time                                                     t
-    macaw.core                                                    mac
+    macaw.core                                                    macaw
     malli.core                                                    mc
     malli.error                                                   me
     malli.experimental                                            mx
