@@ -98,12 +98,15 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
         dispatch(setLoginStatus({ status: "loading" }));
 
         try {
-          const [userData] = await Promise.all([
+          const [userResponse, [_, siteSettingsResponse]] = await Promise.all([
             dispatch(refreshCurrentUser()),
             dispatch(reloadSettings()),
           ]);
 
-          if (userData.meta.requestStatus === "rejected") {
+          if (
+            userResponse.meta.requestStatus === "rejected" ||
+            siteSettingsResponse.meta.requestStatus === "rejected"
+          ) {
             dispatch(
               setLoginStatus({
                 status: "error",
