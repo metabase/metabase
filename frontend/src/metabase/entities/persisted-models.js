@@ -40,7 +40,7 @@ const PersistedModels = createEntity({
       entityCompatibleQuery(
         entityQuery,
         dispatch,
-        persistApi.endpoints.listTasks,
+        persistApi.endpoints.listPersistedInfo,
       ),
     create: () => {
       throw new TypeError("PersistedModels.api.create is not supported");
