@@ -185,7 +185,7 @@ describe("scenarios > home > custom homepage", () => {
         .findByRole("button")
         .click();
 
-      popover().findByText("Orders in a dashboard").click();
+      entityPickerModal().findByText("Orders in a dashboard").click();
 
       undoToast().findByText("Changes saved").should("be.visible");
 
@@ -206,7 +206,7 @@ describe("scenarios > home > custom homepage", () => {
         .findByRole("button")
         .click();
 
-      popover().findByText("Orders in a dashboard").click();
+      entityPickerModal().findByText("Orders in a dashboard").click();
 
       cy.findByRole("navigation").findByText("Exit admin").click();
       cy.location("pathname").should(
@@ -253,20 +253,16 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByText(/Select a dashboard/i).click();
       });
 
-      popover().within(() => {
+      entityPickerModal().within(() => {
         //Ensure that personal collections have been removed
         cy.findByText("First collection").should("exist");
-        cy.findByText("Your personal collection").should("not.exist");
-        cy.findByText("All personal collections").should("not.exist");
-        cy.findByText(/nested/i).should("not.exist");
+        cy.findByText(/personal collection/).should("not.exist");
 
         //Ensure that child dashboards of personal collections do not
         //appear in search
-        cy.findByRole("button", { name: "Search" }).click();
-        cy.findByPlaceholderText("Search").type("das{enter}");
+        cy.findByPlaceholderText(/search/i).type("das{enter}");
         cy.findByText("Orders in a dashboard").should("exist");
         cy.findByText("nested dash").should("not.exist");
-        cy.findByRole("button", { name: /close/ }).click();
 
         cy.findByText("Orders in a dashboard").click();
       });

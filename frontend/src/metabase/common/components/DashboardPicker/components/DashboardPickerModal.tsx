@@ -30,6 +30,10 @@ interface DashboardPickerModalProps {
   onClose: () => void;
   options?: DashboardPickerOptions;
   value?: DashboardPickerInitialValueItem;
+  shouldDisableItem?: (
+    item: DashboardPickerItem,
+    isReadOnlyCollection?: boolean,
+  ) => boolean;
 }
 
 const canSelectItem = (
@@ -49,6 +53,7 @@ export const DashboardPickerModal = ({
   onClose,
   value = { model: "collection", id: "root" },
   options = defaultOptions,
+  shouldDisableItem,
 }: DashboardPickerModalProps) => {
   options = { ...defaultOptions, ...options };
 
@@ -106,6 +111,7 @@ export const DashboardPickerModal = ({
           options={options}
           models={["dashboard"]}
           ref={pickerRef}
+          shouldDisableItem={shouldDisableItem}
         />
       ),
     },
@@ -134,6 +140,8 @@ export const DashboardPickerModal = ({
         searchParams={
           options.showRootCollection === false
             ? { filter_items_in_personal_collection: "only" }
+            : options.showPersonalCollections === false
+            ? { filter_items_in_personal_collection: "exclude" }
             : undefined
         }
         trapFocus={!isCreateDialogOpen}

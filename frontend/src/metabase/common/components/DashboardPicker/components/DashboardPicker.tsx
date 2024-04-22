@@ -29,6 +29,10 @@ interface DashboardPickerProps {
   initialValue?: Pick<DashboardPickerItem, "model" | "id">;
   options: DashboardPickerOptions;
   models?: SearchModel[];
+  shouldDisableItem?: (
+    item: DashboardPickerItem,
+    isReadOnlyCollection?: boolean,
+  ) => boolean;
 }
 
 const useGetInitialCollection = (
@@ -70,6 +74,7 @@ const DashboardPickerInner = (
     initialValue,
     options,
     models = ["dashboard"],
+    shouldDisableItem,
   }: DashboardPickerProps,
   ref: Ref<unknown>,
 ) => {
@@ -196,6 +201,7 @@ const DashboardPickerInner = (
       onItemSelect={handleItemSelect}
       path={path}
       listResolver={CollectionItemPickerResolver}
+      shouldDisableItem={shouldDisableItem}
     />
   );
 };

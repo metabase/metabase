@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { DashboardPickerItem } from "metabase/common/components/DashboardPicker";
 import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -65,6 +66,13 @@ export const AddToDashSelectDashModal = ({
     mostRecentlyViewedDashboard?.id &&
     (!isQuestionInPersonalCollection || isRecentDashboardInPersonalCollection);
 
+  const shouldDisableItem = (
+    item: DashboardPickerItem,
+    isReadOnlyCollection?: boolean,
+  ) => {
+    return !!isReadOnlyCollection;
+  };
+
   return (
     <DashboardPickerModal
       title={getTitle(card)}
@@ -86,6 +94,7 @@ export const AddToDashSelectDashModal = ({
         showPersonalCollections: true,
         showRootCollection: !isQuestionInPersonalCollection,
       }}
+      shouldDisableItem={shouldDisableItem}
     />
   );
 };

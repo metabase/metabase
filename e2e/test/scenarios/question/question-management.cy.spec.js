@@ -354,6 +354,7 @@ describe(
 
                 entityPickerModal().within(() => {
                   // todo teach dashboard picker to conditionally filter these things
+                  cy.findByText("First collection").should("be.visible");
                   cy.findByText("Orders in a dashboard").should("not.exist");
                   cy.findByPlaceholderText(/Search/).type(
                     "Orders in a dashboard{Enter}",
