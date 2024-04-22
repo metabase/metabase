@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from "react";
+import type { HTMLAttributes, PropsWithChildren } from "react";
 import { t } from "ttag";
 
 import CheckBox from "metabase/core/components/CheckBox";
@@ -29,12 +29,12 @@ export type SortingOptions = {
   sort_direction: "asc" | "desc";
 };
 
-type SortableColumnHeaderProps = {
+interface SortableColumnHeaderProps
+  extends PropsWithChildren<Partial<HTMLAttributes<HTMLDivElement>>> {
   name: string;
   sortingOptions: SortingOptions;
   onSortingOptionsChange: (newSortingOptions: SortingOptions) => void;
-  children?: ReactNode;
-} & Partial<HTMLAttributes<HTMLDivElement>>;
+}
 
 export enum Sort {
   Asc = "asc",
