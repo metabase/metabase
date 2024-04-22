@@ -18,7 +18,7 @@
 
 (defn- resolve-metric [query metric-id]
   (when (integer? metric-id)
-    (lib.metadata/legacy-metric query metric-id)))
+    (lib.metadata/metric query metric-id)))
 
 (mu/defn ^:private metric-definition :- [:maybe ::lib.schema/stage.mbql]
   [{:keys [dataset-query], :as _metric-metadata} :- lib.metadata/MetricMetadata]
@@ -30,7 +30,7 @@
       (lib.util/query-stage normalized-definition -1))))
 
 (defmethod lib.ref/ref-method :metadata/metric
-  [{:keys [id lib.join/join-alias], :as metric-metadata}]
+  [{:keys [id ::lib.join/join-alias], :as metric-metadata}]
   (let [effective-type (or (:effective-type metric-metadata)
                            (:base-type metric-metadata)
                            (when-let [aggregation (first (:aggregation (metric-definition metric-metadata)))]
@@ -116,7 +116,7 @@
                                                       index])))
                                    (lib.aggregation/aggregations query stage-number))
          s-metric (source-metric query stage-number)
-         metrics (cond-> (joined-metrics query stage-number)
+         metrics (cond->> (joined-metrics query stage-number)
                    s-metric (cons s-metric))]
      (when (seq metrics)
        (if (empty? metric-aggregations)

@@ -278,7 +278,7 @@
   can-save
   query
   stage-count
-  uses-legacy-metric?
+  uses-metric?
   uses-segment?
   with-different-table]
  [lib.ref

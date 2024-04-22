@@ -53,6 +53,10 @@
   [metric-def]
   (lib.ref/ref metric-def))
 
+(defmethod ->op-arg :metadata/metric
+  [metric-def]
+  (lib.ref/ref metric-def))
+
 (defmethod ->op-arg :metadata/segment
   [segment-def]
   (lib.ref/ref segment-def))
