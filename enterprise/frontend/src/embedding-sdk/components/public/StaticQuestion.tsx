@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { useEffect, useState } from "react";
 
-import { PublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
@@ -142,8 +142,4 @@ const _StaticQuestion = ({
   );
 };
 
-export const StaticQuestion = (props: QueryVisualizationProps) => (
-  <PublicComponentWrapper>
-    <_StaticQuestion {...props} />
-  </PublicComponentWrapper>
-);
+export const StaticQuestion = withPublicComponentWrapper(_StaticQuestion);

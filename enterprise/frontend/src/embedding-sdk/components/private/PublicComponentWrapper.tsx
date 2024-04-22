@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk/components/private/SdkError";
@@ -29,3 +30,21 @@ export const PublicComponentWrapper = ({
 
   return children;
 };
+
+export function withPublicComponentWrapper<P>(
+  WrappedComponent: ComponentType<P>,
+): React.FC<P> {
+  const WithPublicComponentWrapper: React.FC<P> = props => {
+    return (
+      <PublicComponentWrapper>
+        <WrappedComponent {...props} />
+      </PublicComponentWrapper>
+    );
+  };
+
+  WithPublicComponentWrapper.displayName = `withPublicComponentWrapper(${
+    WrappedComponent.displayName || WrappedComponent.name || "Component"
+  })`;
+
+  return WithPublicComponentWrapper;
+}

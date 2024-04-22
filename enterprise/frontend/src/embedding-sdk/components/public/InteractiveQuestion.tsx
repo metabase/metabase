@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { useEffect } from "react";
 
-import { PublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -99,8 +99,5 @@ export const _InteractiveQuestion = ({
   );
 };
 
-export const InteractiveQuestion = (props: InteractiveQuestionProps) => (
-  <PublicComponentWrapper>
-    <_InteractiveQuestion {...props} />
-  </PublicComponentWrapper>
-);
+export const InteractiveQuestion =
+  withPublicComponentWrapper(_InteractiveQuestion);
