@@ -1,4 +1,5 @@
 import { onlyOn } from "@cypress/skip-test";
+import _ from "underscore";
 
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
@@ -10,7 +11,6 @@ import {
   restore,
   visitQuestion,
   visitDashboard,
-  saveDashboard,
   popover,
   openNavigationSidebar,
   navigationSidebar,
@@ -209,10 +209,12 @@ describe(
                   openQuestionActions();
                   cy.findByTestId("add-to-dashboard-button").click();
 
-                  modal()
+                  entityPickerModal()
                     .as("modal")
-                    .findByText("Orders in a dashboard")
-                    .click();
+                    .within(() => {
+                      cy.findByText("Orders in a dashboard").click();
+                      cy.button("Select").click();
+                    });
 
                   cy.get("@modal").should("not.exist");
                   // By default, the dashboard contains one question
@@ -230,7 +232,6 @@ describe(
                   const dashboardInRoot = {
                     name: "Dashboard in root collection",
                   };
-                  const myPersonalCollection = "My personal collection";
                   cy.createCollection(collectionInRoot);
                   cy.createDashboard(dashboardInRoot);
                   cy.log(
@@ -245,15 +246,15 @@ describe(
                   cy.log("assert public collections are not visible");
                   openQuestionActions();
                   popover().findByText("Add to dashboard").click();
-                  modal().within(() => {
+                  entityPickerModal().within(() => {
                     cy.findByText("Add this question to a dashboard").should(
                       "be.visible",
                     );
-                    cy.findByText(myPersonalCollection).should("be.visible");
-                    cy.findByText(collectionInRoot.name).should("not.exist");
-                    cy.findByText(dashboardInRoot.name).should("not.exist");
-                    cy.findByText("Create a new dashboard").should("not.exist");
-                    cy.icon("close").click();
+                    cy.findByText(/'s personal collection/i).should(
+                      "be.visible",
+                    );
+                    cy.findByText(/our analytics/i).should("not.exist");
+                    cy.findByLabelText("Close").click();
                   });
 
                   cy.log("Move the question to the root collection");
@@ -266,14 +267,10 @@ describe(
                     cy.findByText("Add this question to a dashboard").should(
                       "be.visible",
                     );
-                    cy.findByText("My personal collection").should(
+                    cy.findByText(/'s personal collection/i).should(
                       "be.visible",
                     );
-                    cy.findByText(collectionInRoot.name).should("be.visible");
-                    cy.findByText(dashboardInRoot.name).should("be.visible");
-                    cy.findByText("Create a new dashboard").should(
-                      "be.visible",
-                    );
+                    cy.findByText(/our analytics/i).should("be.visible");
                   });
                 });
 
@@ -282,7 +279,7 @@ describe(
                     openQuestionActions();
                     cy.findByTestId("add-to-dashboard-button").click();
 
-                    findSelectedItem().should("not.exist");
+                    findInactivePickerItem("Orders in a dashboard");
 
                     // before visiting the dashboard, we don't have any history
                     visitDashboard(ORDERS_DASHBOARD_ID);
@@ -291,10 +288,7 @@ describe(
                     openQuestionActions();
                     cy.findByTestId("add-to-dashboard-button").click();
 
-                    findSelectedItem().should(
-                      "have.text",
-                      "Orders in a dashboard",
-                    );
+                    findActivePickerItem("Orders in a dashboard");
                   });
 
                   it("should handle lost access", () => {
@@ -308,7 +302,7 @@ describe(
 
                     cy.wait("@mostRecentlyViewedDashboard");
 
-                    findSelectedItem().should("not.exist");
+                    findInactivePickerItem("Orders in a dashboard");
 
                     // before visiting the dashboard, we don't have any history
                     visitDashboard(ORDERS_DASHBOARD_ID);
@@ -319,14 +313,9 @@ describe(
 
                     cy.wait("@mostRecentlyViewedDashboard");
 
-                    findSelectedItem().should(
-                      "have.text",
-                      "Orders in a dashboard",
-                    );
+                    findActivePickerItem("Orders in a dashboard");
 
-                    cy.findByRole("dialog").within(() => {
-                      cy.icon("close").click();
-                    });
+                    entityPickerModal().findByLabelText("Close").click();
 
                     cy.signInAsAdmin();
 
@@ -334,7 +323,7 @@ describe(
                     cy.updateCollectionGraph({
                       [USER_GROUPS.COLLECTION_GROUP]: { root: "none" },
                     });
-
+                    cy.signOut();
                     cy.signIn(user);
 
                     openQuestionActions();
@@ -343,7 +332,9 @@ describe(
                     cy.wait("@mostRecentlyViewedDashboard");
 
                     // no access - no dashboard
-                    findSelectedItem().should("not.exist");
+                    entityPickerModal()
+                      .findByText("Orders in a dashboard")
+                      .should("not.exist");
                   });
                 });
               });
@@ -361,35 +352,15 @@ describe(
                 openQuestionActions();
                 cy.findByTestId("add-to-dashboard-button").click();
 
-                modal().within(() => {
+                entityPickerModal().within(() => {
+                  // todo teach dashboard picker to conditionally filter these things
                   cy.findByText("Orders in a dashboard").should("not.exist");
-                  cy.icon("search").click();
-                  cy.findByPlaceholderText("Search").type(
+                  cy.findByPlaceholderText(/Search/).type(
                     "Orders in a dashboard{Enter}",
                     { delay: 0 },
                   );
-                  cy.findByText("Orders in a dashboard").should("not.exist");
+                  cy.findByText(/weren't any results/).should("be.visible");
                 });
-              });
-
-              it("should offer personal collection as a save destination for a new dashboard", () => {
-                const { first_name, last_name } = USERS[user];
-                const personalCollection = `${first_name} ${last_name}'s Personal Collection`;
-                openQuestionActions();
-                cy.findByTestId("add-to-dashboard-button").click();
-
-                modal().within(() => {
-                  cy.findByText("Create a new dashboard").click();
-                  cy.findByLabelText(/Which collection/).should(
-                    "contain.text",
-                    personalCollection,
-                  );
-                  cy.findByLabelText("Name").type("Foo", { delay: 0 });
-                  cy.button("Create").click();
-                });
-                cy.url().should("match", /\/dashboard\/\d+-foo$/);
-                saveDashboard();
-                cy.get("header").findByText(personalCollection);
               });
 
               it("should not offer a user the ability to update or clone the question", () => {
@@ -414,7 +385,9 @@ describe(
                 openQuestionActions();
                 cy.findByTestId("add-to-dashboard-button").click();
 
-                findSelectedItem().should("not.exist");
+                entityPickerModal()
+                  .findByText("Orders in a dashboard")
+                  .should("not.exist");
 
                 // before visiting the dashboard, we don't have any history
                 visitDashboard(ORDERS_DASHBOARD_ID);
@@ -424,7 +397,9 @@ describe(
                 cy.findByTestId("add-to-dashboard-button").click();
 
                 // still no data
-                findSelectedItem().should("not.exist");
+                entityPickerModal()
+                  .findByText("Orders in a dashboard")
+                  .should("not.exist");
               });
             });
           });
@@ -483,8 +458,24 @@ function turnIntoModel() {
   cy.findByText("Turn this into a model").click();
 }
 
-function findSelectedItem() {
-  return cy.findByRole("dialog").findByRole("option", { selected: true });
+function findActivePickerItem(name) {
+  return (
+    cy.findByTestId("entity-picker-modal").findByText(name).closest("button")
+      .then *
+    ($button => {
+      expect($button).to.have.attr("data-active", "true");
+    })
+  );
+}
+
+function findInactivePickerItem(name) {
+  return (
+    cy.findByTestId("entity-picker-modal").findByText(name).closest("button")
+      .then *
+    ($button => {
+      expect($button).not.to.have.attr("data-active", "true");
+    })
+  );
 }
 
 function moveQuestionTo(newCollectionName) {

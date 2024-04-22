@@ -33,9 +33,9 @@ interface DashboardPickerModalProps {
 }
 
 const canSelectItem = (
-  item: DashboardPickerItem | null,
+  item: DashboardPickerItem | DashboardPickerInitialValueItem | null,
 ): item is DashboardPickerValueItem => {
-  return !!item && item.can_write !== false && item.model === "dashboard";
+  return item?.model === "dashboard";
 };
 
 const defaultOptions: DashboardPickerOptions = {
@@ -53,7 +53,7 @@ export const DashboardPickerModal = ({
   options = { ...defaultOptions, ...options };
 
   const [selectedItem, setSelectedItem] = useState<DashboardPickerItem | null>(
-    null,
+    canSelectItem(value) ? value : null,
   );
 
   const [
@@ -136,6 +136,7 @@ export const DashboardPickerModal = ({
             ? { filter_items_in_personal_collection: "only" }
             : undefined
         }
+        trapFocus={!isCreateDialogOpen}
       />
       <NewDashboardDialog
         isOpen={isCreateDialogOpen}

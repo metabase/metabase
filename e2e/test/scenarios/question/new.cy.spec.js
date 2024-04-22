@@ -400,12 +400,12 @@ describe("scenarios > question > new", () => {
         cy.button("Yes please!").click();
       });
 
-      cy.get("#AddToDashSelectDashModal").within(() => {
+      entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
-        cy.findByText(myPersonalCollection).should("be.visible");
-        cy.findByText(collectionInRoot.name).should("not.exist");
-        cy.findByText(dashboardInRoot.name).should("not.exist");
-        cy.findByText("Create a new dashboard").should("not.exist");
+        cy.findByText(/bobby tables's personal collection/i).should(
+          "be.visible",
+        );
+        cy.findByText(/our analytics/i).should("not.exist");
       });
     });
 

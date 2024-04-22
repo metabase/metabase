@@ -19,6 +19,7 @@ import {
   main,
   undoToast,
   setTokenFeatures,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -420,7 +421,7 @@ describeWithSnowplow("scenarios > setup", () => {
       .findByRole("button")
       .click();
 
-    popover().findByText("Orders in a dashboard").click();
+    entityPickerModal().findByText("Orders in a dashboard").click();
 
     undoToast().findByText("Changes saved").should("be.visible");
 
@@ -437,7 +438,7 @@ describeWithSnowplow("scenarios > setup", () => {
       .findByText(/Select a dashboard/i)
       .click();
 
-    popover().findByText("Orders in a dashboard").click();
+    entityPickerModal().findByText("Orders in a dashboard").click();
     modal().findByText("Save").click();
     expectGoodSnowplowEvent({
       event: "homepage_dashboard_enabled",
