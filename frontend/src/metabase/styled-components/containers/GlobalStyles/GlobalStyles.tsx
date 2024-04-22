@@ -1,10 +1,11 @@
 import { css, Global, useTheme } from "@emotion/react";
 
 import { baseStyle, getRootStyle } from "metabase/css/core/base.styled";
+import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { alpha, color } from "metabase/lib/colors";
+import { getSitePath } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
-import { defaultFontFiles } from "metabase/styled-components/fonts";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
 import { getFont, getFontFiles } from "../../selectors";
@@ -13,6 +14,8 @@ export const GlobalStyles = (): JSX.Element => {
   const font = useSelector(getFont);
   const fontFiles = useSelector(getFontFiles);
   const theme = useTheme();
+
+  const sitePath = getSitePath();
 
   const styles = css`
     :root {
@@ -23,19 +26,18 @@ export const GlobalStyles = (): JSX.Element => {
       --mb-color-focus: ${color("focus")};
     }
 
-    ${defaultFontFiles()}
+    ${defaultFontFiles({ baseUrl: sitePath })}
     ${fontFiles?.map(
-            file => css`
-              @font-face {
-                font-family: "${font}";
-                src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
-                font-weight: ${file.fontWeight};
-                font-style: normal;
-                font-display: swap;
-              }
-            `,
+      file => css`
+        @font-face {
+          font-family: "${font}";
+          src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
+          font-weight: ${file.fontWeight};
+          font-style: normal;
+          font-display: swap;
+        }
+      `,
     )}
-    
     ${aceEditorStyles}
     ${saveDomImageStyles}
     body {
