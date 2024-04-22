@@ -324,101 +324,6 @@ const getTicksDimensions = (
 // "1,000", which is significantly longer than "255".
 const TICK_OVERFLOW_BUFFER = 4;
 
-const getTickOverflows = (
-  chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
-  ticksDimensions: TicksDimensions,
-  chartWidth: number,
-  padding: Padding,
-  yAxisNameTotalWidth: number,
-  axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
-) => {
-  const maxOverflow = chartWidth / 8; // don't allow overflow greater than 12.5% of the chart width
-
-  let existingLeftPadding = padding.left + ticksDimensions.yTicksWidthLeft;
-  if (chartModel.leftAxisModel?.label) {
-    existingLeftPadding += yAxisNameTotalWidth;
-  }
-
-  let existingRightPadding = padding.right + ticksDimensions.yTicksWidthRight;
-  if (chartModel.rightAxisModel?.label) {
-    existingRightPadding += yAxisNameTotalWidth;
-  }
-
-  // We handle scatter plots differently, because echarts places the tick labels
-  // on the very edge of the x-axis for scatter plots only.
-  const isScatterPlot = chartModel.seriesModels.some(seriesModel => {
-    const seriesSettings = settings.series(
-      seriesModel.legacySeriesSettingsObjectKey,
-    );
-    return seriesSettings.display === "scatter";
-  });
-  if (isScatterPlot) {
-    return {
-      firstTickOverflow: Math.min(
-        Math.max(
-          ticksDimensions.firstXTickWidth / 2 -
-            existingLeftPadding +
-            TICK_OVERFLOW_BUFFER,
-          0,
-        ),
-        maxOverflow,
-      ),
-      lastTickOverflow: Math.min(
-        Math.max(
-          ticksDimensions.lastXTickWidth / 2 -
-            existingRightPadding +
-            TICK_OVERFLOW_BUFFER,
-          0,
-        ),
-        maxOverflow,
-      ),
-    };
-  }
-
-  let currentBoundaryWidth =
-    chartWidth -
-    padding.left -
-    padding.right -
-    ticksDimensions.yTicksWidthLeft -
-    ticksDimensions.yTicksWidthRight;
-
-  if (chartModel.leftAxisModel?.label) {
-    currentBoundaryWidth -= yAxisNameTotalWidth;
-  }
-  if (chartModel.rightAxisModel?.label) {
-    currentBoundaryWidth -= yAxisNameTotalWidth;
-  }
-
-  const dimensionWidth = getDimensionWidth(chartModel, currentBoundaryWidth);
-
-  const firstTickOverflow = Math.min(
-    Math.max(
-      ticksDimensions.firstXTickWidth / 2 -
-        dimensionWidth / 2 -
-        existingLeftPadding +
-        TICK_OVERFLOW_BUFFER,
-      0,
-    ),
-    maxOverflow,
-  );
-  let lastTickOverflow = 0;
-  if (axisEnabledSetting !== "rotate-45") {
-    lastTickOverflow = Math.min(
-      Math.max(
-        ticksDimensions.lastXTickWidth / 2 -
-          dimensionWidth / 2 -
-          existingRightPadding +
-          TICK_OVERFLOW_BUFFER,
-        0,
-      ),
-      maxOverflow,
-    );
-  }
-
-  return { firstTickOverflow, lastTickOverflow };
-};
-
 export const getChartPadding = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
@@ -433,6 +338,8 @@ export const getChartPadding = (
     right: CHART_STYLE.padding.x,
   };
 
+  // 1. Top Padding
+
   // Prevent data labels from being rendered outside the chart
   if (
     settings["graph.show_values"] ||
@@ -442,36 +349,7 @@ export const getChartPadding = (
       CHART_STYLE.seriesLabels.size + CHART_STYLE.seriesLabels.offset;
   }
 
-  const yAxisNameTotalWidth =
-    CHART_STYLE.axisName.size + CHART_STYLE.axisNameMargin;
-
-  const { firstTickOverflow, lastTickOverflow } = getTickOverflows(
-    chartModel,
-    settings,
-    ticksDimensions,
-    chartWidth,
-    padding,
-    yAxisNameTotalWidth,
-    axisEnabledSetting,
-  );
-
-  if (chartModel.leftAxisModel != null) {
-    padding.left += ticksDimensions.yTicksWidthLeft;
-
-    if (chartModel.leftAxisModel.label) {
-      padding.left += yAxisNameTotalWidth;
-    }
-  }
-  padding.left += Math.max(Math.ceil(firstTickOverflow), 0);
-
-  if (chartModel.rightAxisModel != null) {
-    padding.right += ticksDimensions.yTicksWidthRight;
-
-    if (chartModel.rightAxisModel.label) {
-      padding.right += yAxisNameTotalWidth;
-    }
-  }
-  padding.right += Math.max(Math.ceil(lastTickOverflow), 0);
+  // 2. Bottom Padding
 
   padding.bottom += ticksDimensions.xTicksHeight;
 
@@ -480,6 +358,84 @@ export const getChartPadding = (
     padding.bottom +=
       CHART_STYLE.axisName.size / 2 + CHART_STYLE.axisNameMargin;
   }
+
+  // 3. Side (Left and Right) Padding
+
+  const yAxisNameTotalWidth =
+    CHART_STYLE.axisName.size + CHART_STYLE.axisNameMargin;
+
+  padding.left += ticksDimensions.yTicksWidthLeft;
+  if (chartModel.leftAxisModel?.label) {
+    padding.left += yAxisNameTotalWidth;
+  }
+
+  padding.right += ticksDimensions.yTicksWidthRight;
+  if (chartModel.rightAxisModel?.label) {
+    padding.right += yAxisNameTotalWidth;
+  }
+
+  const maxOverflow = chartWidth / 8; // don't allow overflow greater than 12.5% of the chart width
+  let firstTickOverflow: number;
+  let lastTickOverflow: number;
+
+  // We handle non-categorical scatter plots differently, because echarts places
+  // the tick labels on the very edge of the x-axis for scatter plots only.
+  const isScatterPlot = chartModel.seriesModels.some(seriesModel => {
+    const seriesSettings = settings.series(
+      seriesModel.legacySeriesSettingsObjectKey,
+    );
+    return seriesSettings.display === "scatter";
+  });
+  if (isScatterPlot && chartModel.xAxisModel.axisType !== "category") {
+    firstTickOverflow = Math.min(
+      Math.max(
+        ticksDimensions.firstXTickWidth / 2 -
+          padding.left +
+          TICK_OVERFLOW_BUFFER,
+        0,
+      ),
+      maxOverflow,
+    );
+    lastTickOverflow = Math.min(
+      Math.max(
+        ticksDimensions.lastXTickWidth / 2 -
+          padding.right +
+          TICK_OVERFLOW_BUFFER,
+        0,
+      ),
+      maxOverflow,
+    );
+  } else {
+    const currentBoundaryWidth = chartWidth - padding.left - padding.right;
+    const dimensionWidth = getDimensionWidth(chartModel, currentBoundaryWidth);
+
+    firstTickOverflow = Math.min(
+      Math.max(
+        ticksDimensions.firstXTickWidth / 2 -
+          dimensionWidth / 2 -
+          padding.left +
+          TICK_OVERFLOW_BUFFER,
+        0,
+      ),
+      maxOverflow,
+    );
+    lastTickOverflow = 0;
+    if (axisEnabledSetting !== "rotate-45") {
+      lastTickOverflow = Math.min(
+        Math.max(
+          ticksDimensions.lastXTickWidth / 2 -
+            dimensionWidth / 2 -
+            padding.right +
+            TICK_OVERFLOW_BUFFER,
+          0,
+        ),
+        maxOverflow,
+      );
+    }
+  }
+
+  padding.left += firstTickOverflow;
+  padding.right += lastTickOverflow;
 
   return padding;
 };
