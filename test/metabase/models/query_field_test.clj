@@ -122,9 +122,7 @@
       (testing "mix of select table.* and named columns"
         (trigger-parse! card-id "select p.*, o.tax, o.total from orders o join people p on p.id = o.user_id")
         (let [qfs (query-fields-for-card card-id)]
-          ;; TODO: o.id is a bug; the query only has p.id but we don't link tables and columns yet
-          ;; c.f. Milestone 3 of https://github.com/metabase/metabase/issues/36911
-          (is (= (+ 13 #_people 2 #_tax-and-total 1 #_o.user_id 1 #_o.id)
+          (is (= (+ 13 #_people 2 #_tax-and-total 1 #_o.user_id)
                  (count qfs)))
           ;; 13 total, but id is referenced directly
           (is (= 12 (t2/count :model/QueryField :card_id card-id :direct_reference false)))
