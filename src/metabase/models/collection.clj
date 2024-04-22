@@ -948,8 +948,8 @@
   [_model & {:keys [table-alias]}]
   (let [maybe-alias #(h2x/identifier :field (some-> table-alias name) %)]
     [:and
-     [:not= (maybe-alias :type) "instance-analytics"]
-     [:= (maybe-alias :is_sample) false]]))
+     [:not= (maybe-alias :type) [:inline "instance-analytics"]]
+     [:not (maybe-alias :is_sample)]]))
 
 (defn- parent-identity-hash [coll]
   (let [parent-id (-> coll

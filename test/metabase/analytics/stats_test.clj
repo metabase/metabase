@@ -291,10 +291,22 @@
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? true)
       (testing "sense check: Collection, Dashboard, and Cards exist"
+        (is (true? (t2/exists? :model/User)))
+        (is (true? (t2/exists? :model/Database)))
+        (is (true? (t2/exists? :model/Table)))
+        (is (true? (t2/exists? :model/Field)))
         (is (true? (t2/exists? :model/Collection)))
         (is (true? (t2/exists? :model/Dashboard)))
         (is (true? (t2/exists? :model/Card))))
       (testing "All metrics should be empty"
+        (is (= {:users {}}
+               (#'stats/user-metrics)))
+        (is (= {:databases {}, :dbms_versions {}}
+               (#'stats/database-metrics)))
+        (is (= {:tables 0, :num_per_database {}, :num_per_schema {}}
+               (#'stats/table-metrics)))
+        (is (= {:num_per_table {}, :fields 0}
+               (#'stats/field-metrics)))
         (is (= {:collections 0, :cards_in_collections 0, :cards_not_in_collections 0, :num_cards_per_collection {}}
                (#'stats/collection-metrics)))
         (is (= {:questions {}, :public {}, :embedded {}}

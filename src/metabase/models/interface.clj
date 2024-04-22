@@ -727,3 +727,7 @@
    or keyword) is provided any columns will have a table alias in the returned expression."
   {:added "0.32.0", :arglists '([model & {:keys [table-alias]}])}
   dispatch-on-model)
+
+(defmethod exclude-internal-content-hsql :default
+  [_model & _]
+  [:= [:inline 1] [:inline 1]])

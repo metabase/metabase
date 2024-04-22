@@ -315,7 +315,8 @@
 (defn- database-metrics
   "Get metrics based on Databases."
   []
-  (let [databases (t2/select [Database :is_full_sync :engine :dbms_version])]
+  (let [databases (t2/select [:model/Database :is_full_sync :engine :dbms_version]
+                             {:where (mi/exclude-internal-content-hsql :model/Database)})]
     {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} databases]
                                     {:total    1
                                      :analyzed is-full-sync?}))
@@ -329,7 +330,10 @@
 (defn- table-metrics
   "Get metrics based on Tables."
   []
-  (let [tables (t2/select [Table :db_id :schema])]
+  (let [tables (t2/query {:select [:t.db_id :t.schema]
+                          :from   [[(t2/table-name :model/Table) :t]]
+                          :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
+                          :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})]
     {:tables           (count tables)
      :num_per_database (medium-histogram tables :db_id)
      :num_per_schema   (medium-histogram tables :schema)}))
@@ -337,7 +341,11 @@
 (defn- field-metrics
   "Get metrics based on Fields."
   []
-  (let [fields (t2/select [Field :table_id])]
+  (let [fields (t2/query {:select [:f.table_id]
+                          :from [[(t2/table-name Field) :f]]
+                          :join [[(t2/table-name Table) :t] [:= :t.id :f.table_id]
+                                 [(t2/table-name Database) :d] [:= :d.id :t.db_id]]
+                          :where (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})]
     {:fields        (count fields)
      :num_per_table (medium-histogram fields :table_id)}))
 
