@@ -12,7 +12,7 @@ import { Router, useRouterHistory } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
 import _ from "underscore";
 
-// import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
+import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
 import { SDK_REDUCERS } from "embedding-sdk/store";
 import type { SDKConfigType } from "embedding-sdk/types";
 import { Api } from "metabase/api";
@@ -169,11 +169,11 @@ function Wrapper({
 
 // TODO: Allow use-init-data tests to use this provider, but without the AppInitializeController
 function SdkWrapper({
-  // config,
+  config,
   children,
   store,
 }: {
-  // config: SDKConfigType;
+  config: SDKConfigType;
   children: React.ReactElement;
   store: any;
   history?: History;
@@ -184,9 +184,9 @@ function SdkWrapper({
     <Provider store={store}>
       <EmotionCacheProvider>
         <ThemeProvider>
-          {/*<AppInitializeController config={config}>*/}
-          {children}
-          {/*</AppInitializeController>*/}
+          <AppInitializeController config={config}>
+            {children}
+          </AppInitializeController>
         </ThemeProvider>
       </EmotionCacheProvider>
     </Provider>

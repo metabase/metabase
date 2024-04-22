@@ -10,7 +10,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { useInitData } from "embedding-sdk/hooks";
-import { useSdkSelector } from "embedding-sdk/store";
+import { SDK_REDUCERS, useSdkSelector } from "embedding-sdk/store";
 import { getIsLoggedIn, getLoginStatus } from "embedding-sdk/store/selectors";
 import type { LoginStatusError } from "embedding-sdk/store/types";
 import { createMockConfig } from "embedding-sdk/test/mocks/config";
@@ -110,11 +110,9 @@ const setup = ({
 
   renderWithProviders(<TestComponent authType={authType} {...configOpts} />, {
     storeInitialState: state,
-    mode: "sdk",
-    sdkConfig: createMockConfig({
-      authType,
-      ...configOpts,
-    } as Partial<SDKConfigType>),
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    customReducers: SDK_REDUCERS,
   });
 };
 
