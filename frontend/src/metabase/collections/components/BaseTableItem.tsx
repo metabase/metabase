@@ -78,8 +78,7 @@ export const BaseTableItem = ({
     const canSelect =
       collection?.can_write && typeof onToggleSelected === "function";
 
-    const lastEditInfo =
-      "last-edit-info" in item ? item["last-edit-info"] : undefined;
+    const lastEditInfo = item["last-edit-info"];
     const lastEditedBy = getLastEditedBy(lastEditInfo);
     const lastEditedAt = lastEditInfo
       ? moment(lastEditInfo.timestamp).format("MMMM DD, YYYY")
