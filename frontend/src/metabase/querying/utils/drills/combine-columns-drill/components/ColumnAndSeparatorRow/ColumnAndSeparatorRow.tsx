@@ -2,6 +2,7 @@ import { useState, type FocusEvent } from "react";
 import { t } from "ttag";
 
 import { Box, Button, Flex, Icon, Text, TextInput } from "metabase/ui";
+import { getThemeOverrides } from "metabase/ui/theme";
 import type * as Lib from "metabase-lib";
 
 import type { ColumnAndSeparator } from "../../types";
@@ -23,6 +24,8 @@ interface Props {
   onChange: (index: number, change: Partial<ColumnAndSeparator>) => void;
   onRemove: (index: number) => void;
 }
+
+const { fontFamilyMonospace } = getThemeOverrides();
 
 export const ColumnAndSeparatorRow = ({
   query,
@@ -60,6 +63,11 @@ export const ColumnAndSeparatorRow = ({
             }}
             onBlur={() => setIsFocused(false)}
             onFocus={handleFocus}
+            styles={{
+              input: {
+                fontFamily: fontFamilyMonospace as string,
+              },
+            }}
           />
 
           {separator === " " && !isFocused && (
