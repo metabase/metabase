@@ -32,13 +32,13 @@ export const persistApi = Api.injectEndpoints({
         url: `/api/persist/card/${id}`,
       }),
     }),
-    enablePersist: builder.query<unknown, void>({
+    enablePersist: builder.query<void, void>({
       query: () => ({
         method: "POST",
         url: "/api/persist/enable",
       }),
     }),
-    disablePersist: builder.query<unknown, void>({
+    disablePersist: builder.query<void, void>({
       query: () => ({
         method: "POST",
         url: "/api/persist/disable",
