@@ -17,7 +17,7 @@ export const Example = ({ example }: Props) => {
         bg="bg-light"
         className={S.scrollArea}
         component={ScrollArea}
-        p="md"
+        p="sm"
         radius="xs"
         shadow="none"
         withBorder
