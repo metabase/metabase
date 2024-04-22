@@ -10,7 +10,6 @@
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -697,9 +696,7 @@
   "Sets permissions for a newly-added database to their appropriate values for a single group. For certain permission
   types, the value computed based on the existing permissions the group has for other databases."
   [group-or-id db-or-id]
-  (log/errorf "Setting new database permissions for group %d on database %d" group-or-id db-or-id)
   (doseq [[perm-type perm-value] (new-database-permissions group-or-id)]
-    (log/errorf "Setting %s to %s" perm-type perm-value)
     (set-database-permission! group-or-id db-or-id perm-type perm-value)))
 
 (mu/defn set-table-permissions!
