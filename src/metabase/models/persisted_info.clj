@@ -123,6 +123,7 @@
   ;; TODO confirm that the corresponding tables will still be cleaned up.
   (t2/update! PersistedInfo
               (merge {:active true} conditions-map)
+              ;; TODO perhaps we should immediately kick off a recalculation of these caches
               {:active false, :state "creating", :state_change_at :%now}))
 
 (defn- create-row
