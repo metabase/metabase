@@ -1,18 +1,19 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { store, useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   getOrRefreshSession,
   setLoginStatus,
 } from "embedding-sdk/store/reducer";
-import {
-  getLoginStatus,
-  getSessionTokenState,
-} from "embedding-sdk/store/selectors";
+import { getLoginStatus } from "embedding-sdk/store/selectors";
 import type { EmbeddingSessionTokenState } from "embedding-sdk/store/types";
-import type { SDKConfigType } from "embedding-sdk/types";
+import type {
+  SDKConfigType,
+  SdkConfigWithApiKey,
+  SdkConfigWithJWT,
+} from "embedding-sdk/types";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
 import { refreshCurrentUser } from "metabase/redux/user";
@@ -24,9 +25,9 @@ interface InitDataLoaderParameters {
   config: SDKConfigType;
 }
 
-const getErrorMessage = (authType: SDKConfigType["authType"]) => {
+const getErrorMessage = (authType: SDKConfigType["authType"] | string) => {
   if (authType === "jwt") {
-    return t`Could not authenticate: invalid JWT token`;
+    return t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`;
   }
 
   if (authType === "apiKey") {
@@ -36,65 +37,76 @@ const getErrorMessage = (authType: SDKConfigType["authType"]) => {
   return t`Invalid auth type`;
 };
 
+const isJwtAuth = (config: SDKConfigType): config is SdkConfigWithJWT =>
+  config.authType === "jwt" && !!config.jwtProviderUri;
+
+const isApiKeyAuth = (config: SDKConfigType): config is SdkConfigWithApiKey =>
+  config.authType === "apiKey" && !!config.apiKey;
+
 export const useInitData = ({ config }: InitDataLoaderParameters) => {
   const dispatch = useSdkDispatch();
 
   const loginStatus = useSdkSelector(getLoginStatus);
-
-  const [sessionTokenState, setSessionTokenState] =
-    useState<EmbeddingSessionTokenState | null>(null);
 
   useEffect(() => {
     registerVisualizationsOnce();
     dispatch(setLoginStatus({ status: "uninitialized" }));
   }, [dispatch]);
 
-  const jwtProviderUri =
-    config.authType === "jwt" ? config.jwtProviderUri : null;
+  const setupJwtAuth = useCallback(
+    (config: SdkConfigWithJWT) => {
+      api.onBeforeRequest = async () => {
+        const tokenState = await dispatch(
+          getOrRefreshSession(config.jwtProviderUri),
+        );
 
-  useEffect(() => {
-    if (config.authType === "jwt") {
-      const updateToken = () => {
-        const currentState = store.getState();
-        setSessionTokenState(getSessionTokenState(currentState));
+        api.sessionToken = (
+          tokenState.payload as EmbeddingSessionTokenState["token"]
+        )?.id;
       };
-
-      const unsubscribe = store.subscribe(updateToken);
-
-      if (jwtProviderUri) {
-        dispatch(getOrRefreshSession(jwtProviderUri));
-      }
-
-      updateToken();
-
-      return () => unsubscribe();
-    }
-  }, [config.authType, dispatch, jwtProviderUri]);
-
-  useEffect(() => {
-    api.basename = config.metabaseInstanceUrl;
-
-    if (config.authType === "jwt" && config.jwtProviderUri) {
-      api.onBeforeRequest = () =>
-        dispatch(getOrRefreshSession(config.jwtProviderUri));
-      api.sessionToken = sessionTokenState?.token?.id;
       dispatch(setLoginStatus({ status: "initialized" }));
-    } else if (config.authType === "apiKey" && config.apiKey) {
+    },
+    [dispatch],
+  );
+
+  const setupApiKeyAuth = useCallback(
+    (config: SdkConfigWithApiKey) => {
       api.apiKey = config.apiKey;
       dispatch(setLoginStatus({ status: "initialized" }));
-    } else {
-      dispatch(
-        setLoginStatus({
-          status: "error",
-          error: new Error(getErrorMessage(config.authType)),
-        }),
-      );
-    }
-  }, [config, dispatch, sessionTokenState]);
+    },
+    [dispatch],
+  );
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (loginStatus.status === "initialized") {
+    if (loginStatus.status === "uninitialized") {
+      api.basename = config.metabaseInstanceUrl;
+
+      if (isJwtAuth(config)) {
+        setupJwtAuth(config);
+      } else if (isApiKeyAuth(config)) {
+        setupApiKeyAuth(config);
+      } else {
+        dispatch(
+          setLoginStatus({
+            status: "error",
+            error: new Error(getErrorMessage(config.authType)),
+          }),
+        );
+      }
+    }
+  }, [
+    config,
+    config.authType,
+    config.metabaseInstanceUrl,
+    dispatch,
+    loginStatus.status,
+    setupApiKeyAuth,
+    setupJwtAuth,
+  ]);
+
+  useEffect(() => {
+    if (loginStatus.status === "initialized") {
+      const fetchData = async () => {
         dispatch(setLoginStatus({ status: "loading" }));
 
         try {
@@ -125,9 +137,9 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
             }),
           );
         }
-      }
-    };
+      };
 
-    fetchData();
+      fetchData();
+    }
   }, [config.authType, dispatch, loginStatus.status]);
 };

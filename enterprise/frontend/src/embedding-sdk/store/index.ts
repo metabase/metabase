@@ -8,7 +8,7 @@ import { getStore } from "metabase/store";
 
 import { sdk } from "./reducer";
 
-const SDK_REDUCERS = {
+export const SDK_REDUCERS = {
   ...reducers,
   sdk,
 };
