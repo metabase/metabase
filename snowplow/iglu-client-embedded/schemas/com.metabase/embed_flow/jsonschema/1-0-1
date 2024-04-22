@@ -5,7 +5,7 @@
     "vendor": "com.metabase",
     "name": "embed_flow",
     "format": "jsonschema",
-    "version": "1-0-0"
+    "version": "1-0-1"
   },
   "type": "object",
   "properties": {
@@ -188,6 +188,13 @@
       ],
       "minimum": 0,
       "maximum": 2147483647
+    },
+    "is_example_dashboard": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "description": "Indicates if the dashboard is the example dashboard linked in the embedding homepage."
     }
   },
   "required": [
