@@ -8,6 +8,7 @@ import { Icon } from "metabase/ui";
 export const Container = styled.div`
   padding: 1.25rem 1rem 1.25rem;
 
+  color: ${color("text-dark")};
   font-size: 0.875rem;
   line-height: 1.5rem;
 `;
