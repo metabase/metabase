@@ -5,6 +5,15 @@ export const getTextOverrides = (): MantineThemeOverride["components"] => ({
     defaultProps: {
       color: "text-dark",
       size: "md",
+      variant: "default",
+    },
+    variants: {
+      default: () => ({}),
+      monospace: theme => ({
+        root: {
+          fontFamily: theme.fontFamilyMonospace,
+        },
+      }),
     },
     sizes: {
       md: () => ({
