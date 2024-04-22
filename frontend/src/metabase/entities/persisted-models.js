@@ -1,9 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { persistApi } from "metabase/api";
+import { cardApi, persistApi } from "metabase/api";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { PersistedModelSchema } from "metabase/schema";
-import { CardApi } from "metabase/services";
 
 const REFRESH_CACHE = "metabase/entities/persistedModels/REFRESH_CACHE";
 
@@ -54,9 +53,14 @@ const PersistedModels = createEntity({
   },
 
   objectActions: {
-    refreshCache: async job => {
-      await CardApi.refreshModelCache({ id: job.card_id });
-      return { type: REFRESH_CACHE, payload: job };
+    refreshCache: job => async dispatch => {
+      await entityCompatibleQuery(
+        job.card_id,
+        dispatch,
+        cardApi.endpoints.refreshModelCache,
+      );
+
+      dispatch({ type: REFRESH_CACHE, payload: job });
     },
   },
 

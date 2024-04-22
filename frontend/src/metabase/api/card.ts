@@ -75,6 +75,15 @@ export const cardApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
     }),
+    refreshModelCache: builder.mutation<void, CardId>({
+      query: id => ({
+        method: "POST",
+        url: `/api/card/${id}/refresh`,
+      }),
+      // TODO invalidate persisted list
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("card", id)]),
+    }),
   }),
 });
 
@@ -85,4 +94,5 @@ export const {
   useUpdateCardMutation,
   useDeleteCardMutation,
   useCopyCardMutation,
+  useRefreshModelCacheMutation,
 } = cardApi;
