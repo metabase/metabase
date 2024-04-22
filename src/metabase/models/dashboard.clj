@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.automagic-dashboards.populate :as populate]
+   [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
@@ -29,6 +30,7 @@
    [metabase.query-processor.async :as qp.async]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru deferred-trun tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -568,6 +570,10 @@
   [_model k dashboards]
   (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card])]
     (map #(assoc %1 k %2) dashboards (map dashboard->resolved-params dashboards-with-cards))))
+
+(defmethod mi/exclude-internal-content-hsql :model/Dashboard
+  [_model & {:keys [table-alias]}]
+  [:not= (h2x/identifier :field (some-> table-alias name) :creator_id) config/internal-mb-user-id])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SERIALIZATION                                                    |

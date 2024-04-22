@@ -944,6 +944,13 @@
           :read  (perms/collection-read-path collection-or-id)
           :write (perms/collection-readwrite-path collection-or-id))})))
 
+(defmethod mi/exclude-internal-content-hsql :model/Collection
+  [_model & {:keys [table-alias]}]
+  (let [maybe-alias #(h2x/identifier :field (some-> table-alias name) %)]
+    [:and
+     [:not= (maybe-alias :type) "instance-analytics"]
+     [:= (maybe-alias :is_sample) false]]))
+
 (defn- parent-identity-hash [coll]
   (let [parent-id (-> coll
                       (t2/hydrate :parent_id)
