@@ -176,6 +176,10 @@ describe("EmbedHomepage (OSS)", () => {
       });
 
       await waitForElementToBeRemoved(() => queryFeedbackModal());
+
+      expect(
+        screen.queryByText("Your feedback was submitted, thank you."),
+      ).not.toBeInTheDocument();
     });
 
     it("should send feedback when submitting the modal", async () => {
@@ -203,6 +207,10 @@ describe("EmbedHomepage (OSS)", () => {
       });
 
       await waitForElementToBeRemoved(() => queryFeedbackModal());
+
+      expect(
+        screen.getByText("Your feedback was submitted, thank you."),
+      ).toBeInTheDocument();
     });
   });
 });
