@@ -20,6 +20,7 @@ export * from "./notifications";
 export * from "./pagination";
 export * from "./permissions";
 export * from "./performance";
+export * from "./persist";
 export * from "./query";
 export * from "./revision";
 export * from "./schema";
