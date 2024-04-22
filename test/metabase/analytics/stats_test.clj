@@ -286,11 +286,11 @@
                                          ["6-10" [:int {:min 1}]]]]]
                 (#'stats/alert-metrics)))))
 
-(deftest sample-content-metrics-test
-  (testing "Sample content doesn't contribute to stats"
+(deftest internal-content-metrics-test
+  (testing "Internal content doesn't contribute to stats"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? true)
-      (testing "sense check: Collection, Dashboard, and Cards exist"
+      (testing "sense check: internal content exists"
         (is (true? (t2/exists? :model/User)))
         (is (true? (t2/exists? :model/Database)))
         (is (true? (t2/exists? :model/Table)))
