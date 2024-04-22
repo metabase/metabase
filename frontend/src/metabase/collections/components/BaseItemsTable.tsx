@@ -176,7 +176,7 @@ const BaseItemsTable = ({
                 <BulkSelectWrapper>
                   <CheckBox
                     checked={!!selectedItems?.length}
-                    indeterminate={!!selectedItems?.length && !!hasUnselected}
+                    indeterminate={!!selectedItems?.length && hasUnselected}
                     onChange={hasUnselected ? onSelectAll : onSelectNone}
                     aria-label={t`Select all items`}
                   />
