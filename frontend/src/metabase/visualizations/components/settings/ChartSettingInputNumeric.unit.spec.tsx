@@ -76,9 +76,7 @@ describe("ChartSettingInputNumber", () => {
     expect(input).toHaveDisplayValue("");
     expect(onChange).toHaveBeenCalledWith(undefined);
 
-    // Inputs with `e` that are not valid scientific notation are invalid, so
-    // the onChange method will be called with `undefined`. However, since `e`
-    // itself is a valid input character the input field will not be reset.
+    // Inputs with `e` that are not valid scientific notation
     type({ input, value: "e123" });
     expect(input).toHaveDisplayValue("");
     expect(onChange).toHaveBeenCalledWith(undefined);
