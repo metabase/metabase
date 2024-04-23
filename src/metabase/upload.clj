@@ -520,10 +520,10 @@
 (defn- no-joins?
   "Returns true if `query` has no joins in it, otherwise false."
   [query]
-  (let [all-joins (mapcat (fn [stage]
-                            (lib/joins query stage))
-                          (range (lib/stage-count query)))]
-    (empty? all-joins)))
+  (->> (range (lib/stage-count query))
+       (mapcat (fn [stage]
+                 (lib/joins query stage)))
+       (empty?)))
 
 (defn- only-table-id
   "For models that depend on only one table, return its id, otherwise return nil. Doesn't support native queries."
