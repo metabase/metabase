@@ -130,6 +130,24 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
   trim: { displayName: `trim`, type: "string", args: ["string"] },
   rtrim: { displayName: `rtrim`, type: "string", args: ["string"] },
   ltrim: { displayName: `ltrim`, type: "string", args: ["string"] },
+  domain: {
+    displayName: `domain`,
+    type: "string",
+    args: ["string"],
+    requiresFeature: "regex",
+  },
+  subdomain: {
+    displayName: `subdomain`,
+    type: "string",
+    args: ["string"],
+    requiresFeature: "regex",
+  },
+  host: {
+    displayName: `host`,
+    type: "string",
+    args: ["string"],
+    requiresFeature: "regex",
+  },
   // numeric functions
   abs: {
     displayName: `abs`,
@@ -460,6 +478,9 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "rtrim",
   "ltrim",
   "length",
+  "domain",
+  "subdomain",
+  "host",
   // number
   "abs",
   "floor",

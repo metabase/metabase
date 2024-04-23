@@ -67,7 +67,7 @@ function addParametersToDashboard() {
     cy.button("Add filter").click();
   });
 
-  setFilter("Text or Category", "Contains");
+  setFilter("Text or Category", "Contains", "Text contains");
 
   cy.findByText("Select…").click();
   popover().findByText("Title").click();

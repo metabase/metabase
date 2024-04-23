@@ -11,6 +11,7 @@ import { createAction, createThunkAction } from "metabase/lib/redux";
 import {
   createParameter,
   setParameterName as setParamName,
+  setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
@@ -195,7 +196,7 @@ export const RESET_PARAMETER_MAPPINGS =
   "metabase/dashboard/RESET_PARAMETER_MAPPINGS";
 export const resetParameterMapping = createThunkAction(
   SET_PARAMETER_MAPPING,
-  (parameterId: ParameterId) => {
+  (parameterId: ParameterId, dashcardId?: DashCardId) => {
     return (dispatch, getState) => {
       const dashboard = getDashboard(getState());
 
@@ -205,9 +206,9 @@ export const resetParameterMapping = createThunkAction(
 
       const allDashcards = getDashcards(getState());
 
-      const dashcards = dashboard.dashcards.map(
-        dashcardId => allDashcards[dashcardId],
-      );
+      const dashcards = dashcardId
+        ? [allDashcards[dashcardId]]
+        : dashboard.dashcards.map(dashcardId => allDashcards[dashcardId]);
 
       for (const dashcard of dashcards) {
         if (!dashcard.parameter_mappings?.length) {
@@ -266,6 +267,33 @@ export const setParameterName = createThunkAction(
     );
     return { id: parameterId, name };
   },
+);
+
+export const SET_PARAMETER_TYPE = "metabase/dashboard/SET_PARAMETER_TYPE";
+export const setParameterType = createThunkAction(
+  SET_PARAMETER_TYPE,
+  (parameterId: ParameterId, type: string, sectionId: string) =>
+    (dispatch, getState) => {
+      const parameter = getParameters(getState()).find(
+        ({ id }) => id === parameterId,
+      );
+
+      if (!parameter) {
+        return;
+      }
+
+      if (parameter.sectionId !== sectionId) {
+        // reset all mappings if type has changed,
+        // but do not reset when only operator has changed
+        dispatch(resetParameterMapping(parameterId));
+      }
+
+      updateParameter(dispatch, getState, parameterId, parameter =>
+        setParamType(parameter, type, sectionId),
+      );
+
+      return { id: parameterId, type };
+    },
 );
 
 export const setParameterFilteringParameters = createThunkAction(

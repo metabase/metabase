@@ -2,18 +2,24 @@ import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import type { IconName } from "metabase/ui";
+import type { CollectionItem, CollectionItemModel } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockCollectionItem,
+} from "metabase-types/api/mocks";
 
 import PinnedItemCard from "./PinnedItemCard";
 
 const mockOnCopy = jest.fn();
 const mockOnMove = jest.fn();
 
-const defaultCollection = {
+const defaultCollection = createMockCollection({
   can_write: true,
   id: 1,
   name: "Collection Foo",
   archived: false,
-};
+});
 
 const HEADING_1_TEXT = "Heading 1";
 const HEADING_1_MARKDOWN = `# ${HEADING_1_TEXT}`;
@@ -32,7 +38,7 @@ const MARKDOWN_AS_TEXT = [HEADING_1_TEXT, HEADING_2_TEXT, PARAGRAPH_TEXT].join(
   " ",
 );
 
-function getCollectionItem({
+const getCollectionItem = ({
   id = 1,
   model = "dashboard",
   name = "My Item",
@@ -43,8 +49,18 @@ function getCollectionItem({
   setArchived = jest.fn(),
   setPinned = jest.fn(),
   ...rest
-} = {}) {
-  return {
+}: {
+  id?: number;
+  model?: CollectionItemModel;
+  name?: string;
+  description?: string;
+  collection_position?: number;
+  icon?: IconName;
+  url?: string;
+  setArchived?: (isArchived: boolean) => void;
+  setPinned?: (isPinned: boolean) => void;
+} = {}): CollectionItem & { description: string } => {
+  return createMockCollectionItem({
     ...rest,
     id,
     model,
@@ -55,10 +71,11 @@ function getCollectionItem({
     getUrl: () => url,
     setArchived,
     setPinned,
-  };
-}
+  }) as CollectionItem & { description: string };
+};
 
-const defaultItem = getCollectionItem();
+const defaultItem: CollectionItem & { description: string } =
+  getCollectionItem();
 
 function setup({ item = defaultItem, collection = defaultCollection } = {}) {
   mockOnCopy.mockReset();
@@ -72,6 +89,8 @@ function setup({ item = defaultItem, collection = defaultCollection } = {}) {
           collection={collection}
           onCopy={mockOnCopy}
           onMove={mockOnMove}
+          createBookmark={jest.fn()}
+          deleteBookmark={jest.fn()}
         />
       )}
     />,
@@ -96,7 +115,7 @@ describe("PinnedItemCard", () => {
   });
 
   it("should show a default description if there is no item description", () => {
-    setup({ item: getCollectionItem({ description: null }) });
+    setup({ item: getCollectionItem({ description: "" }) });
     expect(screen.getByText("A dashboard")).toBeInTheDocument();
   });
 

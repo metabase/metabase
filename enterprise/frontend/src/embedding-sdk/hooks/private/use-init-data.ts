@@ -1,16 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
-import { store } from "embedding-sdk/store";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   getOrRefreshSession,
-  getSessionTokenState,
+  setLoginStatus,
 } from "embedding-sdk/store/reducer";
+import { getLoginStatus } from "embedding-sdk/store/selectors";
 import type { EmbeddingSessionTokenState } from "embedding-sdk/store/types";
 import type { SDKConfigType } from "embedding-sdk/types";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
-import { useDispatch } from "metabase/lib/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
 
@@ -20,69 +21,91 @@ interface InitDataLoaderParameters {
   config: SDKConfigType;
 }
 
-export const useInitData = ({
-  config,
-}: InitDataLoaderParameters): {
-  isLoggedIn: boolean;
-  isInitialized: boolean;
-} => {
-  const dispatch = useDispatch();
+const getErrorMessage = (authType: SDKConfigType["authType"]) => {
+  if (authType === "jwt") {
+    return t`Could not authenticate: invalid JWT token`;
+  }
 
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [sessionTokenState, setSessionTokenState] =
-    useState<EmbeddingSessionTokenState | null>(null);
+  if (authType === "apiKey") {
+    return t`Could not authenticate: invalid API key`;
+  }
+
+  return t`Invalid auth type`;
+};
+
+export const useInitData = ({ config }: InitDataLoaderParameters) => {
+  const dispatch = useSdkDispatch();
+
+  const loginStatus = useSdkSelector(getLoginStatus);
 
   useEffect(() => {
     registerVisualizationsOnce();
-  }, []);
-
-  const jwtProviderUri =
-    config.authType === "jwt" ? config.jwtProviderUri : null;
-  useEffect(() => {
-    if (config.authType === "jwt") {
-      const updateToken = () => {
-        const currentState = store.getState();
-        setSessionTokenState(getSessionTokenState(currentState));
-      };
-
-      const unsubscribe = store.subscribe(updateToken);
-
-      if (jwtProviderUri) {
-        dispatch(getOrRefreshSession(jwtProviderUri));
-      }
-
-      updateToken();
-
-      return () => unsubscribe();
-    }
-  }, [config.authType, dispatch, jwtProviderUri]);
+    dispatch(setLoginStatus({ status: "uninitialized" }));
+  }, [dispatch]);
 
   useEffect(() => {
     api.basename = config.metabaseInstanceUrl;
 
     if (config.authType === "jwt") {
-      api.onBeforeRequest = () =>
-        dispatch(getOrRefreshSession(config.jwtProviderUri));
-      api.sessionToken = sessionTokenState?.token?.id;
+      api.onBeforeRequest = async () => {
+        const tokenState = await dispatch(
+          getOrRefreshSession(config.jwtProviderUri),
+        );
+
+        api.sessionToken = (
+          tokenState.payload as EmbeddingSessionTokenState["token"]
+        )?.id;
+      };
+      dispatch(setLoginStatus({ status: "initialized" }));
     } else if (config.authType === "apiKey" && config.apiKey) {
       api.apiKey = config.apiKey;
+      dispatch(setLoginStatus({ status: "initialized" }));
     } else {
-      setIsLoggedIn(false);
-      return;
+      dispatch(
+        setLoginStatus({
+          status: "error",
+          error: new Error(getErrorMessage(config.authType)),
+        }),
+      );
     }
+  }, [config, dispatch]);
 
-    Promise.all([
-      dispatch(refreshCurrentUser()),
-      dispatch(reloadSettings()),
-    ]).then(() => {
-      setIsInitialized(true);
-      setIsLoggedIn(true);
-    });
-  }, [config, dispatch, sessionTokenState]);
+  useEffect(() => {
+    const fetchData = async () => {
+      if (loginStatus.status === "initialized") {
+        dispatch(setLoginStatus({ status: "loading" }));
 
-  return {
-    isLoggedIn,
-    isInitialized,
-  };
+        try {
+          const [userResponse, [_, siteSettingsResponse]] = await Promise.all([
+            dispatch(refreshCurrentUser()),
+            dispatch(reloadSettings()),
+          ]);
+
+          if (
+            userResponse.meta.requestStatus === "rejected" ||
+            siteSettingsResponse.meta.requestStatus === "rejected"
+          ) {
+            dispatch(
+              setLoginStatus({
+                status: "error",
+                error: new Error(getErrorMessage(config.authType)),
+              }),
+            );
+            return;
+          }
+
+          dispatch(setLoginStatus({ status: "success" }));
+        } catch (error) {
+          dispatch(
+            setLoginStatus({
+              status: "error",
+              error: new Error(getErrorMessage(config.authType)),
+            }),
+          );
+        }
+      }
+    };
+
+    fetchData();
+  }, [config.authType, dispatch, loginStatus.status]);
 };
