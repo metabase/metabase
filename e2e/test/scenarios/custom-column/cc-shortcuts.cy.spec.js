@@ -14,7 +14,7 @@ describe("scenarios > question > custom column > expression shortcuts", () => {
   });
 
   it("should be possible to select a combine columns shortcut", () => {
-    openOrdersTable({ mode: "notebook" });
+    openOrdersTable({ mode: "notebook", limit: 5 });
     addCustomColumn();
     selectCombineColumns();
 
