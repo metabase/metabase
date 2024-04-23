@@ -15,7 +15,10 @@
                  (mt/user-http-request :crowberto :put 402 "cache/"
                                        {:model    "question"
                                         :model_id 1
-                                        :strategy {:type "nocache"}}))))
+                                        :strategy {:type "nocache"}})))
+          (is (= "Granular Caching is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+                 (mt/user-http-request :crowberto :get 402 "cache/"
+                                       :model "question"))))
         (testing "Can operate on root settings though"
           (is (mt/user-http-request :crowberto :put 200 "cache/"
                                     {:model    "root"
