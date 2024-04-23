@@ -255,6 +255,7 @@ export function AggregationPicker({
         // disable scrollbars inside the list
         style={{ overflow: "visible" }}
         maxHeight={Infinity}
+        withBorders
       />
     </Root>
   );
