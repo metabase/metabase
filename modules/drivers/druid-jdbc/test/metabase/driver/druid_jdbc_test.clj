@@ -2,6 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
@@ -422,3 +426,31 @@
                 (mt/run-mbql-query checkins
                   {:aggregation [[:count]]
                    :filter      [:> $__time "2015-10-01T00:00:00Z"]}))))))))
+
+;;
+;; Temporal->EpochMillis conversion
+;;
+
+;; WIP -- just to verify that my coercion works!
+(deftest temporal->epoch-millis-test
+  (mt/test-driver
+   :druid-jdbc
+   (testing ":Coercion/Temporal->EpochMillis wrapps coerced field in TIMESTAMP_TO_MILLIS call for Druid JDBC"
+    (let [metadata-provider (lib.tu/merged-mock-metadata-provider
+                             meta/metadata-provider
+                             {:fields [{:id                (meta/id :orders :created-at)
+                                        :coercion-strategy :Coercion/Temporal->EpochMillis
+                                        :effective-type    :type/Integer}]})
+          query {:query {:source-table (meta/id :orders)}
+                 :database (meta/id)
+                 :type :query}]
+      (mt/with-metadata-provider metadata-provider
+        (let [preprocessed @(def xx (qp.preprocess/preprocess query))
+              compiled @(def yy (qp.compile/compile preprocessed))]
+          compiled))))))
+
+(comment
+  
+  (mt/set-test-drivers! #{:druid-jdbc})
+  
+  )

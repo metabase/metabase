@@ -312,6 +312,12 @@
 (derive :Coercion/ISO8601->Time :Coercion/ISO8601->Temporal)
 (derive :Coercion/ISO8601->Date :Coercion/ISO8601->Temporal)
 
+;; TODO: probably no need to derive.
+#_(derive :Coercion/String->Integer :Coercion/*)
+#_(derive :Coercion/ISO8601->Integer :Coercion/String->Integer)
+#_(derive :Coercion/ISO8601->EpochMillis :Coercion/ISO8601->Integer)
+(derive :Coercion/Temporal->EpochMillis :Coercion/*)
+
 (derive :Coercion/YYYYMMDDHHMMSSString->Temporal :Coercion/String->Temporal)
 
 (derive :Coercion/Bytes->Temporal :Coercion/*)

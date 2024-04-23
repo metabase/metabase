@@ -223,6 +223,12 @@
   ([table-name field-name & nested-field-names]
    (apply data.impl/the-field-id (id table-name) (map format-name (cons field-name nested-field-names)))))
 
+;; TODO: this is should be optimized. See the [[data.impl/the-table-id]].
+(defn table-name
+  "Get the name of database, table or field. Some dbms' does not provide a way"
+  [table-name]
+  (:name (toucan2.core/select-one :model/Table (id table-name))))
+
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the
   current DB (for [[metabase.test.data]] functions like [[id]] and [[db]]), and execute `body`.

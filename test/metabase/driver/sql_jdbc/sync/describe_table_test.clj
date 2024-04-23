@@ -23,7 +23,8 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.test.data.interface :as tx]))
 
 (defn- sql-jdbc-drivers-using-default-describe-table-or-fields-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`, or `describe-fields`."
@@ -39,6 +40,7 @@
             uses-default-describe-fields?)))
     (descendants driver/hierarchy :sql-jdbc))))
 
+;; DONE (lbrdnk druid jdbc :nested-field-columns): Usable with Druid JDBC now.
 (deftest ^:parallel describe-fields-nested-field-columns-test
   (testing (str "Drivers that support describe-fields should not support the nested field columns feature."
                 "It is possible to support both in the future but this has not been implemented yet.")
@@ -242,6 +244,7 @@
                #'sql-jdbc.describe-table/describe-json-xform
                #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
 
+;; TODO (lbrdnk druid jdbc :nested-field-columns): Add primary-key feature and exception to this test
 (deftest ^:parallel get-table-pks-test
   ;; FIXME: this should works for all sql drivers
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
@@ -257,8 +260,9 @@
 
 (deftest ^:parallel json-details-only-test
   (testing "fields with base-type=type/JSON should have visibility-type=details-only, unlike other fields."
-    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-      (when-not (mysql/mariadb? (mt/db))
+    ;; TODO (lbrdnk druid jdbc :nested-field-columns): Instead of conj-ing add Druid JDBC to normal drivers.
+    (mt/test-drivers (conj (mt/normal-drivers-with-feature :nested-field-columns) :druid-jdbc)
+      (when-not (mysql/mariadb? (mt/db)) ;; this line actually creates the databawse!!!!!
         (mt/dataset json
           (let [table (t2/select-one Table :id (mt/id :json))]
             (sql-jdbc.execute/do-with-connection-with-options
@@ -297,13 +301,16 @@
                  (#'sql-jdbc.describe-table/row->types)
                  (#'sql-jdbc.describe-table/field-types->fields)))))))
 
+;; TODO (lbrdnk druid jdbc :nested-field-columns): Does not work! (mt/name) [as mt/id] would have to be used for
+;;      getting the right names in here!
 (deftest ^:parallel nested-field-column-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+  (mt/test-drivers (conj (mt/normal-drivers-with-feature :nested-field-columns) :druid-jdbc)
     (mt/dataset json
-      (when-not (mysql/mariadb? (mt/db))
+      (when-not (and (= driver/*driver* :mysql)
+                     (mysql/mariadb? (mt/db)))
         (testing "Nested field column listing"
           (is (= [:type/JSON :type/SerializedJSON]
-                 (->> (sql-jdbc.sync/describe-table driver/*driver* (mt/db) {:name "json"})
+                 (->> (sql-jdbc.sync/describe-table driver/*driver* (mt/db) {:name (mt/table-name "json") #_"json"})
                       :fields
                       (filter #(= (:name %) "json_bit"))
                       first
@@ -374,15 +381,16 @@
                (sql-jdbc.sync/describe-nested-field-columns
                  driver/*driver*
                  (mt/db)
-                 {:name "json" :id (mt/id "json")}))))))))
+                 {:name (mt/table-name "json") #_"json_json" :id (mt/id "json")}))))))))
 
 (mt/defdataset big-json
   [["big_json_table"
     [{:field-name "big_json" :base-type :type/JSON}]
     [[(json/generate-string (into {} (for [x (range 300)] [x :dobbs])))]]]])
 
+;; TODO (lbrdnk druid jdbc :nested-field-columns): Unable to ingest! Why?
 (deftest describe-big-nested-field-columns-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+  (mt/test-drivers (conj (mt/normal-drivers-with-feature :nested-field-columns) :druid-jdbc)
     (mt/dataset big-json
       (when-not (mysql/mariadb? (mt/db))
         (testing "limit if huge. limit it and yell warning (#23635)"
@@ -391,17 +399,18 @@
                    (sql-jdbc.sync/describe-nested-field-columns
                      driver/*driver*
                      (mt/db)
-                     {:name "big_json_table" :id (mt/id "big_json_table")}))))
+                     {:name (mt/table-name "big_json_table") #_"big_json_table" :id (mt/id "big_json_table")}))))
           (is (str/includes?
                 (get-in (mt/with-log-messages-for-level :warn
                           (sql-jdbc.sync/describe-nested-field-columns
                             driver/*driver*
                             (mt/db)
-                            {:name "big_json_table" :id (mt/id "big_json_table")})) [0 2])
+                            {:name (mt/table-name "big_json_table") #_"big_json_table" :id (mt/id "big_json_table")})) [0 2])
                 "More nested field columns detected than maximum.")))))))
 
+;; DONE (lbrdnk druid jdbc :nested-field-columns): The test works...
 (deftest ^:parallel big-nested-field-column-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+  (mt/test-drivers (conj (mt/normal-drivers-with-feature :nested-field-columns) :druid-jdbc)
     (mt/dataset json
       (when-not (mysql/mariadb? (mt/db))
         (testing "Nested field column listing, but big"
@@ -409,8 +418,9 @@
                  (count (sql-jdbc.sync/describe-nested-field-columns
                           driver/*driver*
                           (mt/db)
-                          {:name "big_json" :id (mt/id "big_json")})))))))))
+                          {:name (mt/table-name "big_json") #_"big_json" :id (mt/id "big_json")})))))))))
 
+;; This has a different structure, not handled by my preprocess code correctly probably!
 (mt/defdataset json-unwrap-bigint-and-boolean
   "Used for testing mysql json value unwrapping"
   [["bigint-and-bool-table"
@@ -419,13 +429,18 @@
      ["{\"mybool\":false,\"myint\":12345678901234567890}"]
      ["{\"mybool\":true, \"myint\":123}"]]]])
 
+(comment
+  (metabase.test.data.druid-jdbc.ingestion/preprocess-dataset json-unwrap-bigint-and-boolean)
+  )
+
+;; TODO (lbrdnk druid jdbc :nested-field-columns): This is completely wrong omg!
 (deftest json-unwrapping-bigint-and-boolean
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+  (mt/test-drivers (conj (mt/normal-drivers-with-feature :nested-field-columns) :druid-jdbc)
     (when-not (mysql/mariadb? (mt/db))
       (mt/dataset json-unwrap-bigint-and-boolean
         (sync/sync-database! (mt/db))
         (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
-          (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
+          (is (=? #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                    {:name "jsoncol", :base_type :type/JSON, :semantic_type :type/SerializedJSON}
                    {:name "jsoncol → myint", :base_type :type/Number, :semantic_type :type/Category}
                    {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type :type/Category}}
@@ -448,7 +463,15 @@
                  (sql-jdbc.sync/describe-nested-field-columns
                   driver/*driver*
                   (mt/db)
-                  (t2/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
+                  (t2/select-one Table :db_id (mt/id) :name (mt/table-name "bigint-and-bool-table") #_"bigint-and-bool-table")))))))))
+
+(comment
+  
+  (mt/test-driver
+   :druid-jdbc
+   (mt/table-name "bigint-and-bool-table"))
+
+  )
 
 (mt/defdataset json-int-turn-string
   "Used for testing mysql json value unwrapping"
@@ -476,7 +499,7 @@
 ;; metabase.driver.mysql-test/sync-json-with-composite-pks-test
 
 (deftest json-fetch-last-on-table-with-ids-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+  (mt/test-drivers (conj (mt/normal-drivers-with-feature :nested-field-columns) :druid-jdbc)
     (let [original-get-table-pks sql-jdbc.describe-table/get-table-pks]
       ;; all table defined by `mt/defdataset` will have an pk column my default
       ;; so we need a little trick to test case that a table doesn't have a pk

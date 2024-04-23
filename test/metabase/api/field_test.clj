@@ -821,7 +821,7 @@
                           (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :orders :product_id)))))))))))
 
 (deftest json-unfolding-initially-true-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+  (mt/test-drivers (conj (mt/normal-drivers-with-feature :nested-field-columns) :druid-jdbc)
     (when-not (mysql/mariadb? (mt/db))
       (mt/dataset json
         ;; Create a new database with the same details as the json dataset, with json unfolding enabled
@@ -862,7 +862,7 @@
                   (is (seq (nested-fields))))))))))))
 
 (deftest json-unfolding-initially-false-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+  (mt/test-drivers (conj (mt/normal-drivers-with-feature :nested-field-columns) :druid-jdbc)
     (when-not (mysql/mariadb? (mt/db))
       (mt/dataset json
         (let [database (t2/select-one Database :id (mt/id))]

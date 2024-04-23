@@ -62,6 +62,7 @@
    ;; Now sync the table privileges
    (sync-util/create-sync-step "sync-table-privileges" sync-table-privileges/sync-table-privileges!)])
 
+;; here!!!!!!!
 (mu/defn sync-db-metadata!
   "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized."
   [database :- i/DatabaseInstance]

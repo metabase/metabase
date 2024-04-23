@@ -355,13 +355,16 @@
        (throw (Exception. (format "Dataset definition not found: '%s/%s' or 'metabase.test.data.dataset-definitions/%s'"
                                   namespace-symb symb symb)))))
 
+;; TODO: requiring-resolve removal!
 (defn do-with-dataset
   "Impl for [[metabase.test/dataset]] macro."
   [dataset-definition f]
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
         get-db-for-driver (mdb/memoize-for-application-db
                            (fn [driver]
-                             (let [db (get-or-create-database! driver dbdef)]
+                             (let [db (->> (@(requiring-resolve
+                                              'metabase.test.data.druid-jdbc.ingestion/preprocess-dataset) dbdef)
+                                           (get-or-create-database! driver))]
                                (assert db)
                                (assert (pos-int? (:id db)))
                                db)))

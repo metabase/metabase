@@ -116,6 +116,7 @@
   native-query
   query
   run-mbql-query
+  table-name
   with-db
   with-temp-copy-of-db
   with-empty-h2-app-db]

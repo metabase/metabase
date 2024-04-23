@@ -391,6 +391,12 @@
                   {:type qp.error-type/unsupported-feature
                    :coercion-strategy coercion-strategy})))
 
+;; this should be driver dependent -- thus modify to defmulti
+;; this is druid implementation at the moment
+(defn temporal->epoch-millis
+  [_driver _coercion-strategy expr]
+  [:timestamp_to_millis expr])
+
 (defmethod unix-timestamp->honeysql [:sql :milliseconds]
   [driver _ expr]
   (unix-timestamp->honeysql driver :seconds (h2x// expr 1000)))
@@ -547,6 +553,11 @@
 
                [:type/Text (:isa? :Coercion/String->Temporal)]
                (cast-temporal-string driver coercion-strategy honeysql-form)
+
+               ;; TODO: cast-temporal? -- This is just hardcoded to find out if the approach works -- it does.
+               ;; TODO: how `:isa?` matching works?
+               [(:isa? :type/Temporal) (:isa? :Coercion/Temporal->EpochMillis)]
+               (temporal->epoch-millis driver coercion-strategy honeysql-form)
 
                [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
                (cast-temporal-byte driver coercion-strategy honeysql-form)

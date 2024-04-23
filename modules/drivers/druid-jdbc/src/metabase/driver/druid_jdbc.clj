@@ -173,3 +173,34 @@
   (case database-type
     "COMPLEX<json>"  :type/SerializedJSON
     nil))
+
+;; TODO: Make this dependent on database features only, not the application state.
+(defmethod driver/database-supports? [:druid-jdbc :nested-field-columns]
+  [_driver _feat db]
+  (driver.common/json-unfolding-default db))
+
+;; TODO: Consider creating common namespace with client from original Druid driver and use that instead.
+;; TODO: Does it make sense to take only maj min as jdbc does?
+(defmethod driver/dbms-version :druid-jdbc
+  [_driver database]
+  (let [{:keys [host port]} (:details database)]
+    (try (let [version (-> (http/get (format "http://%s:%s/status" host port))
+                           :body
+                           json/parse-string
+                           (get "version"))
+               [maj-min maj min] (re-find #"^(\d+)\.(\d+)" version)
+               semantic (mapv #(Integer/parseInt %) [maj min])]
+           {:version maj-min
+            :semantic-version semantic})
+         (catch Throwable _
+           (log/warn "Unable to get dbms version. Using 0 fallback.")
+           {:version "0.0"
+            :semantic-version [0 0]
+            :flavor "fallback"}))))
+
+;; This should go
+(defmethod sql.qp/cast-temporal-string [:druid-jdbc :Coercion/ISO8601->EpochMillis]
+  [_driver _semantic_type expr]
+  [::timestamp_to_millis expr]
+  #_(h2x/->time expr))
+
