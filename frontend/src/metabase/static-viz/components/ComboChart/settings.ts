@@ -1,9 +1,9 @@
 import { getCommonStaticVizSettings } from "metabase/static-viz/lib/settings";
+import { getCardsColumns } from "metabase/visualizations/echarts/cartesian/model";
 import {
-  getCardsColumns,
   getCardsSeriesModels,
-} from "metabase/visualizations/echarts/cartesian/model";
-import { getDimensionModel } from "metabase/visualizations/echarts/cartesian/model/series";
+  getDimensionModel,
+} from "metabase/visualizations/echarts/cartesian/model/series";
 import type { LegacySeriesSettingsObjectKey } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   getDefaultBubbleSizeCol,
