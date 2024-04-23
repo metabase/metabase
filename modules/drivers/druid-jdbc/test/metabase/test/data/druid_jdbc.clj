@@ -14,7 +14,7 @@
 
 (defn- already-loaded []
   (let [{:keys [host port]} (tx/dbdef->connection-details :druid-jdbc)]
-    (set (json/parse-string (:body (http/get (format "http://%s:%s/druid/v2/datasources" host port)))))))
+    (set (json/parse-string (:body (http/get (format "%s:%s/druid/v2/datasources" host port)))))))
 
 (def built-in-datasets #{"checkins" "json"})
 
