@@ -7,6 +7,7 @@ import type {
   VizSettingsKey,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import {
   SERIES_COLORS_SETTING_KEY,
   SERIES_SETTING_KEY,
@@ -90,6 +91,27 @@ const getDefaultSeriesName = (
   return `${cardName}: ${columnDisplayNameOrFormattedBreakoutValue}`;
 };
 
+export const getCardsSeriesModels = (
+  rawSeries: RawSeries,
+  cardsColumns: CartesianChartColumns[],
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+) => {
+  const hasMultipleCards = rawSeries.length > 1;
+  return rawSeries.flatMap((cardDataset, index) => {
+    const cardColumns = cardsColumns[index];
+
+    return getCardSeriesModels(
+      cardDataset,
+      cardColumns,
+      hasMultipleCards,
+      index === 0,
+      settings,
+      renderingContext,
+    );
+  });
+};
+
 /**
  * Generates series models for a given card with a dataset.
  *
@@ -101,7 +123,7 @@ const getDefaultSeriesName = (
  * @param {RenderingContext} renderingContext - The rendering context.
  * @returns {SeriesModel[]} The generated series models for the card.
  */
-export const getCardSeriesModels = (
+const getCardSeriesModels = (
   { card, data }: SingleSeries,
   columns: CartesianChartColumns,
   hasMultipleCards: boolean,
@@ -128,10 +150,12 @@ export const getCardSeriesModels = (
       const legacySeriesSettingsObjectKey =
         createLegacySeriesObjectKey(vizSettingsKey);
 
+      const customName = settings[SERIES_SETTING_KEY]?.[vizSettingsKey]?.title;
+      const tooltipName = customName ?? getFriendlyName(metric.column);
       const name =
-        settings[SERIES_SETTING_KEY]?.[vizSettingsKey]?.title ??
+        customName ??
         getDefaultSeriesName(
-          metric.column.display_name,
+          getFriendlyName(metric.column),
           hasMultipleCards,
           columns.metrics.length,
           false,
@@ -142,6 +166,7 @@ export const getCardSeriesModels = (
 
       return {
         name,
+        tooltipName,
         color,
         cardId,
         column: metric.column,
@@ -182,8 +207,10 @@ export const getCardSeriesModels = (
     const legacySeriesSettingsObjectKey =
       createLegacySeriesObjectKey(vizSettingsKey);
 
+    const customName = settings[SERIES_SETTING_KEY]?.[vizSettingsKey]?.title;
+    const tooltipName = getFriendlyName(metric.column);
     const name =
-      settings.series_settings?.[vizSettingsKey]?.title ??
+      customName ??
       getDefaultSeriesName(
         formattedBreakoutValue,
         hasMultipleCards,
@@ -196,6 +223,7 @@ export const getCardSeriesModels = (
 
     return {
       name,
+      tooltipName,
       color,
       cardId,
       column: metric.column,

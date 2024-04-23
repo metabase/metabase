@@ -11,6 +11,7 @@ export const createMockSeriesModel = (
   return {
     dataKey,
     name: `name for ${dataKey}`,
+    tooltipName: `tooltip name for ${dataKey}`,
     color: "red",
     legacySeriesSettingsObjectKey: { card: { _seriesKey: dataKey } },
     vizSettingsKey: dataKey,
