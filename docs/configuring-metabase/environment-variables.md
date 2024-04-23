@@ -48,21 +48,7 @@ docker run -d -p 3000:3000 -e MB_SITE_NAME="Awesome Company" --name metabase met
 ## List of environment variables
 
 
-### `MB_ACTIVE_USERS_COUNT`
-
-Paid: No.
-
-Type: integer
-
-Default: `0`
-
-Configuration file name: `active-users-count`
-
-Cached number of active users. Refresh every 5 minutes.
-
 ### `MB_ADMIN_EMAIL`
-
-Paid: No.
 
 Type: string
 
@@ -74,8 +60,6 @@ The email address users should be referred to if they encounter a problem.
 
 ### `MB_AGGREGATED_QUERY_ROW_LIMIT`
 
-Paid: No.
-
 Type: integer
 
 Default: `null`
@@ -85,8 +69,6 @@ Configuration file name: `aggregated-query-row-limit`
 Maximum number of rows to return for aggregated queries via the API.
 
 ### `MB_ANON_TRACKING_ENABLED`
-
-Paid: No.
 
 Type: boolean
 
@@ -98,8 +80,6 @@ Enable the collection of anonymous usage data in order to help Metabase improve.
 
 ### `MB_API_KEY`
 
-Paid: No.
-
 Type: string
 
 Default: `null`
@@ -110,7 +90,8 @@ When set, this API key is required for all API requests.
 
 ### `MB_APPLICATION_COLORS`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: json
 
@@ -122,7 +103,8 @@ Choose the colors used in the user interface throughout Metabase and others spec
 
 ### `MB_APPLICATION_FAVICON_URL`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -134,7 +116,8 @@ Upload a file to use as the favicon.
 
 ### `MB_APPLICATION_FONT`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -146,7 +129,8 @@ Replace “Lato” as the font family.
 
 ### `MB_APPLICATION_FONT_FILES`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: json
 
@@ -158,7 +142,8 @@ Tell us where to find the file for each font weight. You don’t need to include
 
 ### `MB_APPLICATION_LOGO_URL`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -170,7 +155,8 @@ Upload a file to replace the Metabase logo on the top bar.
 
 ### `MB_APPLICATION_NAME`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -182,8 +168,6 @@ Replace the word “Metabase” wherever it appears.
 
 ### `MB_ATTACHMENT_TABLE_ROW_LIMIT`
 
-Paid: No.
-
 Type: positive-integer
 
 Default: `20`
@@ -193,8 +177,6 @@ Configuration file name: Cannot be set with the configuration file.
 Maximum number of rows to render in an alert or subscription image.
 
 ### `MB_BCC_ENABLED`
-
-Paid: No.
 
 Type: boolean
 
@@ -206,8 +188,6 @@ Whether or not bcc emails are enabled, default behavior is that it is.
 
 ### `MB_BREAKOUT_BIN_WIDTH`
 
-Paid: No.
-
 Type: double
 
 Default: `10.0`
@@ -217,8 +197,6 @@ Configuration file name: `breakout-bin-width`
 When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), this number will be used as the default bin width (in degrees).
 
 ### `MB_BREAKOUT_BINS_NUM`
-
-Paid: No.
 
 Type: integer
 
@@ -230,8 +208,6 @@ When using the default binning strategy and a number of bins is not provided, th
 
 ### `MB_CHECK_FOR_UPDATES`
 
-Paid: No.
-
 Type: boolean
 
 Default: `true`
@@ -241,8 +217,6 @@ Configuration file name: `check-for-updates`
 Identify when new versions of Metabase are available.
 
 ### `MB_CONFIG_FROM_FILE_SYNC_DATABASES`
-
-Paid: No.
 
 Type: boolean
 
@@ -255,8 +229,6 @@ Whether to sync newly created Databases during config-from-file initialization. 
 
 ### `MB_CUSTOM_FORMATTING`
 
-Paid: No.
-
 Type: json
 
 Default: `{}`
@@ -266,8 +238,6 @@ Configuration file name: `custom-formatting`
 Object keyed by type, containing formatting settings.
 
 ### `MB_CUSTOM_GEOJSON`
-
-Paid: No.
 
 Type: json
 
@@ -279,8 +249,6 @@ JSON containing information about custom GeoJSON files for use in map visualizat
 
 ### `MB_CUSTOM_HOMEPAGE`
 
-Paid: No.
-
 Type: boolean
 
 Default: `false`
@@ -291,8 +259,6 @@ Pick one of your dashboards to serve as homepage. Users without dashboard access
 
 ### `MB_CUSTOM_HOMEPAGE_DASHBOARD`
 
-Paid: No.
-
 Type: integer
 
 Default: `null`
@@ -302,8 +268,6 @@ Configuration file name: `custom-homepage-dashboard`
 ID of dashboard to use as a homepage.
 
 ### `MB_DB_CONNECTION_TIMEOUT_MS`
-
-Paid: No.
 
 Type: integer
 
@@ -316,8 +280,6 @@ Consider metabase.driver/can-connect? / can-connect-with-details? to have failed
 
 ### `MB_EE_AI_FEATURES_ENABLED`
 
-Paid: No.
-
 Type: boolean
 
 Default: `false`
@@ -327,8 +289,6 @@ Configuration file name: `ee-ai-features-enabled`
 Enable AI features.
 
 ### `MB_EE_OPENAI_API_KEY`
-
-Paid: No.
 
 Type: string
 
@@ -340,8 +300,6 @@ The OpenAI API Key used in Metabase Enterprise.
 
 ### `MB_EE_OPENAI_MODEL`
 
-Paid: No.
-
 Type: string
 
 Default: `gpt-4-turbo-preview`
@@ -351,8 +309,6 @@ Configuration file name: `ee-openai-model`
 The OpenAI Model (e.g. gpt-4, gpt-3.5-turbo).
 
 ### `MB_EMAIL_FROM_ADDRESS`
-
-Paid: No.
 
 Type: string
 
@@ -364,8 +320,6 @@ The email address you want to use for the sender of emails.
 
 ### `MB_EMAIL_FROM_NAME`
 
-Paid: No.
-
 Type: string
 
 Default: `null`
@@ -375,8 +329,6 @@ Configuration file name: `email-from-name`
 The name you want to use for the sender of emails.
 
 ### `MB_EMAIL_REPLY_TO`
-
-Paid: No.
 
 Type: json
 
@@ -388,8 +340,6 @@ The email address you want the replies to go to, if different from the from addr
 
 ### `MB_EMAIL_SMTP_HOST`
 
-Paid: No.
-
 Type: string
 
 Default: `null`
@@ -399,8 +349,6 @@ Configuration file name: `email-smtp-host`
 The address of the SMTP server that handles your emails.
 
 ### `MB_EMAIL_SMTP_PASSWORD`
-
-Paid: No.
 
 Type: string
 
@@ -412,8 +360,6 @@ SMTP password.
 
 ### `MB_EMAIL_SMTP_PORT`
 
-Paid: No.
-
 Type: integer
 
 Default: `null`
@@ -423,8 +369,6 @@ Configuration file name: `email-smtp-port`
 The port your SMTP server uses for outgoing emails.
 
 ### `MB_EMAIL_SMTP_SECURITY`
-
-Paid: No.
 
 Type: keyword
 
@@ -436,8 +380,6 @@ SMTP secure connection protocol. (tls, ssl, starttls, or none).
 
 ### `MB_EMAIL_SMTP_USERNAME`
 
-Paid: No.
-
 Type: string
 
 Default: `null`
@@ -448,7 +390,8 @@ SMTP username.
 
 ### `MB_EMBEDDING_APP_ORIGIN`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -460,8 +403,6 @@ Allow this origin to embed the full Metabase application.
 
 ### `MB_EMBEDDING_HOMEPAGE`
 
-Paid: No.
-
 Type: keyword
 
 Default: `:hidden`
@@ -471,8 +412,6 @@ Configuration file name: `embedding-homepage`
 Embedding homepage status, indicating if its visible, hidden or has been dismissed.
 
 ### `MB_EMBEDDING_SECRET_KEY`
-
-Paid: No.
 
 Type: string
 
@@ -484,8 +423,6 @@ Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.
 
 ### `MB_ENABLE_EMBEDDING`
 
-Paid: No.
-
 Type: boolean
 
 Default: `false`
@@ -495,8 +432,6 @@ Configuration file name: `enable-embedding`
 Allow admins to securely embed questions and dashboards within other applications?
 
 ### `MB_ENABLE_NESTED_QUERIES`
-
-Paid: No.
 
 Type: boolean
 
@@ -508,7 +443,8 @@ Allow using a saved question or Model as the source for other queries?
 
 ### `MB_ENABLE_PASSWORD_LOGIN`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: boolean
 
@@ -520,8 +456,6 @@ Allow logging in by email and password.
 
 ### `MB_ENABLE_PUBLIC_SHARING`
 
-Paid: No.
-
 Type: boolean
 
 Default: `true`
@@ -531,8 +465,6 @@ Configuration file name: `enable-public-sharing`
 Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?
 
 ### `MB_ENABLE_QUERY_CACHING`
-
-Paid: No.
 
 Type: boolean
 
@@ -544,8 +476,6 @@ Enabling caching will save the results of queries that take a long time to run.
 
 ### `MB_ENABLE_XRAYS`
 
-Paid: No.
-
 Type: boolean
 
 Default: `true`
@@ -555,8 +485,6 @@ Configuration file name: `enable-xrays`
 Allow users to explore data using X-rays.
 
 ### `MB_ENUM_CARDINALITY_THRESHOLD`
-
-Paid: No.
 
 Type: integer
 
@@ -568,8 +496,6 @@ Enumerated field values with cardinality at or below this point are treated as e
 
 ### `MB_FOLLOW_UP_EMAIL_SENT`
 
-Paid: No.
-
 Type: boolean
 
 Default: `false`
@@ -579,8 +505,6 @@ Configuration file name: Cannot be set with the configuration file.
 Have we sent a follow up email to the instance admin?
 
 ### `MB_GOOGLE_AUTH_AUTO_CREATE_ACCOUNTS_DOMAIN`
-
-Paid: No.
 
 Type: string
 
@@ -592,8 +516,6 @@ When set, allow users to sign up on their own if their Google account email addr
 
 ### `MB_GOOGLE_AUTH_CLIENT_ID`
 
-Paid: No.
-
 Type: string
 
 Default: `null`
@@ -603,8 +525,6 @@ Configuration file name: `google-auth-client-id`
 Client ID for Google Sign-In.
 
 ### `MB_GOOGLE_AUTH_ENABLED`
-
-Paid: No.
 
 Type: boolean
 
@@ -616,7 +536,8 @@ Is Google Sign-in currently enabled?
 
 ### `MB_HELP_LINK`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: keyword
 
@@ -628,7 +549,8 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 
 ### `MB_HELP_LINK_CUSTOM_DESTINATION`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -640,8 +562,6 @@ Custom URL for the help link.
 
 ### `MB_HUMANIZATION_STRATEGY`
 
-Paid: No.
-
 Type: keyword
 
 Default: `:simple`
@@ -651,8 +571,6 @@ Configuration file name: `humanization-strategy`
 To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’.
 
 ### `MB_IS_METABOT_ENABLED`
-
-Paid: No.
 
 Type: boolean
 
@@ -664,8 +582,6 @@ Is Metabot enabled?
 
 ### `MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE`
 
-Paid: No.
-
 Type: integer
 
 Default: `15`
@@ -676,7 +592,8 @@ Maximum size of the c3p0 connection pool.
 
 ### `MB_JWT_ATTRIBUTE_EMAIL`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -688,7 +605,8 @@ Key to retrieve the JWT users email address.
 
 ### `MB_JWT_ATTRIBUTE_FIRSTNAME`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -700,7 +618,8 @@ Key to retrieve the JWT users first name.
 
 ### `MB_JWT_ATTRIBUTE_GROUPS`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -712,7 +631,8 @@ Key to retrieve the JWT users groups.
 
 ### `MB_JWT_ATTRIBUTE_LASTNAME`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -724,7 +644,8 @@ Key to retrieve the JWT users last name.
 
 ### `MB_JWT_ENABLED`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: boolean
 
@@ -736,7 +657,8 @@ Is JWT authentication configured and enabled?
 
 ### `MB_JWT_GROUP_MAPPINGS`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: json
 
@@ -748,7 +670,8 @@ JSON containing JWT to Metabase group mappings.
 
 ### `MB_JWT_GROUP_SYNC`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: boolean
 
@@ -760,7 +683,8 @@ Enable group membership synchronization with JWT.
 
 ### `MB_JWT_IDENTITY_PROVIDER_URI`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -772,7 +696,8 @@ URL of JWT based login page.
 
 ### `MB_JWT_SHARED_SECRET`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -784,7 +709,8 @@ String used to seed the private key used to validate JWT messages. A hexadecimal
 
 ### `MB_JWT_USER_PROVISIONING_ENABLED`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: boolean
 
@@ -797,8 +723,6 @@ don't have one.
 
 ### `MB_LANDING_PAGE`
 
-Paid: No.
-
 Type: string
 
 Default: ``
@@ -809,7 +733,8 @@ Enter a URL of the landing page to show the user. This overrides the custom home
 
 ### `MB_LANDING_PAGE_ILLUSTRATION`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -821,7 +746,8 @@ Options for displaying the illustration on the landing page.
 
 ### `MB_LANDING_PAGE_ILLUSTRATION_CUSTOM`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -833,8 +759,6 @@ The custom illustration for the landing page.
 
 ### `MB_LDAP_ATTRIBUTE_EMAIL`
 
-Paid: No.
-
 Type: string
 
 Default: `mail`
@@ -844,8 +768,6 @@ Configuration file name: `ldap-attribute-email`
 Attribute to use for the user's email. (usually 'mail', 'email' or 'userPrincipalName').
 
 ### `MB_LDAP_ATTRIBUTE_FIRSTNAME`
-
-Paid: No.
 
 Type: string
 
@@ -857,8 +779,6 @@ Attribute to use for the user's first name. (usually 'givenName').
 
 ### `MB_LDAP_ATTRIBUTE_LASTNAME`
 
-Paid: No.
-
 Type: string
 
 Default: `sn`
@@ -868,8 +788,6 @@ Configuration file name: `ldap-attribute-lastname`
 Attribute to use for the user's last name. (usually 'sn').
 
 ### `MB_LDAP_BIND_DN`
-
-Paid: No.
 
 Type: string
 
@@ -881,8 +799,6 @@ The Distinguished Name to bind as (if any), this user will be used to lookup inf
 
 ### `MB_LDAP_ENABLED`
 
-Paid: No.
-
 Type: boolean
 
 Default: `false`
@@ -892,8 +808,6 @@ Configuration file name: `ldap-enabled`
 Is LDAP currently enabled?
 
 ### `MB_LDAP_GROUP_BASE`
-
-Paid: No.
 
 Type: string
 
@@ -905,8 +819,6 @@ Search base for groups. Not required for LDAP directories that provide a 'member
 
 ### `MB_LDAP_GROUP_MAPPINGS`
 
-Paid: No.
-
 Type: json
 
 Default: `{}`
@@ -916,8 +828,6 @@ Configuration file name: `ldap-group-mappings`
 JSON containing LDAP to Metabase group mappings.
 
 ### `MB_LDAP_GROUP_MEMBERSHIP_FILTER`
-
-Paid: No.
 
 Type: string
 
@@ -929,8 +839,6 @@ Group membership lookup filter. The placeholders {dn} and {uid} will be replaced
 
 ### `MB_LDAP_GROUP_SYNC`
 
-Paid: No.
-
 Type: boolean
 
 Default: `false`
@@ -940,8 +848,6 @@ Configuration file name: `ldap-group-sync`
 Enable group membership synchronization with LDAP.
 
 ### `MB_LDAP_HOST`
-
-Paid: No.
 
 Type: string
 
@@ -953,8 +859,6 @@ Server hostname.
 
 ### `MB_LDAP_PASSWORD`
 
-Paid: No.
-
 Type: string
 
 Default: `null`
@@ -964,8 +868,6 @@ Configuration file name: `ldap-password`
 The password to bind with for the lookup user.
 
 ### `MB_LDAP_PORT`
-
-Paid: No.
 
 Type: integer
 
@@ -977,8 +879,6 @@ Server port, usually 389 or 636 if SSL is used.
 
 ### `MB_LDAP_SECURITY`
 
-Paid: No.
-
 Type: keyword
 
 Default: `:none`
@@ -988,8 +888,6 @@ Configuration file name: `ldap-security`
 Use SSL, TLS or plain text.
 
 ### `MB_LDAP_SYNC_USER_ATTRIBUTES`
-
-Paid: No.
 
 Type: boolean
 
@@ -1001,8 +899,6 @@ Should we sync user attributes when someone logs in via LDAP?
 
 ### `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST`
 
-Paid: No.
-
 Type: csv
 
 Default: `userPassword,dn,distinguishedName`
@@ -1012,8 +908,6 @@ Configuration file name: `ldap-sync-user-attributes-blacklist`
 Comma-separated list of user attributes to skip syncing for LDAP users.
 
 ### `MB_LDAP_USER_BASE`
-
-Paid: No.
 
 Type: string
 
@@ -1025,8 +919,6 @@ Search base for users. (Will be searched recursively).
 
 ### `MB_LDAP_USER_FILTER`
 
-Paid: No.
-
 Type: string
 
 Default: `(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))`
@@ -1036,8 +928,6 @@ Configuration file name: `ldap-user-filter`
 User lookup filter. The placeholder {login} will be replaced by the user supplied login.
 
 ### `MB_LDAP_USER_PROVISIONING_ENABLED`
-
-Paid: No.
 
 Type: boolean
 
@@ -1050,7 +940,8 @@ don't have one.
 
 ### `MB_LOADING_MESSAGE`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: keyword
 
@@ -1062,7 +953,8 @@ Choose the message to show while a query is running.
 
 ### `MB_LOGIN_PAGE_ILLUSTRATION`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1074,7 +966,8 @@ Options for displaying the illustration on the login page.
 
 ### `MB_LOGIN_PAGE_ILLUSTRATION_CUSTOM`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1086,8 +979,6 @@ The custom illustration for the login page.
 
 ### `MB_MAP_TILE_SERVER_URL`
 
-Paid: No.
-
 Type: string
 
 Default: `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`
@@ -1097,8 +988,6 @@ Configuration file name: `map-tile-server-url`
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
 
 ### `MB_METABOT_DEFAULT_EMBEDDING_MODEL`
-
-Paid: No.
 
 Type: string
 
@@ -1110,8 +999,6 @@ The default embeddings model to be used for metabot.
 
 ### `MB_METABOT_FEEDBACK_URL`
 
-Paid: No.
-
 Type: string
 
 Default: `https://amtix3l3qvitb2qxstaqtcoqby0monuf.lambda-url.us-east-1.on.aws/`
@@ -1121,8 +1008,6 @@ Configuration file name: `metabot-feedback-url`
 The URL to which metabot feedback is posted.
 
 ### `MB_METABOT_GET_PROMPT_TEMPLATES_URL`
-
-Paid: No.
 
 Type: string
 
@@ -1134,8 +1019,6 @@ The URL in which metabot versioned prompt templates are stored.
 
 ### `MB_METABOT_PROMPT_GENERATOR_TOKEN_LIMIT`
 
-Paid: No.
-
 Type: integer
 
 Default: `6000`
@@ -1145,8 +1028,6 @@ Configuration file name: Cannot be set with the configuration file.
 When attempting to assemble prompts, the threshold at which prompt will no longer be appended to.
 
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
-
-Paid: No.
 
 Type: keyword
 
@@ -1158,7 +1039,8 @@ Matching style for native query editors autocomplete. Can be "substring", "prefi
 
 ### `MB_NO_DATA_ILLUSTRATION`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1170,7 +1052,8 @@ Options for displaying the illustration when there are no results after running 
 
 ### `MB_NO_DATA_ILLUSTRATION_CUSTOM`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1182,7 +1065,8 @@ The custom illustration for when there are no results after running a question.
 
 ### `MB_NO_OBJECT_ILLUSTRATION`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1194,7 +1078,8 @@ Options for displaying the illustration when there are no results after searchin
 
 ### `MB_NO_OBJECT_ILLUSTRATION_CUSTOM`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1206,7 +1091,8 @@ The custom illustration for when there are no results after searching.
 
 ### `MB_NOTIFICATION_LINK_BASE_URL`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1218,8 +1104,6 @@ By default "Site Url" is used in notification links, but can be overridden.
 
 ### `MB_NUM_METABOT_CHOICES`
 
-Paid: No.
-
 Type: integer
 
 Default: `1`
@@ -1229,8 +1113,6 @@ Configuration file name: Cannot be set with the configuration file.
 Number of potential responses metabot will request. The first valid response is selected.
 
 ### `MB_OPENAI_API_KEY`
-
-Paid: No.
 
 Type: string
 
@@ -1242,8 +1124,6 @@ The OpenAI API Key.
 
 ### `MB_OPENAI_MODEL`
 
-Paid: No.
-
 Type: string
 
 Default: `gpt-4-turbo-preview`
@@ -1253,8 +1133,6 @@ Configuration file name: `openai-model`
 The OpenAI Model (e.g. gpt-4-turbo-preview, gpt-4, gpt-3.5-turbo).
 
 ### `MB_OPENAI_ORGANIZATION`
-
-Paid: No.
 
 Type: string
 
@@ -1266,8 +1144,6 @@ The OpenAI Organization ID.
 
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
-Paid: No.
-
 Type: string
 
 Default: `0 0 0/6 * * ? *`
@@ -1277,8 +1153,6 @@ Configuration file name: `persisted-model-refresh-cron-schedule`
 cron syntax string to schedule refreshing persisted models.
 
 ### `MB_PERSISTED_MODELS_ENABLED`
-
-Paid: No.
 
 Type: boolean
 
@@ -1290,8 +1164,6 @@ Allow persisting models into the source database.
 
 ### `MB_PREMIUM_EMBEDDING_TOKEN`
 
-Paid: No.
-
 Type: string
 
 Default: `null`
@@ -1301,8 +1173,6 @@ Configuration file name: `premium-embedding-token`
 Token for premium features. Go to the MetaStore to get yours!
 
 ### `MB_QUERY_CACHING_MAX_KB`
-
-Paid: No.
 
 Type: integer
 
@@ -1314,8 +1184,6 @@ The maximum size of the cache, per saved question, in kilobytes.
 
 ### `MB_QUERY_CACHING_MAX_TTL`
 
-Paid: No.
-
 Type: double
 
 Default: `3024000.0`
@@ -1325,8 +1193,6 @@ Configuration file name: `query-caching-max-ttl`
 The absolute maximum time to keep any cached query results, in seconds.
 
 ### `MB_REDIRECT_ALL_REQUESTS_TO_HTTPS`
-
-Paid: No.
 
 Type: boolean
 
@@ -1338,8 +1204,6 @@ Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
 
 ### `MB_REPORT_TIMEZONE`
 
-Paid: No.
-
 Type: string
 
 Default: `null`
@@ -1349,8 +1213,6 @@ Configuration file name: `report-timezone`
 Connection timezone to use when executing queries. Defaults to system timezone.
 
 ### `MB_RESET_TOKEN_TTL_HOURS`
-
-Paid: No.
 
 Type: integer
 
@@ -1362,8 +1224,6 @@ Number of hours a password reset is considered valid.
 
 ### `MB_RETRY_INITIAL_INTERVAL`
 
-Paid: No.
-
 Type: integer
 
 Default: `500`
@@ -1373,8 +1233,6 @@ Configuration file name: `retry-initial-interval`
 The initial retry delay in milliseconds.
 
 ### `MB_RETRY_MAX_ATTEMPTS`
-
-Paid: No.
 
 Type: integer
 
@@ -1386,8 +1244,6 @@ The maximum number of attempts for an event.
 
 ### `MB_RETRY_MAX_INTERVAL_MILLIS`
 
-Paid: No.
-
 Type: integer
 
 Default: `30000`
@@ -1397,8 +1253,6 @@ Configuration file name: `retry-max-interval-millis`
 The maximum delay between attempts.
 
 ### `MB_RETRY_MULTIPLIER`
-
-Paid: No.
 
 Type: double
 
@@ -1410,8 +1264,6 @@ The delay multiplier between attempts.
 
 ### `MB_RETRY_RANDOMIZATION_FACTOR`
 
-Paid: No.
-
 Type: double
 
 Default: `0.1`
@@ -1422,7 +1274,8 @@ The randomization factor of the retry delay.
 
 ### `MB_SAML_APPLICATION_NAME`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1434,7 +1287,8 @@ This application name will be used for requests to the Identity Provider.
 
 ### `MB_SAML_ATTRIBUTE_EMAIL`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1446,7 +1300,8 @@ SAML attribute for the user's email address.
 
 ### `MB_SAML_ATTRIBUTE_FIRSTNAME`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1458,7 +1313,8 @@ SAML attribute for the user's first name.
 
 ### `MB_SAML_ATTRIBUTE_GROUP`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1470,7 +1326,8 @@ SAML attribute for group syncing.
 
 ### `MB_SAML_ATTRIBUTE_LASTNAME`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1482,7 +1339,8 @@ SAML attribute for the user's last name.
 
 ### `MB_SAML_ENABLED`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: boolean
 
@@ -1494,7 +1352,8 @@ Is SAML authentication configured and enabled?
 
 ### `MB_SAML_GROUP_MAPPINGS`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: json
 
@@ -1506,7 +1365,8 @@ JSON containing SAML to Metabase group mappings.
 
 ### `MB_SAML_GROUP_SYNC`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: boolean
 
@@ -1518,7 +1378,8 @@ Enable group membership synchronization with SAML.
 
 ### `MB_SAML_IDENTITY_PROVIDER_CERTIFICATE`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1531,7 +1392,8 @@ open it in a text editor, then copy and paste the certificates contents here.
 
 ### `MB_SAML_IDENTITY_PROVIDER_ISSUER`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1544,7 +1406,8 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
 
 ### `MB_SAML_IDENTITY_PROVIDER_URI`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1557,7 +1420,8 @@ using, this usually looks like https://your-org-name.example.com or https://exam
 
 ### `MB_SAML_KEYSTORE_ALIAS`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1569,7 +1433,8 @@ Alias for the key that Metabase should use for signing SAML requests.
 
 ### `MB_SAML_KEYSTORE_PASSWORD`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1581,7 +1446,8 @@ Password for opening the keystore.
 
 ### `MB_SAML_KEYSTORE_PATH`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1593,7 +1459,8 @@ Absolute path to the Keystore file to use for signing SAML requests.
 
 ### `MB_SAML_USER_PROVISIONING_ENABLED`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: boolean
 
@@ -1606,8 +1473,6 @@ don't have one.
 
 ### `MB_SEARCH_TYPEAHEAD_ENABLED`
 
-Paid: No.
-
 Type: boolean
 
 Default: `true`
@@ -1617,8 +1482,6 @@ Configuration file name: `search-typeahead-enabled`
 Enable typeahead search in the Metabase navbar?
 
 ### `MB_SEND_NEW_SSO_USER_ADMIN_EMAIL`
-
-Paid: No.
 
 Type: string
 
@@ -1630,8 +1493,6 @@ Should new email notifications be sent to admins, for all new SSO users?
 
 ### `MB_SESSION_COOKIE_SAMESITE`
 
-Paid: No.
-
 Type: keyword
 
 Default: `:lax`
@@ -1641,8 +1502,6 @@ Configuration file name: `session-cookie-samesite`
 Value for the session cookies `SameSite` directive.
 
 ### `MB_SESSION_COOKIES`
-
-Paid: No.
 
 Type: boolean
 
@@ -1654,8 +1513,6 @@ When set, enforces the use of session cookies for all users which expire when th
 
 ### `MB_SESSION_TIMEOUT`
 
-Paid: No.
-
 Type: json
 
 Default: `null`
@@ -1665,8 +1522,6 @@ Configuration file name: `session-timeout`
 Time before inactive users are logged out. By default, sessions last indefinitely.
 
 ### `MB_SETUP_EMBEDDING_AUTOENABLED`
-
-Paid: No.
 
 Type: boolean
 
@@ -1678,8 +1533,6 @@ Indicates if embedding has enabled automatically during the setup because the us
 
 ### `MB_SETUP_LICENSE_ACTIVE_AT_SETUP`
 
-Paid: No.
-
 Type: boolean
 
 Default: `false`
@@ -1689,8 +1542,6 @@ Configuration file name: `setup-license-active-at-setup`
 Indicates if at the end of the setup a valid license was active.
 
 ### `MB_SHOW_DATABASE_SYNCING_MODAL`
-
-Paid: No.
 
 Type: boolean
 
@@ -1702,8 +1553,6 @@ Whether an introductory modal should be shown after the next database connection
 
 ### `MB_SHOW_HOMEPAGE_DATA`
 
-Paid: No.
-
 Type: boolean
 
 Default: `true`
@@ -1713,8 +1562,6 @@ Configuration file name: `show-homepage-data`
 Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data.
 
 ### `MB_SHOW_HOMEPAGE_XRAYS`
-
-Paid: No.
 
 Type: boolean
 
@@ -1726,7 +1573,8 @@ Whether or not to display x-ray suggestions on the homepage. They will also be h
 
 ### `MB_SHOW_METABASE_LINKS`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: boolean
 
@@ -1738,7 +1586,8 @@ Whether or not to display Metabase links outside admin settings.
 
 ### `MB_SHOW_METABOT`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: boolean
 
@@ -1750,8 +1599,6 @@ Enables Metabot character on the home page.
 
 ### `MB_SHOW_STATIC_EMBED_TERMS`
 
-Paid: No.
-
 Type: boolean
 
 Default: `true`
@@ -1761,8 +1608,6 @@ Configuration file name: `show-static-embed-terms`
 Check if the static embedding licensing should be hidden in the static embedding flow.
 
 ### `MB_SITE_LOCALE`
-
-Paid: No.
 
 Type: string
 
@@ -1774,8 +1619,6 @@ The default language for all users across the Metabase UI, system emails, pulses
 
 ### `MB_SITE_NAME`
 
-Paid: No.
-
 Type: string
 
 Default: `Metabase`
@@ -1785,8 +1628,6 @@ Configuration file name: `site-name`
 The name used for this instance of Metabase.
 
 ### `MB_SITE_URL`
-
-Paid: No.
 
 Type: string
 
@@ -1798,8 +1639,6 @@ This URL is used for things like creating links in emails, auth redirects, and i
 
 ### `MB_SLACK_APP_TOKEN`
 
-Paid: No.
-
 Type: string
 
 Default: `null`
@@ -1809,8 +1648,6 @@ Configuration file name: `slack-app-token`
 Bot user OAuth token for connecting the Metabase Slack app. This should be used for all new Slack integrations starting in Metabase v0.42.0.
 
 ### `MB_SLACK_FILES_CHANNEL`
-
-Paid: No.
 
 Type: string
 
@@ -1822,8 +1659,6 @@ The name of the channel to which Metabase files should be initially uploaded.
 
 ### `MB_SOURCE_ADDRESS_HEADER`
 
-Paid: No.
-
 Type: string
 
 Default: `X-Forwarded-For`
@@ -1833,8 +1668,6 @@ Configuration file name: `source-address-header`
 Identify the source of HTTP requests by this headers value, instead of its remote address.
 
 ### `MB_SQL_JDBC_FETCH_SIZE`
-
-Paid: No.
 
 Type: integer
 
@@ -1847,8 +1680,6 @@ Fetch size for result sets. We want to ensure that the jdbc ResultSet objects ar
 
 ### `MB_SQL_PARSING_ENABLED`
 
-Paid: No.
-
 Type: boolean
 
 Default: `true`
@@ -1858,8 +1689,6 @@ Configuration file name: Cannot be set with the configuration file.
 SQL Parsing is disabled.
 
 ### `MB_SSH_HEARTBEAT_INTERVAL_SEC`
-
-Paid: No.
 
 Type: integer
 
@@ -1871,8 +1700,6 @@ Controls how often the heartbeats are sent when an SSH tunnel is established (in
 
 ### `MB_START_OF_WEEK`
 
-Paid: No.
-
 Type: keyword
 
 Default: `:sunday`
@@ -1883,7 +1710,8 @@ This will affect things like grouping by week or filtering in GUI queries. It wo
 
 ### `MB_SUBSCRIPTION_ALLOWED_DOMAINS`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: string
 
@@ -1895,8 +1723,6 @@ Allowed email address domain(s) for new Dashboard Subscriptions and Alerts. To s
 
 ### `MB_SURVEYS_ENABLED`
 
-Paid: No.
-
 Type: boolean
 
 Default: `true`
@@ -1906,8 +1732,6 @@ Configuration file name: Cannot be set with the configuration file.
 Enable or disable surveys.
 
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
-
-Paid: No.
 
 Type: integer
 
@@ -1919,8 +1743,6 @@ Maximum number of rows to return specifically on :rows type queries via the API.
 
 ### `MB_UPLOADS_DATABASE_ID`
 
-Paid: No.
-
 Type: integer
 
 Default: `null`
@@ -1930,8 +1752,6 @@ Configuration file name: `uploads-database-id`
 Database ID for uploads.
 
 ### `MB_UPLOADS_ENABLED`
-
-Paid: No.
 
 Type: boolean
 
@@ -1943,8 +1763,6 @@ Whether or not uploads are enabled.
 
 ### `MB_UPLOADS_SCHEMA_NAME`
 
-Paid: No.
-
 Type: string
 
 Default: `null`
@@ -1954,8 +1772,6 @@ Configuration file name: `uploads-schema-name`
 Schema name for uploads.
 
 ### `MB_UPLOADS_TABLE_PREFIX`
-
-Paid: No.
 
 Type: string
 
@@ -1967,7 +1783,8 @@ Prefix for upload table names.
 
 ### `MB_USER_VISIBILITY`
 
-Paid: Yes
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Type: keyword
 
@@ -1979,7 +1796,7 @@ Note: Sandboxed users will never see suggestions.
 
 ## Other environment variables
 
-The following environment variables can only be set via the enviromnent. They cannot be set by the configuration file.
+The following environment variables can only be set via the environment. They cannot be set by the configuration file.
 
 ### `MAX_SESSION_AGE`
 
