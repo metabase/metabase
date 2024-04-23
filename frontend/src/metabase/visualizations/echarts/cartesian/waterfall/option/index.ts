@@ -242,7 +242,6 @@ export const getWaterfallChartOption = (
     ...getSharedEChartsOptions(isPlaceholder),
     grid: {
       ...chartMeasurements.padding,
-      containLabel: true,
     },
     dataset: echartsDataset as DatasetOption,
     series: seriesOption as SeriesOption,
