@@ -49,7 +49,7 @@ runs:
             ["visualizations-charts", {} ],
             ["visualizations-tabular", {} ],
             ["oss-subset", { edition: 'oss', context: "special" } ],
-            ["slow", { runner: beefierRunner, context: "special" } ],
+            ["slow", {} ],
             ["flaky", { runner: beefierRunner, context: "special" } ],
             ["mongo", { context: "qa-database" } ],
           ];
