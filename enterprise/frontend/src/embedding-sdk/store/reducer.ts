@@ -30,6 +30,7 @@ export const getOrRefreshSession = createAsyncThunk(
     if (state.loading || isTokenValid) {
       return token;
     }
+
     return dispatch(refreshTokenAsync(url)).unwrap();
   },
 );

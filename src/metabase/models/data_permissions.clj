@@ -631,16 +631,53 @@
                           :group_id group-id))
             lowest-to-highest-values))))
 
+(defenterprise new-group-view-data-permission-level
+  "Returns the default view-data permission level for a new group for a given database. On OSS, this is always `unrestricted`."
+  metabase-enterprise.advanced-permissions.common
+  [_group-id]
+  :unrestricted)
+
+(defn- new-group-permissions
+  "Returns a map of {perm-type value} to be set for a new group, for the provided database."
+  [db-or-id all-users-group-id]
+  (let [db-id                (u/the-id db-or-id)
+        view-data-level      (new-group-view-data-permission-level db-id)
+        create-queries-level (or (->> (t2/select-fn-set :value
+                                                        [:model/DataPermissions [:perm_value :value]]
+                                                        :perm_type :perms/create-queries
+                                                        :db_id db-id
+                                                        :group_id all-users-group-id)
+                                      (coalesce-most-restrictive :perms/create-queries))
+                                 :query-builder-and-native)
+        download-level      (or (->> (t2/select-fn-set :value
+                                                       [:model/DataPermissions [:perm_value :value]]
+                                                       :perm_type :perms/download-results
+                                                       :db_id db-id
+                                                       :group_id all-users-group-id)
+                                     (coalesce-most-restrictive :perms/download-results))
+                                :one-million-rows)]
+    {:perms/view-data view-data-level
+     :perms/create-queries create-queries-level
+     :perms/download-results download-level
+     :perms/manage-table-metadata :no
+     :perms/manage-database :no}))
+
+(defn set-new-group-permissions!
+  "Sets permissions for a newly-added group to their appropriate values for a single database. This is generally based
+  on the permissions of the All Users group."
+  [group-or-id db-or-id all-users-group-id]
+  (doseq [[perm-type perm-value] (new-group-permissions db-or-id all-users-group-id)]
+    (set-database-permission! group-or-id db-or-id perm-type perm-value)))
+
 (defenterprise new-database-view-data-permission-level
   "Returns the default view-data permission level for a new database for a given group. On OSS, this is always `unrestricted`."
   metabase-enterprise.advanced-permissions.common
   [_group-id]
   :unrestricted)
 
-(defn set-new-database-permissions!
-  "Sets permissions for a newly-added database to their appropriate values for a single group. For certain permission
-  types, the value computed based on the existing permissions the group has for other databases."
-  [group-or-id db-or-id]
+(defn- new-database-permissions
+  "Returns a map of {perm-type value} to be set for a new database, for the provided group."
+  [group-or-id]
   (let [group-id             (u/the-id group-or-id)
         view-data-level      (new-database-view-data-permission-level group-id)
         create-queries-level (or (lowest-permission-level-in-any-database group-id :perms/create-queries)
@@ -649,11 +686,18 @@
                                :no
                                (or (lowest-permission-level-in-any-database group-id :perms/download-results)
                                    :one-million-rows))]
-    (set-database-permission! group-or-id db-or-id :perms/view-data view-data-level)
-    (set-database-permission! group-or-id db-or-id :perms/create-queries create-queries-level)
-    (set-database-permission! group-or-id db-or-id :perms/download-results download-level)
-    (set-database-permission! group-or-id db-or-id :perms/manage-table-metadata :no)
-    (set-database-permission! group-or-id db-or-id :perms/manage-database :no)))
+    {:perms/view-data view-data-level
+     :perms/create-queries create-queries-level
+     :perms/download-results download-level
+     :perms/manage-table-metadata :no
+     :perms/manage-database :no}))
+
+(defn set-new-database-permissions!
+  "Sets permissions for a newly-added database to their appropriate values for a single group. For certain permission
+  types, the value computed based on the existing permissions the group has for other databases."
+  [group-or-id db-or-id]
+  (doseq [[perm-type perm-value] (new-database-permissions group-or-id)]
+    (set-database-permission! group-or-id db-or-id perm-type perm-value)))
 
 (mu/defn set-table-permissions!
   "Sets table permissions to specified values for a given group. If a permission value already exists for a specified

@@ -1,8 +1,17 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type {
+  OnArchive,
+  OnCopy,
+  OnMove,
+  OnPin,
+  OnToggleBookmark,
+  OnTogglePreview,
+  OnToggleSelected,
+} from "metabase/collections/types";
 import {
   isPreviewShown,
   isFullyParameterized,
@@ -15,7 +24,9 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Swapper from "metabase/core/components/Swapper";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
+import type { IconProps, IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
+import type { CollectionItem } from "metabase-types/api";
 
 import {
   EntityIconWrapper,
@@ -25,7 +36,18 @@ import {
   EntityMenuContainer,
 } from "./EntityItem.styled";
 
-function EntityIconCheckBox({
+type EntityIconCheckBoxProps = {
+  variant?: string;
+  icon: IconProps;
+  pinned?: boolean;
+  selectable?: boolean;
+  selected?: boolean;
+  showCheckbox?: boolean;
+  disabled?: boolean;
+  onToggleSelected?: () => void;
+};
+
+const EntityIconCheckBox = ({
   variant,
   icon,
   pinned,
@@ -35,17 +57,17 @@ function EntityIconCheckBox({
   disabled,
   onToggleSelected,
   ...props
-}) {
+}: EntityIconCheckBoxProps) => {
   const iconSize = variant === "small" ? 12 : 16;
-  const handleClick = e => {
+  const handleClick: React.MouseEventHandler = e => {
     e.preventDefault();
-    onToggleSelected();
+    onToggleSelected?.();
   };
 
   return (
     <EntityIconWrapper
       isPinned={pinned}
-      onClick={selectable ? handleClick : null}
+      onClick={selectable ? handleClick : () => {}}
       disabled={disabled}
       {...props}
     >
@@ -70,9 +92,9 @@ function EntityIconCheckBox({
       )}
     </EntityIconWrapper>
   );
-}
+};
 
-function EntityItemName({ name, variant }) {
+function EntityItemName({ name, variant }: { name: string; variant?: string }) {
   return (
     <h3
       className={cx(CS.overflowHidden, {
@@ -96,6 +118,18 @@ function EntityItemMenu({
   onToggleBookmark,
   onTogglePreview,
   className,
+}: {
+  item: CollectionItem;
+  isBookmarked?: boolean;
+  isXrayEnabled?: boolean;
+  canUseMetabot?: boolean;
+  onPin?: OnPin;
+  onMove?: OnMove;
+  onCopy?: OnCopy;
+  onArchive?: OnArchive;
+  onToggleBookmark?: OnToggleBookmark;
+  onTogglePreview?: OnTogglePreview;
+  className?: string;
 }) {
   const isPinned = isItemPinned(item);
   const isPreviewed = isPreviewShown(item);
@@ -213,7 +247,7 @@ function EntityItemMenu({
     return null;
   }
   return (
-    <EntityMenuContainer align="center">
+    <EntityMenuContainer style={{ textAlign: "center" }}>
       <EntityMenu
         triggerAriaLabel={t`Actions`}
         className={className}
@@ -242,6 +276,23 @@ const EntityItem = ({
   pinned,
   loading,
   disabled,
+}: {
+  name: string;
+  iconName: IconName;
+  onPin?: OnPin;
+  onMove?: OnMove;
+  onCopy?: OnCopy;
+  onArchive?: OnArchive;
+  selected: boolean;
+  onToggleSelected?: OnToggleSelected;
+  selectable?: boolean;
+  variant: string;
+  item: CollectionItem;
+  buttons?: ReactNode;
+  extraInfo?: ReactNode;
+  pinned?: boolean;
+  loading?: boolean;
+  disabled: boolean;
 }) => {
   const icon = useMemo(() => ({ name: iconName }), [iconName]);
 
@@ -254,7 +305,6 @@ const EntityItem = ({
       disabled={disabled}
     >
       <EntityIconCheckBox
-        item={item}
         variant={variant}
         icon={icon}
         pinned={pinned}
@@ -293,4 +343,5 @@ EntityItem.IconCheckBox = EntityIconCheckBox;
 EntityItem.Name = EntityItemName;
 EntityItem.Menu = EntityItemMenu;
 
+// eslint-disable-next-line import/no-default-export
 export default EntityItem;

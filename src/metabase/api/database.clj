@@ -500,13 +500,13 @@
   and tables, with no additional metadata."
   [id include_hidden include_editable_data_model remove_inactive]
   {id                          ms/PositiveInt
-   include_hidden              [:maybe ms/BooleanString]
-   include_editable_data_model [:maybe ms/BooleanString]
-   remove_inactive             [:maybe ms/BooleanString]}
+   include_hidden              [:maybe ms/BooleanValue]
+   include_editable_data_model [:maybe ms/BooleanValue]
+   remove_inactive             [:maybe ms/BooleanValue]}
   (db-metadata id
-               (Boolean/parseBoolean include_hidden)
-               (Boolean/parseBoolean include_editable_data_model)
-               (Boolean/parseBoolean remove_inactive)))
+               include_hidden
+               include_editable_data_model
+               remove_inactive))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------

@@ -1,20 +1,15 @@
-/* eslint-disable react/prop-types */
-import cx from "classnames";
 import { dissoc } from "icepick";
 import { useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import Link from "metabase/core/components/Link";
-import CS from "metabase/css/core/index.css";
 import Collections from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import Dashboards from "metabase/entities/dashboards";
 import withToast from "metabase/hoc/Toast";
 import { entityTypeForObject } from "metabase/lib/schema";
-import * as Urls from "metabase/lib/urls";
 
-function mapStateToProps(state, props) {
+function mapStateToProps(state: any, props: any) {
   return {
     initialCollectionId: Collections.selectors.getInitialCollectionId(state, {
       ...props,
@@ -23,7 +18,7 @@ function mapStateToProps(state, props) {
   };
 }
 
-const getTitle = (entityObject, isShallowCopy) => {
+const getTitle = (entityObject: any, isShallowCopy: boolean) => {
   if (entityObject.model !== "dashboard") {
     return "";
   } else if (isShallowCopy) {
@@ -38,34 +33,20 @@ function CollectionCopyEntityModal({
   initialCollectionId,
   onClose,
   onSaved,
-  triggerToast,
+}: {
+  entityObject: any;
+  initialCollectionId: number;
+  onClose: () => void;
+  onSaved: (newEntityObject: any) => void;
 }) {
   const [isShallowCopy, setIsShallowCopy] = useState(true);
   const title = getTitle(entityObject, isShallowCopy);
 
-  const handleValuesChange = ({ is_shallow_copy }) => {
+  const handleValuesChange = ({ is_shallow_copy }: Record<string, any>) => {
     setIsShallowCopy(is_shallow_copy);
   };
 
-  const handleSaved = newEntityObject => {
-    const newEntityUrl = Urls.modelToUrl({
-      model: entityObject.model,
-      model_object: newEntityObject,
-    });
-
-    triggerToast(
-      <div className={cx(CS.flex, CS.alignCenter)}>
-        {/* A shallow-copied newEntityObject will not include `uncopied` */}
-        {newEntityObject.uncopied?.length > 0
-          ? t`Duplicated ${entityObject.model}, but couldn't duplicate some questions`
-          : t`Duplicated ${entityObject.model}`}
-        <Link className={cx(CS.link, CS.textBold, CS.ml1)} to={newEntityUrl}>
-          {t`See it`}
-        </Link>
-      </div>,
-      { icon: entityObject.model },
-    );
-
+  const handleSaved = (newEntityObject: any) => {
     onSaved(newEntityObject);
   };
 
@@ -89,4 +70,5 @@ function CollectionCopyEntityModal({
   );
 }
 
+// eslint-disable-next-line import/no-default-export
 export default withToast(connect(mapStateToProps)(CollectionCopyEntityModal));

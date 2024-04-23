@@ -1,16 +1,18 @@
-import PropTypes from "prop-types";
-
 import PinDropZone from "metabase/collections/components/PinDropZone";
 import CS from "metabase/css/core/index.css";
+import type { CollectionItem } from "metabase-types/api";
 
+import type { BaseItemsTableProps } from "./BaseItemsTable";
 import BaseItemsTable from "./BaseItemsTable";
+import type { BaseTableItemProps } from "./BaseTableItem";
 import { ItemsTableRoot } from "./ItemsTable.styled";
 
-Item.propTypes = {
-  item: PropTypes.object.isRequired,
-};
-
-function Item({ item, ...props }) {
+const Item = ({
+  item,
+  ...props
+}: {
+  item: CollectionItem;
+} & BaseTableItemProps) => {
   return (
     <BaseItemsTable.Item
       key={`${item.model}-${item.id}`}
@@ -18,15 +20,12 @@ function Item({ item, ...props }) {
       item={item}
     />
   );
-}
-
-ItemsTable.propTypes = {
-  items: PropTypes.arrayOf(PropTypes.object).isRequired,
 };
 
-function ItemsTable(props) {
-  const { items } = props;
-
+const ItemsTable = ({
+  items,
+  ...props
+}: { items: CollectionItem[] } & BaseItemsTableProps) => {
   if (items.length === 0) {
     return (
       <ItemsTableRoot>
@@ -38,9 +37,10 @@ function ItemsTable(props) {
   return (
     <div className={CS.relative}>
       <PinDropZone variant="unpin" />
-      <BaseItemsTable {...props} renderItem={Item} />
+      <BaseItemsTable items={items} {...props} renderItem={Item} />
     </div>
   );
-}
+};
 
+// eslint-disable-next-line import/no-default-export
 export default ItemsTable;
