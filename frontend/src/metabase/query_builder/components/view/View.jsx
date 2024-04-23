@@ -10,7 +10,11 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { rememberLastUsedDatabase } from "metabase/query_builder/actions";
+import Questions from "metabase/entities/questions";
+import {
+  rememberLastUsedDatabase,
+  setArchivedQuestion,
+} from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying";
 import { Transition } from "metabase/ui";
@@ -206,7 +210,7 @@ class View extends Component {
   };
 
   renderHeader = () => {
-    const { question } = this.props;
+    const { question, onUnarchive, onDeletePermanently } = this.props;
     const query = question.query();
     const { isNative } = Lib.queryDisplayInfo(query);
 
@@ -217,7 +221,8 @@ class View extends Component {
         {question.card().archived && (
           <ArchivedEntityBanner
             entity={question.type()}
-            entityId={question.card().id}
+            onUnarchive={() => onUnarchive(question)}
+            onDeletePermanently={() => onDeletePermanently(question.card().id)}
           />
         )}
 
@@ -437,6 +442,8 @@ class View extends Component {
 
 const mapDispatchToProps = dispatch => ({
   onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
+  onUnarchive: question => dispatch(setArchivedQuestion(question, false)),
+  onDeletePermanently: id => dispatch(Questions.actions.delete({ id })),
 });
 
 export default _.compose(

@@ -1,53 +1,20 @@
 import { t } from "ttag";
 
-import Collections from "metabase/entities/collections";
-import Dashboards from "metabase/entities/dashboards";
-import Questions from "metabase/entities/questions";
-import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex, Icon, Paper, Text } from "metabase/ui";
-import type { CollectionId, DashboardId, CardId } from "metabase-types/api";
 
-type CollectionArchiveBannerProps =
-  | { entity: "collection"; entityId: CollectionId }
-  | { entity: "question"; entityId: CardId }
-  | { entity: "dashboard"; entityId: DashboardId }
-  | { entity: "model"; entityId: number };
-
-const entityMap: Record<CollectionArchiveBannerProps["entity"], any> = {
-  collection: Collections,
-  dashboard: Dashboards,
-  model: Questions,
-  question: Questions,
+type ArchivedEntityBannerProps = {
+  entity: "collection" | "question" | "dashboard" | "model";
+  onUnarchive: () => void;
+  onDeletePermanently: () => void;
 };
 
 export const ArchivedEntityBanner = ({
   entity,
-  entityId,
-}: CollectionArchiveBannerProps) => {
-  const dispatch = useDispatch();
-
-  const Entity = entityMap[entity];
-
-  // TODO: use some other non-deprecated solution...
-  const handleUnarchive = () => {
-    dispatch(Entity.actions.setArchived({ id: entityId }, false));
-  };
-
-  // TODO: use some other non-deprecated solution...
-  const handleDeletePermanently = () => {
-    dispatch(Entity.actions.delete({ id: entityId }));
-  };
-
+  onUnarchive,
+  onDeletePermanently,
+}: ArchivedEntityBannerProps) => {
   return (
-    <Paper
-      px="1.5rem"
-      py=".75rem"
-      bg="error"
-      shadow="0"
-      radius="0"
-      role="complementary"
-      w="100%"
-    >
+    <Paper px="1.5rem" py=".75rem" bg="error" shadow="0" radius="0" w="100%">
       <Flex justify="space-between">
         <Flex align="center">
           {/* TODO: add trash full icon */}
@@ -61,12 +28,7 @@ export const ArchivedEntityBanner = ({
           </Text>
         </Flex>
         <Flex gap="md">
-          <Button
-            compact
-            variant="outline"
-            color="white"
-            onClick={handleUnarchive}
-          >
+          <Button compact variant="outline" color="white" onClick={onUnarchive}>
             <Flex align="center">
               <Icon
                 size={12}
@@ -80,7 +42,7 @@ export const ArchivedEntityBanner = ({
             compact
             variant="outline"
             color="white"
-            onClick={handleDeletePermanently}
+            onClick={onDeletePermanently}
           >
             <Flex align="center">
               <Icon

@@ -6,9 +6,10 @@ import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
 import { ArchivedEntityBanner } from "metabase/collections/components/CollectionArchiveBanner";
-import type {
-  NewDashCardOpts,
-  SetDashboardAttributesOpts,
+import {
+  type NewDashCardOpts,
+  type SetDashboardAttributesOpts,
+  setArchivedDashboard,
 } from "metabase/dashboard/actions";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
@@ -16,7 +17,9 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
+import Dashboards from "metabase/entities/dashboards";
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+import { useDispatch } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
@@ -238,6 +241,8 @@ function DashboardInner(props: DashboardProps) {
     setSharing,
     toggleSidebar,
   } = props;
+
+  const dispatch = useDispatch();
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -535,7 +540,13 @@ function DashboardInner(props: DashboardProps) {
       {() => (
         <DashboardStyled>
           {dashboard.archived && (
-            <ArchivedEntityBanner entity="dashboard" entityId={dashboard.id} />
+            <ArchivedEntityBanner
+              entity="dashboard"
+              onUnarchive={() => dispatch(setArchivedDashboard(false))}
+              onDeletePermanently={() =>
+                Dashboards.actions.delete({ id: dashboard.id })
+              }
+            />
           )}
 
           <DashboardHeaderContainer

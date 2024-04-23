@@ -1,8 +1,10 @@
 import { assocIn, dissocIn, getIn } from "icepick";
+import { t } from "ttag";
 import _ from "underscore";
 
 import Dashboards from "metabase/entities/dashboards";
 import { createThunkAction } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
 import { CardApi } from "metabase/services";
 import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";
 
@@ -17,6 +19,8 @@ export const UPDATE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/UPDATE_DASHBOARD_AND_CARDS";
 
 export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
+export const SET_ARCHIVED_DASHBOARD =
+  "metabase/dashbaord/SET_ARCHIVED_DASHBOARD";
 
 export const updateDashboardAndCards = createThunkAction(
   UPDATE_DASHBOARD_AND_CARDS,
@@ -178,6 +182,35 @@ export const updateDashboard = createThunkAction(
       dispatch(
         fetchDashboard({
           dashId: dashboard.id,
+          queryParam: null,
+          options: { preserveParameters: true },
+        }),
+      );
+    };
+  },
+);
+
+export const setArchivedDashboard = createThunkAction(
+  SET_ARCHIVED_DASHBOARD,
+  function (archived = true) {
+    return async function (dispatch, getState) {
+      const { dashboardId } = getState().dashboard;
+
+      await dispatch(
+        Dashboards.actions.update({ id: dashboardId }, { archived }),
+      );
+
+      dispatch(
+        addUndo({
+          subject: t`dashboard`,
+          verb: archived ? t`trashed` : t`restored`,
+          action: () => dispatch(setArchivedDashboard(!archived)),
+        }),
+      );
+
+      dispatch(
+        fetchDashboard({
+          dashId: dashboardId,
           queryParam: null,
           options: { preserveParameters: true },
         }),

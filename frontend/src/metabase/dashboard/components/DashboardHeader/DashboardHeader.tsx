@@ -19,7 +19,10 @@ import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link/Link";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import type { NewDashCardOpts } from "metabase/dashboard/actions";
+import {
+  type NewDashCardOpts,
+  setArchivedDashboard,
+} from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
   addSectionToDashboard,
@@ -40,7 +43,6 @@ import {
 import type { FetchDashboardResult } from "metabase/dashboard/types";
 import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import Bookmark from "metabase/entities/bookmarks";
-import Dashboards from "metabase/entities/dashboards";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
 import { fetchPulseFormInput } from "metabase/pulse/actions";
@@ -559,9 +561,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
         extraButtons.push({
           title: t`Move to trash`,
           icon: "trash",
-          // TODO: refactor to not use entities
-          action: () =>
-            dispatch(Dashboards.actions.setArchived(dashboard, true)),
+          action: () => dispatch(setArchivedDashboard(true)),
           event: "Dashboard;Archive",
         });
       }

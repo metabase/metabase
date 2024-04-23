@@ -1,7 +1,11 @@
 import { assocIn } from "icepick";
+import { t } from "ttag";
 import _ from "underscore";
 
+import Questions from "metabase/entities/questions";
+import { createThunkAction } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import { addUndo } from "metabase/redux/undo";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -232,3 +236,29 @@ export const updateQuestion = (
     }
   };
 };
+
+export const SET_ARCHIVED_QUESTION = "metabase/dashbaord/SET_ARCHIVED_QUESTION";
+export const setArchivedQuestion = createThunkAction(
+  SET_ARCHIVED_QUESTION,
+  function (question, archived = true) {
+    return async function (dispatch) {
+      Questions.actions.setArchived(question.card(), archived);
+
+      dispatch(
+        updateQuestion(question.setArchived(archived), {
+          shouldUpdateUrl: false,
+          shouldStartAdHocQuestion: false,
+        }),
+      );
+
+      dispatch(
+        addUndo({
+          // TODO: how can i get this translated?
+          subject: question.card().type,
+          verb: archived ? t`trashed` : t`restored`,
+          action: () => dispatch(setArchivedQuestion(question, !archived)),
+        }),
+      );
+    };
+  },
+);
