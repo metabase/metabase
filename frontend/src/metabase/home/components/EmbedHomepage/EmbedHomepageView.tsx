@@ -22,7 +22,7 @@ export type EmbedHomepageViewProps = {
   embeddingAutoEnabled: boolean;
   exampleDashboardId: number | null;
   licenseActiveAtSetup: boolean;
-  defaultTab: "interactive" | "static";
+  initialTab: "interactive" | "static";
   onDismiss: (reason: EmbedHomepageDismissReason) => void;
   // links
   interactiveEmbeddingQuickstartUrl: string;
@@ -35,7 +35,7 @@ export type EmbedHomepageViewProps = {
 export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
   const {
     embeddingAutoEnabled,
-    defaultTab,
+    initialTab,
     embeddingDocsUrl,
     analyticsDocsUrl,
     onDismiss,
@@ -69,7 +69,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
       <Card px="xl" py="lg">
         {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
         <Title order={2} mb="md">{t`Embedding Metabase`}</Title>
-        <Tabs defaultValue={defaultTab}>
+        <Tabs defaultValue={initialTab}>
           <Tabs.List>
             <Tabs.Tab value="interactive">{t`Interactive`}</Tabs.Tab>
             <Tabs.Tab value="static">{t`Static`}</Tabs.Tab>

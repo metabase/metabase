@@ -47,7 +47,7 @@ export const EmbedHomepage = () => {
     getPlan(getSetting(state, "token-features")),
   );
 
-  const defaultTab = useMemo(() => {
+  const initialTab = useMemo(() => {
     // we want to show the interactive tab for EE builds
     // unless it's a starter cloud plan, which is EE build but doesn't have interactive embedding
     if (isEEBuild()) {
@@ -98,7 +98,7 @@ export const EmbedHomepage = () => {
         exampleDashboardId={exampleDashboardId}
         embeddingAutoEnabled={embeddingAutoEnabled}
         licenseActiveAtSetup={licenseActiveAtSetup}
-        defaultTab={defaultTab}
+        initialTab={initialTab}
         interactiveEmbeddingQuickstartUrl={interactiveEmbeddingQuickStartUrl}
         embeddingDocsUrl={embeddingDocsUrl}
         // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
