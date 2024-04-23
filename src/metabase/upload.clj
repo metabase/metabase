@@ -521,8 +521,8 @@
   "Returns true if `query` has no joins in it, otherwise false."
   [query]
   (->> (range (lib/stage-count query))
-       (every? (fn [stage]
-                 (empty? (lib/joins query stage))))))
+       (not-any? (fn [stage]
+                   (lib/joins query stage)))))
 
 (defn- only-table-id
   "For models that depend on only one table, return its id, otherwise return nil. Doesn't support native queries."
