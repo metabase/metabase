@@ -31,8 +31,9 @@
     (let [h2-file-dump-content "H:2,block:61,blockSize:1000,chunk:7,clean:1,created:18e17379d42,format:2,version:7"
           file-contents        {tmp-h2-db    h2-file-dump-content
                                 tmp-h2-db-mv h2-file-dump-content}]
-      ;; 1. Don't actually run the copy steps themselves
-      (mt/with-dynamic-redefs [copy/copy! (constantly nil)]
+      ;; 1. Don't actually run the copy steps themselves or the flush
+      (mt/with-dynamic-redefs [copy/copy!    (constantly nil)
+                               jdbc/execute! (constantly nil)]
         (doseq [[filename contents] file-contents]
           (spit filename contents))
         (dump-to-h2/dump-to-h2! tmp-h2-db)
