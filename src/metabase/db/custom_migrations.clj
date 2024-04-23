@@ -22,7 +22,6 @@
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.date-2 :as u.date]
@@ -1258,9 +1257,16 @@
 (define-migration BackfillQueryField
   (let [field-ids-for-sql  (requiring-resolve 'metabase.native-query-analyzer/field-ids-for-sql)
         ;; practically #'metabase.models.query-field/field-ids-for-mbql
+        mbql-fields-xf     (comp
+                            (map #(match %
+                                    ["field" (id :guard integer?) opts] [id (:source-field opts)]
+                                    :else                               nil))
+                            cat
+                            (remove nil?))
         field-ids-for-mbql (fn [query]
-                             {:direct (some-> (lib.util.match/match query ["field" (id :guard integer?) _] id)
-                                              set)})
+                             {:direct (->> (tree-seq coll? seq query)
+                                           (into #{} mbql-fields-xf)
+                                           not-empty)})
         cards              (t2/select :report_card :id [:in {:from      [[:report_card :c]]
                                                              :left-join [[:query_field :f] [:= :f.card_id :c.id]]
                                                              :select    [:c.id]
@@ -1276,7 +1282,11 @@
                                                 {:card_id          card-id
                                                  :field_id         field-id
                                                  :direct_reference direct?})
-            query-field-records               (concat
+            records                           (concat
                                                (map (partial id->record true) direct)
-                                               (map (partial id->record false) indirect))]
-        (t2/insert! :query_field query-field-records)))))
+                                               (map (partial id->record false) indirect))
+            known                             (set
+                                               (t2/select-fn-set :id :metabase_field :id [:in (map :field_id records)]))
+            records                           (filterv (comp known :field_id) records)]
+        (when (seq records)
+          (t2/insert! :query_field records))))))
