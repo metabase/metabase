@@ -211,7 +211,8 @@ function recursiveParse(source) {
 }
 
 const modify = (node, transform) => {
-  if (Array.isArray(node)) {
+  // MBQL clause?
+  if (Array.isArray(node) && node.length > 0 && typeof node[0] === "string") {
     const [operator, ...operands] = node;
     return withAST(
       transform([operator, ...operands.map(sub => modify(sub, transform))]),

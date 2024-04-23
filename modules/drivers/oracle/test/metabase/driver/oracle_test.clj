@@ -333,9 +333,9 @@
                               [(h2x/identifier :field-alias "name")]]
                              [(id "category_id" "number")
                               [(h2x/identifier :field-alias "category_id")]]
-                             [(id "latitude" "binary_float")
+                             [(id "latitude" "binary_double")
                               [(h2x/identifier :field-alias "latitude")]]
-                             [(id "longitude" "binary_float")
+                             [(id "longitude" "binary_double")
                               [(h2x/identifier :field-alias "longitude")]]
                              [(id "price" "number")
                               [(h2x/identifier :field-alias "price")]]]
