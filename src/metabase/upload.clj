@@ -518,7 +518,8 @@
   (= "query" (name (:query_type model "query"))))
 
 (defn- no-joins?
-  "Returns true if `query` has no joins in it, otherwise false."
+  "Returns true if `query` has no joins in it, otherwise false.
+  WARNING: The implementation does not currently detect implicit joins."
   [query]
   (->> (range (lib/stage-count query))
        (not-any? (fn [stage-idx]
