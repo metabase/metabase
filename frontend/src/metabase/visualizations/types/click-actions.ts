@@ -83,7 +83,7 @@ export type UrlClickAction = ClickActionBase & UrlClickActionBase;
 
 export type CustomClickAction = ClickActionBase & {
   type: "custom";
-  onClick?: (closePopover: () => void) => void;
+  onClick?: ({ closePopover }: { closePopover: () => void }) => void;
 };
 
 export type RegularClickAction =

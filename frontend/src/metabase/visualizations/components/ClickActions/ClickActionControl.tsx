@@ -39,7 +39,7 @@ export const ClickActionControl = ({
 
   const handleClick =
     isCustomClickAction(action) && action.onClick
-      ? () => (action as CustomClickAction).onClick?.(close)
+      ? () => (action as CustomClickAction).onClick?.({ closePopover: close })
       : () => onClick(action);
 
   switch (buttonType) {

@@ -1,6 +1,6 @@
 import type { ClickAction, ClickObject } from "metabase/visualizations/types";
 
-export type SdkClickObject = Pick<
+export type SdkDataPointObject = Pick<
   ClickObject,
   "value" | "column" | "data" | "event"
 >;
@@ -13,6 +13,6 @@ export type SdkClickActionPluginsConfig = Pick<
 export interface SdkPluginsConfig {
   mapQuestionClickActions?: (
     clickActions: ClickAction[],
-    clicked: SdkClickObject,
+    clickedDataPoint: SdkDataPointObject,
   ) => ClickAction[];
 }
