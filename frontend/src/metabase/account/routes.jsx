@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { Route } from "metabase/hoc/Title";
 
-import AccountApp from "./app/containers/AccountApp";
+import { AccountApp } from "./app/containers/AccountApp";
 import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";
 import getNotificationRoutes from "./notifications/routes";
 import UserPasswordApp from "./password/containers/UserPasswordApp";
