@@ -163,13 +163,13 @@ export type VisualizationSettings = {
 
 export interface ModerationReview {
   moderator_id: number;
-  status: ModerationReviewStatus | null;
+  status: ModerationReviewStatus;
   created_at: string;
   most_recent: boolean;
 }
 
 export type CardId = number;
-export type ModerationReviewStatus = "verified";
+export type ModerationReviewStatus = "verified" | null;
 
 export type CardFilterOption =
   | "all"
