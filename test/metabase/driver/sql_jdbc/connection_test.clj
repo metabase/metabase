@@ -230,7 +230,6 @@
         server (Server/createTcpServer (into-array args))]
     (doto server (.start))))
 
-;; TODO: Consider enabling the test for Duid JDBC. -- Ssh does not seem to work with Druid JDBC.
 (deftest test-ssh-tunnel-connection
   ;; sqlite cannot be behind a tunnel, h2 is tested below, unsure why others fail
   (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :druid-jdbc :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena)

@@ -2,11 +2,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(set! *warn-on-reflection* true)
 
 ;; TODO: There are sync differences between jdbc and non-jdbc implementation. Verify it's ok!
 ;; TODO: This should probably not be parallel.
@@ -422,3 +425,31 @@
                 (mt/run-mbql-query checkins
                   {:aggregation [[:count]]
                    :filter      [:> $__time "2015-10-01T00:00:00Z"]}))))))))
+
+(deftest ssh-tunnel-test
+  (mt/test-driver
+   :druid-jdbc
+   (is (thrown?
+        java.net.ConnectException
+        (try
+          (let [engine  :druid-jdbc
+                details {:ssl            false
+                         :password       "changeme"
+                         :tunnel-host    "localhost"
+                         :tunnel-pass    "BOGUS-BOGUS"
+                         :port           5432
+                         :dbname         "test"
+                         :host           "http://localhost"
+                         :tunnel-enabled true
+                         ;; we want to use a bogus port here on purpose -
+                         ;; so that locally, it gets a ConnectionRefused,
+                         ;; and in CI it does too. Apache's SSHD library
+                         ;; doesn't wrap every exception in an SshdException
+                         :tunnel-port    21212
+                         :tunnel-user    "bogus"}]
+            (driver.u/can-connect-with-details? engine details :throw-exceptions))
+          (catch Throwable e
+            (loop [^Throwable e e]
+              (or (when (instance? java.net.ConnectException e)
+                    (throw e))
+                  (some-> (.getCause e) recur)))))))))

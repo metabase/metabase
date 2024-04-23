@@ -7,7 +7,6 @@ driver:
   display-name: Druid JDBC
   lazy-load: true
   parent: sql-jdbc
-  # TODO: connection-properties copied from non-jdbc druid. Evaluate which are needed in jdbc driver.
   connection-properties:
     - merge:
         - host
@@ -16,15 +15,7 @@ driver:
         - port
         - display-name: Router node port
           default: 8888
-    # TODO: At the moment broker port is not needed but that may change.
-    # - merge:
-    #     - port
-    #     - display-name: Broker node port
-    #       default: 8082
-    # - cloud-ip-address-info
-    # TODO: Enable ssh-tunel when failure of `metabase.driver.sql-jdbc.connection-test/test-ssh-tunnel-connection`
-    #       is resolved.
-    # - ssh-tunnel
+    - ssh-tunnel
     - advanced-options-start
     - name: json-unfolding
       display-name: Allow unfolding of JSON columns
@@ -32,27 +23,7 @@ driver:
       visible-if:
         advanced-options: true
       description: This enables unfolding JSON columns into their component fields.
-      #              "Disable unfolding if performance is slow. If enabled, you can still disable unfolding for "
-      #                   "individual fields in their settings."
       default: true
-    # TODO: Auth is implemented for non-JDBC driver. Should be also for this one.
-    # - name: auth-enabled
-    #   display-name: Authentication header
-    #   default: false
-    #   type: boolean
-    #   visible-if:
-    #     advanced-options: true
-    # - name: auth-username
-    #   display-name: Username
-    #   type: string
-    #   visible-if:
-    #     auth-enabled: true
-    # - name: auth-token
-    #   display-name: Token
-    #   type: secret
-    #   secret-kind: password
-    #   visible-if:
-        # auth-enabled: true
     - default-advanced-options
 init:
   - step: load-namespace
