@@ -123,7 +123,7 @@ export const getCardsSeriesModels = (
  * @param {RenderingContext} renderingContext - The rendering context.
  * @returns {SeriesModel[]} The generated series models for the card.
  */
-const getCardSeriesModels = (
+export const getCardSeriesModels = (
   { card, data }: SingleSeries,
   columns: CartesianChartColumns,
   hasMultipleCards: boolean,
