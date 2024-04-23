@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { SdkError } from "embedding-sdk/components/private/SdkError";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
-import {Loader} from "metabase/ui";
+import { Loader } from "metabase/ui";
 
 export const PublicComponentWrapper = ({
   children,
@@ -26,7 +26,7 @@ export const PublicComponentWrapper = ({
   }
 
   if (loginStatus.status === "error") {
-    return <SdkError />;
+    return <SdkError message={loginStatus.error.message} />;
   }
 
   return children;

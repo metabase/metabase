@@ -4,21 +4,18 @@ import type {
   SdkState,
 } from "embedding-sdk/store/types";
 
-const createMockTokenState = ({
+export const createMockTokenState = ({
   ...opts
-}: {
-  opts?: Partial<EmbeddingSessionTokenState>;
-} = {}): EmbeddingSessionTokenState => {
+}: Partial<LoginStatus> = {}): EmbeddingSessionTokenState => {
   return { error: null, loading: false, token: null, ...opts };
 };
 
-const createMockLoginStatusState = ({
+export const createMockLoginStatusState = ({
   status,
   ...opts
 }: {
   status?: LoginStatus["status"];
-  opts?: Partial<LoginStatus>;
-} = {}): LoginStatus => {
+} & Partial<LoginStatus> = {}): LoginStatus => {
   if (status === "error") {
     return { error: new Error("An error occurred"), status: "error", ...opts };
   }
@@ -28,9 +25,7 @@ const createMockLoginStatusState = ({
 
 export const createMockSdkState = ({
   ...opts
-}: {
-  opts?: Partial<SdkState>;
-} = {}): SdkState => {
+}: Partial<SdkState> = {}): SdkState => {
   return {
     loginStatus: createMockLoginStatusState(),
     token: createMockTokenState(),

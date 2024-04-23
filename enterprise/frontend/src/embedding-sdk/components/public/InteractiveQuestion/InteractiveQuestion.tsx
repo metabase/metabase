@@ -1,7 +1,9 @@
 import cx from "classnames";
 import { useEffect } from "react";
+import { t } from "ttag";
 
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper/PublicComponentWrapper";
+import { SdkError } from "embedding-sdk/components/private/SdkError";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -24,7 +26,7 @@ import type { CardId } from "metabase-types/api";
 
 export type InteractiveQuestionProps = {
   questionId: CardId;
-}
+};
 
 export const _InteractiveQuestion = ({
   questionId,
@@ -53,7 +55,7 @@ export const _InteractiveQuestion = ({
   }, [dispatch, questionId]);
 
   if (!question) {
-    return null;
+    return <SdkError message={t`Invalid question`} />;
   }
 
   return (
