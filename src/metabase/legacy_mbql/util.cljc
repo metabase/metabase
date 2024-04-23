@@ -30,7 +30,7 @@
   [x]
   (and (sequential? x)
        (not (map-entry? x))
-       (simple-keyword? (first x))))
+       (keyword? (first x))))
 
 (defn is-clause?
   "If `x` is an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
