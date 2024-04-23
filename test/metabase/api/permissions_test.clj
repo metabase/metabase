@@ -192,13 +192,15 @@
     (testing "make sure we can update the perms graph from the API"
       (testing "Table-specific perms"
         (t2.with-temp/with-temp [PermissionsGroup group]
+          (data-perms/set-database-permission! group (mt/id) :perms/create-queries :no)
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
            (assoc-in (data-perms.graph/api-graph)
                      [:groups (u/the-id group) (mt/id) :create-queries]
                      {"PUBLIC" {(mt/id :venues) :query-builder
-                                (mt/id :orders) :no}}))
-          (is (= {(mt/id :venues) :query-builder}
+                                (mt/id :orders) :query-builder}}))
+          (is (= {(mt/id :venues) :query-builder
+                  (mt/id :orders) :query-builder}
                  (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) (mt/id) :create-queries "PUBLIC"]))))))))
 
 (deftest update-perms-graph-perms-for-new-db-test
@@ -213,9 +215,10 @@
                    [:groups (u/the-id group) db-id]
                    {:view-data :unrestricted
                     :create-queries :query-builder}))
-        (is (= {:view-data :unrestricted
-                :create-queries :query-builder}
-               (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
+        (is (partial=
+             {:view-data :unrestricted
+              :create-queries :query-builder}
+             (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
 
 (deftest update-perms-graph-perms-for-new-db-with-no-tables-test
   (testing "PUT /api/permissions/graph"
@@ -228,9 +231,10 @@
                    [:groups (u/the-id group) db-id]
                    {:view-data :unrestricted
                     :create-queries :query-builder}))
-        (is (= {:view-data :unrestricted
-                :create-queries :query-builder}
-               (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
+        (is (partial=
+             {:view-data :unrestricted
+              :create-queries :query-builder}
+             (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
 
 (deftest update-perms-graph-with-skip-graph-skips-graph-test
   (testing "PUT /api/permissions/graph"

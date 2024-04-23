@@ -394,6 +394,45 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
+    name: "host",
+    structure: "host",
+    description: () =>
+      t`Extracts the host (domain name and TLD, eg. "metabase.com" from "status.metabase.com") from a URL or email`,
+    args: [
+      {
+        name: t`urlOrEmail`,
+        description: t`The URL or Email column to extract the host from.`,
+        example: formatIdentifier(t`Email`),
+      },
+    ],
+  },
+  {
+    name: "domain",
+    structure: "domain",
+    description: () =>
+      t`Extracts the domain name (eg. "metabase") from a URL or email`,
+    args: [
+      {
+        name: t`urlOrEmail`,
+        description: t`The URL or Email column to extract domain names from.`,
+        example: formatIdentifier(t`Email`),
+      },
+    ],
+  },
+  {
+    name: "subdomain",
+    structure: "subdomain",
+    description: () =>
+      t`Extracts the first subdomain (eg. "status" from "status.metabase.com", "" from "bbc.co.uk") from a URL. Ignores "www".`,
+    args: [
+      {
+        name: t`url`,
+        description: t`The URL column to extract the subdomain from.`,
+        example: formatIdentifier(t`ProfileImage`),
+      },
+    ],
+  },
+  {
     name: "abs",
     structure: "abs",
     description: () =>

@@ -165,7 +165,6 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
                 {...fields["saml-identity-provider-certificate"]}
                 label={t`SAML Identity Provider Certificate`}
                 required
-                monospaceText
               />
               <FormTextInput
                 {...fields["saml-application-name"]}

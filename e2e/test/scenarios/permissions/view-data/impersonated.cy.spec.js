@@ -44,14 +44,7 @@ describeEE("scenarios > admin > permissions > view data > impersonated", () => {
 
     assertPermissionTable([
       ["Sample Database", "Can view", "No", "1 million rows", "No", "No"],
-      [
-        "QA Postgres12",
-        "Impersonated",
-        "Query builder and native",
-        "1 million rows",
-        "No",
-        "No",
-      ],
+      ["QA Postgres12", "Impersonated", "No", "1 million rows", "No", "No"],
     ]);
 
     // Checking it shows the right state on the tables level
@@ -70,7 +63,7 @@ describeEE("scenarios > admin > permissions > view data > impersonated", () => {
       ].map(tableName => [
         tableName,
         "Impersonated",
-        "Query builder and native",
+        "No",
         "1 million rows",
         "No",
         "No",
@@ -93,14 +86,7 @@ describeEE("scenarios > admin > permissions > view data > impersonated", () => {
 
     assertPermissionTable([
       ["Sample Database", "Can view", "No", "1 million rows", "No", "No"],
-      [
-        "QA Postgres12",
-        "Impersonated",
-        "Query builder and native",
-        "1 million rows",
-        "No",
-        "No",
-      ],
+      ["QA Postgres12", "Impersonated", "No", "1 million rows", "No", "No"],
     ]);
   });
 
@@ -165,7 +151,7 @@ describeEE("scenarios > admin > permissions > view data > impersonated", () => {
       ].map(tableName => [
         tableName,
         "Can view",
-        "Query builder and native",
+        "No",
         "1 million rows",
         "No",
         "No",
@@ -177,14 +163,7 @@ describeEE("scenarios > admin > permissions > view data > impersonated", () => {
     // On database level it got reset to Can view too
     assertPermissionTable([
       ["Sample Database", "Can view", "No", "1 million rows", "No", "No"],
-      [
-        "QA Postgres12",
-        "Can view",
-        "Query builder and native",
-        "1 million rows",
-        "No",
-        "No",
-      ],
+      ["QA Postgres12", "Can view", "No", "1 million rows", "No", "No"],
     ]);
   });
 

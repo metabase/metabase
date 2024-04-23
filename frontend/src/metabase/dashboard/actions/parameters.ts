@@ -196,7 +196,7 @@ export const RESET_PARAMETER_MAPPINGS =
   "metabase/dashboard/RESET_PARAMETER_MAPPINGS";
 export const resetParameterMapping = createThunkAction(
   SET_PARAMETER_MAPPING,
-  (parameterId: ParameterId) => {
+  (parameterId: ParameterId, dashcardId?: DashCardId) => {
     return (dispatch, getState) => {
       const dashboard = getDashboard(getState());
 
@@ -206,9 +206,9 @@ export const resetParameterMapping = createThunkAction(
 
       const allDashcards = getDashcards(getState());
 
-      const dashcards = dashboard.dashcards.map(
-        dashcardId => allDashcards[dashcardId],
-      );
+      const dashcards = dashcardId
+        ? [allDashcards[dashcardId]]
+        : dashboard.dashcards.map(dashcardId => allDashcards[dashcardId]);
 
       for (const dashcard of dashcards) {
         if (!dashcard.parameter_mappings?.length) {

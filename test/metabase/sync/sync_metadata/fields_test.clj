@@ -309,23 +309,29 @@
      {:field-name "continent_id", :base-type :type/Integer :fk :continent}]
     [["Ghana" 1]]]])
 
-(deftest sync-fks-and-fields-for-table-test
-  (testing "[[sync-fields/sync-fields-for-table!]] and [[sync-fks/sync-fks-for-table!]] should sync fields and fks"
+(deftest sync-fks-and-fields-test
+  (testing (str "[[sync-fields/sync-fields-for-table!]] and [[sync-fks/sync-fks-for-table!]] should sync fields and fks"
+                "in the same way that [[sync-fields/sync-fields!]] and [[sync-fks/sync-fks!]] do")
     (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
       (mt/dataset country
         (let [tables (t2/select :model/Table :db_id (mt/id))]
-          ;; 1. delete the fields that were just synced
-          (t2/delete! :model/Field :table_id [:in (map :id tables)])
-          ;; 2. sync the metadata for each table
-          (run! sync-fields/sync-fields-for-table! tables)
-          (run! sync-fks/sync-fks-for-table! tables)
-          (let [continent-id-field (t2/select-one :model/Field :%lower.name "id" :table_id (mt/id :continent))]
-            (is (= #{{:name "name",         :semantic_type nil,      :fk_target_field_id nil}
-                     {:name "id",           :semantic_type :type/PK, :fk_target_field_id nil}
-                     {:name "continent_id", :semantic_type :type/FK, :fk_target_field_id (:id continent-id-field)}}
-                   (set (map #(into {} %)
-                             (t2/select [Field
-                                         [:%lower.name :name]
-                                         :semantic_type
-                                         :fk_target_field_id]
-                                        :table_id [:in (map :id tables)])))))))))))
+          (doseq [sync-fields-and-fks! [(fn []
+                                          (run! sync-fields/sync-fields-for-table! tables)
+                                          (run! sync-fks/sync-fks-for-table! tables))
+                                        (fn []
+                                          (sync-fields/sync-fields! (mt/db))
+                                          (sync-fks/sync-fks! (mt/db)))]]
+            ;; 1. delete the fields that were just synced
+            (t2/delete! :model/Field :table_id [:in (map :id tables)])
+            ;; 2. sync the metadata for each table
+            (sync-fields-and-fks!)
+            (let [continent-id-field (t2/select-one :model/Field :%lower.name "id" :table_id (mt/id :continent))]
+              (is (= #{{:name "name",         :semantic_type nil,      :fk_target_field_id nil}
+                       {:name "id",           :semantic_type :type/PK, :fk_target_field_id nil}
+                       {:name "continent_id", :semantic_type :type/FK, :fk_target_field_id (:id continent-id-field)}}
+                     (set (map #(into {} %)
+                               (t2/select [Field
+                                           [:%lower.name :name]
+                                           :semantic_type
+                                           :fk_target_field_id]
+                                          :table_id [:in (map :id tables)]))))))))))))

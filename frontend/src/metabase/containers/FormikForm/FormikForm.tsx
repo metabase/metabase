@@ -22,7 +22,7 @@ import { makeFormObject, cleanObject, isNestedFieldName } from "../formUtils";
 import FormikFormViewAdapter from "./FormikFormViewAdapter";
 import useInlineFields from "./useInlineFields";
 
-interface FormContainerProps<Values extends BaseFieldValues>
+export interface FormContainerProps<Values extends BaseFieldValues>
   extends OptionalFormViewProps {
   form?: FormObject<Values>;
 
