@@ -753,6 +753,8 @@
                                    set)
         has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
     (for [model models]
+      ;; NOTE: It is important that this logic is kept in sync with `invalidate-cached-models!`
+      ;; If not, it will mean that the user could modify the table via a given model's page without seeing it update.
       (m/assoc-some model :based_on_upload (when (has-uploadable-table? model)
                                              (only-table-id model))))))
 
