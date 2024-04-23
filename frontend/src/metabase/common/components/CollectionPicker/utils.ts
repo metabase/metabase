@@ -119,9 +119,9 @@ export const getPathLevelForItem = (
     return 0;
   }
 
-  const parentCollectionId = getParentCollectionId(
-    item?.effective_location ?? item?.location,
-  );
+  const parentCollectionId =
+    item.collection_id ??
+    getParentCollectionId(item?.effective_location ?? item?.location);
 
   // set selected item at the correct level
   const pathLevel = path.findIndex(
