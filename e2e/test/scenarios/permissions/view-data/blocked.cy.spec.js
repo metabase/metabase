@@ -60,10 +60,17 @@ describeEE("scenarios > admin > permissions > view data > blocked", () => {
       ],
       // expect that the view data permissions has been automatically droped to query builder only
       ["All Users", "Blocked", "No", "No", "No", "No"],
-      ["collection", "Can view", "No", "No", "No", "No"],
-      ["data", "Can view", "Query builder and native", "No", "No", "No"],
-      ["nosql", "Can view", "Query builder only", "No", "No", "No"],
-      ["readonly", "Can view", "No", "No", "No", "No"],
+      ["collection", "Can view", "No", "1 million rows", "No", "No"],
+      [
+        "data",
+        "Can view",
+        "Query builder and native",
+        "1 million rows",
+        "No",
+        "No",
+      ],
+      ["nosql", "Can view", "Query builder only", "1 million rows", "No", "No"],
+      ["readonly", "Can view", "No", "1 million rows", "No", "No"],
     ]);
   });
 });
