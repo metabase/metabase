@@ -518,9 +518,10 @@
   (= "query" (name (:query_type model "query"))))
 
 (defn- no-joins?
-  "Returns true if `query` has no joins in it, otherwise false.
-  WARNING: The implementation does not currently detect implicit joins."
+  "Returns true if `query` has no explicit joins in it, otherwise false."
   [query]
+  ;; TODO while it's unlikely (at the time of writing this) that uploaded tables have FKs, we should probably check
+  ;;      for implicit joins as well.
   (->> (range (lib/stage-count query))
        (not-any? (fn [stage-idx]
                    (lib/joins query stage-idx)))))
