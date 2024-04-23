@@ -16,9 +16,13 @@ import type {
   FieldDimension,
   FieldId,
   ForeignKey,
+  GroupListQuery,
+  ListDashboardsResponse,
   Metric,
+  NativeQuerySnippet,
   PopularItem,
   RecentItem,
+  Revision,
   SearchModel,
   SearchResult,
   Segment,
@@ -180,9 +184,12 @@ export function provideDatabaseTags(
 }
 
 export function provideDashboardListTags(
-  dashboards: Dashboard[],
+  dashboards: ListDashboardsResponse,
 ): TagDescription<TagType>[] {
-  return [listTag("dashboard"), ...dashboards.flatMap(provideDashboardTags)];
+  return [
+    listTag("dashboard"),
+    ...dashboards.map(dashboard => idTag("dashboard", dashboard.id)),
+  ];
 }
 
 export function provideDashboardTags(
@@ -267,6 +274,33 @@ export function provideMetricTags(metric: Metric): TagDescription<TagType>[] {
   ];
 }
 
+export function providePermissionsGroupListTags(
+  groups: GroupListQuery[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("permissions-group"),
+    ...groups.flatMap(providePermissionsGroupTags),
+  ];
+}
+
+export function providePermissionsGroupTags(
+  group: GroupListQuery,
+): TagDescription<TagType>[] {
+  return [idTag("permissions-group", group.id)];
+}
+
+export function provideRevisionListTags(
+  revisions: Revision[],
+): TagDescription<TagType>[] {
+  return [listTag("revision"), ...revisions.flatMap(provideRevisionTags)];
+}
+
+export function provideRevisionTags(
+  revision: Revision,
+): TagDescription<TagType>[] {
+  return [idTag("revision", revision.id)];
+}
+
 export function provideSearchItemListTags(
   items: SearchResult[],
   models: SearchModel[] = Array.from(SEARCH_MODELS),
@@ -299,6 +333,18 @@ export function provideSegmentTags(
     idTag("segment", segment.id),
     ...(segment.table ? provideTableTags(segment.table) : []),
   ];
+}
+
+export function provideSnippetListTags(
+  snippets: NativeQuerySnippet[],
+): TagDescription<TagType>[] {
+  return [listTag("snippet"), ...snippets.flatMap(provideSnippetTags)];
+}
+
+export function provideSnippetTags(
+  snippet: NativeQuerySnippet,
+): TagDescription<TagType>[] {
+  return [idTag("snippet", snippet.id)];
 }
 
 export function provideTableListTags(

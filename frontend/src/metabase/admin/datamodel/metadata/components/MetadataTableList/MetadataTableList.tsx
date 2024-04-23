@@ -54,7 +54,7 @@ interface DispatchProps {
   onUpdateTableVisibility: (
     tables: Table[],
     visibility: TableVisibilityType,
-  ) => Promise<void>;
+  ) => Promise<unknown>;
 }
 
 type MetadataTableListProps = OwnProps & TableLoaderProps & DispatchProps;
@@ -210,7 +210,7 @@ interface TableHeaderProps {
   onUpdateTableVisibility: (
     tables: Table[],
     visibility: TableVisibilityType,
-  ) => Promise<void>;
+  ) => Promise<unknown>;
 }
 
 const TableHeader = ({
@@ -260,7 +260,7 @@ interface TableRowProps {
   onUpdateTableVisibility: (
     tables: Table[],
     visibility: TableVisibilityType,
-  ) => Promise<void>;
+  ) => Promise<unknown>;
 }
 
 const TableRow = ({
@@ -314,7 +314,7 @@ interface ToggleVisibilityButtonProps {
   onUpdateTableVisibility: (
     tables: Table[],
     visibility: TableVisibilityType,
-  ) => Promise<void>;
+  ) => Promise<unknown>;
 }
 
 const ToggleVisibilityButton = ({

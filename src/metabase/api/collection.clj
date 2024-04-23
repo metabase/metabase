@@ -889,14 +889,14 @@
   [id models archived pinned_state sort_column sort_direction]
   {id             ms/PositiveInt
    models         [:maybe Models]
-   archived       [:maybe ms/BooleanString]
+   archived       [:maybe ms/BooleanValue]
    pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
    sort_column    [:maybe (into [:enum] valid-sort-columns)]
    sort_direction [:maybe (into [:enum] valid-sort-directions)]}
   (let [model-kwds (set (map keyword (u/one-or-many models)))]
     (collection-children (api/read-check Collection id)
                          {:models       model-kwds
-                          :archived?    (Boolean/parseBoolean archived)
+                          :archived?    archived
                           :pinned-state (keyword pinned_state)
                           :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
                                          (or (some-> sort_direction normalize-sort-choice) :asc)]})))
@@ -943,7 +943,7 @@
   `snippets`, you can pass the `?namespace=` parameter."
   [models archived namespace pinned_state sort_column sort_direction]
   {models         [:maybe Models]
-   archived       [:maybe ms/BooleanString]
+   archived       [:maybe ms/BooleanValue]
    namespace      [:maybe ms/NonBlankString]
    pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
    sort_column    [:maybe (into [:enum] valid-sort-columns)]
@@ -956,7 +956,7 @@
     (collection-children
      root-collection
      {:models       model-kwds
-      :archived?    (Boolean/parseBoolean archived)
+      :archived?    archived
       :pinned-state (keyword pinned_state)
       :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
                      (or (some-> sort_direction normalize-sort-choice) :asc)]})))
