@@ -7,7 +7,7 @@
   }
 
   &:hover {
-    background: var(--color-brand);
+    background: var(--mb-color-brand);
 
     .content {
       color: var(--color-white);
