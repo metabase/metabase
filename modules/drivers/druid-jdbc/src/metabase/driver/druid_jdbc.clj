@@ -135,19 +135,19 @@
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss" t)))
 
-;; TODO: Cleanup!
+;; TODO: Cleanup! + filtering on json as filter
 (defmethod sql.qp/json-query :druid-jdbc
   [_driver unwrapped-identifier nfc-field]
   (assert (h2x/identifier? unwrapped-identifier)
           (format "Invalid identifier: %s" (pr-str unwrapped-identifier)))
-  (let [#_#_field-type        (doto (:database-type nfc-field)
-                            #_(as-> $ (tap> ["jsoon-q type" nfc-field])))
-        nfc-path          (:nfc-path nfc-field)
-        parent-identifier (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)]
-    (if (isa? (:base-type nfc-field) :type/Array)
-      [::json_query parent-identifier [:raw "'" (str  (str/join "." (into ["$"] (rest nfc-path)))) "'"]]
-      [::json_value parent-identifier [:raw "'" (str  (str/join "." (into ["$"] (rest nfc-path)))) "'"]])
-    #_[::json-query parent-identifier field-type (rest nfc-path)]))
+  (let [nfc-path          (:nfc-path nfc-field)
+        parent-identifier (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)
+        ;; Druid json functions reference: https://druid.apache.org/docs/latest/querying/math-expr#json-functions
+        operator (if (isa? (:base-type nfc-field) :type/Array)
+                   ::json_query
+                   ::json_value)]
+    ;; TODO: Is there a way to avoid using :raw? If I do literal would that be correct?
+    [operator parent-identifier [:raw "'" (str  (str/join "." (into ["$"] (rest nfc-path)))) "'"]]))
 
 (defmethod sql.qp/->honeysql [:druid-jdbc :field]
   [driver [_ id-or-name opts :as clause]]
@@ -165,13 +165,10 @@
                           %)
                        identifier)))))
 
-;; TODO: Cleanup
 (defmethod sql-jdbc.sync/column->semantic-type :druid-jdbc
   [_driver database-type _column-name]
-  #_(when (re-find #"json" (name database-type))
-    (def dddd database-type))
   (case database-type
-    "COMPLEX<json>"  :type/SerializedJSON
+    "COMPLEX<json>" :type/SerializedJSON
     nil))
 
 ;; TODO: Make this dependent on database features only, not the application state.
