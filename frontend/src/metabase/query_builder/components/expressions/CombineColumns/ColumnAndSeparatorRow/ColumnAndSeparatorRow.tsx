@@ -2,7 +2,7 @@ import type { FocusEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Button, Icon, Flex, TextInput, Text } from "metabase/ui";
+import { Button, Icon, Flex, TextInput, Text, rem } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type * as Lib from "metabase-lib";
 
@@ -118,7 +118,7 @@ function SeparatorInput({
         className={styles.separator}
         label={t`Separator`}
         value={value}
-        w={110}
+        w={rem(110)}
         onChange={event => onChange(event.target.value)}
         onFocus={handleFocus}
         onBlur={handleBlur}
