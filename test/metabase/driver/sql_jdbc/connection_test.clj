@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.connection-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.core :as mbc]
@@ -118,11 +119,11 @@
 
               (cond-> details
                 ;; swap localhost and 127.0.0.1
-                (= "localhost" (:host details))
-                (assoc :host "127.0.0.1")
+                (str/includes? (:host details) "localhost")
+                (update :host str/replace "localhost" "127.0.0.1")
 
-                (= "127.0.0.1" (:host details))
-                (assoc :host "localhost")
+                (str/includes? (:host details) "127.0.0.1")
+                (update :host str/replace "127.0.0.1" "localhost")
 
                 :else
                 (assoc :new-config "something"))))))
