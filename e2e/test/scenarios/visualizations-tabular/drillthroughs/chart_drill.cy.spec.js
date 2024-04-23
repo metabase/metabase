@@ -13,6 +13,9 @@ import {
   addOrUpdateDashboardCard,
   addSummaryField,
   queryBuilderMain,
+  cartesianChartCircle,
+  chartPathWithFillColor,
+  echartsContainer,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -48,9 +51,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     queryBuilderMain().within(() => {
       cy.findByLabelText("Legend").findByText("Gadget").should("exist");
-      cy.get("[data-element-id=line-area-bar-chart]")
-        .findByText("January 2023")
-        .should("exist");
+      echartsContainer().findByText("January 2023").should("exist");
     });
 
     cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
@@ -67,7 +68,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     );
 
     queryBuilderMain().within(() => {
-      cy.get("[data-element-id=line-area-bar-chart]").findByText("June 2022"); // more granular axis labels
+      echartsContainer().findByText("June 2022"); // more granular axis labels
 
       // confirm that product category is still broken out
       cy.findByLabelText("Legend").within(() => {
@@ -115,7 +116,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           .should("exist");
       }
 
-      cy.get("circle");
+      cartesianChartCircle();
     });
   });
 
@@ -289,7 +290,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count by City");
 
-    cy.get(".bar").first().click({ force: true });
+    chartPathWithFillColor("#509EE3").first().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("See this CA Person").click();
 
@@ -398,13 +399,17 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    hoverLineDot({ index: 0 });
+    cartesianChartCircle().eq(0).realHover();
     popover().within(() => {
       cy.findByText("January 1, 2026");
       cy.findByText("10");
     });
 
-    hoverLineDot({ index: 1 });
+    queryBuilderMain()
+      .findByText("This question is written in SQL.")
+      .realHover();
+
+    cartesianChartCircle().eq(1).realHover();
     popover().within(() => {
       cy.findByText("January 2, 2026");
       cy.findByText("5");
@@ -428,7 +433,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
     });
 
-    cy.get(".bar").last().trigger("mousemove");
+    chartPathWithFillColor("#7172AD").first().trigger("mousemove");
     popover().findByText("12");
   });
 
@@ -641,7 +646,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       visitQuestionAdhoc(questionDetails);
 
       // Drill-through the last bar (Widget)
-      cy.get(".bar").last().click({ force: true });
+      chartPathWithFillColor("#509EE3").last().click();
       popover().findByTextEnsureVisible("See these Products").click();
     });
 
@@ -685,10 +690,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    cy.get("[data-element-id=line-area-bar-chart]")
-      .get(".dot")
-      .first()
-      .click({ force: true });
+    cartesianChartCircle().eq(2).click();
     popover().within(() => {
       cy.findByText("See these Orders").should("be.visible");
 
@@ -732,20 +734,14 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    cy.get("[data-element-id=line-area-bar-chart]")
-      .findAllByTestId("legend-item")
-      .first()
-      .click();
+    cy.findAllByTestId("legend-item").first().click();
 
     popover().within(() => {
       cy.findByText("See these Orders").should("be.visible");
       cy.findByText("Automatic insights…").should("be.visible");
     });
 
-    cy.get("[data-element-id=line-area-bar-chart]")
-      .get(".bar")
-      .first()
-      .click({ force: true });
+    chartPathWithFillColor("#A989C5").first().click();
     popover().within(() => {
       cy.findByText("See these Orders").should("be.visible");
 
@@ -798,7 +794,3 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 });
-
-function hoverLineDot({ index } = {}) {
-  cy.findByTestId("query-visualization-root").get(".dot").eq(index).realHover();
-}
