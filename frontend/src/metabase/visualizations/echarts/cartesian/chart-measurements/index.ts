@@ -109,7 +109,7 @@ const getXAxisTicksWidth = (
   };
 
   const valuesToMeasure = [0, dataset.length - 1].map(index => {
-    if (axisModel.axisType === "value") {
+    if (isNumericAxis(axisModel)) {
       // extents need to be untransformed to get the value of the tick label
       return axisModel.fromEChartsAxisValue(
         dataset[index][X_AXIS_DATA_KEY] as number,
