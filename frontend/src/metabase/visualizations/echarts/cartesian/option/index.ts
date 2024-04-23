@@ -1,4 +1,5 @@
 import type { EChartsOption } from "echarts";
+import type { OptionSourceData } from "echarts/types/src/util/types";
 
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -97,12 +98,19 @@ export const getCartesianChartOption = (
   }
 
   const echartsDataset = [
-    { source: chartModel.transformedDataset, dimensions },
+    {
+      // Type cast is needed here because echarts' internal types are incorrect.
+      // Their types do not allow booleans, but in reality booleans do work as
+      // data values, see this example
+      // https://echarts.apache.org/examples/en/editor.html?c=line-simple&code=PYBwLglsB2AEC8sDeAoWsAmBDMWDOApmAFzJrqx7ACuATgMYGkDaSARFm6QGZYA2hADSw2AIy6wAjAF9h7TqTC1qBYWIkAmaQF1ys8gA8AggYh5SqCrDABPEE1gByejgIBzYLRuPBe3-hsTMwtydFt7UkcAN34VRz9yQloIAnNYZlCyKzC7B0c-CGgCH0z0Amh6YAwHS2z0A1IONn862BtG8VLYaUye9F1pAG4gA
+      source: chartModel.transformedDataset as OptionSourceData,
+      dimensions,
+    },
   ];
 
   if (chartModel.trendLinesModel) {
     echartsDataset.push({
-      source: chartModel.trendLinesModel?.dataset,
+      source: chartModel.trendLinesModel?.dataset as OptionSourceData,
       dimensions: [
         X_AXIS_DATA_KEY,
         ...chartModel.trendLinesModel?.seriesModels.map(s => s.dataKey),
