@@ -33,9 +33,9 @@ export const getSharedEChartsOptions = (isPlaceholder: boolean) => ({
     show: false,
   },
   brush: {
-    toolbox: ["lineX"],
+    toolbox: ["lineX" as const],
     xAxisIndex: 0,
-    throttleType: "debounce",
+    throttleType: "debounce" as const,
     throttleDelay: 200,
   },
 });
