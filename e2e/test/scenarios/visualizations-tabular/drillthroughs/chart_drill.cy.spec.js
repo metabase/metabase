@@ -16,6 +16,7 @@ import {
   cartesianChartCircle,
   chartPathWithFillColor,
   echartsContainer,
+  cartesianChartCircleWithColor,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -164,11 +165,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
             visitDashboard(DASHBOARD_ID);
 
             cy.log("The first series line");
-            cy.findAllByTestId("chart-series")
-              .eq(0)
-              .find(".dot")
-              .eq(0)
-              .click({ force: true });
+            cartesianChartCircleWithColor("#509EE3").eq(0).click();
             cy.findByText("See this year by quarter");
             cy.findByText("See these Orders");
 
@@ -177,11 +174,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
             // Second line from the second question
             cy.log("The second series line");
-            cy.findAllByTestId("chart-series")
-              .eq(1)
-              .find(".dot")
-              .eq(0)
-              .click({ force: true });
+            cartesianChartCircleWithColor("#98D9D9").eq(0).click();
             cy.findByText("See this year by quarter");
             cy.findByText("See these Products");
           },
@@ -235,11 +228,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
             visitDashboard(DASHBOARD_ID);
 
             cy.log("The first series line");
-            cy.findAllByTestId("chart-series")
-              .eq(0)
-              .find(".dot")
-              .eq(0)
-              .click({ force: true });
+            cartesianChartCircleWithColor("#509EE3").eq(0).click();
             cy.findByText("See this year by quarter");
             cy.findByText("See these Orders");
 
@@ -248,11 +237,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
             // Second line from the second question
             cy.log("The third series line");
-            cy.findAllByTestId("chart-series")
-              .eq(2)
-              .find(".dot")
-              .eq(0)
-              .click({ force: true });
+            cartesianChartCircleWithColor("#EF8C8C").eq(0).click();
             cy.findByText("See this year by quarter");
             cy.findByText("See these Orders");
           },
