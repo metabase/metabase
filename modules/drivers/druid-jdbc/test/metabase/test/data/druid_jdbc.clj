@@ -14,15 +14,19 @@
 
 ;; TODO: Use tx/dbdef->connection-details.
 (defn- already-loaded []
-  (set (json/parse-string (:body (http/get "http://localhost:8888/druid/v2/datasources")))))
+  (set (json/parse-string (:body (http/get (str "http://localhost:8888/druid/v2/datasources"))))))
+
+(def built-in-datasets #{"checkins" "json"})
 
 (defmethod tx/create-db! :druid-jdbc
   [_ dbdef & _]
   (let [{:keys [database-name], :as _dbdef} (tx/get-dataset-definition dbdef)]
-    (assert (= database-name "checkins")
-            "Druid tests currently only support the flattened test-data dataset.")
-    (assert (contains? (already-loaded) "checkins")
-            "Expected 'checkins' dataset to be present in Druid datasources. (This should be loaded as part of building Docker image)")
+    (assert (built-in-datasets database-name)
+            (str "Druid tests currently only support " built-in-datasets))
+    (assert ((already-loaded) database-name)
+            (format (str "`%s` is expected to be present in loaded datasources. "
+                         "(This should be loaded as part of building Docker image)")
+                    database-name))
     nil))
 
 (defmethod tx/destroy-db! :druid-jdbc
