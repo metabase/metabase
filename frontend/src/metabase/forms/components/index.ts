@@ -5,6 +5,7 @@ export * from "./FormErrorMessage";
 export * from "./FormGroupsWidget";
 export * from "./FormGroupWidget";
 export * from "./FormNumberInput";
+export * from "./FormObserver";
 export * from "./FormProvider";
 export * from "./FormRadioGroup";
 export * from "./FormSecretKey";

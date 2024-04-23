@@ -16,6 +16,7 @@ import {
   openDashboardMenu,
   toggleDashboardInfoSidebar,
   entityPickerModal,
+  collectionOnTheGoModal,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -188,18 +189,21 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                   cy.findByLabelText("Only duplicate the dashboard").should(
                     "not.be.checked",
                   );
-                  cy.findByTestId("select-button").click();
+                  cy.findByTestId("collection-picker-button").click();
                 });
-                popover().findByText("New collection").click();
+                entityPickerModal()
+                  .findByText("Create a new collection")
+                  .click();
                 const NEW_COLLECTION = "Foo Collection";
-                cy.findByTestId("new-collection-modal").then(modal => {
-                  cy.findByPlaceholderText("My new fantastic collection").type(
+                collectionOnTheGoModal().within(() => {
+                  cy.findByPlaceholderText("My new collection").type(
                     NEW_COLLECTION,
                   );
                   cy.button("Create").click();
-                  cy.button("Duplicate").click();
-                  assertOnRequest("copyDashboard");
                 });
+                cy.button("Select").click();
+                cy.button("Duplicate").click();
+                assertOnRequest("copyDashboard");
 
                 cy.url().should("contain", `/dashboard/${newDashboardId}`);
 
@@ -304,7 +308,8 @@ describe("managing dashboard from the dashboard's edit menu", () => {
             const { first_name, last_name } = USERS[user];
 
             popover().findByText("Duplicate").click();
-            cy.findByTestId("select-button").findByText(
+            cy.findByTestId("collection-picker-button").should(
+              "have.text",
               `${first_name} ${last_name}'s Personal Collection`,
             );
           });
