@@ -421,7 +421,7 @@
 (deftest internal-content-setup-test
   (testing "Internally created state like Metabase Analytics shouldn't affect the checklist"
     (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? false)
+      (mdb/setup-db! :create-sample-content? true)
       (mbc/ensure-audit-db-installed!)
       (testing "Sense check: internal content exists"
         (is (true? (t2/exists? :model/User)))
