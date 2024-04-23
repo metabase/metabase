@@ -16,13 +16,18 @@ import type {
   FieldDimension,
   FieldId,
   ForeignKey,
+  GroupListQuery,
+  ListDashboardsResponse,
   Metric,
+  NativeQuerySnippet,
   PopularItem,
   RecentItem,
+  Revision,
   SearchModel,
   SearchResult,
   Segment,
   Table,
+  Task,
   Timeline,
   TimelineEvent,
   UserInfo,
@@ -179,9 +184,12 @@ export function provideDatabaseTags(
 }
 
 export function provideDashboardListTags(
-  dashboards: Dashboard[],
+  dashboards: ListDashboardsResponse,
 ): TagDescription<TagType>[] {
-  return [listTag("dashboard"), ...dashboards.flatMap(provideDashboardTags)];
+  return [
+    listTag("dashboard"),
+    ...dashboards.map(dashboard => idTag("dashboard", dashboard.id)),
+  ];
 }
 
 export function provideDashboardTags(
@@ -266,6 +274,33 @@ export function provideMetricTags(metric: Metric): TagDescription<TagType>[] {
   ];
 }
 
+export function providePermissionsGroupListTags(
+  groups: GroupListQuery[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("permissions-group"),
+    ...groups.flatMap(providePermissionsGroupTags),
+  ];
+}
+
+export function providePermissionsGroupTags(
+  group: GroupListQuery,
+): TagDescription<TagType>[] {
+  return [idTag("permissions-group", group.id)];
+}
+
+export function provideRevisionListTags(
+  revisions: Revision[],
+): TagDescription<TagType>[] {
+  return [listTag("revision"), ...revisions.flatMap(provideRevisionTags)];
+}
+
+export function provideRevisionTags(
+  revision: Revision,
+): TagDescription<TagType>[] {
+  return [idTag("revision", revision.id)];
+}
+
 export function provideSearchItemListTags(
   items: SearchResult[],
   models: SearchModel[] = Array.from(SEARCH_MODELS),
@@ -300,6 +335,18 @@ export function provideSegmentTags(
   ];
 }
 
+export function provideSnippetListTags(
+  snippets: NativeQuerySnippet[],
+): TagDescription<TagType>[] {
+  return [listTag("snippet"), ...snippets.flatMap(provideSnippetTags)];
+}
+
+export function provideSnippetTags(
+  snippet: NativeQuerySnippet,
+): TagDescription<TagType>[] {
+  return [idTag("snippet", snippet.id)];
+}
+
 export function provideTableListTags(
   tables: Table[],
 ): TagDescription<TagType>[] {
@@ -315,6 +362,14 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
     ...(table.metrics ? provideMetricListTags(table.metrics) : []),
   ];
+}
+
+export function provideTaskListTags(tasks: Task[]): TagDescription<TagType>[] {
+  return [listTag("task"), ...tasks.flatMap(provideTaskTags)];
+}
+
+export function provideTaskTags(task: Task): TagDescription<TagType>[] {
+  return [idTag("task", task.id)];
 }
 
 export function provideTimelineEventListTags(

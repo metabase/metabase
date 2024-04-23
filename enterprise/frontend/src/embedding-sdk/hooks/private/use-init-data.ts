@@ -1,16 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import _ from "underscore";
 
-import { store } from "embedding-sdk/store";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   getOrRefreshSession,
-  getSessionTokenState,
+  setIsInitialized,
+  setIsLoggedIn,
 } from "embedding-sdk/store/reducer";
+import { getIsInitialized, getIsLoggedIn } from "embedding-sdk/store/selectors";
 import type { EmbeddingSessionTokenState } from "embedding-sdk/store/types";
 import type { SDKConfigType } from "embedding-sdk/types";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
-import { useDispatch } from "metabase/lib/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
 
@@ -26,49 +27,32 @@ export const useInitData = ({
   isLoggedIn: boolean;
   isInitialized: boolean;
 } => {
-  const dispatch = useDispatch();
+  const dispatch = useSdkDispatch();
 
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [sessionTokenState, setSessionTokenState] =
-    useState<EmbeddingSessionTokenState | null>(null);
+  const isInitialized = useSdkSelector(getIsInitialized);
+  const isLoggedIn = useSdkSelector(getIsLoggedIn);
 
   useEffect(() => {
     registerVisualizationsOnce();
   }, []);
 
-  const jwtProviderUri =
-    config.authType === "jwt" ? config.jwtProviderUri : null;
-  useEffect(() => {
-    if (config.authType === "jwt") {
-      const updateToken = () => {
-        const currentState = store.getState();
-        setSessionTokenState(getSessionTokenState(currentState));
-      };
-
-      const unsubscribe = store.subscribe(updateToken);
-
-      if (jwtProviderUri) {
-        dispatch(getOrRefreshSession(jwtProviderUri));
-      }
-
-      updateToken();
-
-      return () => unsubscribe();
-    }
-  }, [config.authType, dispatch, jwtProviderUri]);
-
   useEffect(() => {
     api.basename = config.metabaseInstanceUrl;
 
     if (config.authType === "jwt") {
-      api.onBeforeRequest = () =>
-        dispatch(getOrRefreshSession(config.jwtProviderUri));
-      api.sessionToken = sessionTokenState?.token?.id;
+      api.onBeforeRequest = async () => {
+        const tokenState = await dispatch(
+          getOrRefreshSession(config.jwtProviderUri),
+        );
+
+        api.sessionToken = (
+          tokenState.payload as EmbeddingSessionTokenState["token"]
+        )?.id;
+      };
     } else if (config.authType === "apiKey" && config.apiKey) {
       api.apiKey = config.apiKey;
     } else {
-      setIsLoggedIn(false);
+      dispatch(setIsLoggedIn(false));
       return;
     }
 
@@ -76,10 +60,10 @@ export const useInitData = ({
       dispatch(refreshCurrentUser()),
       dispatch(reloadSettings()),
     ]).then(() => {
-      setIsInitialized(true);
-      setIsLoggedIn(true);
+      dispatch(setIsInitialized(true));
+      dispatch(setIsLoggedIn(true));
     });
-  }, [config, dispatch, sessionTokenState]);
+  }, [config, dispatch]);
 
   return {
     isLoggedIn,

@@ -124,7 +124,7 @@ function PermissionsPageLayout({
             {toolbarRightContent}
             {helpContent && !isHelpReferenceOpen && (
               <ToolbarButton
-                text={t`Permission help`}
+                text={t`Permissions help`}
                 icon="info"
                 onClick={handleToggleHelpReference}
               />

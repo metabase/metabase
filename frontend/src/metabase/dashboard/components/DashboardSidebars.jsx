@@ -27,6 +27,7 @@ DashboardSidebars.propTypes = {
   onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
   setEditingParameter: PropTypes.func.isRequired,
   setParameterName: PropTypes.func.isRequired,
+  setParameterType: PropTypes.func.isRequired,
   setParameterDefaultValue: PropTypes.func.isRequired,
   setParameterIsMultiSelect: PropTypes.func.isRequired,
   setParameterQueryType: PropTypes.func.isRequired,
@@ -62,6 +63,7 @@ export function DashboardSidebars({
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
   setParameterName,
+  setParameterType,
   setParameterDefaultValue,
   setParameterIsMultiSelect,
   setParameterQueryType,
@@ -97,7 +99,7 @@ export function DashboardSidebars({
 
   switch (sidebar.name) {
     case SIDEBAR_NAME.addQuestion:
-      return <AddCardSidebar onSelect={handleAddCard} />;
+      return <AddCardSidebar onSelect={handleAddCard} onClose={closeSidebar} />;
     case SIDEBAR_NAME.action: {
       const onUpdateVisualizationSettings = settings =>
         onUpdateDashCardVisualizationSettings(
@@ -143,6 +145,7 @@ export function DashboardSidebars({
           parameter={parameter}
           otherParameters={otherParameters}
           onChangeName={setParameterName}
+          onChangeType={setParameterType}
           onChangeDefaultValue={setParameterDefaultValue}
           onChangeIsMultiSelect={setParameterIsMultiSelect}
           onChangeQueryType={setParameterQueryType}

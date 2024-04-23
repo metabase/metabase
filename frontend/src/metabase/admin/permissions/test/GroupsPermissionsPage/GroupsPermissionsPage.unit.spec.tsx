@@ -21,6 +21,8 @@ import { PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES } from "metabase/plugins";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
+const NATIVE_QUERIES_PERMISSION_INDEX = 0;
+
 const TEST_DATABASE = createSampleDatabase();
 
 const TEST_GROUPS = [
@@ -63,10 +65,13 @@ const setup = async ({
 };
 
 const editDatabasePermission = async () => {
-  const permissionsSelectElem = screen.getAllByTestId("permissions-select")[0];
+  const permissionsSelectElem =
+    screen.getAllByTestId("permissions-select")[
+      NATIVE_QUERIES_PERMISSION_INDEX
+    ];
   fireEvent.click(permissionsSelectElem);
 
-  const clickElement = screen.getByLabelText("eye icon");
+  const clickElement = screen.getByLabelText(/close icon/);
   fireEvent.click(clickElement);
 
   await delay(0);
