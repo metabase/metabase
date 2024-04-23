@@ -10,10 +10,6 @@
    [metabase.models.setting :as setting]
    [metabase.util :as u]))
 
-(def env-vars-not-to-mess-with
-  "Flamber advises that people avoid touching these environment variables."
-  (set (edn/read-string (slurp (io/resource "metabase/cmd/resources/env-vars-to-avoid.edn")))))
-
 (defn get-settings
   "Loads all of the metabase namespaces, which loads all of the defsettings,
   which are registered in an atom in the settings namespace. Once settings are registered,
@@ -65,13 +61,13 @@
        ;; Drop brackets used to create source code links
        (#(str/replace % #"\[\[|\]\]" ""))))
 
-(defn format-added
+(defn- format-added
   "Used to specify when the environment variable was added, if that info exists."
   [env-var]
   (when-let [a (:added (:doc env-var))]
     (str "Added: " a)))
 
-(defn format-paid
+(defn- format-paid
   "Does the variable require a paid license?"
   [env-var]
     (if (nil? (:feature env-var))
@@ -85,14 +81,14 @@
   (when-let [d (:doc env-var)]
     (:commentary d)))
 
-(defn format-config-name
+(defn- format-config-name
   "Formats the configuration file name."
   [env-var]
   (if (= (:visibility env-var) :internal)
     (str "Configuration file name: Cannot be set with the configuration file.")
     (str "Configuration file name: `" (:munged-name env-var) "`")))
 
-(defn format-env-var-entry
+(defn- format-env-var-entry
   "Preps a doc entry for an environment variable as a Markdown section."
   [env-var]
   (str/join "\n\n" (remove str/blank?
@@ -106,6 +102,10 @@
                             (format-doc env-var)])))
 
 ;;;; Filter functions
+
+(def env-vars-not-to-mess-with
+  "Flamber advises that people avoid touching these environment variables."
+  (set (edn/read-string (slurp (io/resource "metabase/cmd/resources/env-vars-to-avoid.edn")))))
 
 (defn- avoid?
   "Used to filter out environment variables with high foot-gun indices."
