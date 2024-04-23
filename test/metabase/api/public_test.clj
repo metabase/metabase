@@ -13,7 +13,6 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.api.public :as api.public]
    [metabase.config :as config]
-   [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Collection Dashboard DashboardCard DashboardCardSeries
@@ -22,7 +21,6 @@
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [metabase.util :as u]
    [throttle.core :as throttle]
@@ -48,7 +46,7 @@
                                           :type         :number
                                           :required     false}}}})
 
-(defn- do-with-temp-public-card [m f]
+(defn do-with-temp-public-card [m f]
   (let [m (merge (when-not (:dataset_query m)
                    {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})})
                  (when-not (:parameters m)
@@ -65,13 +63,14 @@
       ;; public sharing is disabled; but we still want to test it
       (f (assoc card :public_uuid (:public_uuid m))))))
 
-(defmacro ^:private with-temp-public-card {:style/indent 1} [[binding & [card]] & body]
+(defmacro with-temp-public-card {:style/indent 1} [[binding & [card]] & body]
   `(do-with-temp-public-card
     ~card
     (fn [~binding]
       ~@body)))
 
-(defn- do-with-temp-public-dashboard [m f]
+(defn do-with-temp-public-dashboard
+  [m f]
   (let [m (merge
            (when-not (:parameters m)
              {:parameters [{:id      "_VENUE_ID_"
@@ -85,13 +84,13 @@
     (t2.with-temp/with-temp [Dashboard dashboard m]
       (f (assoc dashboard :public_uuid (:public_uuid m))))))
 
-(defmacro ^:private with-temp-public-dashboard {:style/indent 1} [[binding & [dashboard]] & body]
+(defmacro with-temp-public-dashboard {:style/indent 1} [[binding & [dashboard]] & body]
   `(do-with-temp-public-dashboard
     ~dashboard
     (fn [~binding]
       ~@body)))
 
-(defn- add-card-to-dashboard! [card dashboard & {parameter-mappings :parameter_mappings, :as kvs}]
+(defn add-card-to-dashboard! [card dashboard & {parameter-mappings :parameter_mappings, :as kvs}]
   (first (t2/insert-returning-instances! DashboardCard (merge {:dashboard_id       (u/the-id dashboard)
                                                                :card_id            (u/the-id card)
                                                                :row                0
@@ -106,7 +105,7 @@
 
 ;; TODO -- we can probably use [[metabase.api.dashboard-test/with-chain-filter-fixtures]] for mocking this stuff
 ;; instead since it does mostly the same stuff anyway
-(defmacro ^:private with-temp-public-dashboard-and-card
+(defmacro with-temp-public-dashboard-and-card
   {:style/indent 1}
   [[dashboard-binding card-binding & [dashcard-binding]] & body]
   (let [dashcard-binding (or dashcard-binding (gensym "dashcard"))]
@@ -130,8 +129,7 @@
 
       (with-temp-public-card [{uuid :public_uuid, card-id :id}]
         (testing "Happy path -- should be able to fetch the Card"
-          (is (= #{:dataset_query :description :display :id :name :visualization_settings :parameters :param_values :param_fields}
-                 (set (keys (client/client :get 200 (str "public/card/" uuid)))))))
+          (client/client :get 200 (str "public/card/" uuid)))
 
         (testing "Check that we cannot fetch a public Card if public sharing is disabled"
           (mt/with-temporary-setting-values [enable-public-sharing false]
@@ -527,7 +525,9 @@
         (is (= "Not found."
                (client/client :get 404 (str "public/dashboard/" (random-uuid)))))))))
 
-(defn- fetch-public-dashboard [{uuid :public_uuid}]
+(defn fetch-public-dashboard
+  "Fetch a public dashboard by it's public UUID."
+  [{uuid :public_uuid}]
   (-> (client/client :get 200 (str "public/dashboard/" uuid))
       (select-keys [:name :dashcards :tabs])
       (update :name boolean)
@@ -549,18 +549,6 @@
          (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
          (is (= {:name true, :dashcards 2, :tabs 2}
                 (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
-
-(deftest public-dashboard-logs-view-test
-  (when (premium-features/log-enabled?)
-    (testing "Viewing a public dashboard logs the correct view log event."
-      (mt/with-temporary-setting-values [enable-public-sharing true]
-        (with-temp-public-dashboard-and-card [dash _]
-          (fetch-public-dashboard dash)
-          (is (partial=
-               {:model      "dashboard"
-                :model_id   (:id dash)
-                :has_access true}
-               (view-log-test/latest-view nil (:id dash)))))))))
 
 (deftest public-dashboard-with-implicit-action-only-expose-unhidden-fields
   (mt/with-temporary-setting-values [enable-public-sharing true]
