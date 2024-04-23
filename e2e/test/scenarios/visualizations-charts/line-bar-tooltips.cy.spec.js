@@ -112,10 +112,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ["Custom Q2", "56.66"],
       ];
 
-      showTooltipForFirstCircleInSeries("#88BF4D");
+      showTooltipForCircleInSeries("#88BF4D");
       testTooltipText(originalSeriesTooltipText);
 
-      showTooltipForFirstCircleInSeries("#A989C5");
+      showTooltipForCircleInSeries("#A989C5");
       testTooltipText(addedSeriesTooltipText);
 
       openDashCardVisualizationOptions();
@@ -125,10 +125,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      showTooltipForFirstCircleInSeries("#88BF4D");
+      showTooltipForCircleInSeries("#88BF4D");
       testTooltipText(updatedOriginalSeriesTooltipText);
 
-      showTooltipForFirstCircleInSeries("#A989C5");
+      showTooltipForCircleInSeries("#A989C5");
       testTooltipText(updatedAddedSeriesTooltipText);
     });
   });
@@ -220,36 +220,39 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
+      // Checking the second datum since the first circle of one series is covered with a circle from the other series
+      const circleIndex = 1;
       const originalSeriesColors = ["#A989C5", "#88BF4D"];
-      const addedSeriesColors = ["#509EE3", "#98D9D9"];
+      const addedSeriesColors = ["#98D9D9", "#509EE3"];
       const originalSeriesTooltipText = [
-        ["Created At", "2022"],
-        ["Average of Total", "56.66"],
-        ["Cumulative sum of Quantity", "3,236"],
+        ["Created At", "2023"],
+        ["Average of Total", "56.86"],
+        ["Cumulative sum of Quantity", "17,587"],
       ];
       const updatedOriginalSeriesTooltipText = [
-        ["Created At", "2022"],
-        ["Q1 Custom 1", "56.66"],
-        ["Q1 Custom 2", "3,236"],
+        ["Created At", "2023"],
+        ["Q1 Custom 1", "56.86"],
+        ["Q1 Custom 2", "17,587"],
       ];
 
       const addedSeriesTooltipText = [
-        ["Created At", "2022"],
-        ["Average of Discount", "5.03"],
-        ["Sum of Discount", "342.09"],
+        ["Created At", "2023"],
+        ["Average of Discount", "5.41"],
+        ["Sum of Discount", "1,953.08"],
       ];
       const updatedAddedSeriesTooltipText = [
-        ["Created At", "2022"],
-        ["Q2 Custom 1", "5.03"],
-        ["Q2 Custom 2", "342.09"],
+        ["Created At", "2023"],
+        ["Q2 Custom 1", "5.41"],
+        ["Q2 Custom 2", "1,953.08"],
       ];
 
       originalSeriesColors.forEach(color => {
-        showTooltipForFirstCircleInSeries(color);
+        showTooltipForCircleInSeries(color, circleIndex);
         testTooltipText(originalSeriesTooltipText);
       });
+
       addedSeriesColors.forEach(color => {
-        showTooltipForFirstCircleInSeries(color);
+        showTooltipForCircleInSeries(color, circleIndex);
         testTooltipText(addedSeriesTooltipText);
       });
 
@@ -276,11 +279,11 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       saveDashCardVisualizationOptions();
 
       originalSeriesColors.forEach(color => {
-        showTooltipForFirstCircleInSeries(color);
+        showTooltipForCircleInSeries(color, circleIndex);
         testTooltipText(updatedOriginalSeriesTooltipText);
       });
       addedSeriesColors.forEach(color => {
-        showTooltipForFirstCircleInSeries(color);
+        showTooltipForCircleInSeries(color, circleIndex);
         testTooltipText(updatedAddedSeriesTooltipText);
       });
     });
@@ -361,8 +364,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
-      const originalSeriesIndex = 0;
-      const addedSeriesIndex = 1;
+      const originalSeriesColor = "#88BF4D";
+      const addedSeriesColor = "#A989C5";
       const originalSeriesTooltipText = [
         ["Created At", "2022"],
         ["Sum of Total", "42,156.87"],
@@ -381,10 +384,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ["Custom Q2", "56.66"],
       ];
 
-      showTooltipForFirstBarInSeries(originalSeriesIndex);
+      showTooltipForFirstBarInSeries(originalSeriesColor);
       testTooltipText(originalSeriesTooltipText);
 
-      showTooltipForFirstBarInSeries(addedSeriesIndex);
+      showTooltipForFirstBarInSeries(addedSeriesColor);
       testTooltipText(addedSeriesTooltipText);
 
       openDashCardVisualizationOptions();
@@ -394,10 +397,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      showTooltipForFirstBarInSeries(originalSeriesIndex);
+      showTooltipForFirstBarInSeries(originalSeriesColor);
       testTooltipText(updatedOriginalSeriesTooltipText);
 
-      showTooltipForFirstBarInSeries(addedSeriesIndex);
+      showTooltipForFirstBarInSeries(addedSeriesColor);
       testTooltipText(updatedAddedSeriesTooltipText);
     });
   });
@@ -433,8 +436,8 @@ function setupDashboard(cardId, addedSeriesCardId) {
   });
 }
 
-function showTooltipForFirstCircleInSeries(seriesColor) {
-  cartesianChartCircleWithColor(seriesColor).realHover();
+function showTooltipForCircleInSeries(seriesColor, index = 0) {
+  cartesianChartCircleWithColor(seriesColor).eq(index).realHover();
 }
 
 function showTooltipForFirstBarInSeries(seriesColor) {
