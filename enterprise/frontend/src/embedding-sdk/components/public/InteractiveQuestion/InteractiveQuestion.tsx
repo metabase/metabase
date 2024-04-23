@@ -55,7 +55,7 @@ export const _InteractiveQuestion = ({
   }, [dispatch, questionId]);
 
   if (!question) {
-    return <SdkError message={t`Invalid question`} />;
+    return <SdkError message={t`Question not found`} />;
   }
 
   return (

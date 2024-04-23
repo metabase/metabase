@@ -18,7 +18,6 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { InteractiveQuestionProps } from "embedding-sdk/components/public/InteractiveQuestion/InteractiveQuestion";
 import { createMockConfig } from "embedding-sdk/test/mocks/config";
 import {
   createMockCard,
@@ -54,7 +53,7 @@ const TEST_DATASET = createMockDataset({
   }),
 });
 
-const setup = ({ questionId }: InteractiveQuestionProps) => {
+const setup = ({ isValidCard = true }: { isValidCard?: boolean } = {}) => {
   const settingValues = createMockSettings();
   const tokenFeatures = createMockTokenFeatures();
 
@@ -67,7 +66,7 @@ const setup = ({ questionId }: InteractiveQuestionProps) => {
     currentUser: TEST_USER,
   });
 
-  const TEST_CARD = createMockCard({ id: questionId });
+  const TEST_CARD = createMockCard();
 
   setupEnterprisePlugins();
 
@@ -75,7 +74,7 @@ const setup = ({ questionId }: InteractiveQuestionProps) => {
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settingValuesWithToken);
 
-  if (questionId === 1) {
+  if (isValidCard) {
     setupCardEndpoints(TEST_CARD);
   } else {
     setupUnauthorizedCardEndpoints(TEST_CARD);
@@ -87,7 +86,7 @@ const setup = ({ questionId }: InteractiveQuestionProps) => {
 
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 
-  renderWithProviders(<InteractiveQuestion questionId={questionId} />, {
+  renderWithProviders(<InteractiveQuestion questionId={TEST_CARD.id} />, {
     mode: "sdk",
     sdkConfig: createMockConfig(),
     storeInitialState: state,
@@ -96,13 +95,13 @@ const setup = ({ questionId }: InteractiveQuestionProps) => {
 
 describe("InteractiveQuestion", () => {
   it("should initially render with a loader", async () => {
-    setup({ questionId: 1 });
+    setup();
 
     expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
   it("should render when question is valid", async () => {
-    setup({ questionId: 1 });
+    setup();
 
     await waitForLoaderToBeRemoved();
 
@@ -112,12 +111,12 @@ describe("InteractiveQuestion", () => {
     ).toBeInTheDocument();
   });
 
-  it("should not render if a question is invalid", async () => {
-    setup({ questionId: 1395813 });
+  it("should render an error if a question ID isn't found", async () => {
+    setup({ isValidCard: false });
 
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByText("Error")).toBeInTheDocument();
-    expect(screen.getByText("Invalid question")).toBeInTheDocument();
+    expect(screen.getByText("Question not found")).toBeInTheDocument();
   });
 });
