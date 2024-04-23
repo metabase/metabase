@@ -57,8 +57,9 @@ jobs:
         run: yarn test-visual:loki-report
 
       - name: Upload Artifact
+        id: artifact-upload-step
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: loki-report
           path: .loki/
@@ -70,8 +71,8 @@ jobs:
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
-            const runUrl = `https://github.com/metabase/metabase/actions/runs/${{ github.run_id }}`
-            const comment = `🚨 Visual Regression Tests failed. Get the [report artifact](${runUrl})`
+            const artifactUrl = "${{ steps.artifact-upload-step.outputs.artifact-url }}"
+            const comment = `🚨 Visual Regression Tests failed. Get the [report artifact](${artifactUrl})`
             github.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
