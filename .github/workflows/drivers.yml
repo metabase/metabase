@@ -6,7 +6,7 @@ on:
       - 'master'
       - 'release-**'
       # TODO: Remove when done with Druid JDBC initial development phases.
-      # - 'druid-jdbc'
+      - 'druid-jdbc'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
@@ -139,18 +139,17 @@ jobs:
       DRIVERS: druid-jdbc
     services:
       druid:
-        image: metabase/druid:29.0.0
+        image: metabase/druid:29.0.1-json-no-ingestion
         ports:
-          - "8082:8082"
           - "8888:8888"
         env:
           CLUSTER_SIZE: nano-quickstart
     steps:
     - uses: actions/checkout@v4
-    - name: Test Druid driver
+    - name: Test Druid JDBC driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-druid-ee'
+        junit-name: 'be-tests-druid-jdbc-ee'
         test-args: ":exclude-tags '[:mb/once]'"
     # TODO: Enable result uploading when JDBC driver work is done
     # - name: Upload Test Results
