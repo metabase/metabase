@@ -29,6 +29,7 @@ export const AppInitializeController = ({
 
   return (
     <SdkContentWrapper
+      baseUrl={config.metabaseInstanceUrl}
       id={EMBEDDING_SDK_ROOT_ELEMENT_ID}
       font={config.font ?? DEFAULT_FONT}
     >
