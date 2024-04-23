@@ -70,7 +70,7 @@
       (t2/update! :model/Dashboard 1 {:archived true})
       (is (nil? (public-settings/example-dashboard-id))))))
 
-(deftest sample-content-privileges-test
+(deftest sample-content-permissions-test
   (mt/with-temp-empty-app-db [_conn :h2]
     (mdb/setup-db! :create-sample-content? true)
     (let [dashboard  (t2/select-one :model/Dashboard :creator_id config/internal-mb-user-id)

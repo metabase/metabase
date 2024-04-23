@@ -1199,21 +1199,15 @@
                                   :report_dashboard
                                   :dashboard_tab
                                   :report_dashboardcard
-                                  :dashboardcard_series]]
+                                  :dashboardcard_series
+                                  :permissions_group
+                                  :data_permissions]]
                 (when-let [values (seq (table-name->rows table-name))]
                   (t2/query {:insert-into table-name :values values})))
               (let [group-id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))]
                 (t2/query {:insert-into :permissions
                            :values      [{:object   (format "/collection/%s/" example-collection-id)
-                                          :group_id group-id}]})
-                (t2/query {:insert-into :data_permissions
-                           :values      (for [[perm-type perm-value] {"perms/view-data"        "unrestricted"
-                                                                      "perms/create-queries"   "query-builder-and-native"
-                                                                      "perms/download-results" "one-million-rows"}]
-                                          {:perm_type  perm-type
-                                           :perm_value perm-value
-                                           :group_id   group-id
-                                           :db_id      expected-sample-db-id})}))
+                                          :group_id group-id}]}))
               (t2/query {:insert-into :setting
                          :values      [{:key   "example-dashboard-id"
                                         :value (str example-dashboard-id)}]})))))))
@@ -1221,7 +1215,7 @@
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
   ;; -----------------------------------------------------------------------------
-  ;; Start a fresh metabase instance without the :ee alias
+  ;; Start a fresh metabase instance without the :ee alias so instance analytics stuff is not created.
   ;; 1. create a collection with dashboards, or import one with (metabase.cmd/import "<path>")
   ;; 2. execute the following to spit out the collection to an EDN file:
   (let [pretty-spit (fn [file-name data]
@@ -1239,7 +1233,8 @@
                                      :report_card
                                      :parameter_card
                                      :dashboard_tab
-                                     :dashboardcard_series]
+                                     :dashboardcard_series
+                                     :data_permissions]
                          :let [query (cond-> {:select [:*] :from table-name}
                                        (= table-name :collection) (assoc :where [:and
                                                                                  [:= :namespace nil] ; excludes the analytics namespace
