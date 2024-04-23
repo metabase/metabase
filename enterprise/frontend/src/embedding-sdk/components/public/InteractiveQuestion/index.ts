@@ -1,1 +1,1 @@
-export * from "./InteractiveQuestion"
+export * from "./InteractiveQuestion";

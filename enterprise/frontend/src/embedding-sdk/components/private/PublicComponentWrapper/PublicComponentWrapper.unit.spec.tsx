@@ -49,7 +49,10 @@ describe("PublicComponentWrapper", () => {
   });
 
   it("renders error message when loginStatus is error", () => {
-    setup({ status: "error", error: { message: "Something went wrong" } });
+    setup({
+      status: "error",
+      error: { name: "Error", message: "Something went wrong" },
+    });
     const errorMessage = screen.getByText(/Something went wrong/i);
     expect(errorMessage).toBeInTheDocument();
   });
