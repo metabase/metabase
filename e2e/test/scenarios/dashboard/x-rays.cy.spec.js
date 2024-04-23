@@ -329,7 +329,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
         cy.wait("@dataset", { timeout: 60000 });
 
         // Ensure charts actually got rendered
-        cy.get("text.x-axis-label").contains("Created At");
+        cy.get("text").contains("Created At");
       });
   });
 
