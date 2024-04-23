@@ -573,7 +573,7 @@
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
   [_model & {:keys [table-alias]}]
-  [:not= (h2x/identifier :field (some-> table-alias name) :creator_id) config/internal-mb-user-id])
+  [:not= (h2x/identifier :field table-alias :creator_id) config/internal-mb-user-id])
 
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
