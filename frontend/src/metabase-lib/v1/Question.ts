@@ -306,7 +306,7 @@ class Question {
     if (!isScalar && isOneByOne && !this.displayIsLocked()) {
       return this.setDisplay("scalar");
     }
-    return this;
+    return this.setDefaultDisplay();
   }
 
   setDefaultDisplay(): Question {
