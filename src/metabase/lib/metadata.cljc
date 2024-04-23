@@ -148,17 +148,6 @@
    card-id               :- ::lib.schema.id/card]
   (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id))
 
-(mu/defn cached-metadata
-  "Get a single cached metadata or all cached metadata of a type.
-
-    (cached-metadata (qp.store/metadata-provider) :metadata/table)
-    => get all cached tables
-
-    (cached-metadata (qp.store/metadata-provider) :metadata/card 1)
-    =>  get cached metadata for card with id is one"
-  [metadata-providerable :- MetadataProviderable & args]
-  (apply lib.metadata.protocols/cached-metadata (->metadata-provider metadata-providerable) args))
-
 (mu/defn card-or-throw :- ::lib.schema.metadata/card
   "Like [[card]], but throws if the Card is not found."
   [metadata-providerable :- MetadataProviderable
