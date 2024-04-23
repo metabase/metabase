@@ -46,6 +46,9 @@
 (mr/def ::legacy-metric
   [:schema {:doc/title "Valid legacy Metric ID"} pos-int?])
 
+(mr/def ::metric
+  [:schema {:doc/title "Valid legacy Metric ID"} pos-int?])
+
 (mr/def ::snippet
   [:schema {:doc/title "Valid Snippet ID"} pos-int?])
 

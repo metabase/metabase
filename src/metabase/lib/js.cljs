@@ -1675,12 +1675,9 @@
   [a-query stage-number]
   (to-array (lib.core/available-segments a-query stage-number)))
 
-;; # Legacy Metrics
-;; Legacy metrics are reusable query fragments, but are being completely overhauled by a major new effort on Metrics v2.
-;;
-;; These functions still work, but no new calls should be added. They will be removed when legacy Metrics are removed
-;; in 2024.
-(defn ^:export legacy-metric-metadata
+;; # Metrics
+;; Metrics are reusable aggregations.
+(defn ^:export metric-metadata
   "Return the opaque metadata value for the legacy Metric with `metric-id`, if it can be found.
 
   `metadata-providerable` is anything that can provide metadata - it can be JS `Metadata` itself, but more commonly it
@@ -1689,16 +1686,15 @@
   > **Code health:** Legacy, Single use, Deprecated. No new calls; this is only for legacy Metrics and will be removed
   when they are."
   [metadata-providerable metric-id]
-  (lib.metadata/legacy-metric metadata-providerable metric-id))
+  (lib.metadata/metric metadata-providerable metric-id))
 
-(defn ^:export available-legacy-metrics
-  "Returns a JS array of opaque metadata values for those legacy Metrics that could be used as aggregations on
+(defn ^:export available-metrics
+  "Returns a JS array of opaque metadata values for those Metrics that could be used as aggregations on
   `a-query`.
 
-  > **Code health:** Legacy, Single use, Deprecated. No new calls; this is only for legacy Metrics and will be removed
-  when they are."
+  > **Code health:** Healthy."
   [a-query stage-number]
-  (to-array (lib.core/available-legacy-metrics a-query stage-number)))
+  (to-array (lib.core/available-metrics a-query stage-number)))
 
 ;; TODO: Move all the join logic into one block - it's scattered all through the lower half of this namespace.
 

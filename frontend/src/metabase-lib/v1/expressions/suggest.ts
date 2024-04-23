@@ -264,7 +264,7 @@ export function suggest({
     }
 
     if (startRule === "aggregation") {
-      const metrics = Lib.availableLegacyMetrics(query, stageIndex);
+      const metrics = Lib.availableMetrics(query, stageIndex);
 
       if (metrics) {
         suggestions.push(

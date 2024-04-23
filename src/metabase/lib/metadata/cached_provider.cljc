@@ -32,7 +32,7 @@
 
 (mu/defn ^:private store-metadata!
   [cache
-   metadata-type :- [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/legacy-metric :metadata/segment]
+   metadata-type :- [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/legacy-metric :metadata/metric :metadata/segment]
    id            :- pos-int?
    metadata      :- [:multi
                      {:dispatch :lib/type}
@@ -41,6 +41,7 @@
                      [:metadata/column   lib.metadata/ColumnMetadata]
                      [:metadata/card     ::lib.schema.metadata/card]
                      [:metadata/legacy-metric   lib.metadata/LegacyMetricMetadata]
+                     [:metadata/metric   lib.metadata/MetricMetadata]
                      [:metadata/segment  lib.metadata/SegmentMetadata]]]
   (let [metadata (-> metadata
                      (update-keys u/->kebab-case-en)

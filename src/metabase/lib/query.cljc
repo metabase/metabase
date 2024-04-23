@@ -197,13 +197,13 @@
       (let [metric-query (query metadata-providerable (:dataset-query card-metadata))
             metric-breakouts (:breakout (lib.util/query-stage metric-query -1))
             base-query (reduce
-                         #(lib.util/add-summary-clause %1 0 :breakout %2)
-                         base-query
-                         metric-breakouts)]
+                        #(lib.util/add-summary-clause %1 0 :breakout %2)
+                        base-query
+                        metric-breakouts)]
         (-> base-query
             (lib.util/add-summary-clause
-              0 :aggregation
-              (lib.options/ensure-uuid [:metric {} card-id]))))
+             0 :aggregation
+             (lib.options/ensure-uuid [:metric {} card-id]))))
       base-query)))
 
 (defmethod query-method :mbql.stage/mbql
@@ -266,12 +266,12 @@
 (mu/defn uses-segment? :- :boolean
   "Tests whether `a-query` uses segment with ID `segment-id`.
   `segment-id` can be a regular segment ID or a string. The latter is for symmetry
-  with [[uses-legacy-metric?]]."
+  with [[uses-metric?]]."
   [a-query :- ::lib.schema/query
    segment-id :- [:or ::lib.schema.id/segment :string]]
   (occurs-in-stage-clause? a-query :filters #(occurs-in-expression? % :segment segment-id)))
 
-(mu/defn uses-legacy-metric? :- :boolean
+(mu/defn uses-metric? :- :boolean
   "Tests whether `a-query` uses metric with ID `metric-id`.
   `metric-id` can be a regular metric ID or a string. The latter is to support
   some strange use-cases (see [[metabase.lib.legacy-metric-test/ga-metric-metadata-test]])."

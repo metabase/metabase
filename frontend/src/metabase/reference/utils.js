@@ -123,7 +123,7 @@ function filterBySegmentId(query, segmentId) {
 
 function aggregateByMetricId(query, metricId) {
   const stageIndex = -1;
-  const metricMetadata = Lib.legacyMetricMetadata(query, metricId);
+  const metricMetadata = Lib.metricMetadata(query, metricId);
 
   if (!metricMetadata) {
     return query;

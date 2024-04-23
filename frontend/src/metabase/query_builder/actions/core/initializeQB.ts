@@ -110,7 +110,7 @@ function filterBySegmentId(question: Question, segmentId: SegmentId) {
 function aggregateByMetricId(question: Question, metricId: MetricId) {
   const stageIndex = -1;
   const query = question.query();
-  const metricMetadata = Lib.legacyMetricMetadata(query, metricId);
+  const metricMetadata = Lib.metricMetadata(query, metricId);
 
   if (!metricMetadata) {
     return question;
