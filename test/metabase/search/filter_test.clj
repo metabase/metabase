@@ -11,6 +11,7 @@
   {:search-string       nil
    :archived?           false
    :models             search.config/all-models
+   :model-ancestors?   false
    :current-user-perms #{"/"}})
 
 (deftest ^:parallel ->applicable-models-test

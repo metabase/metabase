@@ -99,6 +99,7 @@
    [:map {:closed true}
     [:search-string                                        [:maybe ms/NonBlankString]]
     [:archived?                                            :boolean]
+    [:model-ancestors?                                     :boolean]
     [:current-user-perms                                   [:set perms.u/PathSchema]]
     [:models                                               [:set SearchableModel]]
     [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
@@ -138,6 +139,7 @@
    :collection_id       :integer
    :collection_name     :text
    :collection_type     :text
+   :collection_location :text
    :collection_authority_level :text
    ;; returned for Card and Dashboard
    :collection_position :integer
@@ -270,6 +272,7 @@
   [_]
   (conj default-columns :collection_id :collection_position :dataset_query :display :creator_id
         [:collection.name :collection_name]
+        [:collection.location :collection_location]
         [:collection.authority_level :collection_authority_level]
         bookmark-col dashboardcard-count-col))
 

@@ -280,11 +280,13 @@
                   :database 1}
           result {:name          "card"
                   :model         "card"
-                  :dataset_query (json/generate-string query)}]
-      (is (= query (-> result (#'scoring/serialize {} {}) :dataset_query)))))
+                  :dataset_query (json/generate-string query)
+                  :all-scores {}
+                  :relevant-scores {}}]
+      (is (= query (-> result scoring/serialize :dataset_query)))))
   (testing "Doesn't error on other models without a query"
-    (is (nil? (-> {:name "dash" :model "dashboard"}
-                  (#'scoring/serialize {} {})
+    (is (nil? (-> {:name "dash" :model "dashboard" :all-scores {} :relevant-scores {}}
+                  (#'scoring/serialize)
                   :dataset_query)))))
 
 (deftest ^:parallel force-weight-test
