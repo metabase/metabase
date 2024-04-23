@@ -50,7 +50,7 @@
 (defn- format-prefix
   "Used to build an environment variable."
   [env-var]
-  (str "MB_" (u/->SCREAMING_SNAKE_CASE_EN (name (:name env-var)))))
+  (str "MB_" (u/->SCREAMING_SNAKE_CASE_EN (:munged-name env-var))))
 
 (defn- format-heading
   "Takes an integer and a string and creates a Markdown heading of level n."
@@ -71,21 +71,36 @@
   (when-let [a (:added (:doc env-var))]
     (str "Added: " a)))
 
+(defn format-paid
+  "Does the variable require a paid license?"
+  [env-var]
+    (if (nil? (:feature env-var))
+      "Paid: No."
+      "Paid: Yes"))
+
 (defn- format-doc
   "Includes additional documentation for an environment variable (`:commentary`), if it exists."
   [env-var]
   (when-let [d (:doc env-var)]
     (:commentary d)))
 
+(defn format-config-name
+  "Formats the configuration file name."
+  [env-var]
+  (if (= (:visibility env-var) :internal)
+    (str "Configuration file name: Cannot be set with the configuration file.")
+    (str "Configuration file name: `" (:munged-name env-var) "`")))
+
 (defn format-env-var-entry
   "Preps a doc entry for an environment variable as a Markdown section."
   [env-var]
-  (println "env-var" env-var)
   (str/join "\n\n" (remove str/blank?
                            [(format-heading 3 (format-prefix env-var))
+                            (format-paid env-var)
                             (format-type env-var)
                             (format-default env-var)
                             (format-added env-var)
+                            (format-config-name env-var)
                             (format-description env-var)
                             (format-doc env-var)])))
 
@@ -109,6 +124,12 @@
   [env-var]
   (nil? (:deprecated env-var)))
 
+(defn- only-local?
+  "Used to filter out environment variables that are only local."
+  [env-var]
+  (or (= (:user-local env-var) :only)
+      (= (:database-local env-var) :only)))
+
 (defn format-env-var-docs
   "Preps relevant environment variable docs as a Markdown string."
   [settings]
@@ -116,6 +137,7 @@
        (filter setter?)
        (filter active?)
        (remove avoid?)
+       (remove only-local?)
        (map format-env-var-entry)))
 
 (defn- format-intro
@@ -123,10 +145,21 @@
   []
   (str (slurp "src/metabase/cmd/resources/env-var-intro.md") "\n\n"))
 
+(defn- format-other-env-vars
+  "Exists just so we can write the intro in Markdown."
+  []
+  (str "\n\n" (slurp "src/metabase/cmd/resources/other-env-vars.md") "\n"))
+
+(defn prep-dox
+  "Preps the environment variable docs for printing."
+  []
+  (apply str (format-intro)
+         (str/join "\n\n" (format-env-var-docs (get-settings)))
+         (format-other-env-vars)))
+
 (defn generate-dox!
   "Prints the generated environment variable docs to a file."
   []
   (println "Generating docs for environment variables...")
-  (spit (io/file "docs/configuring-metabase/environment-variables.md") (apply str (format-intro)
-                                                                              (str/join "\n\n" (format-env-var-docs (get-settings)))))
+  (spit (io/file "docs/configuring-metabase/environment-variables.md") (prep-dox))
   (println "Done."))
