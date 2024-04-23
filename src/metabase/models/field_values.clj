@@ -29,7 +29,6 @@
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.plugins.classloader :as classloader]
@@ -247,7 +246,7 @@
           ;;       approach makes things harder to debug.
           ;; TODO: Reduce the following to just one database call at least!
           table (t2/select-one 'Table :id (:table_id field-or-field-id))
-          engine (driver.u/database->driver (t2/select-one 'Database :id (:db_id table)))]
+          engine (:id (t2/select-one 'Database :id (:db_id table)))]
       (boolean
        (and
         (driver/field-values-compatible? engine field-or-field-id)
