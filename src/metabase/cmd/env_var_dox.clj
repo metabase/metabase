@@ -60,7 +60,7 @@
 (defn- format-description
   "Helper function to specify description format for enviromnent variable docs."
   [env-var]
-  (->> (:description env-var)
+  (->> ((:description env-var))
        u/add-period
        ;; Drop brackets used to create source code links
        (#(str/replace % #"\[\[|\]\]" ""))))
@@ -80,6 +80,7 @@
 (defn format-env-var-entry
   "Preps a doc entry for an environment variable as a Markdown section."
   [env-var]
+  (println "env-var" env-var)
   (str/join "\n\n" (remove str/blank?
                            [(format-heading 3 (format-prefix env-var))
                             (format-type env-var)
