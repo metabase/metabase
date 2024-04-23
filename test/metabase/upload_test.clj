@@ -1413,6 +1413,28 @@
 
               (io/delete-file file))))))))
 
+(defn- mbql [table]
+  {:lib/type     :mbql/query
+   :database     (:db_id table)
+   :stages       [{:lib/type     :mbql.stage/mbql
+                   :source-table (:id table)}]})
+
+(defn- t [x] (prn x) x)
+
+(defn- join-mbql [table join-table-id]
+  (t
+   (mt/mbql-query nil
+                  {:joins [{:alias        (str "Table " "join-table-id"),
+                            :condition    [:=
+                                           [:field "_mb_row_id"
+                                            {:base-type "type/BigInteger"}]
+                                           [:field
+                                            (t2/select-one-pk :model/Field :name "_mb_row_id" :table_id 1 #_"join-table-id")
+                                            {:base-type  "type/BigInteger",
+                                             :join-alias "other PK"}]],
+                            :fields       :all,
+                            :source-table 1 #_join-table-id}]})))
+
 (deftest ^:mb/once update-invalidate-model-cache-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
@@ -1422,32 +1444,18 @@
                 csv-rows ["name" "Luke Skywalker"]
                 file     (csv-file-with csv-rows)]
 
-            (mt/with-temp [:model/Card {question-id         :id} {:table_id table-id}
-                           :model/Card {model-id            :id} {:table_id table-id, :type :model}
-                           :model/Card {complex-model-id    :id} {:table_id table-id, :type :model
-                                                                  :dataset_query
-                                                                  {:expressions
-                                                                   {"NAME" [:upper [:field :name {:base-type "type/Text"}]]}}}
-                           :model/Card {_archived-model-id  :id} {:table_id table-id, :type :model, :archived true}
+            (mt/with-temp [:model/Table {other-table-id     :id} {}
 
-                           :model/Table {other-table-id     :id} {}
-                           :model/Card {_unrelated-model-id :id} {:table_id other-table-id, :type :model,}
-                           :model/Card {_joined-model-id    :id} {:table_id other-table-id, :type :model
-                                                                  :dataset_query
-                                                                  {:joins
-                                                                   [{:alias (:name table),
-                                                                     :condition
-                                                                     [:=
-                                                                      [:field "_mb_row_id"
-                                                                       {:base-type "type/BigInteger"}]
-                                                                      [:field
-                                                                       (t2/select-one-pk :model/Field
-                                                                                         :name "_mb_row_id"
-                                                                                         :table_id table-id)
-                                                                       {:base-type  "type/BigInteger",
-                                                                        :join-alias "other PK"}]],
-                                                                     :fields :all,
-                                                                     :source-table table-id}]}}]
+                           :model/Card {question-id         :id} {:table_id table-id, :dataset_query (mbql table)}
+                           :model/Card {model-id            :id} {:table_id table-id, :type :model, :dataset_query (mbql table)}
+                           :model/Card {complex-model-id    :id} {:table_id table-id, :type :model
+                                                                  :dataset_query (join-mbql table other-table-id)}
+                           :model/Card {_archived-model-id  :id} {:table_id table-id, :type :model, :archived true, :dataset_query (mbql table)}
+                           :model/Card {_unrelated-model-id :id} {:table_id other-table-id, :type :model, :dataset_query (mbql (assoc table :id other-table-id))}
+                           :model/Card {_joined-model-id :id} {:table_id other-table-id, :type :model
+                                                                  :dataset_query (join-mbql
+                                                                                  (assoc table :id other-table-id)
+                                                                                  (:id table))}]
 
               (is (= #{question-id model-id complex-model-id}
                      (into #{} (map :id) (t2/select :model/Card :table_id table-id :archived false))))

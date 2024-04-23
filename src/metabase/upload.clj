@@ -514,15 +514,31 @@
            (field->db-type driver field->new-type)
            args)))
 
-(defn- invalidate-cached-models! [table]
-  ;; Find all the models for which this is the "primary table", and there is no meaningful filtering or transformation.
+(defn- mbql? [model]
+  (= "query" (name (:query_type model "query"))))
+
+(defn- no-joins?
+  "Returns true if `query` has no joins in it, otherwise false."
+  [query]
+  (let [all-joins (mapcat (fn [stage]
+                            (lib/joins query stage))
+                          (range (lib/stage-count query)))]
+    (empty? all-joins)))
+
+(defn- invalidate-cached-models!
+  "Invalidate the model caches for all cards whose `:based_on_upload` value resolves to the given table."
+  [table]
+  ;; NOTE: It is important that this logic is kept in sync with `model-hydrate-based-on-upload`
   (when-let [model-ids (->> (t2/select [:model/Card :id :dataset_query]
                                        :table_id (:id table)
                                        :type     :model
                                        :archived false)
-                            (filter (fn [{query :dataset_query}]
-                                      ;; Notably there are no joins or custom columns, which might be expensive.
-                                      (every? #{:source-table :fields :limit} (keys query))))
+                            (filter (fn [model]
+                                      ; dataset_query can be empty in tests
+                                      (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)]
+                                        (and (mbql? model)
+                                             (no-joins? query)
+                                             (= (:id table) (lib/source-table-id query))))))
                             (map :id)
                             seq)]
     ;; Ideally we would do all the filtering in the query, but we would need an agnostic way to handle the JSON column.
@@ -716,14 +732,6 @@
               (filter #(can-upload-to-table? (:db %) %))
               (map :id)))))
 
-(defn- no-joins?
-  "Returns true if `query` has no joins in it, otherwise false."
-  [query]
-  (let [all-joins (mapcat (fn [stage]
-                            (lib/joins query stage))
-                          (range (lib/stage-count query)))]
-    (empty? all-joins)))
-
 (mu/defn model-hydrate-based-on-upload
   "Batch hydrates `:based_on_upload` for each item of `models`. Assumes each item of `model` represents a model."
   [models :- [:sequential [:map
@@ -741,7 +749,6 @@
                                    (remove #(false? (:is_upload %)))
                                    (keep :table_id)
                                    set)
-        mbql?                 (fn [model] (= "query" (name (:query_type model "query"))))
         has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
     (for [model models]
       (m/assoc-some
