@@ -10,7 +10,7 @@
 (defmethod tx/dbdef->connection-details :druid-jdbc
   [& _]
   {:host "http://localhost"
-   :port "8888"})
+   :port 8888})
 
 (defn- already-loaded []
   (let [{:keys [host port]} (tx/dbdef->connection-details :druid-jdbc)]
