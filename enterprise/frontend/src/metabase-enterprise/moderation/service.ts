@@ -1,13 +1,25 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import { ModerationReviewApi } from "metabase/services";
+import type { IconName } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
+import type { ModerationReview, User } from "metabase-types/api";
 
 import { MODERATION_STATUS_ICONS } from "./constants";
 
 export { MODERATION_STATUS } from "./constants";
 
-export function verifyItem({ text, itemId, itemType }) {
+export function verifyItem({
+  text,
+  itemId,
+  itemType,
+}: {
+  text: string;
+  itemId: number;
+  itemType: string;
+}) {
   return ModerationReviewApi.create({
     status: "verified",
     moderated_item_id: itemId,
@@ -16,7 +28,13 @@ export function verifyItem({ text, itemId, itemType }) {
   });
 }
 
-export function removeReview({ itemId, itemType }) {
+export function removeReview({
+  itemId,
+  itemType,
+}: {
+  itemId: number;
+  itemType: string;
+}) {
   return ModerationReviewApi.create({
     status: null,
     moderated_item_id: itemId,
@@ -24,10 +42,15 @@ export function removeReview({ itemId, itemType }) {
   });
 }
 
-const noIcon = {};
+type NoIcon = Record<string, never>;
 
-export function getStatusIcon(status, filled = false) {
-  if (isRemovedReviewStatus(status)) {
+const noIcon: NoIcon = {};
+
+export const getStatusIcon = (
+  status: string | null | undefined,
+  filled = false,
+): { name: IconName; color: ColorName } | NoIcon => {
+  if (!status || isRemovedReviewStatus(status)) {
     return noIcon;
   }
 
@@ -36,38 +59,40 @@ export function getStatusIcon(status, filled = false) {
   }
 
   return MODERATION_STATUS_ICONS[status] || noIcon;
-}
+};
 
-export function getIconForReview(review, options) {
+export function getIconForReview(review: ModerationReview, options?: any) {
   return getStatusIcon(review?.status, options);
 }
 
 // we only want the icon that represents the removal of a review in special cases,
 // so you must ask for the icon explicitly
 export function getRemovedReviewStatusIcon() {
-  return MODERATION_STATUS_ICONS[null];
+  return MODERATION_STATUS_ICONS["null"];
 }
 
-export function getLatestModerationReview(reviews) {
+export function getLatestModerationReview(reviews: ModerationReview[]) {
   const maybeReview = _.findWhere(reviews, {
     most_recent: true,
   });
-
+  if (!maybeReview) {
+    return undefined;
+  }
   // since we can't delete reviews, consider a most recent review with a status of null to mean there is no review
-  return isRemovedReviewStatus(maybeReview?.status) ? undefined : maybeReview;
+  return isRemovedReviewStatus(maybeReview.status) ? undefined : maybeReview;
 }
 
-export function getStatusIconForQuestion(question) {
+export const getStatusIconForQuestion = (question: Question) => {
   const reviews = question.getModerationReviews();
   const review = getLatestModerationReview(reviews);
-  return getIconForReview(review);
-}
+  return review ? getIconForReview(review) : undefined;
+};
 
-export function getTextForReviewBanner(
-  moderationReview,
-  moderator,
-  currentUser,
-) {
+export const getTextForReviewBanner = (
+  moderationReview: ModerationReview,
+  moderator: User,
+  currentUser: User,
+) => {
   const { status } = moderationReview;
 
   if (status === "verified") {
@@ -77,11 +102,11 @@ export function getTextForReviewBanner(
   }
 
   return {};
-}
+};
 
-export function getModeratorDisplayName(moderator, currentUser) {
-  const { id: moderatorId, common_name } = moderator || {};
-  const { id: currentUserId } = currentUser || {};
+export const getModeratorDisplayName = (moderator: User, currentUser: User) => {
+  const { id: moderatorId, common_name } = moderator;
+  const { id: currentUserId } = currentUser;
 
   if (currentUserId != null && moderatorId === currentUserId) {
     return t`You`;
@@ -90,34 +115,44 @@ export function getModeratorDisplayName(moderator, currentUser) {
   } else {
     return t`A moderator`;
   }
-}
+};
 
-export function getModeratorDisplayText(moderator, currentUser) {
+export function getModeratorDisplayText(moderator: User, currentUser: User) {
   const moderatorName = getModeratorDisplayName(moderator, currentUser);
-  return t`${moderatorName} verified this`;
+  return c("{0} is the name of a user").t`${moderatorName} verified this`;
 }
 
 // a `status` of `null` represents the removal of a review, since we can't delete reviews
-export function isRemovedReviewStatus(status) {
-  return String(status) === "null";
-}
+export const isRemovedReviewStatus = (status: string | null) => {
+  return ["null", null].includes(status);
+};
 
-export function isItemVerified(review) {
+export function isItemVerified(review: ModerationReview | undefined | null) {
   return review != null && review.status === "verified";
 }
 
-function getModerationReviewEventText(review, moderatorDisplayName) {
+function getModerationReviewEventText(
+  review: ModerationReview,
+  moderatorDisplayName: string,
+) {
   switch (review.status) {
     case "verified":
-      return t`${moderatorDisplayName} verified this`;
+      return c("{0} is the name of a user")
+        .t`${moderatorDisplayName} verified this`;
     case null:
-      return t`${moderatorDisplayName} removed verification`;
+      return c("{0} is the name of a user")
+        .t`${moderatorDisplayName} removed verification`;
     default:
-      return t`${moderatorDisplayName} changed status to ${review.status}`;
+      return c("{0} is the name of a user, {1} is the status of a review")
+        .t`${moderatorDisplayName} changed status to ${review.status}`;
   }
 }
 
-export function getModerationTimelineEvents(reviews, usersById, currentUser) {
+export function getModerationTimelineEvents(
+  reviews: ModerationReview[],
+  usersById: Record<number, User>,
+  currentUser: User,
+) {
   return reviews.map(review => {
     const moderator = usersById[review.moderator_id];
     const moderatorDisplayName = getModeratorDisplayName(
@@ -137,9 +172,9 @@ export function getModerationTimelineEvents(reviews, usersById, currentUser) {
   });
 }
 
-export const getQuestionIcon = card => {
+export const getQuestionIcon = (card: any) => {
   return (card.model === "dataset" || card.type === "model") &&
     card.moderated_status === "verified"
-    ? { icon: "model_with_badge", tooltip: "Verified model" }
+    ? { icon: "model_with_badge" as IconName, tooltip: "Verified model" }
     : null;
 };
