@@ -230,7 +230,7 @@ export function computeSplit(
 
   const splits = generateSplits(unassigned, left, right);
 
-  let best: AxisSplit = [[], []];
+  let best: AxisSplit | null = null;
   let bestCost = Infinity;
   for (const split of splits) {
     const splitCost = cost(split);
@@ -238,6 +238,12 @@ export function computeSplit(
       best = split;
       bestCost = splitCost;
     }
+  }
+
+  if (!best) {
+    throw new Error(
+      `Could not compute split for series extents ${JSON.stringify(extents)}`,
+    );
   }
 
   return best;
