@@ -4,12 +4,9 @@
    [clojure.test :refer :all]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models.field :refer [Field]]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]
-   [metabase.test.data :as data]
-   [metabase.test.util :as tu]))
+   [metabase.test :as mt]))
 
 (deftest ^:parallel no-aggregation-test
   (mt/test-drivers (mt/normal-drivers)
