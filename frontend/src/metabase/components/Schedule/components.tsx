@@ -175,6 +175,9 @@ export const AutoWidthSelect = (props: SelectProps) => {
           paddingRight: 0,
           marginTop: 0,
         },
+        label: {
+          marginBottom: 0,
+        },
         input: { paddingRight: 0 },
       }}
       {...props}
