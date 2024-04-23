@@ -75,8 +75,9 @@
   "Does the variable require a paid license?"
   [env-var]
     (if (nil? (:feature env-var))
-      "Paid: No."
-      "Paid: Yes"))
+      ""
+      "> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans."))
 
 (defn- format-doc
   "Includes additional documentation for an environment variable (`:commentary`), if it exists."
