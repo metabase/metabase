@@ -293,7 +293,7 @@ function formatCase([_, clauses, caseOptions = {}]: any[], options: Options) {
   return `${formattedName}(${formattedClauses}${defaultExpression})`;
 }
 
-function formatOffset([_tag, _opts, expr, n]: any[], options) {
+function formatOffset([_tag, _opts, expr, n]: any[], options: Options) {
   const formattedName = getExpressionName("offset");
   const formattedExpr = format(expr, options);
 
