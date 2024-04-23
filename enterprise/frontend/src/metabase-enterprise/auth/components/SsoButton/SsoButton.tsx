@@ -12,10 +12,7 @@ interface SsoButtonProps {
   redirectUrl?: string;
 }
 
-export const SsoButton = ({
-  isCard,
-  redirectUrl,
-}: SsoButtonProps): JSX.Element => {
+export const SsoButton = ({ isCard, redirectUrl }: SsoButtonProps) => {
   const isEmbedded = isWithinIframe();
   const dispatch = useDispatch();
 

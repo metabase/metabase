@@ -1,5 +1,5 @@
 import type { FocusEvent } from "react";
-import { useCallback } from "react";
+import {ReactNode, useCallback} from "react";
 import { t } from "ttag";
 
 import {
@@ -26,7 +26,7 @@ const CacheTimeInput = ({
   error,
   onChange,
   onBlur,
-}: CacheTimeInputProps): JSX.Element => {
+}: CacheTimeInputProps): ReactNode => {
   const handleChange = useCallback(
     (value?: number) => {
       onChange?.(value !== 0 ? value : undefined);

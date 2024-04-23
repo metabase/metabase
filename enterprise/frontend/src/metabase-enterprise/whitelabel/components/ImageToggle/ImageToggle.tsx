@@ -22,7 +22,7 @@ export const ImageToggle = ({
   value,
   children,
   onChange,
-}: ImageToggleProps): JSX.Element => {
+}: ImageToggleProps): ReactNode => {
   const toggleId = useUniqueId();
 
   return (

@@ -1,5 +1,5 @@
 import type { ChangeEvent } from "react";
-import { useState, useRef } from "react";
+import {useState, useRef, ReactNode} from "react";
 import { createPortal } from "react-dom";
 import { t } from "ttag";
 
@@ -220,7 +220,7 @@ async function isFileIntact(dataUri: string) {
   });
 }
 
-const PREVIEW_ELEMENTS: Record<IllustrationType, JSX.Element> = {
+const PREVIEW_ELEMENTS: Record<IllustrationType, ReactNode> = {
   background: <LighthouseImage />,
   icon: <SailboatImage />,
 };

@@ -7,6 +7,7 @@ import type { ModerationReview, User } from "metabase-types/api";
 import { getIconForReview, getModeratorDisplayText } from "../../service";
 
 import { TooltipTime } from "./ModerationReviewIcon.styled";
+import {ReactNode} from "react";
 
 export interface ModerationReviewIconProps {
   review: ModerationReview;
@@ -18,7 +19,7 @@ const ModerationReviewIcon = ({
   review,
   moderator,
   currentUser,
-}: ModerationReviewIconProps): JSX.Element => {
+}: ModerationReviewIconProps): ReactNode => {
   const { name: iconName, color: iconColor } = getIconForReview(review);
 
   const tooltip = moderator && (

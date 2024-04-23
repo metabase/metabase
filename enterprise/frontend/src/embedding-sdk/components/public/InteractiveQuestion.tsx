@@ -1,5 +1,6 @@
 import cx from "classnames";
-import { useEffect } from "react";
+import type {ReactNode} from "react";
+import { useEffect} from "react";
 
 import { useSdkSelector } from "embedding-sdk/store";
 import { getIsInitialized, getIsLoggedIn } from "embedding-sdk/store/selectors";
@@ -29,7 +30,7 @@ interface InteractiveQuestionProps {
 
 export const InteractiveQuestion = ({
   questionId,
-}: InteractiveQuestionProps): JSX.Element | null => {
+}: InteractiveQuestionProps): ReactNode | null => {
   const isInitialized = useSdkSelector(getIsInitialized);
   const isLoggedIn = useSdkSelector(getIsLoggedIn);
 

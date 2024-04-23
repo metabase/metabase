@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from "react";
+import {memo, ReactNode, useCallback, useMemo} from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -35,7 +35,7 @@ const ChartColorSettings = ({
   colors,
   colorPalette,
   onChange,
-}: ChartColorSettingsProps): JSX.Element => {
+}: ChartColorSettingsProps): ReactNode => {
   const colorsRef = useCurrentRef(colors);
   const colorGroups = useMemo(getChartColorGroups, []);
 
@@ -97,7 +97,7 @@ const ChartColorTable = ({
   onChange,
   onReset,
   onGenerate,
-}: ChartColorTableProps): JSX.Element => {
+}: ChartColorTableProps): ReactNode => {
   return (
     <div>
       <TableHeader>

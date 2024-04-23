@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import {memo, ReactNode, useMemo} from "react";
 import _ from "underscore";
 
 import {
@@ -20,7 +20,7 @@ export interface ChartColorSampleProps {
 
 const ChartColorSample = ({
   colorGroups,
-}: ChartColorSampleProps): JSX.Element => {
+}: ChartColorSampleProps): ReactNode => {
   const reversedGroups = useMemo(
     () => colorGroups.map(group => [...group].reverse()),
     [colorGroups],

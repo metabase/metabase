@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import {ReactNode, useMemo} from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -21,7 +21,7 @@ export interface ChartColorPreviewProps {
 
 const ChartColorPreview = ({
   colorPalette,
-}: ChartColorPreviewProps): JSX.Element => {
+}: ChartColorPreviewProps): ReactNode => {
   const changedColors = useDebouncedValue(colorPalette, PREVIEW_TIMEOUT);
 
   const colorGroups = useMemo(() => {

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import {ReactNode, useCallback, useMemo, useRef} from "react";
 import _ from "underscore";
 
 import { originalColors } from "metabase/lib/colors/palette";
@@ -15,7 +15,7 @@ export interface ColorSettingsWidget {
 const ColorSettingsWidget = ({
   setting,
   onChange,
-}: ColorSettingsWidget): JSX.Element => {
+}: ColorSettingsWidget): ReactNode => {
   const onChangeDebounced = useDebounce(onChange, 400);
 
   return (

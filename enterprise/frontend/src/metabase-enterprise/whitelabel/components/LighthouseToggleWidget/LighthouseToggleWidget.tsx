@@ -4,6 +4,7 @@ import { ImageToggle } from "../ImageToggle";
 
 import { LighthouseImage } from "./LighthouseToggleWidget.styled";
 import type { LighthouseSetting } from "./types";
+import {ReactNode} from "react";
 
 interface LighthouseToggleWidgetProps {
   setting: LighthouseSetting;
@@ -13,7 +14,7 @@ interface LighthouseToggleWidgetProps {
 const LighthouseToggleWidget = ({
   setting,
   onChange,
-}: LighthouseToggleWidgetProps): JSX.Element => {
+}: LighthouseToggleWidgetProps): ReactNode => {
   const isEnabled = setting.value ?? setting.default;
 
   return (

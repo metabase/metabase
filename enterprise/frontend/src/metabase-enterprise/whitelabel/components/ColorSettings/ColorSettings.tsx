@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import {ReactNode, useCallback, useMemo, useState} from "react";
 import { t } from "ttag";
 
 import BrandColorSettings from "../BrandColorSettings";
@@ -24,7 +24,7 @@ export const ColorSettings = ({
   initialColors,
   originalColors,
   onChange,
-}: ColorSettingsProps): JSX.Element => {
+}: ColorSettingsProps): ReactNode => {
   const [colors, setColors] = useState(initialColors ?? {});
 
   const colorPalette = useMemo(() => {

@@ -1,5 +1,5 @@
 import type { FocusEvent } from "react";
-import { useCallback, useMemo } from "react";
+import {ReactNode, useCallback, useMemo} from "react";
 import { t } from "ttag";
 
 import Input from "metabase/core/components/Input";
@@ -26,7 +26,7 @@ export interface FontFilesWidgetProps {
 const FontFilesWidget = ({
   setting,
   onChange,
-}: FontFilesWidgetProps): JSX.Element => {
+}: FontFilesWidgetProps): ReactNode => {
   const files = setting.value;
   const urls = useMemo(() => getFontUrls(files ?? []), [files]);
 
@@ -48,7 +48,7 @@ interface FontFilesTableProps {
 const FontFilesTable = ({
   urls,
   onChange,
-}: FontFilesTableProps): JSX.Element => {
+}: FontFilesTableProps): ReactNode => {
   return (
     <TableRoot>
       <TableHeader>
@@ -81,7 +81,7 @@ const FontFileRow = ({
   url,
   option,
   onChange,
-}: FontFileRowProps): JSX.Element => {
+}: FontFileRowProps): ReactNode => {
   const handleBlur = useCallback(
     (event: FocusEvent<HTMLInputElement>) => {
       onChange(option, event.currentTarget.value);

@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import {ReactNode, useCallback, useMemo} from "react";
 import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -22,7 +22,7 @@ const FontWidget = ({
   availableFonts = MetabaseSettings.get("available-fonts") || [],
   onChange,
   onChangeSetting,
-}: FontWidgetProps): JSX.Element => {
+}: FontWidgetProps): ReactNode => {
   const value = !settingValues["application-font-files"]
     ? setting.value ?? setting.default
     : CUSTOM;

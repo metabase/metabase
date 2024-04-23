@@ -1,5 +1,5 @@
 import type { FocusEvent } from "react";
-import { useCallback, useState } from "react";
+import {ReactNode, useCallback, useState} from "react";
 import { t } from "ttag";
 
 import type { SelectChangeEvent } from "metabase/core/components/Select";
@@ -32,7 +32,7 @@ const DatabaseCacheTimeInput = ({
   error,
   onChange,
   onBlur,
-}: DatabaseCacheTimeInputProps): JSX.Element => {
+}: DatabaseCacheTimeInputProps) => {
   const [isCustom, setIsCustom] = useState(value != null);
 
   const handleChange = useCallback(

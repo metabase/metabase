@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import {ReactNode, useCallback} from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
@@ -12,7 +12,7 @@ export interface ColorResetModalProps {
 const ColorResetModal = ({
   onReset,
   onClose,
-}: ColorResetModalProps): JSX.Element => {
+}: ColorResetModalProps): ReactNode => {
   const handleReset = useCallback(() => {
     onReset?.();
     onClose?.();

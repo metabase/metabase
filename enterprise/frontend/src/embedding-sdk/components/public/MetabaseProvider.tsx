@@ -1,4 +1,4 @@
-import type { ReactNode, JSX } from "react";
+import type { ReactNode } from "react";
 import { memo } from "react";
 import { Provider } from "react-redux";
 
@@ -17,7 +17,7 @@ const MetabaseProviderInternal = ({
 }: {
   children: ReactNode;
   config: SDKConfigType;
-}): JSX.Element => (
+}) => (
   <Provider store={store}>
     <EmotionCacheProvider>
       <ThemeProvider>

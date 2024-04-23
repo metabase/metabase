@@ -1,5 +1,5 @@
 import { useField, useFormikContext } from "formik";
-import { useCallback } from "react";
+import {ReactNode, useCallback} from "react";
 import { jt, t } from "ttag";
 
 import FormField from "metabase/core/components/FormField";
@@ -45,7 +45,7 @@ const DatabaseCacheTimeField = () => {
   );
 };
 
-const DatabaseCacheTimeDescription = (): JSX.Element => {
+const DatabaseCacheTimeDescription = () => {
   return (
     <div>
       {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}

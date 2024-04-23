@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from "react";
+import {memo, ReactNode, useCallback, useMemo} from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -27,7 +27,7 @@ const BrandColorSettings = ({
   colors,
   colorPalette,
   onChange,
-}: BrandColorSettingsProps): JSX.Element => {
+}: BrandColorSettingsProps): ReactNode => {
   const colorsRef = useCurrentRef(colors);
   const options = useMemo(getBrandColorOptions, []);
 
@@ -64,7 +64,7 @@ const BrandColorTable = ({
   colorPalette,
   options,
   onChange,
-}: BrandColorTableProps): JSX.Element => {
+}: BrandColorTableProps): ReactNode => {
   return (
     <div>
       <TableHeader>

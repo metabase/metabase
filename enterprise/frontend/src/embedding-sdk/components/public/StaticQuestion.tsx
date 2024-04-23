@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useState } from "react";
+import {ReactNode, useEffect, useState} from "react";
 
 import { useSdkSelector } from "embedding-sdk/store";
 import { getIsInitialized, getIsLoggedIn } from "embedding-sdk/store/selectors";
@@ -36,7 +36,7 @@ type State = {
 export const StaticQuestion = ({
   questionId,
   showVisualizationSelector,
-}: QueryVisualizationProps): JSX.Element | null => {
+}: QueryVisualizationProps): ReactNode | null => {
   const isInitialized = useSdkSelector(getIsInitialized);
   const isLoggedIn = useSdkSelector(getIsLoggedIn);
 

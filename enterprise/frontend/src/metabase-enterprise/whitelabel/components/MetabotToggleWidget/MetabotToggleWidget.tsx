@@ -4,6 +4,7 @@ import { ImageToggle } from "../ImageToggle";
 
 import { MetabotIcon } from "./MetabotToggleWidget.styled";
 import type { MetabotSetting } from "./types";
+import {ReactNode} from "react";
 
 interface MetabotToggleWidgetProps {
   setting: MetabotSetting;
@@ -13,7 +14,7 @@ interface MetabotToggleWidgetProps {
 export const MetabotToggleWidget = ({
   setting,
   onChange,
-}: MetabotToggleWidgetProps): JSX.Element => {
+}: MetabotToggleWidgetProps): ReactNode => {
   const isEnabled = setting.value ?? setting.default;
 
   return (

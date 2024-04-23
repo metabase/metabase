@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type React from "react";
-import { useState } from "react";
+import type {ReactNode} from "react";
+import { useState} from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -37,13 +38,13 @@ interface MappingEditorProps {
   onError?: (val: boolean) => void;
   className?: string;
   style?: React.CSSProperties;
-  keyHeader?: JSX.Element;
-  valueHeader?: JSX.Element;
+  keyHeader?: ReactNode;
+  valueHeader?: ReactNode;
   keyPlaceholder?: string;
   valuePlaceholder?: string;
-  renderKeyInput?: (input: DefaultRenderInputProps) => JSX.Element;
-  renderValueInput?: (input: DefaultRenderInputProps) => React.ReactNode;
-  divider?: JSX.Element;
+  renderKeyInput?: (input: DefaultRenderInputProps) => ReactNode;
+  renderValueInput?: (input: DefaultRenderInputProps) => ReactNode;
+  divider?: ReactNode;
   canAdd?: boolean;
   canDelete?: boolean;
   addText?: string;

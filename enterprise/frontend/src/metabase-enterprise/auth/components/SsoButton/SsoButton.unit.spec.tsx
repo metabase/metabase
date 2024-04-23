@@ -16,7 +16,7 @@ const setup = () => {
     }),
   });
 
-  // simulate ebmedding
+  // simulate embedding
   jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
 
   renderWithProviders(<SsoButton />, { storeInitialState: state });
