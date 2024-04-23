@@ -4,6 +4,7 @@
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
@@ -19,7 +20,6 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.persisted-info :as persisted-info]
    [metabase.query-processor :as qp]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
@@ -388,11 +388,13 @@
                 (is (not= (:id table-1)
                           (:id table-2)))))))))))
 
-(defn- query-table
-  [table]
-  (qp/process-query {:database (:db_id table)
+(defn- query [db-id source-table]
+  (qp/process-query {:database db-id
                      :type     :query
-                     :query    {:source-table (:id table)}}))
+                     :query    {:source-table source-table}}))
+
+(defn- query-table [table]
+  (query (:db_id table) (:id table)))
 
 (defn- column-names-for-table
   [table]
@@ -403,6 +405,9 @@
 (defn- rows-for-table
   [table]
   (mt/rows (query-table table)))
+
+(defn- rows-for-model [db-id model-id]
+  (mt/rows (query db-id (str "card__" model-id))))
 
 (def ^:private example-files
   {:comma      ["id    ,nulls,string ,bool ,number       ,date      ,datetime"
@@ -1438,8 +1443,11 @@
                                    [(lib/= (lib/ref base-id-metadata)
                                            (lib/ref join-id-metadata))])))))
 
-(deftest ^:mb/once update-invalidate-model-cache-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+(defn- cached-model-ids []
+  (into #{} (map :card_id) (t2/select [:model/PersistedInfo :card_id] :active true)))
+
+(deftest update-invalidate-model-cache-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads :persist-models)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
         (with-upload-table! [table (create-upload-table!)]
@@ -1450,22 +1458,33 @@
                 other-table (t2/select-one :model/Table other-id)
                 mp          (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
 
-            (mt/with-temp [:model/Card {question-id         :id} {:table_id table-id, :dataset_query (mbql mp table)}
-                           :model/Card {model-id            :id} {:table_id table-id, :type :model, :dataset_query (mbql mp table)}
-                           :model/Card {complex-model-id    :id} {:table_id table-id, :type :model, :dataset_query (join-mbql mp table other-table)}
-                           :model/Card {_archived-model-id  :id} {:table_id table-id, :type :model, :archived true, :dataset_query (mbql mp table)}
-                           :model/Card {_unrelated-model-id :id} {:table_id other-id, :type :model, :dataset_query (mbql mp other-table)}
-                           :model/Card {_joined-model-id    :id} {:table_id other-id, :type :model, :dataset_query (join-mbql mp other-table table)}]
+            (mt/with-temp [:model/Card {question-id        :id} {:table_id table-id, :dataset_query (mbql mp table)}
+                           :model/Card {model-id           :id} {:table_id table-id, :type :model, :dataset_query (mbql mp table)}
+                           :model/Card {complex-model-id   :id} {:table_id table-id, :type :model, :dataset_query (join-mbql mp table other-table)}
+                           :model/Card {archived-model-id  :id} {:table_id table-id, :type :model, :archived true, :dataset_query (mbql mp table)}
+                           :model/Card {unrelated-model-id :id} {:table_id other-id, :type :model, :dataset_query (mbql mp other-table)}
+                           :model/Card {joined-model-id    :id} {:table_id other-id, :type :model, :dataset_query (join-mbql mp other-table table)}]
 
               (is (= #{question-id model-id complex-model-id}
                      (into #{} (map :id) (t2/select :model/Card :table_id table-id :archived false))))
 
-              (let [captured (atom [])]
-                (mt/with-dynamic-redefs [persisted-info/invalidate! #(swap! captured conj %)]
-                  (update-csv! action {:file file, :table-id (:id table)}))
-                (testing "Active, simple models with this as their primary, have their caches invalidated"
-                  (is (= [{:id [:in [model-id]]}]
-                         @captured)))))
+              (mt/with-persistence-enabled [persist-models!]
+                (persist-models!)
+
+                (let [cached-before (cached-model-ids)
+                      _             (update-csv! action {:file file, :table-id (:id table)})
+                      cached-after  (cached-model-ids)]
+
+                  (testing "The models are cached"
+                    (let [active-model-ids #{model-id complex-model-id unrelated-model-id joined-model-id}]
+                      (is (= active-model-ids (set/intersection cached-before (conj active-model-ids archived-model-id))))))
+                  (testing "The cache is invalidated by the update"
+                    (is (not (contains? cached-after model-id))))
+                  (testing "No unwanted caches were invalidated"
+                    (is (= #{model-id} (set/difference cached-before cached-after))))
+                  (testing "We can see the new row when querying the model"
+                    (is (some (fn [[_ row-name]] (= "Luke Skywalker" row-name))
+                              (rows-for-model (:db_id table) model-id)))))))
 
             (io/delete-file file)))))))
 

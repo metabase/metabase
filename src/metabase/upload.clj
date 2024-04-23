@@ -546,7 +546,7 @@
                             (map :id)
                             seq)]
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
-    (persisted-info/invalidate! {:id [:in model-ids]})))
+    (persisted-info/invalidate! {:card_id [:in model-ids]})))
 
 (defn- update-with-csv! [database table file & {:keys [replace-rows?]}]
   (try
