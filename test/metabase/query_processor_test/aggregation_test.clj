@@ -319,14 +319,22 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:sum $id] [:sum $price]]})))))))
 
+;; does not
 (deftest ^:parallel multiple-distinct-aggregations-test
   (testing "Multiple `:distinct` aggregations should work correctly (#13097)"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[100 4]]
              (mt/formatted-rows [int int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:distinct $name]
-                                [:distinct $price]]})))))))
+               @(def kokocit (mt/run-mbql-query venues
+                                                {:aggregation [[:distinct $name]
+                                                               [:distinct $price]]}))))))))
+
+(comment
+  
+  (mt/test-driver :druid-jdbc #_(mt/normal-drivers)
+                   (mt/db))
+
+  )
 
 (deftest ^:parallel aggregate-boolean-without-type-test
   (testing "Legacy breakout on boolean field should work correctly (#34286)"

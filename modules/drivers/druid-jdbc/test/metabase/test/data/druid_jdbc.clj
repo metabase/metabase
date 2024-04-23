@@ -1,13 +1,15 @@
 (ns metabase.test.data.druid-jdbc
-  (:require
-   [cheshire.core :as json]
-   [clj-http.client :as http]
-   [metabase.test.data.dataset-definitions :as defs]
-   [metabase.test.data.druid-jdbc.ingestion :as tx.druid-jdbc.ingestion]
-   [metabase.test.data.impl :as data.impl]
-   [metabase.test.data.interface :as tx]
-   [metabase.util.log :as log]))
+    (:require
+     #_[metabase.test.data.impl :as data.impl]
+     [cheshire.core :as json]
+     [clj-http.client :as http]
+     [metabase.test.data.dataset-definitions :as defs]
+     [metabase.test.data.druid-jdbc.ingestion :as tx.druid-jdbc.ingestion]
+     [metabase.test.data.impl :as data.impl]
+     [metabase.test.data.interface :as tx]
+     [metabase.util.log :as log]))
 
+;; !!! wrong! probably. should use other impl!!!!
 (tx/add-test-extensions! :druid-jdbc)
 
 (defmethod tx/dbdef->connection-details :druid-jdbc
@@ -48,21 +50,20 @@
       ;; Preprocessing happens in [[data.impl/get-or-create-database!]] (At the moment. Elaborate!)
       (tx.druid-jdbc.ingestion/ingest-dataset! dbdef))))
 
+(defmethod tx/destroy-db! :druid-jdbc
+  [& _]
+  nil)
 
-  (defmethod tx/destroy-db! :druid-jdbc
-    [& _]
-    nil)
+(defmethod tx/default-dataset :druid-jdbc
+  [_]
+  #_(tx/flattened-dataset-definition defs/test-data "checkins")
+  defs/test-data)
 
-  (defmethod tx/default-dataset :druid-jdbc
-    [_]
-    #_(tx/flattened-dataset-definition defs/test-data "checkins")
-    defs/test-data)
-
-  (defmethod data.impl/get-or-create-database! :druid-jdbc
-    [_driver dbdef]
-    (let [ds (-> dbdef
+(defmethod data.impl/get-or-create-database! :druid-jdbc
+  [_driver dbdef]
+  (let [ds (-> dbdef
                  ;; TODO: Verify we can remove the following!
-                 tx/get-dataset-definition
-                 tx.druid-jdbc.ingestion/preprocess-dataset)
-          parent-method (get-method data.impl/get-or-create-database! :sql-jdbc)]
-      (parent-method :druid-jdbc ds)))
+               tx/get-dataset-definition
+               tx.druid-jdbc.ingestion/preprocess-dataset)
+        parent-method (get-method data.impl/get-or-create-database! :sql-jdbc)]
+    (parent-method :druid-jdbc ds)))

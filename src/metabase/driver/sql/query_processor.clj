@@ -538,33 +538,34 @@
 (defn cast-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver {:keys [base-type coercion-strategy], :as field} honeysql-form]
-  (if (some #(str/includes? (name %) "_") (keys field))
-    (do
-      (sql.qp.deprecated/log-deprecation-warning
-       driver
-       "metabase.driver.sql.query-processor/cast-field-id-needed with a legacy (snake_cased) :model/Field"
-       "0.48.0")
-      (recur driver (update-keys field u/->kebab-case-en) honeysql-form))
-    (u/prog1 (match [base-type coercion-strategy]
-               [(:isa? :type/Number) (:isa? :Coercion/UNIXTime->Temporal)]
-               (unix-timestamp->honeysql driver
-                                         (semantic-type->unix-timestamp-unit coercion-strategy)
-                                         honeysql-form)
+  (u/prog1 (if (some #(str/includes? (name %) "_") (keys field))
+             (do
+               (sql.qp.deprecated/log-deprecation-warning
+                driver
+                "metabase.driver.sql.query-processor/cast-field-id-needed with a legacy (snake_cased) :model/Field"
+                "0.48.0")
+               (cast-field-if-needed #_recur driver (update-keys field u/->kebab-case-en) honeysql-form))
+             (u/prog1 (match [base-type coercion-strategy]
+                        [(:isa? :type/Number) (:isa? :Coercion/UNIXTime->Temporal)]
+                        (unix-timestamp->honeysql driver
+                                                  (semantic-type->unix-timestamp-unit coercion-strategy)
+                                                  honeysql-form)
 
-               [:type/Text (:isa? :Coercion/String->Temporal)]
-               (cast-temporal-string driver coercion-strategy honeysql-form)
+                        [:type/Text (:isa? :Coercion/String->Temporal)]
+                        (cast-temporal-string driver coercion-strategy honeysql-form)
 
-               ;; TODO: cast-temporal? -- This is just hardcoded to find out if the approach works -- it does.
-               ;; TODO: how `:isa?` matching works?
-               [(:isa? :type/Temporal) (:isa? :Coercion/Temporal->EpochMillis)]
-               (temporal->epoch-millis driver coercion-strategy honeysql-form)
+                        ;; TODO: cast-temporal? -- This is just hardcoded to find out if the approach works -- it does.
+                        ;; TODO: how `:isa?` matching works?
+                        [(:isa? :type/Temporal) (:isa? :Coercion/Temporal->EpochMillis)]
+                        (temporal->epoch-millis driver coercion-strategy honeysql-form)
 
-               [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
-               (cast-temporal-byte driver coercion-strategy honeysql-form)
+                        [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
+                        (cast-temporal-byte driver coercion-strategy honeysql-form)
 
-               :else honeysql-form)
-      (when-not (= <> honeysql-form)
-        (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))
+                        :else honeysql-form)
+                      (when-not (= <> honeysql-form)
+                        (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>)))))
+           (tap> ["cast-field-if-needed result" <>])))
 
 ;;; it's a little weird that we're calling [[->honeysql]] on an identifier, which is a Honey SQL form and not an MBQL
 ;;; form. See [[throw-double-compilation-error]] for more info.
@@ -1501,6 +1502,7 @@
   "Transpile MBQL query into a native SQL statement. This is the `:sql` driver implementation
   of [[driver/mbql->native]] (actual multimethod definition is in [[metabase.driver.sql]]."
   [driver outer-query]
+  (def xix outer-query)
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))

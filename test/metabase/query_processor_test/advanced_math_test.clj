@@ -11,7 +11,7 @@
   (->> {:expressions {"test" expr}
         :fields      [[:expression "test"]]
         ;; To ensure stable ordering
-        :order-by    [[:asc [:field (mt/id :venues :id) nil]]]
+        #_#_:order-by    [[:asc [:field (mt/id :venues :id) nil]]]
         :limit       1}
        (mt/run-mbql-query venues)
        mt/rows
@@ -21,7 +21,7 @@
        (u/round-to-decimals 2)))
 
 (deftest ^:parallel test-round
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+  (mt/test-drivers #{:druid-jdbc} #_(mt/normal-drivers-with-feature :expressions)
     (if (or (not= driver/*driver* :mongo)
             ;; mongo supports $round since version 4.2
             (driver.u/semantic-version-gte

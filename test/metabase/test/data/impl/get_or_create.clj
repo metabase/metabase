@@ -81,6 +81,7 @@
   [{:keys [table-definitions], :as _database-definition} db]
   {:pre [(seq table-definitions)]}
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
+    (tap> ["add-extra-metadata!" table-definition db])
     (let [table (delay (or (tx/metabase-instance table-definition db)
                            (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
                                                       table-name
@@ -186,6 +187,7 @@
       (finally
         (.. lock writeLock unlock)))))
 
+;; or here! preprocess
 (defn default-get-or-create-database!
   "Default implementation of [[metabase.test.data.impl/get-or-create-database!]]."
   [driver dbdef]

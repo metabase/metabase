@@ -40,7 +40,7 @@
             uses-default-describe-fields?)))
     (descendants driver/hierarchy :sql-jdbc))))
 
-;; DONE (lbrdnk druid jdbc :nested-field-columns): Usable with Druid JDBC now.
+
 (deftest ^:parallel describe-fields-nested-field-columns-test
   (testing (str "Drivers that support describe-fields should not support the nested field columns feature."
                 "It is possible to support both in the future but this has not been implemented yet.")
@@ -244,7 +244,6 @@
                #'sql-jdbc.describe-table/describe-json-xform
                #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
 
-;; TODO (lbrdnk druid jdbc :nested-field-columns): Add primary-key feature and exception to this test
 (deftest ^:parallel get-table-pks-test
   ;; FIXME: this should works for all sql drivers
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
@@ -260,11 +259,10 @@
 
 (deftest ^:parallel json-details-only-test
   (testing "fields with base-type=type/JSON should have visibility-type=details-only, unlike other fields."
-    ;; TODO (lbrdnk druid jdbc :nested-field-columns): Instead of conj-ing add Druid JDBC to normal drivers.
     (mt/test-drivers (conj (mt/normal-drivers-with-feature :nested-field-columns) :druid-jdbc)
       (when-not (mysql/mariadb? (mt/db)) ;; this line actually creates the databawse!!!!!
         (mt/dataset json
-          (let [table (t2/select-one Table :id (mt/id :json))]
+          (let [table @(def xix (t2/select-one Table :id (mt/id :json)))]
             (sql-jdbc.execute/do-with-connection-with-options
              driver/*driver*
              (mt/db)
@@ -301,8 +299,6 @@
                  (#'sql-jdbc.describe-table/row->types)
                  (#'sql-jdbc.describe-table/field-types->fields)))))))
 
-;; TODO (lbrdnk druid jdbc :nested-field-columns): Does not work! (mt/name) [as mt/id] would have to be used for
-;;      getting the right names in here!
 (deftest ^:parallel nested-field-column-test
   (mt/test-drivers (conj (mt/normal-drivers-with-feature :nested-field-columns) :druid-jdbc)
     (mt/dataset json
@@ -388,7 +384,6 @@
     [{:field-name "big_json" :base-type :type/JSON}]
     [[(json/generate-string (into {} (for [x (range 300)] [x :dobbs])))]]]])
 
-;; TODO (lbrdnk druid jdbc :nested-field-columns): Unable to ingest! Why?
 (deftest describe-big-nested-field-columns-test
   (mt/test-drivers (conj (mt/normal-drivers-with-feature :nested-field-columns) :druid-jdbc)
     (mt/dataset big-json
@@ -408,7 +403,6 @@
                             {:name (mt/table-name "big_json_table") #_"big_json_table" :id (mt/id "big_json_table")})) [0 2])
                 "More nested field columns detected than maximum.")))))))
 
-;; DONE (lbrdnk druid jdbc :nested-field-columns): The test works...
 (deftest ^:parallel big-nested-field-column-test
   (mt/test-drivers (conj (mt/normal-drivers-with-feature :nested-field-columns) :druid-jdbc)
     (mt/dataset json
@@ -429,11 +423,6 @@
      ["{\"mybool\":false,\"myint\":12345678901234567890}"]
      ["{\"mybool\":true, \"myint\":123}"]]]])
 
-(comment
-  (metabase.test.data.druid-jdbc.ingestion/preprocess-dataset json-unwrap-bigint-and-boolean)
-  )
-
-;; TODO (lbrdnk druid jdbc :nested-field-columns): This is completely wrong omg!
 (deftest json-unwrapping-bigint-and-boolean
   (mt/test-drivers (conj (mt/normal-drivers-with-feature :nested-field-columns) :druid-jdbc)
     (when-not (mysql/mariadb? (mt/db))

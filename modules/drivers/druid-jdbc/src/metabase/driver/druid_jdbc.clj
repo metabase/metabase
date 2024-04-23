@@ -16,7 +16,7 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util.honey-sql-2 :as h2x])
   (:import
-   (java.sql ResultSet Types)
+   (java.sql ResultSet ResultSetMetaData Types)
    (java.time ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
@@ -64,8 +64,19 @@
 
 ;; TODO: Verify that use of local-date-time is correct here.
 (defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc Types/TIMESTAMP]
-  [_ ^ResultSet rs _ ^long i]
+  [_ ^ResultSet rs ^ResultSetMetaData rs-meta ^long i]
   (fn []
+    #_(def oooo (.getObject rs i))
+    (tap> ["read-col-thunk"
+           i
+           (.getColumnTypeName rs-meta i)
+           (.getColumnName rs-meta i)
+           (try (t/local-date-time (.getObject rs i))
+                (catch Throwable t
+                  nil))])
+    #_(try (t/local-date-time (.getObject rs i))
+           (catch Throwable t
+             nil))
     (t/local-date-time (.getObject rs i))))
 
 ;; TODO: 1111, the OTHER, type should be handled more robustly. There should be more specific type info available
@@ -203,4 +214,3 @@
   [_driver _semantic_type expr]
   [::timestamp_to_millis expr]
   #_(h2x/->time expr))
-

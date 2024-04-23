@@ -210,6 +210,7 @@
                (constantly false)]]]
   (ddl.i/format-name (tx/driver) (name a-name)))
 
+;; hook something capable of renaming fields/tables/dbs to this 
 (defn id
   "Get the ID of the current database or one of its Tables or Fields. Relies on the dynamic
   variable [[metabase.test.data.impl/*db-fn*]], which can be rebound with [[with-db]]."
@@ -218,7 +219,7 @@
    (data.impl/db-id))
 
   ([table-name]
-   (data.impl/the-table-id (id) (format-name table-name)))
+   (data.impl/the-table-id (id) @(def iiix (format-name table-name))))
 
   ([table-name field-name & nested-field-names]
    (apply data.impl/the-field-id (id table-name) (map format-name (cons field-name nested-field-names)))))

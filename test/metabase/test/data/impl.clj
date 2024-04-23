@@ -355,11 +355,22 @@
        (throw (Exception. (format "Dataset definition not found: '%s/%s' or 'metabase.test.data.dataset-definitions/%s'"
                                   namespace-symb symb symb)))))
 
-;; TODO: requiring-resolve removal!
+;; Follwing redundant!
+(defmulti preprocess-dataset-def
+  "bla"
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod preprocess-dataset-def :default
+  [_driver dataset-def]
+  dataset-def)
+
 (defn do-with-dataset
   "Impl for [[metabase.test/dataset]] macro."
   [dataset-definition f]
-  (let [dbdef             (tx/get-dataset-definition dataset-definition)
+  (let [dbdef             (-> (tx/get-dataset-definition dataset-definition)
+                              ) ; mayeb preprocess should 
         get-db-for-driver (mdb/memoize-for-application-db
                            (fn [driver]
                              (let [db (->> (@(requiring-resolve

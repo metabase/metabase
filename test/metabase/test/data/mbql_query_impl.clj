@@ -19,7 +19,7 @@
     (apply @(requiring-resolve 'metabase.test.data/id) args)))
 
 ;; TODO: druid-id-fn is just temporary until I figure out proper solution for rebinding that symb.
-(def ^:dynamic *id-fn-symb*              `druid-id-fn #_'metabase.test.data/id)
+(def ^:dynamic *id-fn-symb*              #_`druid-id-fn 'metabase.test.data/id)
 (def ^:dynamic *field-name-fn-symb*      `field-name)
 (def ^:dynamic *field-base-type-fn-symb* `field-base-type)
 
