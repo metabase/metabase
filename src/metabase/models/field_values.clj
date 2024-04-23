@@ -246,7 +246,7 @@
           ;;       approach makes things harder to debug.
           ;; TODO: Reduce the following to just one database call at least!
           table (t2/select-one 'Table :id (:table_id field-or-field-id))
-          engine (:id (t2/select-one 'Database :id (:db_id table)))]
+          engine (:engine (t2/select-one 'Database :id (:db_id table)))]
       (boolean
        (and
         (driver/field-values-compatible? engine field-or-field-id)
