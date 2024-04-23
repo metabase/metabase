@@ -208,6 +208,7 @@ function DatasetFieldMetadataSidebar({
                       paddingTop: "1.375rem",
                       paddingBottom: "0.5rem",
                       height: "auto",
+                      fontWeight: "bold",
                     },
                   }}
                 />
