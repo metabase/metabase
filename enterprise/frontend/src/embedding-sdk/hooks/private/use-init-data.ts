@@ -7,9 +7,7 @@ import {
   getOrRefreshSession,
   setLoginStatus,
 } from "embedding-sdk/store/reducer";
-import {
-  getLoginStatus,
-} from "embedding-sdk/store/selectors";
+import { getLoginStatus } from "embedding-sdk/store/selectors";
 import type { EmbeddingSessionTokenState } from "embedding-sdk/store/types";
 import type { SDKConfigType } from "embedding-sdk/types";
 import { reloadSettings } from "metabase/admin/settings/settings";
