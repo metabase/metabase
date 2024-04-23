@@ -48,8 +48,7 @@
   [_driver _database]
   "UTC")
 
-;; TODO: Add source!
-(defmethod driver/db-start-of-week :druid-
+(defmethod driver/db-start-of-week :druid-jdbc
   [_]
   :monday)
 
