@@ -292,6 +292,11 @@ describe("scenarios > question > new", () => {
       cy.findByText("Orders").click();
     });
     cy.findByTestId("qb-header").findByText("Save").click();
+
+    cy.log("should be able to tab through fields (metabase#41683)");
+    cy.realPress("Tab").realPress("Tab");
+    cy.findByLabelText("Description").should("be.focused");
+
     modal().findByTestId("select-button").click();
     popover().findByText("New collection").click();
 

@@ -117,28 +117,26 @@ class QueryModals extends Component<QueryModalsProps> {
     switch (modal) {
       case MODAL_TYPES.SAVE:
         return (
-          <Modal form onClose={onCloseModal}>
-            <SaveQuestionModal
-              question={this.props.question}
-              originalQuestion={this.props.originalQuestion}
-              initialCollectionId={this.props.initialCollectionId}
-              onSave={async (question: Question) => {
-                // if saving modified question, don't show "add to dashboard" modal
-                await this.props.onSave(question);
+          <SaveQuestionModal
+            question={this.props.question}
+            originalQuestion={this.props.originalQuestion}
+            initialCollectionId={this.props.initialCollectionId}
+            onSave={async (question: Question) => {
+              // if saving modified question, don't show "add to dashboard" modal
+              await this.props.onSave(question);
+              onCloseModal();
+            }}
+            onCreate={async question => {
+              await this.props.onCreate(question);
+              if (question.isDataset()) {
                 onCloseModal();
-              }}
-              onCreate={async question => {
-                await this.props.onCreate(question);
-                if (question.isDataset()) {
-                  onCloseModal();
-                  setQueryBuilderMode("view");
-                } else {
-                  onOpenModal(MODAL_TYPES.SAVED);
-                }
-              }}
-              onClose={onCloseModal}
-            />
-          </Modal>
+                setQueryBuilderMode("view");
+              } else {
+                onOpenModal(MODAL_TYPES.SAVED);
+              }
+            }}
+            onClose={onCloseModal}
+          />
         );
       case MODAL_TYPES.SAVED:
         return (
