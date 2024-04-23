@@ -126,5 +126,5 @@ export const getCartesianChartOption = (
       hoveredSeriesDataKey,
       renderingContext,
     ),
-  } as EChartsOption;
+  };
 };

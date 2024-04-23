@@ -1,10 +1,5 @@
-import type {
-  AxisBaseOption,
-  AxisBaseOptionCommon,
-  CategoryAxisBaseOption,
-  TimeAxisBaseOption,
-  ValueAxisBaseOption,
-} from "echarts/types/src/coord/axisCommonTypes";
+import type { XAXisOption } from "echarts/types/dist/shared";
+import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTypes";
 import type { CartesianAxisOption } from "echarts/types/src/coord/cartesian/AxisModel";
 
 import { parseNumberValue } from "metabase/lib/number";
@@ -161,6 +156,7 @@ const getCommonDimensionAxisOptions = (
         ? settings["graph.x_axis.title_text"]
         : undefined,
     ),
+    mainType: "xAxis" as const,
     axisTick: {
       show: false,
     },
@@ -183,7 +179,7 @@ export const buildDimensionAxis = (
   chartMeasurements: ChartMeasurements,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
-): AxisBaseOption => {
+): XAXisOption => {
   const xAxisModel = chartModel.xAxisModel;
 
   if (isNumericAxis(xAxisModel)) {
@@ -219,7 +215,7 @@ export const buildNumericDimensionAxis = (
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
-): ValueAxisBaseOption => {
+): XAXisOption => {
   const {
     fromEChartsAxisValue,
     isPadded,
@@ -268,7 +264,7 @@ export const buildTimeSeriesDimensionAxis = (
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
-): TimeAxisBaseOption => {
+): XAXisOption => {
   const { formatter, maxInterval, minInterval, canRender, xDomainPadded } =
     getTicksOptions(xAxisModel, width);
 
@@ -304,7 +300,7 @@ export const buildCategoricalDimensionAxis = (
   originalSettings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
-): CategoryAxisBaseOption => {
+): XAXisOption => {
   const {
     xAxisModel: { formatter },
     dimensionModel: { column },

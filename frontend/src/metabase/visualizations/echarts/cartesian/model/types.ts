@@ -86,8 +86,10 @@ export type DimensionModel = {
   columnByCardId: Record<CardId, DatasetColumn>;
 };
 
-export type Datum = Record<DataKey, RowValue> & {
-  [X_AXIS_DATA_KEY]: RowValue;
+type DatumValue = string | number | null;
+
+export type Datum = Record<DataKey, DatumValue> & {
+  [X_AXIS_DATA_KEY]: DatumValue;
   [ORIGINAL_INDEX_DATA_KEY]?: number;
 };
 export type ChartDataset<D extends Datum = Datum> = D[];
