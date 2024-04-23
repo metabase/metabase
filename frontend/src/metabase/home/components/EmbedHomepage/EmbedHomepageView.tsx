@@ -16,13 +16,13 @@ import {
 
 import { InteractiveTabContent } from "./InteractiveTabContent";
 import { StaticTabContent } from "./StaticTabContent";
-import type { EmbedHomepageDismissReason } from "./types";
+import type { EmbedHomepageDismissReason, InitialTab } from "./types";
 
 export type EmbedHomepageViewProps = {
   embeddingAutoEnabled: boolean;
   exampleDashboardId: number | null;
   licenseActiveAtSetup: boolean;
-  initialTab: "interactive" | "static";
+  initialTab: InitialTab;
   onDismiss: (reason: EmbedHomepageDismissReason) => void;
   // links
   interactiveEmbeddingQuickstartUrl: string;

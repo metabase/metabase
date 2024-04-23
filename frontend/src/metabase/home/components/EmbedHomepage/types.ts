@@ -4,3 +4,5 @@ export type EmbedHomepageDismissReason = Exclude<
   Settings["embedding-homepage"],
   "visible" | "hidden"
 >;
+
+export type InitialTab = "static" | "interactive";
