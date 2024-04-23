@@ -20,7 +20,7 @@
 
 .ListSectionHeaderCursor {
   border-radius: 8px;
-  outline: 2px solid var(--color-focus);
+  outline: 2px solid var(--mb-color-focus);
   outline-offset: -4px;
 }
 
@@ -50,7 +50,7 @@
 }
 
 .ListItemCursor {
-  outline: 2px solid var(--color-focus);
+  outline: 2px solid var(--mb-color-focus);
 }
 
 .ListItemCursor:not(.ListItemDisabled),

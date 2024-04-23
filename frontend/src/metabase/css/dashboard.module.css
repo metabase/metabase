@@ -29,8 +29,9 @@
 }
 
 .Dashboard.DashboardNight
-  :global(.enable-dots-onhover .dc-tooltip circle.dot:hover),
-.Dashboard.DashboardNight :global(.enable-dots .dc-tooltip circle.dot) {
+  .enableDotsOnHover
+  :global(.dc-tooltip circle.dot:hover),
+.Dashboard.DashboardNight .enableDots :global(.dc-tooltip circle.dot) {
   fill: currentColor;
 }
 
@@ -72,7 +73,7 @@
 }
 
 .BrandColorResizeHandle :global(.react-resizable-handle::after) {
-  border-color: var(--color-brand) !important;
+  border-color: var(--mb-color-brand) !important;
 }
 
 .DashEditing .DashCard:global(.react-draggable-dragging),
@@ -83,7 +84,7 @@
 .DashEditing .DashCard:global(.react-draggable-dragging) .Card,
 .DashEditing .DashCard:global(.react-resizable-resizing) .Card {
   background-color: var(--color-bg-medium) !important;
-  border: 1px solid var(--color-brand);
+  border: 1px solid var(--mb-color-brand);
 }
 
 .DashEditing .DashCard .VisualizationSlowSpinner {

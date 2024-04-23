@@ -1,26 +1,28 @@
+import type { PayloadAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
+import { createAction } from "redux-actions";
 
 import type {
+  LoginStatus,
   EmbeddingSessionTokenState,
   SdkState,
+  SdkStoreState,
 } from "embedding-sdk/store/types";
 import { createAsyncThunk } from "metabase/lib/redux";
 
-const initialState: EmbeddingSessionTokenState = {
-  token: null,
-  loading: false,
-  error: null,
-};
+import { getSessionTokenState } from "./selectors";
 
-export const getSessionTokenState = (state: SdkState) =>
-  state.embeddingSessionToken;
+const SET_LOGIN_STATUS = "sdk/SET_LOGIN_STATUS";
 
-const GET_OR_REFRESH_SESSION = "embeddingSessionToken/GET_OR_REFRESH_SESSION";
+export const setLoginStatus = createAction<LoginStatus>(SET_LOGIN_STATUS);
+
+const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
+const REFRESH_TOKEN = "sdk/token/REFRESH_TOKEN";
 
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
   async (url: string, { dispatch, getState }) => {
-    const state = getSessionTokenState(getState() as SdkState);
+    const state = getSessionTokenState(getState() as SdkStoreState);
     const token = state?.token;
 
     const isTokenValid = token && token.exp * 1000 >= Date.now();
@@ -28,15 +30,14 @@ export const getOrRefreshSession = createAsyncThunk(
     if (state.loading || isTokenValid) {
       return token;
     }
-    return dispatch(refreshTokenAsync(url));
+
+    return dispatch(refreshTokenAsync(url)).unwrap();
   },
 );
 
-const REFRESH_TOKEN = "embeddingSessionToken/REFRESH_TOKEN";
-
 export const refreshTokenAsync = createAsyncThunk(
   REFRESH_TOKEN,
-  async (url: string) => {
+  async (url: string): Promise<EmbeddingSessionTokenState["token"]> => {
     const response = await fetch(url, {
       method: "GET",
       credentials: "include",
@@ -45,24 +46,52 @@ export const refreshTokenAsync = createAsyncThunk(
   },
 );
 
-const tokenReducer = createReducer(initialState, builder =>
-  builder
-    .addCase(refreshTokenAsync.pending, state => {
-      state.loading = true;
-      return state;
-    })
-    .addCase(refreshTokenAsync.fulfilled, (state, action) => {
-      state.token = action.payload;
-      state.error = null;
-      state.loading = false;
-      return state;
-    })
-    .addCase(refreshTokenAsync.rejected, (state, action) => {
-      state.token = null;
-      state.error = action.error;
-      state.loading = false;
-      return state;
-    }),
-);
+const initialState: SdkState = {
+  token: {
+    token: null,
+    loading: false,
+    error: null,
+  },
+  loginStatus: { status: "uninitialized" },
+};
 
-export { tokenReducer };
+export const sdk = createReducer(initialState, {
+  [refreshTokenAsync.pending.type]: state => {
+    return {
+      ...state,
+      token: {
+        ...state.token,
+        loading: true,
+      },
+    };
+  },
+  [refreshTokenAsync.fulfilled.type]: (state, action) => {
+    return {
+      ...state,
+      token: {
+        ...state.token,
+        token: action.payload,
+        error: null,
+        loading: false,
+      },
+    };
+  },
+  [refreshTokenAsync.rejected.type]: (state, action) => {
+    return {
+      ...state,
+      isLoggedIn: false,
+      token: {
+        ...state.token,
+        token: null,
+        error: action.error,
+        loading: false,
+      },
+    };
+  },
+  [SET_LOGIN_STATUS]: (state, action: PayloadAction<LoginStatus>) => {
+    return {
+      ...state,
+      loginStatus: action.payload,
+    };
+  },
+});

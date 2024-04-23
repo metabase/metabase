@@ -139,13 +139,17 @@ export function showVirtualDashCardInfoText(
 export function getNativeDashCardEmptyMappingText(parameter: Parameter) {
   if (isDateParameter(parameter)) {
     return t`Add a date variable to this question to connect it to a dashboard filter.`;
-  } else if (isNumberParameter(parameter)) {
-    return t`Add a number variable to this question to connect it to a dashboard filter.`;
-  } else if (isStringParameter(parameter)) {
-    return t`Add a string variable to this question to connect it to a dashboard filter.`;
-  } else {
-    return t`Add a variable to this question to connect it to a dashboard filter.`;
   }
+
+  if (isNumberParameter(parameter)) {
+    return t`Add a number variable to this question to connect it to a dashboard filter.`;
+  }
+
+  if (isStringParameter(parameter)) {
+    return t`Add a string variable to this question to connect it to a dashboard filter.`;
+  }
+
+  return t`Add a variable to this question to connect it to a dashboard filter.`;
 }
 
 export function getAllDashboardCards(dashboard: Dashboard) {

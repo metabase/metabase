@@ -157,7 +157,7 @@
     honeysql.helpers                                              hh
     honeysql.types                                                htypes
     java-time                                                     t
-    macaw.core                                                    mac
+    macaw.core                                                    macaw
     malli.core                                                    mc
     malli.error                                                   me
     malli.experimental                                            mx
@@ -279,6 +279,7 @@
     metabase.legacy-mbql.schema                                   mbql.s
     metabase.legacy-mbql.util                                     mbql.u
     metabase.lib.util                                             lib.util
+    metabase.lib.util.match                                       lib.util.match
     metabase.models.activity                                      activity
     metabase.models.application-permissions-revision              a-perm-revision
     metabase.models.bookmark                                      bookmark
@@ -600,6 +601,7 @@
    metabase-enterprise.sandbox.test-util/with-gtaps!                            macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.serialization.test-util/with-world                       macros.metabase-enterprise.serialization.test-util/with-world
    metabase-enterprise.test/with-gtaps!                                         macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!  macros.metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!
    metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy
    metabase.api.collection-test/with-some-children-of-collection                macros.metabase.api.collection-test/with-some-children-of-collection

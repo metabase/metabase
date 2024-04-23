@@ -12,8 +12,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.core :as t2]))
 
 (defn ^:private mark-fk-sql
   "Returns [sql & params] for [[mark-fk!]] according to the application DB's dialect."
@@ -97,7 +96,9 @@
   "Sync the foreign keys for a `database`."
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
-    (let [schema-names (sync-util/db->sync-schemas database)
+    (let [driver       (driver.u/database->driver database)
+          schema-names (when (driver/database-supports? driver :schemas database)
+                         (sync-util/db->sync-schemas database))
           fk-metadata  (fetch-metadata/fk-metadata database :schema-names schema-names)]
       (transduce (map (fn [x]
                         (let [[updated failed] (try [(mark-fk! database x) 0]
@@ -121,7 +122,9 @@
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging table))
-     (let [fk-metadata (fetch-metadata/table-fk-metadata database table)]
+     (let [schema-names (when (driver/database-supports? (driver.u/database->driver database) :schemas database)
+                          [(:schema table)])
+           fk-metadata (into [] (fetch-metadata/fk-metadata database :schema-names schema-names :table-names [(:name table)]))]
        {:total-fks   (count fk-metadata)
         :updated-fks (sync-util/sum-numbers #(mark-fk! database %) fk-metadata)}))))
 
@@ -133,18 +136,7 @@
 
   This function also sets all the tables that should be synced to have `initial-sync-status=complete` once the sync is done."
   [database :- i/DatabaseInstance]
-  (u/prog1 (if (driver/database-supports? (driver.u/database->driver database) :describe-fks database)
-             (sync-fks-for-db! database)
-             (reduce (fn [update-info table]
-                       (let [table         (t2.realize/realize table)
-                             table-fk-info (sync-fks-for-table! database table)]
-                         (if (instance? Exception table-fk-info)
-                           (update update-info :total-failed inc)
-                           (merge-with + update-info table-fk-info))))
-                     {:total-fks    0
-                      :updated-fks  0
-                      :total-failed 0}
-                     (sync-util/db->reducible-sync-tables database)))
+  (u/prog1 (sync-fks-for-db! database)
     ;; Mark the table as done with its initial sync once this step is done even if it failed, because only
     ;; sync-aborting errors should be surfaced to the UI (see
     ;; `:metabase.sync.util/exception-classes-not-to-retry`).

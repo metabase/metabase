@@ -22,7 +22,13 @@ import { ParameterSettings } from "../ParameterSettings";
 export interface ParameterSidebarProps {
   parameter: Parameter;
   otherParameters: Parameter[];
+  hasMapping: boolean;
   onChangeName: (parameterId: ParameterId, name: string) => void;
+  onChangeType: (
+    parameterId: ParameterId,
+    nextType: string,
+    nextSectionId: string,
+  ) => void;
   onChangeDefaultValue: (parameterId: ParameterId, value: unknown) => void;
   onChangeIsMultiSelect: (
     parameterId: ParameterId,
@@ -57,6 +63,7 @@ export const ParameterSidebar = ({
   parameter,
   otherParameters,
   onChangeName,
+  onChangeType,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
   onChangeQueryType,
@@ -68,6 +75,7 @@ export const ParameterSidebar = ({
   onShowAddParameterPopover,
   onClose,
   getEmbeddedParameterVisibility,
+  hasMapping,
 }: ParameterSidebarProps): JSX.Element => {
   const parameterId = parameter.id;
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
@@ -88,6 +96,13 @@ export const ParameterSidebar = ({
       onChangeName(parameterId, name);
     },
     [parameterId, onChangeName],
+  );
+
+  const handleTypeChange = useCallback(
+    (type: string, sectionId: string) => {
+      onChangeType(parameterId, type, sectionId);
+    },
+    [parameterId, onChangeType],
   );
 
   const handleDefaultValueChange = useCallback(
@@ -192,12 +207,14 @@ export const ParameterSidebar = ({
             )}
             isParameterSlugUsed={isParameterSlugUsed}
             onChangeName={handleNameChange}
+            onChangeType={handleTypeChange}
             onChangeDefaultValue={handleDefaultValueChange}
             onChangeIsMultiSelect={handleIsMultiSelectChange}
             onChangeQueryType={handleQueryTypeChange}
             onChangeSourceType={handleSourceTypeChange}
             onChangeSourceConfig={handleSourceConfigChange}
             onChangeRequired={handleChangeRequired}
+            hasMapping={hasMapping}
           />
         </Tabs.Panel>
 

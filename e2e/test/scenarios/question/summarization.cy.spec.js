@@ -15,6 +15,7 @@ import {
   checkExpressionEditorHelperPopoverPosition,
   rightSidebar,
   interceptIfNotPreviouslyDefined,
+  expressionEditorWidget,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -156,7 +157,7 @@ describe("scenarios > question > summarize sidebar", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
     popover().contains("Custom Expression").click();
-    popover().within(() => {
+    expressionEditorWidget().within(() => {
       enterCustomColumnDetails({
         formula: "2 * Max([Total])",
         name: "twice max total",
@@ -178,7 +179,7 @@ describe("scenarios > question > summarize sidebar", () => {
     summarize({ mode: "notebook" });
 
     popover().contains("Custom Expression").click();
-    popover().within(() => {
+    expressionEditorWidget().within(() => {
       enterCustomColumnDetails({
         formula:
           "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
@@ -248,7 +249,7 @@ describe("scenarios > question > summarize sidebar", () => {
     summarize();
 
     cy.findAllByTestId("header-cell").should("have.length", 4);
-    cy.get(".TableInteractive-headerCellData--sorted").as("sortedCell");
+    cy.get(".test-TableInteractive-headerCellData--sorted").as("sortedCell");
 
     cy.log('At this point only "Sum of Subtotal" should be sorted');
     cy.get("@sortedCell").its("length").should("eq", 1);
@@ -266,7 +267,7 @@ describe("scenarios > question > summarize sidebar", () => {
     removeMetricFromSidebar("Sum of Total");
 
     cy.findAllByTestId("header-cell").should("have.length", 2);
-    cy.get(".cellData").should("contain", 744); // `Count` for year 2022
+    cy.get("[data-testid=cell-data]").should("contain", 744); // `Count` for year 2022
   });
 
   // flaky test (#19454)

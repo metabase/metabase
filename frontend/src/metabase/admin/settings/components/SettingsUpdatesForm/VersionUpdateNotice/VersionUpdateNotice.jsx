@@ -152,7 +152,7 @@ function HostingCTA() {
       <HostingCTAContent>
         <HostingCTAIconContainer
           className={cx(
-            "circular",
+            CS.circular,
             CS.bgMedium,
             CS.alignCenter,
             CS.justifyCenter,

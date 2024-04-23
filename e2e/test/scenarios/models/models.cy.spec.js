@@ -168,11 +168,13 @@ describe("scenarios > models", () => {
     visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
     cy.get("[data-element-id=line-area-bar-chart]");
-    cy.get(".TableInteractive").should("not.exist");
+    // TODO (styles): migrate
+    cy.get(".test-TableInteractive").should("not.exist");
 
     turnIntoModel();
 
-    cy.get(".TableInteractive");
+    // TODO (styles): migrate
+    cy.get(".test-TableInteractive");
     cy.get("[data-element-id=line-area-bar-chart]").should("not.exist");
   });
 

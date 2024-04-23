@@ -4,6 +4,7 @@
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
@@ -12,6 +13,9 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models :refer [Field]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
@@ -322,7 +326,8 @@
                              grant-permission?)]
         (mt/with-restored-data-perms-for-group! group-id
           (when grant?
-            (data-perms/set-database-permission! group-id db-id :perms/data-access :unrestricted))
+            (data-perms/set-database-permission! group-id db-id :perms/data-access :unrestricted)
+            (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder))
           (binding [upload/*auxiliary-sync-steps* auxiliary-sync-steps]
             (upload/create-csv-upload! {:collection-id collection-id
                                         :filename      csv-file-prefix
@@ -383,11 +388,13 @@
                 (is (not= (:id table-1)
                           (:id table-2)))))))))))
 
-(defn- query-table
-  [table]
-  (qp/process-query {:database (:db_id table)
+(defn- query [db-id source-table]
+  (qp/process-query {:database db-id
                      :type     :query
-                     :query    {:source-table (:id table)}}))
+                     :query    {:source-table source-table}}))
+
+(defn- query-table [table]
+  (query (:db_id table) (:id table)))
 
 (defn- column-names-for-table
   [table]
@@ -398,6 +405,9 @@
 (defn- rows-for-table
   [table]
   (mt/rows (query-table table)))
+
+(defn- rows-for-model [db-id model-id]
+  (mt/rows (query db-id (str "card__" model-id))))
 
 (def ^:private example-files
   {:comma      ["id    ,nulls,string ,bool ,number       ,date      ,datetime"
@@ -583,6 +593,19 @@
             (testing "Check the data was uploaded into the table correctly"
               (is (= [@#'upload/auto-pk-column-name "unknown" "unknown_2" "unknown_3" "unknown_2_2"]
                      (column-names-for-table table))))))))))
+
+(deftest create-from-csv-sanitize-to-duplicate-names-test
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (with-upload-table!
+         [table (create-from-csv-and-sync-with-defaults!
+                 :file (csv-file-with ["cost $, cost %, cost #"
+                                       "$123,12.3, 100"]))]
+         (testing "Table and Fields exist after sync"
+           (testing "Check the data was uploaded into the table correctly"
+             (is (= [@#'upload/auto-pk-column-name "cost__" "cost___2" "cost___3"]
+                    (column-names-for-table table))))))))))
 
 (deftest create-from-csv-bool-and-int-test
   (testing "Upload a CSV file with integers and booleans in the same column"
@@ -1046,13 +1069,13 @@
 (defn update-csv-with-defaults!
   "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
   [action & {:keys [uploads-enabled user-id file table-id is-upload]
-      :or {uploads-enabled true
-           user-id         (mt/user->id :crowberto)
-           file            (csv-file-with
-                            ["name"
-                             "Luke Skywalker"
-                             "Darth Vader"])
-           is-upload       true}}]
+             :or {uploads-enabled true
+                  user-id         (mt/user->id :crowberto)
+                  file            (csv-file-with
+                                   ["name"
+                                    "Luke Skywalker"
+                                    "Darth Vader"])
+                  is-upload       true}}]
   (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
     (mt/with-current-user user-id
       (mt/with-model-cleanup [:model/Table]
@@ -1398,6 +1421,73 @@
 
               (io/delete-file file))))))))
 
+
+(defn- mbql [mp table]
+  (let [table-metadata (lib.metadata/table mp (:id table))]
+    (lib/query mp table-metadata)))
+
+(defn- join-mbql [mp base-table join-table]
+  (let [base-table-metadata (lib.metadata/table mp (:id base-table))
+        join-table-metadata (lib.metadata/table mp (:id join-table))
+        ;; We use the primary keys as the join fields as we know they will exist and have compatible types.
+        pk-metadata         (fn [table]
+                              (let [field-id (t2/select-one-pk :model/Field
+                                                               :table_id (:id table)
+                                                               :semantic_type :type/PK)]
+                                (lib.metadata/field mp field-id)))
+        base-id-metadata         (pk-metadata base-table)
+        join-id-metadata         (pk-metadata join-table)]
+
+    (-> (lib/query mp base-table-metadata)
+        (lib/join (lib/join-clause join-table-metadata
+                                   [(lib/= (lib/ref base-id-metadata)
+                                           (lib/ref join-id-metadata))])))))
+
+(defn- cached-model-ids []
+  (into #{} (map :card_id) (t2/select [:model/PersistedInfo :card_id] :active true)))
+
+(deftest update-invalidate-model-cache-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads :persist-models)
+    (doseq [action (actions-to-test driver/*driver*)]
+      (testing (action-testing-str action)
+        (with-upload-table! [table (create-upload-table!)]
+          (let [table-id    (:id table)
+                csv-rows    ["name" "Luke Skywalker"]
+                file        (csv-file-with csv-rows)
+                other-id    (mt/id :venues)
+                other-table (t2/select-one :model/Table other-id)
+                mp          (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
+
+            (mt/with-temp [:model/Card {question-id        :id} {:table_id table-id, :dataset_query (mbql mp table)}
+                           :model/Card {model-id           :id} {:table_id table-id, :type :model, :dataset_query (mbql mp table)}
+                           :model/Card {complex-model-id   :id} {:table_id table-id, :type :model, :dataset_query (join-mbql mp table other-table)}
+                           :model/Card {archived-model-id  :id} {:table_id table-id, :type :model, :archived true, :dataset_query (mbql mp table)}
+                           :model/Card {unrelated-model-id :id} {:table_id other-id, :type :model, :dataset_query (mbql mp other-table)}
+                           :model/Card {joined-model-id    :id} {:table_id other-id, :type :model, :dataset_query (join-mbql mp other-table table)}]
+
+              (is (= #{question-id model-id complex-model-id}
+                     (into #{} (map :id) (t2/select :model/Card :table_id table-id :archived false))))
+
+              (mt/with-persistence-enabled [persist-models!]
+                (persist-models!)
+
+                (let [cached-before (cached-model-ids)
+                      _             (update-csv! action {:file file, :table-id (:id table)})
+                      cached-after  (cached-model-ids)]
+
+                  (testing "The models are cached"
+                    (let [active-model-ids #{model-id complex-model-id unrelated-model-id joined-model-id}]
+                      (is (= active-model-ids (set/intersection cached-before (conj active-model-ids archived-model-id))))))
+                  (testing "The cache is invalidated by the update"
+                    (is (not (contains? cached-after model-id))))
+                  (testing "No unwanted caches were invalidated"
+                    (is (= #{model-id} (set/difference cached-before cached-after))))
+                  (testing "We can see the new row when querying the model"
+                    (is (some (fn [[_ row-name]] (= "Luke Skywalker" row-name))
+                              (rows-for-model (:db_id table) model-id)))))))
+
+            (io/delete-file file)))))))
+
 (deftest update-mb-row-id-csv-and-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
@@ -1738,3 +1828,43 @@
                       (rows-for-table table)))
 
               (io/delete-file file))))))))
+
+(defn- upload-table-exists? [table]
+  ;; we don't need to worry about sql injection here
+  (-> (format "SELECT 1 FROM information_schema.tables WHERE table_name = '%s'" (:name table))
+      ((fn [sql] {:database (:db_id table), :type :native, :native {:query sql}}))
+      qp/process-query
+      :row_count
+      pos?))
+
+(deftest delete-upload!-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (doseq [archive-cards? [true false]]
+      (with-upload-table! [table (create-upload-table!
+                                  :col->upload-type (ordered-map/ordered-map
+                                                     :_mb_row_id auto-pk-type
+                                                     :number_1 int-type
+                                                     :number_2 int-type)
+                                  :rows [[1, 1]])]
+
+        (testing "The upload table and the expected application data are created\n"
+          (is (upload-table-exists? table))
+          (is (seq (t2/select :model/Table :id (:id table))))
+          (testing "The expected metadata is synchronously sync'd"
+            (is (seq (t2/select :model/Field :table_id (:id table))))))
+
+        (mt/with-temp [:model/Card {card-id :id} {:table_id (:id table)}]
+          (is (false? (:archived (t2/select-one :model/Card :id card-id))))
+
+          (upload/delete-upload! table :archive-cards? archive-cards?)
+
+          (testing (format "We %s the related cards if archive-cards? is %s"
+                           (if archive-cards? "archive" "do not archive")
+                           archive-cards?)
+            (is (= archive-cards? (:archived (t2/select-one :model/Card :id card-id)))))
+
+          (testing "The upload table and related application data are deleted\n"
+            (is (not (upload-table-exists? table)))
+            (is (= [false] (mapv :active (t2/select :model/Table :id (:id table)))))
+            (testing "We do not clean up any of the child resources synchronously (yet?)"
+              (is (seq (t2/select :model/Field :table_id (:id table)))))))))))

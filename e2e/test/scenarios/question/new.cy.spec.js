@@ -215,16 +215,15 @@ describe("scenarios > question > new", () => {
 
     openOrdersTable();
 
-    cy.get(".TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
+    cy.get(".test-TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
       .eq(1) // first table body cell
       .should("contain", "2") // quantity for order ID#1
       .click();
     cy.wait("@dataset");
 
-    cy.get("#main-data-grid .TableInteractive-cellWrapper--firstColumn").should(
-      "have.length.gt",
-      1,
-    );
+    cy.get(
+      "#main-data-grid .test-TableInteractive-cellWrapper--firstColumn",
+    ).should("have.length.gt", 1);
 
     cy.log(
       "**Reported at v0.34.3 - v0.37.0.2 / probably was always like this**",
@@ -232,19 +231,18 @@ describe("scenarios > question > new", () => {
     cy.log(
       "**It should display the table with all orders with the selected quantity.**",
     );
-    cy.get(".TableInteractive");
+    cy.get(".test-TableInteractive");
 
-    cy.get(".TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
+    cy.get(".test-TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
       .eq(1) // first table body cell
       .should("contain", 1)
       .click();
     cy.wait("@dataset");
 
     cy.log("only one row should appear after filtering by ID");
-    cy.get("#main-data-grid .TableInteractive-cellWrapper--firstColumn").should(
-      "have.length",
-      1,
-    );
+    cy.get(
+      "#main-data-grid .test-TableInteractive-cellWrapper--firstColumn",
+    ).should("have.length", 1);
   });
 
   it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
@@ -300,6 +298,11 @@ describe("scenarios > question > new", () => {
       cy.findByText("Orders").click();
     });
     cy.findByTestId("qb-header").findByText("Save").click();
+
+    cy.log("should be able to tab through fields (metabase#41683)");
+    cy.realPress("Tab").realPress("Tab");
+    cy.findByLabelText("Description").should("be.focused");
+
     cy.findByTestId("save-question-modal")
       .findByLabelText(/Which collection/)
       .click();

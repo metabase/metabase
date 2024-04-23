@@ -7,9 +7,10 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [macaw.core :as mac]
+   [macaw.core :as macaw]
    [metabase.config :as config]
    [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
+   [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -24,10 +25,11 @@
 (defn- active?
   "Should the query run? Either we're not testing or it's been explicitly turned on.
 
-  c.f. [[*parse-queries-in-test?*]]"
+  c.f. [[*parse-queries-in-test?*]], [[public-settings/sql-parsing-enabled]]"
   []
-  (or (not config/is-test?)
-      *parse-queries-in-test?*))
+  (and (public-settings/sql-parsing-enabled)
+       (or (not config/is-test?)
+           *parse-queries-in-test?*)))
 
 (defn- normalize-name
   ;; TODO: This is wildly naive and will be revisited once the rest of the plumbing is sorted out
@@ -89,7 +91,7 @@
   (let [query        (:dataset_query card)
         db-id        (:database query)
         sql-string   (:query (nqa.sub/replace-tags query))
-        parsed-query (mac/query->components (mac/parsed-query sql-string))
+        parsed-query (macaw/query->components (macaw/parsed-query sql-string))
         direct-ids   (direct-field-ids-for-query parsed-query db-id)
         indirect-ids (set/difference
                       (indirect-field-ids-for-query parsed-query db-id)
