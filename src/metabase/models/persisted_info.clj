@@ -120,7 +120,7 @@
 (defn invalidate!
   "Invalidates any caches corresponding to the `conditions-map`. Equivalent to toggling the caching off and on again."
   [conditions-map]
-  ;; TODO confirm that the corresponding tables will still be cleaned up.
+  ;; We do not immediately delete the cached table, it will get clobbered during the next refresh cycle.
   (t2/update! PersistedInfo
               (merge {:active true} conditions-map)
               ;; TODO perhaps we should immediately kick off a recalculation of these caches
