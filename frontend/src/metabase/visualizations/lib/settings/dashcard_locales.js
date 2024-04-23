@@ -590,7 +590,7 @@ const TITLE_LOCALES_BN = {
   },
   'tms.session.rejected.application' : {
     'en' : 'Rejected',
-    'bn' : 'প্রত্যাখ্যাত'
+    'bn' : 'ত্রুটিপূর্ণ'
   },
   'tms.session.pending.application' : {
     'en' : 'Pending',
