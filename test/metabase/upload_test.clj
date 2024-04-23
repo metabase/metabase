@@ -1456,7 +1456,6 @@
                            :model/Card {_unrelated-model-id :id} {:table_id other-id, :type :model, :dataset_query (mbql mp other-table)}
                            :model/Card {_joined-model-id    :id} {:table_id other-id, :type :model :dataset_query (join-mbql mp other-table table)}]
 
-
               (is (= #{question-id model-id complex-model-id}
                      (into #{} (map :id) (t2/select :model/Card :table_id table-id :archived false))))
 
