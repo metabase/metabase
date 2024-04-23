@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import LineAreaBarChart from "metabase/visualizations/components/LineAreaBarChart";
 import {
   validateChartDataSettings,
   validateDatasetRows,
@@ -10,6 +9,8 @@ import {
 import type { Visualization } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { RawSeries } from "metabase-types/api";
+
+import { transformSeries } from "./chart-definition-legacy";
 
 export const getCartesianChartDefinition = (
   props: Partial<Visualization>,
@@ -65,7 +66,7 @@ export const getCartesianChartDefinition = (
       },
     ] as RawSeries,
 
-    transformSeries: LineAreaBarChart.transformSeries,
+    transformSeries,
 
     ...props,
   };

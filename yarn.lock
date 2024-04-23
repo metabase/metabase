@@ -9291,11 +9291,6 @@ cross-spawn@^6.0.0:
     shebang-command "^1.2.0"
     which "^1.2.9"
 
-crossfilter2@~1.3:
-  version "1.3.14"
-  resolved "https://registry.yarnpkg.com/crossfilter2/-/crossfilter2-1.3.14.tgz#c45bd8d335f6c91accbac26eda203377f195f680"
-  integrity sha1-xFvY0zX2yRrMusJu2iAzd/GV9oA=
-
 crossfilter@^1.3.12:
   version "1.3.12"
   resolved "https://registry.yarnpkg.com/crossfilter/-/crossfilter-1.3.12.tgz#147d7236a98c45c69f78bdc3a99d6fb00f70930c"
@@ -9733,7 +9728,7 @@ d3-time@^1.1.0:
   resolved "https://registry.yarnpkg.com/d3-time/-/d3-time-1.1.0.tgz#b1e19d307dae9c900b7e5b25ffc5dcc249a8a0f1"
   integrity sha512-Xh0isrZ5rPYYdqhAVk8VLnMEidhz5aP7htAADH6MfzgmmicPkTo8LhkLxci61/lCB7n7UmE3bN0leRt+qvkLxA==
 
-d3@^3, d3@^3.5.17:
+d3@^3.5.17:
   version "3.5.17"
   resolved "https://registry.yarnpkg.com/d3/-/d3-3.5.17.tgz#bc46748004378b21a360c9fc7cf5231790762fb8"
   integrity sha1-vEZ0gAQ3iyGjYMn8fPUjF5B2L7g=
@@ -9768,14 +9763,6 @@ dayjs@^1.10.4:
   version "1.11.0"
   resolved "https://registry.yarnpkg.com/dayjs/-/dayjs-1.11.0.tgz#009bf7ef2e2ea2d5db2e6583d2d39a4b5061e805"
   integrity sha512-JLC809s6Y948/FuCZPm5IX8rRhQwOiyMb2TfVVQEixG7P8Lm/gt5S7yoQZmC8x1UehI9Pb7sksEt4xx14m+7Ug==
-
-dc@2.1.9:
-  version "2.1.9"
-  resolved "https://registry.yarnpkg.com/dc/-/dc-2.1.9.tgz#693621dbbded18c4dac5023d7bd6a0c1215cd99a"
-  integrity sha512-nSkbdSiJrSqgp4thpA57i/JAEqFwYuJkncTjZRjA8NFlEdHTYCod8yh5NaImvw0VizrxPXVTUghqIqtYB12uKg==
-  dependencies:
-    crossfilter2 "~1.3"
-    d3 "^3"
 
 deasync@^0.1.0:
   version "0.1.29"

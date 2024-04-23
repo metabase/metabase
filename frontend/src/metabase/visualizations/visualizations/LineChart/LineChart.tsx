@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import LineAreaBarChart from "metabase/visualizations/components/LineAreaBarChart";
 import {
   getDefaultSize,
   getMinSize,
@@ -26,7 +25,6 @@ import type {
 Object.assign(
   LineChart,
   getCartesianChartDefinition({
-    transformSeries: LineAreaBarChart.transformSeries,
     uiName: t`Line`,
     identifier: "line",
     iconName: "line",
