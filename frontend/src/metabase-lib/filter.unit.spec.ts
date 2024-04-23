@@ -771,7 +771,7 @@ describe("filter", () => {
 
   describe.each(["en", "ja", "ar", "th", "ko", "vi", "zh"])(
     "specific date filters for locale %s",
-    () => {
+    locale => {
       const tableName = "PRODUCTS";
       const columnName = "CREATED_AT";
       const column = findColumn(query, tableName, columnName);
@@ -779,7 +779,7 @@ describe("filter", () => {
       beforeEach(() => {
         jest.useFakeTimers();
         jest.setSystemTime(new Date(2020, 0, 1));
-        moment.locale("ja");
+        moment.locale(locale);
       });
 
       it.each<Lib.SpecificDateFilterOperatorName>(["=", ">", "<"])(
