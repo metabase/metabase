@@ -525,6 +525,15 @@
                           (range (lib/stage-count query)))]
     (empty? all-joins)))
 
+(defn- model->single-table-id
+  "For models that depend on only a single table, return the other table, otherwise return nil. Doesn't support native."
+  [model]
+  ; dataset_query can be empty in tests
+  (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)]
+    (when (and (mbql? model) (no-joins? query))
+      (lib/source-table-id query))))
+
+
 (defn- invalidate-cached-models!
   "Invalidate the model caches for all cards whose `:based_on_upload` value resolves to the given table."
   [table]
@@ -533,12 +542,7 @@
                                        :table_id (:id table)
                                        :type     :model
                                        :archived false)
-                            (filter (fn [model]
-                                      ; dataset_query can be empty in tests
-                                      (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)]
-                                        (and (mbql? model)
-                                             (no-joins? query)
-                                             (= (:id table) (lib/source-table-id query))))))
+                            (filter (comp #{(:id table)} model->single-table-id))
                             (map :id)
                             seq)]
     ;; Ideally we would do all the filtering in the query, but we would need an agnostic way to handle the JSON column.
@@ -751,12 +755,8 @@
                                    set)
         has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
     (for [model models]
-      (m/assoc-some
-       model
-       :based_on_upload
-       (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)] ; dataset_query can be empty in tests
-         (when (and (mbql? model) (has-uploadable-table? model) (no-joins? query))
-           (lib/source-table-id query)))))))
+      (m/assoc-some model :based_on_upload (when (has-uploadable-table? model)
+                                             (model->single-table-id model))))))
 
 (mi/define-batched-hydration-method based-on-upload
   :based_on_upload
