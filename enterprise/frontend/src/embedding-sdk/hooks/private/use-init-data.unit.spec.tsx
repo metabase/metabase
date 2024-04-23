@@ -16,7 +16,6 @@ import type { LoginStatusError } from "embedding-sdk/store/types";
 import { createMockConfig } from "embedding-sdk/test/mocks/config";
 import type { SDKConfigType } from "embedding-sdk/types";
 import {
-  createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
@@ -67,14 +66,11 @@ const setup = ({
   authType: SDKConfigType["authType"] | "invalid";
   isValidAuthentication?: boolean;
 }) => {
-  // Mock JWT SSO Endpoint
   fetchMock.mock("http://TEST_URI/sso/metabase", {
     id: "TEST_JWT_TOKEN",
     exp: 1965805007,
     iat: 1965805007,
   });
-
-  const currentUser = TEST_USER;
 
   setupCurrentUserEndpoint(
     TEST_USER,
@@ -87,12 +83,6 @@ const setup = ({
 
   const settingValues = createMockSettings();
   const tokenFeatures = createMockTokenFeatures();
-  const settings = [
-    createMockSettingDefinition({
-      key: "token-features",
-      value: tokenFeatures,
-    }),
-  ];
 
   const settingValuesWithToken = {
     ...settingValues,
@@ -100,12 +90,12 @@ const setup = ({
   };
   const state = createMockState({
     settings: mockSettings(settingValuesWithToken),
-    currentUser,
+    currentUser: TEST_USER,
   });
 
   setupEnterprisePlugins();
   setupApiKeyEndpoints([]);
-  setupSettingsEndpoints(settings);
+  setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settingValuesWithToken);
 
   renderWithProviders(<TestComponent authType={authType} {...configOpts} />, {
