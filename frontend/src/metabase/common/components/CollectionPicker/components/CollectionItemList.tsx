@@ -1,9 +1,9 @@
-import { useSearchListQuery } from "metabase/common/hooks";
+import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 
 import { ItemList } from "../../EntityPicker";
 import type { CollectionItemListProps, CollectionPickerItem } from "../types";
 
-export const SearchItemList = ({
+export const CollectionItemList = ({
   query,
   onClick,
   selectedItem,
@@ -11,13 +11,19 @@ export const SearchItemList = ({
   isCurrentLevel,
   shouldDisableItem,
 }: CollectionItemListProps) => {
-  const { data, error, isLoading } = useSearchListQuery<CollectionPickerItem>({
-    query,
-  });
+  const {
+    data: collectionItems,
+    error,
+    isLoading,
+  } = useListCollectionItemsQuery<{
+    data: { data: CollectionPickerItem[] };
+    error: any;
+    isLoading: boolean;
+  }>(query ? query : skipToken);
 
   return (
     <ItemList
-      items={data}
+      items={collectionItems?.data ?? []}
       isLoading={isLoading}
       error={error}
       onClick={onClick}

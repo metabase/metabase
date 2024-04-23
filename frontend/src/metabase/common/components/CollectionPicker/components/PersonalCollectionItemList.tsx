@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useCollectionListQuery } from "metabase/common/hooks";
+import { useListCollectionsQuery } from "metabase/api";
 import type { Collection } from "metabase-types/api";
 
 import { ItemList } from "../../EntityPicker";
@@ -17,8 +17,8 @@ export const PersonalCollectionsItemList = ({
     data: collections,
     error,
     isLoading,
-  } = useCollectionListQuery({
-    query: { "personal-only": true },
+  } = useListCollectionsQuery({
+    "personal-only": true,
   });
 
   const topLevelPersonalCollections = useMemo(
