@@ -104,7 +104,7 @@ export const generateKey = (query?: ListCollectionItemsRequest) =>
   JSON.stringify(query ?? "root");
 
 export const getParentCollectionId = (
-  location: string | null,
+  location?: string | null,
 ): CollectionId => {
   const parentCollectionId = location?.split("/").filter(Boolean).reverse()[0];
   return parentCollectionId ? Number(parentCollectionId) : "root";
@@ -122,7 +122,9 @@ export const getPathLevelForItem = (
     return 0;
   }
 
-  const parentCollectionId = item?.collection_id || "root";
+  const parentCollectionId = getParentCollectionId(
+    item?.effective_location ?? item?.location,
+  );
 
   // set selected item at the correct level
   const pathLevel = path.findIndex(

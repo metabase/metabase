@@ -23,7 +23,7 @@ export const CollectionItemList = ({
 
   return (
     <ItemList
-      items={collectionItems?.data ?? []}
+      items={collectionItems?.data}
       isLoading={isLoading}
       error={error}
       onClick={onClick}
