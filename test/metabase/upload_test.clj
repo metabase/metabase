@@ -1424,6 +1424,7 @@
 (defn- join-mbql [mp base-table join-table]
   (let [base-table-metadata (lib.metadata/table mp (:id base-table))
         join-table-metadata (lib.metadata/table mp (:id join-table))
+        ;; We use the primary keys as the join fields as we know they will exist and have compatible types.
         pk-metadata         (fn [table]
                               (let [field-id (t2/select-one-pk :model/Field
                                                                :table_id (:id table)
