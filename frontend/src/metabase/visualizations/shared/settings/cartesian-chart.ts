@@ -1,9 +1,13 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getMaxDimensionsSupported } from "metabase/visualizations";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import {
+  getDefaultDimensionsAndMetrics,
+  getFriendlyName,
+} from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -240,4 +244,24 @@ export function getDefaultScatterColumns(data: DatasetData) {
  */
 export function getDefaultBubbleSizeCol(data: DatasetData) {
   return getDefaultScatterColumns(data).bubble;
+}
+
+export function getDefaultColumns(series: RawSeries) {
+  if (series[0].card.display === "scatter") {
+    return getDefaultScatterColumns(series[0].data);
+  } else {
+    return getDefaultLineAreaBarColumns(series);
+  }
+}
+
+function getDefaultLineAreaBarColumns(series: RawSeries) {
+  const [
+    {
+      card: { display },
+    },
+  ] = series;
+  return getDefaultDimensionsAndMetrics(
+    series,
+    getMaxDimensionsSupported(display),
+  );
 }

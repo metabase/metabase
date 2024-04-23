@@ -424,13 +424,13 @@ describe("scenarios > visualizations > line chart", () => {
             assertOnLegendItemsValues();
             assertOnYAxisValues();
 
-            showTooltipForFirstCircleInSeries(0);
+            showTooltipForFirstCircleInSeries("#88BF4D");
             popover().within(() => {
               testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
             });
 
-            showTooltipForFirstCircleInSeries(1);
+            showTooltipForFirstCircleInSeries("#98D9D9");
             popover().within(() => {
               testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_SECOND_SERIES, "54.44");
@@ -473,13 +473,13 @@ describe("scenarios > visualizations > line chart", () => {
             assertOnLegendItemsValues();
             assertOnYAxisValues();
 
-            showTooltipForFirstCircleInSeries(0);
+            showTooltipForFirstCircleInSeries("#88BF4D");
             popover().within(() => {
               testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
             });
 
-            showTooltipForFirstCircleInSeries(1);
+            showTooltipForFirstCircleInSeries("#509EE3");
             popover().within(() => {
               testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_SECOND_SERIES, "2,829.03");
@@ -647,10 +647,6 @@ function testPairedTooltipValues(val1, val2) {
   cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }
 
-function showTooltipForFirstCircleInSeries(series_index) {
-  cy.get(`.sub._${series_index}`)
-    .as("firstSeries")
-    .find("circle")
-    .first()
-    .trigger("mousemove");
+function showTooltipForFirstCircleInSeries(seriesColor) {
+  cartesianChartCircleWithColor(seriesColor).realHover();
 }

@@ -8,6 +8,7 @@ import {
   modal,
   cartesianChartCircle,
   chartPathWithFillColor,
+  cartesianChartCircleWithColor,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -93,8 +94,6 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
-      const originalSeriesIndex = 0;
-      const addedSeriesIndex = 1;
       const originalSeriesTooltipText = [
         ["Created At", "2022"],
         ["Sum of Total", "42,156.87"],
@@ -113,10 +112,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ["Custom Q2", "56.66"],
       ];
 
-      showTooltipForFirstCircleInSeries(originalSeriesIndex);
+      showTooltipForFirstCircleInSeries("#88BF4D");
       testTooltipText(originalSeriesTooltipText);
 
-      showTooltipForFirstCircleInSeries(addedSeriesIndex);
+      showTooltipForFirstCircleInSeries("#A989C5");
       testTooltipText(addedSeriesTooltipText);
 
       openDashCardVisualizationOptions();
@@ -126,10 +125,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      showTooltipForFirstCircleInSeries(originalSeriesIndex);
+      showTooltipForFirstCircleInSeries("#88BF4D");
       testTooltipText(updatedOriginalSeriesTooltipText);
 
-      showTooltipForFirstCircleInSeries(addedSeriesIndex);
+      showTooltipForFirstCircleInSeries("#A989C5");
       testTooltipText(updatedAddedSeriesTooltipText);
     });
   });
@@ -221,8 +220,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
-      const originalIndices = [0, 1];
-      const addedIndices = [2, 3];
+      const originalSeriesColors = ["#A989C5", "#88BF4D"];
+      const addedSeriesColors = ["#509EE3", "#98D9D9"];
       const originalSeriesTooltipText = [
         ["Created At", "2022"],
         ["Average of Total", "56.66"],
@@ -245,12 +244,12 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ["Q2 Custom 2", "342.09"],
       ];
 
-      originalIndices.forEach(index => {
-        showTooltipForFirstCircleInSeries(index);
+      originalSeriesColors.forEach(color => {
+        showTooltipForFirstCircleInSeries(color);
         testTooltipText(originalSeriesTooltipText);
       });
-      addedIndices.forEach(index => {
-        showTooltipForFirstCircleInSeries(index);
+      addedSeriesColors.forEach(color => {
+        showTooltipForFirstCircleInSeries(color);
         testTooltipText(addedSeriesTooltipText);
       });
 
@@ -276,12 +275,12 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      originalIndices.forEach(index => {
-        showTooltipForFirstCircleInSeries(index);
+      originalSeriesColors.forEach(color => {
+        showTooltipForFirstCircleInSeries(color);
         testTooltipText(updatedOriginalSeriesTooltipText);
       });
-      addedIndices.forEach(index => {
-        showTooltipForFirstCircleInSeries(index);
+      addedSeriesColors.forEach(color => {
+        showTooltipForFirstCircleInSeries(color);
         testTooltipText(updatedAddedSeriesTooltipText);
       });
     });
@@ -434,20 +433,12 @@ function setupDashboard(cardId, addedSeriesCardId) {
   });
 }
 
-function showTooltipForFirstCircleInSeries(series_index) {
-  cy.get(`.sub._${series_index}`)
-    .as("firstSeries")
-    .find("circle")
-    .first()
-    .trigger("mousemove", { force: true });
+function showTooltipForFirstCircleInSeries(seriesColor) {
+  cartesianChartCircleWithColor(seriesColor).realHover();
 }
 
-function showTooltipForFirstBarInSeries(series_index) {
-  cy.get(`.sub._${series_index}`)
-    .as("firstSeries")
-    .find(".bar")
-    .first()
-    .trigger("mousemove", { force: true });
+function showTooltipForFirstBarInSeries(seriesColor) {
+  chartPathWithFillColor(seriesColor).realHover();
 }
 
 function testPairedTooltipValues(val1, val2) {
