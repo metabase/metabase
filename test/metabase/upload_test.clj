@@ -12,6 +12,9 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models :refer [Field]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
@@ -1413,49 +1416,46 @@
 
               (io/delete-file file))))))))
 
-(defn- mbql [table]
-  {:lib/type     :mbql/query
-   :database     (:db_id table)
-   :stages       [{:lib/type     :mbql.stage/mbql
-                   :source-table (:id table)}]})
 
-(defn- t [x] (prn x) x)
+(defn- mbql [mp table]
+  (let [table-metadata (lib.metadata/table mp (:id table))]
+    (lib/query mp table-metadata)))
 
-(defn- join-mbql [table join-table-id]
-  (t
-   (mt/mbql-query nil
-                  {:joins [{:alias        (str "Table " "join-table-id"),
-                            :condition    [:=
-                                           [:field "_mb_row_id"
-                                            {:base-type "type/BigInteger"}]
-                                           [:field
-                                            (t2/select-one-pk :model/Field :name "_mb_row_id" :table_id 1 #_"join-table-id")
-                                            {:base-type  "type/BigInteger",
-                                             :join-alias "other PK"}]],
-                            :fields       :all,
-                            :source-table 1 #_join-table-id}]})))
+(defn- join-mbql [mp base-table join-table]
+  (let [base-table-metadata (lib.metadata/table mp (:id base-table))
+        join-table-metadata (lib.metadata/table mp (:id join-table))
+        pk-metadata         (fn [table]
+                              (let [field-id (t2/select-one-pk :model/Field
+                                                               :table_id (:id table)
+                                                               :semantic_type :type/PK)]
+                                (lib.metadata/field mp field-id)))
+        base-id-metadata         (pk-metadata base-table)
+        join-id-metadata         (pk-metadata join-table)]
+
+    (-> (lib/query mp base-table-metadata)
+        (lib/join (lib/join-clause join-table-metadata
+                                   [(lib/= (lib/ref base-id-metadata)
+                                           (lib/ref join-id-metadata))])))))
 
 (deftest ^:mb/once update-invalidate-model-cache-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
         (with-upload-table! [table (create-upload-table!)]
-          (let [table-id (:id table)
-                csv-rows ["name" "Luke Skywalker"]
-                file     (csv-file-with csv-rows)]
+          (let [table-id    (:id table)
+                csv-rows    ["name" "Luke Skywalker"]
+                file        (csv-file-with csv-rows)
+                other-id    (mt/id :venues)
+                other-table (t2/select-one :model/Table other-id)
+                mp          (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
 
-            (mt/with-temp [:model/Table {other-table-id     :id} {}
+            (mt/with-temp [:model/Card {question-id         :id} {:table_id table-id, :dataset_query (mbql mp table)}
+                           :model/Card {model-id            :id} {:table_id table-id, :type :model, :dataset_query (mbql mp table)}
+                           :model/Card {complex-model-id    :id} {:table_id table-id, :type :model :dataset_query (join-mbql mp table other-table)}
+                           :model/Card {_archived-model-id  :id} {:table_id table-id, :type :model, :archived true, :dataset_query (mbql mp table)}
+                           :model/Card {_unrelated-model-id :id} {:table_id other-id, :type :model, :dataset_query (mbql mp other-table)}
+                           :model/Card {_joined-model-id    :id} {:table_id other-id, :type :model :dataset_query (join-mbql mp other-table table)}]
 
-                           :model/Card {question-id         :id} {:table_id table-id, :dataset_query (mbql table)}
-                           :model/Card {model-id            :id} {:table_id table-id, :type :model, :dataset_query (mbql table)}
-                           :model/Card {complex-model-id    :id} {:table_id table-id, :type :model
-                                                                  :dataset_query (join-mbql table other-table-id)}
-                           :model/Card {_archived-model-id  :id} {:table_id table-id, :type :model, :archived true, :dataset_query (mbql table)}
-                           :model/Card {_unrelated-model-id :id} {:table_id other-table-id, :type :model, :dataset_query (mbql (assoc table :id other-table-id))}
-                           :model/Card {_joined-model-id :id} {:table_id other-table-id, :type :model
-                                                                  :dataset_query (join-mbql
-                                                                                  (assoc table :id other-table-id)
-                                                                                  (:id table))}]
 
               (is (= #{question-id model-id complex-model-id}
                      (into #{} (map :id) (t2/select :model/Card :table_id table-id :archived false))))
