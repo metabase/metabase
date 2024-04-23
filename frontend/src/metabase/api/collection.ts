@@ -5,6 +5,7 @@ import type {
   CollectionRequest,
   ListCollectionsRequest,
   ListCollectionsResponse,
+  CreateCollectionRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -12,6 +13,9 @@ import {
   provideCollectionItemListTags,
   provideCollectionTags,
   provideCollectionListTags,
+  invalidateTags,
+  listTag,
+  idTag,
 } from "./tags";
 
 export const collectionApi = Api.injectEndpoints({
@@ -50,6 +54,22 @@ export const collectionApi = Api.injectEndpoints({
       providesTags: collections =>
         collections ? provideCollectionListTags(collections) : [],
     }),
+    createCollection: builder.mutation<Collection, CreateCollectionRequest>({
+      query: body => ({
+        method: "POST",
+        url: "/api/collection",
+        body,
+      }),
+      invalidatesTags: (collection, error) =>
+        collection
+          ? [
+              ...invalidateTags(error, [listTag("collection")]),
+              ...invalidateTags(error, [
+                idTag("collection", collection.parent_id ?? "root"),
+              ]),
+            ]
+          : [],
+    }),
   }),
 });
 
@@ -57,4 +77,5 @@ export const {
   useListCollectionItemsQuery,
   useListCollectionsQuery,
   useGetCollectionQuery,
+  useCreateCollectionMutation,
 } = collectionApi;

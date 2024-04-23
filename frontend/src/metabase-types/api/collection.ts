@@ -144,3 +144,11 @@ export type ListCollectionsRequest = {
 };
 
 export type ListCollectionsResponse = Collection[];
+
+export type CreateCollectionRequest = {
+  name: string;
+  description?: string;
+  color?: string; // deprecated
+  parent_id?: CollectionId | null;
+  authority_level?: CollectionAuthorityLevel;
+};
