@@ -22,7 +22,7 @@ import { Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { CardId } from "metabase-types/api";
 
-interface InteractiveQuestionProps {
+export type InteractiveQuestionProps = {
   questionId: CardId;
 }
 

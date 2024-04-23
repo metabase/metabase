@@ -85,10 +85,10 @@ export function renderWithProviders(
 
   if (mode === "sdk") {
     reducers = SDK_REDUCERS;
-  } else if (mode === "default") {
-    reducers = mainReducers;
-  } else {
+  } else if (mode === "public") {
     reducers = publicReducers;
+  } else {
+    reducers = mainReducers;
   }
 
   if (withRouter) {
@@ -103,6 +103,7 @@ export function renderWithProviders(
     Api.middleware,
     history && routerMiddleware(history),
   ]);
+
   const store = getStore(
     reducers,
     initialState,
@@ -167,7 +168,6 @@ function Wrapper({
   );
 }
 
-// TODO: Allow use-init-data tests to use this provider, but without the AppInitializeController
 function SdkWrapper({
   config,
   children,
