@@ -475,28 +475,24 @@
     (generator base-name)))
 
 (mu/defn add-default-alias :- ::lib.schema.join/join
-  "Add a default generated `:alias` to a join clause that does not already have one."
+  "Add a default generated `:alias` to a join clause."
   [query        :- ::lib.schema/query
    stage-number :- :int
    a-join       :- lib.join.util/JoinWithOptionalAlias]
-  (if (contains? a-join :alias)
-    ;; if the join clause comes with an alias, keep it and assume that the
-    ;; condition fields have the right join-aliases too
-    a-join
-    (let [stage       (lib.util/query-stage query stage-number)
-          home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
-          cond-fields (lib.util.match/match (:conditions a-join) :field)
-          home-col    (select-home-column home-cols cond-fields)
-          join-alias  (-> (calculate-join-alias query a-join home-col)
-                          (generate-unique-name (keep :alias (:joins stage))))
-          join-cols   (lib.metadata.calculation/returned-columns
-                       (lib.query/query-with-stages query (:stages a-join)))]
-      (-> a-join
-          (update :conditions
-                  (fn [conditions]
-                    (mapv #(add-alias-to-condition query stage-number % join-alias home-cols join-cols)
-                          conditions)))
-          (with-join-alias join-alias)))))
+  (let [stage       (lib.util/query-stage query stage-number)
+        home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
+        cond-fields (lib.util.match/match (:conditions a-join) :field)
+        home-col    (select-home-column home-cols cond-fields)
+        join-alias  (-> (calculate-join-alias query a-join home-col)
+                        (generate-unique-name (keep :alias (:joins stage))))
+        join-cols   (lib.metadata.calculation/returned-columns
+                     (lib.query/query-with-stages query (:stages a-join)))]
+    (-> a-join
+        (update :conditions
+                (fn [conditions]
+                  (mapv #(add-alias-to-condition query stage-number % join-alias home-cols join-cols)
+                        conditions)))
+        (with-join-alias join-alias))))
 
 (declare join-conditions
          joined-thing
