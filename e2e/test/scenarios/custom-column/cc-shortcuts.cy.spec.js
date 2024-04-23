@@ -20,9 +20,7 @@ describe("scenarios > question > custom column > expression shortcuts", () => {
 
     selectColumn("Total");
 
-    expressionEditorWidget().within(() => {
-      cy.findByText("Total").should("exist");
-    });
+    expressionEditorWidget().findByText("Total").should("exist");
 
     selectColumn("Product", "Rating");
 
