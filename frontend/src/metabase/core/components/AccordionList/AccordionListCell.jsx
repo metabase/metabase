@@ -48,6 +48,7 @@ export const AccordionListCell = ({
   getItemStyles,
   searchInputProps,
   hasCursor,
+  withBorders,
 }) => {
   const {
     type,
@@ -326,8 +327,8 @@ export const AccordionListCell = ({
       className={cx(section.className, {
         [ListS.ListSectionExpanded]: sectionIsExpanded(sectionIndex),
         [ListS.ListSectionToggleAble]: canToggleSections,
-        [styles.borderTop]: borderTop,
-        [styles.borderBottom]: borderBottom,
+        [styles.borderTop]: withBorders && borderTop,
+        [styles.borderBottom]: withBorders && borderBottom,
       })}
     >
       {content}
