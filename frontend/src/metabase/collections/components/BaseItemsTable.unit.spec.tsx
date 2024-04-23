@@ -2,12 +2,18 @@ import userEvent from "@testing-library/user-event";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { Route } from "react-router";
 
-import { renderWithProviders, screen, getIcon } from "__support__/ui";
-import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import type { ItemWithLastEditInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
 } from "metabase/lib/formatting/datetime-utils";
+import type { IconName } from "metabase/ui";
+import type { CollectionItem } from "metabase-types/api";
+import { createMockCollection } from "metabase-types/api/mocks";
+
+import type { BaseItemsTableProps } from "./BaseItemsTable";
+import BaseItemsTable from "./BaseItemsTable";
 
 const timestamp = "2021-06-03T19:46:52.128";
 
@@ -17,20 +23,28 @@ function getCollectionItem({
   name = "My Item",
   icon = "dashboard",
   url = "/dashboard/1",
+  description = "A description",
   ...rest
-} = {}) {
+}: Partial<CollectionItem> & {
+  icon?: IconName;
+  url?: string;
+} = {}): CollectionItem & ItemWithLastEditInfo {
   return {
     "last-edit-info": {
       id: 1,
       first_name: "John",
       last_name: "Doe",
+      email: "john.doe@example.com",
       timestamp,
     },
     ...rest,
     id,
     model,
+    description,
     name,
-    getIcon: () => icon,
+    getIcon: () => ({
+      name: icon,
+    }),
     getUrl: () => url,
   };
 }
@@ -38,7 +52,10 @@ function getCollectionItem({
 describe("Collections BaseItemsTable", () => {
   const ITEM = getCollectionItem();
 
-  function setup({ items = [ITEM], ...props } = {}) {
+  function setup({
+    items = [ITEM],
+    ...props
+  }: { items?: CollectionItem[] } & Partial<BaseItemsTableProps> = {}) {
     return renderWithProviders(
       <Route
         path="/"
@@ -85,7 +102,7 @@ describe("Collections BaseItemsTable", () => {
     setup({
       hasUnselected: true,
       onSelectAll,
-      collection: { can_write: true },
+      collection: createMockCollection({ can_write: true }),
     });
 
     await userEvent.click(screen.getByLabelText("Select all items"));
@@ -98,7 +115,7 @@ describe("Collections BaseItemsTable", () => {
     setup({
       hasUnselected: false,
       onSelectNone,
-      collection: { can_write: true },
+      collection: createMockCollection({ can_write: true }),
     });
 
     await userEvent.click(screen.getByLabelText("Select all items"));

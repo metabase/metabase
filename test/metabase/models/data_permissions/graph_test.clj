@@ -427,6 +427,7 @@
 (deftest graph-set-partial-permissions-for-table-test
   (testing "Test that setting partial permissions for a table retains permissions for other tables -- #3888"
     (mt/with-temp [:model/PermissionsGroup group]
+      (data-perms/set-database-permission! group (mt/id) :perms/create-queries :no)
       (testing "before"
         ;; first, graph permissions only for VENUES
         (data-perms/set-table-permission! group (mt/id :venues) :perms/create-queries :query-builder)

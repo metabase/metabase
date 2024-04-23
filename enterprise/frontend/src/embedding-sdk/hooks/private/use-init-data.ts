@@ -1,15 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { store, useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   getOrRefreshSession,
   setLoginStatus,
 } from "embedding-sdk/store/reducer";
 import {
   getLoginStatus,
-  getSessionTokenState,
 } from "embedding-sdk/store/selectors";
 import type { EmbeddingSessionTokenState } from "embedding-sdk/store/types";
 import type { SDKConfigType } from "embedding-sdk/types";
@@ -41,43 +40,24 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
 
   const loginStatus = useSdkSelector(getLoginStatus);
 
-  const [sessionTokenState, setSessionTokenState] =
-    useState<EmbeddingSessionTokenState | null>(null);
-
   useEffect(() => {
     registerVisualizationsOnce();
     dispatch(setLoginStatus({ status: "uninitialized" }));
   }, [dispatch]);
 
-  const jwtProviderUri =
-    config.authType === "jwt" ? config.jwtProviderUri : null;
-
-  useEffect(() => {
-    if (config.authType === "jwt") {
-      const updateToken = () => {
-        const currentState = store.getState();
-        setSessionTokenState(getSessionTokenState(currentState));
-      };
-
-      const unsubscribe = store.subscribe(updateToken);
-
-      if (jwtProviderUri) {
-        dispatch(getOrRefreshSession(jwtProviderUri));
-      }
-
-      updateToken();
-
-      return () => unsubscribe();
-    }
-  }, [config.authType, dispatch, jwtProviderUri]);
-
   useEffect(() => {
     api.basename = config.metabaseInstanceUrl;
 
-    if (config.authType === "jwt" && config.jwtProviderUri) {
-      api.onBeforeRequest = () =>
-        dispatch(getOrRefreshSession(config.jwtProviderUri));
-      api.sessionToken = sessionTokenState?.token?.id;
+    if (config.authType === "jwt") {
+      api.onBeforeRequest = async () => {
+        const tokenState = await dispatch(
+          getOrRefreshSession(config.jwtProviderUri),
+        );
+
+        api.sessionToken = (
+          tokenState.payload as EmbeddingSessionTokenState["token"]
+        )?.id;
+      };
       dispatch(setLoginStatus({ status: "initialized" }));
     } else if (config.authType === "apiKey" && config.apiKey) {
       api.apiKey = config.apiKey;
@@ -90,7 +70,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
         }),
       );
     }
-  }, [config, dispatch, sessionTokenState]);
+  }, [config, dispatch]);
 
   useEffect(() => {
     const fetchData = async () => {

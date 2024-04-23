@@ -147,15 +147,30 @@
             (is (= #{db-id} (->> graph :groups vals (mapcat keys) set)))))))))
 
 (deftest set-default-permission-values!-test
-  (testing "A new group has no permissions for any DBs by default"
-    (mt/with-temp [:model/Database         {db-id :id}    {}
-                   :model/PermissionsGroup {group-id :id} {}]
-      (is
-       (= {group-id
-           {db-id
-            {:perms/view-data :unrestricted,
-             :perms/create-queries :no,
-             :perms/download-results :no,
-             :perms/manage-table-metadata :no,
-             :perms/manage-database :no}}}
-          (data-perms/data-permissions-graph :group-id group-id :db-id db-id))))))
+  (testing "A new group has permissions dynamically set for each DB based on the All Users group"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (mt/with-full-data-perms-for-all-users!
+          (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+            (is
+             (= {group-id
+                 {db-id
+                  {:perms/view-data :unrestricted
+                   :perms/create-queries :query-builder-and-native
+                   :perms/download-results :one-million-rows
+                   :perms/manage-table-metadata :no
+                   :perms/manage-database :no}}}
+                (data-perms/data-permissions-graph :group-id group-id :db-id db-id))))))
+
+      (mt/with-temp [:model/Database         {db-id :id}    {}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+            (is
+             (= {group-id
+                 {db-id
+                  {:perms/view-data :unrestricted
+                   :perms/create-queries :no
+                   :perms/download-results :no
+                   :perms/manage-table-metadata :no
+                   :perms/manage-database :no}}}
+                (data-perms/data-permissions-graph :group-id group-id :db-id db-id)))))))))

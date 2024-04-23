@@ -4,8 +4,10 @@ import { t } from "ttag";
 import { useCollectionListQuery } from "metabase/common/hooks";
 import ModalContent from "metabase/components/ModalContent";
 import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
+import type { FormContainerProps } from "metabase/containers/FormikForm";
 import EntityForm from "metabase/entities/containers/EntityForm";
 import { Flex, Loader } from "metabase/ui";
+import type { BaseFieldValues } from "metabase-types/forms";
 
 interface EntityCopyModalProps {
   entityType: string;
@@ -13,7 +15,8 @@ interface EntityCopyModalProps {
   copy: (data: any) => void;
   title?: string;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (newEntityObject: any) => void;
+  form?: any;
 }
 
 const EntityCopyModal = ({
@@ -24,7 +27,7 @@ const EntityCopyModal = ({
   onClose,
   onSaved,
   ...props
-}: EntityCopyModalProps) => {
+}: EntityCopyModalProps & Partial<FormContainerProps<BaseFieldValues>>) => {
   const { data: collections } = useCollectionListQuery();
 
   return (
