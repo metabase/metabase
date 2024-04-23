@@ -1,6 +1,5 @@
-import type { XAXisOption } from "echarts/types/dist/shared";
+import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTypes";
-import type { CartesianAxisOption } from "echarts/types/src/coord/cartesian/AxisModel";
 
 import { parseNumberValue } from "metabase/lib/number";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
@@ -345,7 +344,7 @@ export const buildMetricAxis = (
   hasSplitLine: boolean,
   hoveredSeriesDataKey: DataKey | null,
   renderingContext: RenderingContext,
-): CartesianAxisOption => {
+): YAXisOption => {
   const shouldFlipAxisName = position === "right";
   const nameGap = getAxisNameGap(ticksWidth);
 
@@ -404,8 +403,8 @@ const buildMetricsAxes = (
   settings: ComputedVisualizationSettings,
   hoveredSeriesDataKey: DataKey | null,
   renderingContext: RenderingContext,
-): CartesianAxisOption[] => {
-  const axes: CartesianAxisOption[] = [];
+): YAXisOption[] => {
+  const axes: YAXisOption[] = [];
   const { leftAxisModel, rightAxisModel } = chartModel;
 
   if (leftAxisModel != null) {
