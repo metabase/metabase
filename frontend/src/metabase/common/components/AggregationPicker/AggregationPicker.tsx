@@ -35,11 +35,11 @@ type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
   operator: Lib.AggregationOperator;
 };
 
-type LegacyMetricListItem = Lib.LegacyMetricDisplayInfo & {
-  metric: Lib.LegacyMetricMetadata;
+type MetricListItem = Lib.MetricDisplayInfo & {
+  metric: Lib.MetricMetadata;
 };
 
-type ListItem = OperatorListItem | LegacyMetricListItem;
+type ListItem = OperatorListItem | MetricListItem;
 
 type Section = {
   name: string;
@@ -163,7 +163,7 @@ export function AggregationPicker({
   );
 
   const handleMetricSelect = useCallback(
-    (item: LegacyMetricListItem) => {
+    (item: MetricListItem) => {
       onSelect(item.metric);
       onClose?.();
     },
@@ -327,8 +327,8 @@ function getOperatorListItem(
 function getMetricListItem(
   query: Lib.Query,
   stageIndex: number,
-  metric: Lib.LegacyMetricMetadata,
-): LegacyMetricListItem {
+  metric: Lib.MetricMetadata,
+): MetricListItem {
   const metricInfo = Lib.displayInfo(query, stageIndex, metric);
   return {
     ...metricInfo,

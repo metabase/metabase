@@ -221,7 +221,7 @@ export type AggregationOperatorDisplayInfo = {
   selected?: boolean;
 };
 
-export type LegacyMetricDisplayInfo = {
+export type MetricDisplayInfo = {
   name: string;
   displayName: string;
   longDisplayName: string;
