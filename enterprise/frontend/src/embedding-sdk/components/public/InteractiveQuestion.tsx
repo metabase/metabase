@@ -4,10 +4,7 @@ import { useEffect } from "react";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import { useSdkSelector } from "embedding-sdk/store";
-import {
-  getPlugins,
-} from "embedding-sdk/store/selectors";
-import type { SdkClickActionExtensionsConfig } from "embedding-sdk/lib/question-extensions";
+import { getPlugins } from "embedding-sdk/store/selectors";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -38,7 +35,6 @@ export const _InteractiveQuestion = ({
   questionId,
   plugins: componentPlugins,
 }: InteractiveQuestionProps): JSX.Element | null => {
-
   const globalPlugins = useSdkSelector(getPlugins);
 
   const dispatch = useDispatch();

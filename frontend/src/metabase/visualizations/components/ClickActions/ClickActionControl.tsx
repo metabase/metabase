@@ -6,6 +6,7 @@ import {
   type ClickAction,
   type CustomClickAction,
   isCustomClickAction,
+  isCustomClickActionWithView,
 } from "metabase/visualizations/types";
 import { isRegularClickAction } from "metabase/visualizations/types";
 
@@ -35,12 +36,12 @@ export const ClickActionControl = ({
     return null;
   }
 
-  const { buttonType } = action;
-
   const handleClick =
     isCustomClickAction(action) && action.onClick
       ? () => (action as CustomClickAction).onClick?.({ closePopover: close })
       : () => onClick(action);
+
+  const { buttonType } = action;
 
   switch (buttonType) {
     case "token-filter":
@@ -111,6 +112,10 @@ export const ClickActionControl = ({
 
     case "info":
       return <InfoControl>{action.title}</InfoControl>;
+  }
+
+  if (isCustomClickActionWithView(action)) {
+    return action.view({ closePopover: close });
   }
 
   return null;

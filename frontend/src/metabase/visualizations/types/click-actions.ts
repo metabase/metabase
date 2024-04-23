@@ -51,7 +51,6 @@ export type ClickActionBase = {
   icon?: IconName;
   iconText?: string;
   buttonType: ClickActionButtonType;
-  default?: boolean;
   tooltip?: string;
   extra?: () => Record<string, unknown>;
 };
@@ -81,17 +80,28 @@ type UrlClickActionBase = {
 
 export type UrlClickAction = ClickActionBase & UrlClickActionBase;
 
-export type CustomClickAction = ClickActionBase & {
+type CustomClickActionContext = { closePopover: () => void };
+
+type CustomClickActionBase = {
+  name: ClickActionBase["name"];
+  section: ClickActionBase["section"];
   type: "custom";
-  onClick?: ({ closePopover }: { closePopover: () => void }) => void;
+};
+
+export type CustomClickAction = ClickActionBase &
+  CustomClickActionBase & {
+    onClick?: (parameters: CustomClickActionContext) => void;
+  };
+
+export type CustomClickActionWithCustomView = CustomClickActionBase & {
+  view: (parameters: CustomClickActionContext) => React.JSX.Element;
 };
 
 export type RegularClickAction =
   | ReduxClickAction
   | QuestionChangeClickAction
   | PopoverClickAction
-  | UrlClickAction
-  | CustomClickAction;
+  | UrlClickAction;
 
 export type DefaultClickAction = ClickActionBase & {
   default: true;
@@ -110,7 +120,9 @@ export type AlwaysDefaultClickAction = {
 export type ClickAction =
   | RegularClickAction
   | DefaultClickAction
-  | AlwaysDefaultClickAction;
+  | AlwaysDefaultClickAction
+  | CustomClickAction
+  | CustomClickActionWithCustomView;
 
 export type LegacyDrill = (options: ClickActionProps) => ClickAction[];
 
@@ -177,4 +189,11 @@ export type QueryClickActionsMode = {
 export const isCustomClickAction = (
   clickAction: ClickAction,
 ): clickAction is CustomClickAction =>
-  (clickAction as CustomClickAction).type === "custom";
+  (clickAction as CustomClickAction).type === "custom" &&
+  !("view" in clickAction);
+
+export const isCustomClickActionWithView = (
+  action: ClickAction,
+): action is CustomClickActionWithCustomView =>
+  (action as CustomClickActionWithCustomView).type === "custom" &&
+  "view" in action;
