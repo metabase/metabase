@@ -4,9 +4,14 @@ import { t } from "ttag";
 import {
   isEditableCollection,
   isRootTrashCollection,
+  isTrashedCollection,
+  isInstanceAnalyticsCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
-import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+import {
+  PLUGIN_COLLECTIONS,
+  PLUGIN_COLLECTION_COMPONENTS,
+} from "metabase/plugins";
 import { Icon } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -74,17 +79,7 @@ export const CollectionCaption = ({
 };
 
 const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
-  if (isRootTrashCollection(collection)) {
-    // TODO: adjust margin/spacing
-    return <Icon name="trash" size={24} />;
-  } else if (!collection.type) {
-    return (
-      <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
-        collection={collection}
-        size={24}
-      />
-    );
-  } else {
+  if (isInstanceAnalyticsCollection(collection)) {
     return (
       <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
         size={24}
@@ -94,4 +89,23 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
       />
     );
   }
+
+  if (isRootTrashCollection(collection)) {
+    return <Icon name="trash" size={24} style={{ marginBottom: "-.25rem" }} />;
+  }
+
+  if (
+    isTrashedCollection(collection) &&
+    PLUGIN_COLLECTIONS.isRegularCollection(collection)
+  ) {
+    return <Icon name="folder" size={24} color="text-light" />;
+  }
+
+  return (
+    <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
+      collection={collection}
+      size={24}
+      archived={collection.archived}
+    />
+  );
 };

@@ -2,6 +2,7 @@
 import cx from "classnames";
 import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
@@ -30,11 +31,13 @@ import PaginationControls from "metabase/components/PaginationControls";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import CS from "metabase/css/core/index.css";
 import Collections from "metabase/entities/collections";
+import { TRASH_COLLECTION } from "metabase/entities/collections/constants";
 import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -307,9 +310,13 @@ export const CollectionContentView = ({
                     ),
                   );
                 }}
-                onDeletePermanently={() =>
-                  dispatch(Collections.actions.delete({ id: collectionId }))
-                }
+                onDeletePermanently={async () => {
+                  await dispatch(
+                    Collections.actions.delete({ id: collectionId }),
+                  );
+                  dispatch(push(Urls.collection(TRASH_COLLECTION)));
+                  dispatch(addUndo({ message: t`Deletion successful` }));
+                }}
               />
             )}
 

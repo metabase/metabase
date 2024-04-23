@@ -17,10 +17,9 @@ export const ArchivedEntityBanner = ({
     <Paper px="1.5rem" py=".75rem" bg="error" shadow="0" radius="0" w="100%">
       <Flex justify="space-between">
         <Flex align="center">
-          {/* TODO: add trash full icon */}
           <Icon
             color="white"
-            name="trash"
+            name="trash_filled"
             style={{ marginInlineEnd: "1rem" }}
           />
           <Text color="white" size="md" lh="1rem">
