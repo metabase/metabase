@@ -6,6 +6,7 @@ import { t } from "ttag";
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { Button, Icon, Input, Popover, FocusTrap } from "metabase/ui";
+import { getThemeOverrides } from "metabase/ui/theme";
 import * as Lib from "metabase-lib";
 
 import styles from "./ColumnPicker.module.css";
@@ -18,6 +19,8 @@ type ColumnInputProps = {
   value: Lib.ColumnMetadata;
   onChange: (column: Lib.ColumnMetadata) => void;
 };
+
+const theme = getThemeOverrides();
 
 export function ColumnPicker({
   query,
@@ -87,7 +90,17 @@ export function ColumnPicker({
   }, [value, query, stageIndex]);
 
   return (
-    <Input.Wrapper label={label} styles={{ root: { width: "100%" } }}>
+    <Input.Wrapper
+      label={label}
+      styles={{
+        root: { width: "100%" },
+        label: {
+          marginBottom: theme.spacing?.xs,
+          fontSize: theme.fontSizes?.md,
+          color: color("text-medium"),
+        },
+      }}
+    >
       <Popover
         opened={open}
         onClose={handleClose}
