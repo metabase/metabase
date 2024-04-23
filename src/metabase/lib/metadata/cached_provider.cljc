@@ -16,15 +16,6 @@
     (when-not (= cached-value ::nil)
       cached-value)))
 
-(mu/defn ^:private get-all-in-cache
-  "Get all cached items by type."
-  [cache
-   metadata-type :- ::lib.schema.metadata/metadata-types]
-  (case metadata-type
-    :metabase/database
-    (get-in-cache cache [:metabase/database])
-    (vals (get @cache metadata-type))))
-
 (defn- store-in-cache! [cache ks value]
   (let [value (if (some? value) value ::nil)]
     (swap! cache assoc-in ks value)
@@ -114,7 +105,6 @@
 
   lib.metadata.protocols/CachedMetadataProvider
   (cached-database [_this]                           (get-in-cache     cache [:metadata/database]))
-  (cached-metadata [_this metadata-type]             (get-all-in-cache cache metadata-type))
   (cached-metadata [_this metadata-type id]          (get-in-cache     cache [metadata-type id]))
   (store-database! [_this database-metadata]         (store-database!  cache database-metadata))
   (store-metadata! [_this metadata-type id metadata] (store-metadata!  cache metadata-type id metadata))

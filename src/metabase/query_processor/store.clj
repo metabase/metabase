@@ -16,6 +16,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.call-track-provider :as lib.metadata.call-track-provider]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -24,6 +25,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
+
 
 (set! *warn-on-reflection* true)
 
@@ -112,7 +114,9 @@
 (mu/defn ^:private ->metadata-provider :- ::lib.schema.metadata/metadata-provider
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable]
   (if (integer? database-id-or-metadata-providerable)
-    (lib.metadata.jvm/application-database-metadata-provider database-id-or-metadata-providerable)
+    (-> database-id-or-metadata-providerable
+        lib.metadata.jvm/application-database-metadata-provider
+        lib.metadata.call-track-provider/call-track-metadadata-provider)
     database-id-or-metadata-providerable))
 
 (mu/defn ^:private validate-existing-provider

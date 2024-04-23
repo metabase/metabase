@@ -35,6 +35,9 @@
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
       (do-test card-id #(qp/process-query (mt/mbql-query nil {:source-table (format "card__%d" card-id)}))))))
 
+
+;; TODO need tests for joined cards as well
+
 (deftest ^:parallel card-reference-in-native-query-test
   (with-used-cards-setup
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]

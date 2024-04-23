@@ -199,14 +199,19 @@
   "Used to control `with-execute-async` to whether or not execute its body asynchronously."
   true)
 
+(defn do-with-execute-async
+  "Impl of `with-execute-async`"
+  [thunk]
+  (if *execute-async?*
+    (.submit clojure.lang.Agent/pooledExecutor ^Runnable thunk)
+    (thunk)))
+
 (defmacro with-execute-async
   "Execute body asynchronously in a pooled executor.
 
   Used for side effects during query execution like saving query execution info or capturing FieldUsages."
-  [& thunk]
-  `(if ~*execute-async?*
-     (.submit clojure.lang.Agent/pooledExecutor ^Runnable ~thunk)
-     (~thunk)))
+  [thunk]
+  `(do-with-execute-async ~thunk))
 
 (mu/defn userland-query? :- :boolean
   "Returns true if the query is an userland query, else false."

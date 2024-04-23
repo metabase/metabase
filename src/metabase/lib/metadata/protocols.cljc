@@ -97,10 +97,8 @@
   of it."
   (cached-database [cached-metadata-provider]
     "Get cached metadata for the query's Database.")
-  (cached-metadata
-   [cached-metadata-provider metadata-type]
-   [cached-metadata-provider metadata-type id]
-   "Get cached metadata(s) of a specific type, e.g. `:metadata/table`.")
+  (cached-metadata [cached-metadata-provider metadata-type id]
+   "Get cached metadata of a specific type, e.g. `:metadata/table`.")
   (store-database! [cached-metadata-provider database-metadata]
     "Store metadata for the query's Database.")
   (store-metadata! [cached-metadata-provider metadata-type id metadata]
@@ -111,6 +109,11 @@
   useful for MetadataProviders e.g. [[metabase.lib.metadata.jvm/application-database-metadata-provider]]."
   (bulk-metadata [bulk-metadata-provider metadata-type ids]
     "Fetch lots of metadata of a specific type, e.g. `:metadata/table`, in a single bulk operation."))
+
+(#?(:clj p/defprotocol+ :cljs defprotocol) CallTrackMetadataProvider
+  "A protocol that's used to track calls."
+  (called-ids [this metadata-type]
+    "Get all called ids of metadata-type thus far."))
 
 (defn store-metadatas!
   "Convenience. Store several metadata maps at once."
