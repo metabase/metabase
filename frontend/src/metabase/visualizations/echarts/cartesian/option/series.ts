@@ -1,6 +1,7 @@
 import type { RegisteredSeriesOption } from "echarts";
 import type {
-  LabelLayoutOptionCallbackParams,
+  BarSeriesOption,
+  LineSeriesOption,
   SeriesOption,
 } from "echarts/types/dist/echarts";
 import type { CallbackDataParams } from "echarts/types/dist/shared";
@@ -409,32 +410,24 @@ const buildEChartsLineAreaSeries = (
 };
 
 const generateStackOption = (
-  chartModel: CartesianChartModel,
+  seriesModel: SeriesModel,
+  dataset: ChartDataset,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
   signKey: StackTotalDataKey,
   stackDataKeys: DataKey[],
-  seriesOptionFromStack: EChartsSeriesOption,
+  seriesOptionFromStack: LineSeriesOption | BarSeriesOption,
   renderingContext: RenderingContext,
 ) => {
-  const seriesModel = chartModel.seriesModels.find(
-    s => s.dataKey === stackDataKeys[0],
-  );
-
-  if (!seriesModel) {
-    return null;
-  }
-
   const stackName = seriesOptionFromStack.stack;
 
-  return {
+  const seriesOption = {
     yAxisIndex: seriesOptionFromStack.yAxisIndex,
     silent: true,
     symbolSize: 0,
     lineStyle: {
       opacity: 0,
     },
-    type: seriesOptionFromStack.type,
     id: `${stackName}_${signKey}`,
     stack: stackName,
     encode: {
@@ -443,10 +436,13 @@ const generateStackOption = (
     },
     label: {
       ...seriesOptionFromStack.label,
-      position: signKey === POSITIVE_STACK_TOTAL_DATA_KEY ? "top" : "bottom",
+      position:
+        signKey === POSITIVE_STACK_TOTAL_DATA_KEY
+          ? ("top" as const)
+          : ("bottom" as const),
       show: true,
       formatter: getStackedDataLabelFormatter(
-        chartModel.transformedDataset,
+        dataset,
         seriesModel,
         yAxisScaleTransforms,
         signKey,
@@ -465,6 +461,12 @@ const generateStackOption = (
       },
     },
   };
+
+  if (seriesOptionFromStack.type === "bar") {
+    return { ...seriesOption, type: "bar" as const };
+  }
+
+  return { ...seriesOption, type: "line" as const };
 };
 
 function getStackedDataLabelFormatter(
@@ -485,8 +487,12 @@ function getStackedDataLabelFormatter(
     settings,
   });
 
-  return (params: LabelLayoutOptionCallbackParams & { data: Datum }) => {
-    const stackValue = getStackTotalValue(params.data, stackDataKeys, signKey);
+  return (params: CallbackDataParams) => {
+    const stackValue = getStackTotalValue(
+      params.data as Datum,
+      stackDataKeys,
+      signKey,
+    );
 
     if (stackValue === null) {
       return " ";
@@ -535,7 +541,7 @@ export const getStackTotalsSeries = (
   chartModel: CartesianChartModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
-  seriesOptions: EChartsSeriesOption[],
+  seriesOptions: (LineSeriesOption | BarSeriesOption)[],
   renderingContext: RenderingContext,
 ) => {
   const seriesByStackName = _.groupBy(
@@ -549,9 +555,18 @@ export const getStackTotalsSeries = (
       .filter(isNotNull) as string[];
     const firstSeriesInStack = seriesOptions[0];
 
+    const seriesModel = chartModel.seriesModels.find(
+      s => s.dataKey === stackDataKeys[0],
+    );
+
+    if (!seriesModel) {
+      return [];
+    }
+
     return [
       generateStackOption(
-        chartModel,
+        seriesModel,
+        chartModel.transformedDataset,
         yAxisScaleTransforms,
         settings,
         POSITIVE_STACK_TOTAL_DATA_KEY,
@@ -560,7 +575,8 @@ export const getStackTotalsSeries = (
         renderingContext,
       ),
       generateStackOption(
-        chartModel,
+        seriesModel,
+        chartModel.transformedDataset,
         yAxisScaleTransforms,
         settings,
         NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -692,17 +708,19 @@ export const buildEChartsSeries = (
     settings["graph.show_values"]
   ) {
     series.push(
-      // @ts-expect-error TODO: figure out ECharts series option types
       ...getStackTotalsSeries(
         chartModel,
         chartModel.yAxisScaleTransforms,
         settings,
-        series,
+        // It's guranteed that no series here will be scatter, since with
+        // scatter plots the `stackable.stack_type` is undefined. We can maybe
+        // remove this later after refactoring the scatter implementation to a
+        // separate codepath.
+        series as (LineSeriesOption | BarSeriesOption)[],
         renderingContext,
       ),
     );
   }
 
-  // @ts-expect-error TODO: figure out ECharts series option types
   return series;
 };
