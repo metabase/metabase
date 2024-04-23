@@ -82,7 +82,10 @@ export const cardApi = Api.injectEndpoints({
       }),
       // TODO invalidate persisted list
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("card", id)]),
+        invalidateTags(error, [
+          idTag("card", id),
+          idTag("persisted-model", id),
+        ]),
     }),
   }),
 });

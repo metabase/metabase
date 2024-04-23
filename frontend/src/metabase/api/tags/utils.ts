@@ -20,6 +20,7 @@ import type {
   ListDashboardsResponse,
   Metric,
   NativeQuerySnippet,
+  ModelCacheRefreshStatus,
   PopularItem,
   RecentItem,
   Revision,
@@ -287,6 +288,27 @@ export function providePermissionsGroupTags(
   group: GroupListQuery,
 ): TagDescription<TagType>[] {
   return [idTag("permissions-group", group.id)];
+}
+
+export function providePersistedInfoListTags(
+  statuses: ModelCacheRefreshStatus[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("persisted-info"),
+    ...statuses.flatMap(providePersistedInfoTags),
+  ];
+}
+
+export function providePersistedInfoTags(
+  status: ModelCacheRefreshStatus,
+): TagDescription<TagType>[] {
+  return [idTag("persisted-info", status.id)];
+}
+
+export function providePersistedModelTags(
+  status: ModelCacheRefreshStatus,
+): TagDescription<TagType>[] {
+  return [idTag("persisted-model", status.card_id)];
 }
 
 export function provideRevisionListTags(

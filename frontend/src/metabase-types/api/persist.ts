@@ -8,3 +8,7 @@ export type ListPersistedInfoRequest = PaginationRequest;
 export type ListPersistedInfoResponse = {
   data: ModelCacheRefreshStatus[];
 } & PaginationResponse;
+
+export type PersistedInfoRefreshSchedule = {
+  cron: string;
+};
