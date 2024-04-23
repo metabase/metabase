@@ -9,12 +9,12 @@
 
 (defmethod tx/dbdef->connection-details :druid-jdbc
   [& _]
-  {:host "localhost"
+  {:host "http://localhost"
    :port "8888"})
 
-;; TODO: Use tx/dbdef->connection-details.
 (defn- already-loaded []
-  (set (json/parse-string (:body (http/get (str "http://localhost:8888/druid/v2/datasources"))))))
+  (let [{:keys [host port]} (tx/dbdef->connection-details :druid-jdbc)]
+    (set (json/parse-string (:body (http/get (format "http://%s:%s/druid/v2/datasources" host port)))))))
 
 (def built-in-datasets #{"checkins" "json"})
 

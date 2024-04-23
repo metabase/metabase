@@ -39,7 +39,7 @@
   [_driver {:keys [host port] :as _db-details}]
   (merge {:classname   "org.apache.calcite.avatica.remote.Driver"
           :subprotocol "avatica:remote"
-          :subname     (str "url=http://" host ":" port "/druid/v2/sql/avatica/;transparent_reconnection=true")}
+          :subname     (str "url=" host ":" port "/druid/v2/sql/avatica/;transparent_reconnection=true")}
          (when (some? (driver/report-timezone))
            {:sqlTimeZone (driver/report-timezone)})))
 
@@ -125,7 +125,11 @@
 
 (defmethod sql-jdbc.conn/data-source-name :druid-jdbc
   [_driver {:keys [host port] :as _details}]
-  (format "druid-%s-%s" host port))
+  (format "druid-%s-%s"
+          ;; remove protocol if present
+          (or (re-find #"(?<=\w://).*" host)
+              host)
+          port))
 
 (defmethod sql-jdbc.execute/set-parameter [:druid-jdbc ZonedDateTime]
   [driver ps i t]
@@ -181,7 +185,7 @@
 (defmethod driver/dbms-version :druid-jdbc
   [_driver database]
   (let [{:keys [host port]} (:details database)]
-    (try (let [version (-> (http/get (format "http://%s:%s/status" host port))
+    (try (let [version (-> (http/get (format "%s:%s/status" host port))
                            :body
                            json/parse-string
                            (get "version"))
