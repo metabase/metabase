@@ -147,9 +147,6 @@
         (dump-to-h2/dump-to-h2! (.getAbsolutePath dump-file) {:dump-plaintext? true}))
       (read-only-mode! false)
 
-      ;; Dump is still writing the file after it returns.
-      (Thread/sleep 1000)
-
       (log/info "Uploading dump to store")
       (set-progress id :upload 50)
       (http/put upload_url {:headers {"x-amz-server-side-encryption" "aws:kms"}
