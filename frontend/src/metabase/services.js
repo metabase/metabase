@@ -315,7 +315,7 @@ export const TimelineEventApi = {
 };
 
 export const MetabaseApi = {
-  db_list: GET("/api/database", res => res["data"]),
+  db_list: GET("/api/database", ({ body }) => body["data"]),
   db_create: POST("/api/database"),
   db_validate: POST("/api/database/validate"),
   db_add_sample_database: POST("/api/database/sample_database"),
@@ -349,9 +349,8 @@ export const MetabaseApi = {
   // table_fields:                GET("/api/table/:tableId/fields"),
   table_fks: GET("/api/table/:tableId/fks"),
   // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
-  table_query_metadata: GET(
-    "/api/table/:tableId/query_metadata",
-    injectTableMetadata,
+  table_query_metadata: GET("/api/table/:tableId/query_metadata", ({ body }) =>
+    injectTableMetadata(body),
   ),
   // table_sync_metadata:        POST("/api/table/:tableId/sync"),
   table_rescan_values: POST("/api/table/:tableId/rescan_values"),
