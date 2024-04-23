@@ -1,5 +1,5 @@
 import type {
-  SearchRequest,
+  ListCollectionItemsRequest,
   SearchModel,
   DashboardId,
   CollectionId,
@@ -42,6 +42,6 @@ export type DashboardItemListProps = ListProps<
   CollectionItemId,
   SearchModel,
   DashboardPickerItem,
-  SearchRequest,
+  ListCollectionItemsRequest,
   DashboardPickerOptions
 >;

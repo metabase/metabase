@@ -2,12 +2,20 @@ import type { Ref } from "react";
 import { useCallback, useState, forwardRef, useImperativeHandle } from "react";
 import { useDeepCompareEffect } from "react-use";
 
+import {
+  skipToken,
+  useGetCollectionQuery,
+  useGetDashboardQuery,
+} from "metabase/api";
 import { isValidCollectionId } from "metabase/collections/utils";
-import { useCollectionQuery, useDashboardQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { SearchRequest, SearchModel, Dashboard } from "metabase-types/api";
+import type {
+  ListCollectionItemsRequest,
+  CollectionItemModel,
+  Dashboard,
+} from "metabase-types/api";
 
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
@@ -28,7 +36,7 @@ interface DashboardPickerProps {
   onItemSelect: (item: DashboardPickerItem) => void;
   initialValue?: Pick<DashboardPickerItem, "model" | "id">;
   options: DashboardPickerOptions;
-  models?: SearchModel[];
+  models?: CollectionItemModel[];
   shouldDisableItem?: (
     item: DashboardPickerItem,
     isReadOnlyCollection?: boolean,
@@ -43,11 +51,14 @@ const useGetInitialCollection = (
 
   const dashboardId = isDashboard ? Number(initialValue.id) : undefined;
 
-  // TODO: use rtk instead of useDashboardQuery
-  const { data: currentDashboard, error: dashboardError } = useDashboardQuery({
-    id: dashboardId,
-    enabled: !!dashboardId,
-  });
+  const { data: currentDashboard, error: dashboardError } =
+    useGetDashboardQuery(
+      dashboardId
+        ? {
+            id: dashboardId,
+          }
+        : skipToken,
+    );
 
   const collectionId =
     isDashboard && currentDashboard
@@ -55,10 +66,13 @@ const useGetInitialCollection = (
       : initialValue?.id;
 
   const { data: currentCollection, error: collectionError } =
-    useCollectionQuery({
-      id: (isValidCollectionId(collectionId) && collectionId) || "root",
-      enabled: !isDashboard || !!currentDashboard,
-    });
+    useGetCollectionQuery(
+      !isDashboard || !!currentDashboard
+        ? {
+            id: (isValidCollectionId(collectionId) && collectionId) || "root",
+          }
+        : skipToken,
+    );
 
   return {
     currentDashboard: currentDashboard,
@@ -79,7 +93,7 @@ const DashboardPickerInner = (
   ref: Ref<unknown>,
 ) => {
   const [path, setPath] = useState<
-    PickerState<DashboardPickerItem, SearchRequest>
+    PickerState<DashboardPickerItem, ListCollectionItemsRequest>
   >(() =>
     getStateFromIdPath({
       idPath: ["root"],

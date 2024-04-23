@@ -3,8 +3,8 @@ import _ from "underscore";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import type {
   CollectionId,
-  SearchRequest,
-  SearchModel,
+  CollectionItemModel,
+  ListCollectionItemsRequest,
 } from "metabase-types/api";
 
 import type { PickerState } from "../EntityPicker";
@@ -59,9 +59,12 @@ export const getStateFromIdPath = ({
 }: {
   idPath: CollectionId[];
   namespace?: "snippets";
-  models?: SearchModel[];
-}): PickerState<DashboardPickerItem, SearchRequest> => {
-  const statePath: PickerState<DashboardPickerItem, SearchRequest> = [
+  models?: CollectionItemModel[];
+}): PickerState<DashboardPickerItem, ListCollectionItemsRequest> => {
+  const statePath: PickerState<
+    DashboardPickerItem,
+    ListCollectionItemsRequest
+  > = [
     {
       selectedItem: {
         name: "",
@@ -76,7 +79,7 @@ export const getStateFromIdPath = ({
 
     statePath.push({
       query: {
-        collection: id,
+        id,
         models: ["collection", ...models],
         namespace,
       },

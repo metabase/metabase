@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { useCreateDashboardMutation } from "metabase/api";
 import FormFooter from "metabase/core/components/FormFooter";
-import Dashboard from "metabase/entities/dashboards";
 import {
   Form,
   FormErrorMessage,
@@ -9,7 +9,6 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex, Modal } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
@@ -28,19 +27,19 @@ export const NewDashboardDialog = ({
   parentCollectionId,
   onNewDashboard,
 }: NewDashboardDialogProps) => {
-  const dispatch = useDispatch();
+  const [createDashboard] = useCreateDashboardMutation();
 
   const onCreateNewCollection = async ({ name }: { name: string }) => {
-    const {
-      payload: { dashboard: newDashboard },
-    } = await dispatch(
-      Dashboard.actions.create({
-        name,
-        collection_id:
-          parentCollectionId === "root" ? null : parentCollectionId,
-      }),
-    );
-    onNewDashboard({ ...newDashboard, model: "dashboard" });
+    const newDashboard = await createDashboard({
+      name,
+      collection_id: parentCollectionId === "root" ? null : parentCollectionId,
+    }).unwrap();
+
+    onNewDashboard({
+      ...newDashboard,
+      collection_id: newDashboard.collection_id ?? "root",
+      model: "dashboard",
+    });
     onClose();
   };
 
