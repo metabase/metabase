@@ -68,7 +68,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: `Offset`,
     type: "aggregation",
     args: ["any", "number"],
-    requiresFeature: "window-functions",
+    requiresFeature: "window-functions/offset",
     validator: function (_expr: any, offset: number) {
       if (offset === 0) {
         return t`Row offset cannot be zero`;

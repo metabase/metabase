@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.cumulative-aggregations
   "Middlware for handling cumulative count and cumulative sum aggregations in Clojure-land. In 0.50.0+, this middleware
-  is only used for drivers that do not have native implementations of `:window-functions`; see the driver changelog
-  for 0.50.0 for more information.
+  is only used for drivers that do not have native implementations of `:window-functions/cumulative`; see the driver
+  changelog for 0.50.0 for more information.
 
   For queries with more than one breakout, we reset the totals every time breakouts other than the last one change, e.g.
 
@@ -48,7 +48,9 @@
   [{{breakouts :breakout, aggregations :aggregation} :query, :as query}]
   (cond
     ;; no need to rewrite `:cum-sum` and `:cum-count` functions, this driver supports native window function versions
-    (driver/database-supports? driver/*driver* :window-functions (lib.metadata/database (qp.store/metadata-provider)))
+    (driver/database-supports? driver/*driver*
+                               :window-functions/cumulative
+                               (lib.metadata/database (qp.store/metadata-provider)))
     query
 
     ;; nothing to rewrite

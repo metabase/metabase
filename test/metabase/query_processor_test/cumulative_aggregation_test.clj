@@ -216,7 +216,7 @@
 (deftest ^:parallel cumulative-count-with-bucketed-breakout-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "cumulative count with a temporally bucketed breakout"
-      (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+      (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
         (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
               orders            (lib.metadata/table metadata-provider (mt/id :orders))
               orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -276,7 +276,7 @@
 
 (deftest ^:parallel cumulative-count-and-sum-in-expressions-test
   (testing "Cumulative count should work inside expressions (#13634, #15118)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -304,7 +304,7 @@
 
 (deftest ^:parallel expressions-inside-cumulative-aggregations-test
   (testing "Expressions inside of cumulative aggregations should work correctly"
-    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -322,7 +322,7 @@
                    (qp/process-query query)))))))))
 
 (deftest ^:parallel mixed-cumulative-and-non-cumulative-aggregations-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           orders            (lib.metadata/table metadata-provider (mt/id :orders))
           orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))

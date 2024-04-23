@@ -515,36 +515,35 @@
        (when (.next rset)
          (.getString rset 1))))))
 
-;; don't redef if already definied -- test extensions override this impl
-(when-not (get (methods sql-jdbc.sync/excluded-schemas) :oracle)
-  (defmethod sql-jdbc.sync/excluded-schemas :oracle
-    [_]
-    #{"ANONYMOUS"
-      ;; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
-      "APEX_040200"
-      "APPQOSSYS"
-      "AUDSYS"
-      "CTXSYS"
-      "DBSNMP"
-      "DIP"
-      "GSMADMIN_INTERNAL"
-      "GSMCATUSER"
-      "GSMUSER"
-      "LBACSYS"
-      "MDSYS"
-      "OLAPSYS"
-      "ORDDATA"
-      "ORDSYS"
-      "OUTLN"
-      "RDSADMIN"
-      "SYS"
-      "SYSBACKUP"
-      "SYSDG"
-      "SYSKM"
-      "SYSTEM"
-      "WMSYS"
-      "XDB"
-      "XS$NULL"}))
+(defmethod sql-jdbc.sync/excluded-schemas :oracle
+  [_]
+  #{"ANONYMOUS"
+    ;; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
+    "APEX_040200"
+    "APPQOSSYS"
+    "AUDSYS"
+    "CTXSYS"
+    "DBSNMP"
+    "DIP"
+    "DVSYS"
+    "GSMADMIN_INTERNAL"
+    "GSMCATUSER"
+    "GSMUSER"
+    "LBACSYS"
+    "MDSYS"
+    "OLAPSYS"
+    "ORDDATA"
+    "ORDSYS"
+    "OUTLN"
+    "RDSADMIN"
+    "SYS"
+    "SYSBACKUP"
+    "SYSDG"
+    "SYSKM"
+    "SYSTEM"
+    "WMSYS"
+    "XDB"
+    "XS$NULL"})
 
 (defmethod driver/escape-entity-name-for-metadata :oracle
   [_ entity-name]

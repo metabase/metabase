@@ -593,7 +593,11 @@
     :fingerprint
 
     ;; Does this driver support window functions like cumulative count and cumulative sum? (default: false)
-    :window-functions})
+    :window-functions/cumulative
+
+    ;; Does this driver support the new `:offset` MBQL clause added in 50? (i.e. SQL `lag` and `lead` or equivalent
+    ;; functions)
+    :window-functions/offset})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

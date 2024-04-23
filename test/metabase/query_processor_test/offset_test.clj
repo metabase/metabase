@@ -16,7 +16,7 @@
      (t/zoned-date-time (t/zone-id "UTC")))))
 
 (deftest ^:parallel simple-offset-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           orders            (lib.metadata/table metadata-provider (mt/id :orders))
           orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -32,9 +32,9 @@
                                 (assoc-in [:middleware :format-rows?] false))]
       (mt/with-native-query-testing-context query
         ;;       1               2         3
-        (is (= [[#t "2016-01-01"  42156.94 nil]
-                [#t "2017-01-01" 205256.40 42156.94]
-                [#t "2018-01-01" 510043.47 205256.40]]
+        (is (= [[#t "2016-01-01" 42156.94  nil]
+                [#t "2017-01-01" 205256.4  42156.94]
+                [#t "2018-01-01" 510043.47 205256.4]]
                (mt/formatted-rows
                 [->local-date 2.0 2.0]
                 (qp/process-query query))))))))
@@ -43,7 +43,7 @@
 (comment
   (deftest ^:parallel offset-no-breakout-test
     (testing "Should be able to use an offset as a plain expression (not an aggregation) and use top-level order-by"
-      (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+      (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
         (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
               orders            (lib.metadata/table metadata-provider (mt/id :orders))
               orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
@@ -76,7 +76,7 @@
 
 (deftest ^:parallel offset-aggregation-test
   (testing "yearly growth (this year sales vs last year sales) (#5606)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -102,7 +102,7 @@
                                     (qp/process-query query)))))))))
 
 (deftest ^:parallel offset-aggregation-two-breakouts-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           orders            (lib.metadata/table metadata-provider (mt/id :orders))
           orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -139,7 +139,7 @@
                                   (qp/process-query query))))))))
 
 (deftest ^:parallel rolling-window-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
     (testing "Rolling windows: rolling total of sales last 3 months (#8977)"
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
@@ -167,7 +167,7 @@
                                     (qp/process-query query)))))))))
 
 (deftest ^:parallel lead-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
     (testing "Rolling windows: sales for current month and next month (LEAD instead of LAG)"
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders            (lib.metadata/table metadata-provider (mt/id :orders))

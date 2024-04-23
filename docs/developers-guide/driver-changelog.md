@@ -13,11 +13,11 @@ title: Driver interface changelog
   efficient way possible. This is currently only required for drivers that support the `:uploads` feature, and has
   a default implementation for JDBC-based drivers.
 
-- New feature `:window-functions` has been added. Drivers that implement this method are expected to implement the
-  cumulative sum (`:cum-sum`) and cumulative count (`:cum-count`) aggregation clauses in their native query language.
-  For non-SQL drivers (drivers not based on our `:sql` or `:sql-jdbc` drivers), this feature flag is set to `false` by
-  default; the old (broken) post-processing implementations of cumulative aggregations will continue to be used. (See
-  issues [#13634](https://github.com/metabase/metabase/issues/13634) and
+- New feature `:window-functions/cumulative` has been added. Drivers that implement this method are expected to
+  implement the cumulative sum (`:cum-sum`) and cumulative count (`:cum-count`) aggregation clauses in their native
+  query language. For non-SQL drivers (drivers not based on our `:sql` or `:sql-jdbc` drivers), this feature flag is
+  set to `false` by default; the old (broken) post-processing implementations of cumulative aggregations will continue
+  to be used. (See issues [#13634](https://github.com/metabase/metabase/issues/13634) and
   [#15118](https://github.com/metabase/metabase/issues/15118) for more information on why the old implementation is
   broken.)
 
@@ -53,6 +53,10 @@ title: Driver interface changelog
   implementation is working correctly.
 
 - `metabase.driver.common/class->base-type` no longer supports Joda Time classes. They have been deprecated since 2019.
+
+- New feature `:window-functions/offset` has been added to signify that a driver supports the new MBQL `:offset`
+  clause (equivalent of SQL `lead` and `lag` functions). This is enabled by default for `:sql` and `:sql-jdbc`-based
+  drivers. Other drivers should add an implementation for this clause and enable the feature flag.
 
 ## Metabase 0.49.1
 

@@ -81,7 +81,7 @@
                               :type/DateTimeWithZoneOffset "TIMESTAMP WITH TIME ZONE"
                               :type/DateTimeWithZoneID     "TIMESTAMP WITH TIME ZONE"
                               :type/Decimal                "DECIMAL"
-                              :type/Float                  "BINARY_FLOAT"
+                              :type/Float                  "BINARY_DOUBLE"
                               :type/Integer                "INTEGER"
                               :type/Text                   "VARCHAR2(4000)"}]
   (defmethod sql.tx/field-base-type->sql-type [:oracle base-type] [_ _] sql-type))
