@@ -10,7 +10,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   #_[metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])
        :clj  ([java-time.api :as jt]
@@ -170,33 +170,24 @@
                                     (lib.options/with-options {}))
                           "Doohickey"]]))))
 
-;; TODO TB legacy macro test, delete or port
-#_(deftest ^:parallel underlying-records-apply-test-3
+(deftest ^:parallel underlying-records-apply-test-3
   (testing "metric over time"
-    (let [metric   {:description "Orders with a subtotal of $100 or more."
-                    :archived false
-                    :updated-at "2023-10-04T20:11:34.029582"
-                    :lib/type :metadata/legacy-metric
-                    :definition
-                    {"source-table" (meta/id :orders)
-                     "aggregation" [["count"]]
-                     "filter" [">=" ["field" (meta/id :orders :subtotal) nil] 100]}
-                    :table-id (meta/id :orders)
-                    :name "Large orders"
-                    :caveats nil
-                    :entity-id "NWMNcv_yhhZIT7winoIdi"
-                    :how-is-this-calculated nil
-                    :show-in-getting-started false
-                    :id 1
-                    :database (meta/id)
-                    :points-of-interest nil
-                    :creator-id 1
-                    :created-at "2023-10-04T20:11:34.029582"}
+    (let [metric-id 101
+          metric-card {:description "Orders with a subtotal of $100 or more."
+                       :lib/type :metadata/card
+                       :type :metric
+                       :dataset-query {:type     :query
+                                       :database (meta/id)
+                                       :query    {:source-table (meta/id :orders)
+                                                  :aggregation  [[:count]]
+                                                  :filter       [:>= [:field (meta/id :orders :subtotal) nil] 100]}}
+                       :database-id (meta/id)
+                       :name "Large orders"
+                       :id metric-id}
           provider (lib/composed-metadata-provider
                     meta/metadata-provider
-                    (providers.mock/mock-metadata-provider {:metrics [metric]}))]
-      (underlying-state (-> (lib/query provider (meta/table-metadata :orders))
-                            (lib/aggregate metric)
+                    (providers.mock/mock-metadata-provider {:cards [metric-card]}))]
+      (underlying-state (-> (lib/query provider (lib.metadata/card provider metric-id))
                             (lib/breakout (lib/with-temporal-bucket
                                             (meta/field-metadata :orders :created-at)
                                             :month)))
@@ -205,12 +196,8 @@
                         [last-month]
                         (fn [_agg-dim [breakout-dim]]
                           (let [monthly-breakout (-> (:column-ref breakout-dim)
-                                                     (lib.options/with-options {:temporal-unit :month}))
-                                subtotal         (-> (meta/field-metadata :orders :subtotal)
-                                                     lib/ref
-                                                     (lib.options/with-options {}))]
-                            [[:=  {} monthly-breakout last-month]
-                             [:>= {} subtotal 100]]))))))
+                                                     (lib.options/with-options {:temporal-unit :month}))]
+                            [[:=  {} monthly-breakout last-month]]))))))
 
 (deftest ^:parallel multiple-aggregations-multiple-breakouts-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
