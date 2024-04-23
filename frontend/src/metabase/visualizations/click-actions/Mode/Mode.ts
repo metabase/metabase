@@ -1,4 +1,4 @@
-import type { SdkClickActionExtensionsConfig } from "embedding-sdk/lib/question-extensions";
+import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import { queryDrill } from "metabase/querying";
 import type { DrillThruDisplayInfo } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -12,16 +12,16 @@ import type {
 export class Mode {
   _question: Question;
   _queryMode: QueryClickActionsMode;
-  _extensions?: SdkClickActionExtensionsConfig;
+  _plugins?: SdkClickActionPluginsConfig;
 
   constructor(
     question: Question,
     queryMode: QueryClickActionsMode,
-    extensions?: SdkClickActionExtensionsConfig,
+    plugins?: SdkClickActionPluginsConfig,
   ) {
     this._question = question;
     this._queryMode = queryMode;
-    this._extensions = extensions;
+    this._plugins = plugins;
   }
 
   queryMode() {
@@ -52,8 +52,8 @@ export class Mode {
       actions = mode.fallback(props);
     }
 
-    if (this._extensions?.mapClickActions) {
-      actions = this._extensions.mapClickActions(actions, {
+    if (this._plugins?.mapQuestionClickActions) {
+      actions = this._plugins.mapQuestionClickActions(actions, {
         value: clicked.value,
         column: clicked.column,
         event: clicked.event,

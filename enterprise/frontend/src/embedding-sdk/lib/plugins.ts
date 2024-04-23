@@ -5,8 +5,13 @@ export type SdkClickObject = Pick<
   "value" | "column" | "data" | "event"
 >;
 
-export interface SdkClickActionExtensionsConfig {
-  mapClickActions?: (
+export type SdkClickActionPluginsConfig = Pick<
+  SdkPluginsConfig,
+  "mapQuestionClickActions"
+>;
+
+export interface SdkPluginsConfig {
+  mapQuestionClickActions?: (
     clickActions: ClickAction[],
     clicked: SdkClickObject,
   ) => ClickAction[];

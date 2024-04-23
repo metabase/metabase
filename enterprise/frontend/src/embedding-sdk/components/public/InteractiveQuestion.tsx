@@ -2,6 +2,11 @@ import cx from "classnames";
 import { useEffect } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
+import { useSdkSelector } from "embedding-sdk/store";
+import {
+  getPlugins,
+} from "embedding-sdk/store/selectors";
 import type { SdkClickActionExtensionsConfig } from "embedding-sdk/lib/question-extensions";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
@@ -26,16 +31,20 @@ import type { CardId } from "metabase-types/api";
 interface InteractiveQuestionProps {
   questionId: CardId;
 
-  extensions?: SdkClickActionExtensionsConfig;
+  plugins?: SdkClickActionPluginsConfig;
 }
 
 export const _InteractiveQuestion = ({
   questionId,
-  extensions,
+  plugins: componentPlugins,
 }: InteractiveQuestionProps): JSX.Element | null => {
+
+  const globalPlugins = useSdkSelector(getPlugins);
+
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
-  const mode = question && getEmbeddingMode(question, extensions);
+  const plugins = componentPlugins || globalPlugins;
+  const mode = question && getEmbeddingMode(question, plugins || undefined);
   const card = useSelector(getCard);
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);

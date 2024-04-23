@@ -1,4 +1,4 @@
-import type { SdkClickActionExtensionsConfig } from "embedding-sdk/lib/question-extensions";
+import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import type Question from "metabase-lib/v1/Question";
 
 import { Mode } from "../Mode";
@@ -11,7 +11,7 @@ export function getMode(question: Question): Mode | null {
 
 export function getEmbeddingMode(
   question: Question,
-  extensions?: SdkClickActionExtensionsConfig,
+  plugins?: SdkClickActionPluginsConfig,
 ): Mode | null {
-  return new Mode(question, EmbeddingSdkMode, extensions);
+  return new Mode(question, EmbeddingSdkMode, plugins);
 }
