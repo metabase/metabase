@@ -17,7 +17,7 @@ import {
 // ACTION TYPES AND ACTION CREATORS
 
 export const reloadSettings = () => async (dispatch, getState) => {
-  await Promise.all([
+  return await Promise.all([
     dispatch(refreshSettingsList()),
     dispatch(refreshSiteSettings()),
   ]);

@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { useEffect, useState } from "react";
 
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
@@ -13,12 +14,10 @@ import QueryVisualization from "metabase/query_builder/components/QueryVisualiza
 import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
 import { getMetadata } from "metabase/selectors/metadata";
 import { CardApi } from "metabase/services";
-import { Box, Group, Text } from "metabase/ui";
+import { Box, Group } from "metabase/ui";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, Dataset } from "metabase-types/api";
-
-import { useEmbeddingContext } from "../../context";
 
 interface QueryVisualizationProps {
   questionId: CardId;
@@ -33,11 +32,10 @@ type State = {
   resultError?: Dataset | string | null;
 };
 
-export const StaticQuestion = ({
+const _StaticQuestion = ({
   questionId,
   showVisualizationSelector,
 }: QueryVisualizationProps): JSX.Element | null => {
-  const { isInitialized, isLoggedIn } = useEmbeddingContext();
   const metadata = useSelector(getMetadata);
 
   const [{ loading, card, result, cardError, resultError }, setState] =
@@ -84,18 +82,8 @@ export const StaticQuestion = ({
   };
 
   useEffect(() => {
-    if (!isInitialized || !isLoggedIn) {
-      setState({
-        loading: false,
-        card: null,
-        result: null,
-        cardError: null,
-        resultError: null,
-      });
-    } else {
-      loadCardData({ questionId });
-    }
-  }, [isInitialized, isLoggedIn, questionId]);
+    loadCardData({ questionId });
+  }, [questionId]);
 
   const changeVisualization = (newQuestion: Question) => {
     setState({
@@ -104,18 +92,6 @@ export const StaticQuestion = ({
       loading: false,
     });
   };
-
-  if (!isInitialized) {
-    return null;
-  }
-
-  if (!isLoggedIn) {
-    return (
-      <div>
-        <Text>You should be logged in to see this content.</Text>
-      </div>
-    );
-  }
 
   const isLoading = loading || (!result && !resultError);
 
@@ -165,3 +141,5 @@ export const StaticQuestion = ({
     </LoadingAndErrorWrapper>
   );
 };
+
+export const StaticQuestion = withPublicComponentWrapper(_StaticQuestion);

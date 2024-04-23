@@ -1,5 +1,6 @@
 import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName } from "metabase/ui";
+import type { IconName, IconProps } from "metabase/ui";
+import type { PaginationRequest, PaginationResponse } from "metabase-types/api";
 
 import type { CardDisplayType } from "./card";
 import type { DatabaseId } from "./database";
@@ -102,11 +103,11 @@ export interface CollectionItem {
   "last-edit-info"?: LastEditInfo;
   location?: string;
   effective_location?: string;
-  getIcon: () => { name: IconName };
+  getIcon: () => IconProps;
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;
   setPinned?: (isPinned: boolean) => void;
-  setCollection?: (collection: Collection) => void;
+  setCollection?: (collection: Pick<Collection, "id">) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
 }
 
@@ -119,21 +120,16 @@ export interface CollectionListQuery {
   tree?: boolean;
 }
 
-export interface ListCollectionItemsRequest {
+export type ListCollectionItemsRequest = {
   id: CollectionId;
   models?: CollectionItemModel[];
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
-  limit?: number;
-  offset?: number;
   sort_column?: "name" | "last_edited_at" | "last_edited_by" | "model";
   sort_direction?: "asc" | "desc";
-}
+} & PaginationRequest;
 
-export interface ListCollectionItemsResponse {
+export type ListCollectionItemsResponse = {
   data: CollectionItem[];
   models: CollectionItemModel[] | null;
-  limit: number;
-  offset: number;
-  total: number;
-}
+} & PaginationResponse;

@@ -192,6 +192,7 @@
   filterable-column-operators
   filter-clause
   filter-operator
+  filter-parts
   find-filter-for-legacy-filter
   find-filterable-column-for-legacy-ref
   and
@@ -303,6 +304,7 @@
   describe-temporal-interval
   describe-relative-datetime
   available-temporal-buckets
+  raw-temporal-bucket
   temporal-bucket
   with-temporal-bucket]
  [lib.util

@@ -94,14 +94,9 @@
 
 (defn- set-default-permission-values!
   [group]
-  ;; New groups get *no* permissions by default
   (t2/with-transaction [_conn]
     (doseq [db-id (t2/select-pks-vec :model/Database)]
-      (data-perms/set-database-permission! group db-id :perms/data-access           :no-self-service)
-      (data-perms/set-database-permission! group db-id :perms/download-results      :no)
-      (data-perms/set-database-permission! group db-id :perms/manage-table-metadata :no)
-      (data-perms/set-database-permission! group db-id :perms/native-query-editing  :no)
-      (data-perms/set-database-permission! group db-id :perms/manage-database       :no))))
+      (data-perms/set-new-group-permissions! group db-id (u/the-id (all-users))))))
 
 (t2/define-after-insert :model/PermissionsGroup
   [group]

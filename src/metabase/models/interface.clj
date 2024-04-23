@@ -43,7 +43,6 @@
 (p/import-vars
  [models.dispatch
   toucan-instance?
-  InstanceOf
   instance-of?
   model
   instance])
@@ -339,9 +338,7 @@
 
 (def ^{:arglists '([s])} ^:private validate-cron-string
   (let [validator (mc/validator u.cron/CronScheduleString)]
-    (fn [s]
-      (when (validator s)
-        s))))
+    (partial mu/validate-throw validator)))
 
 (def transform-cron-string
   "Transform for encrypted json."
@@ -471,8 +468,8 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 
 ;; --- helper fns
-(defn pre-update-changes
-  "Returns the changes used for pre-update hooks.
+(defn changes-with-pk
+  "The row merged with the changes in pre-update hooks.
   This is to match the input of pre-update for toucan1 methods"
   [row]
   (t2.protocols/with-current row (merge (t2.model/primary-key-values-map row)
@@ -723,3 +720,14 @@
     (let [key->hydrated-items (instance-key->hydrated-data-fn)]
       (for [item instances]
         (assoc item hydration-key (get key->hydrated-items (get item instance-key) default))))))
+
+(defmulti exclude-internal-content-hsql
+  "Returns a HoneySQL expression to exclude instances of the model that were created automatically as part of internally
+   used content, such as Metabase Analytics, the sample database, or the sample dashboard. If a `table-alias` (string
+   or keyword) is provided any columns will have a table alias in the returned expression."
+  {:arglists '([model & {:keys [table-alias]}])}
+  dispatch-on-model)
+
+(defmethod exclude-internal-content-hsql :default
+  [_model & _]
+  [:= [:inline 1] [:inline 1]])

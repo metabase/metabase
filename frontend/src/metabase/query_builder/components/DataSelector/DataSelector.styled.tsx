@@ -95,6 +95,7 @@ export const EmptyStateContainer = styled.div`
 
 export const TableSearchContainer = styled.div`
   padding: 0.5rem;
+  border-bottom: 1px solid ${color("border")};
 `;
 
 export const TriggerContainer = styled.div`
