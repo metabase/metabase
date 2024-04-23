@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { updateSetting } from "metabase/admin/settings/settings";
 import { useSendProductFeedbackMutation } from "metabase/api/product-feedback";
 import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
@@ -12,6 +11,7 @@ import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 
 import { EmbedHomepageView } from "./EmbedHomepageView";
 import { FeedbackModal } from "./FeedbackModal";
+import { dismissEmbeddingHomepage } from "./actions";
 import type { EmbedHomepageDismissReason } from "./types";
 
 export const EmbedHomepage = () => {
@@ -60,7 +60,7 @@ export const EmbedHomepage = () => {
     if (reason === "dismissed-run-into-issues") {
       setFeedbackModalOpened(true);
     } else {
-      dispatch(updateSetting({ key: "embedding-homepage", value: reason }));
+      dispatch(dismissEmbeddingHomepage(reason));
     }
   };
 
@@ -71,12 +71,7 @@ export const EmbedHomepage = () => {
     comment?: string;
     email?: string;
   }) => {
-    dispatch(
-      updateSetting({
-        key: "embedding-homepage",
-        value: "dismiss-run-into-issues",
-      }),
-    );
+    dispatch(dismissEmbeddingHomepage("dismissed-run-into-issues"));
 
     setFeedbackModalOpened(false);
     sendProductFeedback({

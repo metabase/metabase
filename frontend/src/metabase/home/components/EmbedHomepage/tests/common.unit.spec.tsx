@@ -167,7 +167,7 @@ describe("EmbedHomepage (OSS)", () => {
       const lastCall = getLastHomepageSettingSettingCall();
 
       const body = await lastCall?.request?.json();
-      expect(body).toEqual({ value: "dismiss-run-into-issues" });
+      expect(body).toEqual({ value: "dismissed-run-into-issues" });
 
       const feedbackBody = await getLastFeedbackCall()?.request?.json();
 
@@ -196,7 +196,7 @@ describe("EmbedHomepage (OSS)", () => {
 
       const lastCall = getLastHomepageSettingSettingCall();
       const body = await lastCall?.request?.json();
-      expect(body).toEqual({ value: "dismiss-run-into-issues" });
+      expect(body).toEqual({ value: "dismissed-run-into-issues" });
 
       const feedbackBody = await getLastFeedbackCall()?.request?.json();
 
