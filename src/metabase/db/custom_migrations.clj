@@ -1202,9 +1202,18 @@
                                   :dashboardcard_series]]
                 (when-let [values (seq (table-name->rows table-name))]
                   (t2/query {:insert-into table-name :values values})))
-              (t2/query {:insert-into :permissions
-                         :values      [{:object   (format "/collection/%s/" example-collection-id)
-                                        :group_id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))}]})
+              (let [group-id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))]
+                (t2/query {:insert-into :permissions
+                           :values      [{:object   (format "/collection/%s/" example-collection-id)
+                                          :group_id group-id}]})
+                (t2/query {:insert-into :data_permissions
+                           :values      (for [[perm-type perm-value] {"perms/view-data"        "unrestricted"
+                                                                      "perms/create-queries"   "query-builder-and-native"
+                                                                      "perms/download-results" "one-million-rows"}]
+                                          {:perm_type  perm-type
+                                           :perm_value perm-value
+                                           :group_id   group-id
+                                           :db_id      expected-sample-db-id})}))
               (t2/query {:insert-into :setting
                          :values      [{:key   "example-dashboard-id"
                                         :value (str example-dashboard-id)}]})))))))
