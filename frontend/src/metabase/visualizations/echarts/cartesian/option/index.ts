@@ -110,7 +110,6 @@ export const getCartesianChartOption = (
     ...getSharedEChartsOptions(isPlaceholder),
     grid: {
       ...chartMeasurements.padding,
-      containLabel: true,
     },
     dataset: echartsDataset,
     series: seriesOption,
