@@ -525,14 +525,13 @@
                           (range (lib/stage-count query)))]
     (empty? all-joins)))
 
-(defn- model->single-table-id
-  "For models that depend on only a single table, return the other table, otherwise return nil. Doesn't support native."
+(defn- only-table-id
+  "For models that depend on only one table, return its id, otherwise return nil. Doesn't support native queries."
   [model]
   ; dataset_query can be empty in tests
   (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)]
     (when (and (mbql? model) (no-joins? query))
       (lib/source-table-id query))))
-
 
 (defn- invalidate-cached-models!
   "Invalidate the model caches for all cards whose `:based_on_upload` value resolves to the given table."
@@ -542,10 +541,10 @@
                                        :table_id (:id table)
                                        :type     :model
                                        :archived false)
-                            (filter (comp #{(:id table)} model->single-table-id))
+                            (filter (comp #{(:id table)} only-table-id))
                             (map :id)
                             seq)]
-    ;; Ideally we would do all the filtering in the query, but we would need an agnostic way to handle the JSON column.
+    ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
     (persisted-info/invalidate! {:id [:in model-ids]})))
 
 (defn- update-with-csv! [database table file & {:keys [replace-rows?]}]
@@ -756,7 +755,7 @@
         has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
     (for [model models]
       (m/assoc-some model :based_on_upload (when (has-uploadable-table? model)
-                                             (model->single-table-id model))))))
+                                             (only-table-id model))))))
 
 (mi/define-batched-hydration-method based-on-upload
   :based_on_upload
