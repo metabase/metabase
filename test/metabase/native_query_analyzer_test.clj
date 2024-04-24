@@ -16,6 +16,19 @@
       (binding [query-analyzer/*parse-queries-in-test?* true]
         (is (false? (#'query-analyzer/active?)))))))
 
+(deftest ^:parallel field-quoting-test
+  (testing "unquoted fields are case-insensitive"
+    (is (= [:= [:lower :f.name] "test"]
+           (#'query-analyzer/field-query :f.name "test")
+           (#'query-analyzer/field-query :f.name "tEsT"))))
+  (testing "quoted fields are case-sensitive"
+    (is (= [:= :f.name "TEST"]
+           (#'query-analyzer/field-query :f.name "\"TEST\""))))
+  (testing "escaping inside quoted fields should be handled properly"
+    (is (= [:= :f.name "Perv\"e\"rse"]
+           ;; this is "Perv""e""rse"
+           (#'query-analyzer/field-query :f.name "\"Perv\"\"e\"\"rse\"")))))
+
 (deftest ^:parallel field-matching-test
   (binding [query-analyzer/*parse-queries-in-test?* true]
     (let [q (fn [sql]

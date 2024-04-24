@@ -11,6 +11,7 @@
   Query rewriting happens with the `replace-names` function."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [macaw.core :as macaw]
    [metabase.config :as config]
    [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
@@ -44,7 +45,7 @@
   "Exact match for quoted fields, case-insensitive match for non-quoted fields"
   [field value]
   (if (= (first value) \")
-    [:= field (subs value 1 (dec (count value)))]
+    [:= field (-> value (subs 1 (dec (count value))) (str/replace "\"\"" "\""))]
     [:= [:lower field] (u/lower-case-en value)]))
 
 (defn- table-query
