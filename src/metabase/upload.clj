@@ -4,6 +4,7 @@
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
    [java-time.api :as t]
@@ -21,6 +22,7 @@
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
+   [metabase.models.persisted-info :as persisted-info]
    [metabase.models.table :as table]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -634,6 +636,47 @@
       (let [error-message (extra-and-missing-error-markdown extra missing)]
         (throw (ex-info error-message {:status-code 422}))))))
 
+(defn- mbql? [model]
+  (= "query" (name (:query_type model "query"))))
+
+(defn- no-joins?
+  "Returns true if `query` has no explicit joins in it, otherwise false."
+  [query]
+  ;; TODO while it's unlikely (at the time of writing this) that uploaded tables have FKs, we should probably check
+  ;;      for implicit joins as well.
+  (->> (range (lib/stage-count query))
+       (not-any? (fn [stage-idx]
+                   (lib/joins query stage-idx)))))
+
+(defn- only-table-id
+  "For models that depend on only one table, return its id, otherwise return nil. Doesn't support native queries."
+  [model]
+  ; dataset_query can be empty in tests
+  (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty
+                           ((fn [query]
+                              (walk/postwalk
+                               (fn [x]
+                                 (if (:lib/type x)
+                                   (update x :lib/type keyword)
+                                   x))
+                               query))))]
+    (when (and (mbql? model) (no-joins? query))
+      (lib/source-table-id query))))
+
+(defn- invalidate-cached-models!
+  "Invalidate the model caches for all cards whose `:based_on_upload` value resolves to the given table."
+  [table]
+  ;; NOTE: It is important that this logic is kept in sync with `model-hydrate-based-on-upload`
+  (when-let [model-ids (->> (t2/select [:model/Card :id :dataset_query]
+                                       :table_id (:id table)
+                                       :type     "model"
+                                       :archived false)
+                            (filter (comp #{(:id table)} only-table-id))
+                            (map :id)
+                            seq)]
+    ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
+    (persisted-info/invalidate! {:card_id [:in model-ids]})))
+
 (defn- append-csv!*
   [database table file]
   (with-open [reader (bom/bom-reader file)]
@@ -663,6 +706,7 @@
       (when create-auto-pk?
         (let [auto-pk-field (table-id->auto-pk-column (:id table))]
           (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
+      (invalidate-cached-models! table)
       {:row-count (count parsed-rows)})))
 
 (defn- can-append-error
@@ -718,14 +762,6 @@
               (filter #(can-upload-to-table? (:db %) %))
               (map :id)))))
 
-(defn- no-joins?
-  "Returns true if `query` has no joins in it, otherwise false."
-  [query]
-  (let [all-joins (mapcat (fn [stage]
-                            (lib/joins query stage))
-                          (range (lib/stage-count query)))]
-    (empty? all-joins)))
-
 (mu/defn model-hydrate-based-on-upload
   "Batch hydrates `:based_on_upload` for each item of `models`. Assumes each item of `model` represents a model."
   [models :- [:sequential [:map
@@ -743,15 +779,12 @@
                                    (remove #(false? (:is_upload %)))
                                    (keep :table_id)
                                    set)
-        mbql?                 (fn [model] (= "query" (name (:query_type model "query"))))
         has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
     (for [model models]
-      (m/assoc-some
-       model
-       :based_on_upload
-       (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)] ; dataset_query can be empty in tests
-         (when (and (mbql? model) (has-uploadable-table? model) (no-joins? query))
-           (lib/source-table-id query)))))))
+      ;; NOTE: It is important that this logic is kept in sync with `invalidate-cached-models!`
+      ;; If not, it will mean that the user could modify the table via a given model's page without seeing it update.
+      (m/assoc-some model :based_on_upload (when (has-uploadable-table? model)
+                                             (only-table-id model))))))
 
 (mi/define-batched-hydration-method based-on-upload
   :based_on_upload
