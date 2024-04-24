@@ -591,6 +591,13 @@ BreakoutNullAndEmptyString.args = {
   renderingContext,
 };
 
+export const NoGoodAxisSplit = Template.bind({});
+NoGoodAxisSplit.args = {
+  rawSeries: data.noGoodAxisSplit as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,

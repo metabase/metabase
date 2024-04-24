@@ -56,6 +56,7 @@ import logYScaleCustomYAxisRange from "./log-y-scale-custom-y-axis-range.json";
 import longDimensionNameCutOff37420 from "./long-dimension-name-cut-off-37420.json";
 import messedUpAxis from "./messed-up-axis.json";
 import nativeAutoYSplit from "./native-auto-y-split.json";
+import noGoodAxisSplit from "./no-good-axis-split.json";
 import nullCategoryValueFormatting from "./null-category-value-formatting.json";
 import numberOfInsightsError39608 from "./number-of-insights-error-39608.json";
 import numericXAxisIncludesZero37082 from "./numeric-x-axis-includes-zero-37082.json";
@@ -162,4 +163,5 @@ export const data = {
   incorrectLabelYAxisSplit41285,
   timeSeriesYyyymmddNumbersFormat,
   breakoutNullAndEmptyString,
+  noGoodAxisSplit,
 };
