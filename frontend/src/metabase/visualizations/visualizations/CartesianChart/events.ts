@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { getObjectKeys } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
+import { checkNumber, isNotNull } from "metabase/lib/types";
 import {
   ORIGINAL_INDEX_DATA_KEY,
   X_AXIS_DATA_KEY,
@@ -433,47 +433,52 @@ export const getBrushData = (
     chartModel.dimensionModel.columnIndex,
   );
 
-  if (range) {
-    const column = chartModel.dimensionModel.column;
-    const card = rawSeries[0].card;
-    const question = new Question(card, {}); // FIXME: pass metadata
-    const query = question.query();
-    const stageIndex = -1;
-
-    const [start, end] = range;
-
-    if (isTimeSeries) {
-      const nextQuery = Lib.updateTemporalFilter(
-        query,
-        stageIndex,
-        column,
-        new Date(start).toISOString(),
-        new Date(end).toISOString(),
-      );
-      const updatedQuestion = question.setQuery(nextQuery);
-      const nextCard = updatedQuestion.card();
-
-      return {
-        nextCard,
-        previousCard: card,
-      };
-    } else {
-      const nextQuery = Lib.updateNumericFilter(
-        query,
-        stageIndex,
-        column,
-        start,
-        end,
-      );
-      const updatedQuestion = question.setQuery(nextQuery);
-      const nextCard = updatedQuestion.card();
-
-      return {
-        nextCard,
-        previousCard: card,
-      };
-    }
+  if (!range) {
+    return null;
   }
 
-  return null;
+  const column = chartModel.dimensionModel.column;
+  const card = rawSeries[0].card;
+  const question = new Question(card, {}); // FIXME: pass metadata
+  const query = question.query();
+  const stageIndex = -1;
+
+  // https://echarts.apache.org/en/api.html#action.brush
+  // `coordRange` will be a nested array only if `brushType` is `rect` or
+  // `polygon`, but since we only use `lineX` we can assert the values to be
+  // numbers
+  const start = checkNumber(range[0]);
+  const end = checkNumber(range[1]);
+
+  if (isTimeSeries) {
+    const nextQuery = Lib.updateTemporalFilter(
+      query,
+      stageIndex,
+      column,
+      new Date(start).toISOString(),
+      new Date(end).toISOString(),
+    );
+    const updatedQuestion = question.setQuery(nextQuery);
+    const nextCard = updatedQuestion.card();
+
+    return {
+      nextCard,
+      previousCard: card,
+    };
+  }
+
+  const nextQuery = Lib.updateNumericFilter(
+    query,
+    stageIndex,
+    column,
+    start,
+    end,
+  );
+  const updatedQuestion = question.setQuery(nextQuery);
+  const nextCard = updatedQuestion.card();
+
+  return {
+    nextCard,
+    previousCard: card,
+  };
 };
