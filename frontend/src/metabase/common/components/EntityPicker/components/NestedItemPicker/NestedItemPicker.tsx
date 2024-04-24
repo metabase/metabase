@@ -29,7 +29,7 @@ export interface NestedItemPickerProps<
   path: PickerState<Item, Query>;
   isFolder: IsFolder<Id, Model, Item>;
   listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
-  shouldDisableItem?: (item: Item, isReadOnlyCollection?: boolean) => boolean;
+  shouldDisableItem?: (item: Item) => boolean;
 }
 
 export function NestedItemPicker<
@@ -71,10 +71,6 @@ export function NestedItemPicker<
               isSelectedItem(selectedItem, lastSelectedItem),
           );
 
-          // if the collection is read-only, all its items are as well
-          const isReadOnlyCollection =
-            path?.[index - 1]?.selectedItem?.can_write === false || false;
-
           return (
             <ListBox
               key={generateKey(query)}
@@ -87,11 +83,7 @@ export function NestedItemPicker<
                   options={options}
                   onClick={(item: Item) => handleClick(item)}
                   isCurrentLevel={isCurrentLevel}
-                  shouldDisableItem={
-                    shouldDisableItem
-                      ? item => shouldDisableItem(item, isReadOnlyCollection)
-                      : undefined
-                  }
+                  shouldDisableItem={shouldDisableItem}
                   isFolder={isFolder}
                 />
               </ErrorBoundary>

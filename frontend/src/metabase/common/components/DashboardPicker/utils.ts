@@ -3,7 +3,6 @@ import _ from "underscore";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import type {
   CollectionId,
-  CollectionItem,
   CollectionItemModel,
   ListCollectionItemsRequest,
 } from "metabase-types/api";
@@ -58,12 +57,10 @@ export const getStateFromIdPath = ({
   idPath,
   namespace,
   models = ["card", "dataset"],
-  collectionItems,
 }: {
   idPath: CollectionId[];
   namespace?: "snippets";
   models?: CollectionItemModel[];
-  collectionItems: Partial<Record<CollectionId, CollectionItem>>;
 }): PickerState<DashboardPickerItem, ListCollectionItemsRequest> => {
   const statePath: PickerState<
     DashboardPickerItem,
@@ -74,7 +71,6 @@ export const getStateFromIdPath = ({
         name: "",
         model: "collection",
         id: idPath[0],
-        can_write: collectionItems?.[idPath[0]]?.can_write ?? false,
       },
     },
   ];
@@ -93,7 +89,6 @@ export const getStateFromIdPath = ({
             name: "",
             model: "collection",
             id: nextLevelId,
-            can_write: collectionItems?.[nextLevelId]?.can_write ?? false,
           }
         : null,
     });

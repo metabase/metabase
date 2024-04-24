@@ -25,6 +25,7 @@ export const createMockCollectionItem = (
   collection_preview: true,
   collection_id: null,
   fully_parameterized: true,
+  collection_id: null,
   type: null,
   getIcon: () => ({ name: "question" }),
   getUrl: () => "/question/1",

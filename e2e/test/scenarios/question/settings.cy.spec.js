@@ -463,7 +463,6 @@ describe("scenarios > question > settings", () => {
       // This next assertion might not catch bugs where the modal displays after
       // a quick delay. With the previous presentation of this bug, the modal
       // was immediately visible, so I'm not going to add any waits.
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       modal().should("not.exist");
     });
   });

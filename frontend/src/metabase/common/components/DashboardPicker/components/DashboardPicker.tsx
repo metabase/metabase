@@ -15,8 +15,6 @@ import type {
   ListCollectionItemsRequest,
   CollectionItemModel,
   Dashboard,
-  CollectionId,
-  CollectionItem,
 } from "metabase-types/api";
 
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
@@ -29,8 +27,6 @@ import {
 import type { DashboardPickerOptions, DashboardPickerItem } from "../types";
 import { getCollectionIdPath, getStateFromIdPath, isFolder } from "../utils";
 
-import { dumbSelector, getCollectionById } from "./selectors";
-
 export const defaultOptions: DashboardPickerOptions = {
   showPersonalCollections: true,
   showRootCollection: true,
@@ -41,10 +37,7 @@ interface DashboardPickerProps {
   initialValue?: Pick<DashboardPickerItem, "model" | "id">;
   options: DashboardPickerOptions;
   models?: CollectionItemModel[];
-  shouldDisableItem?: (
-    item: DashboardPickerItem,
-    isReadOnlyCollection?: boolean,
-  ) => boolean;
+  shouldDisableItem?: (item: DashboardPickerItem) => boolean;
 }
 
 const useGetInitialCollection = (
@@ -102,7 +95,6 @@ const DashboardPickerInner = (
     getStateFromIdPath({
       idPath: ["root"],
       models,
-      collectionItems: {},
     }),
   );
 
@@ -114,29 +106,19 @@ const DashboardPickerInner = (
   } = useGetInitialCollection(initialValue);
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
-  const collectionsData = useSelector(dumbSelector);
 
   const onFolderSelect = useCallback(
     ({ folder }: { folder: DashboardPickerItem }) => {
       const idPath = getCollectionIdPath(folder, userPersonalCollectionId);
 
-      const collectionItems: Partial<Record<CollectionId, CollectionItem>> = {};
-      for (const id of idPath) {
-        const coll = getCollectionById(id, collectionsData);
-        if (coll) {
-          collectionItems[id] = coll;
-        }
-      }
-
       const newPath = getStateFromIdPath({
         idPath,
         models,
-        collectionItems,
       });
       setPath(newPath);
       onItemSelect(folder);
     },
-    [setPath, onItemSelect, userPersonalCollectionId, models, collectionsData],
+    [setPath, onItemSelect, userPersonalCollectionId, models],
   );
 
   const handleItemSelect = useCallback(
@@ -192,19 +174,9 @@ const DashboardPickerInner = (
           userPersonalCollectionId,
         );
 
-        const collectionItems: Partial<Record<CollectionId, CollectionItem>> =
-          {};
-        for (const id of idPath) {
-          const coll = getCollectionById(id, collectionsData);
-          if (coll) {
-            collectionItems[id] = coll;
-          }
-        }
-
         const newPath = getStateFromIdPath({
           idPath,
           models,
-          collectionItems,
         });
 
         if (currentCollection.can_write) {
