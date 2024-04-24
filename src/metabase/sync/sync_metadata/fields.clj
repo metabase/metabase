@@ -77,9 +77,9 @@
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
     (let [driver          (driver.u/database->driver database)
           schemas?        (driver/database-supports? driver :schemas database)
-          schema-names    (when schemas?
-                            (sync-util/db->sync-schemas database))
-          fields-metadata (fetch-metadata/fields-metadata database :schema-names schema-names)]
+          fields-metadata (if schemas?
+                            (fetch-metadata/fields-metadata database :schema-names (sync-util/db->sync-schemas database))
+                            (fetch-metadata/fields-metadata database))]
       (transduce (comp
                   (partition-by (juxt :table-name :table-schema))
                   (map (fn [table-metadata]
@@ -87,10 +87,8 @@
                                table   (t2/select-one :model/Table
                                                       :db_id (:id database)
                                                       :%lower.name (t2.util/lower-case-en (:table-name fst))
-                                                      {:where [:and
-                                                               sync-util/sync-tables-clause
-                                                               (when schemas?
-                                                                 [:= :%lower.schema (t2.util/lower-case-en (:table-schema fst))])]})
+                                                      :%lower.schema (some-> fst :table-schema t2.util/lower-case-en)
+                                                      {:where sync-util/sync-tables-clause})
                                updated (if table
                                          (try (sync-and-update! table (set table-metadata))
                                               (catch Exception e

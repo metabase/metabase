@@ -208,29 +208,26 @@
     :database_position 0
     :position          0}))
 
-(defn- expected-movie-table
-  []
-  (merge
-   (table-defaults)
-   {:schema              (when *supports-schemas?* "default")
-    :name                "movie"
-    :display_name        "Movie"
-    :initial_sync_status "complete"
-    :fields              [(field:movie-id) (field:movie-studio) (field:movie-title)]
-    :description         nil}))
+(defn- expected-movie-table []
+  (merge (table-defaults)
+         {:schema              (when *supports-schemas?* "default")
+          :name                "movie"
+          :display_name        "Movie"
+          :initial_sync_status "complete"
+          :fields              [(field:movie-id) (field:movie-studio) (field:movie-title)]
+          :description         nil}))
 
 (defn- expected-studio-table []
-  (merge
-   (table-defaults)
-   {:schema              (when *supports-schemas?* "public")
-    :name                "studio"
-    :display_name        "Studio"
-    :initial_sync_status "complete"
-    :fields              [(field:studio-name) (field:studio-studio)]
-    :description         ""}))
+  (merge (table-defaults)
+         {:schema              (when *supports-schemas?* "public")
+          :name                "studio"
+          :display_name        "Studio"
+          :initial_sync_status "complete"
+          :fields              [(field:studio-name) (field:studio-studio)]
+          :description         ""}))
 
 (deftest sync-database-test
-  (doseq [supports-schemas? [true #_false]]
+  (doseq [supports-schemas? [true false]]
     (testing (str "[[sync/sync-database!]] works if `driver/supports-schemas?` returns " supports-schemas?)
       (binding [*supports-schemas?*                      supports-schemas?
                 sync-util/*log-exceptions-and-continue?* false]

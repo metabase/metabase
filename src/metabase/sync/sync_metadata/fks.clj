@@ -100,8 +100,7 @@
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging table))
-     (let [schemas?     (driver/database-supports? (driver.u/database->driver database) :schemas database)
-           schema-names (when schemas?
+     (let [schema-names (when (driver/database-supports? (driver.u/database->driver database) :schemas database)
                           [(:schema table)])
            fk-metadata  (into [] (fetch-metadata/fk-metadata database :schema-names schema-names :table-names [(:name table)]))]
        {:total-fks   (count fk-metadata)
