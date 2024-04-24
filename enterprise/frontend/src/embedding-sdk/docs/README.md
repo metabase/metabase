@@ -40,15 +40,18 @@ const apiKeyConfig = {
 }
 
 export default function App() {
-  const { data: [question], isLoading } = useQuestionSearch();
+  const { data: questions, isLoading } = useQuestionSearch();
 
   if (loading) {
     return "Loading…"
   }
 
+  // We just assume the logged in user have access to at least 1 question.
+  const firstQuestion = questions[0]
+
   return (
     <MetabaseProvider config={jwtConfig}>
-      <InteractiveQuestion questionId={question.id} />
+      <InteractiveQuestion questionId={firstQuestion.id} />
     </MetabaseProvider>
   );
 }
