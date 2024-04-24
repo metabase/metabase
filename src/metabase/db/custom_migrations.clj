@@ -1199,12 +1199,15 @@
                                   :report_dashboard
                                   :dashboard_tab
                                   :report_dashboardcard
-                                  :dashboardcard_series]]
+                                  :dashboardcard_series
+                                  :permissions_group
+                                  :data_permissions]]
                 (when-let [values (seq (table-name->rows table-name))]
                   (t2/query {:insert-into table-name :values values})))
-              (t2/query {:insert-into :permissions
-                         :values      [{:object   (format "/collection/%s/" example-collection-id)
-                                        :group_id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))}]})
+              (let [group-id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))]
+                (t2/query {:insert-into :permissions
+                           :values      [{:object   (format "/collection/%s/" example-collection-id)
+                                          :group_id group-id}]}))
               (t2/query {:insert-into :setting
                          :values      [{:key   "example-dashboard-id"
                                         :value (str example-dashboard-id)}]})))))))
@@ -1230,7 +1233,8 @@
                                      :report_card
                                      :parameter_card
                                      :dashboard_tab
-                                     :dashboardcard_series]
+                                     :dashboardcard_series
+                                     :data_permissions]
                          :let [query (cond-> {:select [:*] :from table-name}
                                        (= table-name :collection) (assoc :where [:and
                                                                                  [:= :namespace nil] ; excludes the analytics namespace
