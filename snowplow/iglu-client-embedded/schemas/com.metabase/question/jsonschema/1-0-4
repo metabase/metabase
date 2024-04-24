@@ -68,6 +68,13 @@
       ],
       "minimum": 0,
       "maximum": 2147483647
+    },
+    "custom_expressions_used": {
+      "description": "A list of names of expression functions and aggregations used",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "required": [
