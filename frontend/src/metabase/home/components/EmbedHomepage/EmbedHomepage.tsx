@@ -47,6 +47,8 @@ export const EmbedHomepage = () => {
     getPlan(getSetting(state, "token-features")),
   );
 
+  const utmTags = `?utm_source=${plan}&utm_media=embedding-homepage`;
+
   const initialTab = useMemo(() => {
     // we want to show the interactive tab for EE builds
     // unless it's a starter cloud plan, which is EE build but doesn't have interactive embedding
@@ -94,12 +96,16 @@ export const EmbedHomepage = () => {
         embeddingAutoEnabled={embeddingAutoEnabled}
         licenseActiveAtSetup={licenseActiveAtSetup}
         initialTab={initialTab}
-        interactiveEmbeddingQuickstartUrl={interactiveEmbeddingQuickStartUrl}
-        embeddingDocsUrl={embeddingDocsUrl}
-        // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
-        analyticsDocsUrl="https://www.metabase.com/learn/customer-facing-analytics/"
-        learnMoreInteractiveEmbedUrl={learnMoreInteractiveEmbedding}
-        learnMoreStaticEmbedUrl={learnMoreStaticEmbedding}
+        interactiveEmbeddingQuickstartUrl={
+          interactiveEmbeddingQuickStartUrl + utmTags
+        }
+        embeddingDocsUrl={embeddingDocsUrl + utmTags}
+        analyticsDocsUrl={
+          // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
+          "https://www.metabase.com/learn/customer-facing-analytics/" + utmTags
+        }
+        learnMoreInteractiveEmbedUrl={learnMoreInteractiveEmbedding + utmTags}
+        learnMoreStaticEmbedUrl={learnMoreStaticEmbedding + utmTags}
       />
       <FeedbackModal
         opened={feedbackModalOpened}

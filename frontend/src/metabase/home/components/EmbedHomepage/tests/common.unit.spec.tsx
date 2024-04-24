@@ -27,7 +27,7 @@ describe("EmbedHomepage (OSS)", () => {
     setup();
     expect(screen.getByText("Learn more")).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/static-embedding.html",
+      "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=oss&utm_media=embedding-homepage",
     );
   });
 
