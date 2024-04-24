@@ -3,7 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitQuestionAdhoc,
-  ensureDcChartVisibility,
+  echartsContainer,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -43,7 +43,7 @@ describe("visual tests > visualizations > waterfall", () => {
       },
     });
 
-    ensureDcChartVisibility();
+    echartsContainer();
     cy.createPercySnapshot();
   });
 });

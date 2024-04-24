@@ -11,6 +11,7 @@ import {
   moveDnDKitElement,
   chartPathWithFillColor,
   echartsContainer,
+  getValueLabels,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -538,22 +539,25 @@ describe("scenarios > visualizations > bar chart", () => {
     cy.findAllByTestId("dashcard")
       .contains("[data-testid=dashcard]", "Should split")
       .within(() => {
-        cy.get(".axis.yr").should("exist");
+        // Verify this axis tick exists twice which verifies there are two y-axes
+        echartsContainer().findAllByText("3,000").should("have.length", 2);
       });
 
     cy.findAllByTestId("dashcard")
       .contains("[data-testid=dashcard]", "Multi Series")
       .within(() => {
-        cy.get(".axis.yr").should("exist");
+        echartsContainer().findByText("Average Total by Month");
+        echartsContainer().findByText("Sum Total by Month");
       });
 
     cy.log("Should not produce a split axis graph (#34618)");
     cy.findAllByTestId("dashcard")
       .contains("[data-testid=dashcard]", "Should not Split")
       .within(() => {
-        cy.get(".value-labels").should("contain", "6");
-        cy.get(".value-labels").should("contain", "13");
-        cy.get(".value-labels").should("contain", "19");
+        getValueLabels()
+          .should("contain", "6")
+          .and("contain", "13")
+          .and("contain", "19");
         cy.get(".axis.yr").should("not.exist");
       });
   });

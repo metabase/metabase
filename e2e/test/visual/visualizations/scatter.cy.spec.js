@@ -3,7 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitQuestionAdhoc,
-  ensureDcChartVisibility,
+  echartsContainer,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -40,7 +40,7 @@ describe("visual tests > visualizations > scatter", () => {
       },
     });
 
-    ensureDcChartVisibility();
+    echartsContainer();
     cy.createPercySnapshot();
   });
 
@@ -68,7 +68,7 @@ describe("visual tests > visualizations > scatter", () => {
       },
     });
 
-    ensureDcChartVisibility();
+    echartsContainer();
     cy.createPercySnapshot();
   });
 
@@ -95,7 +95,7 @@ union all select 5, -20, 70`,
       },
     });
 
-    ensureDcChartVisibility();
+    echartsContainer();
     cy.createPercySnapshot();
   });
 });

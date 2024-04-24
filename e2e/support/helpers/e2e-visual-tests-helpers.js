@@ -7,10 +7,6 @@ import {
   svgToDataUri,
 } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 
-export function ensureDcChartVisibility() {
-  cy.get(".dc-chart");
-}
-
 export function echartsContainer() {
   return cy.findByTestId("chart-container");
 }
@@ -71,4 +67,8 @@ export function cartesianChartCircleWithColor(color) {
 
 export function cartesianChartCircleWithColors(colors) {
   return colors.map(color => cartesianChartCircleWithColor(color));
+}
+
+export function getValueLabels() {
+  return echartsContainer().find("text[stroke-width='3']");
 }
