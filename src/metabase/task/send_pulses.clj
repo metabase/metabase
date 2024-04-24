@@ -3,67 +3,36 @@
   (:require
    [clj-time.core :as time]
    [clj-time.predicates :as timepr]
+   [clojure.string :as str]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
-   [metabase.models :refer [PulseChannel]]
    [metabase.models.pulse :as pulse]
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.task-history :as task-history]
    [metabase.pulse]
    [metabase.task :as task]
+   [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.quartz
+    CronTrigger
+    JobDetail
+    JobKey
+    TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
-(defn- log-pulse-exception [pulse-id exception]
-  (log/errorf exception "Error sending Pulse %d" pulse-id))
-
-(def ^:private Hour
-  [:int {:min 0 :max 23}])
-
-(def ^:private Weekday
-  [:fn pulse-channel/day-of-week?])
-
-(def ^:private MonthDay
-  [:enum :first :last :mid :other])
-
-(def ^:private MonthWeek
-  [:enum :first :last :other])
-
-(mu/defn ^:private send-pulses!
-  "Send any `Pulses` which are scheduled to run in the current day/hour. We use the current time and determine the
-  hour of the day and day of the week according to the defined reporting timezone, or UTC. We then find all `Pulses`
-  that are scheduled to run and send them. The `on-error` function is called if an exception is thrown when sending
-  the pulse. Since this is a background process, the exception is only logged and not surfaced to the user. The
-  `on-error` function makes it easier to test for when an error doesn't occur"
-  ([hour weekday monthday monthweek]
-   (send-pulses! hour weekday monthday monthweek log-pulse-exception))
-
-  ([hour :- Hour, weekday :- Weekday, monthday :- MonthDay, monthweek :- MonthWeek, on-error]
-   (log/info "Sending scheduled pulses...")
-   (let [pulse-id->channels (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
-     (doseq [[pulse-id channels] pulse-id->channels]
-       (try
-         (task-history/with-task-history {:task         "send-pulse"
-                                          :task_details {:pulse-id pulse-id}}
-           (log/debugf "Starting Pulse Execution: %d" pulse-id)
-           (when-let [pulse (pulse/retrieve-notification pulse-id :archived false)]
-             (metabase.pulse/send-pulse! pulse :channel-ids (map :id channels)))
-           (log/debugf "Finished Pulse Execution: %d" pulse-id))
-         (catch Throwable e
-           (on-error pulse-id e)))))))
-
 ; Clearing pulse channels is not done synchronously in order to support undoing feature.
 (defn- clear-pulse-channels!
   []
   (when-let [ids-to-delete (seq
-                            (for [channel (t2/select [PulseChannel :id :details]
+                            (for [channel (t2/select [:model/PulseChannel :id :details]
                                                      :id [:not-in {:select   [[:pulse_channel_id :id]]
                                                                    :from     :pulse_channel_recipient
                                                                    :group-by [:pulse_channel_id]
@@ -71,66 +40,133 @@
                               (when (and (empty? (get-in channel [:details :emails]))
                                          (not (get-in channel [:details :channel])))
                                 (:id channel))))]
-    (t2/delete! PulseChannel :id [:in ids-to-delete])))
+    (t2/delete! :model/PulseChannel :id [:in ids-to-delete])))
 
 ;;; ------------------------------------------------------ Task ------------------------------------------------------
 
-(defn- monthday [dt]
-  (cond
-    (timepr/first-day-of-month? dt) :first
-    (timepr/last-day-of-month? dt)  :last
-    (= 15 (time/day dt))            :mid
-    :else                           :other))
+(def ^:private send-pulse-job-key              (jobs/key "metabase.task.send-pulses.send-pulse.job"))
+(def ^:private reprioritize-send-pulse-job-key (jobs/key "metabase.task.send-pulses.reprioritize.job"))
 
-(defn- monthweek [dt]
-  (let [curr-day-of-month  (time/day dt)
-        last-of-month      (time/day (time/last-day-of-the-month dt))
-        start-of-last-week (- last-of-month 7)]
-    (cond
-      (> 8 curr-day-of-month)                  :first
-      (< start-of-last-week curr-day-of-month) :last
-      :else                                    :other)))
+(defn- send-pulse-trigger-key
+  [pulse-id schedule-map]
+  (triggers/key (format "metabase.task.send-pulse.trigger.%d.%s"
+                        pulse-id #p (-> schedule-map
+                                        u.cron/schedule-map->cron-string
+                                        (str/replace " " "_")))))
 
-(jobs/defjob ^{:doc "Triggers the sending of all pulses which are scheduled to run in the current hour"} SendPulses [_]
+(defn ^:private send-pulse-trigger
+  "Build a Quartz trigger to send a pulse."
+  ^CronTrigger
+  [pulse-id schedule-map pc-ids]
+  (when (seq pc-ids)
+   (triggers/build
+      (triggers/with-identity (send-pulse-trigger-key pulse-id schedule-map))
+      (triggers/for-job send-pulse-job-key)
+      (triggers/using-job-data {"pulse-id"    pulse-id
+                                "channel-ids" pc-ids})
+      (triggers/with-schedule
+        (cron/schedule
+         (cron/cron-schedule (u.cron/schedule-map->cron-string schedule-map))
+         ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
+         ;; Just wait until the next sync cycle.
+         ;;
+         ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
+         (cron/with-misfire-handling-instruction-ignore-misfires))))))
+
+(defn update-trigger-if-needed!
+  "Replace or remove the existing trigger if the schedule changes.
+  - Delete exsisting trigger if there are no channels to send to.
+  - Replace existing trigger if the schedule or channels to send to change."
+  ;; TODO maybe this should takes a pc-id then find alls other pcs that have the same schedule modify the trigger
+  ([pulse-id schedule-map]
+   (update-trigger-if-needed! pulse-id schedule-map
+                              (pulse-channel/pulse-channels-same-slot pulse-id schedule-map)))
+  ([pulse-id schedule-map pc-ids]
+   (let [schedule-map (update-vals schedule-map
+                                   #(if (keyword? %)
+                                      (name %)
+                                      %))
+         job          (task/job-info send-pulse-job-key)
+         trigger-key  (send-pulse-trigger-key pulse-id schedule-map)
+         new-trigger  (send-pulse-trigger pulse-id schedule-map pc-ids)]
+     (if-not (some? new-trigger)
+       ;; if there are no channels to send to, remove the trigger
+       (do
+        (log/info "Delete trigger" trigger-key)
+        (task/delete-trigger! trigger-key))
+       (let [trigger-key-name          (.. new-trigger getKey getName)
+             task-schedule             (u.cron/schedule-map->cron-string schedule-map)
+             new-trigger-data          (.getJobDataMap new-trigger)
+             ;; if there are no existing triggers with the same key, schedule and pc-ids
+             ;; then we need to recreate the trigger
+             need-to-recreate-trigger? (->> (:triggers job)
+                                            (some #(when (and (= (:key %) trigger-key-name)
+                                                              (= (:schedule %) task-schedule)
+                                                              (= (:data %) new-trigger-data))
+                                                     %)))]
+         (if (nil? need-to-recreate-trigger?)
+           (do
+            (log/info "need to replace trigger")
+            (task/delete-trigger! trigger-key)
+            (task/add-trigger! new-trigger))
+           (log/info "no op")))))))
+
+(defn- send-pulse!
+  [pulse-id channel-ids]
   (try
-    (task-history/with-task-history {:task "send-pulses"}
-      ;; determine what time it is right now (hour-of-day & day-of-week) in reporting timezone
-      (let [reporting-timezone (driver/report-timezone)
-            now                (if (empty? reporting-timezone)
-                                 (time/now)
-                                 (time/to-time-zone (time/now) (time/time-zone-for-id reporting-timezone)))
-            curr-hour          (time/hour now)
-            ;; clj-time produces values of 1-7 here (Mon -> Sun), so we subtract 1 from it to make the values
-            ;; zero-based to correspond to the indices in pulse-channel/days-of-week
-            curr-weekday       (->> (dec (time/day-of-week now))
-                                    (get pulse-channel/days-of-week)
-                                    :id)
-            curr-monthday      (monthday now)
-            curr-monthweek     (monthweek now)]
-        (send-pulses! curr-hour curr-weekday curr-monthday curr-monthweek))
-      (clear-pulse-channels!))
+    (task-history/with-task-history {:task         "send-pulse"
+                                     :task_details {:pulse-id pulse-id}}
+      (log/debugf "Starting Pulse Execution: %d" pulse-id)
+      (when-let [pulse (pulse/retrieve-notification pulse-id :archived false)]
+        (metabase.pulse/send-pulse! pulse :channel-ids channel-ids))
+      ;; TODO: clean up here too
+      (log/debugf "Finished Pulse Execution: %d" pulse-id))
     (catch Throwable e
-      (log/error e "SendPulses task failed"))))
+      (log/errorf e "Error sending Pulse %d to channel ids: %s" pulse-id (str/join ", " channel-ids)))))
 
-(def ^:private send-pulses-job-key     "metabase.task.send-pulses.job")
-(def ^:private send-pulses-trigger-key "metabase.task.send-pulses.trigger")
+(jobs/defjob ^{:doc "Triggers the sending of all pulses which are scheduled to run in the current hour"}
+  SendPulse
+  [{:keys [pulse-id channel-ids]}]
+  (send-pulse! pulse-id channel-ids))
+
+(defn- reprioritize-send-pulses
+  []
+  (let [pulse-channel-slots (as-> (t2/select :model/PulseChannel :enabled true) results
+                              (group-by #(select-keys % [:pulse_id :schedule_type :schedule_day :schedule_hour :schedule_frame]) results)
+                              (update-vals results #(map :id %)))]
+    (for [[{:keys [pulse_id] :as schedule-map} pc-ids] pulse-channel-slots]
+      (update-trigger-if-needed! pulse_id schedule-map pc-ids))
+    (clear-pulse-channels!)))
+
+(jobs/defjob ^{:doc "Triggers the sending of all pulses which are scheduled to run in the current hour"}
+  RePrioritizeSendPulses
+  [_job-context]
+  (reprioritize-send-pulses))
 
 (defmethod task/init! ::SendPulses [_]
-  (let [job     (jobs/build
-                 (jobs/of-type SendPulses)
-                 (jobs/with-identity (jobs/key send-pulses-job-key)))
-        trigger (triggers/build
-                 (triggers/with-identity (triggers/key send-pulses-trigger-key))
-                 (triggers/start-now)
-                 (triggers/with-schedule
-                   (cron/schedule
-                    ;; run at the top of every hour
-                    (cron/cron-schedule "0 0 * * * ? *")
-                    ;; If send-pulses! misfires, don't try to re-send all the misfired Pulses. Retry only the most
-                    ;; recent misfire, discarding all others. This should hopefully cover cases where a misfire
-                    ;; happens while the system is still running; if the system goes down for an extended period of
-                    ;; time we don't want to re-send tons of (possibly duplicate) Pulses.
-                    ;;
-                    ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html
-                    (cron/with-misfire-handling-instruction-fire-and-proceed))))]
-    (task/schedule-task! job trigger)))
+  (let [send-pulse-job      (jobs/build
+                             (jobs/with-description  "Send Pulse")
+                             (jobs/of-type SendPulse)
+                             (jobs/with-identity send-pulse-job-key)
+                             (jobs/store-durably))
+        re-proritize-job    (jobs/build
+                             (jobs/with-description  "Update send Pulses Priority")
+                             (jobs/of-type RePrioritizeSendPulses)
+                             (jobs/with-identity reprioritize-send-pulse-job-key)
+                             (jobs/store-durably))
+        reproritize-trigger (triggers/build
+                             (triggers/with-identity (triggers/key "metabase.task.send-pulses.reprioritize.trigger"))
+                             (triggers/start-now)
+                             (triggers/with-schedule
+                               (cron/schedule
+                                (cron/cron-schedule "0 0 1 ? * 7 *") ; at 1am on Saturday every week
+                                (cron/with-misfire-handling-instruction-ignore-misfires))))]
+    (task/add-job! send-pulse-job)
+    (task/add-job! re-proritize-job)
+    (task/add-trigger! reproritize-trigger)))
+
+#_(let [trigger-names (map :key (:triggers (task/job-info send-pulse-job-key)))]
+    (doseq [trigger trigger-names]
+      (task/delete-trigger! (triggers/key trigger))))
+(t2/delete! :model/Pulse)
+#_(task/job-info send-pulse-job-key)

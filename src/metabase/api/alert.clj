@@ -219,19 +219,21 @@
                  [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")]))
 
     ;; now update the Alert
-    (let [updated-alert (pulse/update-alert!
-                         (merge
-                          (assoc (only-alert-keys alert-updates)
-                                 :id id)
-                          (when card
-                            {:card (pulse/card->ref card)})
-                          (when (contains? alert-updates :channels)
-                            {:channels channels})
-                          ;; automatically archive alert if it now has no recipients
-                          (when (and (contains? alert-updates :channels)
-                                     (not (seq (:recipients (email-channel alert-updates))))
-                                     (not (slack-channel alert-updates)))
-                            {:archived true})))]
+    (let [update-info (merge
+                                      (assoc (only-alert-keys alert-updates)
+                                             :id id)
+                                      (when card
+                                        {:card (pulse/card->ref card)})
+                                      (when (contains? alert-updates :channels)
+                                        {:channels channels})
+                                      ;; automatically archive alert if it now has no recipients
+                                      (when (and (contains? alert-updates :channels)
+                                                 (not (seq (:recipients (email-channel alert-updates))))
+                                                 (not (slack-channel alert-updates)))
+                                        {:archived true}))
+          updated-alert (pulse/update-alert!
+                         update-info)]
+      (def update-info update-info)
 
       ;; Only admins or users has subscription or monitoring perms
       ;; can update recipients or explicitly archive an alert
@@ -244,6 +246,81 @@
           (notify-recipient-changes! alert-before-update updated-alert)))
       ;; Finally, return the updated Alert
       updated-alert)))
+
+(do (pulse/update-alert! {:alert_condition "rows",
+                          :alert_first_only false,
+                          :archived false,
+                          :id 13,
+                          :card
+                          {:id 76,
+                           :include_csv true,
+                           :include_xls false,
+                           :format_rows true,
+                           :dashboard_card_id nil},
+                          :channels
+                          [{:schedule_type "daily",
+                            :schedule_hour 14,
+                            :channel_type "email",
+                            :schedule_frame nil,
+                            :recipients
+                            [{:first_name "Khuat",
+                              :last_name "Corv",
+                              :email "crowberto@metabase.com",
+                              :common_name "Khuat Corv",
+                              :id 3}],
+                            :pulse_id 13,
+                            :id 13,
+                            :schedule_day nil,
+                            :enabled true,}
+                           {:schedule_type "daily",
+                            :schedule_hour 14,
+                            :channel_type "slack",
+                            :schedule_frame nil,
+                            :recipients [],
+                            :details {:channel "#test-pulse"},
+                            :pulse_id 13,
+                            :id 14,
+                            :schedule_day nil,
+                            :enabled true,}]})
+    nil)
+
+(do (pulse/update-alert! {:alert_condition "rows",
+                          :alert_first_only false,
+                          :archived false,
+                          :id 13,
+                          :card
+                          {:id 76,
+                           :include_csv true,
+                           :include_xls false,
+                           :format_rows true,
+                           :dashboard_card_id nil},
+                          :channels
+                          [{:schedule_type "daily",
+                            :schedule_hour 2,
+                            :channel_type "email",
+                            :schedule_frame nil,
+                            :recipients
+                            [{:first_name "Khuat",
+                              :last_name "Corv",
+                              :email "crowberto@metabase.com",
+                              :common_name "Khuat Corv",
+                              :id 3}],
+                            :pulse_id 13,
+                            :id 13,
+                            :schedule_day nil,
+                            :enabled true,}
+                           {:schedule_type "daily",
+                            :schedule_hour 2,
+                            :channel_type "slack",
+                            :schedule_frame nil,
+                            :recipients [],
+                            :details {:channel "#test-pulse"},
+                            :pulse_id 13,
+                            :id 14,
+                            :schedule_day nil,
+                            :enabled true,}]})
+    nil)
+
 
 (api/defendpoint DELETE "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."

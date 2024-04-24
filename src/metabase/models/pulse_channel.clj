@@ -13,7 +13,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 ;; ## Static Definitions
 
@@ -209,13 +210,59 @@
               (throw (ex-info (tru "Wrong email address for User {0}." id)
                               {:status-code 403})))))))))
 
+(defn pulse-channels-same-slot
+  "Get all the `PulseChannels` that are scheduled to run at the same time."
+  [pulse-id schedule-map]
+  ;; should make-schedule map a closed map
+  (assert (every? #(contains? schedule-map %) [:schedule_type :schedule_hour :schedule_day :schedule_frame])
+          (format "Schedule map should have all the right keys, got: %s" (keys schedule-map)))
+  (apply t2/select-pks-set :model/PulseChannel :pulse_id pulse-id :enabled true (->> (select-keys schedule-map [:schedule_type :schedule_hour :schedule_day :schedule_frame])
+                                                                                     (into [])
+                                                                                     flatten)))
+
+(defn- update-trigger-if-needed!
+  [& args]
+  (classloader/require 'metabase.task.send-pulses)
+  (apply (resolve 'metabase.task.send-pulses/update-trigger-if-needed!) args))
+
 (t2/define-before-insert :model/PulseChannel
   [pulse-channel]
   (validate-email-domains pulse-channel))
 
+(t2/define-after-insert :model/PulseChannel
+  [pulse-channel]
+  (let [pulse-channel (t2.realize/realize pulse-channel)]
+    (u/prog1 pulse-channel
+      (update-trigger-if-needed! (:pulse_id pulse-channel)
+                                 pulse-channel))))
+
 (t2/define-before-update :model/PulseChannel
   [pulse-channel]
+  ;#p [:before-update pulse-channel]
+  ;; IT's really best if this is done in after-update
+  (let [pulse-id (:pulse_id pulse-channel)
+        changes (t2/changes pulse-channel)]
+    ;; if there are changes in schedule
+    ;; better be done in after-update, but t2/changes doesn't available in after-update yet See toucan2#129
+    (when (some #(contains? #{:schedule_type :schedule_hour :schedule_day :schedule_frame :enabled} %) (keys changes))
+      (update-trigger-if-needed! pulse-id (t2/original pulse-channel)
+                                 (disj (pulse-channels-same-slot pulse-id (t2/original pulse-channel)) (:id pulse-channel)))))
+  ;; TODO: IT SEEMS LIKE YOU CAN"T call cahgnes twicw"
   (validate-email-domains (mi/changes-with-pk pulse-channel)))
+
+(t2/define-after-update :model/PulseChannel
+  [pulse-channel]
+  (let [pulse-id (:pulse_id pulse-channel)]
+    (update-trigger-if-needed! pulse-id pulse-channel)))
+
+(t2/define-before-delete :model/PulseChannel
+  [pulse-channel]
+  ;; better be done in after-delete, but toucan2 doesn't support that yet See toucan2#70
+  ;; this should delete this PC's trigger
+  (def del-pulse-channel pulse-channel)
+  (let [pulse-id (:pulse_id pulse-channel)]
+    (update-trigger-if-needed! pulse-id pulse-channel
+                               (dissoc (pulse-channels-same-slot pulse-id pulse-channel) (:id pulse-channel)))))
 
 (defmethod serdes/hash-fields PulseChannel
   [_pulse-channel]
@@ -251,7 +298,8 @@
                                       weekday)]
     (t2/select [PulseChannel :id :pulse_id :schedule_type :channel_type]
       {:where [:and [:= :enabled true]
-               [:or [:= :schedule_type "hourly"]
+               [:or
+                [:= :schedule_type "hourly"]
                 [:and [:= :schedule_type "daily"]
                  [:= :schedule_hour hour]]
                 [:and [:= :schedule_type "weekly"]
