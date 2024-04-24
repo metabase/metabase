@@ -5,6 +5,15 @@ import promise from "redux-promise";
 import { Api } from "metabase/api";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 
+const logger = store => next => action => {
+  // eslint-disable-next-line no-console
+  console.debug("dispatching", action);
+  const result = next(action);
+  // eslint-disable-next-line no-console
+  console.debug("next state", store.getState());
+  return result;
+};
+
 export function getStore(reducers, history, intialState) {
   const reducer = combineReducers({
     ...reducers,
@@ -20,6 +29,7 @@ export function getStore(reducers, history, intialState) {
         immutableCheck: false,
         serializableCheck: false,
       }).concat([
+        logger,
         promise,
         Api.middleware,
         ...(history ? [routerMiddleware(history)] : []),

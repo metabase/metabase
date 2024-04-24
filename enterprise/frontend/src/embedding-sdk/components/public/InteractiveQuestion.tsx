@@ -45,12 +45,21 @@ export const _InteractiveQuestion = ({
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);
 
+  // const location = useRouter();
+  // const previousLocation = usePrevious(location);
+
   const { isRunning } = uiControls;
 
   useEffect(() => {
     const { location, params } = getQuestionParameters(questionId);
     dispatch(initializeQB(location, params));
   }, [dispatch, questionId]);
+
+  // useEffect(() => {
+  //   if (previousLocation && location !== previousLocation) {
+  //     locationChanged(previousLocation, location);
+  //   }
+  // }, [location, previousLocation, locationChanged]);
 
   if (!question) {
     return null;

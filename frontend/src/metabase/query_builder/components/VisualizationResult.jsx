@@ -1,6 +1,9 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
+import { connect } from "react-redux";
+import { withRouter } from "react-router";
+import { goBack } from "react-router-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -25,7 +28,11 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "mode",
 ];
 
-export default class VisualizationResult extends Component {
+const mapDispatchToProps = dispatch => ({
+  onGoBack: () => dispatch(goBack()),
+});
+
+class VisualizationResult extends Component {
   state = {
     showCreateAlertModal: false,
   };
@@ -58,7 +65,11 @@ export default class VisualizationResult extends Component {
       timelineEvents,
       selectedTimelineEventIds,
       className,
+      onGoBack,
     } = this.props;
+
+    // console.log("VisualizationResult router", router);
+
     const { showCreateAlertModal } = this.state;
 
     const noResults = datasetContainsNoResults(result.data);
@@ -87,10 +98,7 @@ export default class VisualizationResult extends Component {
                     )} when there are some results.`}
                   </p>
                 )}
-                <button
-                  className={ButtonsS.Button}
-                  onClick={() => window.history.back()}
-                >
+                <button className={ButtonsS.Button} onClick={onGoBack}>
                   {t`Back to previous results`}
                 </button>
               </div>
@@ -151,3 +159,8 @@ export default class VisualizationResult extends Component {
     }
   }
 }
+
+export default _.compose(
+  withRouter,
+  connect(null, mapDispatchToProps),
+)(VisualizationResult);

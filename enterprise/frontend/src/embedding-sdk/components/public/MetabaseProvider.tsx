@@ -1,10 +1,10 @@
-import { type ReactNode, type JSX, useEffect } from "react";
-import { memo } from "react";
+import { type JSX, memo, type ReactNode, useEffect } from "react";
 import { Provider } from "react-redux";
+import { Route, Router } from "react-router";
 
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import { store } from "embedding-sdk/store";
+import { history, store } from "embedding-sdk/store";
 import { setPlugins } from "embedding-sdk/store/reducer";
 import type { SDKConfigType } from "embedding-sdk/types";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -33,7 +33,9 @@ const MetabaseProviderInternal = ({
       <EmotionCacheProvider>
         <ThemeProvider>
           <AppInitializeController config={config}>
-            {children}
+            <Router history={history}>
+              <Route path="/" component={() => <>{children}</>} />
+            </Router>
           </AppInitializeController>
         </ThemeProvider>
       </EmotionCacheProvider>
