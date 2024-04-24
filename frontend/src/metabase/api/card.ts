@@ -80,7 +80,6 @@ export const cardApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/card/${id}/refresh`,
       }),
-      // TODO invalidate persisted list
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [
           idTag("card", id),
