@@ -62,12 +62,10 @@
                                     {:aggregation [[:share [:segment segment-id]]]}))))))
 
     (testing "Share inside a Metric"
-      (t2.with-temp/with-temp [Card {metric-id :id} (mt/$ids venues
-                                                      {:dataset_query {:query {:aggregation [:share [:< $price 4]]
-                                                                               :source-table $$venues}
-                                                                       :database (mt/id)
-                                                                       :type :query}
-                                                       :type :metric})]
+      (t2.with-temp/with-temp [Card {metric-id :id} {:dataset_query (mt/mbql-query venues
+                                                                      {:aggregation [:share [:< $price 4]]
+                                                                       :source-table $$venues})
+                                                     :type :metric}]
         (is (= [[0.94]]
                (mt/formatted-rows [2.0]
                                   (mt/run-mbql-query venues

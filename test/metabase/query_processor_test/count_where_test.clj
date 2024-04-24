@@ -91,13 +91,11 @@
 
 (deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
-    (t2.with-temp/with-temp [Card {metric-id :id} (mt/$ids venues
-                                                    {:dataset_query {:query {:aggregation [:count-where
-                                                                                           [:< $price 4]]
-                                                                             :source-table $$venues}
-                                                                     :database (mt/id)
-                                                                     :type :query}
-                                                     :type :metric})]
+    (t2.with-temp/with-temp [Card {metric-id :id} {:dataset_query (mt/mbql-query venues
+                                                                    {:aggregation [:count-where
+                                                                                   [:< $price 4]]
+                                                                     :source-table $$venues})
+                                                   :type :metric}]
       (is (= 94
              (->> {:aggregation [[:metric metric-id]]
                    :source-table (str "card__" metric-id)}

@@ -547,12 +547,10 @@
     (testing "check that we can handle METRICS inside expression aggregation clauses"
       (tqpt/with-flattened-dbdef
         (t2.with-temp/with-temp [Card {metric-id :id} {:dataset_query
-                                                       {:type :query
-                                                        :database (mt/id)
-                                                        :query (mt/$ids checkins
-                                                                 {:aggregation [:sum $venue_price]
-                                                                  :filter      [:> $venue_price 1]
-                                                                  :source-table (mt/id :checkins)})}
+                                                       (mt/mbql-query checkins
+                                                         {:aggregation [:sum $venue_price]
+                                                          :filter      [:> $venue_price 1]
+                                                          :source-table (mt/id :checkins)})
                                                        :type :metric}]
           (is (= [["2" 1231.0]
                   ["3"  346.0]

@@ -244,13 +244,11 @@
 
 (deftest metrics-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
-    (let [card-definition (mt/$ids venues
-                            {:dataset_query {:query {:aggregation [:sum $price]
-                                                     :filter      [:> $price 1]
-                                                     :source-table $$venues}
-                                             :database (mt/id)
-                                             :type :query}
-                             :type :metric})]
+    (let [card-definition {:dataset_query (mt/mbql-query venues
+                                            {:aggregation [:sum $price]
+                                             :filter      [:> $price 1]
+                                             :source-table $$venues})
+                           :type :metric}]
       (testing "check that we can handle Metrics inside expression aggregation clauses"
         (t2.with-temp/with-temp [Card {metric-id :id} card-definition]
           (is (= [[2 119]
