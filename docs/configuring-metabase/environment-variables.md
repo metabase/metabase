@@ -1545,6 +1545,9 @@ Configuration file name: `session-cookie-samesite`
 
 Value for the session cookies `SameSite` directive.
 
+See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain). Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md). Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
+
+
 ### `MB_SESSION_COOKIES`
 
 Type: boolean
@@ -2229,46 +2232,6 @@ Metabase will only send these emails to people who have in the past 2 months:
 If you're whitelabeling Metabase, these survey emails will only be sent to admins for that instance who meet that criteria.
 
 If you don't want Metabase to send these emails, set `MB_NO_SURVEYS=true`.
-
-### `MB_NOTIFICATION_RETRY_INITIAL_INTERVAL`
-
-Type: integer<br>
-Default: `500`<br>
-Since: v44.0
-
-The initial retry delay in milliseconds when delivering notifications.
-
-### `MB_NOTIFICATION_RETRY_MAX_ATTEMPTS`
-
-Type: integer<br>
-Default: `7`<br>
-Since: v44.0
-
-The maximum number of attempts for delivering a single notification.
-
-### `MB_NOTIFICATION_RETRY_MAX_INTERVAL_MILLIS`
-
-Type: integer<br>
-Default: `30000`<br>
-Since: v44.0
-
-The maximum delay between attempts to deliver a single notification.
-
-### `MB_NOTIFICATION_RETRY_MULTIPLIER`
-
-Type: double<br>
-Default: `2.0`<br>
-Since: v44.0
-
-The delay multiplier between attempts to deliver a single notification.
-
-### `MB_NOTIFICATION_RETRY_RANDOMIZATION_FACTOR`
-
-Type: double<br>
-Default: `0.1`<br>
-Since: v44.0
-
-The randomization factor of the retry delay when delivering notifications.
 
 ### `MB_NS_TRACE`
 
