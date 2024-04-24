@@ -943,6 +943,17 @@
           :read  (perms/collection-read-path collection-or-id)
           :write (perms/collection-readwrite-path collection-or-id))})))
 
+(def ^:private instance-analytics-collection-type
+  "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-db]]"
+  "instance-analytics")
+
+(defmethod mi/exclude-internal-content-hsql :model/Collection
+  [_model & {:keys [table-alias]}]
+  (let [maybe-alias #(h2x/identifier :field (some-> table-alias name) %)]
+    [:and
+     [:not= (maybe-alias :type) [:inline instance-analytics-collection-type]]
+     [:not (maybe-alias :is_sample)]]))
+
 (defn- parent-identity-hash [coll]
   (let [parent-id (-> coll
                       (t2/hydrate :parent_id)

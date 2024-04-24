@@ -17,6 +17,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -295,6 +296,11 @@
   :type           :boolean
   :visibility     :public
   :database-local :only)
+
+(defmethod mi/exclude-internal-content-hsql :model/Database
+  [_model & {:keys [table-alias]}]
+  (let [maybe-alias #(h2x/identifier :field table-alias %)]
+    [:not [:or (maybe-alias :is_sample) (maybe-alias :is_audit)]]))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 

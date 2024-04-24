@@ -667,3 +667,14 @@
   "In Metabase the FK key used for automagic hydration should use underscores (work around upstream Toucan 2 issue)."
   [_original-model dest-key _hydrated-key]
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
+
+(defmulti exclude-internal-content-hsql
+  "Returns a HoneySQL expression to exclude instances of the model that were created automatically as part of internally
+   used content, such as Metabase Analytics, the sample database, or the sample dashboard. If a `table-alias` (string
+   or keyword) is provided any columns will have a table alias in the returned expression."
+  {:arglists '([model & {:keys [table-alias]}])}
+  dispatch-on-model)
+
+(defmethod exclude-internal-content-hsql :default
+  [_model & _]
+  [:= [:inline 1] [:inline 1]])
