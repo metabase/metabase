@@ -7,6 +7,7 @@ import {
   ORIGINAL_INDEX_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { isBreakoutSeries } from "metabase/visualizations/echarts/cartesian/model/guards";
 import type {
   BaseCartesianChartModel,
   ChartDataset,
@@ -135,10 +136,7 @@ export const getEventColumnsData = (
   dataIndex: number,
 ): DataPoint[] => {
   const datum = chartModel.dataset[dataIndex];
-
   const seriesModel = chartModel.seriesModels[seriesIndex];
-  const isBreakoutSeries =
-    seriesModel != null && "breakoutColumn" in seriesModel;
 
   const seriesModelsByDataKey = _.indexBy(chartModel.seriesModels, "dataKey");
   return getSameCardDataKeys(datum, seriesModel)
@@ -152,7 +150,8 @@ export const getEventColumnsData = (
       const { breakoutValue } = parseDataKey(dataKey);
 
       const isDifferentBreakoutSeries =
-        isBreakoutSeries && String(seriesModel.breakoutValue) !== breakoutValue;
+        isBreakoutSeries(seriesModel) &&
+        String(seriesModel.breakoutValue) !== breakoutValue;
 
       if (isDifferentBreakoutSeries) {
         return null;
@@ -164,7 +163,7 @@ export const getEventColumnsData = (
           ? getFriendlyName(col)
           : columnSeriesModel.tooltipName;
       const displayValue =
-        isBreakoutSeries && seriesModel.breakoutColumn === col
+        isBreakoutSeries(seriesModel) && seriesModel.breakoutColumn === col
           ? seriesModel.name
           : value ?? NULL_DISPLAY_VALUE;
 
