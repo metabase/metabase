@@ -84,6 +84,7 @@ export const cardApi = Api.injectEndpoints({
         invalidateTags(error, [
           idTag("card", id),
           idTag("persisted-model", id),
+          listTag("persisted-info"),
         ]),
     }),
   }),
