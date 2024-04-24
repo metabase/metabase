@@ -251,6 +251,7 @@ export const getWaterfallChartOption = (
       chartMeasurements,
       settings,
       hasTimelineEvents,
+      null,
       renderingContext,
     ),
   } as EChartsOption;
