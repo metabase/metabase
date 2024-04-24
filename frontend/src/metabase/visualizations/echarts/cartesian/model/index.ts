@@ -11,7 +11,7 @@ import {
   sortDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
-  getCardSeriesModels,
+  getCardsSeriesModels,
   getDimensionModel,
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
@@ -19,7 +19,6 @@ import type {
   ShowWarning,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getScatterPlotDataset } from "metabase/visualizations/echarts/cartesian/scatter/model";
-import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getSingleSeriesDimensionsAndMetrics } from "metabase/visualizations/lib/utils";
 import type {
@@ -75,27 +74,6 @@ export const getCardsColumns = (
 
     const cardSettings = getSettingsWithDefaultMetricsAndDimensions(series);
     return getCartesianChartColumns(data.cols, cardSettings);
-  });
-};
-
-export const getCardsSeriesModels = (
-  rawSeries: RawSeries,
-  cardsColumns: CartesianChartColumns[],
-  settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
-) => {
-  const hasMultipleCards = rawSeries.length > 1;
-  return rawSeries.flatMap((cardDataset, index) => {
-    const cardColumns = cardsColumns[index];
-
-    return getCardSeriesModels(
-      cardDataset,
-      cardColumns,
-      hasMultipleCards,
-      index === 0,
-      settings,
-      renderingContext,
-    );
   });
 };
 

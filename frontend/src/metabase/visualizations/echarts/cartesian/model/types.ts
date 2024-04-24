@@ -52,6 +52,7 @@ export type RegularSeriesModel = BaseSeriesModel & {
   legacySeriesSettingsObjectKey: LegacySeriesSettingsObjectKey;
 
   cardId?: number;
+  tooltipName: string;
 
   column: DatasetColumn;
   columnIndex: number;

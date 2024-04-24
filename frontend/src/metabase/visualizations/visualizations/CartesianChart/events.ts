@@ -26,6 +26,7 @@ import {
 } from "metabase/visualizations/lib/renderer_utils";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
   DataPoint,
@@ -131,7 +132,6 @@ export const getEventColumnsData = (
   chartModel: BaseCartesianChartModel,
   seriesIndex: number,
   dataIndex: number,
-  hasCombinedCards: boolean,
 ): DataPoint[] => {
   const datum = chartModel.dataset[dataIndex];
 
@@ -156,11 +156,9 @@ export const getEventColumnsData = (
       const col = chartModel.columnByDataKey[dataKey];
       const columnSeriesModel = seriesModelsByDataKey[dataKey];
       const key =
-        columnSeriesModel == null ||
-        "breakoutColumn" in columnSeriesModel ||
-        hasCombinedCards
-          ? col.display_name
-          : columnSeriesModel?.name;
+        columnSeriesModel == null
+          ? getFriendlyName(col)
+          : columnSeriesModel.tooltipName;
       const displayValue =
         isBreakoutSeries && seriesModel.breakoutColumn === col
           ? seriesModel.name
@@ -281,7 +279,6 @@ export const getSeriesHoverData = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
-  hasCombinedCards: boolean,
 ) => {
   const { dataIndex: echartsDataIndex, seriesId } = event;
   const dataIndex = getDataIndex(
@@ -302,12 +299,7 @@ export const getSeriesHoverData = (
     return;
   }
 
-  const data = getEventColumnsData(
-    chartModel,
-    seriesIndex,
-    dataIndex,
-    hasCombinedCards,
-  );
+  const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
 
   const stackedTooltipModel =
     settings["graph.tooltip_type"] === "series_comparison"
@@ -393,7 +385,6 @@ export const getSeriesClickData = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
-  hasCombinedCards: boolean,
 ): ClickObject | undefined => {
   const { seriesId, dataIndex: echartsDataIndex } = event;
   const dataIndex = getDataIndex(
@@ -409,12 +400,7 @@ export const getSeriesClickData = (
 
   const datum = chartModel.dataset[dataIndex];
 
-  const data = getEventColumnsData(
-    chartModel,
-    seriesIndex,
-    dataIndex,
-    hasCombinedCards,
-  );
+  const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
   const dimensions = getEventDimensions(
     chartModel,
     datum,
