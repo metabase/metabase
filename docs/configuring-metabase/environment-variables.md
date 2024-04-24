@@ -636,6 +636,12 @@ Configuration file name: Cannot be set with the configuration file.
 
 Maximum size of the c3p0 connection pool.
 
+Change this to a higher value if you notice that regular usage consumes all or close to all connections.
+
+When all connections are in use then Metabase will be slower to return results for queries, since it would have to wait for an available connection before processing the next query in the queue.
+
+For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).
+
 ### `MB_JWT_ATTRIBUTE_EMAIL`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro)
