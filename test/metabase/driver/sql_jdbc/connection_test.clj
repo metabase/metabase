@@ -119,10 +119,12 @@
 
               (cond-> details
                 ;; swap localhost and 127.0.0.1
-                (str/includes? (:host details) "localhost")
+                (and (string? (:host details))
+                     (str/includes? (:host details) "localhost"))
                 (update :host str/replace "localhost" "127.0.0.1")
 
-                (str/includes? (:host details) "127.0.0.1")
+                (and (string? (:host details))
+                     (str/includes? (:host details) "127.0.0.1"))
                 (update :host str/replace "127.0.0.1" "localhost")
 
                 :else
