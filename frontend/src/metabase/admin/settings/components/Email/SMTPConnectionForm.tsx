@@ -21,7 +21,7 @@ import * as Errors from "metabase/lib/errors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
-import { Group, Radio, Stack, Button, Text, Flex, Box } from "metabase/ui";
+import { Group, Radio, Stack, Button, Text, Flex } from "metabase/ui";
 import type { Settings } from "metabase-types/api";
 
 import {
@@ -140,7 +140,7 @@ export const SMTPConnectionForm = ({
 
   return (
     <Flex justify="space-between">
-      <Stack spacing="sm" maw={400} pl="0.5rem">
+      <Stack spacing="sm" maw={400} style={{ paddingInlineStart: "0.5rem" }}>
         {isEmailConfigured && (
           <Breadcrumbs crumbs={BREADCRUMBS} className={cx(CS.mb3)} />
         )}
@@ -249,23 +249,19 @@ export const SMTPConnectionForm = ({
                   {testEmailError}
                 </Text>
               )}
-              <Box mt="1rem">
+              <Flex mt="1rem" gap="1.5rem">
                 <FormSubmitButton
                   label={t`Save changes`}
                   disabled={!dirty}
-                  mr="1.5rem"
                   variant="filled"
                 />
                 {!dirty && isValid && !isSubmitting && (
-                  <Button onClick={handleSendTestEmail} mr="1.5rem">
+                  <Button onClick={handleSendTestEmail}>
                     {SEND_TEST_BUTTON_STATES[sendingEmail]}
                   </Button>
                 )}
-                <Button
-                  onClick={handleClearEmailSettings}
-                  mr="1.5rem"
-                >{t`Clear`}</Button>
-              </Box>
+                <Button onClick={handleClearEmailSettings}>{t`Clear`}</Button>
+              </Flex>
             </Form>
           )}
         </FormProvider>
