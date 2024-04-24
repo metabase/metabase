@@ -37,14 +37,14 @@
    table    :- i/Table+Schema]
   (log-if-error "table-fields-metadata"
     (let [driver (driver.u/database->driver database)
-          result (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
-                   (set (driver/describe-fields (driver.u/database->driver database)
+          result (if (driver/database-supports? driver :describe-fields database)
+                   (set (driver/describe-fields driver
                                                 database
                                                 :table-names [(:name table)]
                                                 :schema-names [(:schema table)]))
-                   (:fields (driver/describe-table (driver.u/database->driver database) database table)))]
+                   (:fields (driver/describe-table driver database table)))]
       (cond-> result
-        (driver/database-supports? (driver.u/database->driver database) :nested-field-columns database)
+        (driver/database-supports? driver :nested-field-columns database)
         ;; TODO: decouple nested field columns sync from field sync. This will allow
         ;; describe-fields to be used for field sync for databases with nested field columns
         ;; Also this should be a driver method, not a sql-jdbc.sync method
@@ -67,17 +67,16 @@
   This will be deprecated in "
   [database :- i/DatabaseInstance & {:as args}]
   (log-if-error "fields-metadata"
-    (let [driver (driver.u/database->driver database)]
-      (when (driver/database-supports? driver :foreign-keys database)
-        (let [describe-fks-fn (if (driver/database-supports? driver :describe-fields database)
-                                driver/describe-fields
-                                ;; In a future version we may remove [[driver/describe-table]]
-                                ;; and we'll just use [[driver/describe-fields]] here
-                                describe-fields-using-describe-table)]
-          (cond->> (describe-fks-fn (driver.u/database->driver database) database args)
-            ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
-            (mu.fn/instrument-ns? *ns*)
-            (eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %)))))))))
+    (let [driver             (driver.u/database->driver database)
+          describe-fields-fn (if (driver/database-supports? driver :describe-fields database)
+                               driver/describe-fields
+                               ;; In a future version we may remove [[driver/describe-table]]
+                               ;; and we'll just use [[driver/describe-fields]] here
+                               describe-fields-using-describe-table)]
+      (cond->> (describe-fields-fn driver database args)
+        ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
+        (mu.fn/instrument-ns? *ns*)
+        (eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %)))))))
 
 (defn- describe-fks-using-describe-table-fks
   "Replaces [[metabase.driver/describe-fks]] for drivers that haven't implemented it. Uses [[driver/describe-table-fks]]
@@ -109,7 +108,7 @@
                                 ;; In version 52 we'll remove [[driver/describe-table-fks]]
                                 ;; and we'll just use [[driver/describe-fks]] here
                                 describe-fks-using-describe-table-fks)]
-          (cond->> (describe-fks-fn (driver.u/database->driver database) database args)
+          (cond->> (describe-fks-fn driver database args)
             ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
             (mu.fn/instrument-ns? *ns*)
             (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %)))))))))

@@ -16,8 +16,7 @@
    [metabase.test.mock.util :as mock.util]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        End-to-end 'MovieDB' Sync Tests                                         |
@@ -32,11 +31,7 @@
   "Whether the database supports schemas."
   true)
 
-(defmethod driver/database-supports? ::sync-test
-  [_driver feature db]
-  (if (= feature :schemas)
-    *supports-schemas?*
-    (driver/database-supports? ::driver feature db)))
+(defmethod driver/database-supports? [::sync-test :schemas] [_driver _feature _db] *supports-schemas?*)
 
 (defn- sync-test-tables []
   {"movie"  {:name   "movie"
@@ -213,53 +208,62 @@
     :database_position 0
     :position          0}))
 
+(defn- expected-movie-table
+  []
+  (merge
+   (table-defaults)
+   {:schema              (when *supports-schemas?* "default")
+    :name                "movie"
+    :display_name        "Movie"
+    :initial_sync_status "complete"
+    :fields              [(field:movie-id) (field:movie-studio) (field:movie-title)]
+    :description         nil}))
+
+(defn- expected-studio-table []
+  (merge
+   (table-defaults)
+   {:schema              (when *supports-schemas?* "public")
+    :name                "studio"
+    :display_name        "Studio"
+    :initial_sync_status "complete"
+    :fields              [(field:studio-name) (field:studio-studio)]
+    :description         ""}))
+
 (deftest sync-database-test
-  (binding [sync-util/*log-exceptions-and-continue?* false]
-    (t2.with-temp/with-temp [Database db {:engine ::sync-test}]
-      (let [results        (sync/sync-database! db)
-            [movie studio] (mapv table-details (t2/select Table :db_id (u/the-id db) {:order-by [:name]}))]
-        (testing "`movie` Table"
-          (is (= (merge
-                  (table-defaults)
-                  {:schema              "default"
-                   :name                "movie"
-                   :display_name        "Movie"
-                   :initial_sync_status "complete"
-                   :fields              [(field:movie-id) (field:movie-studio) (field:movie-title)]})
-                 movie)))
-        (testing "`studio` Table"
-          (is (= (merge
-                  (table-defaults)
-                  {:schema              "public"
-                   :name                "studio"
-                   :display_name        "Studio"
-                   :initial_sync_status "complete"
-                   :fields              [(field:studio-name) (field:studio-studio)]
-                   :description         ""})
-                 studio)))
-        (testing "Returns results from sync-database step"
-          (is (= ["metadata" "analyze" "field-values"]
-                 (map :name results))))))))
+  (doseq [supports-schemas? [true #_false]]
+    (testing (str "[[sync/sync-database!]] works if `driver/supports-schemas?` returns " supports-schemas?)
+      (binding [*supports-schemas?*                      supports-schemas?
+                sync-util/*log-exceptions-and-continue?* false]
+        (mt/with-temp [Database db {:engine ::sync-test}]
+          (let [results (sync/sync-database! db)]
+            (testing "Returns results from sync-database step"
+              (is (= ["metadata" "analyze" "field-values"]
+                     (map :name results)))))
+          (let [[movie studio] (mapv table-details (t2/select Table :db_id (u/the-id db) {:order-by [:name]}))]
+            (testing "Tables and Fields are synced"
+              (is (= (expected-movie-table) movie))
+              (is (= (expected-studio-table) studio)))))))))
 
 (deftest sync-table-test
-  (doseq [supports-schemas? [true #_false]]
-    (binding [*supports-schemas?* supports-schemas?
-              sync-util/*log-exceptions-and-continue?* false]
-      (mt/with-temp [Database db           {:engine ::sync-test}
-                     Table    table        {:name "movie", :schema (when supports-schemas? "default"), :db_id (u/the-id db)}
-                     Table    studio-table {:name "studio", :schema (when supports-schemas? "public"), :db_id (u/the-id db)}]
-        (sync/sync-table! studio-table)
-        (sync/sync-table! table)
-        (is (= (merge
-                (table-defaults)
-                {:schema              (when supports-schemas? "default")
-                 :name                "movie"
-                 :display_name        "Movie"
-                 :initial_sync_status "complete"
-                 :fields              [(field:movie-id)
-                                       (field:movie-studio)
-                                       (field:movie-title)]})
-               (table-details (t2/select-one Table :id (:id table)))))))))
+  (doseq [supports-schemas? [true false]]
+    (testing (str "[[sync/sync-table!]] works if `driver/supports-schemas? returns " supports-schemas?)
+      (binding [*supports-schemas?*                      supports-schemas?
+                sync-util/*log-exceptions-and-continue?* false]
+        (mt/with-temp [Database db     {:engine ::sync-test}
+                       Table    movie  {:name        "movie"
+                                        :schema      (when *supports-schemas?* "default")
+                                        :db_id       (u/the-id db)
+                                        :description nil}
+                       Table    studio {:name        "studio"
+                                        :schema      (when *supports-schemas?* "public")
+                                        :db_id       (u/the-id db)
+                                        :description ""}]
+          (sync/sync-table! studio)
+          (sync/sync-table! movie)
+          (let [[movie studio] (mapv table-details (t2/select Table :db_id (u/the-id db) {:order-by [:name]}))]
+            (testing "Tables and Fields are synced"
+                (is (= (expected-movie-table) movie))
+                (is (= (expected-studio-table) studio)))))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
