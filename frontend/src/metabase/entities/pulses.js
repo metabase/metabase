@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { canonicalCollectionId } from "metabase/collections/utils";
 import { getCollectionType } from "metabase/entities/collections";
 import { color } from "metabase/lib/colors";
 import { createEntity, undo } from "metabase/lib/entities";
@@ -34,33 +33,6 @@ const Pulses = createEntity({
         { id },
         { archived },
         undo(opts, t`subscription`, archived ? t`deleted` : t`restored`),
-      );
-    },
-
-    setChannels: ({ id }, channels, opts) => {
-      return Pulses.actions.update(
-        { id },
-        { channels },
-        undo(opts, t`subscription`, t`updated`),
-      );
-    },
-
-    setCollection: ({ id }, collection, opts) => {
-      return Pulses.actions.update(
-        { id },
-        { collection_id: canonicalCollectionId(collection && collection.id) },
-        undo(opts, t`subscription`, t`moved`),
-      );
-    },
-
-    setPinned: ({ id }, pinned, opts) => {
-      return Pulses.actions.update(
-        { id },
-        {
-          collection_position:
-            typeof pinned === "number" ? pinned : pinned ? 1 : null,
-        },
-        opts,
       );
     },
 
