@@ -22,6 +22,12 @@ const Pulses = createEntity({
     UNSUBSCRIBE,
   },
 
+  api: {
+    delete: () => {
+      throw new TypeError("Pulses.api.delete is not supported");
+    },
+  },
+
   objectActions: {
     setArchived: ({ id }, archived, opts) => {
       return Pulses.actions.update(
