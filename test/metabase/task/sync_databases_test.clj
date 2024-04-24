@@ -43,14 +43,14 @@
 
 (defn all-db-sync-triggers-name
   "Returns the name of trigger for DB.
-  This is all trigger names that a DB SHOULD have."
+  These are all the trigger names that a database SHOULD have."
   [db]
   (set (map #(.getName ^TriggerKey (#'task.sync-databases/trigger-key (t2/instance :model/Database db) %))
             @#'task.sync-databases/all-tasks)))
 
 (defn query-all-db-sync-triggers-name
   "Find the all triggers for DB \"db\".
-  This is all triger names that a DB HAVE in the scheduler."
+  These are all the trigger names that a database HAS in the scheduler."
   [db]
   (let [db (t2/instance :model/Database db)]
     (assert (some? (#'task/scheduler)) "makes sure the scheduler is initialized!")
