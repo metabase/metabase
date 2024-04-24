@@ -55,10 +55,10 @@ export const getStatusIcon = (
   }
 
   if (status === "verified" && filled) {
-    return MODERATION_STATUS_ICONS[`${status}_filled`];
+    return MODERATION_STATUS_ICONS.get("verified_filled") || noIcon;
   }
 
-  return MODERATION_STATUS_ICONS[status] || noIcon;
+  return MODERATION_STATUS_ICONS.get(status) || noIcon;
 };
 
 export function getIconForReview(review: ModerationReview, options?: any) {
@@ -68,7 +68,7 @@ export function getIconForReview(review: ModerationReview, options?: any) {
 // we only want the icon that represents the removal of a review in special cases,
 // so you must ask for the icon explicitly
 export function getRemovedReviewStatusIcon() {
-  return MODERATION_STATUS_ICONS["null"];
+  return MODERATION_STATUS_ICONS.get(null);
 }
 
 export function getLatestModerationReview(reviews: ModerationReview[]) {
@@ -130,7 +130,7 @@ export const getModeratorDisplayText = (
 
 // a `status` of `null` represents the removal of a review, since we can't delete reviews
 export const isRemovedReviewStatus = (status: string | null) => {
-  return ["null", null].includes(status);
+  return status === null;
 };
 
 export const isItemVerified = (review: ModerationReview | undefined | null) => {
