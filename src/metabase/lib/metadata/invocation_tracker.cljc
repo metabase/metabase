@@ -4,7 +4,12 @@
 
 (defn- update-tracker-and-call-next-provider!
   [tracker metadata-type id metadata-provider]
-  (swap! tracker update metadata-type into [id])
+  ;; we only have usage for metadata/card for now, so we only track it to save some overhead
+  (when (#{:metadata/card} metadata-type)
+    (swap! tracker update metadata-type (fn [item-ids]
+                                          (if (seq item-ids)
+                                            (conj item-ids id)
+                                            [id]))))
   ((case metadata-type
      :metadata/database
      lib.metadata.protocols/database
@@ -43,7 +48,7 @@
   (invoked-ids [_this metadata-type]
     (get @tracker metadata-type)))
 
-(defn invocation-tracker
+(defn invocation-tracker-provider
   "Wraps `metadata-provider` with a provider that records all invoked ids of [[lib.metadata.protocols/MetadataProvider]] methods."
   [metadata-provider]
   (->InvocationTracker (atom {}) metadata-provider))

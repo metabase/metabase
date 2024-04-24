@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.update-used-cards
   (:require
-   [metabase.lib.metadata.protocols :as lib.protocols]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -35,6 +35,6 @@
   (mu/fn [query :- ::qp.schema/query
           rff   :- ::qp.schema/rff]
     (letfn [(rff* [metadata]
-             (update-used-cards!* (set (lib.protocols/invoked-ids (qp.store/metadata-provider) :metadata/card)))
+             (update-used-cards!* (set (lib.metadata/invoked-ids (qp.store/metadata-provider) :metadata/card)))
              (rff metadata))]
       (qp query rff*))))
