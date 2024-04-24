@@ -3,7 +3,6 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import Input from "metabase/core/components/Input/Input";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { isNotNull } from "metabase/lib/types";
 import { Button } from "metabase/ui";
 import type * as Lib from "metabase-lib";
@@ -23,6 +22,7 @@ import {
 } from "./ExpressionWidget.styled";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
+import { trackColumnCombineViaShortcut } from "./analytics";
 
 export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   query: Lib.Query;
@@ -123,10 +123,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
 
   if (isCombiningColumns) {
     const handleSubmit = (name: string, clause: Lib.ExpressionClause) => {
-      MetabaseAnalytics.trackSchemaEvent("question", "1-0-4", {
-        event: "column_combine_via_shortcut",
-        custom_expression_uses: ["concat"],
-      });
+      trackColumnCombineViaShortcut();
 
       setIsCombiningColumns(false);
       setClause(clause);
