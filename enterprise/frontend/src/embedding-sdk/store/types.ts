@@ -1,5 +1,6 @@
 import type { SerializedError } from "@reduxjs/toolkit";
 
+import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
@@ -27,6 +28,7 @@ export type LoginStatus =
 export type SdkState = {
   token: EmbeddingSessionTokenState;
   loginStatus: LoginStatus;
+  plugins: null | SdkPluginsConfig;
 };
 
 export interface SdkStoreState extends State {

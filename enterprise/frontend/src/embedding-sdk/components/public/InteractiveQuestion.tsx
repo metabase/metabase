@@ -2,6 +2,9 @@ import cx from "classnames";
 import { useEffect } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
+import { useSdkSelector } from "embedding-sdk/store";
+import { getPlugins } from "embedding-sdk/store/selectors";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -24,14 +27,20 @@ import type { CardId } from "metabase-types/api";
 
 interface InteractiveQuestionProps {
   questionId: CardId;
+
+  plugins?: SdkClickActionPluginsConfig;
 }
 
 export const _InteractiveQuestion = ({
   questionId,
+  plugins: componentPlugins,
 }: InteractiveQuestionProps): JSX.Element | null => {
+  const globalPlugins = useSdkSelector(getPlugins);
+
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
-  const mode = question && getEmbeddingMode(question);
+  const plugins = componentPlugins || globalPlugins;
+  const mode = question && getEmbeddingMode(question, plugins || undefined);
   const card = useSelector(getCard);
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);
@@ -39,17 +48,8 @@ export const _InteractiveQuestion = ({
   const { isRunning } = uiControls;
 
   useEffect(() => {
-    // TODO: change pathname based on isInteractive value to trigger proper QB viewMode
-    const mockLocation = {
-      query: {}, // TODO: add here wrapped parameterValues
-      hash: "",
-      pathname: `/question/${questionId}`,
-    };
-    const params = {
-      slug: `${questionId}`,
-    };
-
-    dispatch(initializeQB(mockLocation, params));
+    const { location, params } = getQuestionParameters(questionId);
+    dispatch(initializeQB(location, params));
   }, [dispatch, questionId]);
 
   if (!question) {
@@ -101,3 +101,16 @@ export const _InteractiveQuestion = ({
 
 export const InteractiveQuestion =
   withPublicComponentWrapper(_InteractiveQuestion);
+
+const getQuestionParameters = (questionId: CardId) => {
+  return {
+    location: {
+      query: {}, // TODO: add here wrapped parameterValues
+      hash: "",
+      pathname: `/question/${questionId}`,
+    },
+    params: {
+      slug: questionId.toString(),
+    },
+  };
+};
