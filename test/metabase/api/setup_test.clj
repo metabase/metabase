@@ -557,15 +557,16 @@
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db!)
       (sample-data/add-sample-database!)
-      (mbc/ensure-audit-db-installed!)
-      (testing "Sense check: internal content exists"
-        (is (true? (t2/exists? :model/User)))
-        (is (true? (t2/exists? :model/Database)))
-        (is (true? (t2/exists? :model/Table)))
-        (is (true? (t2/exists? :model/Field)))
-        (is (true? (t2/exists? :model/Collection)))
-        (is (true? (t2/exists? :model/Dashboard)))
-        (is (true? (t2/exists? :model/Card))))
+      (let [installed-metabase-analytics? (= (mbc/ensure-audit-db-installed!)
+                                             :metabase-enterprise.audit-db/installed)]
+        (testing "sense check: internal content exists"
+          (is (true? (t2/exists? :model/Database)))
+          (is (true? (t2/exists? :model/Table)))
+          (is (true? (t2/exists? :model/Field)))
+          (is (= installed-metabase-analytics? (t2/exists? :model/User)))
+          (is (= installed-metabase-analytics? (t2/exists? :model/Collection)))
+          (is (= installed-metabase-analytics? (t2/exists? :model/Dashboard)))
+          (is (= installed-metabase-analytics? (t2/exists? :model/Card)))))
       (testing "All state should be empty"
         (is (=? {:db-type    :h2
                  :configured {:email false
