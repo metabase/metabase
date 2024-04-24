@@ -109,6 +109,9 @@ function _CartesianChart(props: VisualizationProps) {
         onHoverChange={onHoverChange}
       >
         <CartesianChartRenderer
+          // @ts-expect-error emotion does not properly provide prop types due
+          // to it not working with the `WrappedComponent` class defined in
+          // ExplicitSize
           option={option}
           eventHandlers={eventHandlers}
           onResize={handleResize}
