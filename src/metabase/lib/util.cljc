@@ -575,7 +575,7 @@
       (when (#{:mbql/query :query :native :internal} query-type)
         query-type))))
 
-(mu/defn referenced-field-ids :- [:maybe [:sequential ::lib.schema.id/field]]
+(mu/defn referenced-field-ids :- [:maybe [:set ::lib.schema.id/field]]
   "Find all the integer field IDs in `coll`, Which can arbitrarily be anything that is part of MLv2 query schema."
   [coll]
   (not-empty

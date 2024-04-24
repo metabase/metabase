@@ -1286,7 +1286,8 @@
                                                (map (partial id->record true) direct)
                                                (map (partial id->record false) indirect))
             known                             (set
-                                               (t2/select-fn-set :id :metabase_field :id [:in (map :field_id records)]))
+                                               (when (seq records)
+                                                 (t2/select-fn-set :id :metabase_field :id [:in (map :field_id records)])))
             records                           (filterv (comp known :field_id) records)]
         (when (seq records)
           (t2/insert! :query_field records))))))
