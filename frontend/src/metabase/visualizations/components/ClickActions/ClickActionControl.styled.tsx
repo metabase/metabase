@@ -20,6 +20,13 @@ export const ClickActionButtonTextIcon = styled.span`
   transition: all 200ms linear;
 `;
 
+export const Subtitle = styled.div`
+  color: ${color("text-light")};
+  font-weight: normal;
+  text-align: start;
+  margin-top: 0.25rem;
+`;
+
 export const HorizontalClickActionButton = styled(Button)`
   display: flex;
   flex: auto;
@@ -27,6 +34,7 @@ export const HorizontalClickActionButton = styled(Button)`
 
   border-radius: 8px;
   border: none;
+  text-align: start;
 
   padding: 0.5rem;
   margin: 0 -0.5rem;
@@ -44,6 +52,10 @@ export const HorizontalClickActionButton = styled(Button)`
     }
 
     ${ClickActionButtonTextIcon} {
+      color: ${color("white")};
+    }
+
+    ${Subtitle} {
       color: ${color("white")};
     }
   }
