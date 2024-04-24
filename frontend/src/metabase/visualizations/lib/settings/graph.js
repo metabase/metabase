@@ -16,13 +16,11 @@ import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils"
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
   columnsAreValid,
-  getDefaultDimensionsAndMetrics,
   preserveExistingColumnsOrder,
   MAX_SERIES,
 } from "metabase/visualizations/lib/utils";
 import {
   getDefaultIsHistogram,
-  getDefaultScatterColumns,
   getDefaultStackingValue,
   getDefaultStackDisplayValue,
   getDefaultXAxisScale,
@@ -39,6 +37,7 @@ import {
   getDefaultShowDataLabels,
   getDefaultDataLabelsFrequency,
   getDefaultIsAutoSplitEnabled,
+  getDefaultColumns,
   STACKABLE_DISPLAY_TYPES,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
@@ -51,26 +50,6 @@ import {
 
 export function getDefaultDimensionLabel(multipleSeries) {
   return getDefaultXAxisTitle(multipleSeries[0]?.data.cols[0]);
-}
-
-export function getDefaultColumns(series) {
-  if (series[0].card.display === "scatter") {
-    return getDefaultScatterColumns(series[0].data);
-  } else {
-    return getDefaultLineAreaBarColumns(series);
-  }
-}
-
-function getDefaultLineAreaBarColumns(series) {
-  const [
-    {
-      card: { display },
-    },
-  ] = series;
-  return getDefaultDimensionsAndMetrics(
-    series,
-    getMaxDimensionsSupported(display),
-  );
 }
 
 export const GRAPH_DATA_SETTINGS = {
