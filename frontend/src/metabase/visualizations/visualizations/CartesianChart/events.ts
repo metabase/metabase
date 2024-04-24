@@ -143,6 +143,10 @@ export const getEventColumnsData = (
   return getSameCardDataKeys(datum, seriesModel)
     .map(dataKey => {
       const value = datum[dataKey];
+      const col = chartModel.columnByDataKey[dataKey];
+      if (!col) {
+        return null;
+      }
 
       const { breakoutValue } = parseDataKey(dataKey);
 
@@ -153,7 +157,6 @@ export const getEventColumnsData = (
         return null;
       }
 
-      const col = chartModel.columnByDataKey[dataKey];
       const columnSeriesModel = seriesModelsByDataKey[dataKey];
       const key =
         columnSeriesModel == null
