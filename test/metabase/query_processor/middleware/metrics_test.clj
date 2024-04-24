@@ -12,7 +12,6 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.metrics :as metrics]
-   [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -38,84 +37,84 @@
                metadata-provider
                (lib.tu/mock-metadata-provider
                  {:cards [metric]}))])))
-(def expand
-  (comp metrics/expand fetch-source-query/resolve-source-cards))
+(def adjust
+  (comp metrics/adjust fetch-source-query/resolve-source-cards))
 
-(deftest ^:parallel expand-aggregation-metric-ref-test
+(deftest ^:parallel adjust-aggregation-metric-ref-test
   (let [[source-metric mp] (mock-metric)
         query (-> (lib/query mp source-metric)
                   (lib/aggregate (lib/+ (lib.options/ensure-uuid [:metric {} (:id source-metric)]) 1)))]
     (is (=?
-          {:stages [{:source-table (meta/id :products)
-                     :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]
+          {:stages [{:source-table (meta/id :products)}
+                    {:aggregation [[:avg {} [:field {} (meta/id :products :rating)]]
                                    [:+ {} [:avg {} [:field {} (meta/id :products :rating)]] 1]]}]}
-          (expand query)))))
+          (adjust query)))))
 
-(deftest ^:parallel expand-aggregation-metric-ordering-test
+(deftest ^:parallel adjust-aggregation-metric-ordering-test
   (let [[source-metric mp] (mock-metric)
         query (-> (lib/query mp source-metric)
                   (lib/aggregate (lib/+ (lib.options/ensure-uuid [:metric {} (:id source-metric)]) 1)))]
     (doseq [agg-ref (map lib.options/uuid (lib/aggregations query))
             :let [ordered (lib/order-by query (lib.options/ensure-uuid [:aggregation {} agg-ref]))
-                  expanded (expand ordered)]]
+                  adjusted (adjust ordered)]]
       (is (=? {:stages
-               [{:aggregation
+               [{:source-table (meta/id :products)}
+                {:aggregation
                  [[:avg {} [:field {} (meta/id :products :rating)]]
                   [:+ {} [:avg {} [:field {} (meta/id :products :rating)]] 1]]
                  :order-by
                  [[:asc {} [:aggregation {} agg-ref]]]}]}
-              expanded)))))
+              adjusted)))))
 
-(deftest ^:parallel expand-basic-test
+(deftest ^:parallel adjust-basic-test
   (let [[source-metric mp] (mock-metric)
         query (-> (lib/query mp source-metric))]
     (is (=?
-          {:stages [{:source-table (meta/id :products)
-                     :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
-          (expand query)))
-    (is (=?
-          (qp.util/remove-lib-uuids (lib/query mp (:dataset-query source-metric)))
-          (expand query)))))
+          {:stages [{:source-table (meta/id :products) :aggregation complement}
+                    {:aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+          (adjust query)))))
 
-(deftest ^:parallel expand-join-test
+(deftest ^:parallel adjust-join-test
   (let [[source-metric mp] (mock-metric)
         query (-> (lib/query mp source-metric)
                   (lib/join (-> (lib/join-clause (meta/table-metadata :orders)
                                                  [(lib/=
-                                                   (meta/field-metadata :products :id)
-                                                   (meta/field-metadata :orders :product-id))])
+                                                    (meta/field-metadata :products :id)
+                                                    (meta/field-metadata :orders :product-id))])
                                 (lib/with-join-fields :all))))]
     (is (=?
-         {:stages [{:source-table (meta/id :products)
-                    :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]
-                    :joins [{:stages
-                             [{:source-table (meta/id :orders)}],
-                             :conditions
-                             [[:= {}
-                               [:field {} (meta/id :products :id)]
-                               [:field {:join-alias "Orders"} (meta/id :orders :product-id)]]],
-                             :alias "Orders"}]}]}
-         (expand query)))))
+          {:stages [{:source-table (meta/id :products)}
+                    {:aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]
+                     :joins [{:stages
+                              [{:source-table (meta/id :orders)}],
+                              :conditions
+                              [[:= {}
+                                [:field {} (meta/id :products :id)]
+                                [:field {:join-alias "Orders"} (meta/id :orders :product-id)]]],
+                              :alias "Orders"}]}]}
+          (adjust query)))))
 
-(deftest ^:parallel expand-expression-test
+(deftest ^:parallel adjust-expression-test
   (let [[source-metric mp] (mock-metric (lib/expression (basic-metric-query) "source" (lib/+ 1 1)))
         query (-> (lib/query mp source-metric)
                   (lib/expression "target" (lib/- 2 2)))]
     (is (=?
-          {:stages [{:expressions [[:+ {:lib/expression-name "source"} 1 1]
-                                   [:- {:lib/expression-name "target"} 2 2]]}]}
-          (expand query)))))
+          {:stages [{:expressions [[:+ {:lib/expression-name "source"} 1 1]]}
+                    {:expressions [[:- {:lib/expression-name "target"} 2 2]]
+                     :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+          (adjust query)))))
 
-(deftest ^:parallel expand-filter-test
+(deftest ^:parallel adjust-filter-test
   (let [[source-metric mp] (mock-metric (lib/filter (basic-metric-query) (lib/> (meta/field-metadata :products :price) 1)))
         query (-> (lib/query mp source-metric)
                   (lib/filter (lib/= (meta/field-metadata :products :category) "Widget")))]
     (is (=?
-          {:stages [{:filters [[:> {} [:field {} (meta/id :products :price)] 1]
-                               [:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
-          (expand query)))))
+          {:stages [{:source-table (meta/id :products)
+                     :filters [[:> {} [:field {} (meta/id :products :price)] 1]]}
+                    {:filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
+          (adjust query)))))
 
-(deftest ^:parallel expand-multi-metric-test
+(deftest ^:parallel adjust-multi-metric-test
   (let [[first-metric mp] (mock-metric (lib/filter (basic-metric-query) (lib/> (meta/field-metadata :products :price) 1)))
         [second-metric mp] (mock-metric mp (-> (lib/query mp first-metric)
                                                (lib/filter (lib/< (meta/field-metadata :products :price) 100))))
@@ -126,9 +125,28 @@
                      :filters [[:> {} [:field {} (meta/id :products :price)] 1]
                                [:< {} [:field {} (meta/id :products :price)] 100]
                                [:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
-          (expand query)))))
+          (adjust query)))))
 
-(deftest ^:parallel expand-joined-metric-test
+(deftest ^:parallel adjust-mixed-multi-source-test
+  (let [[first-metric mp] (mock-metric lib.tu/metadata-provider-with-mock-cards
+                                       (-> (lib/query lib.tu/metadata-provider-with-mock-cards (:products lib.tu/mock-cards))
+                                           (lib/aggregate (update (lib/avg (meta/field-metadata :products :rating)) 1 assoc :name (u/slugify "Mock metric")))
+                                           (lib/filter (lib/> (meta/field-metadata :products :price) 1))))
+        [second-metric mp] (mock-metric mp (-> (lib/query mp first-metric)
+                                               (lib/filter (lib/< (meta/field-metadata :products :price) 100))))
+        query (-> (lib/query mp second-metric)
+                  (lib/filter (lib/= (meta/field-metadata :products :category) "Widget")))]
+    (is (=?
+          {:stages [{:source-table (meta/id :products)}
+                    {:filters [[:> {} [:field {} (meta/id :products :price)] 1]]
+                     :aggregation complement}
+                    {:filters [[:< {} [:field {} (meta/id :products :price)] 100]]
+                     :aggregation complement}
+                    {:filters [[:= {} [:field {} (meta/id :products :category)] "Widget"]]
+                     :aggregation some?}]}
+          (adjust query)))))
+
+(deftest ^:parallel adjust-joined-metric-test
   (let [[source-metric mp] (mock-metric)
         query (as-> (lib/query mp (meta/table-metadata :orders)) $q
                 (lib/join $q (lib/join-clause (lib.metadata/card mp (:id source-metric))
@@ -140,7 +158,7 @@
           {:stages [{:joins [{:stages [{:source-table (meta/id :products)} {}]}]
                      :aggregation [[:avg {:name "mock_metric___product"}
                                     [:field {} (meta/id :products :rating)]]]}]}
-          (expand query)))))
+          (adjust query)))))
 
 (deftest ^:parallel e2e-results-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))

@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.metrics
   (:require
+   [medley.core :as m]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -19,72 +20,89 @@
               {:name (u/slugify (or join-alias metric-name))}
               (select-keys (get &match 1) [:lib/uuid :name])))))
 
-(defn- update-metric-stages [query stages metric-ref-lookup joining?]
-  (let [source-card-fn :qp/stage-is-from-source-card
-        [source-parts non-source-parts & other] (partition-by source-card-fn stages)
-        source-metadata (some->> source-parts first source-card-fn (lib.metadata/card query))
-        metric-name (:name source-metadata)
-        empty-stage? (and joining?
-                          (= 1 (count non-source-parts)))]
-    (if (= (:type source-metadata) :metric)
-      (let [last-source (last source-parts)
-            {:keys [breakout joins filters aggregation order-by limit expressions]} (first non-source-parts)
-            metric-aggregation (-> last-source :aggregation first)
-            source-card (:id source-metadata)
-            _ (vswap! metric-ref-lookup assoc [nil source-card] {:name metric-name :aggregation metric-aggregation})
-            new-aggregations (replace-metric-aggregation-refs
-                               aggregation
-                               @metric-ref-lookup)
-            new-stage (cond-> last-source
-                        :always (dissoc :aggregation :breakout :order-by :fields :limit)
-                        (seq joins) (update :joins (fnil into []) joins)
-                        (seq filters) (update :filters (fnil into []) filters)
-                        (seq breakout) (assoc :breakout breakout)
-                        (seq expressions) (update :expressions (fnil into []) expressions)
-                        (seq aggregation) (assoc :aggregation new-aggregations)
-                        limit (assoc :limit limit)
-                        (seq order-by) (assoc :order-by order-by))
-            combined-stages (vec (concat (butlast source-parts)
-                                         [new-stage]
-                                         (if empty-stage?
-                                           non-source-parts
-                                           (rest non-source-parts))
-                                         (apply concat other)))]
-        (if (seq other)
-          (recur query combined-stages metric-ref-lookup joining?)
-          combined-stages))
-      stages)))
+(defn- adjust-metric-stages
+  "`expanded-stages` are the result of :stages from fetch-source-query.
+   All source-card stages have been spliced in already.
 
-(defn expand
-  "Expand `:source-card` of `:type` `:metric` into an expanded query combining this query with sources.
+   `metric-ref-lookup` this is a volatile that holds references to the original aggragation clause (count, sum etc...)
+   it is used to replace `[:metric {} id]` clauses. This depends on the order of `walk` as each join is touched depth-first,
+   a ref-lookup will be added for any metrics found during the stage.
 
-   How various clauses are combined.
+   To adjust:
+
+   We look for the transition between the last stage of a metric and the next stage following it.
+   We adjust those two stages - as explained in `expand`.
+   "
+  [query expanded-stages metric-ref-lookup]
+  ;; Find a transition point, if it exists
+  (let [[idx metric-metadata] (some (fn [[[_idx-a stage-a] [idx-b stage-b]]]
+                                      (let [stage-a-source (:qp/stage-is-from-source-card stage-a)
+                                            metric-metadata (some->> stage-a-source (lib.metadata/card query))]
+                                        (when (and
+                                                stage-a-source
+                                                (not= stage-a-source (:qp/stage-is-from-source-card stage-b))
+                                                (= (:type metric-metadata) :metric)
+                                                ;; This indicates this stage has not been processed
+                                                ;; because metrics must have aggregations
+                                                ;; if it is missing, then it has been removed in this process
+                                                (:aggregation stage-a))
+                                          [idx-b metric-metadata])))
+                                    (partition-all 2 1 (m/indexed expanded-stages)))]
+    (if idx
+      (let [[pre-transition-stages following-stages] (split-at idx expanded-stages)
+            metric-name (:name metric-metadata)
+            last-metric-stage (last pre-transition-stages)
+            metric-aggregation (-> last-metric-stage :aggregation first)
+            new-metric-stage (cond-> last-metric-stage
+                                 :always (dissoc :aggregation :fields)
+                                 (seq following-stages) (dissoc :breakout :order-by :limit))
+            ;; Store lookup for metric references created in this set of stages.
+            ;; These will be adjusted later if these stages are in a join
+            _ (vswap! metric-ref-lookup assoc [nil (:id metric-metadata)] {:name metric-name :aggregation metric-aggregation})
+            new-following-stages (replace-metric-aggregation-refs
+                                  following-stages
+                                  @metric-ref-lookup)
+            combined-stages (vec (remove nil? (concat (butlast pre-transition-stages) [new-metric-stage] new-following-stages)))]
+        (recur query combined-stages metric-ref-lookup))
+      expanded-stages)))
+
+(defn adjust
+  "Adjusts the final and following stages of `:source-card` of `:type` `:metric`.
+
+   Expects stages to have been processed by `fetch-source-query/resolve-source-cards`
+   such that source card stages have been spliced in across the query.
+
+   The final stage of metric is adjusted by:
    ```
-      :expressions - combine with source metric
-      :aggregation - use stage, replace :metric reference with source aggregation
-      :filters     - combine with source metric
-      :breakout    - should be ignored on source metric, and already copied onto consumer by `query`
-      :order-by    - should not exist on source metric
-      :joins       - should not exist on stage
-      :fields      - should not exist on either
+   :aggregation - always removed
+   :breakout    - removed if there are following-stages
+   :order-by    - removed if there are following-stages
+   :limit       - removed if there are following-stages
+   :fields      - always removed
    ```
+
+   Stages following this, and stages further up the query hierarchy will have
+   `[:metric {} id]` clauses replaced with the actual aggregation of the metric.
    "
   [query]
-  (let [;; Holds joined metrics to replace `[:metric {:join-alias x} y]` with the appropriate aggregation expression
+  (let [;;  Once the stages are processed any ref-lookup missing a join alias must have
+        ;; come from this join's stages, so further references must include the join alias.
         metric-ref-lookup (volatile! {})
         query (lib.walk/walk
                 query
                 (fn [_query path-type _path stage-or-join]
                   (case path-type
                     :lib.walk/join
-                    (let [result (update stage-or-join :stages #(update-metric-stages query % metric-ref-lookup true))]
+                    (let [result (update stage-or-join :stages #(adjust-metric-stages query % metric-ref-lookup))]
+                      ;; Once the stages are processed any ref-lookup missing a join alias must have
+                      ;; come from this join's stages, so further references must include the join alias.
                       (vswap! metric-ref-lookup update-keys (fn [[lookup-alias lookup-card]]
                                                               (if-not lookup-alias
                                                                 [(:alias stage-or-join) lookup-card]
                                                                 [lookup-alias lookup-card])))
                       result)
                     stage-or-join)))
-        new-stages (update-metric-stages query (:stages query) metric-ref-lookup false)]
+        new-stages (adjust-metric-stages query (:stages query) metric-ref-lookup)]
     (replace-metric-aggregation-refs
       (assoc query :stages new-stages)
       @metric-ref-lookup)))
