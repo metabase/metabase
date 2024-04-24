@@ -1059,7 +1059,10 @@
   "Delete a collection entirely."
   [id]
   {id ms/PositiveInt}
-  (let [collection-before-delete (api/write-check :model/Collection id)]
+  (let [collection-before-delete (t2/select-one :model/Collection :id id)]
+    (api/check-403
+     (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
+                                              (collection/perms-for-archiving collection-before-delete)))
     ;; we can only delete archived collections
     (api/check-400 (:archived collection-before-delete))
     (t2/delete! :model/Collection :id id)))
