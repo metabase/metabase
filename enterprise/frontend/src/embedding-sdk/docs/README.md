@@ -18,7 +18,7 @@ yarn add @metabase/embedding-sdk-react
 
 ## Usage
 
-Once installed, you can need to import `MetabaseProvider` and provide it a `config` object.
+Once installed, you need to import `MetabaseProvider` and provide it with a `config` object.
 
 ```jsx
 import React from "react";
