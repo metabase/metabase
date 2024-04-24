@@ -98,7 +98,8 @@
   [uuid]
   {uuid ms/UUIDString}
   (validation/check-public-sharing-enabled)
-  (card-with-uuid uuid))
+  (u/prog1 (card-with-uuid uuid)
+    (events/publish-event! :event/card-read {:object <>, :user-id api/*current-user-id*})))
 
 (defmulti ^:private transform-qp-result
   "Transform results to be suitable for a public endpoint"
