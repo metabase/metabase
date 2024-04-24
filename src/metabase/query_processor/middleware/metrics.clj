@@ -36,9 +36,10 @@
                metric-aggregation (-> source-query lib/aggregations first)
                new-aggregations (lib.util.match/replace aggregation
                                   [:metric {} source-card]
-                                  (assoc-in (lib.util/fresh-uuids metric-aggregation)
-                                            [1 :lib/uuid]
-                                            (get-in &match [1 :lib/uuid])))]
+                                  (let [orig-name (get-in &match [1 :name])]
+                                    (cond-> (lib.util/fresh-uuids metric-aggregation)
+                                      :always   (assoc-in [1 :lib/uuid] (get-in &match [1 :lib/uuid]))
+                                      orig-name (assoc-in [1 :name] orig-name))))]
            (as-> source-query $q
              (lib.util/update-query-stage $q -1 dissoc :aggregation :breakout :order-by :fields)
              (reduce lib/join $q joins)
