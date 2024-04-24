@@ -92,6 +92,7 @@ export interface CollectionItem {
   fully_parameterized?: boolean | null;
   based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;
+  collection_id: CollectionId | null; // parent collection id
   display?: CardDisplayType;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
