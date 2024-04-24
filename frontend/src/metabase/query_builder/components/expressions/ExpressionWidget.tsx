@@ -3,6 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import Input from "metabase/core/components/Input/Input";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { isNotNull } from "metabase/lib/types";
 import { Button } from "metabase/ui";
 import type * as Lib from "metabase-lib";
@@ -122,6 +123,11 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
 
   if (isCombiningColumns) {
     const handleSubmit = (name: string, clause: Lib.ExpressionClause) => {
+      MetabaseAnalytics.trackStructEvent(
+        "QueryBuilder",
+        "column_combine_via_shortcut",
+      );
+
       setIsCombiningColumns(false);
       setClause(clause);
       setName(name);
