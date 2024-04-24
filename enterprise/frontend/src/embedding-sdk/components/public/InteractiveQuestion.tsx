@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { useEffect } from "react";
 
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -21,16 +22,13 @@ import { Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { CardId } from "metabase-types/api";
 
-import { useEmbeddingContext } from "../../context";
-
 interface InteractiveQuestionProps {
   questionId: CardId;
 }
 
-export const InteractiveQuestion = ({
+export const _InteractiveQuestion = ({
   questionId,
 }: InteractiveQuestionProps): JSX.Element | null => {
-  const { isInitialized, isLoggedIn } = useEmbeddingContext();
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
   const mode = question && getEmbeddingMode(question);
@@ -54,7 +52,7 @@ export const InteractiveQuestion = ({
     dispatch(initializeQB(mockLocation, params));
   }, [dispatch, questionId]);
 
-  if (!isInitialized || !isLoggedIn || !question) {
+  if (!question) {
     return null;
   }
 
@@ -100,3 +98,6 @@ export const InteractiveQuestion = ({
     </LoadingAndErrorWrapper>
   );
 };
+
+export const InteractiveQuestion =
+  withPublicComponentWrapper(_InteractiveQuestion);

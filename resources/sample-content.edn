@@ -51,6 +51,42 @@
    :created_at #t "2024-04-11T12:41:25.429317Z",
    :public_uuid nil,
    :points_of_interest nil}),
+ :data_permissions
+ ({:id 1,
+   :group_id 1,
+   :perm_type "perms/view-data",
+   :db_id 1,
+   :schema_name nil,
+   :table_id nil,
+   :perm_value "unrestricted"}
+  {:id 2,
+   :group_id 1,
+   :perm_type "perms/create-queries",
+   :db_id 1,
+   :schema_name nil,
+   :table_id nil,
+   :perm_value "query-builder-and-native"}
+  {:id 3,
+   :group_id 1,
+   :perm_type "perms/download-results",
+   :db_id 1,
+   :schema_name nil,
+   :table_id nil,
+   :perm_value "one-million-rows"}
+  {:id 4,
+   :group_id 1,
+   :perm_type "perms/manage-table-metadata",
+   :db_id 1,
+   :schema_name nil,
+   :table_id nil,
+   :perm_value "no"}
+  {:id 5,
+   :group_id 1,
+   :perm_type "perms/manage-database",
+   :db_id 1,
+   :schema_name nil,
+   :table_id nil,
+   :perm_value "no"}),
  :metabase_table
  ({:description
    "Piespace does some anonymous analytics tracking on how users interact with their platform. They’ve only had time to implement a few events, but you know how it is. Pies come first.",
@@ -3979,5 +4015,6 @@
    :entity_id "53YGAg4EE6MC76nxx-f5f",
    :location "/",
    :namespace nil,
+   :is_sample true,
    :created_at #t "2024-04-11T12:41:25.429317Z"}),
  :parameter_card ()}

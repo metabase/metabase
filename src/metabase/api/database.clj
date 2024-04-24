@@ -93,11 +93,11 @@
   (for [db dbs]
     (assoc db
            :native_permissions
-           (if (data-perms/user-has-permission-for-database?
-                api/*current-user-id*
-                :perms/native-query-editing
-                :yes
-                (u/the-id db))
+           (if (= :query-builder-and-native
+                  (data-perms/full-db-permission-for-user
+                   api/*current-user-id*
+                   :perms/create-queries
+                   (u/the-id db)))
              :write
              :none))))
 
@@ -500,13 +500,13 @@
   and tables, with no additional metadata."
   [id include_hidden include_editable_data_model remove_inactive]
   {id                          ms/PositiveInt
-   include_hidden              [:maybe ms/BooleanString]
-   include_editable_data_model [:maybe ms/BooleanString]
-   remove_inactive             [:maybe ms/BooleanString]}
+   include_hidden              [:maybe ms/BooleanValue]
+   include_editable_data_model [:maybe ms/BooleanValue]
+   remove_inactive             [:maybe ms/BooleanValue]}
   (db-metadata id
-               (Boolean/parseBoolean include_hidden)
-               (Boolean/parseBoolean include_editable_data_model)
-               (Boolean/parseBoolean remove_inactive)))
+               include_hidden
+               include_editable_data_model
+               remove_inactive))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
@@ -1095,10 +1095,14 @@
   at least some of its tables?)"
   [database-id schema-name]
   (or
-   (= :unrestricted (data-perms/schema-permission-for-user api/*current-user-id*
-                                                           :perms/data-access
-                                                           database-id
-                                                           schema-name))
+   (and (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id*
+                                                                 :perms/view-data
+                                                                 database-id))
+        (contains? #{:query-builder :query-builder-and-native}
+                   (data-perms/schema-permission-for-user api/*current-user-id*
+                                                          :perms/create-queries
+                                                          database-id
+                                                          schema-name)))
    (current-user-can-read-schema? database-id schema-name)))
 
 (api/defendpoint GET "/:id/syncable_schemas"

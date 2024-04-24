@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.api.table-test :as oss-test]
    [metabase.test :as mt]
+   [metabase.upload :as upload]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def list-url "ee/upload-management/tables/")
@@ -76,4 +77,13 @@
                (is (= {:message "You don't have permissions to do that."}
                       (mt/user-http-request :rasta :delete 403 (delete-url table-id)))))
              (testing "The table remains in the list"
-               (is (contains? (listed-table-ids) table-id))))))))))
+               (is (contains? (listed-table-ids) table-id)))))
+
+         (testing "The archive_cards argument is passed through"
+           (let [passed-value (atom nil)]
+             (mt/with-dynamic-redefs [upload/delete-upload! (fn [_ & {:keys [archive-cards?]}]
+                                                              (reset! passed-value archive-cards?)
+                                                              :done)]
+               (let [table-id (:id (oss-test/create-csv!))]
+                 (is (mt/user-http-request :crowberto :delete 200 (delete-url table-id) :archive-cards true))
+                 (is (true? @passed-value)))))))))))

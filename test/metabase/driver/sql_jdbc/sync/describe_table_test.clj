@@ -7,7 +7,6 @@
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
-   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -25,18 +24,22 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(defn- uses-default-describe-table? [driver]
+  (and (identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table driver))
+       (not (driver/database-supports? driver :describe-fields nil))))
+
+(defn- uses-default-describe-fields? [driver]
+  (and (identical? (get-method driver/describe-fields :sql-jdbc) (get-method driver/describe-fields driver))
+       (driver/database-supports? driver :describe-fields nil)))
+
 (defn- sql-jdbc-drivers-using-default-describe-table-or-fields-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`, or `describe-fields`."
   []
   (set
    (filter
     (fn [driver]
-      (let [uses-default-describe-table? (and (identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table driver))
-                                              (not (driver/database-supports? driver :describe-fields nil)))
-            uses-default-describe-fields? (and (identical? (get-method driver/describe-fields :sql-jdbc) (get-method driver/describe-fields driver))
-                                               (driver/database-supports? driver :describe-fields nil))]
-        (or uses-default-describe-table?
-            uses-default-describe-fields?)))
+      (or (uses-default-describe-table? driver)
+          (uses-default-describe-fields? driver)))
     (descendants driver/hierarchy :sql-jdbc))))
 
 (deftest ^:parallel describe-fields-nested-field-columns-test
@@ -46,61 +49,55 @@
                         (mt/normal-drivers-with-feature :nested-field-columns))))))
 
 (deftest ^:parallel describe-table-test
-  (is (= {:name "VENUES",
-          :fields
-          #{{:name                       "ID"
-             :database-type              "BIGINT"
-             :base-type                  :type/BigInteger
-             :database-position          0
-             :pk?                        true
-             :database-required          false
-             :database-is-auto-increment true :json-unfolding false}
-            {:name                       "NAME"
-             :database-type              "CHARACTER VARYING"
-             :base-type                  :type/Text
-             :database-position          1
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "CATEGORY_ID"
-             :database-type              "INTEGER"
-             :base-type                  :type/Integer
-             :database-position          2
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "LATITUDE"
-             :database-type              "DOUBLE PRECISION"
-             :base-type                  :type/Float
-             :database-position          3
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "LONGITUDE"
-             :database-type              "DOUBLE PRECISION"
-             :base-type                  :type/Float
-             :database-position          4
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}
-            {:name                       "PRICE"
-             :database-type              "INTEGER"
-             :base-type                  :type/Integer
-             :database-position          5
-             :database-required          false
-             :database-is-auto-increment false
-             :json-unfolding             false}}}
-         (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
-
-(defn- describe-fields-for-table [db table]
-  (let [driver (driver.u/database->driver db)]
-    (sort-by :database-position
-             (if (driver/database-supports? driver :describe-fields db)
-               (vec (sql-jdbc.describe-table/describe-fields driver db
-                                                             :schema-names [(:schema table)]
-                                                             :table-names [(:name table)]))
-               (:fields (sql-jdbc.describe-table/describe-table driver db table))))))
-
+  (mt/test-driver :h2
+    (assert (uses-default-describe-table? :h2)
+            "Make sure H2 uses the default `describe-table` implementation")
+    (is (= {:name "VENUES",
+            :fields
+            #{{:name                       "ID"
+               :database-type              "BIGINT"
+               :base-type                  :type/BigInteger
+               :database-position          0
+               :pk?                        true
+               :database-required          false
+               :database-is-auto-increment true
+               :json-unfolding             false}
+              {:name                       "NAME"
+               :database-type              "CHARACTER VARYING"
+               :base-type                  :type/Text
+               :database-position          1
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "CATEGORY_ID"
+               :database-type              "INTEGER"
+               :base-type                  :type/Integer
+               :database-position          2
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "LATITUDE"
+               :database-type              "DOUBLE PRECISION"
+               :base-type                  :type/Float
+               :database-position          3
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "LONGITUDE"
+               :database-type              "DOUBLE PRECISION"
+               :base-type                  :type/Float
+               :database-position          4
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}
+              {:name                       "PRICE"
+               :database-type              "INTEGER"
+               :base-type                  :type/Integer
+               :database-position          5
+               :database-required          false
+               :database-is-auto-increment false
+               :json-unfolding             false}}}
+           (driver/describe-table :h2 (mt/db) {:name "VENUES"})))))
 
 (deftest describe-auto-increment-on-non-pk-field-test
   (testing "a non-pk field with auto-increment should be have metabase_field.database_is_auto_increment=true"
@@ -140,34 +137,15 @@
               :name "employee_counter"}
              (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "employee_counter"}))))))
 
-(deftest ^:parallel describe-table-fks-test
-  (is (= #{{:fk-column-name   "CATEGORY_ID"
-            :dest-table       {:name "CATEGORIES", :schema "PUBLIC"}
-            :dest-column-name "ID"}}
-         (sql-jdbc.describe-table/describe-table-fks :h2 (mt/id) {:name "VENUES"})))
-  (is (= #{{:fk-column-name "USER_ID", :dest-table {:name "USERS", :schema "PUBLIC"}, :dest-column-name "ID"}
-           {:fk-column-name "VENUE_ID", :dest-table {:name "VENUES", :schema "PUBLIC"}, :dest-column-name "ID"}}
-         (sql-jdbc.describe-table/describe-table-fks :h2 (mt/id) {:name "CHECKINS"}))))
-
-(deftest describe-fields-or-table-test
-  (testing "test `describe-fields` or `describe-table` returns some basic metadata"
-    (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
-      (mt/dataset daily-bird-counts
-        (let [table       (t2/select-one :model/Table :id (mt/id :bird-count))
-              format-name #(ddl.i/format-name driver/*driver* %)]
-          (is (=? [{:name              (format-name "id"),
-                    :database-type     string?,
-                    :database-position 0,
-                    :base-type         #(isa? % :type/Number)}
-                   {:name              (format-name "date"),
-                    :database-type     string?,
-                    :database-position 1,
-                    :base-type         #(isa? % :type/Date)}
-                   {:name              (format-name "count"),
-                    :database-type     string?,
-                    :database-position 2,
-                    :base-type         #(isa? % :type/Number)}]
-                  (describe-fields-for-table (mt/db) table))))))))
+(defn- describe-fields-for-table [db table]
+  (let [driver (driver.u/database->driver db)]
+    (sort-by :database-position
+             (if (driver/database-supports? driver :describe-fields db)
+               (vec (driver/describe-fields driver
+                                            db
+                                            :schema-names [(:schema table)]
+                                            :table-names [(:name table)]))
+               (:fields (driver/describe-table driver db table))))))
 
 (deftest database-types-fallback-test
   (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)

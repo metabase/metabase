@@ -100,6 +100,8 @@ export default class AccordionList extends Component {
 
     itemTestId: PropTypes.string,
     "data-testid": PropTypes.string,
+
+    withBorders: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -611,6 +613,7 @@ export default class AccordionList extends Component {
       className,
       sections,
       role,
+      withBorders,
       "data-testid": testId,
     } = this.props;
     const { cursor, scrollToAlignment } = this.state;
@@ -651,6 +654,7 @@ export default class AccordionList extends Component {
               canToggleSections={this.canToggleSections()}
               toggleSection={this.toggleSection}
               hasCursor={this.isRowSelected(rows[index])}
+              withBorders={withBorders}
             />
           ))}
         </AccordionListRoot>
@@ -722,6 +726,7 @@ export default class AccordionList extends Component {
                   sectionIsExpanded={this.isSectionExpanded}
                   canToggleSections={this.canToggleSections()}
                   toggleSection={this.toggleSection}
+                  withBorders={withBorders}
                 />
               )}
             </CellMeasurer>

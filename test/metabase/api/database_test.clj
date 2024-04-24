@@ -28,6 +28,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
+   [metabase.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -43,7 +44,7 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.sql Connection)
-   (org.quartz TriggerKey)))
+   (org.quartz JobDetail TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -269,26 +270,6 @@
 
 (def ^:private monthly-schedule {:schedule_type "monthly" :schedule_day "fri" :schedule_frame "last"})
 
-(defn- all-db-sync-triggers-name
-  "Returns the name of trigger for DB.
-  This is all trigger names that a DB SHOULD have."
-  [db]
-  (set (map #(.getName ^TriggerKey (#'task.sync-databases/trigger-key (t2/instance :model/Database db) %))
-            @#'task.sync-databases/all-tasks)))
-
-(defn- query-all-db-sync-triggers-name
-  "Find the all triggers for DB \"db\".
-  This is all triger names that a DB HAVE in the scheduler."
-  [db]
-  (let [db (t2/instance :model/Database db)]
-    (assert (some? (#'task/scheduler)) "makes sure the scheduler is initialized!")
-    (->> (for [task-info @#'task.sync-databases/all-tasks]
-           (keep #(when (= (.getName ^TriggerKey (#'task.sync-databases/trigger-key db task-info)) (:key %))
-                    (:key %))
-                 (:triggers (task/job-info (#'task.sync-databases/job-key task-info)))))
-         flatten
-         set)))
-
 (defn- sync-and-analyze-trigger-name
   [db]
   (.getName ^TriggerKey (#'task.sync-databases/trigger-key db @#'task.sync-databases/sync-analyze-task-info)))
@@ -305,8 +286,8 @@
   `(mt/with-temp-scheduler
      (#'task.sync-databases/job-init)
      (u/prog1 ~@body
-       (qs/delete-job (#'task/scheduler) (.getKey @#'task.sync-databases/sync-analyze-job))
-       (qs/delete-job (#'task/scheduler) (.getKey @#'task.sync-databases/field-values-job)))))
+       (qs/delete-job (#'task/scheduler) (.getKey ^JobDetail @#'task.sync-databases/sync-analyze-job))
+       (qs/delete-job (#'task/scheduler) (.getKey ^JobDetail @#'task.sync-databases/field-values-job)))))
 
 (deftest create-db-default-schedule-test
   (testing "POST /api/database"
@@ -332,8 +313,8 @@
                           [:features   [:= (driver.u/features ::test-driver (mt/db))]]
                           [:creator_id [:= (mt/user->id :crowberto)]]]]
                         db))
-            (is (= (all-db-sync-triggers-name db)
-                   (query-all-db-sync-triggers-name db)))))))))
+            (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                   (task.sync-databases-test/query-all-db-sync-triggers-name db)))))))))
 
 (deftest create-db-no-full-sync-test
   (testing "POST /api/database"
@@ -746,7 +727,7 @@
                    :headers))))
       (testing " handles large numbers of tables and fields sensibly with prefix"
         (mt/with-model-cleanup [Field Table Database]
-          (let [tmp-db (first (t2/insert-returning-instances! Database {:name "Temp Autocomplete Pagination DB" :engine "h2" :details "{}"}))]
+          (mt/with-temp [Database tmp-db {:name "Temp Autocomplete Pagination DB" :engine "h2"}]
             ;; insert more than 50 temporary tables and fields
             (doseq [i (range 60)]
               (let [tmp-tbl (first (t2/insert-returning-instances! Table {:name (format "My Table %d" i) :db_id (u/the-id tmp-db) :active true}))]
@@ -1127,8 +1108,8 @@
                    (:metadata_sync_schedule db)))
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-last-friday-at-11pm)
                    (:cache_field_values_schedule db)))
-            (is (= (all-db-sync-triggers-name db)
-                   (query-all-db-sync-triggers-name db)))))))))
+            (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                   (task.sync-databases-test/query-all-db-sync-triggers-name db)))))))))
 
 (deftest create-db-never-scan-field-values-test
   (testing "POST /api/database"
@@ -1149,7 +1130,7 @@
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))
             (is (= #{(sync-and-analyze-trigger-name db)}
-                   (query-all-db-sync-triggers-name db)))))))))
+                   (task.sync-databases-test/query-all-db-sync-triggers-name db)))))))))
 
 (deftest create-db-on-demand-scan-field-values-test
   (testing "POST /api/database"
@@ -1170,7 +1151,7 @@
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))
             (is (= #{(sync-and-analyze-trigger-name db)}
-                   (query-all-db-sync-triggers-name db)))))))))
+                   (task.sync-databases-test/query-all-db-sync-triggers-name db)))))))))
 
 (deftest update-db-to-sync-on-custom-schedule-test
   (with-db-scheduler-setup
@@ -1197,8 +1178,8 @@
                                                :cache_field_values schedule-map-for-last-friday-at-11pm}
                                  :is_full_sync true
                                  :is_on_demand false})
-          (is (= (all-db-sync-triggers-name db)
-                 (query-all-db-sync-triggers-name db)))
+          (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                 (task.sync-databases-test/query-all-db-sync-triggers-name db)))
           (let [db (t2/select-one :model/Database (:id db))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
@@ -1213,7 +1194,7 @@
                                 :is_full_sync false
                                 :is_on_demand false})
          (is (= #{(sync-and-analyze-trigger-name db)}
-                (query-all-db-sync-triggers-name db)))
+                (task.sync-databases-test/query-all-db-sync-triggers-name db)))
          (let [db (t2/select-one :model/Database (:id db))]
            (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                   (:metadata_sync_schedule db)))
@@ -1226,8 +1207,8 @@
                                               :cache_field_values schedule-map-for-last-friday-at-11pm}
                                 :is_full_sync true
                                 :is_on_demand false})
-         (is (= (all-db-sync-triggers-name db)
-                (query-all-db-sync-triggers-name db)))
+         (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                (task.sync-databases-test/query-all-db-sync-triggers-name db)))
          (let [db (t2/select-one :model/Database (:id db))]
            ;; make sure the new schedule is randomized, not from the payload
            (is (not= (-> schedule-map-for-weekly u.cron/schedule-map->cron-string)
@@ -1242,8 +1223,8 @@
         [:model/Database db {}]
         (testing "update db setting to never scan should remove scan field values trigger"
           (testing "sanity check that it has all triggers to begin with"
-            (is (= (all-db-sync-triggers-name db)
-                   (query-all-db-sync-triggers-name db))))
+            (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                   (task.sync-databases-test/query-all-db-sync-triggers-name db))))
           (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
                                 {:details     {:let-user-control-scheduling true}
                                  :schedules   {:metadata_sync      schedule-map-for-weekly
@@ -1251,7 +1232,7 @@
                                  :is_full_sync false
                                  :is_on_demand false})
           (is (= #{(sync-and-analyze-trigger-name db)}
-                 (query-all-db-sync-triggers-name db)))
+                 (task.sync-databases-test/query-all-db-sync-triggers-name db)))
           (let [db (t2/select-one :model/Database (:id db))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
@@ -1270,7 +1251,7 @@
                                  :is_full_sync false
                                  :is_on_demand true})
           (is (= #{(sync-and-analyze-trigger-name db)}
-                 (query-all-db-sync-triggers-name db)))
+                 (task.sync-databases-test/query-all-db-sync-triggers-name db)))
           (let [db (t2/select-one :model/Database (:id db))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
@@ -1554,10 +1535,11 @@
 
       (testing "...or just table read perms..."
         (mt/with-no-data-perms-for-all-users!
-          (mt/with-perm-for-group-and-table! (perms-group/all-users) (u/the-id t1) :perms/data-access :unrestricted
-            (mt/with-perm-for-group-and-table! (perms-group/all-users) (u/the-id t2) :perms/data-access :unrestricted
-              (is (= ["schema1"]
-                     (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))))
+          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/create-queries :query-builder)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t2) :perms/create-queries :query-builder)
+          (is (= ["schema1"]
+                 (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))
 
       (testing "should return a 403 for a user that doesn't have read permissions for the database"
         (mt/with-no-data-perms-for-all-users!
@@ -1566,19 +1548,21 @@
 
       (testing "should return a 403 if there are no perms for any schema"
         (mt/with-full-data-perms-for-all-users!
-          (mt/with-perm-for-group-and-table! (perms-group/all-users) (u/the-id t1) :perms/data-access :no-self-service
-            (mt/with-perm-for-group-and-table! (perms-group/all-users) (u/the-id t2) :perms/data-access :no-self-service
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id)))))))))
+          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/create-queries :no)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t2) :perms/create-queries :no)
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id)))))))
 
     (testing "should exclude schemas for which the user has no perms"
       (mt/with-temp [Database {database-id :id} {}
                      Table    {t1-id :id} {:db_id database-id :schema "schema-with-perms"}
                      Table    _ {:db_id database-id :schema "schema-without-perms"}]
         (mt/with-no-data-perms-for-all-users!
-          (mt/with-perm-for-group-and-table! (perms-group/all-users) t1-id :perms/data-access :unrestricted
-            (is (= ["schema-with-perms"]
-                   (mt/user-http-request :rasta :get 200 (format "database/%s/schemas" database-id))))))))))
+          (data-perms/set-database-permission! (perms-group/all-users) database-id :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) t1-id :perms/create-queries :query-builder)
+          (is (= ["schema-with-perms"]
+                 (mt/user-http-request :rasta :get 200 (format "database/%s/schemas" database-id)))))))))
 
 (deftest get-schema-tables-test
   (testing "GET /api/database/:id/schema/:schema"
@@ -1596,7 +1580,8 @@
                      Table    table-with-perms {:db_id database-id :schema "public" :name "table-with-perms"}
                      Table    _                {:db_id database-id :schema "public" :name "table-without-perms"}]
         (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-table-permission! (perms-group/all-users) table-with-perms :perms/data-access :unrestricted)
+          (data-perms/set-database-permission! (perms-group/all-users) database-id :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) table-with-perms :perms/create-queries :query-builder)
           (is (= ["table-with-perms"]
                  (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public"))))))))
 
@@ -1735,10 +1720,11 @@
 
       (testing "if we have Table perms for all tables in the schema"
         (mt/with-no-data-perms-for-all-users!
-          (mt/with-perm-for-group-and-table! (perms-group/all-users) t1 :perms/data-access :unrestricted
-            (mt/with-perm-for-group-and-table! (perms-group/all-users) t3 :perms/data-access :unrestricted
-              (is (= ["t1" "t3"]
-                     (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))))))
+          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/create-queries :query-builder)
+          (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t3) :perms/create-queries :query-builder)
+          (is (= ["t1" "t3"]
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))))
 
     (testing "should return a 403 for a user that doesn't have read permissions"
       (testing "for the DB"
@@ -1753,9 +1739,10 @@
                        Table    {t1-id :id} {:db_id database-id :schema "schema-with-perms"}
                        Table    _ {:db_id database-id :schema "schema-without-perms"}]
           (mt/with-no-data-perms-for-all-users!
-            (mt/with-perm-for-group-and-table! (perms-group/all-users) t1-id :perms/data-access :unrestricted
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "schema-without-perms")))))))))))
+            (data-perms/set-database-permission! (perms-group/all-users) database-id :perms/view-data :unrestricted)
+            (data-perms/set-table-permission! (perms-group/all-users) t1-id :perms/create-queries :query-builder)
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "schema-without-perms"))))))))))
 
 (deftest slashes-in-identifiers-test
   (testing "We should handle Databases with slashes in identifiers correctly (#12450)"
