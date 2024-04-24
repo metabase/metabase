@@ -28,6 +28,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
+   [metabase.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -43,7 +44,7 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.sql Connection)
-   (org.quartz TriggerKey)))
+   (org.quartz JobDetail TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -269,26 +270,6 @@
 
 (def ^:private monthly-schedule {:schedule_type "monthly" :schedule_day "fri" :schedule_frame "last"})
 
-(defn- all-db-sync-triggers-name
-  "Returns the name of trigger for DB.
-  This is all trigger names that a DB SHOULD have."
-  [db]
-  (set (map #(.getName ^TriggerKey (#'task.sync-databases/trigger-key (t2/instance :model/Database db) %))
-            @#'task.sync-databases/all-tasks)))
-
-(defn- query-all-db-sync-triggers-name
-  "Find the all triggers for DB \"db\".
-  This is all triger names that a DB HAVE in the scheduler."
-  [db]
-  (let [db (t2/instance :model/Database db)]
-    (assert (some? (#'task/scheduler)) "makes sure the scheduler is initialized!")
-    (->> (for [task-info @#'task.sync-databases/all-tasks]
-           (keep #(when (= (.getName ^TriggerKey (#'task.sync-databases/trigger-key db task-info)) (:key %))
-                    (:key %))
-                 (:triggers (task/job-info (#'task.sync-databases/job-key task-info)))))
-         flatten
-         set)))
-
 (defn- sync-and-analyze-trigger-name
   [db]
   (.getName ^TriggerKey (#'task.sync-databases/trigger-key db @#'task.sync-databases/sync-analyze-task-info)))
@@ -305,8 +286,8 @@
   `(mt/with-temp-scheduler
      (#'task.sync-databases/job-init)
      (u/prog1 ~@body
-       (qs/delete-job (#'task/scheduler) (.getKey @#'task.sync-databases/sync-analyze-job))
-       (qs/delete-job (#'task/scheduler) (.getKey @#'task.sync-databases/field-values-job)))))
+       (qs/delete-job (#'task/scheduler) (.getKey ^JobDetail @#'task.sync-databases/sync-analyze-job))
+       (qs/delete-job (#'task/scheduler) (.getKey ^JobDetail @#'task.sync-databases/field-values-job)))))
 
 (deftest create-db-default-schedule-test
   (testing "POST /api/database"
@@ -332,8 +313,8 @@
                           [:features   [:= (driver.u/features ::test-driver (mt/db))]]
                           [:creator_id [:= (mt/user->id :crowberto)]]]]
                         db))
-            (is (= (all-db-sync-triggers-name db)
-                   (query-all-db-sync-triggers-name db)))))))))
+            (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                   (task.sync-databases-test/query-all-db-sync-triggers-name db)))))))))
 
 (deftest create-db-no-full-sync-test
   (testing "POST /api/database"
@@ -1127,8 +1108,8 @@
                    (:metadata_sync_schedule db)))
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-last-friday-at-11pm)
                    (:cache_field_values_schedule db)))
-            (is (= (all-db-sync-triggers-name db)
-                   (query-all-db-sync-triggers-name db)))))))))
+            (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                   (task.sync-databases-test/query-all-db-sync-triggers-name db)))))))))
 
 (deftest create-db-never-scan-field-values-test
   (testing "POST /api/database"
@@ -1149,7 +1130,7 @@
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))
             (is (= #{(sync-and-analyze-trigger-name db)}
-                   (query-all-db-sync-triggers-name db)))))))))
+                   (task.sync-databases-test/query-all-db-sync-triggers-name db)))))))))
 
 (deftest create-db-on-demand-scan-field-values-test
   (testing "POST /api/database"
@@ -1170,7 +1151,7 @@
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))
             (is (= #{(sync-and-analyze-trigger-name db)}
-                   (query-all-db-sync-triggers-name db)))))))))
+                   (task.sync-databases-test/query-all-db-sync-triggers-name db)))))))))
 
 (deftest update-db-to-sync-on-custom-schedule-test
   (with-db-scheduler-setup
@@ -1197,8 +1178,8 @@
                                                :cache_field_values schedule-map-for-last-friday-at-11pm}
                                  :is_full_sync true
                                  :is_on_demand false})
-          (is (= (all-db-sync-triggers-name db)
-                 (query-all-db-sync-triggers-name db)))
+          (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                 (task.sync-databases-test/query-all-db-sync-triggers-name db)))
           (let [db (t2/select-one :model/Database (:id db))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
@@ -1213,7 +1194,7 @@
                                 :is_full_sync false
                                 :is_on_demand false})
          (is (= #{(sync-and-analyze-trigger-name db)}
-                (query-all-db-sync-triggers-name db)))
+                (task.sync-databases-test/query-all-db-sync-triggers-name db)))
          (let [db (t2/select-one :model/Database (:id db))]
            (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                   (:metadata_sync_schedule db)))
@@ -1226,8 +1207,8 @@
                                               :cache_field_values schedule-map-for-last-friday-at-11pm}
                                 :is_full_sync true
                                 :is_on_demand false})
-         (is (= (all-db-sync-triggers-name db)
-                (query-all-db-sync-triggers-name db)))
+         (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                (task.sync-databases-test/query-all-db-sync-triggers-name db)))
          (let [db (t2/select-one :model/Database (:id db))]
            ;; make sure the new schedule is randomized, not from the payload
            (is (not= (-> schedule-map-for-weekly u.cron/schedule-map->cron-string)
@@ -1242,8 +1223,8 @@
         [:model/Database db {}]
         (testing "update db setting to never scan should remove scan field values trigger"
           (testing "sanity check that it has all triggers to begin with"
-            (is (= (all-db-sync-triggers-name db)
-                   (query-all-db-sync-triggers-name db))))
+            (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                   (task.sync-databases-test/query-all-db-sync-triggers-name db))))
           (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
                                 {:details     {:let-user-control-scheduling true}
                                  :schedules   {:metadata_sync      schedule-map-for-weekly
@@ -1251,7 +1232,7 @@
                                  :is_full_sync false
                                  :is_on_demand false})
           (is (= #{(sync-and-analyze-trigger-name db)}
-                 (query-all-db-sync-triggers-name db)))
+                 (task.sync-databases-test/query-all-db-sync-triggers-name db)))
           (let [db (t2/select-one :model/Database (:id db))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
@@ -1270,7 +1251,7 @@
                                  :is_full_sync false
                                  :is_on_demand true})
           (is (= #{(sync-and-analyze-trigger-name db)}
-                 (query-all-db-sync-triggers-name db)))
+                 (task.sync-databases-test/query-all-db-sync-triggers-name db)))
           (let [db (t2/select-one :model/Database (:id db))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))

@@ -1215,7 +1215,7 @@
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
   ;; -----------------------------------------------------------------------------
-  ;; Start a fresh metabase instance without the :ee alias
+  ;; Start a fresh metabase instance without the :ee alias so instance analytics stuff is not created.
   ;; 1. create a collection with dashboards, or import one with (metabase.cmd/import "<path>")
   ;; 2. execute the following to spit out the collection to an EDN file:
   (let [pretty-spit (fn [file-name data]

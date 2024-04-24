@@ -24,6 +24,7 @@
    [metabase.models.setting :as setting]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.task :as task]
+   [metabase.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -1658,19 +1659,19 @@
           (doseq [db (concat db-with-scan-fv db-without-scan-fv)]
             (#'database/check-and-schedule-tasks-for-db! (t2/instance :model/Database db))
             (testing "sanity check that the schedule exists"
-              (is (= (#'api.database-test/all-db-sync-triggers-name db)
-                     (#'api.database-test/query-all-db-sync-triggers-name db)))))
+              (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
+                     (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
 
           (migrate!)
           (testing "default options and scan with manual schedules should have scan field values"
             (doseq [db db-with-scan-fv]
-              (is (= (#'api.database-test/all-db-sync-triggers-name db)
-                     (#'api.database-test/query-all-db-sync-triggers-name db)))))
+              (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
+                     (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
 
           (testing "never scan and on demand should not have scan field values"
             (doseq [db (t2/select :model/Database :id [:in (map :id db-without-scan-fv)])]
               (is (= #{(#'api.database-test/sync-and-analyze-trigger-name db)}
-                     (#'api.database-test/query-all-db-sync-triggers-name db)))
+                     (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))
               (is (nil? (:cache_field_values_schedule db))))))))))
 
 (deftest backfill-query-field-test
