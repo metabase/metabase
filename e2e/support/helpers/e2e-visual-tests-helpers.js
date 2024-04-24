@@ -68,3 +68,7 @@ export function cartesianChartCircleWithColor(color) {
 export function cartesianChartCircleWithColors(colors) {
   return colors.map(color => cartesianChartCircleWithColor(color));
 }
+
+export function getValueLabels() {
+  return echartsContainer().find("text[stroke-width='3']");
+}

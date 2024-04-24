@@ -1,3 +1,5 @@
+import { echartsContainer } from "e2e/support/helpers";
+
 export function parseVersionString(versionString) {
   if (typeof versionString === "undefined") {
     return []; // Return empty array if versionString is undefined
@@ -145,13 +147,13 @@ export function saveQuestion({ majorVersion }) {
 
 export function assertTimelineData({ majorVersion }) {
   if (majorVersion < sampleDataTimesChangedVersion) {
-    cy.get(".x.axis .tick")
+    echartsContainer()
       .should("contain", "Q1 - 2017")
       .and("contain", "Q1 - 2018")
       .and("contain", "Q1 - 2019")
       .and("contain", "Q1 - 2020");
   } else {
-    cy.get(".x.axis .tick")
+    echartsContainer()
       .should("contain", "Q1 2023")
       .and("contain", "Q1 2024")
       .and("contain", "Q1 2025")
