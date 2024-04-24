@@ -1,6 +1,6 @@
 (ns metabase.models.query-field
   (:require
-   [metabase.lib.util.match :as lib.util.match]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -15,12 +15,11 @@
 
 (defn- field-ids-for-mbql
   "Find out ids of all fields used in a query. Conforms to the same protocol as [[query-analyzer/field-ids-for-sql]],
-  so returns `{:direct (...int ids)}` map.
+  so returns `{:direct #{...int ids}}` map.
 
   Does not track wildcards for queries rendered as tables afterwards."
   [query]
-  {:direct (some-> (lib.util.match/match query [:field (id :guard integer?) _] id)
-                   set)})
+  {:direct (mbql.u/referenced-field-ids query)})
 
 (defn update-query-fields-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.

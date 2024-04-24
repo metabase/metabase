@@ -132,7 +132,7 @@
           (is (set/subset? #{total-qf tax-qf}
                            (t2/select-fn-set qf->map :model/QueryField :card_id card-id :direct_reference true))))))))
 
-(deftest parse-mbql-test
+(deftest ^:parallel parse-mbql-test
   (testing "Parsing MBQL query returns correct used fields"
     (mt/with-temp [Card c1 {:dataset_query (mt/mbql-query venues
                                              {:aggregation [[:distinct $name]
