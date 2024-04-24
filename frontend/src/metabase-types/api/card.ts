@@ -165,7 +165,7 @@ export interface ModerationReview {
   moderator_id: number;
   status: ModerationReviewStatus;
   created_at: string;
-  most_recent: boolean;
+  most_recent?: boolean;
 }
 
 export type CardId = number;

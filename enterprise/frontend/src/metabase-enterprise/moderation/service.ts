@@ -90,7 +90,7 @@ export const getStatusIconForQuestion = (question: Question) => {
 
 export const getTextForReviewBanner = (
   moderationReview: ModerationReview,
-  moderator: User,
+  moderator: User | null,
   currentUser: User,
 ) => {
   const { status } = moderationReview;
@@ -104,37 +104,43 @@ export const getTextForReviewBanner = (
   return {};
 };
 
-export const getModeratorDisplayName = (moderator: User, currentUser: User) => {
-  const { id: moderatorId, common_name } = moderator;
+export const getModeratorDisplayName = (
+  moderator: User | null,
+  currentUser: User,
+) => {
+  const { id: moderatorId, common_name } = moderator || {};
   const { id: currentUserId } = currentUser;
 
   if (currentUserId != null && moderatorId === currentUserId) {
     return t`You`;
-  } else if (moderatorId != null) {
+  } else if (moderatorId != null && common_name) {
     return common_name;
   } else {
     return t`A moderator`;
   }
 };
 
-export function getModeratorDisplayText(moderator: User, currentUser: User) {
+export const getModeratorDisplayText = (
+  moderator: User | null,
+  currentUser: User,
+) => {
   const moderatorName = getModeratorDisplayName(moderator, currentUser);
   return c("{0} is the name of a user").t`${moderatorName} verified this`;
-}
+};
 
 // a `status` of `null` represents the removal of a review, since we can't delete reviews
 export const isRemovedReviewStatus = (status: string | null) => {
   return ["null", null].includes(status);
 };
 
-export function isItemVerified(review: ModerationReview | undefined | null) {
+export const isItemVerified = (review: ModerationReview | undefined | null) => {
   return review != null && review.status === "verified";
-}
+};
 
-function getModerationReviewEventText(
+const getModerationReviewEventText = (
   review: ModerationReview,
   moderatorDisplayName: string,
-) {
+) => {
   switch (review.status) {
     case "verified":
       return c("{0} is the name of a user")
@@ -146,7 +152,7 @@ function getModerationReviewEventText(
       return c("{0} is the name of a user, {1} is the status of a review")
         .t`${moderatorDisplayName} changed status to ${review.status}`;
   }
-}
+};
 
 export function getModerationTimelineEvents(
   reviews: ModerationReview[],
