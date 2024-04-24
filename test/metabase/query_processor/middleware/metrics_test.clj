@@ -4,14 +4,15 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.metrics :as metrics]
+   [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -37,6 +38,8 @@
                metadata-provider
                (lib.tu/mock-metadata-provider
                  {:cards [metric]}))])))
+(def expand
+  (comp metrics/expand fetch-source-query/resolve-source-cards))
 
 (deftest ^:parallel expand-aggregation-metric-ref-test
   (let [[source-metric mp] (mock-metric)
@@ -46,7 +49,7 @@
           {:stages [{:source-table (meta/id :products)
                      :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]
                                    [:+ {} [:avg {} [:field {} (meta/id :products :rating)]] 1]]}]}
-          (metrics/expand query)))))
+          (expand query)))))
 
 (deftest ^:parallel expand-aggregation-metric-ordering-test
   (let [[source-metric mp] (mock-metric)
@@ -54,7 +57,7 @@
                   (lib/aggregate (lib/+ (lib.options/ensure-uuid [:metric {} (:id source-metric)]) 1)))]
     (doseq [agg-ref (map lib.options/uuid (lib/aggregations query))
             :let [ordered (lib/order-by query (lib.options/ensure-uuid [:aggregation {} agg-ref]))
-                  expanded (metrics/expand ordered)]]
+                  expanded (expand ordered)]]
       (is (=? {:stages
                [{:aggregation
                  [[:avg {} [:field {} (meta/id :products :rating)]]
@@ -69,10 +72,10 @@
     (is (=?
           {:stages [{:source-table (meta/id :products)
                      :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
-          (metrics/expand query)))
-    (is (lib.equality/=
-          (lib/query mp (:dataset-query source-metric))
-          (metrics/expand query)))))
+          (expand query)))
+    (is (=?
+          (qp.util/remove-lib-uuids (lib/query mp (:dataset-query source-metric)))
+          (expand query)))))
 
 (deftest ^:parallel expand-join-test
   (let [[source-metric mp] (mock-metric)
@@ -92,16 +95,16 @@
                                [:field {} (meta/id :products :id)]
                                [:field {:join-alias "Orders"} (meta/id :orders :product-id)]]],
                              :alias "Orders"}]}]}
-         (metrics/expand query)))))
+         (expand query)))))
 
 (deftest ^:parallel expand-expression-test
   (let [[source-metric mp] (mock-metric (lib/expression (basic-metric-query) "source" (lib/+ 1 1)))
         query (-> (lib/query mp source-metric)
                   (lib/expression "target" (lib/- 2 2)))]
     (is (=?
-          {:stages [{:expressions [[:+ {} 1 1]
-                                   [:- {} 2 2]]}]}
-          (metrics/expand query)))))
+          {:stages [{:expressions [[:+ {:lib/expression-name "source"} 1 1]
+                                   [:- {:lib/expression-name "target"} 2 2]]}]}
+          (expand query)))))
 
 (deftest ^:parallel expand-filter-test
   (let [[source-metric mp] (mock-metric (lib/filter (basic-metric-query) (lib/> (meta/field-metadata :products :price) 1)))
@@ -110,7 +113,7 @@
     (is (=?
           {:stages [{:filters [[:> {} [:field {} (meta/id :products :price)] 1]
                                [:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
-          (metrics/expand query)))))
+          (expand query)))))
 
 (deftest ^:parallel expand-multi-metric-test
   (let [[first-metric mp] (mock-metric (lib/filter (basic-metric-query) (lib/> (meta/field-metadata :products :price) 1)))
@@ -123,7 +126,7 @@
                      :filters [[:> {} [:field {} (meta/id :products :price)] 1]
                                [:< {} [:field {} (meta/id :products :price)] 100]
                                [:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
-          (metrics/expand query)))))
+          (expand query)))))
 
 (deftest ^:parallel expand-joined-metric-test
   (let [[source-metric mp] (mock-metric)
@@ -133,16 +136,20 @@
                                                       (meta/field-metadata :products :id))]))
                 (lib/aggregate $q (lib.options/ensure-uuid [:metric {:join-alias "Mock metric - Product"} (:id source-metric)])))]
     (is (=?
-          {:stages [{:joins [{:stages [{:source-table (meta/id :products)}]}]
-                     :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
-          (metrics/expand query)))))
+          ;; joins get an extra, empty stage from 'fetch-source-query'
+          {:stages [{:joins [{:stages [{:source-table (meta/id :products)} {}]}]
+                     :aggregation [[:avg {:name "mock_metric___product"}
+                                    [:field {} (meta/id :products :rating)]]]}]}
+          (expand query)))))
 
 (deftest ^:parallel e2e-results-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                         (lib/filter (lib/< (lib.metadata/field mp (mt/id :products :price)) 3))
                          (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating)))))]
     (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
                                               :database_id (mt/id)
+                                              :name "new_metric"
                                               :type :metric}]
       (let [query (lib/query mp (lib.metadata/card mp (:id source-metric)))]
         (is (=
@@ -152,6 +159,7 @@
 (deftest ^:parallel e2e-join-to-table-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                         (lib/filter (lib/< (lib.metadata/field mp (mt/id :orders :tax)) 3000))
                          (lib/aggregate (lib/count)))
         find-by-id (fn [id columns]
                      (m/find-first (comp #{id} :id) columns))]

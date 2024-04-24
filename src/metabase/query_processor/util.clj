@@ -86,7 +86,7 @@
        x))
    x))
 
-(defn- remove-lib-uuids
+(defn remove-lib-uuids
   "Two queries should be the same even if they have different :lib/uuids, because they might have both been converted
   from the same legacy query."
   [x]
