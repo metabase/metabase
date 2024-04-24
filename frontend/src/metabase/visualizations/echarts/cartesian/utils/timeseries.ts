@@ -12,7 +12,6 @@ import {
   unexpectedTimezoneWarning,
 } from "metabase/visualizations/lib/warnings";
 import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
-import type { Formatter } from "metabase/visualizations/types";
 import type {
   DateTimeAbsoluteUnit,
   RawSeries,
@@ -200,7 +199,10 @@ function timeseriesTicksInterval(
 }
 
 /// return the maximum number of ticks to show for a timeseries chart of a given width
-function maxTicksForChartWidth(chartWidth: number, tickFormat: Formatter) {
+function maxTicksForChartWidth(
+  chartWidth: number,
+  tickFormat: (value: RowValue) => string,
+) {
   const PIXELS_PER_CHARACTER = 7;
   // if there isn't enough buffer, the labels are hidden by ECharts
   const TICK_BUFFER_PIXELS = 10;
