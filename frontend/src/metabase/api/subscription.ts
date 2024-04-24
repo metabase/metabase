@@ -28,6 +28,12 @@ export const subscriptionApi = Api.injectEndpoints({
         body,
       }),
     }),
+    unsubscribe: builder.mutation<unknown, number>({
+      query: id => ({
+        method: "DELETE",
+        url: `/api/pulse/${id}/subscription`,
+      }),
+    }),
   }),
 });
 
@@ -36,4 +42,5 @@ export const {
   useGetSubscriptionQuery,
   useCreateSubscriptionMutation,
   useUpdateSubscriptionMutation,
+  useUnsubscribeMutation,
 } = subscriptionApi;
