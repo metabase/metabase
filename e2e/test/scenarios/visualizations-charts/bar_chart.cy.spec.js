@@ -11,6 +11,7 @@ import {
   moveDnDKitElement,
   chartPathWithFillColor,
   echartsContainer,
+  getXYTransform,
   getValueLabels,
 } from "e2e/support/helpers";
 
@@ -539,15 +540,13 @@ describe("scenarios > visualizations > bar chart", () => {
     cy.findAllByTestId("dashcard")
       .contains("[data-testid=dashcard]", "Should split")
       .within(() => {
-        // Verify this axis tick exists twice which verifies there are two y-axes
-        echartsContainer().findAllByText("3,000").should("have.length", 2);
+        assertYAxisSplit();
       });
 
     cy.findAllByTestId("dashcard")
       .contains("[data-testid=dashcard]", "Multi Series")
       .within(() => {
-        echartsContainer().findByText("Average Total by Month");
-        echartsContainer().findByText("Sum Total by Month");
+        assertYAxisSplit();
       });
 
     cy.log("Should not produce a split axis graph (#34618)");
@@ -558,7 +557,87 @@ describe("scenarios > visualizations > bar chart", () => {
           .should("contain", "6")
           .and("contain", "13")
           .and("contain", "19");
-        cy.get(".axis.yr").should("not.exist");
+        assertNoYAxisSplit();
       });
   });
 });
+
+function assertYAxisSplit() {
+  const elementCoordinateMap = {};
+
+  let yAxisRightTickRange;
+  let yAxisLeftTickRange;
+  cy.get("rect")
+    .invoke("attr", "width")
+    .then(width => {
+      // only check the text elements that are on the right 25% of the screen
+      yAxisRightTickRange = width * 0.75;
+      yAxisLeftTickRange = width - yAxisRightTickRange;
+    });
+
+  // only map the text elements that are on the right 25% of the screen
+  getValueLabels()
+    .each($el => {
+      const { x } = getXYTransform($el);
+      if (x < yAxisRightTickRange && x > yAxisLeftTickRange) {
+        return;
+      }
+
+      if (elementCoordinateMap[x] != null) {
+        elementCoordinateMap[x] += 1;
+        return;
+      }
+
+      elementCoordinateMap[x] = 1;
+    })
+    .then(() => {
+      // only keep entries with more than 5 points stacked on the same x coordinate
+      const tickCounts = Object.values(elementCoordinateMap).filter(
+        count => count > 5,
+      );
+
+      // if there exists two entries with stacked labels, we have a split y-axis
+      // more than 5 on the left, more than 5 on the right
+      expect(tickCounts).to.have.length(2);
+    });
+}
+
+function assertNoYAxisSplit() {
+  const elementCoordinateMap = {};
+
+  let yAxisRightTickRange;
+  let yAxisLeftTickRange;
+  cy.get("rect")
+    .invoke("attr", "width")
+    .then(width => {
+      // only check the text elements that are on the right 25% of the screen
+      yAxisRightTickRange = width * 0.75;
+      yAxisLeftTickRange = width - yAxisRightTickRange;
+    });
+
+  // only map the text elements that are on the right 25% of the screen
+  getValueLabels()
+    .each($el => {
+      const { x } = getXYTransform($el);
+      if (x < yAxisRightTickRange && x > yAxisLeftTickRange) {
+        return;
+      }
+
+      if (elementCoordinateMap[x] != null) {
+        elementCoordinateMap[x] += 1;
+        return;
+      }
+
+      elementCoordinateMap[x] = 1;
+    })
+    .then(() => {
+      // only keep entries with more than 5 points stacked on the same x coordinate
+      const tickCounts = Object.values(elementCoordinateMap).filter(
+        count => count > 5,
+      );
+
+      // if there exists two entries with stacked labels, we have a split y-axis
+      // more than 5 on the left, more than 5 on the right
+      expect(tickCounts).to.have.length(1);
+    });
+}
