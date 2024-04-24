@@ -56,16 +56,13 @@ const Pulses = createEntity({
   },
 
   objectActions: {
-    setArchived:
-      ({ id }, archived, opts) =>
-      dispatch => {
-        entityCompatibleQuery(
-          { id, archived },
-          dispatch,
-          subscriptionApi.endpoints.updateSubscription,
-        );
-        undo(opts, t`subscription`, archived ? t`deleted` : t`restored`);
-      },
+    setArchived: ({ id }, archived, opts) => {
+      return Pulses.actions.update(
+        { id },
+        { archived },
+        undo(opts, t`subscription`, archived ? t`deleted` : t`restored`),
+      );
+    },
 
     unsubscribe:
       ({ id }) =>
