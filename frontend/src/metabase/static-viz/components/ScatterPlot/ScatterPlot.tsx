@@ -64,6 +64,7 @@ export function ScatterPlot({
     computedVisualizationSettings,
     width,
     false,
+    null,
     renderingContext,
   );
   chart.setOption(option);

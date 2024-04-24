@@ -91,7 +91,6 @@ function _CartesianChart(props: VisualizationProps) {
           title={title}
           description={description}
           icon={headerIcon}
-          // @ts-expect-error will be fixed when LegendCaption gets converted to TypeScript
           actionButtons={actionButtons}
           onSelectTitle={canSelectTitle ? onOpenQuestion : undefined}
           width={width}
