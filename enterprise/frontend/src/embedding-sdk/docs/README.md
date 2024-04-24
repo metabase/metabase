@@ -7,7 +7,7 @@ Metabase embedding SDK for React offers a way to integrate Metabase into your ap
 You can install Metabase embedding SDK for react via npm:
 
 ```bash
-npm @metabase/embedding-sdk-react
+npm install @metabase/embedding-sdk-react
 ```
 
 or using yarn:
