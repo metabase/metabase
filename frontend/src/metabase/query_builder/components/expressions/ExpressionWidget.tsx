@@ -123,10 +123,10 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
 
   if (isCombiningColumns) {
     const handleSubmit = (name: string, clause: Lib.ExpressionClause) => {
-      MetabaseAnalytics.trackStructEvent(
-        "QueryBuilder",
-        "column_combine_via_shortcut",
-      );
+      MetabaseAnalytics.trackSchemaEvent("question", "1-0-4", {
+        event: "column_combine_via_shortcut",
+        custom_expression_uses: ["concat"],
+      });
 
       setIsCombiningColumns(false);
       setClause(clause);
