@@ -66,7 +66,7 @@ const setup = ({
   authType: SDKConfigType["authType"] | "invalid";
   isValidAuthentication?: boolean;
 }) => {
-  fetchMock.mock("http://TEST_URI/sso/metabase", {
+  fetchMock.get("http://TEST_URI/sso/metabase", {
     id: "TEST_JWT_TOKEN",
     exp: 1965805007,
     iat: 1965805007,
