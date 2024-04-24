@@ -7,10 +7,6 @@ import {
   svgToDataUri,
 } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 
-export function ensureDcChartVisibility() {
-  cy.get(".dc-chart");
-}
-
 export function echartsContainer() {
   return cy.findByTestId("chart-container");
 }
