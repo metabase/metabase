@@ -3,10 +3,12 @@ import _ from "underscore";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import type {
   CollectionId,
+  CollectionItem,
   CollectionItemModel,
   ListCollectionItemsRequest,
 } from "metabase-types/api";
 
+import { getParentCollectionId } from "../CollectionPicker/utils";
 import type { PickerState } from "../EntityPicker";
 
 import type {
@@ -56,10 +58,12 @@ export const getStateFromIdPath = ({
   idPath,
   namespace,
   models = ["card", "dataset"],
+  collectionItems,
 }: {
   idPath: CollectionId[];
   namespace?: "snippets";
   models?: CollectionItemModel[];
+  collectionItems: Partial<Record<CollectionId, CollectionItem>>;
 }): PickerState<DashboardPickerItem, ListCollectionItemsRequest> => {
   const statePath: PickerState<
     DashboardPickerItem,
@@ -70,6 +74,7 @@ export const getStateFromIdPath = ({
         name: "",
         model: "collection",
         id: idPath[0],
+        can_write: collectionItems?.[idPath[0]]?.can_write ?? false,
       },
     },
   ];
@@ -88,6 +93,7 @@ export const getStateFromIdPath = ({
             name: "",
             model: "collection",
             id: nextLevelId,
+            can_write: collectionItems?.[nextLevelId]?.can_write ?? false,
           }
         : null,
     });
@@ -107,8 +113,8 @@ export const getCollectionId = (
     return (item.id as CollectionId) ?? "root";
   }
 
-  if ("collection_id" in item) {
-    return item.collection_id ?? "root";
+  if ("location" in item) {
+    return getParentCollectionId(item.effective_location ?? item.location);
   }
 
   return "root";

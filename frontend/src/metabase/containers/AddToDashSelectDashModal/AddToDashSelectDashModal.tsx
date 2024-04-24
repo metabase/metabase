@@ -70,7 +70,7 @@ export const AddToDashSelectDashModal = ({
     item: DashboardPickerItem,
     isReadOnlyCollection?: boolean,
   ) => {
-    return !!isReadOnlyCollection;
+    return item.model === "dashboard" && !!isReadOnlyCollection;
   };
 
   return (

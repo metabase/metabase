@@ -15,6 +15,8 @@ import type {
   ListCollectionItemsRequest,
   CollectionItemModel,
   Dashboard,
+  CollectionId,
+  CollectionItem,
 } from "metabase-types/api";
 
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
@@ -26,6 +28,8 @@ import {
 } from "../../EntityPicker";
 import type { DashboardPickerOptions, DashboardPickerItem } from "../types";
 import { getCollectionIdPath, getStateFromIdPath, isFolder } from "../utils";
+
+import { dumbSelector, getCollectionById } from "./selectors";
 
 export const defaultOptions: DashboardPickerOptions = {
   showPersonalCollections: true,
@@ -98,6 +102,7 @@ const DashboardPickerInner = (
     getStateFromIdPath({
       idPath: ["root"],
       models,
+      collectionItems: {},
     }),
   );
 
@@ -109,17 +114,29 @@ const DashboardPickerInner = (
   } = useGetInitialCollection(initialValue);
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
+  const collectionsData = useSelector(dumbSelector);
 
   const onFolderSelect = useCallback(
     ({ folder }: { folder: DashboardPickerItem }) => {
+      const idPath = getCollectionIdPath(folder, userPersonalCollectionId);
+
+      const collectionItems: Partial<Record<CollectionId, CollectionItem>> = {};
+      for (const id of idPath) {
+        const coll = getCollectionById(id, collectionsData);
+        if (coll) {
+          collectionItems[id] = coll;
+        }
+      }
+
       const newPath = getStateFromIdPath({
-        idPath: getCollectionIdPath(folder, userPersonalCollectionId),
+        idPath,
         models,
+        collectionItems,
       });
       setPath(newPath);
       onItemSelect(folder);
     },
-    [setPath, onItemSelect, userPersonalCollectionId, models],
+    [setPath, onItemSelect, userPersonalCollectionId, models, collectionsData],
   );
 
   const handleItemSelect = useCallback(
@@ -166,16 +183,28 @@ const DashboardPickerInner = (
   useDeepCompareEffect(
     function setInitialPath() {
       if (currentCollection?.id) {
+        const idPath = getCollectionIdPath(
+          {
+            id: currentCollection.id,
+            location: currentCollection.location,
+            is_personal: currentCollection.is_personal,
+          },
+          userPersonalCollectionId,
+        );
+
+        const collectionItems: Partial<Record<CollectionId, CollectionItem>> =
+          {};
+        for (const id of idPath) {
+          const coll = getCollectionById(id, collectionsData);
+          if (coll) {
+            collectionItems[id] = coll;
+          }
+        }
+
         const newPath = getStateFromIdPath({
-          idPath: getCollectionIdPath(
-            {
-              id: currentCollection.id,
-              location: currentCollection.location,
-              is_personal: currentCollection.is_personal,
-            },
-            userPersonalCollectionId,
-          ),
+          idPath,
           models,
+          collectionItems,
         });
 
         if (currentCollection.can_write) {
