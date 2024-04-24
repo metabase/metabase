@@ -86,7 +86,10 @@ const EntityCopyModal = ({
               <Loader />
             </Flex>
           ) : (
-            renderForm({ ...props, resumedValues, initialValues })
+            renderForm({
+              ...props,
+              initialValues: { ...initialValues, ...resumedValues },
+            })
           )}
         </ModalContent>
       )}
