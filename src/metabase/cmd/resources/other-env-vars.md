@@ -390,46 +390,6 @@ If you're whitelabeling Metabase, these survey emails will only be sent to admin
 
 If you don't want Metabase to send these emails, set `MB_NO_SURVEYS=true`.
 
-### `MB_NOTIFICATION_RETRY_INITIAL_INTERVAL`
-
-Type: integer<br>
-Default: `500`<br>
-Since: v44.0
-
-The initial retry delay in milliseconds when delivering notifications.
-
-### `MB_NOTIFICATION_RETRY_MAX_ATTEMPTS`
-
-Type: integer<br>
-Default: `7`<br>
-Since: v44.0
-
-The maximum number of attempts for delivering a single notification.
-
-### `MB_NOTIFICATION_RETRY_MAX_INTERVAL_MILLIS`
-
-Type: integer<br>
-Default: `30000`<br>
-Since: v44.0
-
-The maximum delay between attempts to deliver a single notification.
-
-### `MB_NOTIFICATION_RETRY_MULTIPLIER`
-
-Type: double<br>
-Default: `2.0`<br>
-Since: v44.0
-
-The delay multiplier between attempts to deliver a single notification.
-
-### `MB_NOTIFICATION_RETRY_RANDOMIZATION_FACTOR`
-
-Type: double<br>
-Default: `0.1`<br>
-Since: v44.0
-
-The randomization factor of the retry delay when delivering notifications.
-
 ### `MB_NS_TRACE`
 
 Type: string<br>
