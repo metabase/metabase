@@ -1,3 +1,4 @@
+import { extractRemappings } from "metabase/visualizations";
 import type { StaticVisualizationProps } from "metabase/visualizations/types";
 
 import { ComboChart } from "../ComboChart";
@@ -9,23 +10,27 @@ import { WaterfallChart } from "../WaterfallChart/WaterfallChart";
 
 export const StaticVisualization = (props: StaticVisualizationProps) => {
   const display = props.rawSeries[0].card.display;
+  const staticVisualizationProps = {
+    ...props,
+    rawSeries: extractRemappings(props.rawSeries),
+  };
 
   switch (display) {
     case "line":
     case "area":
     case "bar":
     case "combo":
-      return <ComboChart {...props} />;
+      return <ComboChart {...staticVisualizationProps} />;
     case "scatter":
-      return <ScatterPlot {...props} />;
+      return <ScatterPlot {...staticVisualizationProps} />;
     case "waterfall":
-      return <WaterfallChart {...props} />;
+      return <WaterfallChart {...staticVisualizationProps} />;
     case "funnel":
-      return <FunnelBarChart {...props} />;
+      return <FunnelBarChart {...staticVisualizationProps} />;
     case "scalar":
-      return <ScalarChart {...props} />;
+      return <ScalarChart {...staticVisualizationProps} />;
     case "smartscalar":
-      return <SmartScalar {...props} />;
+      return <SmartScalar {...staticVisualizationProps} />;
   }
 
   throw new Error(`Unsupported display type: ${display}`);
