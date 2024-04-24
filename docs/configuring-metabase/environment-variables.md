@@ -101,6 +101,31 @@ Configuration file name: `application-colors`
 
 Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You need to refresh your browser to see your changes take effect.
 
+To change the user interface colors:
+
+```
+{
+ "brand":"#ff003b",
+ "filter":"#FF003B",
+ "summarize":"#FF003B"
+}
+```
+
+To change the chart colors:
+
+```
+{
+ "accent0":"#FF0005",
+ "accent1":"#E6C367",
+ "accent2":"#B9E68A",
+ "accent3":"#8AE69F",
+ "accent4":"#8AE6E4",
+ "accent5":"#8AA2E6",
+ "accent6":"#B68AE6",
+ "accent7":"#E68AD0"
+}
+```
+
 ### `MB_APPLICATION_FAVICON_URL`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro)
@@ -139,6 +164,25 @@ Default: `null`
 Configuration file name: `application-font-files`
 
 Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.
+
+Example value:
+
+```
+[]
+  {
+    "src": "https://example.com/resources/font-400",
+    "fontFormat": "ttf",
+    "fontWeight": 400
+  },
+  {
+    "src": "https://example.com/resources/font-700",
+    "fontFormat": "woff",
+    "fontWeight": 700
+  }
+]
+```
+
+See [fonts](../configuring-metabase/fonts.md).
 
 ### `MB_APPLICATION_LOGO_URL`
 

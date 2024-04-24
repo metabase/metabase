@@ -80,10 +80,10 @@
       paid-message))
 
 (defn- format-doc
-  "Includes additional documentation for an environment variable (`:commentary`), if it exists."
+  "Includes additional documentation for an environment variable, if it exists."
   [env-var]
   (when-let [d (:doc env-var)]
-    (:commentary d)))
+    d))
 
 (defn- format-config-name
   "Formats the configuration file name."

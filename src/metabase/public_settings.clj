@@ -357,7 +357,31 @@
   :type       :json
   :feature    :whitelabel
   :default    {}
-  :audit      :getter)
+  :audit      :getter
+   :doc "To change the user interface colors:
+
+```
+{
+ \"brand\":\"#ff003b\",
+ \"filter\":\"#FF003B\",
+ \"summarize\":\"#FF003B\"
+}
+```
+
+To change the chart colors:
+
+```
+{
+ \"accent0\":\"#FF0005\",
+ \"accent1\":\"#E6C367\",
+ \"accent2\":\"#B9E68A\",
+ \"accent3\":\"#8AE69F\",
+ \"accent4\":\"#8AE6E4\",
+ \"accent5\":\"#8AA2E6\",
+ \"accent6\":\"#B68AE6\",
+ \"accent7\":\"#E68AD0\"
+}
+```")
 
 (defsetting application-font
   (deferred-tru "Replace “Lato” as the font family.")
@@ -379,7 +403,25 @@
   :export?    true
   :type       :json
   :audit      :getter
-  :feature    :whitelabel)
+  :feature    :whitelabel
+  :doc "Example value:
+
+```
+[]
+  {
+    \"src\": \"https://example.com/resources/font-400\",
+    \"fontFormat\": \"ttf\",
+    \"fontWeight\": 400
+  },
+  {
+    \"src\": \"https://example.com/resources/font-700\",
+    \"fontFormat\": \"woff\",
+    \"fontWeight\": 700
+  }
+]
+```
+
+See [fonts](../configuring-metabase/fonts.md).")
 
 (defn application-color
   "The primary color, a.k.a. brand color"
