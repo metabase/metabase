@@ -58,5 +58,6 @@ export default function App() {
 - [Customer Zero: Embedding SDK demo application](https://github.com/metabase/embedding-sdk-customer-zero)
 
 ______
-For more detailed how to build Metabase embedding SDK locally please see the [documentation](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/README.md).
+
+For a more detailed guide on how to build the Metabase embedding SDK locally, please refer to the [documentation](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/README.md).
 
