@@ -6,6 +6,13 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideSubscriptionListTags,
+  provideSubscriptionTags,
+} from "./tags";
 
 export const subscriptionApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -18,12 +25,16 @@ export const subscriptionApi = Api.injectEndpoints({
         url: "/api/pulse",
         parameters,
       }),
+      providesTags: (subscriptions = []) =>
+        provideSubscriptionListTags(subscriptions),
     }),
     getSubscription: builder.query<DashboardSubscription, number>({
       query: id => ({
         method: "GET",
         url: `/api/pulse/${id}`,
       }),
+      providesTags: subscription =>
+        subscription ? provideSubscriptionTags(subscription) : [],
     }),
     createSubscription: builder.mutation<
       DashboardSubscription,
@@ -34,6 +45,8 @@ export const subscriptionApi = Api.injectEndpoints({
         url: "/api/pulse",
         body,
       }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("subscription")]),
     }),
     updateSubscription: builder.mutation<
       DashboardSubscription,
@@ -44,12 +57,22 @@ export const subscriptionApi = Api.injectEndpoints({
         url: `/api/pulse/${id}`,
         body,
       }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          listTag("subscription"),
+          idTag("subscription", id),
+        ]),
     }),
     unsubscribe: builder.mutation<unknown, number>({
       query: id => ({
         method: "DELETE",
         url: `/api/pulse/${id}/subscription`,
       }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [
+          listTag("subscription"),
+          idTag("subscription", id),
+        ]),
     }),
   }),
 });
