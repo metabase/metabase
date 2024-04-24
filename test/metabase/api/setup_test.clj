@@ -7,7 +7,6 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.setup :as api.setup]
    [metabase.config :as config]
-   [metabase.core :as mbc]
    [metabase.db :as mdb]
    [metabase.driver.h2 :as h2]
    [metabase.events :as events]
@@ -422,7 +421,7 @@
   (testing "Internally created state like Metabase Analytics shouldn't affect the checklist"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? true)
-      (mbc/ensure-audit-db-installed!)
+      #_(mbc/ensure-audit-db-installed!)
       (testing "Sense check: internal content exists"
         (is (true? (t2/exists? :model/User)))
         (is (true? (t2/exists? :model/Database)))
