@@ -1,36 +1,29 @@
 import { within } from "@testing-library/react";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
   setupCardQueryEndpoints,
-  setupCurrentUserEndpoint,
   setupDatabaseEndpoints,
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
   setupTableEndpoints,
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { createMockConfig } from "embedding-sdk/test/mocks/config";
+import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import {
   createMockCard,
   createMockColumn,
   createMockDatabase,
   createMockDataset,
   createMockDatasetData,
-  createMockSettings,
   createMockTable,
-  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
 
@@ -53,27 +46,16 @@ const TEST_DATASET = createMockDataset({
   }),
 });
 
-const setup = ({ isValidCard = true }: { isValidCard?: boolean } = {}) => {
-  const settingValues = createMockSettings();
-  const tokenFeatures = createMockTokenFeatures();
-
-  const settingValuesWithToken = {
-    ...settingValues,
-    "token-features": tokenFeatures,
-  };
-  const state = createMockState({
-    settings: mockSettings(settingValuesWithToken),
+const setup = ({
+  isValidCard = true,
+}: {
+  isValidCard?: boolean;
+} = {}) => {
+  const { state } = setupSdkState({
     currentUser: TEST_USER,
   });
 
   const TEST_CARD = createMockCard();
-
-  setupEnterprisePlugins();
-
-  setupCurrentUserEndpoint(TEST_USER);
-  setupSettingsEndpoints([]);
-  setupPropertiesEndpoints(settingValuesWithToken);
-
   if (isValidCard) {
     setupCardEndpoints(TEST_CARD);
   } else {

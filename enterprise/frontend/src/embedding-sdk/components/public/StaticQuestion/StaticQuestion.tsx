@@ -107,7 +107,6 @@ const _StaticQuestion = ({
     <LoadingAndErrorWrapper
       className={cx(CS.flexFull, CS.fullWidth)}
       loading={isLoading}
-      error={error}
       noWrapper
     >
       {() => {

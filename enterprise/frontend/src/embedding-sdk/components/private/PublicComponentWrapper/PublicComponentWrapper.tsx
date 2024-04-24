@@ -17,7 +17,7 @@ export const PublicComponentWrapper = ({
     return <div>{t`Initializing…`}</div>;
   }
 
-  if (loginStatus.status === "initialized") {
+  if (loginStatus.status === "validated") {
     return <div>{t`API Key / JWT is valid.`}</div>;
   }
 

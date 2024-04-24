@@ -12,14 +12,14 @@ export type EmbeddingSessionTokenState = {
 };
 
 type LoginStatusUninitialized = { status: "uninitialized" };
-type LoginStatusInitialized = { status: "initialized" };
+type LoginStatusValidated = { status: "validated" };
 type LoginStatusSuccess = { status: "success" };
 type LoginStatusLoading = { status: "loading" };
 export type LoginStatusError = { status: "error"; error: Error };
 
 export type LoginStatus =
   | LoginStatusUninitialized
-  | LoginStatusInitialized
+  | LoginStatusValidated
   | LoginStatusSuccess
   | LoginStatusLoading
   | LoginStatusError;

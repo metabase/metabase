@@ -1,4 +1,9 @@
-import type { AnyAction, Store, ThunkDispatch } from "@reduxjs/toolkit";
+import type {
+  AnyAction,
+  Reducer,
+  Store,
+  ThunkDispatch,
+} from "@reduxjs/toolkit";
 import type { TypedUseSelectorHook } from "react-redux";
 import { useSelector, useDispatch } from "react-redux";
 
@@ -11,7 +16,7 @@ import { sdk } from "./reducer";
 export const SDK_REDUCERS = {
   ...reducers,
   sdk,
-};
+} as unknown as Record<string, Reducer>;
 
 export const store = getStore(SDK_REDUCERS, null, {
   embed: {

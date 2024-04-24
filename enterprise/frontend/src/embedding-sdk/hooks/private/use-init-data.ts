@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -18,6 +18,7 @@ import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
 import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
+import type { Dispatch } from "metabase-types/store";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
@@ -25,7 +26,7 @@ interface InitDataLoaderParameters {
   config: SDKConfigType;
 }
 
-const getErrorMessage = (authType: SDKConfigType["authType"] | string) => {
+const getErrorMessage = (authType: SDKConfigType["authType"]) => {
   if (authType === "jwt") {
     return t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`;
   }
@@ -43,6 +44,22 @@ const isJwtAuth = (config: SDKConfigType): config is SdkConfigWithJWT =>
 const isApiKeyAuth = (config: SDKConfigType): config is SdkConfigWithApiKey =>
   config.authType === "apiKey" && !!config.apiKey;
 
+const setupJwtAuth = (config: SdkConfigWithJWT, dispatch: Dispatch) => {
+  api.onBeforeRequest = async () => {
+    const tokenState = await dispatch(
+      getOrRefreshSession(config.jwtProviderUri),
+    );
+
+    api.sessionToken = (
+      tokenState.payload as EmbeddingSessionTokenState["token"]
+    )?.id;
+  };
+};
+
+const setupApiKeyAuth = (config: SdkConfigWithApiKey) => {
+  api.apiKey = config.apiKey;
+};
+
 export const useInitData = ({ config }: InitDataLoaderParameters) => {
   const dispatch = useSdkDispatch();
 
@@ -50,41 +67,18 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
 
   useEffect(() => {
     registerVisualizationsOnce();
-    dispatch(setLoginStatus({ status: "uninitialized" }));
   }, [dispatch]);
-
-  const setupJwtAuth = useCallback(
-    (config: SdkConfigWithJWT) => {
-      api.onBeforeRequest = async () => {
-        const tokenState = await dispatch(
-          getOrRefreshSession(config.jwtProviderUri),
-        );
-
-        api.sessionToken = (
-          tokenState.payload as EmbeddingSessionTokenState["token"]
-        )?.id;
-      };
-      dispatch(setLoginStatus({ status: "initialized" }));
-    },
-    [dispatch],
-  );
-
-  const setupApiKeyAuth = useCallback(
-    (config: SdkConfigWithApiKey) => {
-      api.apiKey = config.apiKey;
-      dispatch(setLoginStatus({ status: "initialized" }));
-    },
-    [dispatch],
-  );
 
   useEffect(() => {
     if (loginStatus.status === "uninitialized") {
       api.basename = config.metabaseInstanceUrl;
 
       if (isJwtAuth(config)) {
-        setupJwtAuth(config);
+        setupJwtAuth(config, dispatch);
+        dispatch(setLoginStatus({ status: "validated" }));
       } else if (isApiKeyAuth(config)) {
         setupApiKeyAuth(config);
+        dispatch(setLoginStatus({ status: "validated" }));
       } else {
         dispatch(
           setLoginStatus({
@@ -94,18 +88,10 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
         );
       }
     }
-  }, [
-    config,
-    config.authType,
-    config.metabaseInstanceUrl,
-    dispatch,
-    loginStatus.status,
-    setupApiKeyAuth,
-    setupJwtAuth,
-  ]);
+  }, [config, dispatch, loginStatus.status]);
 
   useEffect(() => {
-    if (loginStatus.status === "initialized") {
+    if (loginStatus.status === "validated") {
       const fetchData = async () => {
         dispatch(setLoginStatus({ status: "loading" }));
 

@@ -3,12 +3,8 @@ import userEvent from "@testing-library/user-event";
 import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
-  setupCurrentUserEndpoint,
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
@@ -16,52 +12,63 @@ import {
   within,
 } from "__support__/ui";
 import { createMockConfig } from "embedding-sdk/test/mocks/config";
+import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import {
   createMockCard,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
-  createMockSettings,
-  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import type { QueryVisualizationProps } from "./";
 import { StaticQuestion } from "./";
 
 const TEST_QUESTION_ID = 1;
 const TEST_USER = createMockUser();
+const TEST_COLUMN = createMockColumn({
+  display_name: "Test Column",
+  name: "Test Column",
+});
 const TEST_DATASET = createMockDataset({
   data: createMockDatasetData({
-    cols: [
-      createMockColumn({
-        display_name: "Test Column",
-        name: "Test Column",
-      }),
-    ],
+    cols: [TEST_COLUMN],
     rows: [["Test Row"]],
   }),
 });
 
-const VISUALIZATION_TYPES = ["Table", "Number", "Gauge", "Detail", "Progress"];
+const VISUALIZATION_TYPES: Record<
+  string,
+  {
+    container: string;
+    button: string;
+  }
+> = {
+  Table: { container: "Table-container", button: "Table-button" },
+  Number: {
+    container: "Number-container",
+    button: "Number-button",
+  },
+  Gauge: {
+    container: "Gauge-container",
+    button: "Gauge-button",
+  },
+  Detail: {
+    container: "Detail-container",
+    button: "Detail-button",
+  },
+  Progress: {
+    container: "Progress-container",
+    button: "Progress-button",
+  },
+};
 
 const setup = ({
   showVisualizationSelector = false,
   isValidCard = true,
-}: Partial<QueryVisualizationProps> & { isValidCard?: boolean } = {}) => {
-  const settingValues = createMockSettings();
-  const tokenFeatures = createMockTokenFeatures();
-
-  const settingValuesWithToken = {
-    ...settingValues,
-    "token-features": tokenFeatures,
-  };
-
-  setupCurrentUserEndpoint(TEST_USER);
-  setupSettingsEndpoints([]);
-  setupPropertiesEndpoints(settingValuesWithToken);
-
+}: Partial<QueryVisualizationProps> & {
+  isValidCard?: boolean;
+} = {}) => {
   const TEST_CARD = createMockCard();
   if (isValidCard) {
     setupCardEndpoints(TEST_CARD);
@@ -70,8 +77,7 @@ const setup = ({
   }
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 
-  const state = createMockState({
-    settings: mockSettings(settingValuesWithToken),
+  const { state } = setupSdkState({
     currentUser: TEST_USER,
   });
 
@@ -99,7 +105,7 @@ describe("StaticQuestion", () => {
 
     await waitForLoaderToBeRemoved();
 
-    expect(screen.getByLabelText("Test Column")).toBeInTheDocument();
+    expect(screen.getByLabelText(TEST_COLUMN.name)).toBeInTheDocument();
     expect(
       within(screen.getByRole("gridcell")).getByText("Test Row"),
     ).toBeInTheDocument();
@@ -131,13 +137,14 @@ describe("StaticQuestion", () => {
     await waitForLoaderToBeRemoved();
     expect(screen.getByTestId("chart-type-sidebar")).toBeInTheDocument();
 
-    for (const visType of VISUALIZATION_TYPES) {
-      await userEvent.click(screen.getByTestId(`${visType}-button`));
-
-      expect(screen.getByTestId(`${visType}-container`)).toHaveAttribute(
-        "aria-selected",
-        "true",
+    for (const visType of Object.keys(VISUALIZATION_TYPES)) {
+      await userEvent.click(
+        screen.getByTestId(VISUALIZATION_TYPES[visType].button),
       );
+
+      expect(
+        screen.getByTestId(VISUALIZATION_TYPES[visType].container),
+      ).toHaveAttribute("aria-selected", "true");
     }
   });
 });

@@ -22,8 +22,6 @@ const setup = (status: LoginStatus = { status: "uninitialized" }) => {
     </PublicComponentWrapper>,
     {
       storeInitialState: state,
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
       customReducers: SDK_REDUCERS,
     },
   );
@@ -36,8 +34,8 @@ describe("PublicComponentWrapper", () => {
     expect(message).toBeInTheDocument();
   });
 
-  it("renders API Key valid message when loginStatus is initialized", () => {
-    setup({ status: "initialized" });
+  it("renders API Key valid message when loginStatus is validated", () => {
+    setup({ status: "validated" });
     const message = screen.getByText("API Key / JWT is valid.");
     expect(message).toBeInTheDocument();
   });
@@ -53,7 +51,7 @@ describe("PublicComponentWrapper", () => {
       status: "error",
       error: { name: "Error", message: "Something went wrong" },
     });
-    const errorMessage = screen.getByText(/Something went wrong/i);
+    const errorMessage = screen.getByText("Something went wrong");
     expect(errorMessage).toBeInTheDocument();
   });
 
