@@ -207,6 +207,11 @@ export interface Settings {
   "dismissed-custom-dashboard-toast"?: boolean;
   "dismissed-browse-models-banner"?: boolean;
   "email-configured?": boolean;
+  "email-smtp-host": string | null;
+  "email-smtp-port": number | null;
+  "email-smtp-security": "None" | "SSL" | "TLS" | "STARTTLS";
+  "email-smtp-username": string | null;
+  "email-smtp-password": string | null;
   "embedding-app-origin": string;
   "embedding-secret-key"?: string;
   "enable-embedding": boolean;
