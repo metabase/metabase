@@ -79,12 +79,12 @@ export const EmbedHomepage = () => {
     );
 
     setFeedbackModalOpened(false);
-    sendProductFeedback({
-      comment,
-      email: email,
-      source: "embedding-homepage-dismiss",
-    });
     if (comment || email) {
+      sendProductFeedback({
+        comment,
+        email: email,
+        source: "embedding-homepage-dismiss",
+      });
       dispatch(
         addUndo({ message: t`Your feedback was submitted, thank you.` }),
       );

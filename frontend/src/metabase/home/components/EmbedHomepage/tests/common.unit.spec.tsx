@@ -159,7 +159,7 @@ describe("EmbedHomepage (OSS)", () => {
       await waitForElementToBeRemoved(() => queryFeedbackModal());
     });
 
-    it("should dismiss when submitting feedback - even if empty", async () => {
+    it("should dismiss when submitting feedback - even if empty, should not actually send the feedback", async () => {
       await setupForFeedbackModal();
 
       await userEvent.click(screen.getByText("Skip"));
@@ -169,13 +169,9 @@ describe("EmbedHomepage (OSS)", () => {
       const body = await lastCall?.request?.json();
       expect(body).toEqual({ value: "dismiss-run-into-issues" });
 
-      const feedbackBody = await getLastFeedbackCall()?.request?.json();
-
-      expect(feedbackBody).toEqual({
-        source: "embedding-homepage-dismiss",
-      });
-
       await waitForElementToBeRemoved(() => queryFeedbackModal());
+
+      expect(getLastFeedbackCall()).toBeUndefined();
 
       expect(
         screen.queryByText("Your feedback was submitted, thank you."),
