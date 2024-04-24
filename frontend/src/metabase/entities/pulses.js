@@ -26,6 +26,30 @@ const Pulses = createEntity({
   },
 
   api: {
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        subscriptionApi.endpoints.listSubscriptions,
+      ),
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery.id,
+        dispatch,
+        subscriptionApi.endpoints.getSubscription,
+      ),
+    create: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        subscriptionApi.endpoints.createSubscription,
+      ),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        subscriptionApi.endpoints.updateSubscription,
+      ),
     delete: () => {
       throw new TypeError("Pulses.api.delete is not supported");
     },
