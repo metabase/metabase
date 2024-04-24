@@ -36,6 +36,7 @@ import type {
 import type { ClickObject, ClickObjectDimension } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import type {
   CardId,
@@ -424,6 +425,7 @@ export const getSeriesClickData = (
 
 export const getBrushData = (
   rawSeries: RawSeries,
+  metadata: Metadata,
   chartModel: BaseCartesianChartModel,
   event: EChartsSeriesBrushEndEvent,
 ) => {
@@ -439,7 +441,7 @@ export const getBrushData = (
 
   const column = chartModel.dimensionModel.column;
   const card = rawSeries[0].card;
-  const question = new Question(card, {}); // FIXME: pass metadata
+  const question = new Question(card, metadata);
   const query = question.query();
   const stageIndex = -1;
 
