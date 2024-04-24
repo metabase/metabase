@@ -11,6 +11,7 @@ import { parseNumberValue } from "metabase/lib/number";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   BaseCartesianChartModel,
+  DataKey,
   Extent,
   NumericAxisScaleTransforms,
   NumericXAxisModel,
@@ -346,14 +347,23 @@ export const buildMetricAxis = (
   settings: ComputedVisualizationSettings,
   position: "left" | "right",
   hasSplitLine: boolean,
+  hoveredSeriesDataKey: DataKey | null,
   renderingContext: RenderingContext,
 ): CartesianAxisOption => {
   const shouldFlipAxisName = position === "right";
   const nameGap = getAxisNameGap(ticksWidth);
 
   const range = getYAxisRange(axisModel, yAxisScaleTransforms, settings);
+  let isFocused = false;
+  let isBlurred = false;
+
+  if (hoveredSeriesDataKey != null) {
+    isFocused = axisModel.seriesKeys.includes(hoveredSeriesDataKey);
+    isBlurred = !isFocused;
+  }
 
   return {
+    show: !isBlurred,
     scale: !settings["graph.y_axis.auto_range_include_zero"],
     type: "value",
     ...range,
@@ -364,7 +374,7 @@ export const buildMetricAxis = (
       shouldFlipAxisName ? -90 : undefined,
     ),
     splitLine:
-      hasSplitLine && !!settings["graph.y_axis.axis_enabled"]
+      (hasSplitLine || isFocused) && !!settings["graph.y_axis.axis_enabled"]
         ? {
             lineStyle: {
               type: 5,
@@ -396,34 +406,38 @@ const buildMetricsAxes = (
   chartModel: BaseCartesianChartModel,
   chartMeasurements: ChartMeasurements,
   settings: ComputedVisualizationSettings,
+  hoveredSeriesDataKey: DataKey | null,
   renderingContext: RenderingContext,
 ): CartesianAxisOption[] => {
   const axes: CartesianAxisOption[] = [];
+  const { leftAxisModel, rightAxisModel } = chartModel;
 
-  if (chartModel.leftAxisModel != null) {
+  if (leftAxisModel != null) {
     axes.push(
       buildMetricAxis(
-        chartModel.leftAxisModel,
+        leftAxisModel,
         chartModel.yAxisScaleTransforms,
         chartMeasurements.ticksDimensions.yTicksWidthLeft,
         settings,
         "left",
         true,
+        hoveredSeriesDataKey,
         renderingContext,
       ),
     );
   }
 
-  if (chartModel.rightAxisModel != null) {
+  if (rightAxisModel != null) {
     const isOnlyAxis = chartModel.leftAxisModel == null;
     axes.push(
       buildMetricAxis(
-        chartModel.rightAxisModel,
+        rightAxisModel,
         chartModel.yAxisScaleTransforms,
         chartMeasurements.ticksDimensions.yTicksWidthRight,
         settings,
         "right",
         isOnlyAxis,
+        hoveredSeriesDataKey,
         renderingContext,
       ),
     );
@@ -438,6 +452,7 @@ export const buildAxes = (
   chartMeasurements: ChartMeasurements,
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
+  hoveredSeriesDataKey: DataKey | null,
   renderingContext: RenderingContext,
 ) => {
   return {
@@ -453,6 +468,7 @@ export const buildAxes = (
       chartModel,
       chartMeasurements,
       settings,
+      hoveredSeriesDataKey,
       renderingContext,
     ),
   };

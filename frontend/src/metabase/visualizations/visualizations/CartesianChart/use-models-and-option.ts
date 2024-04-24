@@ -15,6 +15,8 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 
+import { getHoveredSeriesDataKey } from "./utils";
+
 export function useModelsAndOption({
   rawSeries,
   series: transformedSeries,
@@ -27,6 +29,7 @@ export function useModelsAndOption({
   timelineEvents,
   selectedTimelineEventIds,
   onRender,
+  hovered,
 }: VisualizationProps) {
   const seriesToRender = useMemo(
     () => (isPlaceholder ? transformedSeries : rawSeries),
@@ -95,6 +98,11 @@ export function useModelsAndOption({
     [chartModel, chartMeasurements, timelineEvents, renderingContext],
   );
 
+  const hoveredSeriesDataKey = useMemo(
+    () => getHoveredSeriesDataKey(chartModel.seriesModels, hovered),
+    [chartModel.seriesModels, hovered],
+  );
+
   const option = useMemo(() => {
     if (width === 0 || height === 0) {
       return {};
@@ -121,6 +129,7 @@ export function useModelsAndOption({
           settings,
           width,
           isPlaceholder ?? false,
+          hoveredSeriesDataKey,
           renderingContext,
         );
     }
@@ -132,6 +141,7 @@ export function useModelsAndOption({
     selectedTimelineEventIds,
     settings,
     timelineEventsModel,
+    hoveredSeriesDataKey,
     width,
     height,
     isPlaceholder,

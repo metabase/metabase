@@ -1,8 +1,15 @@
+import type { EChartsOption } from "echarts";
 import { t } from "ttag";
 
-import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import { isNotNull } from "metabase/lib/types";
+import type {
+  BaseCartesianChartModel,
+  DataKey,
+  SeriesModel,
+} from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
+  HoveredObject,
   VisualizationGridSize,
 } from "metabase/visualizations/types";
 
@@ -56,4 +63,36 @@ export const validateChartModel = (chartModel: BaseCartesianChartModel) => {
       t`This chart type doesn't support more than ${MAX_SERIES} series of data.`,
     );
   }
+};
+
+export const getHoveredSeriesDataKey = (
+  seriesModels: SeriesModel[],
+  hovered: HoveredObject | undefined,
+): DataKey | null => {
+  const seriesIndex = hovered?.index;
+  if (seriesIndex == null) {
+    return null;
+  }
+
+  return seriesModels[seriesIndex]?.dataKey ?? null;
+};
+
+export const getHoveredEChartsSeriesIndex = (
+  seriesModels: SeriesModel[],
+  option: EChartsOption,
+  hovered: HoveredObject | undefined,
+): number | null => {
+  const hoveredSeriesDataKey = getHoveredSeriesDataKey(seriesModels, hovered);
+
+  const seriesOptions = Array.isArray(option?.series)
+    ? option?.series
+    : [option?.series].filter(isNotNull);
+
+  // ECharts series contain goal line, trend lines, and timeline events so the series index
+  // is different from one in chartModel.seriesModels
+  const eChartsSeriesIndex = seriesOptions.findIndex(
+    series => series.id === hoveredSeriesDataKey,
+  );
+
+  return eChartsSeriesIndex;
 };

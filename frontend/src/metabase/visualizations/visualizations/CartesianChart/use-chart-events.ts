@@ -1,5 +1,4 @@
 import type { EChartsOption, EChartsType } from "echarts";
-import type { LineSeriesOption } from "echarts/types/dist/echarts";
 import type * as React from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
@@ -29,6 +28,8 @@ import {
   hasSelectedTimelineEvents,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
 import type { CardId } from "metabase-types/api";
+
+import { getHoveredEChartsSeriesIndex } from "./utils";
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
@@ -206,21 +207,17 @@ export const useChartEvents = (
         return;
       }
 
-      if (hovered?.index == null) {
+      const eChartsSeriesIndex = getHoveredEChartsSeriesIndex(
+        chartModel.seriesModels,
+        option,
+        hovered,
+      );
+
+      if (hovered == null || eChartsSeriesIndex == null) {
         return;
       }
 
-      const { datumIndex: originalDatumIndex, index } = hovered;
-      const hoveredSeries = chartModel.seriesModels[index];
-      if (!hoveredSeries) {
-        return;
-      }
-
-      // ECharts series contain goal line, trend lines, and timeline events so the series index
-      // is different from one in chartModel.seriesModels
-      const eChartsSeriesIndex = (
-        option?.series as LineSeriesOption[]
-      ).findIndex(series => series.id === hoveredSeries.dataKey);
+      const { datumIndex: originalDatumIndex } = hovered;
 
       let dataIndex: number | undefined;
 
@@ -255,7 +252,7 @@ export const useChartEvents = (
       chartModel.transformedDataset,
       chartRef,
       hovered,
-      option?.series,
+      option,
     ],
   );
 
