@@ -64,7 +64,7 @@
                                                               pr-str)))))))
 
 (deftest supports-schemas-matches-describe-database-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (tx.env/test-drivers)
     (if (driver/database-supports? driver/*driver* :schemas (mt/db))
       (testing "`describe-database` should return schemas with tables if the database supports schemas"
         (is (some? (->> (driver/describe-database driver/*driver* (mt/db))
