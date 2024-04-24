@@ -346,12 +346,12 @@
 (def ^:private default-checklist-state
   {:db-type    :h2
    :hosted?    false
-   :interested-in-embedding false
-   :embedding-homepage-dismissed-as-done false
-   :configured {:email                true
-                :slack                false
-                :sso                  false
-                :embedding-app-origin false}
+   :embedding  {:interested? false
+                :done?       false
+                :app-origin  false}
+   :configured {:email true
+                :slack false
+                :sso   false}
    :counts     {:user  5
                 :card  5
                 :table 5}
@@ -437,16 +437,17 @@
       (testing "should be done when sso and embed-app-origin has been configured"
         (with-redefs [api.setup/state-for-checklist
                       (constantly
-                       (update default-checklist-state
-                               :configured #(merge %  {:embedding-app-origin true
-                                                       :sso                  true})))]
+                       (-> default-checklist-state
+                           (assoc-in [:configured :sso] true)
+                           (assoc-in [:embedding :app-origin] true)))]
           (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
-            (is (partial= {:completed true} (get-embedding-step checklist))))))
+            (is (partial= {:completed true}
+                          (get-embedding-step checklist))))))
       (testing "should be done when dismissed-done"
         (with-redefs [api.setup/state-for-checklist
                       (constantly
-                       (merge default-checklist-state
-                              {:embedding-homepage-dismissed-as-done true }))]
+                       (-> default-checklist-state
+                           (assoc-in [:embedding :done?] true)))]
           (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
             (is (partial= {:completed true} (get-embedding-step checklist)))))))
 

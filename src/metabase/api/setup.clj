@@ -150,14 +150,15 @@
   "Malli schema for the state to annotate the checklist."
   [:map {:closed true}
    [:db-type [:enum :h2 :mysql :postgres]]
-   [:interested-in-embedding :boolean]
-   [:embedding-homepage-dismissed-as-done :boolean]
    [:hosted? :boolean]
+   [:embedding [:map
+                [:interested? :boolean]
+                [:done? :boolean]
+                [:app-origin :boolean]]]
    [:configured [:map
                  [:email :boolean]
                  [:slack :boolean]
-                 [:sso :boolean]
-                 [:embedding-app-origin :boolean]]]
+                 [:sso :boolean]]]
    [:counts [:map
              [:user :int]
              [:card :int]
@@ -173,27 +174,28 @@
 
 (mu/defn ^:private state-for-checklist :- ChecklistState
   []
-  {:db-type                              (mdb/db-type)
-   :hosted?                              (premium-features/is-hosted?)
-   :interested-in-embedding              (not (= (embed.settings/embedding-homepage) :hidden))
-   :embedding-homepage-dismissed-as-done (= (embed.settings/embedding-homepage) :dismissed-done)
-   :configured                           {:email                (email/email-configured?)
-                                          :slack                (slack/slack-configured?)
-                                          :sso                  (google/google-auth-enabled)
-                                          :embedding-app-origin (boolean embed.settings/embedding-app-origin)}
-   :counts                               {:user  (t2/count User)
-                                          :card  (t2/count Card)
-                                          :table (t2/count Table)}
-   :exists                               {:non-sample-db     (t2/exists? Database, :is_sample false)
-                                          :dashboard         (t2/exists? Dashboard)
-                                          :pulse             (t2/exists? Pulse)
-                                          :hidden-table      (t2/exists? Table, :visibility_type [:not= nil])
-                                          :collection        (t2/exists? Collection)
-                                          :model             (t2/exists? Card :type :model)
-                                          :embedded-resource (or (t2/exists? Card :enable_embedding true) (t2/exists? Dashboard :enable_embedding true))}})
+  {:db-type    (mdb/db-type)
+   :hosted?    (premium-features/is-hosted?)
+   :embedding  {:interested? (not (= (embed.settings/embedding-homepage) :hidden))
+                :done?       (= (embed.settings/embedding-homepage) :dismissed-done)
+                :app-origin  (boolean (embed.settings/embedding-app-origin))}
+   :configured {:email (email/email-configured?)
+                :slack (slack/slack-configured?)
+                :sso   (google/google-auth-enabled)}
+   :counts     {:user  (t2/count User)
+                :card  (t2/count Card)
+                :table (t2/count Table)}
+   :exists     {:non-sample-db     (t2/exists? Database, :is_sample false)
+                :dashboard         (t2/exists? Dashboard)
+                :pulse             (t2/exists? Pulse)
+                :hidden-table      (t2/exists? Table, :visibility_type [:not= nil])
+                :collection        (t2/exists? Collection)
+                :model             (t2/exists? Card :type :model)
+                :embedded-resource (or (t2/exists? Card :enable_embedding true)
+                                       (t2/exists? Dashboard :enable_embedding true))}})
 
 (defn- get-connected-tasks
-  [{:keys [configured counts exists interested-in-embedding embedding-homepage-dismissed-as-done] :as _info}]
+  [{:keys [configured counts exists embedding] :as _info}]
   [{:title       (tru "Add a database")
     :group       (tru "Get connected")
     :description (tru "Connect to your data so your whole team can start to explore.")
@@ -215,11 +217,10 @@
    {:title       (tru "Setup embedding")
     :group       (tru "Get connected")
     :link        "/admin/settings/embedding-in-other-applications"
-    :completed   (or
-                  embedding-homepage-dismissed-as-done
-                  (and (configured :sso) (configured :embedding-app-origin))
-                  (exists :embedded-resource))
-    :triggered  interested-in-embedding}
+    :completed   (or (embedding :done?)
+                     (and (configured :sso) (embedding :app-origin))
+                     (exists :embedded-resource))
+    :triggered   (embedding :interested?)}
    {:title       (tru "Invite team members")
     :group       (tru "Get connected")
     :description (tru "Share answers and data with the rest of your team.")
