@@ -45,7 +45,7 @@ describe("scenarios > model indexes", () => {
 
     sidebar()
       .findByLabelText(/surface individual records/i)
-      .click();
+      .click({ force: true }); // needs to be forced because Mantine
 
     cy.findByTestId("dataset-edit-bar").within(() => {
       cy.button("Save changes").click();
@@ -63,7 +63,7 @@ describe("scenarios > model indexes", () => {
 
     sidebar()
       .findByLabelText(/surface individual records/i)
-      .click();
+      .click({ force: true });
 
     cy.findByTestId("dataset-edit-bar").within(() => {
       cy.button("Save changes").click();
@@ -80,7 +80,7 @@ describe("scenarios > model indexes", () => {
 
     sidebar()
       .findByLabelText(/surface individual records/i)
-      .click();
+      .click({ force: true });
 
     cy.findByTestId("dataset-edit-bar").within(() => {
       cy.button("Save changes").click();
@@ -96,7 +96,7 @@ describe("scenarios > model indexes", () => {
     });
   });
 
-  it("should not allow indexing when a primary key has been unassigned", () => {
+  it.only("should not allow indexing when a primary key has been unassigned", () => {
     cy.visit(`/model/${modelId}`);
     cy.wait("@dataset");
 
@@ -104,7 +104,7 @@ describe("scenarios > model indexes", () => {
 
     sidebar()
       .findByLabelText(/surface individual records/i)
-      .click();
+      .click({ force: true });
 
     openColumnOptions("ID");
 

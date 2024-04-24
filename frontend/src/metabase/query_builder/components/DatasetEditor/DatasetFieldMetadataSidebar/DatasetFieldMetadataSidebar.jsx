@@ -307,6 +307,7 @@ function DatasetFieldMetadataSidebar({
                 <FormSwitch
                   name="should_index"
                   label={t`Surface individual records in search by matching against this column`}
+                  px="1.5rem"
                 />
               )}
             </Form>
