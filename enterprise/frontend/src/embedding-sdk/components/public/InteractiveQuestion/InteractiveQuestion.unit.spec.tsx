@@ -34,14 +34,13 @@ const TEST_DB = createMockDatabase({ id: TEST_DB_ID });
 const TEST_TABLE_ID = 1;
 const TEST_TABLE = createMockTable({ id: TEST_TABLE_ID, db_id: TEST_DB_ID });
 
+const TEST_COLUMN = createMockColumn({
+  display_name: "Test Column",
+  name: "Test Column",
+});
 const TEST_DATASET = createMockDataset({
   data: createMockDatasetData({
-    cols: [
-      createMockColumn({
-        display_name: "Test Column",
-        name: "Test Column",
-      }),
-    ],
+    cols: [TEST_COLUMN],
     rows: [["Test Row"]],
   }),
 });
@@ -87,13 +86,17 @@ describe("InteractiveQuestion", () => {
 
     await waitForLoaderToBeRemoved();
 
-    expect(screen.getByLabelText("Test Column")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("TableInteractive-root")).getByText(
+        TEST_COLUMN.display_name,
+      ),
+    ).toBeInTheDocument();
     expect(
       within(screen.getByRole("gridcell")).getByText("Test Row"),
     ).toBeInTheDocument();
   });
 
-  it("should render an error if a question ID isn't found", async () => {
+  it("should render an error if a question isn't found", async () => {
     setup({ isValidCard: false });
 
     await waitForLoaderToBeRemoved();

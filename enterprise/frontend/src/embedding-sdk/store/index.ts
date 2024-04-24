@@ -13,12 +13,12 @@ import { getStore } from "metabase/store";
 
 import { sdk } from "./reducer";
 
-export const SDK_REDUCERS = {
+export const sdkReducers = {
   ...reducers,
   sdk,
 } as unknown as Record<string, Reducer>;
 
-export const store = getStore(SDK_REDUCERS, null, {
+export const store = getStore(sdkReducers, null, {
   embed: {
     isEmbeddingSdk: true,
   },

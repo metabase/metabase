@@ -1,5 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { SDK_REDUCERS } from "embedding-sdk/store";
+import { sdkReducers } from "embedding-sdk/store";
 import type { LoginStatus } from "embedding-sdk/store/types";
 import {
   createMockLoginStatusState,
@@ -22,7 +22,7 @@ const setup = (status: LoginStatus = { status: "uninitialized" }) => {
     </PublicComponentWrapper>,
     {
       storeInitialState: state,
-      customReducers: SDK_REDUCERS,
+      customReducers: sdkReducers,
     },
   );
 };

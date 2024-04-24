@@ -5,7 +5,11 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import type { SdkStoreState } from "embedding-sdk/store/types";
+import type { SdkState, SdkStoreState } from "embedding-sdk/store/types";
+import {
+  createMockLoginStatusState,
+  createMockSdkState,
+} from "embedding-sdk/test/mocks/state";
 import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 import type {
   User,
@@ -24,12 +28,16 @@ export const setupSdkState = ({
   settingValues = createMockSettings(),
   tokenFeatures = createMockTokenFeatures(),
   settingDefinitions = [],
+  sdkState = createMockSdkState({
+    loginStatus: createMockLoginStatusState({ status: "success" }),
+  }),
   ...stateOpts
 }: {
   currentUser: User;
   settingValues?: EnterpriseSettings;
   tokenFeatures?: TokenFeatures;
   settingDefinitions?: SettingDefinition[];
+  sdkState?: SdkState;
 } & Partial<SdkStoreState>) => {
   const settingValuesWithToken = {
     ...settingValues,
@@ -44,6 +52,7 @@ export const setupSdkState = ({
   const state = createMockState({
     settings: mockSettings(settingValuesWithToken),
     currentUser,
+    sdk: sdkState,
     ...stateOpts,
   });
 

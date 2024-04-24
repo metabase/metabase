@@ -12,14 +12,12 @@ import {
   within,
 } from "__support__/ui";
 import { createMockConfig } from "embedding-sdk/test/mocks/config";
-import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import {
   createMockCard,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import type { QueryVisualizationProps } from "./";
 import { StaticQuestion } from "./";
@@ -76,14 +74,6 @@ const setup = ({
   }
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 
-  // TODO: Do we need this here? We get a lot of warnings about how enterprise features aren't
-  // set up. We don't need them for this test though.
-  // Also, for whatever reason, we get a duplicate fake table when we don't use the SDK state - might just be a loading error or something since that fake table seems to be used to measure the cells for the layout (and should probably appear anyway). Might need to mock the TableInteractive component.
-  //
-  // const { state } = setupSdkState({
-  //   currentUser: TEST_USER,
-  // });
-
   renderWithProviders(
     <StaticQuestion
       questionId={TEST_QUESTION_ID}
@@ -92,12 +82,6 @@ const setup = ({
     {
       mode: "sdk",
       sdkConfig: createMockConfig(),
-      storeInitialState: createMockState({
-        sdk: createMockSdkState({
-          loginStatus: { status: "success" },
-        }),
-      }),
-      // storeInitialState: state
     },
   );
 };
@@ -114,9 +98,7 @@ describe("StaticQuestion", () => {
     await waitForLoaderToBeRemoved();
 
     expect(
-      within(screen.getByTestId("TableInteractive-root")).getByLabelText(
-        TEST_COLUMN.name,
-      ),
+      within(screen.getByTestId("header-cell")).getByText(TEST_COLUMN.name),
     ).toBeInTheDocument();
     expect(
       within(screen.getByRole("gridcell")).getByText("Test Row"),

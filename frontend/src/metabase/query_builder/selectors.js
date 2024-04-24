@@ -45,8 +45,8 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 
 export const getUiControls = state => state.qb.uiControls;
-const getQueryStatus = state => state.qb.queryStatus;
-const getLoadingControls = state => state.qb.loadingControls;
+export const getQueryStatus = state => state.qb.queryStatus;
+export const getLoadingControls = state => state.qb.loadingControls;
 
 export const getIsShowingTemplateTagsEditor = state =>
   getUiControls(state).isShowingTemplateTagsEditor;

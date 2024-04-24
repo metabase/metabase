@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper/PublicComponentWrapper";
@@ -17,6 +17,7 @@ import { FilterHeader } from "metabase/query_builder/components/view/ViewHeader/
 import {
   getCard,
   getFirstQueryResult,
+  getQueryResults,
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
@@ -37,24 +38,34 @@ export const _InteractiveQuestion = ({
   const card = useSelector(getCard);
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);
+  const queryResults = useSelector(getQueryResults);
+
+  const [loading, setLoading] = useState(true);
 
   const { isRunning } = uiControls;
 
   useEffect(() => {
     // TODO: change pathname based on isInteractive value to trigger proper QB viewMode
-    const mockLocation = {
-      query: {}, // TODO: add here wrapped parameterValues
-      hash: "",
-      pathname: `/question/${questionId}`,
-    };
-    const params = {
-      slug: `${questionId}`,
+    const fetchQuestionData = async () => {
+      setLoading(true);
+      const mockLocation = {
+        query: {}, // TODO: add here wrapped parameterValues
+        hash: "",
+        pathname: `/question/${questionId}`,
+      };
+      const params = {
+        slug: `${questionId}`,
+      };
+
+      dispatch(initializeQB(mockLocation, params));
     };
 
-    dispatch(initializeQB(mockLocation, params));
+    fetchQuestionData().then(() => {
+      setLoading(false);
+    });
   }, [dispatch, questionId]);
 
-  if (!question) {
+  if (!loading && !queryResults) {
     return <SdkError message={t`Question not found`} />;
   }
 
@@ -65,38 +76,42 @@ export const _InteractiveQuestion = ({
       error={typeof result === "string" ? result : null}
       noWrapper
     >
-      {() => (
-        <Stack h="100%">
-          {FilterHeader.shouldRender({
-            question,
-            queryBuilderMode: uiControls.queryBuilderMode,
-            isObjectDetail: false,
-          }) && (
-            <FilterHeader
-              expanded
-              question={question}
-              updateQuestion={(...args) => dispatch(updateQuestion(...args))}
-            />
-          )}
-          <Group h="100%" pos="relative" align="flex-start">
-            <QueryVisualization
-              className={cx(CS.flexFull, CS.fullWidth)}
-              question={question}
-              rawSeries={[{ card, data: result && result.data }]}
-              isRunning={isRunning}
-              isObjectDetail={false}
-              isResultDirty={false}
-              isNativeEditorOpen={false}
-              result={result}
-              noHeader
-              mode={mode}
-              navigateToNewCardInsideQB={(props: any) => {
-                dispatch(navigateToNewCardInsideQB(props));
-              }}
-            />
-          </Group>
-        </Stack>
-      )}
+      {() => {
+        return !question ? (
+          <SdkError message={t`Question not found`} />
+        ) : (
+          <Stack h="100%">
+            {FilterHeader.shouldRender({
+              question,
+              queryBuilderMode: uiControls.queryBuilderMode,
+              isObjectDetail: false,
+            }) && (
+              <FilterHeader
+                expanded
+                question={question}
+                updateQuestion={(...args) => dispatch(updateQuestion(...args))}
+              />
+            )}
+            <Group h="100%" pos="relative" align="flex-start">
+              <QueryVisualization
+                className={cx(CS.flexFull, CS.fullWidth)}
+                question={question}
+                rawSeries={[{ card, data: result && result.data }]}
+                isRunning={isRunning}
+                isObjectDetail={false}
+                isResultDirty={false}
+                isNativeEditorOpen={false}
+                result={result}
+                noHeader
+                mode={mode}
+                navigateToNewCardInsideQB={(props: any) => {
+                  dispatch(navigateToNewCardInsideQB(props));
+                }}
+              />
+            </Group>
+          </Stack>
+        );
+      }}
     </LoadingAndErrorWrapper>
   );
 };

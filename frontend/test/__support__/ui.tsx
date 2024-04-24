@@ -13,7 +13,7 @@ import { routerReducer, routerMiddleware } from "react-router-redux";
 import _ from "underscore";
 
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
-import { SDK_REDUCERS } from "embedding-sdk/store";
+import { sdkReducers } from "embedding-sdk/store";
 import type { SDKConfigType } from "embedding-sdk/types";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/containers/UndoListing";
@@ -33,6 +33,8 @@ interface ReducerObject {
 }
 
 export interface RenderWithProvidersOptions {
+  // the mode changes the reducers and initial state to be used for
+  // public or sdk-specific tests
   mode?: "default" | "public" | "sdk";
   initialRoute?: string;
   storeInitialState?: Partial<State>;
@@ -69,7 +71,7 @@ export function renderWithProviders(
     const publicReducerNames = Object.keys(publicReducers);
     initialState = _.pick(initialState, ...publicReducerNames) as State;
   } else if (mode === "sdk") {
-    const sdkReducerNames = Object.keys(SDK_REDUCERS);
+    const sdkReducerNames = Object.keys(sdkReducers);
     initialState = _.pick(initialState, ...sdkReducerNames) as State;
   }
 
@@ -84,7 +86,7 @@ export function renderWithProviders(
   let reducers;
 
   if (mode === "sdk") {
-    reducers = SDK_REDUCERS;
+    reducers = sdkReducers;
   } else if (mode === "public") {
     reducers = publicReducers;
   } else {

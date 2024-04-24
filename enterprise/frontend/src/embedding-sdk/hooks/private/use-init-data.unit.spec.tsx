@@ -10,10 +10,14 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { useInitData } from "embedding-sdk/hooks";
-import { SDK_REDUCERS, useSdkSelector } from "embedding-sdk/store";
+import { sdkReducers, useSdkSelector } from "embedding-sdk/store";
 import { getIsLoggedIn, getLoginStatus } from "embedding-sdk/store/selectors";
 import type { LoginStatusError } from "embedding-sdk/store/types";
 import { createMockConfig } from "embedding-sdk/test/mocks/config";
+import {
+  createMockLoginStatusState,
+  createMockSdkState,
+} from "embedding-sdk/test/mocks/state";
 import type { SDKConfigType } from "embedding-sdk/types";
 import {
   createMockSettings,
@@ -91,6 +95,12 @@ const setup = ({
   const state = createMockState({
     settings: mockSettings(settingValuesWithToken),
     currentUser: TEST_USER,
+    sdk: createMockSdkState({
+      // loginStatus.status is set to "success" by default for SDK component tests.
+      // here we're testing the hook's ability to change the states, so we'll start with
+      // the default state of "uninitialized"
+      loginStatus: createMockLoginStatusState({ status: "uninitialized" }),
+    }),
   });
 
   setupEnterprisePlugins();
@@ -100,7 +110,7 @@ const setup = ({
 
   renderWithProviders(<TestComponent authType={authType} {...configOpts} />, {
     storeInitialState: state,
-    customReducers: SDK_REDUCERS,
+    customReducers: sdkReducers,
   });
 };
 
@@ -112,6 +122,11 @@ describe("useInitData hook", () => {
         "data-login-status",
         "error",
       );
+
+      expect(screen.getByTestId("test-component")).toHaveAttribute(
+        "data-error-message",
+        "Invalid auth type",
+      );
     });
 
     it("should have an error if an API key is not provided", async () => {
@@ -120,6 +135,11 @@ describe("useInitData hook", () => {
         "data-login-status",
         "error",
       );
+
+      expect(screen.getByTestId("test-component")).toHaveAttribute(
+        "data-error-message",
+        "Could not authenticate: invalid API key",
+      );
     });
 
     it("should have an error if JWT URI is not provided", async () => {
@@ -127,6 +147,11 @@ describe("useInitData hook", () => {
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-login-status",
         "error",
+      );
+
+      expect(screen.getByTestId("test-component")).toHaveAttribute(
+        "data-error-message",
+        "Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token",
       );
     });
   });

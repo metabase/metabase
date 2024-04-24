@@ -20,7 +20,7 @@ export const createMockLoginStatusState = ({
     return { error: new Error("An error occurred"), status: "error", ...opts };
   }
 
-  return { status: status ?? "uninitialized", ...opts };
+  return { status: status ?? "success", ...opts };
 };
 
 export const createMockSdkState = ({
