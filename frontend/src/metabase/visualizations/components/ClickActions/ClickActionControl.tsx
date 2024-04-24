@@ -32,7 +32,11 @@ export const ClickActionControl = ({
   close,
   onClick,
 }: Props): JSX.Element | null => {
-  if (!isRegularClickAction(action)) {
+  if (
+    !isRegularClickAction(action) &&
+    !isCustomClickAction(action) &&
+    !isCustomClickActionWithView(action)
+  ) {
     return null;
   }
 
@@ -40,6 +44,10 @@ export const ClickActionControl = ({
     isCustomClickAction(action) && action.onClick
       ? () => (action as CustomClickAction).onClick?.({ closePopover: close })
       : () => onClick(action);
+
+  if (isCustomClickActionWithView(action)) {
+    return action.view({ closePopover: close });
+  }
 
   const { buttonType } = action;
 
@@ -112,10 +120,6 @@ export const ClickActionControl = ({
 
     case "info":
       return <InfoControl>{action.title}</InfoControl>;
-  }
-
-  if (isCustomClickActionWithView(action)) {
-    return action.view({ closePopover: close });
   }
 
   return null;
