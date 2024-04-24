@@ -52,7 +52,7 @@ export const trackStaticEmbedPublished = ({
       ? toSecond(now - new Date(resource.initially_published_at).getTime())
       : null,
     params,
-    isExampleDashboard,
+    is_example_dashboard: isExampleDashboard,
   });
 };
 
