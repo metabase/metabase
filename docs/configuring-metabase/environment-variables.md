@@ -1454,7 +1454,7 @@ Default: `null`
 Configuration file name: `saml-identity-provider-issuer`
 
 This is a unique identifier for the IdP. Often referred to as Entity ID or simply Issuer. Depending
-on your IdP, this usually looks something like http://www.example.com/141xkex604w0Q5PN724v.
+on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`.
 
 ### `MB_SAML_IDENTITY_PROVIDER_URI`
 
@@ -1468,7 +1468,7 @@ Default: `null`
 Configuration file name: `saml-identity-provider-uri`
 
 This is the URL where your users go to log in to your identity provider. Depending on which IdP you're
-using, this usually looks like https://your-org-name.example.com or https://example.com/app/my_saml_app/abc123/sso/saml.
+using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`.
 
 ### `MB_SAML_KEYSTORE_ALIAS`
 
