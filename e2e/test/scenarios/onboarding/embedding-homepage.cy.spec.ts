@@ -30,7 +30,7 @@ describeWithSnowplow("scenarios > embedding-homepage > snowplow events", () => {
     expectNoBadSnowplowEvents();
   });
 
-  it("embedding_homepage_quickstart_click", () => {
+  it("clicking on the quickstart button should send the 'embedding_homepage_quickstart_click' event", () => {
     cy.visit("/");
     main().findByText("Interactive").click();
 
@@ -50,7 +50,7 @@ describeWithSnowplow("scenarios > embedding-homepage > snowplow events", () => {
     cy.url().should("eq", Cypress.config().baseUrl + "/");
   });
 
-  it("embedding_homepage_example_dashboard_click", () => {
+  it("opening the example dashboard from the button should send the 'embedding_homepage_example_dashboard_click' event", () => {
     cy.visit("/");
 
     main().findByText("Static").click();
@@ -64,7 +64,7 @@ describeWithSnowplow("scenarios > embedding-homepage > snowplow events", () => {
     });
   });
 
-  it("embedding_homepage_dismissed", () => {
+  it("dismissing the homepage should send the 'embedding_homepage_dismissed' event", () => {
     cy.visit("/");
 
     main().findByText("Hide these").click();
