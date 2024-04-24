@@ -43,10 +43,7 @@ export const getXValueRange = (
     return undefined;
   }
 
-  return [
-    parseInt(settings["graph.y_axis.min"], 10),
-    parseInt(settings["graph.y_axis.max"], 10),
-  ];
+  return [settings["graph.y_axis.min"] ?? 0, settings["graph.y_axis.max"] ?? 0];
 };
 
 export const getLabels = (settings: VisualizationSettings) => {
