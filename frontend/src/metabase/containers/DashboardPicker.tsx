@@ -12,7 +12,7 @@ export interface DashboardPickerProps
   onChange: (dashboardId: DashboardId) => void;
   collectionId?: CollectionId;
 }
-
+/** @deprecated use DashboardPickerModal instead */
 const DashboardPicker = ({
   value,
   onChange,
