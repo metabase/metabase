@@ -11,7 +11,8 @@
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.fn :as mu.fn]))
+   [metabase.util.malli.fn :as mu.fn]
+   [toucan2.realize :as t2.realize]))
 
 (defmacro log-if-error
   "Logs an error message if an exception is thrown while executing the body."
@@ -34,7 +35,7 @@
   implementation of [[driver/describe-table]], or [[driver/describe-fields]] if implemented. Also includes nested field
   column metadata."
   [database :- i/DatabaseInstance
-   table    :- i/Table+Schema]
+   table    :- i/TableInstance]
   (log-if-error "table-fields-metadata"
     (let [driver (driver.u/database->driver database)
           result (if (driver/database-supports? driver :describe-fields database)
@@ -57,7 +58,7 @@
   (let [tables (sync-util/db->reducible-sync-tables database :schema-names schema-names :table-names table-names)]
     (eduction
      (mapcat (fn [table]
-               (for [x (table-fields-metadata database table)]
+               (for [x (table-fields-metadata database (t2.realize/realize table))]
                  (assoc x :table-schema (:schema table) :table-name (:name table)))))
      tables)))
 

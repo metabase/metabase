@@ -31,15 +31,6 @@
   "Schema for the expected output of `describe-database`."
   [:ref ::DatabaseMetadata])
 
-(mr/def ::Table+Schema
-  [:map
-   [:name   ::lib.schema.common/non-blank-string]
-   [:schema [:maybe ::lib.schema.common/non-blank-string]]])
-
-(def Table+Schema
-  "Schema for a Table name and schema name pair, used to identify a table in a database."
-  [:ref ::Table+Schema])
-
 (mr/def ::TableMetadataField
   [:map
    [:name              ::lib.schema.common/non-blank-string]
