@@ -5,10 +5,10 @@ import { useState, useCallback, createContext, useContext } from "react";
 import { t } from "ttag";
 
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
+import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { NewCollectionButton } from "./CreateCollectionOnTheGo.styled";
-import type { FilterItemsInPersonalCollection } from "./ItemPicker";
 
 interface Values extends FormikValues {
   collection_id: CollectionId;

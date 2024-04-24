@@ -46,3 +46,5 @@ export type ListProps<
   options: Options;
   shouldDisableItem?: (item: Item) => boolean;
 };
+
+export type FilterItemsInPersonalCollection = "only" | "exclude";
