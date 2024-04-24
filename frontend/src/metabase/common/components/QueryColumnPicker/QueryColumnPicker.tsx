@@ -203,6 +203,7 @@ export function QueryColumnPicker({
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
         globalSearch
+        withBorders
       />
     </DelayGroup>
   );

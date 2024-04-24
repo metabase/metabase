@@ -18,11 +18,14 @@ export * from "./models";
 export * from "./modelIndexes";
 export * from "./notifications";
 export * from "./pagination";
-export * from "./permissions";
+export * from "./parameters";
 export * from "./performance";
+export * from "./permissions";
+export * from "./persist";
 export * from "./query";
 export * from "./revision";
 export * from "./schema";
+export * from "./search";
 export * from "./segment";
 export * from "./session";
 export * from "./settings";
@@ -35,8 +38,6 @@ export * from "./task";
 export * from "./timeline";
 export * from "./user";
 export * from "./util";
-export * from "./parameters";
-export * from "./search";
 export * from "./visualization-settings";
 
 // ISO8601 timestamp

@@ -24,6 +24,7 @@
    [metabase.models.setting :as setting]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.task :as task]
+   [metabase.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -1658,32 +1659,38 @@
           (doseq [db (concat db-with-scan-fv db-without-scan-fv)]
             (#'database/check-and-schedule-tasks-for-db! (t2/instance :model/Database db))
             (testing "sanity check that the schedule exists"
-              (is (= (#'api.database-test/all-db-sync-triggers-name db)
-                     (#'api.database-test/query-all-db-sync-triggers-name db)))))
+              (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
+                     (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
 
           (migrate!)
           (testing "default options and scan with manual schedules should have scan field values"
             (doseq [db db-with-scan-fv]
-              (is (= (#'api.database-test/all-db-sync-triggers-name db)
-                     (#'api.database-test/query-all-db-sync-triggers-name db)))))
+              (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
+                     (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
 
           (testing "never scan and on demand should not have scan field values"
             (doseq [db (t2/select :model/Database :id [:in (map :id db-without-scan-fv)])]
               (is (= #{(#'api.database-test/sync-and-analyze-trigger-name db)}
-                     (#'api.database-test/query-all-db-sync-triggers-name db)))
+                     (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))
               (is (nil? (:cache_field_values_schedule db))))))))))
 
 (deftest backfill-query-field-test
-  (impl/test-migrations "v50.2024-04-09T15:55:23" [migrate!]
+  (impl/test-migrations "v50.2024-04-18T14:33:19" [migrate!]
     (let [user-id     (:id (new-instance-with-default :core_user))
-          ;; it is already `false`, but binding it anyway to indicate it's important
-          card-id     (binding [query-analyzer/*parse-queries-in-test?* false]
-                        (:id (new-instance-with-default
-                              :report_card
-                              {:creator_id    user-id
-                               :database_id   (mt/id)
-                               :query_type    "native"
-                               :dataset_query (json/generate-string (mt/native-query {:query "SELECT id FROM venues"}))})))
+          c1-id       (:id (new-instance-with-default
+                            :report_card
+                            {:creator_id    user-id
+                             :database_id   (mt/id)
+                             :query_type    "native"
+                             :dataset_query (json/generate-string
+                                             (mt/native-query {:query "SELECT id FROM venues"}))}))
+          c2-id       (:id (new-instance-with-default
+                            :report_card
+                            {:creator_id    user-id
+                             :database_id   (mt/id)
+                             :query_type    "query"
+                             :dataset_query (json/generate-string
+                                             (mt/mbql-query venues {:aggregation [[:distinct $name]]}))}))
           archived-id (binding [query-analyzer/*parse-queries-in-test?* false]
                         (:id (new-instance-with-default
                               :report_card
@@ -1691,15 +1698,20 @@
                                :creator_id    user-id
                                :database_id   (mt/id)
                                :query_type    "native"
-                               :dataset_query (json/generate-string (mt/native-query {:query "SELECT id FROM venues"}))})))
+                               :dataset_query (json/generate-string
+                                               (mt/native-query {:query "SELECT id FROM venues"}))})))
           ;; (first (vals %)) are necessary since h2 generates :count(id) as name for column
           get-count   #(t2/select-one-fn (comp first vals) [:model/QueryField [[:count :id]]] :card_id %)]
       (testing "QueryField is empty - queries weren't analyzed"
-        (is (zero? (get-count card-id)))
+        ;; they were not analyzed since `new-instance-with-default` inserts directly into the table, omitting model
+        ;; hooks
+        (is (zero? (get-count c1-id)))
+        (is (zero? (get-count c2-id)))
         (is (zero? (get-count archived-id))))
       (binding [query-analyzer/*parse-queries-in-test?* true]
         (migrate!))
       (testing "QueryField is filled now"
-        (is (pos? (get-count card-id)))
+        (is (pos? (get-count c1-id)))
+        (is (pos? (get-count c2-id)))
         (testing "but not for archived card"
           (is (zero? (get-count archived-id))))))))

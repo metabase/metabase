@@ -2,6 +2,7 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
 import { createAction } from "redux-actions";
 
+import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type {
   EmbeddingSessionTokenState,
   LoginStatus,
@@ -46,6 +47,9 @@ export const refreshTokenAsync = createAsyncThunk(
   },
 );
 
+const SET_PLUGINS = "sdk/SET_PLUGINS";
+export const setPlugins = createAction<SdkPluginsConfig | null>(SET_PLUGINS);
+
 const initialState: SdkState = {
   token: {
     token: null,
@@ -53,6 +57,7 @@ const initialState: SdkState = {
     error: null,
   },
   loginStatus: { status: "uninitialized" },
+  plugins: null,
 };
 
 export const sdk = createReducer(initialState, {
@@ -92,6 +97,12 @@ export const sdk = createReducer(initialState, {
     return {
       ...state,
       loginStatus: action.payload,
+    };
+  },
+  [SET_PLUGINS]: (state, action: PayloadAction<SdkPluginsConfig | null>) => {
+    return {
+      ...state,
+      plugins: action.payload,
     };
   },
 });
