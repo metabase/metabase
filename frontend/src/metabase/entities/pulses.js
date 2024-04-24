@@ -1,11 +1,15 @@
 import { t } from "ttag";
 
+import { subscriptionApi } from "metabase/api";
 import { getCollectionType } from "metabase/entities/collections";
 import { color } from "metabase/lib/colors";
-import { createEntity, undo } from "metabase/lib/entities";
+import {
+  createEntity,
+  undo,
+  entityCompatibleQuery,
+} from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
-import { PulseApi } from "metabase/services";
 
 export const UNSUBSCRIBE = "metabase/entities/pulses/unsubscribe";
 
@@ -28,18 +32,25 @@ const Pulses = createEntity({
   },
 
   objectActions: {
-    setArchived: ({ id }, archived, opts) => {
-      return Pulses.actions.update(
-        { id },
-        { archived },
-        undo(opts, t`subscription`, archived ? t`deleted` : t`restored`),
-      );
-    },
+    setArchived:
+      ({ id }, archived, opts) =>
+      dispatch => {
+        entityCompatibleQuery(
+          { id, archived },
+          dispatch,
+          subscriptionApi.endpoints.updateSubscription,
+        );
+        undo(opts, t`subscription`, archived ? t`deleted` : t`restored`);
+      },
 
     unsubscribe:
       ({ id }) =>
       async dispatch => {
-        await PulseApi.unsubscribe({ id });
+        await entityCompatibleQuery(
+          id,
+          dispatch,
+          subscriptionApi.endpoints.unsubscribe,
+        );
         dispatch(addUndo({ message: t`Successfully unsubscribed` }));
         dispatch({ type: UNSUBSCRIBE, payload: { id } });
         dispatch({ type: Pulses.actionTypes.INVALIDATE_LISTS_ACTION });
