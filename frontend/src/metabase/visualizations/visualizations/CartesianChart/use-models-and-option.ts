@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 import { measureTextWidth } from "metabase/lib/measure-text";
+import { extractRemappings } from "metabase/visualizations";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
 import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -28,9 +29,14 @@ export function useModelsAndOption({
   selectedTimelineEventIds,
   onRender,
 }: VisualizationProps) {
+  const rawSeriesWithRemappings = useMemo(
+    () => extractRemappings(rawSeries),
+    [rawSeries],
+  );
+
   const seriesToRender = useMemo(
-    () => (isPlaceholder ? transformedSeries : rawSeries),
-    [isPlaceholder, transformedSeries, rawSeries],
+    () => (isPlaceholder ? transformedSeries : rawSeriesWithRemappings),
+    [isPlaceholder, transformedSeries, rawSeriesWithRemappings],
   );
 
   const showWarning = useCallback(
