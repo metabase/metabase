@@ -25,7 +25,7 @@ const renderingContext: RenderingContext = {
   getColor: color,
   formatValue: formatStaticValue as any,
   measureText: (text, style) =>
-    measureTextWidth(text, style.size, style.weight),
+    measureTextWidth(text, Number(style.size), Number(style.weight)),
   fontFamily: "Lato",
 };
 
