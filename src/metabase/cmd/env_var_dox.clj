@@ -44,7 +44,7 @@
                "`null`")))))
 
 (defn- format-prefix
-  "Used to build an environment variable."
+  "Used to build an environment variable, like `MB_ENV_VAR_NAME`"
   [env-var]
   (str "MB_" (u/->SCREAMING_SNAKE_CASE_EN (:munged-name env-var))))
 
@@ -67,13 +67,17 @@
   (when-let [a (:added (:doc env-var))]
     (str "Added: " a)))
 
+(def paid-message
+  "Used to mark an env var that requires a paid plan."
+      "> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+       and [Enterprise](https://www.metabase.com/product/enterprise) plans.")
+
 (defn- format-paid
   "Does the variable require a paid license?"
   [env-var]
     (if (nil? (:feature env-var))
       ""
-      "> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
-       and [Enterprise](https://www.metabase.com/product/enterprise) plans."))
+      paid-message))
 
 (defn- format-doc
   "Includes additional documentation for an environment variable (`:commentary`), if it exists."
@@ -146,8 +150,8 @@
   []
   (str (slurp "src/metabase/cmd/resources/env-var-intro.md") "\n\n"))
 
-(defn- format-other-env-vars
-  "Exists just so we can write the intro in Markdown."
+(defn- non-defsetting-env-vars
+  "Retrieves environment variables not specified via `defsetting`."
   []
   (str "\n\n" (slurp "src/metabase/cmd/resources/other-env-vars.md") "\n"))
 
@@ -156,7 +160,7 @@
   []
   (apply str (format-intro)
          (str/join "\n\n" (format-env-var-docs (get-settings)))
-         (format-other-env-vars)))
+         (non-defsetting-env-vars)))
 
 (defn generate-dox!
   "Prints the generated environment variable docs to a file."
