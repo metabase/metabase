@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   #_[metabase.models.legacy-metric :refer [LegacyMetric]]
+   [metabase.models.card :refer [Card]]
    [metabase.models.segment :refer [Segment]]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -61,15 +61,18 @@
                                   (mt/run-mbql-query venues
                                     {:aggregation [[:share [:segment segment-id]]]}))))))
 
-    ;; TODO TB legacy macro test, delete or port
-    #_(testing "Share inside a Metric"
-      (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
-                                                       :definition {:source-table (mt/id :venues)
-                                                                    :aggregation  [:share [:< [:field (mt/id :venues :price) nil] 4]]}}]
+    (testing "Share inside a Metric"
+      (t2.with-temp/with-temp [Card {metric-id :id} (mt/$ids venues
+                                                      {:dataset_query {:query {:aggregation [:share [:< $price 4]]
+                                                                               :source-table $$venues}
+                                                                       :database (mt/id)
+                                                                       :type :query}
+                                                       :type :metric})]
         (is (= [[0.94]]
                (mt/formatted-rows [2.0]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:metric metric-id]]}))))))))
+                                  (mt/run-mbql-query venues
+                                    {:aggregation [[:metric metric-id]]
+                                     :source-table (str "card__" metric-id)}))))))))
 
 (deftest ^:parallel expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
