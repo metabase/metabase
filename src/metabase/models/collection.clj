@@ -949,10 +949,7 @@
 
 (defmethod mi/exclude-internal-content-hsql :model/Collection
   [_model & {:keys [table-alias]}]
-  (let [maybe-alias #(h2x/identifier :field (some-> table-alias name) %)]
-    [:and
-     [:not= (maybe-alias :type) [:inline instance-analytics-collection-type]]
-     [:not (maybe-alias :is_sample)]]))
+  [:not= (h2x/identifier :field table-alias :type) [:inline instance-analytics-collection-type]])
 
 (defn- parent-identity-hash [coll]
   (let [parent-id (-> coll
