@@ -177,7 +177,10 @@
                   ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
                   (when-not https?
                     (redirect-all-requests-to-https! false))
-                  (setting/set-value-of-type! :string :site-url new-value))))
+                  (setting/set-value-of-type! :string :site-url new-value)))
+  :doc "This URL is critical for things like SSO authentication, email links, embedding and more.
+        Even difference with `http://` vs `https://` can cause problems.
+        Make sure that the address defined is how Metabase is being accessed.")
 
 (defsetting site-locale
   (deferred-tru
@@ -440,7 +443,8 @@ See [fonts](../configuring-metabase/fonts.md).")
   :type       :string
   :audit      :getter
   :feature    :whitelabel
-  :default    "app/assets/img/logo.svg")
+  :default    "app/assets/img/logo.svg"
+  :doc "Inline styling and inline scripts are not supported.")
 
 (defsetting application-favicon-url
   (deferred-tru "Upload a file to use as the favicon.")

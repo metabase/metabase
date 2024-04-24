@@ -509,7 +509,8 @@
                                  :amount-must-be-positive            "Session timeout amount must be positive."
                                  :amount-must-be-less-than-100-years "Session timeout must be less than 100 years.")
                                {:status-code 400})))
-             (setting/set-value-of-type! :json :session-timeout new-value)))
+             (setting/set-value-of-type! :json :session-timeout new-value))
+  :doc "Has to be in the JSON format `\"{\"amount\":120,\"unit\":\"minutes\"}\"` where the unit is one of \"seconds\", \"minutes\" or \"hours\".")
 
 (defn session-timeout->seconds
   "Convert the session-timeout setting value to seconds."

@@ -197,6 +197,8 @@ Configuration file name: `application-logo-url`
 
 Upload a file to replace the Metabase logo on the top bar.
 
+Inline styling and inline scripts are not supported.
+
 ### `MB_APPLICATION_NAME`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro)
@@ -1568,6 +1570,8 @@ Configuration file name: `session-timeout`
 
 Time before inactive users are logged out. By default, sessions last indefinitely.
 
+Has to be in the JSON format `"{"amount":120,"unit":"minutes"}"` where the unit is one of "seconds", "minutes" or "hours".
+
 ### `MB_SETUP_EMBEDDING_AUTOENABLED`
 
 Type: boolean
@@ -1683,6 +1687,10 @@ Default: `null`
 Configuration file name: `site-url`
 
 This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, so changing it could break functionality or get you locked out of this instance.
+
+This URL is critical for things like SSO authentication, email links, embedding and more.
+        Even difference with `http://` vs `https://` can cause problems.
+        Make sure that the address defined is how Metabase is being accessed.
 
 ### `MB_SLACK_APP_TOKEN`
 
