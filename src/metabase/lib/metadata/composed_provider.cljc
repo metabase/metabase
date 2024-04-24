@@ -12,6 +12,10 @@
   (filter #(satisfies? metadata.protocols/CachedMetadataProvider %)
           providers))
 
+(defn- invocation-tracker-providers [providers]
+  (filter #(satisfies? metadata.protocols/InvocationTracker %)
+          providers))
+
 (defn- object-for-id [f id metadata-providers]
   (some (fn [provider]
           (f provider id))
@@ -73,6 +77,11 @@
   metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]
     (bulk-metadata metadata-providers metadata-type ids))
+
+  metadata.protocols/InvocationTracker
+  (invoked-ids [_this metadata-type]
+    (when-first [provider (invocation-tracker-providers metadata-providers)]
+      (metadata.protocols/invoked-ids provider metadata-type)))
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]

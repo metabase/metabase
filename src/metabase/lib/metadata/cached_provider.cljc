@@ -104,10 +104,10 @@
   (setting        [_this setting]    (lib.metadata.protocols/setting metadata-provider setting))
 
   lib.metadata.protocols/CachedMetadataProvider
-  (cached-database [_this]                           (get-in-cache     cache [:metadata/database]))
-  (cached-metadata [_this metadata-type id]          (get-in-cache     cache [metadata-type id]))
-  (store-database! [_this database-metadata]         (store-database!  cache database-metadata))
-  (store-metadata! [_this metadata-type id metadata] (store-metadata!  cache metadata-type id metadata))
+  (cached-database [_this]                           (get-in-cache    cache [:metadata/database]))
+  (cached-metadata [_this metadata-type id]          (get-in-cache    cache [metadata-type id]))
+  (store-database! [_this database-metadata]         (store-database! cache database-metadata))
+  (store-metadata! [_this metadata-type id metadata] (store-metadata! cache metadata-type id metadata))
 
   ;; these only work if the underlying metadata provider is also a [[BulkMetadataProvider]].
   lib.metadata.protocols/BulkMetadataProvider

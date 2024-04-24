@@ -110,10 +110,13 @@
   (bulk-metadata [bulk-metadata-provider metadata-type ids]
     "Fetch lots of metadata of a specific type, e.g. `:metadata/table`, in a single bulk operation."))
 
-(#?(:clj p/defprotocol+ :cljs defprotocol) CallTrackMetadataProvider
-  "A protocol that's used to track calls."
-  (called-ids [this metadata-type]
-    "Get all called ids of metadata-type thus far."))
+(#?(:clj p/defprotocol+ :cljs defprotocol) InvocationTracker
+  "Optional. A protocol for a MetadataProvider that records the arguments of method invocations during query execution.
+
+  This is useful for tracking which metdata ids were used during a query execution. The main purpose of this is to power
+  updating card.last_used_at during query execution. see [[metabase.query-processor.middleware.update-used-cards/update-used-cards!]]"
+  (invoked-ids [this metadata-type]
+    "Get all invoked ids of a metadata type thus far."))
 
 (defn store-metadatas!
   "Convenience. Store several metadata maps at once."

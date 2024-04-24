@@ -22,10 +22,19 @@
             (log/error e "Error updating used cards")))))))
 
 (mu/defn update-used-cards! :- ::qp.schema/qp
+  "Middleware that get all card-ids that were used during a query execution and updates their `last_used_at`.
+  Should be used after query is fully preprocessed.
+
+  Including but not limited to cards used as:
+  - the source card for other queries
+  - definition for sandbox rules
+  - card references in native query
+  - dashcard on dashboard
+  - alert/pulse"
   [qp :- ::qp.schema/qp]
   (mu/fn [query :- ::qp.schema/query
           rff   :- ::qp.schema/rff]
     (letfn [(rff* [metadata]
-             (update-used-cards!* (lib.protocols/called-ids (qp.store/metadata-provider) :metadata/card))
+             (update-used-cards!* (set (lib.protocols/invoked-ids (qp.store/metadata-provider) :metadata/card)))
              (rff metadata))]
       (qp query rff*))))

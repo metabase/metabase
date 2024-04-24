@@ -16,7 +16,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.call-track-provider :as lib.metadata.call-track-provider]
+   [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -116,7 +116,7 @@
   (if (integer? database-id-or-metadata-providerable)
     (-> database-id-or-metadata-providerable
         lib.metadata.jvm/application-database-metadata-provider
-        lib.metadata.call-track-provider/call-track-metadadata-provider)
+        lib.metadata.invocation-tracker/invocation-tracker)
     database-id-or-metadata-providerable))
 
 (mu/defn ^:private validate-existing-provider
