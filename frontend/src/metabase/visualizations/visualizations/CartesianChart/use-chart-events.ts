@@ -207,13 +207,13 @@ export const useChartEvents = (
         return;
       }
 
-      const eChartsSeriesIndex = getHoveredEChartsSeriesIndex(
+      const hoveredEChartsSeriesIndex = getHoveredEChartsSeriesIndex(
         chartModel.seriesModels,
         option,
         hovered,
       );
 
-      if (hovered == null || eChartsSeriesIndex == null) {
+      if (hovered == null || hoveredEChartsSeriesIndex == null) {
         return;
       }
 
@@ -236,14 +236,14 @@ export const useChartEvents = (
       chart.dispatchAction({
         type: "highlight",
         dataIndex,
-        seriesIndex: eChartsSeriesIndex,
+        seriesIndex: hoveredEChartsSeriesIndex,
       });
 
       return () => {
         chart.dispatchAction({
           type: "downplay",
           dataIndex,
-          seriesIndex: eChartsSeriesIndex,
+          seriesIndex: hoveredEChartsSeriesIndex,
         });
       };
     },
