@@ -8,7 +8,10 @@ import {
   setLoginStatus,
 } from "embedding-sdk/store/reducer";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
-import type { EmbeddingSessionTokenState } from "embedding-sdk/store/types";
+import type {
+  EmbeddingSessionTokenState,
+  SdkDispatch,
+} from "embedding-sdk/store/types";
 import type {
   SDKConfigType,
   SdkConfigWithApiKey,
@@ -18,7 +21,6 @@ import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
 import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
-import type { Dispatch } from "metabase-types/store";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
@@ -44,7 +46,7 @@ const isJwtAuth = (config: SDKConfigType): config is SdkConfigWithJWT =>
 const isApiKeyAuth = (config: SDKConfigType): config is SdkConfigWithApiKey =>
   config.authType === "apiKey" && !!config.apiKey;
 
-const setupJwtAuth = (config: SdkConfigWithJWT, dispatch: Dispatch) => {
+const setupJwtAuth = (config: SdkConfigWithJWT, dispatch: SdkDispatch) => {
   api.onBeforeRequest = async () => {
     const tokenState = await dispatch(
       getOrRefreshSession(config.jwtProviderUri),
