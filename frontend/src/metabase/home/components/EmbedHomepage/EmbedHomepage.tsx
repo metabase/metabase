@@ -8,11 +8,11 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isEEBuild } from "metabase/lib/utils";
 import { addUndo } from "metabase/redux/undo";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
+import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
 import { EmbedHomepageView } from "./EmbedHomepageView";
 import { FeedbackModal } from "./FeedbackModal";
 import { dismissEmbeddingHomepage } from "./actions";
-import type { EmbedHomepageDismissReason } from "./types";
 
 export const EmbedHomepage = () => {
   const [feedbackModalOpened, setFeedbackModalOpened] = useState(false);
@@ -58,7 +58,7 @@ export const EmbedHomepage = () => {
     return "static";
   }, [plan]);
 
-  const onDismiss = (reason: EmbedHomepageDismissReason) => {
+  const onDismiss = (reason: EmbeddingHomepageDismissReason) => {
     if (reason === "dismissed-run-into-issues") {
       setFeedbackModalOpened(true);
     } else {

@@ -13,17 +13,18 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
 import { InteractiveTabContent } from "./InteractiveTabContent";
 import { StaticTabContent } from "./StaticTabContent";
-import type { EmbedHomepageDismissReason, InitialTab } from "./types";
+import type { EmbeddingHomepageInitialTab } from "./types";
 
 export type EmbedHomepageViewProps = {
   embeddingAutoEnabled: boolean;
   exampleDashboardId: number | null;
   licenseActiveAtSetup: boolean;
-  initialTab: InitialTab;
-  onDismiss: (reason: EmbedHomepageDismissReason) => void;
+  initialTab: EmbeddingHomepageInitialTab;
+  onDismiss: (reason: EmbeddingHomepageDismissReason) => void;
   // links
   interactiveEmbeddingQuickstartUrl: string;
   embeddingDocsUrl: string;
