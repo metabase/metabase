@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
+import { color } from "metabase/lib/colors";
 import { Button, Icon, Input, Popover, FocusTrap } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import * as Lib from "metabase-lib";
