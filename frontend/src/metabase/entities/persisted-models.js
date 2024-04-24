@@ -22,7 +22,7 @@ const PersistedModels = createEntity({
   schema: PersistedModelSchema,
 
   api: {
-    get: ({ id, type }, dispatch) => {
+    get: ({ id, type }, options, dispatch) => {
       return type === "byModelId"
         ? entityCompatibleQuery(
             id,
