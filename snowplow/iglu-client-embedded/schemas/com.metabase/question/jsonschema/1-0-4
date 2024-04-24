@@ -16,7 +16,8 @@
         "new_question_saved",
         "turn_into_model_clicked",
         "notebook_native_preview_shown",
-        "notebook_native_preview_hidden"
+        "notebook_native_preview_hidden",
+        "column_combine_via_shortcut"
       ],
       "maxLength": 1024
     },
