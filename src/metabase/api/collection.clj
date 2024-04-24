@@ -372,6 +372,7 @@
 (defn- card-query [dataset? collection {:keys [pinned-state]}]
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                     :c.trashed_from_collection_id
                      :archived
                      :c.dataset_query
                      [(h2x/literal (if dataset? "dataset" "card")) :model]
@@ -477,6 +478,7 @@
 
 (defn- dashboard-query [collection {:keys [pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
+                   :d.trashed_from_collection_id
                    [(h2x/literal "dashboard") :model]
                    [:u.id :last_edit_user]
                    :archived
@@ -624,12 +626,27 @@
 (defn- remove-unwanted-keys [row]
   (dissoc row :collection_type :model_ranking))
 
+(defn- maybe-check-permissions
+  "Generally, if you have permission to read a collection, you have permission to read everything in it.
+  This is *not* true for the Trash collection. This contains all trashed items. In this case, we need to filter the
+  list down to those items for which the user actually has permissions.
+
+  Because this is the trash collection, we only want to show the user items which they could move out of the trash if
+  desired. Therefore, we want *write* permissions, not just read."
+  [collection rows]
+  (cond->> rows
+    (collection/is-trash? collection)
+    (filter #(mi/current-user-has-full-permissions?
+              (perms/perms-objects-set-for-parent-collection
+               (assoc % :archived true :collection_id (u/the-id collection)) :write)))))
+
 (defn- post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
   `post-process-collection-children`. Must respect the order passed in."
   [collection rows]
   (->> (map-indexed (fn [i row] (vary-meta row assoc ::index i)) rows) ;; keep db sort order
        (map #(assoc % :collection_id (:id collection)))
+       (maybe-check-permissions collection)
        (map remove-unwanted-keys)
        (group-by :model)
        (into []
@@ -670,6 +687,7 @@
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
    :collection_type [:archived :boolean]
+   [:trashed_from_collection_id :integer]
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 

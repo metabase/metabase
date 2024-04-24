@@ -58,6 +58,12 @@
   "The fixed location path for the trash collection."
   (format "/%s/" trash-collection-id))
 
+(defn is-trash?
+  "Is this the trash collection?"
+  [collection]
+  (and (not (collection.root/is-root-collection? collection))
+       (= (u/the-id collection) trash-collection-id)))
+
 (defn is-trash-or-descendant?
   "Is this the trash collection, or a descendant of it?"
   [collection]
