@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
+   [metabase.core :as mbc]
+   [metabase.db :as mdb]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models.card :refer [Card]]
@@ -11,6 +13,7 @@
    [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.query-processor.util :as qp.util]
+   [metabase.sample-data :as sample-data]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -275,3 +278,40 @@
                                          ["1-5"  [:int {:min 1}]]
                                          ["6-10" [:int {:min 1}]]]]]
                 (#'stats/alert-metrics)))))
+
+(deftest internal-content-metrics-test
+  (testing "Internal content doesn't contribute to stats"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db!)
+      (sample-data/add-sample-database!)
+      (let [installed-metabase-analytics? (= (mbc/ensure-audit-db-installed!)
+                                             :metabase-enterprise.audit-db/installed)]
+        (testing "sense check: internal content exists"
+          (is (true? (t2/exists? :model/Database)))
+          (is (true? (t2/exists? :model/Table)))
+          (is (true? (t2/exists? :model/Field)))
+          (is (= installed-metabase-analytics? (t2/exists? :model/User)))
+          (is (= installed-metabase-analytics? (t2/exists? :model/Collection)))
+          (is (= installed-metabase-analytics? (t2/exists? :model/Dashboard)))
+          (is (= installed-metabase-analytics? (t2/exists? :model/Card)))))
+      (testing "All metrics should be empty"
+        (is (= {:users {}}
+               (#'stats/user-metrics)))
+        (is (= {:databases {}, :dbms_versions {}}
+               (#'stats/database-metrics)))
+        (is (= {:tables 0, :num_per_database {}, :num_per_schema {}}
+               (#'stats/table-metrics)))
+        (is (= {:num_per_table {}, :fields 0}
+               (#'stats/field-metrics)))
+        (is (= {:collections 0, :cards_in_collections 0, :cards_not_in_collections 0, :num_cards_per_collection {}}
+               (#'stats/collection-metrics)))
+        (is (= {:questions {}, :public {}, :embedded {}}
+               (#'stats/question-metrics)))
+        (is (= {:dashboards         0
+                :with_params        0
+                :num_dashs_per_user {}
+                :num_cards_per_dash {}
+                :num_dashs_per_card {}
+                :public             {}
+                :embedded           {}}
+               (#'stats/dashboard-metrics)))))))
