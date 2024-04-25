@@ -8,12 +8,13 @@
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.reader.edn :as edn]
    [metabase.models.setting :as setting]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]))
 
 (defn get-settings
   "Loads all of the metabase namespaces, which loads all of the defsettings,
   which are registered in an atom in the settings namespace. Once settings are registered,
-  This function derefs that atom and puts the settings into a sorted map for processing."
+  this function derefs that atom and puts the settings into a sorted map for processing."
   []
   (doseq [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
           :when (and
@@ -32,16 +33,24 @@
   [env-var]
   (str "Type: " (name (:type env-var))))
 
+(defn- handle-defaults-set-elsewhere
+  "Handles defaults not set in the `defsetting.`"
+  [env-var]
+  (let [n (:name env-var)]
+    (cond (= :aggregated-query-row-limit n) (assoc env-var :default (:max-results (qp.constraints/default-query-constraints)))
+          (= :unaggregated-query-row-limit n) (assoc env-var :default (:max-results-bare-rows (qp.constraints/default-query-constraints)))
+          :else env-var)))
+
 (defn- format-default
-  "Helper function to specify how to format the default value of an enviromnent variable.
+  "Helper function to specify how to format the default value of an environment variable.
   for use in the environment variable docs."
   [env-var]
-  (let [d (:default env-var)]
+  (let [d (:default (handle-defaults-set-elsewhere env-var))]
     (str "Default: "
-         (if (false? d) "`false`"
-             (if (:default env-var)
-               (str "`" (:default env-var) "`")
-               "`null`")))))
+         (cond
+           (false? d) "`false`"
+           (nil? d) "`null`"
+           :else (str "`" d "`")))))
 
 (defn- format-prefix
   "Used to build an environment variable, like `MB_ENV_VAR_NAME`"
@@ -56,7 +65,7 @@
 (defn- format-description
   "Helper function to specify description format for enviromnent variable docs."
   [env-var]
-  (->> ((:description env-var))
+  (->> ((get env-var :description))
        u/add-period
        ;; Drop brackets used to create source code links
        (#(str/replace % #"\[\[|\]\]" ""))))
@@ -69,15 +78,15 @@
 
 (def paid-message
   "Used to mark an env var that requires a paid plan."
-      "> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
+  "> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
        and [Enterprise](https://www.metabase.com/product/enterprise) plans.")
 
 (defn- format-paid
   "Does the variable require a paid license?"
   [env-var]
-    (if (nil? (:feature env-var))
-      ""
-      paid-message))
+  (if (nil? (:feature env-var))
+    ""
+    paid-message))
 
 (defn- format-doc
   "Includes additional documentation for an environment variable, if it exists."
