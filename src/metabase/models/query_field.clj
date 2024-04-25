@@ -48,11 +48,28 @@
                                                (map (partial id->record false) indirect))]
         ;; when response is `nil`, it's a disabled parser, not unknown columns
         (when (some? res)
-          ;; This feels inefficient at first glance, but the number of records should be quite small and doing some
-          ;; sort of upsert-or-delete would involve comparisons in Clojure-land that are more expensive than just
-          ;; "killing and filling" the records.
           (t2/with-transaction [_conn]
-            (t2/delete! :model/QueryField :card_id card-id)
-            (t2/insert! :model/QueryField query-field-records))))
+            (let [known             (t2/select-fn->fn :field_id identity :model/QueryField :card_id card-id)
+                  {to-update :update
+                   to-insert :insert
+                   _to-skip  :skip} (group-by (fn [x]
+                                                (cond
+                                                  (not (contains? known (:field_id x))) :insert
+                                                  (= (:direct_reference (known (:field_id x)))
+                                                     (:direct_reference x))             :skip
+                                                  :else                                 :update))
+                                              query-field-records)
+                  to-delete         (remove (comp (set (map :field_id query-field-records)) :field_id) (vals known))]
+              (when (seq to-delete)
+                ;; this delete seems to break transaction (implicit commit or something) on MySQL, and this algo drops
+                ;; it's frequency by a lot - which should help with transactions affecting each other a lot. Parallel
+                ;; tests in `metabase.models.query.permissions-test` were breaking when delete was executed
+                ;; unconditionally on every query change.
+                (t2/delete! :model/QueryField :card_id card-id :field_id [:in (map :field_id to-delete)]))
+              (when (seq to-insert)
+                (t2/insert! :model/QueryField to-insert))
+              (doseq [item to-update]
+                (t2/update! :model/QueryField {:card_id card-id :field_id (:field_id item)}
+                            (select-keys item [:direct_reference])))))))
       (catch Exception e
         (log/error e "Error parsing native query")))))
