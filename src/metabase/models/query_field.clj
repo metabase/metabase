@@ -33,7 +33,10 @@
   (when query
     (try
       (let [{:keys [direct indirect] :as res} (case (:type query)
-                                                :native (query-analyzer/field-ids-for-sql query)
+                                                :native (try
+                                                          (query-analyzer/field-ids-for-sql query)
+                                                          (catch Exception e
+                                                            (log/error e "Error parsing SQL" query)))
                                                 :query  (field-ids-for-mbql query)
                                                 nil     nil)
             id->record                        (fn [direct? field-id]

@@ -96,7 +96,8 @@
   Direct references are columns that are named in the query; indirect ones are from wildcards. If a field could be
   both direct and indirect, it will *only* show up in the `:direct` set."
   [query]
-  (when (active?)
+  (when (and (active?)
+             (:native query))
     (let [db-id        (:database query)
           sql-string   (:query (nqa.sub/replace-tags query))
           parsed-query (macaw/query->components (macaw/parsed-query sql-string))
