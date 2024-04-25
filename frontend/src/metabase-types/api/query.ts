@@ -123,14 +123,6 @@ type Value = null | boolean | StringLiteral | NumericLiteral | DatetimeLiteral;
 type OrderableValue = NumericLiteral | DatetimeLiteral;
 
 type RelativeDatetimePeriod = "current" | "last" | "next" | number;
-export type RelativeDatetimeUnit =
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "month"
-  | "quarter"
-  | "year";
 
 // "card__4" like syntax meaning a query is using card 4 as a data source
 type NestedQueryTableId = string;
@@ -260,13 +252,13 @@ type TimeIntervalFilter =
       "time-interval",
       ConcreteFieldReference,
       RelativeDatetimePeriod,
-      RelativeDatetimeUnit,
+      DateTimeAbsoluteUnit,
     ]
   | [
       "time-interval",
       ConcreteFieldReference,
       RelativeDatetimePeriod,
-      RelativeDatetimeUnit,
+      DateTimeAbsoluteUnit,
       TimeIntervalFilterOptions,
     ];
 

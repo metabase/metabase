@@ -1,4 +1,4 @@
-import type { DatetimeUnit } from "./query";
+import type { DateTimeAbsoluteUnit } from "./query";
 
 export type InsightExpressionOperator =
   | "+"
@@ -21,7 +21,7 @@ export type InsightExpression =
 
 export interface Insight {
   col: string;
-  unit: DatetimeUnit;
+  unit: DateTimeAbsoluteUnit;
 
   // Used for trend line on line/area/bar/combo charts.
   // Will try to use "best-fit" expression if it exsits,
