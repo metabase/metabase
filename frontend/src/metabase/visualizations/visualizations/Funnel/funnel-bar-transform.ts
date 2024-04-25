@@ -8,7 +8,7 @@ export const funnelToBarTransform: TransformSeries = (
   const [series] = rawSeries;
   const {
     card,
-    data: { cols, rows },
+    data: { cols, rows, native_form },
   } = series;
 
   const dimensionIndex = cols.findIndex(
@@ -47,6 +47,7 @@ export const funnelToBarTransform: TransformSeries = (
             name,
           },
         ],
+        native_form,
         rows_truncated: 0,
         results_metadata: { columns: [] },
       },
