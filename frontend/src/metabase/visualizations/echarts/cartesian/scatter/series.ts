@@ -1,5 +1,5 @@
 import d3 from "d3";
-import type { RegisteredSeriesOption } from "echarts/types/dist/shared";
+import type { RegisteredSeriesOption } from "echarts";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { RenderingContext } from "metabase/visualizations/types";
