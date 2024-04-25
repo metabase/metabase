@@ -22,7 +22,7 @@
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.info :as info]
    [metabase.lib.schema.join :as join]
-   [metabase.lib.schema.literal :as literal]
+   [metabase.lib.schema.literal]
    [metabase.lib.schema.order-by :as order-by]
    [metabase.lib.schema.parameter :as parameter]
    [metabase.lib.schema.ref :as ref]
@@ -35,7 +35,8 @@
          metabase.lib.schema.expression.conditional/keep-me
          metabase.lib.schema.expression.string/keep-me
          metabase.lib.schema.expression.temporal/keep-me
-         metabase.lib.schema.filter/keep-me)
+         metabase.lib.schema.filter/keep-me
+         metabase.lib.schema.literal/keep-me)
 
 (mr/def ::stage.native
   [:and
@@ -48,7 +49,7 @@
     ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
     ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
     ;; nil.
-    [:args {:optional true} [:sequential ::literal/literal]]
+    [:params {:optional true} [:sequential :any]]
     ;; the Table/Collection/etc. that this query should be executed against; currently only used for MongoDB, where it
     ;; is required.
     [:collection {:optional true} ::common/non-blank-string]
