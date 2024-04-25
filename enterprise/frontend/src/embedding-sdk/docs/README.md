@@ -81,7 +81,9 @@ export default function App() {
 }
 ```
 
-`MetabaseProvider` also supports `pluginsConfig`. Currently we only allow configuring `mapQuestionClickActions`, but we'll support more plugins in next releases.
+`MetabaseProvider` also supports `pluginsConfig`. You can use `pluginsConfig` to customize the SDK behavior. Currently we only allow configuring `mapQuestionClickActions` which lets you add custom actions or remove Metabase default actions.
+
+We'll support more plugins in next releases.
 
 ```jsx
 // You can provide a custom action with your own `onClick` logic.
