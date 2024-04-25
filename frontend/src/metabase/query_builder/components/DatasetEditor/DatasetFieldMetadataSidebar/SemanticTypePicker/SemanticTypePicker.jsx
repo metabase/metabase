@@ -44,7 +44,7 @@ function SemanticTypePicker({
       onChange?.(e.target.value);
       selectButtonRef.current?.focus();
     },
-    [field, setValue],
+    [field, setValue, onChange],
   );
 
   const pickerLabel = useMemo(() => {

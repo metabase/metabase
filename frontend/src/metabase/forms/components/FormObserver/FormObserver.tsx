@@ -9,14 +9,13 @@ interface FormObserverProps<T> {
     however, this should be used with caution as it is bad practice to duplicate
     state. */
 export const FormObserver = <T,>({ onChange }: FormObserverProps<T>) => {
-  const { values, dirty } = useFormikContext<T>();
+  const { values } = useFormikContext<T>();
 
   useEffect(() => {
-    if (values && dirty) {
-      console.log("onChange", values);
+    if (values) {
       onChange(values);
     }
-  }, [values, dirty, onChange]);
+  }, [values, onChange]);
 
   return null;
 };

@@ -149,7 +149,7 @@ describe("scenarios > model indexes", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByText("Product");
+      cy.findByRole("heading", { name: /Product/ });
       cy.findByText("Small Marble Shoes");
       cy.findByText("Doohickey");
     });
@@ -193,7 +193,7 @@ describe("scenarios > model indexes", () => {
     });
   });
 
-  it.only("should not reload the model for record in the same model", () => {
+  it("should not reload the model for record in the same model", () => {
     createModelIndex({ modelId, pkName: "ID", valueName: "TITLE" });
 
     cy.visit("/");
@@ -211,7 +211,7 @@ describe("scenarios > model indexes", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByText("Product");
+      cy.findByRole("heading", { name: /Product/ });
       cy.findByText("Small Marble Shoes");
       cy.findByText("Doohickey");
     });

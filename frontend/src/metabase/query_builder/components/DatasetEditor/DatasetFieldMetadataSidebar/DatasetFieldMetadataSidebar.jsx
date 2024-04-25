@@ -11,7 +11,6 @@ import {
   FormTextInput,
   FormTextarea,
   FormSwitch,
-  FormObserver,
 } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import {
