@@ -70,12 +70,6 @@
        ;; Drop brackets used to create source code links
        (#(str/replace % #"\[\[|\]\]" ""))))
 
-(defn- format-added
-  "Used to specify when the environment variable was added, if that info exists."
-  [env-var]
-  (when-let [a (:added (:doc env-var))]
-    (str "Added: " a)))
-
 (def paid-message
   "Used to mark an env var that requires a paid plan."
   "> Only available on Metabase [Pro](https://www.metabase.com/product/pro)
@@ -88,6 +82,13 @@
     ""
     paid-message))
 
+(defn- format-export
+  "Whether the variable is exported in serialization settings."
+  [env-var]
+  (if (true? (:export? env-var))
+    (str "[Exported as](../installation-and-operation/serialization.md): `" (:munged-name env-var) "`.")
+    ""))
+
 (defn- format-doc
   "Includes additional documentation for an environment variable, if it exists."
   [env-var]
@@ -98,8 +99,21 @@
   "Formats the configuration file name."
   [env-var]
   (if (= (:visibility env-var) :internal)
-    (str "Configuration file name: Cannot be set with the configuration file.")
-    (str "Configuration file name: `" (:munged-name env-var) "`")))
+    ""
+    (str "[Configuration file name](./config-file.md): `" (:munged-name env-var) "`")))
+
+(defn list-item
+  "Create a list item for an entry, like `- Default: 100`."
+  [entry]
+  (if (or (str/blank? entry)
+          (nil? entry))
+          ""
+          (str "- " entry)))
+
+(defn format-list
+  "Used to format metadata as a list."
+  [entries]
+  (str/join "\n" (map list-item entries)))
 
 (defn- format-env-var-entry
   "Preps a doc entry for an environment variable as a Markdown section."
@@ -107,10 +121,12 @@
   (str/join "\n\n" (remove str/blank?
                            [(format-heading 3 (format-prefix env-var))
                             (format-paid env-var)
-                            (format-type env-var)
-                            (format-default env-var)
-                            (format-added env-var)
-                            (format-config-name env-var)
+                            ;; metadata we should format as a list
+                            ;; Like `- Default: 100`
+                            (format-list [(format-type env-var)
+                                          (format-default env-var)
+                                          (format-export env-var)
+                                          (format-config-name env-var)])
                             (format-description env-var)
                             (format-doc env-var)])))
 
@@ -132,7 +148,6 @@
   "Used to filter out environment variables that cannot be set."
   [env-var]
   (not= :none (:setter env-var)))
-
 (defn- active?
   "Used to filter our deprecated enviroment variables."
   [env-var]
