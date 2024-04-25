@@ -78,7 +78,7 @@ export const getDashboardActions = props => {
     }
   }
 
-  if (!isEditing && !isEmpty && !dashboard.archived) {
+  if (!isEditing && !isEmpty && !dashboard?.archived) {
     buttons.push(
       <RefreshWidgetButton
         key="refresh"

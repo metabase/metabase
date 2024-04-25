@@ -244,7 +244,9 @@ export const setArchivedQuestion = createThunkAction(
   SET_ARCHIVED_QUESTION,
   function (question, archived = true) {
     return async function (dispatch) {
-      await dispatch(Questions.actions.update(question.card(), { archived }));
+      await dispatch(
+        Questions.actions.update({ id: question.card().id }, { archived }),
+      );
 
       dispatch(
         updateQuestion(question.setArchived(archived), {
