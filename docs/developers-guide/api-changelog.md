@@ -10,6 +10,10 @@ title: API changelog
 
    The `/api/metric` endpoints has been renamed to `/api/legacy-metric` to reflect that fact it will not be used for the new version of metrics. The new version uses the `/api/card` endpoints.
 
+- `GET /api/permissions/graph` and `PUT /api/permissions/graph`
+
+   The `data` key has been removed from the permissions graph. It has been replaced with `view-data` and `create-queries`.
+
 ## Metabase 0.49.0
 - `POST /api/card` and `PUT /api/card/:id`
 
