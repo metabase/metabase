@@ -1,6 +1,12 @@
 import type React from "react";
+import { t } from "ttag";
 
-import { Button, Icon } from "metabase/ui";
+import { Button, Icon, Tooltip } from "metabase/ui";
+
+const sizeOverrideStyles = {
+  width: 32,
+  height: 32,
+};
 
 interface ResetButtonProps {
   className?: string;
@@ -11,11 +17,15 @@ export const ResetButton = ({
   className,
   onClick,
 }: ResetButtonProps): React.JSX.Element => (
-  <Button
-    className={className}
-    variant="default"
-    radius="xl"
-    leftIcon={<Icon name="revert" />}
-    onClick={onClick}
-  />
+  <Tooltip label={t`Reset view`}>
+    <Button
+      className={className}
+      variant="outline"
+      radius="xl"
+      size="xs"
+      leftIcon={<Icon name="revert" />}
+      style={sizeOverrideStyles}
+      onClick={onClick}
+    />
+  </Tooltip>
 );

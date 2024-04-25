@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
@@ -21,22 +21,28 @@ import { FilterHeader } from "metabase/query_builder/components/view/ViewHeader/
 import {
   getCard,
   getFirstQueryResult,
-  getQueryResults,
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { Box, Group, Stack } from "metabase/ui";
+import { Flex, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { CardId } from "metabase-types/api";
 
+const returnNull = () => null;
+
 interface InteractiveQuestionProps {
   questionId: CardId;
-
+  withResetButton?: boolean;
+  withTitle?: boolean;
+  customTitle?: React.ReactNode;
   plugins?: SdkClickActionPluginsConfig;
 }
 
 export const _InteractiveQuestion = ({
   questionId,
+  withResetButton = true,
+  withTitle = false,
+  customTitle,
   plugins: componentPlugins,
 }: InteractiveQuestionProps): JSX.Element | null => {
   const globalPlugins = useSdkSelector(getPlugins);
@@ -48,11 +54,17 @@ export const _InteractiveQuestion = ({
   const card = useSelector(getCard);
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);
-  const queryResults = useSelector(getQueryResults);
+  const hasQuestionChanges =
+    card && (!card.id || card.id !== card.original_card_id);
 
   const [loading, setLoading] = useState(true);
 
   const { isRunning } = uiControls;
+
+  if (question) {
+    // FIXME: remove "You can also get an alert when there are some results." feature for question
+    question.alertType = returnNull;
+  }
 
   const loadQuestion = async (
     dispatch: ReturnType<typeof useDispatch>,
@@ -73,13 +85,9 @@ export const _InteractiveQuestion = ({
     loadQuestion(dispatch, questionId);
   }, [dispatch, questionId]);
 
-  const handleQuestionReset = () => {
+  const handleQuestionReset = useCallback(() => {
     loadQuestion(dispatch, questionId);
-  };
-
-  if (!loading && !queryResults) {
-    return <SdkError message={t`Question not found`} />;
-  }
+  }, [dispatch, questionId]);
 
   return (
     <LoadingAndErrorWrapper
@@ -93,9 +101,19 @@ export const _InteractiveQuestion = ({
           <SdkError message={t`Question not found`} />
         ) : (
           <Stack h="100%">
-            <Box>
-              <ResetButton onClick={handleQuestionReset} />
-            </Box>
+            <Flex direction="row" gap="md" px="md" align="center">
+              {withTitle &&
+                (customTitle || (
+                  <h2 className={cx(CS.h2, CS.textWrap)}>
+                    {question.displayName()}
+                  </h2>
+                ))}
+
+              {hasQuestionChanges && withResetButton && (
+                <ResetButton onClick={handleQuestionReset} />
+              )}
+            </Flex>
+
             {FilterHeader.shouldRender({
               question,
               queryBuilderMode: uiControls.queryBuilderMode,
@@ -122,6 +140,7 @@ export const _InteractiveQuestion = ({
                 navigateToNewCardInsideQB={(props: any) => {
                   dispatch(navigateToNewCardInsideQB(props));
                 }}
+                onNavigateBack={handleQuestionReset}
               />
             </Group>
           </Stack>
