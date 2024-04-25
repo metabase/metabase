@@ -186,7 +186,7 @@
   "Global module namespaces can be imported anywhere, but their (non-module) internal namespaces are private.
   We can nest global modules, in which case each module hides its internal even from its parent module, but is itself
   importable even outside its parent module(s)."
-  ;; We keep this map sorted so parents precede their children. For legibility please keep them listed that way too..
+  ;; We keep this map sorted so parents precede their children. For legibility please keep them listed that way too.
   (sorted-set
    'metabase.db
    ;; We may aspire to encapsulating more of these - either through refactoring or ^:clj-kondo/ignore.
