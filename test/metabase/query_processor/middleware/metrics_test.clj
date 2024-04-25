@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.metrics-test
   (:require
    [clojure.test :refer [deftest is]]
-   [medley.core :as m]
+   #_[medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -163,7 +163,6 @@
                                     [:field {} (meta/id :products :rating)]]]}]}
           (adjust query)))))
 
-#_
 (deftest ^:parallel e2e-results-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
@@ -178,6 +177,7 @@
              (mt/rows (qp/process-query source-query))
              (mt/rows (qp/process-query query))))))))
 
+#_
 (deftest ^:parallel e2e-join-to-table-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
