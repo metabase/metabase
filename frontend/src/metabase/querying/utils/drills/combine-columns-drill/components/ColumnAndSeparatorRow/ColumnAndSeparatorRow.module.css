@@ -6,9 +6,9 @@
   flex: 1;
 }
 
-.remove {
+button.remove {
   flex: 0 0 auto;
-  border-color: transparent !important;
+  border-color: transparent;
 }
 
 .whitespacePlaceholder {
