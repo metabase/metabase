@@ -138,7 +138,7 @@ return (
 );
 ```
 
-After you have configured Metabase Embedding SDK for React, you need to make sure your `jwtProviderUri` endpoint returns JWT token that your Metabase instance can use for authentication.
+After you have configured the SDK, you need to make sure your `jwtProviderUri` endpoint returns JWT token that your Metabase instance can use for authentication.
 
 **Metabase Embedding SDK for React only supports JWT authentication.**
 
