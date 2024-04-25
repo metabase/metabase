@@ -6599,26 +6599,10 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-04-25T16:29:32
       author: calherries
-      comment: Add report_dashboard.view_count
-      changes:
-        - addColumn:
-            columns:
-              - column:
-                  name: view_count
-                  type: integer
-                  defaultValueNumeric: 0
-                  remarks: Count of views the card has had
-                  constraints:
-                    nullable: false
-            tableName: report_dashboard
-
-  - changeSet:
-      id: v50.2024-04-25T16:29:32
-      author: calherries
       comment: Populate report_card.view_count
       changes:
         - sql:
-            dbms: postgresql,h2
+            dbms: mysql,mariadb
             sql: >-
               UPDATE report_card c
               SET c.view_count = (
@@ -6642,16 +6626,32 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-04-25T16:29:33
       author: calherries
+      comment: Add report_dashboard.view_count
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: view_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Count of views the card has had
+                  constraints:
+                    nullable: false
+            tableName: report_dashboard
+
+  - changeSet:
+      id: v50.2024-04-25T16:29:34
+      author: calherries
       comment: Populate report_dashboard.view_count
       changes:
         - sql:
-            dbms: postgresql,h2
+            dbms: mysql,mariadb
             sql: >-
               UPDATE report_dashboard c
               SET c.view_count = (
                   SELECT COUNT(*)
                   FROM view_log v
-                  WHERE v.model = 'card'
+                  WHERE v.model = 'dashboard'
                   AND v.model_id = c.id
               );
         - sql:
@@ -6661,7 +6661,7 @@ databaseChangeLog:
               SET view_count = (
                   SELECT count(*)
                   FROM view_log v
-                  WHERE v.model = 'card'
+                  WHERE v.model = 'dashboard'
                   AND v.model_id = c.id
               );
       rollback: # nothing to do, since view_count didn't exist in v49
