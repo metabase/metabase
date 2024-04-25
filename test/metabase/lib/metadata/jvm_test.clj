@@ -201,3 +201,15 @@
 (deftest ^:parallel equality-test
   (is (= (lib.metadata.jvm/application-database-metadata-provider (mt/id))
          (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))
+
+(deftest ^:parallel all-methods-call-go-through-invocation-tracker-first-test
+  (mt/with-temp [:model/Card {card-id :id} {}]
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+      (testing "sanity check"
+        (is (empty? (lib.metadata/invoked-ids mp :metadata/card))))
+      (testing "getting card should invoke the tracker"
+        (lib.metadata/card mp card-id)
+        (is (= [card-id] (lib.metadata/invoked-ids mp :metadata/card))))
+      (testing "2nd call, card shoudld should be cached by now, but invocation still keeping track of ids"
+        (lib.metadata/card mp card-id)
+        (is (= [card-id card-id] (lib.metadata/invoked-ids mp :metadata/card)))))))

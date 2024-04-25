@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -410,6 +411,9 @@
   and [[metabase.lib.metadata.protocols/BulkMetadataProvider]]. All operations are cached; so you can use the bulk
   operations to pre-warm the cache if you need to."
   [database-id :- ::lib.schema.id/database]
-  (-> (->UncachedApplicationDatabaseMetadataProvider database-id)
-      lib.metadata.cached-provider/cached-metadata-provider
-      lib.metadata.invocation-tracker/invocation-tracker-provider))
+  (lib.metadata.composed-provider/composed-metadata-provider
+   ;; inovcation tracker has to be the 1st provider in the chain so that all
+   ;; inovcations go through it first
+   (lib.metadata.invocation-tracker/invocation-tracker-provider)
+   (lib.metadata.cached-provider/cached-metadata-provider
+    (->UncachedApplicationDatabaseMetadataProvider database-id))))
