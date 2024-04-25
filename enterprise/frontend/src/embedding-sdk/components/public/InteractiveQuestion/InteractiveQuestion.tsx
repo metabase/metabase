@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { ResetButton } from "embedding-sdk/components/private/ResetButton";
 import { SdkError } from "embedding-sdk/components/private/SdkError";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import { useSdkSelector } from "embedding-sdk/store";
@@ -24,7 +25,7 @@ import {
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { Group, Stack } from "metabase/ui";
+import { Box, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { CardId } from "metabase-types/api";
 
@@ -53,14 +54,28 @@ export const _InteractiveQuestion = ({
 
   const { isRunning } = uiControls;
 
-  useEffect(() => {
-    const fetchQBData = async () => {
-      const { location, params } = getQuestionParameters(questionId);
-      dispatch(initializeQB(location, params));
-    };
+  const loadQuestion = async (
+    dispatch: ReturnType<typeof useDispatch>,
+    questionId: CardId,
+  ) => {
+    setLoading(true);
 
-    fetchQBData().then(() => setLoading(false));
+    const { location, params } = getQuestionParameters(questionId);
+
+    try {
+      await dispatch(initializeQB(location, params));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadQuestion(dispatch, questionId);
   }, [dispatch, questionId]);
+
+  const handleQuestionReset = () => {
+    loadQuestion(dispatch, questionId);
+  };
 
   if (!loading && !queryResults) {
     return <SdkError message={t`Question not found`} />;
@@ -69,7 +84,7 @@ export const _InteractiveQuestion = ({
   return (
     <LoadingAndErrorWrapper
       className={cx(CS.flexFull, CS.fullWidth)}
-      loading={!result}
+      loading={loading}
       error={typeof result === "string" ? result : null}
       noWrapper
     >
@@ -78,6 +93,9 @@ export const _InteractiveQuestion = ({
           <SdkError message={t`Question not found`} />
         ) : (
           <Stack h="100%">
+            <Box>
+              <ResetButton onClick={handleQuestionReset} />
+            </Box>
             {FilterHeader.shouldRender({
               question,
               queryBuilderMode: uiControls.queryBuilderMode,
