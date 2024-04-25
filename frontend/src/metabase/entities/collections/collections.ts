@@ -1,14 +1,23 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
+import { collectionApi } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { GET } from "metabase/lib/api";
-import { createEntity, undo } from "metabase/lib/entities";
+import {
+  createEntity,
+  undo,
+  entityCompatibleQuery,
+} from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls/collections";
 import { CollectionSchema } from "metabase/schema";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { Collection } from "metabase-types/api";
-import type { GetState, ReduxAction } from "metabase-types/store";
+import type {
+  Collection,
+  CreateCollectionRequest,
+  UpdateCollectionRequest,
+} from "metabase-types/api";
+import type { GetState, ReduxAction, Dispatch } from "metabase-types/store";
 
 import getExpandedCollectionsById from "./getExpandedCollectionsById";
 import getInitialCollectionId from "./getInitialCollectionId";
@@ -37,6 +46,24 @@ const Collections = createEntity({
       params?.tree
         ? listCollectionsTree(params, ...args)
         : listCollections(params, ...args),
+    get: (entityQuery: { id: number }, options: unknown, dispatch: Dispatch) =>
+      entityCompatibleQuery(
+        entityQuery.id,
+        dispatch,
+        collectionApi.endpoints.getCollection,
+      ),
+    create: (entityQuery: CreateCollectionRequest, dispatch: Dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        collectionApi.endpoints.createCollection,
+      ),
+    update: (entityQuery: UpdateCollectionRequest, dispatch: Dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        collectionApi.endpoints.updateCollection,
+      ),
     delete: () => {
       throw new TypeError("Collections.api.delete is not supported");
     },
