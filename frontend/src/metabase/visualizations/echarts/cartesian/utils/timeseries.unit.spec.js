@@ -89,12 +89,12 @@ describe("visualization.lib.timeseries", () => {
       ["day", 1, [["2019-01-01T00:00:00.000Z"]]],
     ];
 
-    TEST_CASES.map(([expectedInterval, expectedCount, data]) => {
-      it("should return " + expectedCount + " " + expectedInterval, () => {
+    TEST_CASES.map(([expectedUnit, expectedCount, data]) => {
+      it(`should return ${expectedCount} ${expectedUnit}`, () => {
         const { unit, count } = computeTimeseriesDataInverval(
           data.map(d => new Date(d)),
         );
-        expect(unit).toBe(expectedInterval);
+        expect(unit).toBe(expectedUnit);
         expect(count).toBe(expectedCount);
       });
     });
