@@ -2,7 +2,7 @@
 
 Metabase embedding SDK for React offers a way to integrate Metabase into your application in a more seamless way compared to the current interactive embedding offering.
 
-You need to authentication your user to Metabase using JWT authentication.
+You need to authenticate your users to Metabase using JWT authentication.
 
 ## Installation
 
