@@ -9,83 +9,91 @@ describe("getIcon", () => {
   });
 
   it("should return the correct icon for a collection", () => {
-    expect(getIcon({ model: "collection" })).toEqual({ icon: "folder" });
+    expect(getIcon({ model: "collection" })).toEqual({ name: "folder" });
   });
   it("should return the correct icon for a database", () => {
-    expect(getIcon({ model: "database" })).toEqual({ icon: "database" });
+    expect(getIcon({ model: "database" })).toEqual({ name: "database" });
   });
   it("should return the correct icon for a table", () => {
-    expect(getIcon({ model: "table" })).toEqual({ icon: "table" });
+    expect(getIcon({ model: "table" })).toEqual({ name: "table" });
   });
   it("should return the correct icon for a model/dataset", () => {
-    expect(getIcon({ model: "dataset" })).toEqual({ icon: "model" });
+    expect(getIcon({ model: "dataset" })).toEqual({ name: "model" });
   });
   it("should return the correct icon for an action", () => {
-    expect(getIcon({ model: "action" })).toEqual({ icon: "bolt" });
+    expect(getIcon({ model: "action" })).toEqual({ name: "bolt" });
   });
   it("should return the correct icon for an indexed entity", () => {
-    expect(getIcon({ model: "indexed-entity" })).toEqual({ icon: "index" });
+    expect(getIcon({ model: "indexed-entity" })).toEqual({ name: "index" });
   });
   it("should return the correct icon for a dashboard", () => {
-    expect(getIcon({ model: "dashboard" })).toEqual({ icon: "dashboard" });
+    expect(getIcon({ model: "dashboard" })).toEqual({ name: "dashboard" });
   });
   it("should return the correct icon for a card without a display type", () => {
-    expect(getIcon({ model: "card" })).toEqual({ icon: "table" });
+    expect(getIcon({ model: "card" })).toEqual({ name: "table" });
   });
   it("should return the default icon for an invalid model", () => {
     // @ts-expect-error testing invalid model
-    expect(getIcon({ model: "pikachu" })).toEqual({ icon: "unknown" });
+    expect(getIcon({ model: "pikachu" })).toEqual({ name: "unknown" });
+  });
+
+  describe("options", () => {
+    it("should return the correct icon for a table with the secondary variant", () => {
+      expect(getIcon({ model: "table" }, { variant: "secondary" })).toEqual({
+        name: "database",
+      });
+    });
   });
 
   describe("card display types", () => {
     it("should return the default icon for an invalid display type", () => {
       expect(getIcon({ model: "card", display: "pikachu" })).toEqual({
-        icon: "table",
+        name: "table",
       });
     });
 
     it("should return the default icon for no display type", () => {
-      expect(getIcon({ model: "card" })).toEqual({ icon: "table" });
+      expect(getIcon({ model: "card" })).toEqual({ name: "table" });
     });
 
     it("should return the correct icon for a card with a table chare", () => {
       expect(getIcon({ model: "card", display: "table" })).toEqual({
-        icon: "table",
+        name: "table",
       });
     });
     it("should return the correct icon for a card with a bar chart", () => {
       expect(getIcon({ model: "card", display: "bar" })).toEqual({
-        icon: "bar",
+        name: "bar",
       });
     });
     it("should return the correct icon for a card with a pie chart", () => {
       expect(getIcon({ model: "card", display: "pie" })).toEqual({
-        icon: "pie",
+        name: "pie",
       });
     });
     it("should return the correct icon for a card with a line chart", () => {
       expect(getIcon({ model: "card", display: "line" })).toEqual({
-        icon: "line",
+        name: "line",
       });
     });
     it("should return the correct icon for a card with a row chart", () => {
       expect(getIcon({ model: "card", display: "row" })).toEqual({
-        icon: "horizontal_bar",
+        name: "horizontal_bar",
       });
     });
     it("should return the correct icon for a card with a funnel chart", () => {
       expect(getIcon({ model: "card", display: "funnel" })).toEqual({
-        icon: "funnel",
+        name: "funnel",
       });
     });
     it("should return the correct icon for a card with a map chart", () => {
       expect(getIcon({ model: "card", display: "map" })).toEqual({
-        icon: "pinmap",
+        name: "pinmap",
       });
     });
     it("should return the correct icon for a card with anobject detail chart", () => {
       expect(getIcon({ model: "card", display: "object" })).toEqual({
-        icon: "document",
+        name: "document",
       });
     });
   });
