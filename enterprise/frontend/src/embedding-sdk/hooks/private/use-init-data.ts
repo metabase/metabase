@@ -8,8 +8,15 @@ import {
   setLoginStatus,
 } from "embedding-sdk/store/reducer";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
-import type { EmbeddingSessionTokenState } from "embedding-sdk/store/types";
-import type { SDKConfigType } from "embedding-sdk/types";
+import type {
+  EmbeddingSessionTokenState,
+  SdkDispatch,
+} from "embedding-sdk/store/types";
+import type {
+  SDKConfigType,
+  SdkConfigWithApiKey,
+  SdkConfigWithJWT,
+} from "embedding-sdk/types";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
 import { refreshCurrentUser } from "metabase/redux/user";
@@ -23,7 +30,7 @@ interface InitDataLoaderParameters {
 
 const getErrorMessage = (authType: SDKConfigType["authType"]) => {
   if (authType === "jwt") {
-    return t`Could not authenticate: invalid JWT token`;
+    return t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`;
   }
 
   if (authType === "apiKey") {
@@ -33,6 +40,28 @@ const getErrorMessage = (authType: SDKConfigType["authType"]) => {
   return t`Invalid auth type`;
 };
 
+const isJwtAuth = (config: SDKConfigType): config is SdkConfigWithJWT =>
+  config.authType === "jwt" && !!config.jwtProviderUri;
+
+const isApiKeyAuth = (config: SDKConfigType): config is SdkConfigWithApiKey =>
+  config.authType === "apiKey" && !!config.apiKey;
+
+const setupJwtAuth = (config: SdkConfigWithJWT, dispatch: SdkDispatch) => {
+  api.onBeforeRequest = async () => {
+    const tokenState = await dispatch(
+      getOrRefreshSession(config.jwtProviderUri),
+    );
+
+    api.sessionToken = (
+      tokenState.payload as EmbeddingSessionTokenState["token"]
+    )?.id;
+  };
+};
+
+const setupApiKeyAuth = (config: SdkConfigWithApiKey) => {
+  api.apiKey = config.apiKey;
+};
+
 export const useInitData = ({ config }: InitDataLoaderParameters) => {
   const dispatch = useSdkDispatch();
 
@@ -40,39 +69,32 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
 
   useEffect(() => {
     registerVisualizationsOnce();
-    dispatch(setLoginStatus({ status: "uninitialized" }));
   }, [dispatch]);
 
   useEffect(() => {
-    api.basename = config.metabaseInstanceUrl;
+    if (loginStatus.status === "uninitialized") {
+      api.basename = config.metabaseInstanceUrl;
 
-    if (config.authType === "jwt") {
-      api.onBeforeRequest = async () => {
-        const tokenState = await dispatch(
-          getOrRefreshSession(config.jwtProviderUri),
+      if (isJwtAuth(config)) {
+        setupJwtAuth(config, dispatch);
+        dispatch(setLoginStatus({ status: "validated" }));
+      } else if (isApiKeyAuth(config)) {
+        setupApiKeyAuth(config);
+        dispatch(setLoginStatus({ status: "validated" }));
+      } else {
+        dispatch(
+          setLoginStatus({
+            status: "error",
+            error: new Error(getErrorMessage(config.authType)),
+          }),
         );
-
-        api.sessionToken = (
-          tokenState.payload as EmbeddingSessionTokenState["token"]
-        )?.id;
-      };
-      dispatch(setLoginStatus({ status: "initialized" }));
-    } else if (config.authType === "apiKey" && config.apiKey) {
-      api.apiKey = config.apiKey;
-      dispatch(setLoginStatus({ status: "initialized" }));
-    } else {
-      dispatch(
-        setLoginStatus({
-          status: "error",
-          error: new Error(getErrorMessage(config.authType)),
-        }),
-      );
+      }
     }
-  }, [config, dispatch]);
+  }, [config, dispatch, loginStatus.status]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (loginStatus.status === "initialized") {
+    if (loginStatus.status === "validated") {
+      const fetchData = async () => {
         dispatch(setLoginStatus({ status: "loading" }));
 
         try {
@@ -103,9 +125,9 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
             }),
           );
         }
-      }
-    };
+      };
 
-    fetchData();
+      fetchData();
+    }
   }, [config.authType, dispatch, loginStatus.status]);
 };

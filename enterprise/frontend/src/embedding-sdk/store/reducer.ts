@@ -4,8 +4,8 @@ import { createAction } from "redux-actions";
 
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type {
-  LoginStatus,
   EmbeddingSessionTokenState,
+  LoginStatus,
   SdkState,
   SdkStoreState,
 } from "embedding-sdk/store/types";
