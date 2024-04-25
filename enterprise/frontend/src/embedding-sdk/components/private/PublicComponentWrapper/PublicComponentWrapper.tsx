@@ -29,17 +29,7 @@ export const PublicComponentWrapper = ({
     return <PublicComponentWrapper.Error message={loginStatus.error.message} />;
   }
 
-  // return children;
-
-  return <div>
-    <div  style={{border: "5px solid red"}}>
-    <PublicComponentWrapper.Loader />
-    </div>
-    <div style={{border: "5px solid red"}}>
-      <PublicComponentWrapper.Error message={"TESTING 123"} />
-    </div>
-    {children}
-  </div>
+  return children;
 };
 
 PublicComponentWrapper.Loader = SdkLoader;
