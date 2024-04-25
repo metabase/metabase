@@ -1,12 +1,12 @@
-# Metabase embedding SDK for React
+# Metabase Embedding SDK for React
 
-Metabase embedding SDK for React offers a way to integrate Metabase into your application in a more seamless way compared to the current interactive embedding offering.
+Metabase Embedding SDK for React offers a way to integrate Metabase into your application in a more seamless way compared to the current interactive embedding offering.
 
 You need to authenticate your users to Metabase using JWT authentication.
 
 ## Installation
 
-You can install Metabase embedding SDK for react via npm:
+You can install Metabase Embedding SDK for react via npm:
 
 ```bash
 npm install @metabase/embedding-sdk-react
@@ -18,9 +18,9 @@ or using yarn:
 yarn add @metabase/embedding-sdk-react
 ```
 
-### To use locally build Metabase embedding SDK for React
+### To use locally build Metabase Embedding SDK for React
 
-First you need to build the Metabase embedding SDK for React locally:
+First you need to build the Metabase Embedding SDK for React locally:
 
 ```bash
 yarn build-release:cljs
@@ -138,11 +138,11 @@ return (
 );
 ```
 
-After you have configured Metabase embedding SDK for React, you need to make sure your `jwtProviderUri` endpoint returns JWT token that your Metabase instance can use for authentication.
+After you have configured Metabase Embedding SDK for React, you need to make sure your `jwtProviderUri` endpoint returns JWT token that your Metabase instance can use for authentication.
 
-**Metabase Embedding SDK for React only supports JWT authentication**
+**Metabase Embedding SDK for React only supports JWT authentication.**
 
-Here's how you can implement an endpoint that will return a JWT token. The SDK will use this token to authenticate your users.
+Here is the example how you could implement an endpoint that will return JWT token that Metabase Embedding SDK for react could use to authenticate your users.
 
 ```ts
 import express from "express"
@@ -211,11 +211,11 @@ app.listen(PORT, () => {
 ```
 
 ## Known limitations
-- Metabase embedding SDK only supports React
+- Metabase Embedding SDK only supports React
 - It doesn't support SSR
 - It doesn't support Vite
 
 ______
 
-For a more detailed instructions on building the Metabase Embedding SDK locally, refer to the [documentation](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/README.md).
+For a more detailed guide on how to build the Metabase embedding SDK locally, please refer to the [documentation](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/README.md).
 
