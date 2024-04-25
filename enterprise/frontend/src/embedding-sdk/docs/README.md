@@ -180,9 +180,6 @@ app.listen(PORT, () => {
 })
 ```
 
-## More examples
-- [Customer Zero: Embedding SDK demo application](https://github.com/metabase/embedding-sdk-customer-zero)
-
 ## Known limitations
 - Metabase embedding SDK only support React
 - It doesn't support SSR
