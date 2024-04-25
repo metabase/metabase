@@ -17,7 +17,8 @@
         "turn_into_model_clicked",
         "notebook_native_preview_shown",
         "notebook_native_preview_hidden",
-        "column_combine_via_shortcut"
+        "column_combine_via_shortcut",
+        "column_combine_via_column_header"
       ],
       "maxLength": 1024
     },
