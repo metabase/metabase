@@ -24,8 +24,7 @@ interface InitDataLoaderParameters {
   config: SDKConfig;
 }
 
-const isValidJwtAuth = (config: SDKConfig): config is SDKConfig =>
-  !!config.jwtProviderUri;
+const isValidJwtAuth = (config: SDKConfig) => !!config.jwtProviderUri;
 
 const setupJwtAuth = (config: SDKConfig, dispatch: SdkDispatch) => {
   api.onBeforeRequest = async () => {
