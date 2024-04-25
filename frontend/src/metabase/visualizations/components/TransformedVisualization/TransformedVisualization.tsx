@@ -42,7 +42,7 @@ export const TransformedVisualization = ({
   }, [transformedSeries]);
 
   const handleChangeCardCandRun: OnChangeCardAndRun = useCallback(
-    options => {
+    (options: OnChangeCardAndRunOpts) => {
       const cards = rawSeries.map(series => series.card);
       const previousCard =
         options.previousCard != null
