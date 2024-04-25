@@ -721,7 +721,7 @@
             (when-let [updates (not-empty
                                  (u/select-keys-when
                                    dash-updates
-                                   :present #{:description :position :width :collection_id :collection_position :cache_ttl}
+                                   :present #{:description :position :width :collection_id :collection_position :cache_ttl :trashed_from_collection_id}
                                    :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                               :embedding_params :archived :auto_apply_filters}))]
               (t2/update! Dashboard id updates)
