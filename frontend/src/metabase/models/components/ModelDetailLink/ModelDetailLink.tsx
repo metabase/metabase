@@ -15,7 +15,10 @@ type ModelCard = Card & { type: "model" };
  *
  * @see https://github.com/metabase/metabase/issues/37350#issuecomment-1910284020
  */
-type ModelCollectionItem = Omit<CollectionItem, "type" | "based_on_upload">;
+type ModelCollectionItem = Omit<
+  CollectionItem,
+  "type" | "based_on_upload" | "collection_id"
+>;
 
 interface Props extends ButtonProps {
   model: ModelCard | ModelCollectionItem;
