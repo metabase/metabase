@@ -1,8 +1,8 @@
 import type { JSX } from "react";
 import { t } from "ttag";
 
-import { SdkError } from "embedding-sdk/components/private/SdkError";
-import { SdkLoader } from "embedding-sdk/components/private/SdkLoader";
+import { SdkError } from "embedding-sdk/components/private/PublicComponentWrapper/SdkError";
+import { SdkLoader } from "embedding-sdk/components/private/PublicComponentWrapper/SdkLoader";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
 
@@ -22,15 +22,12 @@ export const PublicComponentWrapper = ({
   }
 
   if (loginStatus.status === "loading") {
-    return <PublicComponentWrapper.Loader />;
+    return <SdkLoader />;
   }
 
   if (loginStatus.status === "error") {
-    return <PublicComponentWrapper.Error message={loginStatus.error.message} />;
+    return <SdkError message={loginStatus.error.message} />;
   }
 
   return children;
 };
-
-PublicComponentWrapper.Loader = SdkLoader;
-PublicComponentWrapper.Error = SdkError;

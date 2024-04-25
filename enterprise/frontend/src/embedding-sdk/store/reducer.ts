@@ -14,8 +14,16 @@ import { createAsyncThunk } from "metabase/lib/redux";
 import { getSessionTokenState } from "./selectors";
 
 const SET_LOGIN_STATUS = "sdk/SET_LOGIN_STATUS";
+const SET_LOADER_COMPONENT = "sdk/SET_LOADER_COMPONENT";
+const SET_ERROR_COMPONENT = "sdk/SET_ERROR_COMPONENT";
 
 export const setLoginStatus = createAction<LoginStatus>(SET_LOGIN_STATUS);
+export const setLoaderComponent = createAction<null | (() => JSX.Element)>(
+  SET_LOADER_COMPONENT,
+);
+export const setErrorComponent = createAction<
+  null | (({ message }: { message: string }) => JSX.Element)
+>(SET_ERROR_COMPONENT);
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 const REFRESH_TOKEN = "sdk/token/REFRESH_TOKEN";
@@ -58,6 +66,8 @@ const initialState: SdkState = {
   },
   loginStatus: { status: "uninitialized" },
   plugins: null,
+  loaderComponent: null,
+  errorComponent: null,
 };
 
 export const sdk = createReducer(initialState, {
@@ -103,6 +113,26 @@ export const sdk = createReducer(initialState, {
     return {
       ...state,
       plugins: action.payload,
+    };
+  },
+  [SET_LOADER_COMPONENT]: (
+    state,
+    action: PayloadAction<null | (() => JSX.Element)>,
+  ) => {
+    return {
+      ...state,
+      loaderComponent: action.payload,
+    };
+  },
+  [SET_ERROR_COMPONENT]: (
+    state,
+    action: PayloadAction<
+      null | (({ message }: { message: string }) => JSX.Element)
+    >,
+  ) => {
+    return {
+      ...state,
+      errorComponent: action.payload,
     };
   },
 });

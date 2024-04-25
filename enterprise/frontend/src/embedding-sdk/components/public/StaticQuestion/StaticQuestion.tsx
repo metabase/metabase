@@ -2,9 +2,11 @@ import cx from "classnames";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { SdkError } from "embedding-sdk/components/private/SdkError";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import {
+  withPublicComponentWrapper,
+  SdkError,
+  SdkLoader,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import CS from "metabase/css/core/index.css";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { getResponseErrorMessage } from "metabase/lib/errors";
@@ -103,49 +105,45 @@ const _StaticQuestion = ({
     );
   }
 
-  return (
-    <LoadingAndErrorWrapper
-      className={cx(CS.flexFull, CS.fullWidth)}
-      loading={isLoading}
-      noWrapper
-    >
-      {() => {
-        const question = new Question(card, metadata);
-        const legacyQuery = question.legacyQuery({
-          useStructuredQuery: true,
-        });
+  if (isLoading) {
+    return <SdkLoader />;
+  }
 
-        return (
-          <Group h="100%" pos="relative" align="flex-start">
-            {showVisualizationSelector && (
-              <Box w="355px">
-                <ChartTypeSidebar
-                  question={question}
-                  result={result}
-                  onOpenChartSettings={onOpenChartSettings}
-                  onCloseChartType={onCloseChartType}
-                  query={legacyQuery}
-                  setUIControls={setUIControls}
-                  updateQuestion={changeVisualization}
-                />
-              </Box>
-            )}
-            <QueryVisualization
-              className={cx(CS.flexFull, CS.fullWidth)}
+  const question = new Question(card, metadata);
+  const legacyQuery = question.legacyQuery({
+    useStructuredQuery: true,
+  });
+
+  return (
+    <Box className={cx(CS.flexFull, CS.fullWidth)}>
+      <Group h="100%" pos="relative" align="flex-start">
+        {showVisualizationSelector && (
+          <Box w="355px">
+            <ChartTypeSidebar
               question={question}
-              rawSeries={[{ card, data: result?.data }]}
-              isRunning={isLoading}
-              isObjectDetail={false}
-              isResultDirty={false}
-              isNativeEditorOpen={false}
               result={result}
-              noHeader
-              mode={PublicMode}
+              onOpenChartSettings={onOpenChartSettings}
+              onCloseChartType={onCloseChartType}
+              query={legacyQuery}
+              setUIControls={setUIControls}
+              updateQuestion={changeVisualization}
             />
-          </Group>
-        );
-      }}
-    </LoadingAndErrorWrapper>
+          </Box>
+        )}
+        <QueryVisualization
+          className={cx(CS.flexFull, CS.fullWidth)}
+          question={question}
+          rawSeries={[{ card, data: result?.data }]}
+          isRunning={isLoading}
+          isObjectDetail={false}
+          isResultDirty={false}
+          isNativeEditorOpen={false}
+          result={result}
+          noHeader
+          mode={PublicMode}
+        />
+      </Group>
+    </Box>
   );
 };
 

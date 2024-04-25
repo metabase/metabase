@@ -2,8 +2,10 @@ import cx from "classnames";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { SdkError } from "embedding-sdk/components/private/SdkError";
+import {
+  withPublicComponentWrapper,
+  SdkError,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkClickActionPluginsConfig } from "embedding-sdk/lib/plugins";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
