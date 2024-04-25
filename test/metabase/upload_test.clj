@@ -14,6 +14,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -1392,15 +1393,15 @@
 
 (defn- mbql [mp table]
   (let [table-metadata (lib.metadata/table mp (:id table))]
-    (lib/query mp table-metadata)))
+    (lib.convert/->legacy-MBQL (lib/query mp table-metadata))))
 
 (defn- join-mbql [mp base-table join-table]
   (let [base-table-metadata (lib.metadata/table mp (:id base-table))
         join-table-metadata (lib.metadata/table mp (:id join-table))
         ;; We use the primary keys as the join fields as we know they will exist and have compatible types.
-        pk-metadata         (fn [table]
+        pk-metadata         (fn [pk-table]
                               (let [field-id (t2/select-one-pk :model/Field
-                                                               :table_id (:id table)
+                                                               :table_id (:id pk-table)
                                                                :semantic_type :type/PK)]
                                 (lib.metadata/field mp field-id)))
         base-id-metadata    (pk-metadata base-table)
@@ -1408,8 +1409,9 @@
 
     (-> (lib/query mp base-table-metadata)
         (lib/join (lib/join-clause join-table-metadata
-                                   [(lib/= join-id-metadata
-                                           base-id-metadata)])))))
+                                   [(lib/= base-id-metadata
+                                           join-id-metadata)]))
+        (lib.convert/->legacy-MBQL))))
 
 (deftest append-invalidate-model-cache-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :persist-models)
@@ -1428,7 +1430,7 @@
                        :model/Card {unrelated-model-id :id} {:table_id other-id, :type "model", :dataset_query (mbql mp other-table)}
                        :model/Card {joined-model-id    :id} {:table_id other-id, :type "model", :dataset_query (join-mbql mp other-table table)}]
 
-          (is (= #{question-id model-id #_complex-model-id}
+          (is (= #{question-id model-id complex-model-id}
                  (into #{} (map :id) (t2/select :model/Card :table_id table-id :archived false))))
 
           (mt/with-persistence-enabled [persist-models!]
@@ -1439,7 +1441,7 @@
                   cached-after  (cached-model-ids)]
 
               (testing "The models are cached"
-                (let [active-model-ids #{model-id #_complex-model-id unrelated-model-id #_joined-model-id}]
+                (let [active-model-ids #{model-id complex-model-id unrelated-model-id joined-model-id}]
                   (is (= active-model-ids (set/intersection cached-before (conj active-model-ids archived-model-id))))))
               (testing "The cache is invalidated by the update"
                 (is (not (contains? cached-after model-id))))
