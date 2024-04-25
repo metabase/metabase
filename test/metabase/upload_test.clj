@@ -547,7 +547,6 @@
   [table]
   (mt/rows (query-table table)))
 
-#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- rows-for-model
   [db-id model-id]
   (mt/rows (query db-id (str "card__" model-id))))
@@ -1395,7 +1394,6 @@
   (let [table-metadata (lib.metadata/table mp (:id table))]
     (lib/query mp table-metadata)))
 
-#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- join-mbql [mp base-table join-table]
   (let [base-table-metadata (lib.metadata/table mp (:id base-table))
         join-table-metadata (lib.metadata/table mp (:id join-table))
@@ -1404,9 +1402,7 @@
                               (let [field-id (t2/select-one-pk :model/Field
                                                                :table_id (:id table)
                                                                :semantic_type :type/PK)]
-                                ;; Test examples use metadata, meta/field-metadata, but that causes errors here
-                                field-id
-                                #_(lib.metadata/field mp field-id)))
+                                (lib.metadata/field mp field-id)))
         base-id-metadata    (pk-metadata base-table)
         join-id-metadata    (pk-metadata join-table)]
 
@@ -1427,12 +1423,10 @@
 
         (mt/with-temp [:model/Card {question-id        :id} {:table_id table-id, :dataset_query (mbql mp table)}
                        :model/Card {model-id           :id} {:table_id table-id, :type "model", :dataset_query (mbql mp table)}
-                       ;; These join models get inserted fine, but then cause errors when trying to persist the model cache
-                       ;:model/Card {complex-model-id   :id} {:table_id table-id, :type "model", :dataset_query (join-mbql mp table other-table)}
+                       :model/Card {complex-model-id   :id} {:table_id table-id, :type "model", :dataset_query (join-mbql mp table other-table)}
                        :model/Card {archived-model-id  :id} {:table_id table-id, :type "model", :archived true, :dataset_query (mbql mp table)}
                        :model/Card {unrelated-model-id :id} {:table_id other-id, :type "model", :dataset_query (mbql mp other-table)}
-                       ;:model/Card {joined-model-id    :id} {:table_id other-id, :type "model", :dataset_query (join-mbql mp other-table table)}
-                       ]
+                       :model/Card {joined-model-id    :id} {:table_id other-id, :type "model", :dataset_query (join-mbql mp other-table table)}]
 
           (is (= #{question-id model-id #_complex-model-id}
                  (into #{} (map :id) (t2/select :model/Card :table_id table-id :archived false))))
@@ -1451,8 +1445,7 @@
                 (is (not (contains? cached-after model-id))))
               (testing "No unwanted caches were invalidated"
                 (is (= #{model-id} (set/difference cached-before cached-after))))
-              ;; The query built by row-for-model for some reason has the types as strings not keywords, and breaks
-              #_(testing "We can see the new row when querying the model"
+              (testing "We can see the new row when querying the model"
                 (is (some (fn [[_ row-name]] (= "Luke Skywalker" row-name))
                           (rows-for-model (:db_id table) model-id)))))))
 
