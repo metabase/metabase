@@ -1,6 +1,6 @@
 import { init } from "echarts";
 
-import type { IsomorphicStaticChartProps } from "metabase/static-viz/containers/IsomorphicStaticChart/types";
+import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
 import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
@@ -18,7 +18,7 @@ export function WaterfallChart({
   width = WIDTH,
   height = HEIGHT,
   isStorybook = false,
-}: IsomorphicStaticChartProps) {
+}: StaticChartProps) {
   const computedVisualizationSettings = computeStaticWaterfallChartSettings(
     rawSeries,
     dashcardSettings,

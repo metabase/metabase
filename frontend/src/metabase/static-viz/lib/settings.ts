@@ -1,4 +1,3 @@
-import type { OptionsType } from "metabase/lib/formatting/types";
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
@@ -14,7 +13,7 @@ import type {
 const getColumnSettings = (
   column: DatasetColumn,
   settings: VisualizationSettings,
-): OptionsType => {
+): Record<string, unknown> => {
   const columnKey = Object.keys(settings.column_settings ?? {}).find(
     possiblyDenormalizedFieldRef =>
       normalize(possiblyDenormalizedFieldRef) === getColumnKey(column),
