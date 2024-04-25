@@ -20,10 +20,10 @@ export const subscriptionApi = Api.injectEndpoints({
       DashboardSubscription[],
       ListSubscriptionsRequest
     >({
-      query: parameters => ({
+      query: params => ({
         method: "GET",
         url: "/api/pulse",
-        parameters,
+        params,
       }),
       providesTags: (subscriptions = []) =>
         provideSubscriptionListTags(subscriptions),
