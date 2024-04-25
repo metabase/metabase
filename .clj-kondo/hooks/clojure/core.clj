@@ -287,9 +287,7 @@
          ;; Support the module.core convention used by metabase.lib
          (some-> (remove-suffix ns-s ".core") symbol modules)
          ;; We treat modules and their test namespaces synonymously
-         (some-> (remove-suffix ns-s "-test") symbol modules)
-         (when (modules ns-sym)
-           (symbol (str ns-s "-test")))]))
+         (some-> (remove-suffix ns-s "-test") symbol modules)]))
 
 (defn module-internals-should-be-encapsulated
   "Test whether a namespace violates the encapsulation of any modules. Does not lint dynamic references, yet."
