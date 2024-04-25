@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { SdkError } from "embedding-sdk/components/private/SdkError";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
+import { Loader } from "metabase/ui";
 
 export const PublicComponentWrapper = ({
   children,
@@ -16,16 +17,16 @@ export const PublicComponentWrapper = ({
     return <div>{t`Initializing…`}</div>;
   }
 
-  if (loginStatus.status === "initialized") {
+  if (loginStatus.status === "validated") {
     return <div>{t`API Key / JWT is valid.`}</div>;
   }
 
   if (loginStatus.status === "loading") {
-    return <div>{t`Loading`}</div>;
+    return <Loader data-testid="loading-spinner" />;
   }
 
   if (loginStatus.status === "error") {
-    return <SdkError />;
+    return <SdkError message={loginStatus.error.message} />;
   }
 
   return children;

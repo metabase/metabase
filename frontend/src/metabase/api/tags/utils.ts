@@ -20,6 +20,7 @@ import type {
   ListDashboardsResponse,
   Metric,
   NativeQuerySnippet,
+  ModelCacheRefreshStatus,
   PopularItem,
   RecentItem,
   Revision,
@@ -287,6 +288,33 @@ export function providePermissionsGroupTags(
   group: GroupListQuery,
 ): TagDescription<TagType>[] {
   return [idTag("permissions-group", group.id)];
+}
+
+export function providePersistedInfoListTags(
+  statuses: ModelCacheRefreshStatus[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("persisted-info"),
+    ...statuses.flatMap(providePersistedInfoTags),
+  ];
+}
+
+export function providePersistedInfoTags(
+  status: ModelCacheRefreshStatus,
+): TagDescription<TagType>[] {
+  return [idTag("persisted-info", status.id)];
+}
+
+/**
+ * We have to differentiate between the `persisted-info` and `persisted-model` tags
+ * because the model cache refresh lives on the card api `/api/card/model/:id/refresh`.
+ * That endpoint doesn't have information about the persisted info id, so we have to
+ * map the model id to the `card_id` on the ModelCacheRefreshStatus.
+ */
+export function providePersistedModelTags(
+  status: ModelCacheRefreshStatus,
+): TagDescription<TagType>[] {
+  return [idTag("persisted-model", status.card_id)];
 }
 
 export function provideRevisionListTags(

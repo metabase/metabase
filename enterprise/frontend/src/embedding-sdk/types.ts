@@ -1,14 +1,25 @@
-type SDKAuthType =
-  | {
-      authType: "apiKey";
-      apiKey: string;
-    }
-  | {
-      authType: "jwt";
-      jwtProviderUri: string;
-    };
+type JWTAuthType = {
+  authType: "jwt";
+  jwtProviderUri: string;
+};
 
-export type SDKConfigType = {
+type ApiKeyAuthType = {
+  authType: "apiKey";
+  apiKey: string;
+};
+
+type BaseSDKConfigType = {
   metabaseInstanceUrl: string;
   font?: string;
-} & SDKAuthType;
+  authType?: string;
+  jwtProviderUri?: string;
+  apiKey?: string;
+};
+
+export type SdkConfigWithJWT = BaseSDKConfigType & JWTAuthType;
+export type SdkConfigWithApiKey = BaseSDKConfigType & ApiKeyAuthType;
+
+export type SDKConfigType =
+  | BaseSDKConfigType
+  | SdkConfigWithJWT
+  | SdkConfigWithApiKey;
