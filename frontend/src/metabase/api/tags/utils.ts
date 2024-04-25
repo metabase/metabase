@@ -150,6 +150,15 @@ export function provideCollectionItemTags(
   return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
 }
 
+export function provideCollectionListTags(
+  collections: Collection[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("collection"),
+    ...collections.flatMap(collection => provideCollectionTags(collection)),
+  ];
+}
+
 export function provideCollectionTags(
   collection: Collection,
 ): TagDescription<TagType>[] {

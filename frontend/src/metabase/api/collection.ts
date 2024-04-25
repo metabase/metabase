@@ -26,8 +26,8 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection`,
         body,
       }),
-      providesTags: collections =>
-        collections ? provideCollectionListTags(collections) : [],
+      providesTags: (collections = []) =>
+        provideCollectionListTags(collections),
     }),
     listCollectionsTree: builder.query<
       Collection[],
@@ -37,6 +37,8 @@ export const collectionApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/collection/tree",
       }),
+      providesTags: (collections = []) =>
+        provideCollectionListTags(collections),
     }),
     listCollectionItems: builder.query<
       ListCollectionItemsResponse,
@@ -82,6 +84,8 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}`,
         body,
       }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("collection"), idTag("collection", id)]),
     }),
   }),
 });
