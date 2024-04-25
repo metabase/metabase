@@ -47,23 +47,32 @@
 (defn- direct-field-ids-for-query
   "Very naively selects the IDs of Fields that could be used in the query. Improvements to this are planned for Q2 2024,
   c.f. Milestone 3 of https://github.com/metabase/metabase/issues/36911"
-  [{:keys [columns tables] :as _parsed-query} db-id]
-  (t2/select-pks-set :model/Field (merge field-and-table-fragment
-                                         {:where [:and
-                                                  [:= :t.db_id db-id]
-                                                  (if (seq tables)
-                                                    [:in :%lower.t/name (map normalize-name tables)]
-                                                    ;; if we don't know what tables it's from, look everywhere
-                                                    true)
-                                                  (if (seq columns)
-                                                    [:in :%lower.f/name (map normalize-name columns)]
-                                                    ;; if there are no columns, it must be a select * or similar
-                                                    false)]})))
+  [{column-maps :columns table-maps :tables} db-id]
+  (let [columns (map :component column-maps)
+        tables (map :component table-maps)]
+    (t2/select-pks-set :model/Field (merge field-and-table-fragment
+                                           {:where [:and
+                                                    [:= :t.db_id db-id]
+                                                    (if (seq tables)
+                                                      [:in :%lower.t/name (map normalize-name tables)]
+                                                      ;; if we don't know what tables it's from, look everywhere
+                                                      true)
+                                                    (if (seq columns)
+                                                      [:in :%lower.f/name (map normalize-name columns)]
+                                                      ;; if there are no columns, it must be a select * or similar
+                                                      false)]}))))
 
 (defn- indirect-field-ids-for-query
   "Similar to direct-field-ids-for-query, but for wildcard selects"
-  [{:keys [table-wildcards has-wildcard? tables] :as _parsed-query} db-id]
-  (let [active-fields-from-tables
+  [{table-wildcard-maps :table-wildcards
+    all-wildcard-maps   :has-wildcard?
+    table-maps          :tables}
+   db-id]
+  (let [table-wildcards           (map :component table-wildcard-maps)
+        has-wildcard?             (and (seq all-wildcard-maps)
+                                       (reduce #(and %1 %2) true (map :component all-wildcard-maps)))
+        tables                    (map :component table-maps)
+        active-fields-from-tables
         (fn [table-names]
           (t2/select-pks-set :model/Field (merge field-and-table-fragment
                                                  {:where [:and
