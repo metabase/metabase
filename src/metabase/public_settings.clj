@@ -361,7 +361,7 @@
   :feature    :whitelabel
   :default    {}
   :audit      :getter
-   :doc "To change the user interface colors:
+  :doc "To change the user interface colors:
 
 ```
 {
