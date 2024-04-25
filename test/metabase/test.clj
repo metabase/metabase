@@ -3,7 +3,6 @@
 
   (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
   reduces the cognitive load required to write tests.)"
-  (:refer-clojure :exclude [compile])
   (:require
    [humane-are.core :as humane-are]
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
@@ -18,6 +17,7 @@
    [metabase.email-test :as et]
    [metabase.http-client :as client]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -34,6 +34,7 @@
    [metabase.test.redefs :as test.redefs]
    [metabase.test.util :as tu]
    [metabase.test.util.async :as tu.async]
+   [metabase.test.util.dynamic-redefs :as tu.dr]
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.misc :as tu.misc]
@@ -70,6 +71,7 @@
   mb.hawk.parallel/keep-me
   test.redefs/keep-me
   mw.session/keep-me
+  perms.test-util/keep-me
   qp.store/keep-me
   qp.test-util/keep-me
   qp/keep-me
@@ -88,7 +90,8 @@
   u.random/keep-me
   tu/keep-me
   tx.env/keep-me
-  tx/keep-me)
+  tx/keep-me
+  schema-migrations-test.impl/keep-me)
 
 ;; Add more stuff here as needed
 #_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
@@ -160,10 +163,18 @@
  [mw.session
   with-current-user]
 
+ [perms.test-util
+  with-restored-data-perms!
+  with-restored-data-perms-for-group!
+  with-restored-data-perms-for-groups!
+  with-no-data-perms-for-all-users!
+  with-full-data-perms-for-all-users!
+  with-perm-for-group!
+  with-perm-for-group-and-table!]
+
  [qp
-  compile
-  preprocess
-  process-query]
+  process-query
+  userland-query]
 
  [qp.store
   with-metadata-provider]
@@ -184,7 +195,7 @@
   rows+column-names
   with-database-timezone-id
   with-mock-fks-for-drivers-without-fk-constraints
-  with-report-timezone-id
+  with-report-timezone-id!
   with-results-timezone-id]
 
  [sql-jdbc.tu
@@ -241,7 +252,7 @@
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
   with-non-admin-groups-no-collection-perms
-  with-all-users-data-perms-graph
+  with-all-users-data-perms-graph!
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file
@@ -264,7 +275,6 @@
 
  [tu.misc
   object-defaults
-  test-qp-middleware
   with-clock
   with-single-admin-user]
 
@@ -281,7 +291,7 @@
   test-helpers-set-global-values!]
 
  [test.tz
-  with-system-timezone-id]
+  with-system-timezone-id!]
 
  [tx
   count-with-template-tag-query
@@ -304,6 +314,7 @@
  [tx.env
   set-test-drivers!
   with-test-drivers]
+
  [schema-migrations-test.impl
   with-temp-empty-app-db])
 
@@ -314,3 +325,11 @@
 (alter-meta! #'with-temp update :doc str "\n\n  Note: by default, this will execute its body inside a transaction, making
   it thread safe. If it is wrapped in a call to [[metabase.test/test-helpers-set-global-values!]], it will affect the
   global state of the application database.")
+
+;; Cursive does not understand p/import-macro, so we just proxy this manually
+(defmacro with-dynamic-redefs
+  "A thread-safe version of with-redefs. It only support functions, and adds a fair amount of overhead.
+   It works by replacing each original definition with a proxy the first time it is redefined.
+   This proxy uses a dynamic mapping to check whether the function is currently redefined."
+  [bindings & body]
+  `(tu.dr/with-dynamic-redefs ~bindings ~@body))

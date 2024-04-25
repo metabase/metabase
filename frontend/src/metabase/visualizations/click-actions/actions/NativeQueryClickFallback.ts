@@ -1,11 +1,12 @@
 import { t } from "ttag";
+
 import { isWithinIframe } from "metabase/lib/dom";
 import { getEngineNativeType } from "metabase/lib/engine";
 import type {
   RegularClickAction,
   LegacyDrill,
 } from "metabase/visualizations/types";
-import { nativeDrillFallback } from "metabase-lib/queries/drills/native-drill-fallback";
+import { nativeDrillFallback } from "metabase-lib/v1/queries/drills/native-drill-fallback";
 
 export const NativeQueryClickFallback: LegacyDrill = ({ question }) => {
   const drill = nativeDrillFallback({ question });

@@ -1,6 +1,6 @@
-import { restore, visitDashboard } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { restore, visitDashboard } from "e2e/support/helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;

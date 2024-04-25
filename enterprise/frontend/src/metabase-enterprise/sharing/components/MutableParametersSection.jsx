@@ -1,19 +1,18 @@
 /* eslint "react/prop-types": 2 */
 
-import PropTypes from "prop-types";
-
-import _ from "underscore";
 import cx from "classnames";
+import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
 
 import CollapseSection from "metabase/components/CollapseSection";
-import ParametersList from "metabase/parameters/components/ParametersList";
-
+import CS from "metabase/css/core/index.css";
 import { getPulseParameters } from "metabase/lib/pulse";
+import ParametersList from "metabase/parameters/components/ParametersList";
 import {
   getDefaultValuePopulatedParameters,
   PULSE_PARAM_USE_DEFAULT,
-} from "metabase-lib/parameters/utils/parameter-values";
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 
 function MutableParametersSection({
   className,
@@ -54,10 +53,10 @@ function MutableParametersSection({
       header={<h4>{t`Set filter values for when this gets sent`}</h4>}
       className={cx(className)}
       initialState="expanded"
-      bodyClass="mt2"
+      bodyClass={CS.mt2}
     >
       <ParametersList
-        className="align-stretch row-gap-1"
+        className={cx(CS.alignStretch, CS.rowGap1)}
         vertical
         dashboard={dashboard}
         parameters={valuePopulatedParameters}

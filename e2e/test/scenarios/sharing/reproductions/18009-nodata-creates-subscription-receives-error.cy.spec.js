@@ -1,3 +1,4 @@
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
@@ -6,7 +7,6 @@ import {
   sendEmailAndAssert,
   sidebar,
 } from "e2e/support/helpers";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("issue 18009", { tags: "@external" }, () => {
   beforeEach(() => {

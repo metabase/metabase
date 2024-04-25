@@ -1,22 +1,25 @@
+import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
+import { isTableDisplay } from "metabase/lib/click-behavior";
+import type { IconName } from "metabase/ui";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  DashboardCard,
+  QuestionDashboardCard,
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
   CustomDestinationClickBehavior,
   CustomDestinationClickBehaviorLinkType,
 } from "metabase-types/api";
-import { isTableDisplay } from "metabase/lib/click-behavior";
-import type { IconName } from "metabase/ui";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { SidebarContent } from "../ClickBehaviorSidebar.styled";
-import { CustomLinkText } from "./CustomLinkText";
-import { LinkedEntityPicker } from "./LinkedEntityPicker/LinkedEntityPicker";
 
+import { SidebarContent } from "../ClickBehaviorSidebar.styled";
+
+import { CustomLinkText } from "./CustomLinkText";
 import { CustomURLPicker } from "./CustomURLPicker";
 import { LinkOption } from "./LinkOption";
+import { LinkedEntityPicker } from "./LinkedEntityPicker/LinkedEntityPicker";
 import { ValuesYouCanReference } from "./ValuesYouCanReference";
 
 type LinkTypeOption = {
@@ -51,7 +54,7 @@ function LinkTypeOptions({
 
 interface Props {
   clickBehavior: CustomDestinationClickBehavior;
-  dashcard: DashboardCard;
+  dashcard: QuestionDashboardCard;
   parameters: UiParameter[];
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }
@@ -65,13 +68,14 @@ export function LinkOptions({
   const hasSelectedLinkType = clickBehavior.linkType != null;
 
   const handleSelectLinkType = useCallback(
-    type => updateSettings({ type: clickBehavior.type, linkType: type }),
+    (type: CustomDestinationClickBehaviorLinkType) =>
+      updateSettings({ type: clickBehavior.type, linkType: type }),
     [clickBehavior, updateSettings],
   );
 
   return (
     <SidebarContent>
-      <p className="text-medium mt3 mb1">{t`Link to`}</p>
+      <p className={cx(CS.textMedium, CS.mt3, CS.mb1)}>{t`Link to`}</p>
       <div>
         {!hasSelectedLinkType ? (
           <LinkTypeOptions onSelect={handleSelectLinkType} />
@@ -84,7 +88,7 @@ export function LinkOptions({
           />
         ) : null}
       </div>
-      <div className="mt1">
+      <div className={CS.mt1}>
         {hasSelectedLinkType && clickBehavior.linkType !== "url" && (
           <div>
             <LinkedEntityPicker

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Button, Group, Menu, Text, Icon } from "metabase/ui";
-import { color } from "metabase/lib/colors";
 
+import { color } from "metabase/lib/colors";
+import { Button, Group, Menu, Text, Icon } from "metabase/ui";
 import type { SessionCookieSameSite } from "metabase-types/api";
 
 interface Options {

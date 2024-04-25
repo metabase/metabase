@@ -1,5 +1,6 @@
 import Color from "color";
-import { colors } from "metabase/lib/colors";
+
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   menu,
   popover,
@@ -7,7 +8,7 @@ import {
   rightSidebar,
   summarize,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { colors } from "metabase/lib/colors";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -123,7 +124,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       cy.button("Done").click();
     });
     cy.findByTestId("scalar-previous-value").within(() => {
-      cy.findByText("vs. my goal:").should("exist");
+      cy.findByText("vs. My Goal:").should("exist");
       cy.findByText("42,000").should("exist"); // goal
       cy.findByText("26.76%").should("exist"); // down percentage
     });
@@ -183,11 +184,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     });
 
     cy.button("Add comparison").click();
-    cy.findByTestId("comparison-list")
-      .children()
-      .should("have.length", 2)
-      .last()
-      .click();
+    cy.findByTestId("comparison-list").children().should("have.length", 2);
     menu().findByText("months ago").click();
     cy.findAllByTestId("scalar-previous-value")
       .children()
@@ -200,11 +197,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       });
 
     cy.button("Add comparison").click();
-    cy.findByTestId("comparison-list")
-      .children()
-      .should("have.length", 3)
-      .last()
-      .click();
+    cy.findByTestId("comparison-list").children().should("have.length", 3);
     menu().findByText("Previous value").click();
     cy.findAllByTestId("scalar-previous-value")
       .children()
@@ -284,7 +277,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("scalar-value").should("have.text", "3,440,000");
     cy.findByTestId("scalar-previous-value").within(() => {
       cy.findByText("Sum of Total").should("not.exist");
-      cy.findByText("vs. goal:").should("exist");
+      cy.findByText("vs. Goal:").should("exist");
       cy.findByText("400,000").should("exist");
     });
 
@@ -454,6 +447,6 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.log("Reported failing on v0.35 - v0.37.0.2");
     cy.log("Bug: showing blank visualization");
 
-    cy.get(".ScalarValue").contains("100");
+    cy.findByTestId("scalar-value").contains("100");
   });
 });

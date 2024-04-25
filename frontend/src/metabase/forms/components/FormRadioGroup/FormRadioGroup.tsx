@@ -1,8 +1,9 @@
-import { forwardRef, useCallback } from "react";
-import type { FocusEvent, Ref } from "react";
 import { useField } from "formik";
-import { Radio } from "metabase/ui";
+import type { FocusEvent, Ref } from "react";
+import { forwardRef, useCallback } from "react";
+
 import type { RadioGroupProps } from "metabase/ui";
+import { Radio } from "metabase/ui";
 
 export interface FormRadioGroupProps
   extends Omit<RadioGroupProps, "value" | "error"> {

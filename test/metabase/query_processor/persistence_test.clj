@@ -10,6 +10,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.fix-bad-references
     :as fix-bad-refs]
@@ -60,7 +61,7 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
         (mt/dataset daily-bird-counts
           (mt/with-persistence-enabled [persist-models!]
-            (mt/with-temp [Card model {:dataset       true
+            (mt/with-temp [Card model {:type          :model
                                        :database_id   (mt/id)
                                        :query_type    :query
                                        :dataset_query {:database (mt/id)
@@ -98,12 +99,12 @@
       (mt/dataset test-data
         (doseq [[query-type query] [[:query (mt/mbql-query products)]
                                     [:native (mt/native-query
-                                              (mt/compile
+                                              (qp.compile/compile
                                                (mt/mbql-query products)))]]]
           (mt/with-persistence-enabled [persist-models!]
-            (mt/with-temp [Card model {:dataset true
-                                       :database_id (mt/id)
-                                       :query_type query-type
+            (mt/with-temp [Card model {:type          :model
+                                       :database_id   (mt/id)
+                                       :query_type    query-type
                                        :dataset_query query}]
               (when (= query-type :native)
                 ;; mbql we figure out metadata from query itself. native is opaque and must have metadata in order to
@@ -142,9 +143,9 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
       (mt/dataset test-data
         (mt/with-persistence-enabled [persist-models!]
-          (mt/with-temp [Card model {:dataset true
+          (mt/with-temp [Card model {:type        :model
                                      :database_id (mt/id)
-                                     :query_type :query
+                                     :query_type  :query
                                      :dataset_query
                                      (mt/mbql-query orders
                                                     {:fields [$total &products.products.category]

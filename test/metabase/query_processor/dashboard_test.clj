@@ -17,13 +17,13 @@
   ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
   ;; stuff doesn't belong in the Dashboard QP namespace
   (binding [api/*current-user-permissions-set* (atom #{"/"})]
-    (apply qp.dashboard/run-query-for-dashcard-async
-     :dashboard-id dashboard-id
-     :card-id      card-id
-     :dashcard-id  dashcard-id
-     :run          (fn [query info]
-                     (qp/process-query (assoc query :async? false) info))
-     options)))
+    (apply qp.dashboard/process-query-for-dashcard
+           :dashboard-id dashboard-id
+           :card-id      card-id
+           :dashcard-id  dashcard-id
+           :run          (fn run [query info]
+                           (qp/process-query (assoc query :info info)))
+           options)))
 
 (deftest resolve-parameters-validation-test
   (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard
@@ -118,7 +118,7 @@
                               #"Not found"
                               (run-query-for-dashcard dashboard-id card-id-2 dashcard-id-3))))))
 
-(deftest default-value-precedence-test-field-filters
+(deftest ^:parallel default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
     (mt/dataset test-data
       (mt/with-temp

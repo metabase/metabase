@@ -1,8 +1,8 @@
-import { restore, openQuestionActions } from "e2e/support/helpers";
+import { restore, openQuestionActions, popover } from "e2e/support/helpers";
 
 const query = 'SELECT 1 AS "id", current_timestamp::timestamp AS "created_at"';
 
-const questionDetails = {
+const emptyColumnsQuestionDetails = {
   native: {
     query,
   },
@@ -12,31 +12,65 @@ const questionDetails = {
     "table.pivot_column": "orphaned1",
     "table.cell_column": "orphaned2",
   },
-  dataset: true,
+  type: "model",
+};
+
+const hiddenColumnsQuestionDetails = {
+  native: {
+    query,
+  },
+  displayIsLocked: true,
+  visualization_settings: {
+    "table.columns": [
+      {
+        name: "id",
+        key: '["name","id"]',
+        enabled: false,
+        fieldRef: ["field", "id", { "base-type": "type/Integer" }],
+      },
+      {
+        name: "created_at",
+        key: '["name","created_at"]',
+        enabled: false,
+        fieldRef: ["field", "created_at", { "base-type": "type/DateTime" }],
+      },
+    ],
+    "table.pivot_column": "orphaned1",
+    "table.cell_column": "orphaned2",
+  },
+  type: "model",
 };
 
 describe("issue 23421", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("`visualization_settings` should not break UI (metabase#23421)", () => {
+    cy.createNativeQuestion(emptyColumnsQuestionDetails, {
+      visitQuestion: true,
+    });
     openQuestionActions();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit query definition").click();
+    popover().findByText("Edit query definition").click();
 
     cy.get(".ace_content").should("contain", query);
-    // This test used to check for the presense of 4 cell data elements, implying that we should generate a default
-    // value for table.columns. However, as of #33841, having an empty table.columns setting is valid, so the
-    // assertion in this test has changed
-    cy.findByTestId("visualization-root").should(
-      "contain.text",
-      "Every field is hidden right now",
-    );
+    cy.findByRole("columnheader", { name: "id" }).should("be.visible");
+    cy.findByRole("columnheader", { name: "created_at" }).should("be.visible");
+    cy.button("Save changes").should("be.disabled");
+  });
 
+  it("`visualization_settings` with hidden columns should not break UI (metabase#23421)", () => {
+    cy.createNativeQuestion(hiddenColumnsQuestionDetails, {
+      visitQuestion: true,
+    });
+    openQuestionActions();
+    popover().findByText("Edit query definition").click();
+
+    cy.get(".ace_content").should("contain", query);
+    cy.findByTestId("visualization-root")
+      .findByText("Every field is hidden right now")
+      .should("be.visible");
     cy.button("Save changes").should("be.disabled");
   });
 });

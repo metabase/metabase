@@ -1,22 +1,20 @@
 /// functions for "applying" axes to charts, whatever that means.
 
-import _ from "underscore";
 import d3 from "d3";
 import dc from "dc";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
+import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
-
 import { hasEventAxis } from "metabase/visualizations/lib/timelines";
-import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
+
+import { isMultipleOf } from "./numeric";
+import { isHistogram } from "./renderer_utils";
 import { computeTimeseriesTicksInterval } from "./timeseries";
 import timeseriesScale from "./timeseriesScale";
-import { isMultipleOf } from "./numeric";
 import { getFriendlyName } from "./utils";
-import { isHistogram } from "./renderer_utils";
 
 // label offset (doesn't increase padding)
 const X_LABEL_PADDING = 10;

@@ -4,10 +4,22 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.drill-thru.test-util.canned :as canned]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(deftest ^:parallel fk-details-availability-test
+  (testing "FK details is available for cell clicks on non-NULL FKs"
+    (canned/canned-test
+      :drill-thru/fk-details
+      (fn [_test-case context {:keys [click column-type]}]
+        (and (= click :cell)
+             (= column-type :fk)
+             (not= (:value context) :null))))))
 
 (deftest ^:parallel returns-fk-details-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -130,3 +142,86 @@
                                  :value      nil}]}]
       (is (not (m/find-first #(= (:type %) :drill-thru/fk-details)
                              (lib/available-drill-thrus query -1 context)))))))
+
+(deftest ^:parallel preserve-filters-for-other-fks-forming-multi-column-pk-test
+  (testing "with multiple FKs forming a multi-column PK on another table"
+    (let [provider (merged-mock/merged-mock-metadata-provider
+                     meta/metadata-provider
+                     {:fields [;; Make Checkins.VENUE_ID + Checkins.USER_ID into a two-part primary key.
+                               ;; Turn Checkins.ID into a basic numeric field.
+                               {:id                 (meta/id :checkins :id)
+                                :semantic-type      :type/Quantity}
+                               {:id                 (meta/id :checkins :venue-id)
+                                :semantic-type      :type/PK
+                                :fk-target-field-id nil}
+                               {:id                 (meta/id :checkins :user-id)
+                                :semantic-type      :type/PK
+                                :fk-target-field-id nil}
+
+                               ;; Then turn Orders.USER_ID and Orders.PRODUCT_ID into FKs pointing at Checkins.
+                               {:id                 (meta/id :orders :user-id)
+                                :semantic-type      :type/FK
+                                :fk-target-field-id (meta/id :checkins :user-id)}
+                               {:id                 (meta/id :orders :product-id)
+                                :semantic-type      :type/FK
+                                :fk-target-field-id (meta/id :checkins :venue-id)}]})
+          ;; Then we can treat them as a two-part FK aimed at a two-part PK.
+          query          (-> (lib/query provider (meta/table-metadata :orders))
+                             ;; This filter should get removed when filtering by the FK.
+                             (lib/filter (lib/= (meta/field-metadata :orders :quantity) 1)))
+          venue-id       (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "PRODUCT_ID"])
+          user-id        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "USER_ID"])
+          #_#_filtered-venue (-> basic
+                             (lib/filter (lib/= (lib.metadata/field basic (meta/id :orders :product-id))
+                                                (get-in lib.drill-thru.tu/test-queries
+                                                        ["ORDERS" :unaggregated :row "PRODUCT_ID"]))))
+          ]
+      (testing "work as normal with no related filter"
+        (lib.drill-thru.tu/test-drill-application
+          {:column-name    "PRODUCT_ID"
+           :click-type     :cell
+           :query-type     :unaggregated
+           :custom-query   query
+           :drill-type     :drill-thru/fk-details
+           :expected       {:type            :drill-thru/fk-details
+                            :column          (m/find-first #(= (:name %) "PRODUCT_ID") (lib/returned-columns query))
+                            :object-id       venue-id
+                            ;; TODO: This field actually refers to the source table, not the target one. Is that right?
+                            ;; Tech Debt Issue: #39409
+                            :many-pks?       false}
+           :expected-query {:stages [{:filters [[:= {} [:field {} (meta/id :checkins :venue-id)] venue-id]]}]}}))
+
+      (testing "preserve any existing filter for another PK on the same table"
+        (testing "existing USER_ID, new \"VENUE_ID\" (really PRODUCT_ID)"
+          (let [filtered-user (lib/filter query (lib/= (lib.metadata/field query (meta/id :orders :user-id)) user-id))]
+            (lib.drill-thru.tu/test-drill-application
+              {:column-name    "PRODUCT_ID"
+               :click-type     :cell
+               :query-type     :unaggregated
+               :custom-query   filtered-user
+               :drill-type     :drill-thru/fk-details
+               :expected       {:type            :drill-thru/fk-details
+                                :column          (m/find-first #(= (:name %) "PRODUCT_ID")
+                                                               (lib/returned-columns filtered-user))
+                                :object-id       venue-id
+                                :many-pks?       false}
+               :expected-query
+               {:stages [{:filters [[:= {} [:field {} (meta/id :checkins :user-id)]  user-id]
+                                    [:= {} [:field {} (meta/id :checkins :venue-id)] venue-id]]}]}})))
+        (testing "existing \"VENUE_ID\" (really PRODUCT_ID), new USER_ID"
+          (let [filtered-venue (lib/filter query (lib/= (lib.metadata/field query (meta/id :orders :product-id))
+                                                        venue-id))]
+            (lib.drill-thru.tu/test-drill-application
+              {:column-name    "USER_ID"
+               :click-type     :cell
+               :query-type     :unaggregated
+               :custom-query   filtered-venue
+               :drill-type     :drill-thru/fk-details
+               :expected       {:type            :drill-thru/fk-details
+                                :column          (m/find-first #(= (:name %) "USER_ID")
+                                                               (lib/returned-columns filtered-venue))
+                                :object-id       user-id
+                                :many-pks?       false}
+               :expected-query
+               {:stages [{:filters [[:= {} [:field {} (meta/id :checkins :venue-id)] venue-id]
+                                    [:= {} [:field {} (meta/id :checkins :user-id)]  user-id]]}]}})))))))

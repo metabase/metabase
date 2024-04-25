@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
+
 import * as Lib from "metabase-lib";
+
+import type { NumberValue } from "./types";
 import {
   canPickColumns,
   getAvailableColumns,
@@ -10,14 +13,12 @@ import {
   getOptionByOperator,
   isValidFilter,
 } from "./utils";
-import type { NumberValue } from "./types";
 
 interface UseCoordinateFilterProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
-  defaultOperator?: Lib.CoordinateFilterOperatorName;
 }
 
 export function useCoordinateFilter({
@@ -25,7 +26,6 @@ export function useCoordinateFilter({
   stageIndex,
   column,
   filter,
-  defaultOperator = "=",
 }: UseCoordinateFilterProps) {
   const filterParts = useMemo(
     () =>
@@ -44,7 +44,7 @@ export function useCoordinateFilter({
   );
 
   const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : defaultOperator,
+    filterParts ? filterParts.operator : "between",
   );
   const [values, setValues] = useState(
     getDefaultValues(operator, filterParts?.values ?? []),

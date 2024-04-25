@@ -6,9 +6,9 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-source-metadata
     :as add-source-metadata]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -40,7 +40,7 @@
                                         (qp.store/metadata-provider)
                                         meta/metadata-provider)
        (results-metadata
-        (qp/query->expected-cols
+        (qp.preprocess/query->expected-cols
          (lib.tu.macros/mbql-query venues
            {:fields (for [id field-ids] [:field id nil])
             :limit  1})))))))
@@ -96,6 +96,7 @@
                                 [{:name          "avg"
                                   :display_name  "Average of ID"
                                   :base_type     :type/Float
+                                  :semantic_type :type/PK
                                   :settings      nil
                                   :field_ref     [:aggregation 0]}])})
            (add-source-metadata
@@ -118,11 +119,12 @@
                                   :breakout     [$price]}
                 :source-metadata (concat
                                   (venues-source-metadata :price)
-                                  [{:name         "some_generated_name"
-                                    :display_name "My Cool Ag"
-                                    :base_type    :type/Float
-                                    :settings     nil
-                                    :field_ref    [:aggregation 0]}])})
+                                  [{:name          "some_generated_name"
+                                    :display_name  "My Cool Ag"
+                                    :base_type     :type/Float
+                                    :semantic_type :type/PK
+                                    :settings      nil
+                                    :field_ref     [:aggregation 0]}])})
              (add-source-metadata
               (lib.tu.macros/mbql-query venues
                 {:source-query {:source-table $$venues
@@ -133,11 +135,12 @@
 
 (deftest ^:parallel named-aggregations-name-only-test
   (testing "w/ `:name` only"
-    (is (= [{:name         "some_generated_name"
-             :display_name "Average of ID"
-             :base_type    :type/Float
-             :settings     nil
-             :field_ref    [:aggregation 0]}]
+    (is (= [{:name          "some_generated_name"
+             :display_name  "Average of ID"
+             :base_type     :type/Float
+             :semantic_type :type/PK
+             :settings      nil
+             :field_ref     [:aggregation 0]}]
            (source-metadata
             (add-source-metadata
              (lib.tu.macros/mbql-query venues
@@ -146,11 +149,12 @@
 
 (deftest ^:parallel named-aggregations-display-name-only-test
   (testing "w/ `:display-name` only"
-    (is (= [{:name         "avg"
-             :display_name "My Cool Ag"
-             :base_type    :type/Float
-             :settings     nil
-             :field_ref    [:aggregation 0]}]
+    (is (= [{:name          "avg"
+             :display_name  "My Cool Ag"
+             :base_type     :type/Float
+             :semantic_type :type/PK
+             :settings      nil
+             :field_ref     [:aggregation 0]}]
            (source-metadata
             (add-source-metadata
              (lib.tu.macros/mbql-query venues
@@ -221,7 +225,7 @@
       (is (= (letfn [(metadata-with-count-field-ref [field-ref]
                        (concat
                         (venues-source-metadata :price)
-                        (let [[count-col] (results-metadata (qp/query->expected-cols
+                        (let [[count-col] (results-metadata (qp.preprocess/query->expected-cols
                                                              (lib.tu.macros/mbql-query venues
                                                                {:aggregation [[:count]]})))]
                           [(-> count-col
@@ -276,7 +280,7 @@
                                   :breakout     [[:field %latitude {:binning {:strategy :default}}]]}
                 :source-metadata (concat
                                   (let [[lat-col]   (venues-source-metadata :latitude)
-                                        [count-col] (results-metadata (qp/query->expected-cols
+                                        [count-col] (results-metadata (qp.preprocess/query->expected-cols
                                                                        (lib.tu.macros/mbql-query venues
                                                                          {:aggregation [[:count]]})))]
                                     [(assoc lat-col :field_ref [:field
@@ -359,9 +363,9 @@
                                               :order-by     [[:asc $id]]
                                               :limit        2}})
           metadata          (qp.store/with-metadata-provider meta/metadata-provider
-                              (qp/query->expected-cols query))
+                              (qp.preprocess/query->expected-cols query))
           ;; the actual metadata this middleware should return. Doesn't have all the columns that come back from
-          ;; `qp/query->expected-cols`
+          ;; `qp.preprocess/query->expected-cols`
           expected-metadata (for [col metadata]
                               (cond-> (merge (results-col col) (select-keys col [:source_alias]))
                                 ;; for some reason this middleware returns temporal fields with a `:default` unit,
@@ -389,9 +393,8 @@
 
 (deftest ^:parallel add-correct-metadata-fields-for-deeply-nested-source-queries-test
   (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
-    (is (= (lib.tu.macros/$ids orders
-             [$product-id->products.title
-              [:aggregation 0]])
+    (is (= [[:field "TITLE" {:base-type :type/Text}]
+            [:aggregation 0]]
            (->> (lib.tu.macros/mbql-query orders
                   {:source-query {:source-query {:source-table $$orders
                                                  :filter       [:= $id 1]

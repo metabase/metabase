@@ -2,25 +2,26 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
+
 import {
   setupCollectionByIdEndpoint,
   setupSearchEndpoints,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import type { SearchResultsFooter } from "metabase/nav/components/search/SearchResults";
+import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import type { SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { checkNotNull } from "metabase/lib/types";
-import type { SearchResultsFooter } from "metabase/nav/components/search/SearchResults";
-import { SearchResults } from "metabase/nav/components/search/SearchResults";
 
 type SearchResultsSetupProps = {
   searchResults?: SearchResult[];
@@ -108,7 +109,7 @@ describe("SearchResults", () => {
     await setup();
 
     for (const { name } of TEST_SEARCH_RESULTS) {
-      userEvent.keyboard("{arrowdown}");
+      await userEvent.keyboard("{arrowdown}");
 
       const resultItems = await screen.findAllByTestId("search-result-item");
 
@@ -124,7 +125,7 @@ describe("SearchResults", () => {
       forceEntitySelect: true,
     });
 
-    userEvent.click(screen.getByText(TEST_SEARCH_RESULTS[0].name));
+    await userEvent.click(screen.getByText(TEST_SEARCH_RESULTS[0].name));
 
     expect(onEntitySelect).toHaveBeenCalled();
     expect(onEntitySelect.mock.lastCall[0].name).toEqual(
@@ -141,7 +142,7 @@ describe("SearchResults", () => {
       forceEntitySelect: false,
     });
 
-    userEvent.click(screen.getByText(TEST_SEARCH_RESULTS[0].name));
+    await userEvent.click(screen.getByText(TEST_SEARCH_RESULTS[0].name));
 
     expect(onEntitySelect).not.toHaveBeenCalled();
     expect(history.getCurrentLocation().pathname).toEqual("/question/1-test-0");
@@ -158,7 +159,7 @@ describe("SearchResults", () => {
     const { history, onEntitySelect } = await setup({
       searchResults: [indexedEntityResult],
     });
-    userEvent.click(screen.getByText(indexedEntityResult.name));
+    await userEvent.click(screen.getByText(indexedEntityResult.name));
 
     expect(onEntitySelect).toHaveBeenCalled();
     expect(onEntitySelect.mock.lastCall[0].name).toEqual(

@@ -182,7 +182,7 @@
             "week"            false
             "month"           false
             "quarter"         false
-            "year"            true
+            "year"            false
             "minute-of-hour"  true
             "hour-of-day"     true
             "day-of-week"     true
@@ -195,3 +195,12 @@
                  (comp (map #(lib/display-info query -1 %))
                        (map (juxt :short-name :is-temporal-extraction)))
                  (lib.temporal-bucket/available-temporal-buckets query (meta/field-metadata :products :created-at)))))))
+
+(deftest ^:parallel source-card-temporal-extraction-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)))]
+    (is (=? {:display-name "Created At: Year"
+             :is-temporal-extraction false}
+            (->> (lib/breakouts query)
+                 first
+                 (lib/display-info query -1))))))

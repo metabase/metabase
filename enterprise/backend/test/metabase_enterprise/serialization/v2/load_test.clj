@@ -8,7 +8,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.models
     :refer [Action Card Collection Dashboard DashboardCard Database Field
-            FieldValues Metric NativeQuerySnippet Segment Table Timeline
+            FieldValues LegacyMetric NativeQuerySnippet Segment Table Timeline
             TimelineEvent User]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
@@ -366,7 +366,7 @@
             (reset! table1s  (ts/create! Table :name "orders" :db_id (:id @db1s)))
             (reset! field1s  (ts/create! Field :name "subtotal"    :table_id (:id @table1s)))
             (reset! user1s   (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-            (reset! metric1s (ts/create! Metric :table_id (:id @table1s) :name "Revenue"
+            (reset! metric1s (ts/create! LegacyMetric :table_id (:id @table1s) :name "Revenue"
                                          :definition {:source-table (:id @table1s)
                                                       :aggregation [[:sum [:field (:id @field1s) nil]]]}
                                          :creator_id (:id @user1s)))
@@ -376,7 +376,7 @@
           (is (= {:source-table ["my-db" nil "orders"]
                   :aggregation [[:sum [:field ["my-db" nil "orders" "subtotal"] nil]]]}
                  (-> @serialized
-                     (by-model "Metric")
+                     (by-model "LegacyMetric")
                      first
                      :definition))))
 
@@ -395,7 +395,7 @@
             (reset! db1d     (t2/select-one Database :name "my-db"))
             (reset! table1d  (t2/select-one Table :name "orders"))
             (reset! field1d  (t2/select-one Field :table_id (:id @table1d) :name "subtotal"))
-            (reset! metric1d (t2/select-one Metric :name "Revenue"))
+            (reset! metric1d (t2/select-one LegacyMetric :name "Revenue"))
 
             (testing "the main Database, Table, and Field have different IDs now"
               (is (not= (:id @db1s) (:id @db1d)))
@@ -758,12 +758,12 @@
           (ts/with-db source-db
             (reset! user1s    (ts/create! User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! user2s    (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
-            (reset! metric1s  (ts/create! Metric
+            (reset! metric1s  (ts/create! LegacyMetric
                                           :name "Large Users"
                                           :table_id   (mt/id :venues)
                                           :creator_id (:id @user1s)
                                           :definition {:aggregation [[:count]]}))
-            (reset! metric2s  (ts/create! Metric
+            (reset! metric2s  (ts/create! LegacyMetric
                                           :name "Support Headaches"
                                           :table_id   (mt/id :venues)
                                           :creator_id (:id @user2s)
@@ -773,7 +773,7 @@
         (testing "exported form is properly converted"
           (is (= "tom@bost.on"
                  (-> @serialized
-                     (by-model "Metric")
+                     (by-model "LegacyMetric")
                      first
                      :creator_id))))
 
@@ -782,17 +782,17 @@
             ;; Create another random user to change the user IDs.
             (ts/create! User   :first_name "Gideon" :last_name "Nav" :email "griddle@ninth.tomb")
             ;; Likewise, create some other metrics.
-            (ts/create! Metric :name "Other metric A" :table_id (mt/id :venues))
-            (ts/create! Metric :name "Other metric B" :table_id (mt/id :venues))
-            (ts/create! Metric :name "Other metric C" :table_id (mt/id :venues))
+            (ts/create! LegacyMetric :name "Other metric A" :table_id (mt/id :venues))
+            (ts/create! LegacyMetric :name "Other metric B" :table_id (mt/id :venues))
+            (ts/create! LegacyMetric :name "Other metric C" :table_id (mt/id :venues))
             (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
 
             ;; Load the serialized content.
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
 
             ;; Fetch the relevant bits
-            (reset! metric1d (t2/select-one Metric :name "Large Users"))
-            (reset! metric2d (t2/select-one Metric :name "Support Headaches"))
+            (reset! metric1d (t2/select-one LegacyMetric :name "Large Users"))
+            (reset! metric2d (t2/select-one LegacyMetric :name "Support Headaches"))
 
             (testing "the Metrics and Users have different IDs now"
               (is (not= (:id @metric1s) (:id @metric1d)))
@@ -1040,7 +1040,7 @@
                 card     (ts/create! Card
                                      :name "the query"
                                      :query_type :native
-                                     :dataset true
+                                     :type :model
                                      :database_id (:id db)
                                      :dataset_query {:database (:id db)
                                                      :native {:type   :native
@@ -1172,7 +1172,7 @@
                 card       (ts/create! Card
                                  :name "the query"
                                  :query_type :native
-                                 :dataset true
+                                 :type :model
                                  :database_id (:id db)
                                  :dataset_query {:database (:id db)
                                                  :native   {:type   :native
@@ -1195,3 +1195,31 @@
       (testing "The extraneous keys do not interfere with loading"
         (ts/with-db dest-db
           (is (serdes.load/load-metabase! (ingestion-in-memory @serialized))))))))
+
+(deftest tx-test
+  (mt/with-empty-h2-app-db
+    (let [coll       (ts/create! Collection :name "coll")
+          card       (ts/create! Card :name "card" :collection_id (:id coll))
+          serialized (atom {})]
+      (reset! serialized (->> (serdes.extract/extract {:no-settings   true
+                                                       :no-data-model true
+                                                       :targets       [["Collection" (:id coll)]]})
+                              vec))
+      (testing "Load completes successfully"
+        (t2/update! Card {:id (:id card)} {:name (str "qwe_" (:name card))})
+        (is (serdes.load/load-metabase! (ingestion-in-memory @serialized)))
+        (is (= (:name card)
+               (t2/select-one-fn :name Card :id (:id card)))))
+
+      (testing "Partial load does not change the database"
+        (t2/update! Collection {:id (:id coll)} {:name (str "qwe_" (:name coll))})
+        (let [load-update! serdes/load-update!]
+          (with-redefs [serdes/load-update! (fn [model adjusted local]
+                                              ;; Collection is loaded first
+                                              (if (= model "Card")
+                                                (throw (ex-info "oops, error" {}))
+                                                (load-update! model adjusted local)))]
+            (is (thrown? clojure.lang.ExceptionInfo
+                         (serdes.load/load-metabase! (ingestion-in-memory @serialized))))
+            (is (= (str "qwe_" (:name coll))
+                   (t2/select-one-fn :name Collection :id (:id card))))))))))

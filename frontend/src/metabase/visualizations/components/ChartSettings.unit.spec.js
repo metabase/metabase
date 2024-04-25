@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
-import registerVisualizations from "metabase/visualizations/register";
+
 import { renderWithProviders, fireEvent, screen } from "__support__/ui";
+import ChartSettings from "metabase/visualizations/components/ChartSettings";
+import registerVisualizations from "metabase/visualizations/register";
 import {
   createMockCard,
   createMockDashboardCard,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
-
-import ChartSettings from "metabase/visualizations/components/ChartSettings";
 
 registerVisualizations();
 
@@ -125,7 +125,7 @@ describe("ChartSettings", () => {
     expect(screen.queryByText("Foo")).not.toBeInTheDocument();
   });
 
-  it("reset settings should revert to the original card settings with click behavior", () => {
+  it("reset settings should revert to the original card settings with click behavior", async () => {
     const onChange = jest.fn();
 
     const originalVizSettings = createMockVisualizationSettings({
@@ -152,7 +152,7 @@ describe("ChartSettings", () => {
       onChange,
     });
 
-    userEvent.click(screen.getByText("Reset to defaults"));
+    await userEvent.click(screen.getByText("Reset to defaults"));
 
     expect(onChange).toHaveBeenCalledWith({
       ...originalVizSettings,

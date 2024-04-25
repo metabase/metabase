@@ -1,4 +1,10 @@
 import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
   restore,
   withDatabase,
   visitAlias,
@@ -7,12 +13,6 @@ import {
   openTable,
   resyncDatabase,
 } from "e2e/support/helpers";
-import {
-  SAMPLE_DB_ID,
-  SAMPLE_DB_SCHEMA_ID,
-  WRITABLE_DB_ID,
-} from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -166,7 +166,10 @@ describe("scenarios > admin > datamodel > field", () => {
 
           cy.log("Make sure custom mapping appears in QB");
           openTable({ database: dbId, table: NUMBER_WITH_NULLS_ID });
-          cy.get(".cellData").should("contain", remappedNullValue);
+          cy.get("[data-testid=cell-data]").should(
+            "contain",
+            remappedNullValue,
+          );
         },
       );
     });
@@ -183,7 +186,7 @@ function getUnfoldJsonContent() {
 describe("Unfold JSON", () => {
   beforeEach(() => {
     resetTestTable({ type: "postgres", table: "many_data_types" });
-    restore(`postgres-writable`);
+    restore("postgres-writable");
     cy.signInAsAdmin();
     resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
   });

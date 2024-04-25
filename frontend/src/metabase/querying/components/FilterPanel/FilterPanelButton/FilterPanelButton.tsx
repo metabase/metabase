@@ -1,9 +1,11 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import { Tooltip, Icon } from "metabase/ui";
 
+import { Tooltip, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+
 import { getFilterItems } from "../utils";
+
 import { FilterButton } from "./FilterPanelButton.styled";
 
 interface FilterPanelButtonProps {

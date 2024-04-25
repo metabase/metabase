@@ -1,4 +1,5 @@
 import { waitFor } from "@testing-library/react";
+
 import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
@@ -10,9 +11,10 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import type { WrappedResult } from "metabase/search/types";
+import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
+
 import { createWrappedSearchResult } from "./util";
 
 const TEST_REGULAR_COLLECTION = createMockCollection({
@@ -85,7 +87,7 @@ describe("SearchResult > Collections", () => {
   describe("EE", () => {
     const resultInOfficalCollectionEE: WrappedResult = {
       ...resultInOfficalCollection,
-      getIcon: () => ({ name: "badge" }),
+      getIcon: () => ({ name: "table" }),
     };
 
     beforeAll(() => {

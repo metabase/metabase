@@ -1,23 +1,27 @@
+import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
+
+import CS from "metabase/css/core/index.css";
+import { editQuestion } from "metabase/dashboard/actions";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Icon } from "metabase/ui";
 import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
 import { downloadQueryResults } from "metabase/query_builder/actions";
 import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";
-import { editQuestion } from "metabase/dashboard/actions";
+import { Icon } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
 import type {
   DashboardId,
   DashCardId,
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import InternalQuery from "metabase-lib/queries/InternalQuery";
+
 import { CardMenuRoot } from "./DashCardMenu.styled";
 
 interface OwnProps {
@@ -60,9 +64,9 @@ const DashCardMenu = ({
   onDownloadResults,
 }: DashCardMenuProps) => {
   const [{ loading }, handleDownload] = useAsyncFn(
-    async (type: string) => {
+    async (opts: { type: string; enableFormatting: boolean }) => {
       await onDownloadResults({
-        type,
+        ...opts,
         question,
         result,
         dashboardId,
@@ -80,9 +84,9 @@ const DashCardMenu = ({
       <QueryDownloadPopover
         question={question}
         result={result}
-        onDownload={type => {
+        onDownload={opts => {
           toggleMenu();
-          handleDownload(type);
+          handleDownload(opts);
         }}
       />
     ),
@@ -113,7 +117,7 @@ const DashCardMenu = ({
       renderTrigger={({ open, onClick }: TriggerProps) => (
         <Icon
           name="ellipsis"
-          className={!open ? "hover-child hover-child--smooth" : undefined}
+          className={!open ? cx(CS.hoverChild, CS.hoverChildSmooth) : undefined}
           data-testid="dashcard-menu"
           onClick={onClick}
         />
@@ -154,8 +158,9 @@ DashCardMenu.shouldRender = ({
 }: QueryDownloadWidgetOpts) => {
   // Do not remove this check until we completely remove the old code related to Audit V1!
   // MLv2 doesn't handle `internal` queries used for Audit V1.
-  const isInternalQuery =
-    question.legacyQuery({ useStructuredQuery: true }) instanceof InternalQuery;
+  const isInternalQuery = InternalQuery.isDatasetQueryType(
+    question.datasetQuery(),
+  );
 
   if (isEmbed) {
     return isEmbed;

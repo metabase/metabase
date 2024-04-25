@@ -13,15 +13,16 @@
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.wrap-value-literals
-    :as qp.wrap-value-literals]
+   [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -115,9 +116,17 @@
     :day))
 
 (defmethod align-temporal-unit-with-param-type-and-value :default
-  [driver field param-type _value]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (align-temporal-unit-with-param-type driver field param-type))
+  [_driver _field param-type value]
+  (when (params.dates/date-type? param-type)
+    (if-let [exclusion-type (params.dates/exclusion-date-type param-type value)]
+      exclusion-type
+      (let [value* (if (params.dates/not-single-date-type? param-type)
+                     (let [param-range (params.dates/date-string->range value)]
+                       (or (:start param-range) (:end param-range))) ;; Before or after filters only have one of these
+                     value)]
+        (if (re-matches shared.ut/local-date-regex value*)
+          :day
+          :minute)))))
 
 ;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
 
@@ -246,7 +255,7 @@
 (mu/defn ^:private field->clause :- mbql.s/field
   [driver     :- :keyword
    field      :- lib.metadata/ColumnMetadata
-   param-type :- ::mbql.s/ParameterType
+   param-type :- ::lib.schema.parameter/type
    value]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
   ;; the [[metabase.query-processor.middleware.resolve-fields/resolve-fields]] middleware that would normally fetch all
@@ -290,9 +299,7 @@
            ->honeysql
            (honeysql->replacement-snippet-info driver))
 
-      (and (params.dates/date-type? param-type)
-           (string? value)
-           (re-matches params.dates/date-exclude-regex value))
+      (params.dates/exclusion-date-type param-type value)
       (let [field-clause (field->clause driver field param-type value)]
         (->> (params.dates/date-string->filter value field-clause)
              mbql.u/desugar-filter-clause

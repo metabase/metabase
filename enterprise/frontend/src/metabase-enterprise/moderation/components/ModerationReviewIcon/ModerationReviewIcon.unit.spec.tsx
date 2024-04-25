@@ -1,11 +1,17 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
+
 import {
   createMockModerationReview,
   createMockUser,
 } from "metabase-types/api/mocks";
+
 import type { ModerationReviewIconProps } from "./ModerationReviewIcon";
 import ModerationReviewIcon from "./ModerationReviewIcon";
+
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
 
 describe("ModerationReviewIcon", () => {
   beforeEach(() => {
@@ -25,7 +31,7 @@ describe("ModerationReviewIcon", () => {
     expect(screen.getByLabelText("verified icon")).toBeInTheDocument();
   });
 
-  it("should show a tooltip on hover when moderator is loaded", () => {
+  it("should show a tooltip on hover when moderator is loaded", async () => {
     const props = getProps({
       review: createMockModerationReview({
         moderator_id: 1,
@@ -36,7 +42,7 @@ describe("ModerationReviewIcon", () => {
     });
 
     render(<ModerationReviewIcon {...props} />);
-    userEvent.hover(screen.getByLabelText("verified icon"));
+    await userEvent.hover(screen.getByLabelText("verified icon"));
 
     expect(screen.getByText("You verified this")).toBeInTheDocument();
     expect(screen.getByText("a year ago")).toBeInTheDocument();

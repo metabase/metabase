@@ -1,12 +1,11 @@
-import { createRef, Component } from "react";
-import { t } from "ttag";
-import type { ResizableBox, ResizableBoxProps } from "react-resizable";
-import { connect } from "react-redux";
-import _ from "underscore";
-import slugg from "slugg";
-
-import * as ace from "ace-builds/src-noconflict/ace";
 import type { Ace } from "ace-builds";
+import * as ace from "ace-builds/src-noconflict/ace";
+import { createRef, Component } from "react";
+import { connect } from "react-redux";
+import type { ResizableBox, ResizableBoxProps } from "react-resizable";
+import slugg from "slugg";
+import { t } from "ttag";
+import _ from "underscore";
 
 import "ace/ace";
 import "ace/ext-language_tools";
@@ -17,26 +16,24 @@ import "ace/snippets/text";
 import "ace/snippets/sql";
 import "ace/snippets/json";
 
-import { Flex } from "metabase/ui";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
-import * as Lib from "metabase-lib";
-
-import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
-import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
-
 import Databases from "metabase/entities/databases";
-import Snippets from "metabase/entities/snippets";
-import SnippetCollections from "metabase/entities/snippet-collections";
 import Questions from "metabase/entities/questions";
-
-import { getSetting } from "metabase/selectors/settings";
-
-import { checkNotNull } from "metabase/lib/types";
+import SnippetCollections from "metabase/entities/snippet-collections";
+import Snippets from "metabase/entities/snippets";
+import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import { isEventOverElement } from "metabase/lib/dom";
 import { getEngineNativeAceMode } from "metabase/lib/engine";
-import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
-
+import { checkNotNull } from "metabase/lib/types";
+import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
+import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
+import { getSetting } from "metabase/selectors/settings";
+import { Flex } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import { CARD_TAG_REGEX } from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   CardId,
@@ -48,28 +45,9 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
-import type Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { CARD_TAG_REGEX } from "metabase-lib/queries/NativeQuery";
-
 import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
-import { ACE_ELEMENT_ID, SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./constants";
-import {
-  calcInitialEditorHeight,
-  formatQuery,
-  getEditorLineHeight,
-  getMaxAutoSizeLines,
-} from "./utils";
-
-import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
-import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
-import { VisibilityToggler } from "./VisibilityToggler";
-import { RightClickPopover } from "./RightClickPopover";
 import DataSourceSelectors from "./DataSourceSelectors";
-
-import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
-
 import {
   DragHandleContainer,
   DragHandle,
@@ -77,11 +55,24 @@ import {
   NativeQueryEditorRoot,
   StyledResizableBox,
 } from "./NativeQueryEditor.styled";
+import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
+import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
+import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
+import { RightClickPopover } from "./RightClickPopover";
+import { VisibilityToggler } from "./VisibilityToggler";
+import { ACE_ELEMENT_ID, SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./constants";
+import {
+  calcInitialEditorHeight,
+  formatQuery,
+  getAutocompleteResultMeta,
+  getEditorLineHeight,
+  getMaxAutoSizeLines,
+} from "./utils";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
 
-type CardCompletionItem = Pick<Card, "id" | "name" | "dataset"> & {
+type CardCompletionItem = Pick<Card, "id" | "name" | "type"> & {
   collection_name: string;
 };
 
@@ -146,6 +137,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   toggleSnippetSidebar: () => void;
   cancelQuery?: () => void;
   closeSnippetModal: () => void;
+  onSetDatabaseId?: (id: DatabaseId) => void;
 };
 
 interface StateProps {
@@ -428,6 +420,9 @@ export class NativeQueryEditor extends Component<
     this.handleQueryUpdate(query?.queryText() ?? "");
     editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN, 0, 0);
 
+    // reset undo manager to prevent undoing to empty editor
+    editor.getSession().getUndoManager().reset();
+
     // hmmm, this could be dangerous
     if (!this.props.readOnly) {
       editor.focus();
@@ -624,16 +619,15 @@ export class NativeQueryEditor extends Component<
       callback(null, []);
     }
     const apiResults = await this.props.cardAutocompleteResultsFn(prefix);
+
     const resultsForAce = apiResults.map(
-      ({ id, name, dataset, collection_name }) => {
+      ({ id, name, type, collection_name }) => {
         const collectionName = collection_name || t`Our analytics`;
         return {
           name: `${id}-${slugg(name)}`,
           value: `${id}-${slugg(name)}`,
-          meta: dataset
-            ? t`Model in ${collectionName}`
-            : t`Question in ${collectionName}`,
-          score: dataset ? 100000 : 0, // prioritize models above questions
+          meta: getAutocompleteResultMeta(type, collectionName),
+          score: type === "model" ? 100000 : 0, // prioritize models above questions
         };
       },
     );
@@ -689,11 +683,14 @@ export class NativeQueryEditor extends Component<
     this.props.setIsNativeEditorOpen?.(!this.props.isNativeEditorOpen);
   };
 
-  /// Change the Database we're currently editing a query for.
+  // Change the Database we're currently editing a query for.
   setDatabaseId = (databaseId: DatabaseId) => {
-    const { query, setDatasetQuery, question } = this.props;
+    const { query, setDatasetQuery, question, onSetDatabaseId } = this.props;
+
     if (question.databaseId() !== databaseId) {
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
+
+      onSetDatabaseId?.(databaseId);
       if (!this.props.readOnly) {
         // HACK: the cursor doesn't blink without this intended small delay
         setTimeout(() => this._editor?.focus(), 50);

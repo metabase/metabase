@@ -507,4 +507,6 @@ serdes/meta:
 - id: -19557ZnrWiDgG4h4cKxF
   label: databases
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (0e09ac7)
+type: model

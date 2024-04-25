@@ -1,8 +1,9 @@
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Schemas from "metabase/entities/schemas";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type Schema from "metabase-lib/metadata/Schema";
+
 import MetadataSchemaList from "../MetadataSchemaList";
 import MetadataTableList from "../MetadataTableList";
 

@@ -1,11 +1,14 @@
 import { t } from "ttag";
+
 import { Button, Group, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
 import type {
   DatePickerTruncationUnit,
   RelativeDatePickerValue,
 } from "../../types";
 import { formatDateRange } from "../utils";
+
 import { UNIT_GROUPS } from "./constants";
 
 interface CurrentDatePickerProps {

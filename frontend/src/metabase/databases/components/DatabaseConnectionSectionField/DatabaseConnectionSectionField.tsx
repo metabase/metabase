@@ -1,7 +1,9 @@
-import { useCallback } from "react";
 import { useField } from "formik";
+import { useCallback } from "react";
 import { t } from "ttag";
+
 import FormField from "metabase/core/components/FormField";
+
 import { SectionButton } from "./DatabaseConnectionSectionField.styled";
 
 export interface DatabaseConnectionSectionFieldProps {

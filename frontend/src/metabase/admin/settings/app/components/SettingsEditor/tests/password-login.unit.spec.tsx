@@ -1,11 +1,13 @@
 import "metabase/plugins/builtin";
 import userEvent from "@testing-library/user-event";
+
+import { screen } from "__support__/ui";
 import {
   createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
+
 import type { SetupOpts } from "./setup";
 import { setup } from "./setup";
 
@@ -32,7 +34,7 @@ describe("SettingsEditor", () => {
       }),
     });
 
-    userEvent.click(screen.getByText("Authentication"));
+    await userEvent.click(screen.getByText("Authentication"));
     expect(screen.getByText("Sign in with Google")).toBeInTheDocument();
     expect(
       screen.getByText("Enable Password Authentication"),

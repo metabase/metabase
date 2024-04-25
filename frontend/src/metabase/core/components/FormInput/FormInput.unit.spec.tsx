@@ -1,7 +1,8 @@
-import { Form, Formik } from "formik";
-import * as Yup from "yup";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Form, Formik } from "formik";
+import * as Yup from "yup";
+
 import FormInput from "./FormInput";
 
 const TEST_SCHEMA = Yup.object({
@@ -53,8 +54,8 @@ describe("FormInput", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormInput onSubmit={onSubmit} />);
-    userEvent.type(screen.getByRole("textbox"), "Text");
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.type(screen.getByRole("textbox"), "Text");
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       const values = { value: "Text" };
@@ -74,8 +75,8 @@ describe("FormInput", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormInput initialValue="Text" onSubmit={onSubmit} />);
-    userEvent.clear(screen.getByRole("textbox"));
-    userEvent.tab();
+    await userEvent.clear(screen.getByRole("textbox"));
+    await userEvent.tab();
 
     expect(await screen.findByText(": error")).toBeInTheDocument();
   });
@@ -114,7 +115,7 @@ describe("FormInput", () => {
     expect(screen.getByLabelText("Label")).toBeInTheDocument();
   });
 
-  it("should have info tooltip", () => {
+  it("should have info tooltip", async () => {
     const onSubmit = jest.fn();
     const infoTooltipText = "info tooltip text";
 
@@ -127,7 +128,7 @@ describe("FormInput", () => {
       />,
     );
 
-    userEvent.hover(screen.getByLabelText("info icon"));
+    await userEvent.hover(screen.getByLabelText("info icon"));
     expect(screen.getByText(infoTooltipText)).toBeInTheDocument();
   });
 });

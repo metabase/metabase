@@ -1,10 +1,12 @@
+import { assoc } from "icepick";
+import type { DurationInputArg2 } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { useState } from "react";
 import { t } from "ttag";
-import { assoc } from "icepick";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import type { DurationInputArg2 } from "moment-timezone";
-import { isValidTimeInterval } from "metabase/lib/time";
+
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import CS from "metabase/css/core/index.css";
+import { isValidTimeInterval } from "metabase/lib/time";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   formatStartingFrom,
   getRelativeDatetimeInterval,
@@ -13,9 +15,8 @@ import {
   setRelativeDatetimeValue,
   setStartingFrom,
   toTimeInterval,
-} from "metabase-lib/queries/utils/query-time";
+} from "metabase-lib/v1/queries/utils/query-time";
 
-import type Filter from "metabase-lib/queries/structured/Filter";
 import {
   GridContainer,
   GridText,
@@ -196,7 +197,7 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
         <GridText>{intervals < 0 ? t`Past` : t`Next`}</GridText>
       ) : null}
       <NumericInput
-        className="text-right"
+        className={CS.textRight}
         primaryColor={primaryColor}
         style={SELECT_STYLE}
         data-ui-tag="relative-date-input"
@@ -239,7 +240,7 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
         <>
           <GridText>{t`Starting from`}</GridText>
           <NumericInput
-            className="text-right"
+            className={CS.textRight}
             primaryColor={primaryColor}
             style={SELECT_STYLE}
             aria-label={t`Starting from interval`}

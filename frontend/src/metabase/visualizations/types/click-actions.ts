@@ -1,15 +1,16 @@
 import type React from "react";
+
 import type { IconName } from "metabase/ui";
-import type { Dispatch, GetState } from "metabase-types/store";
-import type { Series, VisualizationSettings, Card } from "metabase-types/api";
 import type * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import type { ClickActionProps } from "metabase-lib/queries/drills/types";
+import type Question from "metabase-lib/v1/Question";
+import type { ClickActionProps } from "metabase-lib/v1/queries/drills/types";
+import type { Series, VisualizationSettings, Card } from "metabase-types/api";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 export type {
   ClickActionProps,
   ClickObject,
-} from "metabase-lib/queries/drills/types";
+} from "metabase-lib/v1/queries/drills/types";
 
 type Dispatcher = (dispatch: Dispatch, getState: GetState) => void;
 
@@ -27,6 +28,8 @@ export type ClickActionSection =
   | "breakout"
   | "breakout-popover"
   | "details"
+  | "extract"
+  | "extract-popover"
   | "filter"
   | "info"
   | "records"
@@ -34,7 +37,8 @@ export type ClickActionSection =
   | "standalone_filter"
   | "sum"
   | "summarize"
-  | "zoom";
+  | "zoom"
+  | "custom";
 
 export type ClickActionSectionDirection = "row" | "column";
 
@@ -47,7 +51,6 @@ export type ClickActionBase = {
   icon?: IconName;
   iconText?: string;
   buttonType: ClickActionButtonType;
-  default?: boolean;
   tooltip?: string;
   extra?: () => Record<string, unknown>;
 };
@@ -77,6 +80,23 @@ type UrlClickActionBase = {
 
 export type UrlClickAction = ClickActionBase & UrlClickActionBase;
 
+type CustomClickActionContext = { closePopover: () => void };
+
+type CustomClickActionBase = {
+  name: ClickActionBase["name"];
+  section: ClickActionBase["section"];
+  type: "custom";
+};
+
+export type CustomClickAction = ClickActionBase &
+  CustomClickActionBase & {
+    onClick?: (parameters: CustomClickActionContext) => void;
+  };
+
+export type CustomClickActionWithCustomView = CustomClickActionBase & {
+  view: (parameters: CustomClickActionContext) => React.JSX.Element;
+};
+
 export type RegularClickAction =
   | ReduxClickAction
   | QuestionChangeClickAction
@@ -100,7 +120,9 @@ export type AlwaysDefaultClickAction = {
 export type ClickAction =
   | RegularClickAction
   | DefaultClickAction
-  | AlwaysDefaultClickAction;
+  | AlwaysDefaultClickAction
+  | CustomClickAction
+  | CustomClickActionWithCustomView;
 
 export type LegacyDrill = (options: ClickActionProps) => ClickAction[];
 
@@ -146,13 +168,32 @@ export type Drill<
   stageIndex: number;
   drill: Lib.DrillThru;
   drillInfo: T;
-  isDashboard: boolean;
+  clicked: Lib.ClickObject;
   applyDrill: (drill: Lib.DrillThru, ...args: any[]) => Question;
 }) => ClickAction[];
 
-export interface QueryClickActionsMode {
+export type QueryClickActionsMode = {
   name: string;
-  hasDrills: boolean;
   clickActions: LegacyDrill[];
   fallback?: LegacyDrill;
-}
+} & (
+  | {
+      hasDrills: false;
+    }
+  | {
+      hasDrills: true;
+      availableOnlyDrills?: Lib.DrillThruType[];
+    }
+);
+
+export const isCustomClickAction = (
+  clickAction: ClickAction,
+): clickAction is CustomClickAction =>
+  (clickAction as CustomClickAction).type === "custom" &&
+  !("view" in clickAction);
+
+export const isCustomClickActionWithView = (
+  action: ClickAction,
+): action is CustomClickActionWithCustomView =>
+  (action as CustomClickActionWithCustomView).type === "custom" &&
+  "view" in action;

@@ -1,24 +1,23 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
+import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { useFormik } from "formik";
 import { t } from "ttag";
-import S from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import CS from "metabase/css/core/index.css";
+import * as metadataActions from "metabase/redux/metadata";
+import S from "metabase/reference/Reference.module.css";
+import Detail from "metabase/reference/components/Detail";
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
-import Detail from "metabase/reference/components/Detail";
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
-
-import * as metadataActions from "metabase/redux/metadata";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as actions from "metabase/reference/reference";
+import { getMetadata } from "metabase/selectors/metadata";
 
-import { getQuestionUrl } from "../utils";
 import {
   getFieldBySegment,
   getTable,
@@ -29,6 +28,7 @@ import {
   getForeignKeys,
   getIsFormulaExpanded,
 } from "../selectors";
+import { getQuestionUrl } from "../utils";
 
 const interestingQuestions = (table, field, metadata) => {
   return [
@@ -133,7 +133,7 @@ const SegmentFieldDetail = props => {
   });
 
   return (
-    <form style={style} className="full" onSubmit={handleSubmit}>
+    <form style={style} className={CS.full} onSubmit={handleSubmit}>
       {isEditing && (
         <EditHeader
           hasRevisionHistory={false}
@@ -163,10 +163,12 @@ const SegmentFieldDetail = props => {
         error={loadingError}
       >
         {() => (
-          <div className="wrapper">
-            <div className="pl3 py2 mb4 bg-white bordered">
+          <div className={CS.wrapper}>
+            <div
+              className={cx(CS.pl3, CS.py2, CS.mb4, CS.bgWhite, CS.bordered)}
+            >
               <List>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="description"
                     name={t`Description`}
@@ -177,7 +179,7 @@ const SegmentFieldDetail = props => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <Detail
                       id="name"
                       name={t`Actual name in database`}
@@ -186,7 +188,7 @@ const SegmentFieldDetail = props => {
                     />
                   </li>
                 )}
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="points_of_interest"
                     name={t`Why this field is interesting`}
@@ -196,7 +198,7 @@ const SegmentFieldDetail = props => {
                     field={getFormField("points_of_interest")}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="caveats"
                     name={t`Things to be aware of about this field`}
@@ -208,7 +210,7 @@ const SegmentFieldDetail = props => {
                 </li>
 
                 {!isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <Detail
                       id="base_type"
                       name={t`Data type`}
@@ -216,7 +218,7 @@ const SegmentFieldDetail = props => {
                     />
                   </li>
                 )}
-                <li className="relative">
+                <li className={CS.relative}>
                   <FieldTypeDetail
                     field={entity}
                     foreignKeys={foreignKeys}
@@ -226,7 +228,7 @@ const SegmentFieldDetail = props => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <UsefulQuestions
                       questions={interestingQuestions(table, entity, metadata)}
                     />

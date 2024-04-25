@@ -1,52 +1,53 @@
-import _ from "underscore";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
-import { color } from "metabase/lib/colors";
-
-import { Icon, Box } from "metabase/ui";
-import Link from "metabase/core/components/Link";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
-import type { useDatabaseListQuery } from "metabase/common/hooks";
-
 import NoResults from "assets/img/no_results.svg";
+import type { useDatabaseListQuery } from "metabase/common/hooks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
+import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
+import { Box, Icon, Title } from "metabase/ui";
+
+import { CenteredEmptyState } from "./BrowseApp.styled";
 import {
   DatabaseCard,
+  DatabaseCardLink,
   DatabaseGrid,
-  DatabaseGridItem,
 } from "./BrowseDatabases.styled";
-import { CenteredEmptyState } from "./BrowseApp.styled";
 
 export const BrowseDatabases = ({
   databasesResult,
 }: {
   databasesResult: ReturnType<typeof useDatabaseListQuery>;
 }) => {
-  const { data: databases = [], error, isLoading } = databasesResult;
+  const { data: databases, error, isLoading } = databasesResult;
+
   if (error) {
     return <LoadingAndErrorWrapper error />;
   }
-  if (isLoading) {
+
+  if (!databases && isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  return databases.length ? (
+  return databases?.length ? (
     <DatabaseGrid data-testid="database-browser">
       {databases.map(database => (
-        <DatabaseGridItem key={database.id}>
-          <Link to={Urls.browseDatabase(database)}>
+        <div key={database.id}>
+          <DatabaseCardLink to={Urls.browseDatabase(database)}>
             <DatabaseCard>
               <Icon
                 name="database"
                 color={color("accent2")}
-                className="mb3"
+                className={CS.mb3}
                 size={32}
               />
-              <h3 className="text-wrap">{database.name}</h3>
+              <Title order={2} size="1rem" lh="1rem" color="inherit">
+                {database.name}
+              </Title>
             </DatabaseCard>
-          </Link>
-        </DatabaseGridItem>
+          </DatabaseCardLink>
+        </div>
       ))}
     </DatabaseGrid>
   ) : (

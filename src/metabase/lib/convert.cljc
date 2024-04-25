@@ -3,20 +3,21 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
-   [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   #?@(:clj ([metabase.util.log :as log])))
   #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
 
 (def ^:private ^:dynamic *pMBQL-uuid->legacy-index*
@@ -48,25 +49,29 @@
   #{:aggregation :breakout :expressions :fields :filters :order-by :joins})
 
 (defn- clean-stage-schema-errors [almost-stage]
-  (loop [almost-stage almost-stage
-         removals []]
-    (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/stage.mbql almost-stage)
-                                              :errors
-                                              (filter (comp stage-keys first :in))
-                                              (map (juxt :type :in))
-                                              first)]
-      (let [new-stage (clean-location almost-stage error-type error-location)]
-        (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"
-                   (u/colorize :yellow (pr-str error-location))
-                   (u/colorize :yellow (pr-str (or error-type
-                                                   ;; if `error-type` is missing, which seems to happen sometimes,
-                                                   ;; fall back to humanizing the entire error.
-                                                   (me/humanize (mc/explain ::lib.schema/stage.mbql almost-stage)))))
-                   (u/colorize :red (u/pprint-to-str (first (data/diff almost-stage new-stage)))))
-        (if (= new-stage almost-stage)
-          almost-stage
-          (recur new-stage (conj removals [error-type error-location]))))
-      almost-stage)))
+  (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+    (loop [almost-stage almost-stage
+           removals []]
+      (if-let [[error-type error-location] (->> (mr/explain ::lib.schema/stage.mbql almost-stage)
+                                                :errors
+                                                (filter (comp stage-keys first :in))
+                                                (map (juxt :type :in))
+                                                first)]
+        (let [new-stage  (clean-location almost-stage error-type error-location)
+              error-desc (pr-str (or error-type
+                                     ;; if `error-type` is missing, which seems to happen sometimes,
+                                     ;; fall back to humanizing the entire error.
+                                     (me/humanize (mr/explain ::lib.schema/stage.mbql almost-stage))))]
+          #?(:cljs (js/console.warn "Clean: Removing bad clause due to error!" error-location error-desc
+                                    (u/pprint-to-str (first (data/diff almost-stage new-stage))))
+             :clj  (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"
+                              (u/colorize :yellow (pr-str error-location))
+                              (u/colorize :yellow error-desc)
+                              (u/colorize :red (u/pprint-to-str (first (data/diff almost-stage new-stage))))))
+          (if (= new-stage almost-stage)
+            almost-stage
+            (recur new-stage (conj removals [error-type error-location]))))
+        almost-stage))))
 
 (defn- clean-stage-ref-errors [almost-stage]
   (reduce (fn [almost-stage [loc _]]
@@ -217,6 +222,7 @@
     (-> (lib.util/pipeline m)
         (update :stages (fn [stages]
                           (mapv ->pMBQL stages)))
+        lib.normalize/normalize
         (assoc :lib.convert/converted? true)
         clean)
     (update-vals m ->pMBQL)))
@@ -232,7 +238,7 @@
   [[_tag value opts]]
   ;; `:value` uses `:snake_case` keys in legacy MBQL for some insane reason (actually this was to match the shape of
   ;; the keys in Field metadata), at least for the three type keys enumerated below.
-  ;; See [[metabase.mbql.schema/ValueTypeInfo]].
+  ;; See [[metabase.legacy-mbql.schema/ValueTypeInfo]].
   (let [opts (set/rename-keys opts {:base_type     :base-type
                                     :semantic_type :semantic-type
                                     :database_type :database-type})
@@ -276,9 +282,13 @@
   (let [[tag opts & args] (->pMBQL aggregation)]
     (into [tag (merge opts options)] args)))
 
+(defmethod ->pMBQL :time-interval
+  [[_tag field n unit options]]
+  (lib.options/ensure-uuid [:time-interval (or options {}) (->pMBQL field) n unit]))
+
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
-  like [[metabase.mbql.normalize/normalize]], and then probably to [[->pMBQL]]."
+  like [[metabase.legacy-mbql.normalize/normalize]], and then probably to [[->pMBQL]]."
   [database-id inner-query]
   (merge {:database database-id, :type :query}
          (if (:native inner-query)
@@ -378,7 +388,7 @@
               (map ->legacy-MBQL))
         (:columns stage-metadata)))
 
-(defn- chain-stages [{:keys [stages]}]
+(mu/defn ^:private chain-stages [{:keys [stages]} :- [:map [:stages [:sequential :map]]]]
   ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
   ;; In legacy, an inner query might have both :source-query, and :source-metadata giving the metadata for that nested
   ;; :source-query.
@@ -407,16 +417,17 @@
 (defmethod ->legacy-MBQL :aggregation [[_ opts agg-uuid :as ag]]
   (if (map? opts)
     (try
-      (let [opts (options->legacy-MBQL opts)
+      (let [opts     (options->legacy-MBQL opts)
             base-agg [:aggregation (get-or-throw! *pMBQL-uuid->legacy-index* agg-uuid)]]
         (if (seq opts)
-          [:aggregation-options base-agg opts]
+          (conj base-agg opts)
           base-agg))
       (catch #?(:clj Throwable :cljs :default) e
         (throw (ex-info (lib.util/format "Error converting aggregation reference to pMBQL: %s" (ex-message e))
                         {:ref ag}
                         e))))
-    ;; Our conversion is a bit too aggressive and we're hitting legacy refs like [:aggregation 0] inside source_metadata that are only used for legacy and thus can be ignored
+    ;; Our conversion is a bit too aggressive and we're hitting legacy refs like [:aggregation 0] inside
+    ;; source_metadata that are only used for legacy and thus can be ignored
     ag))
 
 (defmethod ->legacy-MBQL :dispatch-type/sequential [xs]
@@ -484,9 +495,11 @@
                                                         (for [expression expressions
                                                               :let [legacy-clause (->legacy-MBQL expression)]]
                                                           [(lib.util/expression-name expression)
-                                                           ;; We wrap literals in :value ->pMBQL
-                                                           ;; so unwrap this direction
-                                                           (if (= :value (first legacy-clause))
+                                                           ;; We wrap literals in :value ->pMBQL so unwrap this
+                                                           ;; direction. Also, `:aggregation-options` is not allowed
+                                                           ;; inside `:expressions` in legacy, we'll just have to toss
+                                                           ;; the extra info.
+                                                           (if (#{:value :aggregation-options} (first legacy-clause))
                                                              (second legacy-clause)
                                                              legacy-clause)]))))
                 (update-list->legacy-boolean-expression :filters :filter))
@@ -505,9 +518,7 @@
           query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
                         :native
                         :query)]
-      (merge (-> base
-                 (dissoc :stages :parameters :lib.convert/converted?)
-                 (update-vals ->legacy-MBQL))
+      (merge (dissoc base :stages :parameters :lib.convert/converted?)
              (cond-> {:type query-type query-type inner-query}
                (seq parameters) (assoc :parameters parameters))))
     (catch #?(:clj Throwable :cljs :default) e

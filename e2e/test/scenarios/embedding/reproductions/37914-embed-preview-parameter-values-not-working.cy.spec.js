@@ -1,12 +1,13 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  visitDashboard,
   addOrUpdateDashboardCard,
   dashboardHeader,
+  getIframeBody,
   modal,
+  popover,
+  restore,
+  visitDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -52,7 +53,10 @@ const dashboardDetails = {
 
 describe("issue 37914", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/embed/dashboard/**").as("getEmbed");
+    cy.intercept("GET", "/api/preview_embed/dashboard/**").as(
+      "previewDashboard",
+    );
+    cy.intercept("GET", "/api/dashboard/**/params/**/values").as("values");
 
     restore();
     cy.signInAsAdmin();
@@ -115,13 +119,14 @@ describe("issue 37914", () => {
       cy.findByText("Preview").click();
 
       // Makes it less likely to flake.
-      cy.wait("@getEmbed");
+      cy.wait("@previewDashboard");
 
       getIframeBody().within(() => {
         cy.log(
           "Set filter 2 value, so filter 1 should be filtered by filter 2",
         );
         cy.button(filter2.name).click();
+        cy.wait("@values");
         popover().within(() => {
           cy.findByText("Gadget").should("be.visible");
           cy.findByText("Gizmo").should("be.visible");
@@ -142,32 +147,3 @@ describe("issue 37914", () => {
     });
   });
 });
-
-// Code grabbed from https://www.cypress.io/blog/2020/02/12/working-with-iframes-in-cypress
-const getIframeDocument = () => {
-  return (
-    cy
-      .get("iframe")
-      // Cypress yields jQuery element, which has the real
-      // DOM element under property "0".
-      // From the real DOM iframe element we can get
-      // the "document" element, it is stored in "contentDocument" property
-      // Cypress "its" command can access deep properties using dot notation
-      // https://on.cypress.io/its
-      .its("0.contentDocument")
-      .should("exist")
-  );
-};
-
-const getIframeBody = () => {
-  // get the document
-  return (
-    getIframeDocument()
-      // automatically retries until body is loaded
-      .its("body")
-      .should("not.be.undefined")
-      // wraps "body" DOM element to allow
-      // chaining more Cypress commands, like ".find(...)"
-      .then(cy.wrap)
-  );
-};

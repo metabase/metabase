@@ -1,22 +1,20 @@
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 import _ from "underscore";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
 
 import { DATE_OPERATORS } from "metabase/admin/datamodel/components/filters/pickers/DatePicker/DatePicker";
 import { EXCLUDE_OPERATORS } from "metabase/admin/datamodel/components/filters/pickers/DatePicker/ExcludeDatePicker";
-import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
 import {
   DATE_MBQL_FILTER_MAPPING,
   PARAMETER_OPERATOR_TYPES,
-} from "metabase-lib/parameters/constants";
+} from "metabase-lib/v1/parameters/constants";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { dateParameterValueToMBQL } from "metabase-lib/v1/parameters/utils/mbql";
 import {
   generateTimeFilterValuesDescriptions,
   getRelativeDatetimeInterval,
   getStartingFrom,
-} from "metabase-lib/queries/utils/query-time";
-
-import type { UiParameter } from "metabase-lib/parameters/types";
+} from "metabase-lib/v1/queries/utils/query-time";
 
 // Use a placeholder value as field references are not used in dashboard filters
 const noopRef = null;

@@ -1,6 +1,5 @@
-import { modal, popover, restore, visitCollection } from "e2e/support/helpers";
-
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { modal, popover, restore, visitCollection } from "e2e/support/helpers";
 
 const modelName = "A name";
 
@@ -28,9 +27,10 @@ describe("scenarios > models > create", () => {
 
     cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+    cy.wait("@dataset");
 
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
     cy.findByPlaceholderText("What is the name of your model?").type(modelName);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -48,12 +48,17 @@ describe("scenarios > models > create", () => {
 
     navigateToNewModelPage();
     cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+    cy.wait("@dataset");
 
     cy.findByTestId("dataset-edit-bar").within(() => {
       cy.contains("button", "Save").click();
     });
-    modal().within(() => {
-      cy.findByTestId("select-button").should("have.text", "Third collection");
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByLabelText(/Which collection should this go in/).should(
+        "have.text",
+        "Third collection",
+      );
     });
   });
 
@@ -71,8 +76,11 @@ describe("scenarios > models > create", () => {
       cy.contains("button", "Save").click();
     });
 
-    modal().within(() => {
-      cy.findByTestId("select-button").should("have.text", "Third collection");
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByLabelText(/Which collection should this go in/).should(
+        "have.text",
+        "Third collection",
+      );
     });
   });
 });

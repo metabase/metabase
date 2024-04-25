@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { Stack } from "metabase/ui";
 
 export const EmptyStateContainer = styled.div`

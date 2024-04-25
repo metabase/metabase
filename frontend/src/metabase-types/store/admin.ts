@@ -12,7 +12,8 @@ export type AdminPathKey =
   | "permissions"
   | "troubleshooting"
   | "audit"
-  | "tools";
+  | "tools"
+  | "performance";
 
 export type AdminPath = {
   key: AdminPathKey;

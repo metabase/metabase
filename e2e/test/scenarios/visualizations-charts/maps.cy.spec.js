@@ -1,12 +1,11 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
   visitQuestionAdhoc,
   openNativeEditor,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -77,9 +76,7 @@ describe("scenarios > visualizations > maps", () => {
       { visitQuestion: true },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").closest(".Button").as("vizButton");
-    cy.get("@vizButton").click();
+    cy.button("Visualization").click();
     cy.findByTestId("display-options-sensible").as("sensibleOptions");
 
     cy.get("@sensibleOptions").within(() => {
@@ -251,9 +248,9 @@ describe("scenarios > visualizations > maps", () => {
       .click();
 
     cy.findByTestId("visualization-root")
-      .trigger("mousedown", 500, 500)
-      .trigger("mousemove", 600, 600)
-      .trigger("mouseup", 600, 600);
+      .realMouseDown(500, 500)
+      .realMouseMove(600, 600)
+      .realMouseUp(600, 600);
 
     cy.wait("@dataset");
 

@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import { Select } from "metabase/ui";
+
 import { checkNotNull } from "metabase/lib/types";
+import { Select } from "metabase/ui";
 
 type Option<T> = {
   name: string;

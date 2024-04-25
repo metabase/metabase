@@ -9,11 +9,12 @@ import {
   getFilteringParameterValuesMap,
   getDashboardUiParameters,
 } from "metabase/parameters/utils/dashboards";
+import Question from "metabase-lib/v1/Question";
+import Field from "metabase-lib/v1/metadata/Field";
 import {
   createSampleDatabase,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
-import Field from "metabase-lib/metadata/Field";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -675,7 +676,20 @@ describe("metabase/parameters/utils/dashboards", () => {
     };
 
     it("should return a list of UiParameter objects from the given dashboard", () => {
-      expect(getDashboardUiParameters(dashboard, metadata)).toEqual([
+      const questions = Object.fromEntries(
+        dashboard.dashcards.map(dashcard => {
+          return [dashcard.id, new Question(dashcard.card, metadata)];
+        }),
+      );
+
+      expect(
+        getDashboardUiParameters(
+          dashboard.dashcards,
+          dashboard.parameters,
+          metadata,
+          questions,
+        ),
+      ).toEqual([
         {
           id: "a",
           slug: "slug-a",

@@ -1,20 +1,18 @@
 import { useState } from "react";
 import { t } from "ttag";
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
+
 import { Text } from "metabase/ui";
+import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
+
 import { SettingInputBlurChange } from "./LandingPageWidget.styled";
 import { getRelativeLandingPageUrl } from "./utils";
 
 interface Props {
   settingValues: EnterpriseSettings;
-  onChange: (value: string) => void;
-  onChangeSetting: (
-    key: "landing-page",
-    value: EnterpriseSettings["landing-page"],
-  ) => Promise<void>;
+  onChange: (value: EnterpriseSettings["landing-page"]) => Promise<void>;
 }
 
-export function LandingPageWidget({ onChangeSetting, settingValues }: Props) {
+export function LandingPageWidget({ onChange, settingValues }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const normalize = (value: string | number | null) => {
@@ -32,7 +30,7 @@ export function LandingPageWidget({ onChangeSetting, settingValues }: Props) {
     } else {
       setError(null);
       try {
-        await onChangeSetting("landing-page", relativeUrl);
+        await onChange(relativeUrl);
       } catch (e: any) {
         setError(e?.data?.message || t`Something went wrong`);
       }

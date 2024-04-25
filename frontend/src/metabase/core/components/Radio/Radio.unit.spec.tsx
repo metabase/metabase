@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import Radio from "./Radio";
 
 describe("Radio", () => {
@@ -9,9 +10,9 @@ describe("Radio", () => {
     { name: "Bar", value: "B" },
   ];
 
-  it("should receive focus on tab", () => {
+  it("should receive focus on tab", async () => {
     render(<Radio options={options} />);
-    userEvent.tab();
+    await userEvent.tab();
 
     expect(screen.getByLabelText("Line")).toHaveFocus();
   });

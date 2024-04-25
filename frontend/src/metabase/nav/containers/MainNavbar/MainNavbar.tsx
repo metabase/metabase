@@ -1,32 +1,28 @@
+import type { LocationDescriptor } from "history";
 import { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
-import type { LocationDescriptor } from "history";
 
-import * as Urls from "metabase/lib/urls";
-
-import { closeNavbar, openNavbar } from "metabase/redux/app";
-
+import { useQuestionQuery } from "metabase/common/hooks";
 import { getDashboard } from "metabase/dashboard/selectors";
-
+import * as Urls from "metabase/lib/urls";
+import { closeNavbar, openNavbar } from "metabase/redux/app";
+import type Question from "metabase-lib/v1/Question";
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import { useQuestionQuery } from "metabase/common/hooks";
-import type Question from "metabase-lib/Question";
 
+import { NavRoot, Sidebar } from "./MainNavbar.styled";
 import MainNavbarContainer from "./MainNavbarContainer";
-
+import getSelectedItems, {
+  isModelPath,
+  isQuestionPath,
+} from "./getSelectedItems";
 import type {
   MainNavbarOwnProps,
   MainNavbarDispatchProps,
   SelectedItem,
 } from "./types";
-import getSelectedItems, {
-  isModelPath,
-  isQuestionPath,
-} from "./getSelectedItems";
-import { NavRoot, Sidebar } from "./MainNavbar.styled";
 
 interface EntityLoaderProps {
   question?: Question;
@@ -108,10 +104,10 @@ function MainNavbar({
 
   return (
     <Sidebar
-      className="Nav"
       isOpen={isOpen}
       aria-hidden={!isOpen}
       data-testid="main-navbar-root"
+      data-element-id="navbar-root"
     >
       <NavRoot isOpen={isOpen}>
         <MainNavbarContainer

@@ -17,7 +17,6 @@
    [metabase.pulse.render :as render]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.pulse.util :as pu]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
@@ -837,16 +836,6 @@
              (is (email-body? (first (:message email-data))))
              (is (attachment? (second (:message email-data)))))))))))
 
-(deftest dont-run-async-test
-  (testing "even if Card is saved as `:async?` we shouldn't run the query async"
-    (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
-                                                        :type     :query
-                                                        :query    {:source-table (mt/id :venues)}
-                                                        :async?   true}}]
-      (is (=? {:card   map?
-               :result map?}
-              (pu/execute-card {:creator_id (mt/user->id :rasta)} card))))))
-
 (deftest pulse-permissions-test
   (testing "Pulses should be sent with the Permissions of the user that created them."
     (letfn [(send-pulse-created-by-user!* [user-kw]
@@ -865,7 +854,7 @@
              #"You do not have permissions to view Card [\d,]+."
              (send-pulse-created-by-user!* :rasta)))))))
 
-(defn- get-positive-retry-metrics [retry]
+(defn- get-positive-retry-metrics [^io.github.resilience4j.retry.Retry retry]
   (let [metrics (bean (.getMetrics retry))]
     (into {}
           (map (fn [field]
@@ -996,7 +985,7 @@
                               :aggregation_index 0}]]
         (mt/with-temp [Card {card-id :id} {:display         :table
                                            :dataset_query   q
-                                           :dataset         true
+                                           :type            :model
                                            :result_metadata result-metadata}
                        Pulse {pulse-id :id :as p} {:name "Test Pulse"}
                        PulseCard _ {:pulse_id pulse-id

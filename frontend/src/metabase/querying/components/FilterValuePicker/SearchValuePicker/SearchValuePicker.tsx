@@ -1,11 +1,15 @@
 import { useMemo, useState } from "react";
-import { useAsync, useDebounce } from "react-use";
+import { useDebounce } from "react-use";
 import { t } from "ttag";
+
+import { useSearchFieldValuesQuery } from "metabase/api";
+import { MultiAutocomplete } from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
-import { MultiSelect } from "metabase/ui";
-import { getEffectiveOptions } from "../utils";
-import { SEARCH_DEBOUNCE } from "./constants";
-import { shouldSearch, getSearchValues } from "./utils";
+
+import { getFieldOptions } from "../utils";
+
+import { SEARCH_DEBOUNCE, SEARCH_LIMIT } from "./constants";
+import { shouldSearch } from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
@@ -13,7 +17,7 @@ interface SearchValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
-  nothingFound?: string;
+  shouldCreate: (query: string) => boolean;
   autoFocus?: boolean;
   onChange: (newValues: string[]) => void;
 }
@@ -24,22 +28,26 @@ export function SearchValuePicker({
   fieldValues: initialFieldValues,
   selectedValues,
   placeholder,
-  nothingFound,
+  shouldCreate,
   autoFocus,
   onChange,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
 
-  const { value: fieldValues = initialFieldValues, loading } = useAsync(
-    () => getSearchValues(fieldId, searchFieldId, searchQuery),
-    [fieldId, searchFieldId, searchQuery],
+  const { data: fieldValues = initialFieldValues } = useSearchFieldValuesQuery(
+    {
+      fieldId,
+      searchFieldId,
+      value: searchQuery,
+      limit: SEARCH_LIMIT,
+    },
+    {
+      skip: !searchQuery,
+    },
   );
 
-  const options = useMemo(
-    () => getEffectiveOptions(fieldValues, selectedValues),
-    [fieldValues, selectedValues],
-  );
+  const options = useMemo(() => getFieldOptions(fieldValues), [fieldValues]);
 
   const handleSearchChange = (newSearchValue: string) => {
     setSearchValue(newSearchValue);
@@ -54,19 +62,18 @@ export function SearchValuePicker({
     }
   };
 
-  const isSearched = searchQuery.length > 0 && !loading;
   useDebounce(handleSearchTimeout, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
-    <MultiSelect
+    <MultiAutocomplete
       data={options}
       value={selectedValues}
       searchValue={searchValue}
       placeholder={placeholder}
-      nothingFound={isSearched ? nothingFound : null}
       searchable
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
+      shouldCreate={shouldCreate}
       onChange={onChange}
       onSearchChange={handleSearchChange}
     />

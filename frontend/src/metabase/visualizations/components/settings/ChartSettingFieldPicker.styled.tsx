@@ -1,9 +1,11 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+
+import Triggerable from "metabase/components/Triggerable";
 import Button from "metabase/core/components/Button";
 import SelectButton from "metabase/core/components/SelectButton";
-import Triggerable from "metabase/components/Triggerable";
+import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
+
 import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
 
 interface ChartSettingFieldPickerRootProps {

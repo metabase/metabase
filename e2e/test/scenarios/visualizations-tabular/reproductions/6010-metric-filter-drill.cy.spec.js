@@ -1,5 +1,5 @@
-import { restore, popover, visitQuestion } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, popover, visitQuestion } from "e2e/support/helpers";
 import { createMetric as apiCreateMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

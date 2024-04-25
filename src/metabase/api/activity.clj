@@ -4,7 +4,7 @@
    [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.query :as mdb.query]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
@@ -21,21 +21,23 @@
    (case model
      "card"      [Card
                   :id :name :collection_id :description :display
-                  :dataset_query :dataset :archived
-                  :collection.authority_level]
+                  :dataset_query :type :archived
+                  :collection.authority_level [:collection.name :collection_name]]
      "dashboard" [Dashboard
                   :id :name :collection_id :description
                   :archived
-                  :collection.authority_level]
+                  :collection.authority_level [:collection.name :collection_name]]
      "table"     [Table
                   :id :name :db_id
                   :display_name :initial_sync_status
-                  :visibility_type])
+                  :visibility_type [:metabase_database.name :database_name]])
    (let [model-symb (symbol (str/capitalize model))
-         self-qualify #(mdb.u/qualify model-symb %)]
+         self-qualify #(mdb.query/qualify model-symb %)]
      (cond-> {:where [:in (self-qualify :id) ids]}
        (not= model "table")
-       (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})))))
+       (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})
+       (= model "table")
+       (merge {:left-join [:metabase_database [:= :metabase_database.id (self-qualify :db_id)]]})))))
 
 (defn- select-items! [model ids]
   (when (seq ids)
@@ -78,7 +80,7 @@
                                               [:%max.timestamp :max_ts]]
                                              {:group-by  [:model :model_id]
                                               :where     [:and
-                                                          (when-not all-users? [:= (mdb.u/qualify ViewLog :user_id) *current-user-id*])
+                                                          (when-not all-users? [:= (mdb.query/qualify ViewLog :user_id) *current-user-id*])
                                                           [:in :model #{"dashboard" "table"}]
                                                           [:= :bm.id nil]]
                                               :order-by  [[:max_ts :desc] [:model :desc]]
@@ -90,10 +92,10 @@
                                                            [:= :model_id :bm.dashboard_id]]]})
         card-runs                 (->> (t2/select [QueryExecution
                                                    [:%min.executor_id :user_id]
-                                                   [(mdb.u/qualify QueryExecution :card_id) :model_id]
+                                                   [(mdb.query/qualify QueryExecution :card_id) :model_id]
                                                    [:%count.* :cnt]
                                                    [:%max.started_at :max_ts]]
-                                                  {:group-by [(mdb.u/qualify QueryExecution :card_id) :context]
+                                                  {:group-by [(mdb.query/qualify QueryExecution :card_id) :context]
                                                    :where    [:and
                                                               (when-not all-users? [:= :executor_id *current-user-id*])
                                                               [:= :context (h2x/literal :question)]
@@ -103,7 +105,7 @@
                                                    :left-join [[:card_bookmark :bm]
                                                                [:and
                                                                 [:= :bm.user_id *current-user-id*]
-                                                                [:= (mdb.u/qualify QueryExecution :card_id) :bm.card_id]]]})
+                                                                [:= (mdb.query/qualify QueryExecution :card_id) :bm.card_id]]]})
                                        (map #(dissoc % :row_count))
                                        (map #(assoc % :model "card")))]
     (->> (concat card-runs dashboard-and-table-views)
@@ -129,7 +131,7 @@
                     (not (or (:archived model-object)
                              (= (:visibility_type model-object) :hidden))))]
            (cond-> (assoc view-log :model_object model-object)
-             (:dataset model-object) (assoc :model "dataset")))
+             (= (keyword (:type model-object)) :model) (assoc :model "dataset")))
          (take 5))))
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
@@ -187,8 +189,8 @@
 (defn- order-items
   [items]
   (when (seq items)
-      (let [groups (group-by :model items)]
-        (mapcat #(get groups %) model-precedence))))
+    (let [groups (group-by :model items)]
+      (mapcat #(get groups %) model-precedence))))
 
 (api/defendpoint GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
@@ -209,7 +211,7 @@
                                         (not (or (:archived model-object)
                                                  (= (:visibility_type model-object) :hidden))))]
                          (cond-> (assoc view-log :model_object model-object)
-                           (:dataset model-object) (assoc :model "dataset")))
+                           (= (keyword (:type model-object)) :model) (assoc :model "dataset")))
         scored-views (score-items filtered-views)]
     (->> scored-views
          (sort-by :score)

@@ -9,10 +9,17 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.mongo.operators :refer [$add $addToSet $and $avg $concat $cond
+                                            $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
+                                            $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min
+                                            $minute $mod $month $multiply $ne $not $or $project $regexMatch $second
+                                            $size $skip $sort $strcasecmp $subtract $sum $toLower $unwind $year]]
    [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
@@ -24,13 +31,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [monger.operators :refer [$add $addToSet $and $avg $concat $cond
-                             $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
-                             $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min $minute
-                             $mod $month $multiply $ne $not $or $project $regexMatch $second $size $skip $sort
-                             $strcasecmp $subtract $sum $toLower $unwind $year]])
+   [metabase.util.malli :as mu])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -47,21 +48,21 @@
 (def ^:private $addFields
   :$addFields)
 
-(def ^:private $ProjectStage   [:map-of [:= $project]   [:map-of ms/NonBlankString :any]])
-(def ^:private $SortStage      [:map-of [:= $sort]      [:map-of ms/NonBlankString [:enum -1 1]]])
+(def ^:private $ProjectStage   [:map-of [:= $project]   [:map-of ::lib.schema.common/non-blank-string :any]])
+(def ^:private $SortStage      [:map-of [:= $sort]      [:map-of ::lib.schema.common/non-blank-string [:enum -1 1]]])
 (def ^:private $MatchStage     [:map-of [:= $match]     [:map-of
                                                          [:and
-                                                          [:or ms/NonBlankString :keyword]
+                                                          [:or ::lib.schema.common/non-blank-string :keyword]
                                                           [:fn
                                                            {:error/message "not a $not condition"}
                                                            (complement #{:$not "$not"})]]
                                                          :any]])
-(def ^:private $GroupStage     [:map-of [:= $group]     [:map-of ms/NonBlankString :any]])
-(def ^:private $AddFieldsStage [:map-of [:= $addFields] [:map-of ms/NonBlankString :any]])
-(def ^:private $LookupStage    [:map-of [:= $lookup]    [:map-of ms/KeywordOrString :any]])
-(def ^:private $UnwindStage    [:map-of [:= $unwind]    [:map-of ms/KeywordOrString :any]])
-(def ^:private $LimitStage     [:map-of [:= $limit]     ms/PositiveInt])
-(def ^:private $SkipStage      [:map-of [:= $skip]      ms/PositiveInt])
+(def ^:private $GroupStage     [:map-of [:= $group]     [:map-of ::lib.schema.common/non-blank-string :any]])
+(def ^:private $AddFieldsStage [:map-of [:= $addFields] [:map-of ::lib.schema.common/non-blank-string :any]])
+(def ^:private $LookupStage    [:map-of [:= $lookup]    [:map-of [:or :keyword :string] :any]])
+(def ^:private $UnwindStage    [:map-of [:= $unwind]    [:map-of [:or :keyword :string] :any]])
+(def ^:private $LimitStage     [:map-of [:= $limit]     pos-int?])
+(def ^:private $SkipStage      [:map-of [:= $skip]      pos-int?])
 
 (def ^:private Stage
   [:and
@@ -885,7 +886,7 @@
   "Rename :join-alias properties fields to ::join-local.
   See [[find-mapped-field-name]] for an explanation why this is done."
   [expr alias]
-  (mbql.u/replace expr
+  (lib.util.match/replace expr
     [:field _ {:join-alias alias}]
     (update &match 2 set/rename-keys {:join-alias ::join-local})))
 
@@ -916,7 +917,7 @@
         source-field-mappings (get-field-mappings source-query projections)
         ;; Find the fields the join condition refers to that are not coming from the joined query.
         ;; These have to be bound in the :let property of the $lookup stage, they cannot be referred to directly.
-        own-fields (mbql.u/match condition
+        own-fields (lib.util.match/match condition
                      [:field _ (_ :guard #(not= (:join-alias %) alias))])
         ;; Map the own fields to a fresh alias and to its rvalue.
         mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
@@ -961,7 +962,7 @@
              :default  (->rvalue (:default options))}})
 
 (defn- aggregation->rvalue [ag]
-  (mbql.u/match-one ag
+  (lib.util.match/match-one ag
     [:aggregation-options ag' _]
     (recur ag')
 
@@ -1003,7 +1004,7 @@
   (or (get-in field [2 ::add/desired-alias])
       (->lvalue field)))
 
-(mu/defn ^:private breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple ms/NonBlankString :any]]]
+(mu/defn ^:private breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple ::lib.schema.common/non-blank-string :any]]]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
   `[projected-field-name source]`."
   [breakout-fields aggregations]
@@ -1179,7 +1180,7 @@
    (fn [m field-clause]
      (assoc-in
       m
-      (mbql.u/match-one field-clause
+      (lib.util.match/match-one field-clause
         [:field (field-id :guard integer?) _]
         (str/split (field-alias field-clause) #"\.")
 
@@ -1230,7 +1231,7 @@
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
 (mu/defn ^:private order-by->$sort :- $SortStage
-  [order-by :- [:sequential mbql.s/OrderBy]]
+  [order-by :- [:sequential ::mbql.s/OrderBy]]
   {$sort (into
           (ordered-map/ordered-map)
           (for [[direction field] order-by]
@@ -1348,7 +1349,7 @@
 (defn- query->collection-name
   "Return `:collection` from a source query, if it exists."
   [query]
-  (mbql.u/match-one query
+  (lib.util.match/match-one query
     (_ :guard (every-pred map? :collection))
     ;; ignore source queries inside `:joins` or `:collection` outside of a `:source-query`
     (when (let [parents (set &parents)]
@@ -1370,7 +1371,15 @@
   "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
   [^String s]
   (try
-    (mapv (fn [^org.bson.BsonValue v] (-> v .asDocument com.mongodb.BasicDBObject.))
+    ;; TODO: Fixme! In following expression we were previously creating BasicDBObject's. As part of Monger removal
+    ;;       in favor of plain mongo-java-driver we now create Documents. I believe following conversion was and is
+    ;;       responsible for https://github.com/metabase/metabase/issues/38181. When pipeline is deserialized,
+    ;;       we end up with vector of `Document`s into which are appended new query stages, which are clojure
+    ;;       structures. When we render the query in "view native query" in query builder, clojure structures
+    ;;       are transformed to json correctly. But documents are rendered to their string representation (screenshot
+    ;;       in the issue). Possible fix could be to represent native queries in ejson v2, which conforms to json rfc,
+    ;;       hence there would be no need for special bson values handling. That is to be further investigated.
+    (mapv (fn [^org.bson.BsonValue v] (-> v .asDocument org.bson.Document.))
           (org.bson.BsonArray/parse s))
     (catch Throwable e
       (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))

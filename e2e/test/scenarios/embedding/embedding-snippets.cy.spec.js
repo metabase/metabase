@@ -1,4 +1,8 @@
 import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   popover,
   visitDashboard,
@@ -7,10 +11,6 @@ import {
   openStaticEmbeddingModal,
   modal,
 } from "e2e/support/helpers";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 import { getEmbeddingJsCode, IFRAME_CODE } from "./shared/embedding-snippets";
 
@@ -26,7 +26,6 @@ features.forEach(feature => {
 
     it("dashboard should have the correct embed snippet", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
-      console.log("feature", feature);
       openStaticEmbeddingModal({ acceptTerms: false });
 
       modal().within(() => {
@@ -96,7 +95,6 @@ features.forEach(feature => {
 
     it("question should have the correct embed snippet", () => {
       visitQuestion(ORDERS_QUESTION_ID);
-      console.log("feature", feature);
       openStaticEmbeddingModal({ acceptTerms: false });
 
       modal().within(() => {

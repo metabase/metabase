@@ -1,4 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
+import Question from "metabase-lib/v1/Question";
+import Segment from "metabase-lib/v1/metadata/Segment";
+import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import {
   createMockDatabase,
   createMockMetric,
@@ -20,12 +23,8 @@ import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
-  PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import Segment from "metabase-lib/metadata/Segment";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Question from "metabase-lib/Question";
 
 const ANOTHER_DB_ID = SAMPLE_DB_ID + 1;
 
@@ -59,8 +58,6 @@ const metadata = createMockMetadata({
 });
 
 const ordersTable = metadata.table(ORDERS_ID);
-
-const ordersIdField = ["field", ORDERS.ID, { "base-type": "type/BigInteger" }];
 
 function makeDatasetQuery(query = {}) {
   return {
@@ -193,27 +190,6 @@ const processAggregationOperator = operator =>
 
 const query = makeQuery({});
 
-describe("StructuredQuery behavioral tests", () => {
-  it("is able to filter by field which is already used for the query breakout", () => {
-    const breakoutDimensionOptions = query.breakoutOptions().dimensions;
-    const breakoutDimension = breakoutDimensionOptions.find(
-      d => d.field().id === ORDERS.TOTAL,
-    );
-
-    expect(breakoutDimension).toBeDefined();
-
-    const queryWithBreakout = query.breakout(breakoutDimension.mbql());
-
-    const filterDimensionOptions =
-      queryWithBreakout.filterDimensionOptions().dimensions;
-    const filterDimension = filterDimensionOptions.find(
-      d => d.field().id === ORDERS.TOTAL,
-    );
-
-    expect(filterDimension).toBeDefined();
-  });
-});
-
 describe("StructuredQuery", () => {
   describe("DB METADATA METHODS", () => {
     describe("tables", () => {
@@ -239,73 +215,14 @@ describe("StructuredQuery", () => {
         expect(query._database().id).toBe(SAMPLE_DB_ID);
       });
     });
-    describe("engine", () => {
-      it("identifies the engine of a query", () => {
-        // This is a magic constant and we should probably pull this up into an enum
-        expect(query.engine()).toBe("H2");
-      });
-    });
-    describe("dependentMetadata", () => {
-      it("should include db schemas and source table with foreignTables = true", () => {
-        expect(query.dependentMetadata()).toEqual([
-          { type: "schema", id: SAMPLE_DB_ID },
-          { type: "table", id: ORDERS_ID, foreignTables: true },
-        ]);
-      });
-
-      it("should include db schemas and source table for nested queries with foreignTables = true", () => {
-        expect(query.nest().dependentMetadata()).toEqual([
-          { type: "schema", id: SAMPLE_DB_ID },
-          { type: "table", id: ORDERS_ID, foreignTables: true },
-        ]);
-      });
-
-      it("should include db schemas and joined tables with foreignTables = false", () => {
-        expect(
-          query
-            .join({
-              alias: "x",
-              "source-table": PRODUCTS_ID,
-            })
-            .dependentMetadata(),
-        ).toEqual([
-          { type: "schema", id: SAMPLE_DB_ID },
-          { type: "table", id: ORDERS_ID, foreignTables: true },
-          { type: "table", id: PRODUCTS_ID, foreignTables: false },
-        ]);
-      });
-
-      describe("when the query is missing a database", () => {
-        it("should not include db schemas in dependent  metadata", () => {
-          const dependentMetadata = query
-            .setDatabaseId(null)
-            .dependentMetadata();
-
-          expect(dependentMetadata.some(({ type }) => type === "schema")).toBe(
-            false,
-          );
-        });
-      });
-    });
   });
 
   describe("SIMPLE QUERY MANIPULATION METHODS", () => {
-    describe("reset", () => {
-      it("Expect a reset query to not have a selected database", () => {
-        expect(query.reset()._database()).toBe(null);
-      });
-    });
     describe("query", () => {
       it("returns the wrapper for the query dictionary", () => {
         expect(
           query.legacyQuery({ useStructuredQuery: true })["source-table"],
         ).toBe(ORDERS_ID);
-      });
-    });
-    describe("setDatabase", () => {
-      it("allows you to set a new database", () => {
-        const db = metadata.database(ANOTHER_DB_ID);
-        expect(query.setDatabase(db)._database().id).toBe(db.id);
       });
     });
     describe("_sourceTableId", () => {
@@ -464,36 +381,6 @@ describe("StructuredQuery", () => {
           ).toEqual(["rows", "count", "distinct", "cum-count", "min", "max"]);
         });
 
-        it('shows "avg" aggregation when having a numeric custom field', () => {
-          const query = makeQueryWithoutNumericFields().addExpression(
-            "custom_numeric_field",
-            // Expression: case([ID] = 1, 11, 99)
-            ["case", [[["=", ordersIdField, 1], 11]], { default: 99 }],
-          );
-
-          expect(
-            query.aggregationOperators().map(processAggregationOperator),
-          ).not.toEqual(
-            query
-              .table()
-              .aggregationOperators()
-              .map(processAggregationOperator),
-          );
-          expect(query.aggregationOperators().map(getShortName)).toEqual([
-            "rows",
-            "count",
-            "sum",
-            "avg",
-            "median",
-            "distinct",
-            "cum-sum",
-            "cum-count",
-            "stddev",
-            "min",
-            "max",
-          ]);
-        });
-
         it("shows aggregation operators for linked tables fields", () => {
           const queryWithoutNumericFields = makeQueryWithLinkedTable();
           const operators = queryWithoutNumericFields.aggregationOperators();
@@ -532,87 +419,6 @@ describe("StructuredQuery", () => {
 
         expect(query.aggregationOperator(short)).toBeUndefined();
       });
-
-      it("can find `avg` aggregation when having a numeric custom field on table without numeric fields", () => {
-        const query = makeQueryWithoutNumericFields().addExpression(
-          "custom_numeric_field",
-          // Expression: case([ID] = 1, 11, 99)
-          ["case", [[["=", ordersIdField, 1], 11]], { default: 99 }],
-        );
-        const short = "avg";
-
-        expect(query.aggregationOperator(short)).not.toBeUndefined();
-      });
-    });
-  });
-
-  // BREAKOUTS:
-  describe("BREAKOUT METHODS", () => {
-    describe("breakoutOptions", () => {
-      it("returns the correct count of dimensions", () => {
-        expect(query.breakoutOptions().all().length).toBe(30);
-      });
-
-      it("excludes the already used breakouts", () => {
-        const queryWithBreakout = query.breakout(["field", ORDERS.TOTAL, null]);
-        expect(queryWithBreakout.breakoutOptions().all().length).toBe(29);
-      });
-
-      it("excludes the already used fk breakouts", () => {
-        const ordersProductId = metadata.field(ORDERS.PRODUCT_ID);
-        const productsCategory = metadata.field(PRODUCTS.CATEGORY);
-        const queryWithBreakout = query.breakout(
-          ordersProductId.foreign(productsCategory),
-        );
-        expect(queryWithBreakout.breakoutOptions().all().length).toBe(29);
-      });
-
-      it("includes an explicitly provided breakout although it has already been used", () => {
-        const breakout = ["field", ORDERS.TOTAL, null];
-        const queryWithBreakout = query.breakout(breakout);
-        expect(queryWithBreakout.breakoutOptions().all().length).toBe(29);
-        expect(queryWithBreakout.breakoutOptions(breakout).all().length).toBe(
-          30,
-        );
-      });
-    });
-    describe("hasValidBreakout", () => {
-      it("should return false if there are no breakouts", () => {
-        expect(query.hasValidBreakout()).toBe(false);
-      });
-      it("should return true if there is at least one breakout", () => {
-        const ordersProductId = metadata.field(ORDERS.PRODUCT_ID);
-        expect(query.breakout(ordersProductId).hasValidBreakout()).toBe(true);
-      });
-    });
-
-    it("excludes breakout that has the same base dimension as what is already used", () => {
-      const breakout = [
-        "field",
-        ORDERS.CREATED_AT,
-        { "temporal-unit": "month" },
-      ];
-      const queryWithBreakout = query.breakout(breakout);
-      const createdAtBreakoutDimension = queryWithBreakout
-        .breakouts()
-        .map(breakout => breakout.dimension());
-
-      //Ensure dimension added is not present in breakout options
-      expect(queryWithBreakout.breakoutOptions().all()).toEqual(
-        expect.not.arrayContaining(createdAtBreakoutDimension),
-      );
-
-      expect(
-        queryWithBreakout
-          .breakoutOptions()
-          .all()
-          .some(dimension => dimension.field().id === ORDERS.CREATED_AT),
-      ).toBe(false);
-
-      //Ensure that only 1 breakout option was removed after adding our breakout
-      expect(queryWithBreakout.breakoutOptions().all().length).toBe(
-        query.breakoutOptions().all().length - 1,
-      );
     });
   });
 

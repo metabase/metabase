@@ -1,4 +1,8 @@
 import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   restore,
   popover,
   clearFilterWidget,
@@ -8,13 +12,17 @@ import {
   setFilter,
   visitDashboard,
   selectDashboardFilter,
+  toggleRequiredParameter,
+  setFilterWidgetValue,
+  resetFilterWidgetToDefault,
+  dashboardSaveButton,
+  ensureDashboardCardHasText,
+  sidebar,
+  dashboardParametersDoneButton,
 } from "e2e/support/helpers";
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+
 import { DASHBOARD_NUMBER_FILTERS } from "./shared/dashboard-filters-number";
 
 describe("scenarios > dashboard > filters > number", () => {
@@ -29,7 +37,7 @@ describe("scenarios > dashboard > filters > number", () => {
     editDashboard();
   });
 
-  it(`should work when set through the filter widget`, () => {
+  it("should work when set through the filter widget", () => {
     Object.entries(DASHBOARD_NUMBER_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
       setFilter("Number", filter);
@@ -46,7 +54,7 @@ describe("scenarios > dashboard > filters > number", () => {
         addWidgetNumberFilter(value);
 
         cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.get(".Card").within(() => {
+        cy.findByTestId("dashcard").within(() => {
           cy.findByText(representativeResult);
         });
 
@@ -56,7 +64,7 @@ describe("scenarios > dashboard > filters > number", () => {
     );
   });
 
-  it(`should work when set as the default filter`, () => {
+  it("should work when set as the default filter", () => {
     setFilter("Number", "Equal to");
     selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -66,7 +74,7 @@ describe("scenarios > dashboard > filters > number", () => {
 
     saveDashboard();
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.findByText("37.65");
     });
 
@@ -74,10 +82,54 @@ describe("scenarios > dashboard > filters > number", () => {
 
     filterWidget().click();
 
-    addWidgetNumberFilter("5.27");
+    addWidgetNumberFilter("5.27", { buttonLabel: "Update filter" });
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.findByText("101.04");
     });
+  });
+
+  it("should support being required", () => {
+    setFilter("Number", "Equal to", "Equal to");
+    selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
+
+    // Can't save without a default value
+    toggleRequiredParameter();
+    dashboardSaveButton().should("be.disabled");
+    dashboardSaveButton().realHover();
+    cy.findByRole("tooltip").should(
+      "contain.text",
+      'The "Equal to" parameter requires a default value but none was provided.',
+    );
+
+    // Can't close sidebar without a default value
+    dashboardParametersDoneButton().should("be.disabled");
+    dashboardParametersDoneButton().realHover();
+    cy.findByRole("tooltip").should(
+      "contain.text",
+      "The parameter requires a default value but none was provided.",
+    );
+
+    sidebar().findByText("Default value").next().click();
+    addWidgetNumberFilter("2.07", { buttonLabel: "Update filter" });
+
+    saveDashboard();
+    ensureDashboardCardHasText("37.65");
+
+    // Updates the filter value
+    setFilterWidgetValue("5.27", "Enter a number");
+    ensureDashboardCardHasText("95.77");
+
+    // Resets the value back by clicking widget icon
+    resetFilterWidgetToDefault();
+    filterWidget().findByText("2.07");
+    ensureDashboardCardHasText("37.65");
+
+    // Removing value resets back to default
+    setFilterWidgetValue(null, "Enter a number", {
+      buttonLabel: "Set to default",
+    });
+    filterWidget().findByText("2.07");
+    ensureDashboardCardHasText("37.65");
   });
 });

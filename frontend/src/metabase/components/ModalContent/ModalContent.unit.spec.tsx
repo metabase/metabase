@@ -1,12 +1,14 @@
-import userEvent from "@testing-library/user-event";
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
 import { getIcon, render } from "__support__/ui";
-import { ModalContentActionIcon } from "./ModalContent.styled";
+
 import type { ModalContentProps } from "./ModalContent";
 import ModalContent from "./ModalContent";
+import { ModalContentActionIcon } from "./ModalContent.styled";
 
 describe("ModalContent", () => {
-  it("should render header action buttons", () => {
+  it("should render header action buttons", async () => {
     const headerActions = [
       {
         icon: "pencil" as const,
@@ -28,17 +30,17 @@ describe("ModalContent", () => {
 
     setup({ headerActions: headerActionsEl });
 
-    headerActions.forEach(({ icon, onClick }) => {
+    for (const { icon, onClick } of headerActions) {
       const iconEl = getIcon(icon);
       expect(iconEl).toBeInTheDocument();
 
-      userEvent.click(iconEl);
+      await userEvent.click(iconEl);
 
       expect(onClick).toHaveBeenCalledTimes(1);
-    });
+    }
   });
 
-  it("should render back button if onBack props is passed", () => {
+  it("should render back button if onBack props is passed", async () => {
     const onBack = jest.fn();
 
     setup({ onBack });
@@ -46,7 +48,7 @@ describe("ModalContent", () => {
     const backButton = screen.getByLabelText("chevronleft icon");
     expect(backButton).toBeInTheDocument();
 
-    userEvent.click(backButton);
+    await userEvent.click(backButton);
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 });

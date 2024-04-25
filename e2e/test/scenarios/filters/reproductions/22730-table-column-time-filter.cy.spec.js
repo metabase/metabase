@@ -9,7 +9,8 @@ describe("issue 22730", () => {
       {
         name: "22730",
         native: {
-          query: `select '14:02:13'::time "time", 'before-row' "name" union all select '14:06:13'::time "time", 'after-row' `,
+          query:
+            "select '14:02:13'::time \"time\", 'before-row' \"name\" union all select '14:06:13'::time \"time\", 'after-row' ",
         },
       },
       { visitQuestion: true },

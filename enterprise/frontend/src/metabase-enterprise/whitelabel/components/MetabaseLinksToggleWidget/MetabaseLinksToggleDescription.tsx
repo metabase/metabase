@@ -1,7 +1,9 @@
 import { t, jt } from "ttag";
+
 import { Anchor, Popover, Stack, Text } from "metabase/ui";
 
 export function MetabaseLinksToggleDescription() {
+  // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */
   return jt`Control the visibility of links to Metabase documentation and Metabase references in your instance. ${(
     <Popover key="popover" position="top-start">
       <Popover.Target>
@@ -12,6 +14,7 @@ export function MetabaseLinksToggleDescription() {
       <Popover.Dropdown>
         <Stack p="md" spacing="sm" maw={420}>
           <Text size="sm">
+            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
             {t`This affects all links in the product experience (outside of the admin panel) that point to Metabase.com URLs.`}
           </Text>
           <Text size="sm">

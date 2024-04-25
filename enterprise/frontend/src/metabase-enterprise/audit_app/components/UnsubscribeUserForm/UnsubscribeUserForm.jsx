@@ -1,9 +1,11 @@
-import { useCallback, useState } from "react";
 import PropTypes from "prop-types";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
-import Button from "metabase/core/components/Button";
+
 import ModalContent from "metabase/components/ModalContent";
 import FormMessage from "metabase/components/form/FormMessage";
+import Button from "metabase/core/components/Button";
+
 import { ModalMessage } from "./UnsubscribeUserForm.styled";
 
 const propTypes = {
@@ -42,6 +44,7 @@ const UnsubscribeUserForm = ({ user, onUnsubscribe, onClose }) => {
         {t`This will delete any dashboard subscriptions or alerts ${user.common_name} has created, and remove them as a recipient from any other subscriptions or alerts.`}
       </ModalMessage>
       <ModalMessage>
+        {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
         {t`This does not affect email distribution lists that are managed outside of Metabase.`}
       </ModalMessage>
     </ModalContent>

@@ -1,4 +1,5 @@
 import PropTypes from "prop-types";
+
 import Banner from "metabase/components/Banner";
 
 const propTypes = {

@@ -1,10 +1,13 @@
+import { skipToken } from "@reduxjs/toolkit/query/react";
 import type { FocusEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
-import * as Lib from "metabase-lib";
+
+import { useGetFieldValuesQuery } from "metabase/api";
 import { checkNotNull } from "metabase/lib/types";
 import { Center, Loader } from "metabase/ui";
-import { useFieldValuesQuery } from "metabase/common/hooks";
+import * as Lib from "metabase-lib";
+
 import { ListValuePicker } from "./ListValuePicker";
 import { SearchValuePicker } from "./SearchValuePicker";
 import { StaticValuePicker } from "./StaticValuePicker";
@@ -50,10 +53,10 @@ function FilterValuePicker({
     [query, column],
   );
 
-  const { data: fieldData, isLoading } = useFieldValuesQuery({
-    id: fieldInfo.fieldId ?? undefined,
-    enabled: canLoadFieldValues(fieldInfo),
-  });
+  const { data: fieldData, isLoading } = useGetFieldValuesQuery(
+    fieldInfo.fieldId ?? skipToken,
+    { skip: !canLoadFieldValues(fieldInfo) },
+  );
 
   if (isLoading) {
     return (
@@ -69,6 +72,7 @@ function FilterValuePicker({
         fieldValues={fieldData.values}
         selectedValues={selectedValues}
         placeholder={t`Search the list`}
+        shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         compact={compact}
         onChange={onChange}
@@ -86,7 +90,7 @@ function FilterValuePicker({
         fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
         placeholder={t`Search by ${columnInfo.displayName}`}
-        nothingFound={t`No matching ${columnInfo.displayName} found.`}
+        shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         onChange={onChange}
       />

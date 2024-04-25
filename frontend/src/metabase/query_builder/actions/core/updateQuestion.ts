@@ -1,18 +1,17 @@
-import _ from "underscore";
 import { assocIn } from "icepick";
+import _ from "underscore";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
-
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { Series } from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
   QueryBuilderMode,
 } from "metabase-types/store";
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
 import {
   getFirstQueryResult,
@@ -21,9 +20,8 @@ import {
   getQuestion,
   getRawSeries,
 } from "../../selectors";
-
-import { updateUrl } from "../navigation";
 import { setIsShowingTemplateTagsEditor } from "../native";
+import { updateUrl } from "../navigation";
 import { runQuestionQuery } from "../querying";
 import { onCloseQuestionInfo, setQueryBuilderMode } from "../ui";
 
@@ -90,9 +88,8 @@ function shouldTemplateTagEditorBeVisible({
     return true;
   } else if (nextTags.length === 0) {
     return false;
-  } else {
-    return isVisible;
   }
+  return isVisible;
 }
 
 export type UpdateQuestionOpts = {
@@ -127,26 +124,16 @@ export const updateQuestion = (
     if (shouldTurnIntoAdHoc) {
       newQuestion = newQuestion.withoutNameAndId();
 
-      // When the dataset query changes, we should loose the dataset flag,
+      // When the dataset query changes, we should change the question type,
       // to start building a new ad-hoc question based on a dataset
-      if (newQuestion.isDataset()) {
-        newQuestion = newQuestion.setDataset(false);
+      if (newQuestion.type() === "model") {
+        newQuestion = newQuestion.setType("question");
         dispatch(onCloseQuestionInfo());
       }
     }
 
-    // This scenario happens because the DatasetQueryEditor converts the dataset/model question into a normal question
-    // so that its query is shown properly in the notebook editor. Various child components of the notebook editor have access to
-    // this `updateQuestion` action, so they end up triggering the action with the altered question.
-    if (queryBuilderMode === "dataset" && !newQuestion.isDataset()) {
-      newQuestion = newQuestion.setDataset(true);
-    }
-
     const queryResult = getFirstQueryResult(getState());
-    newQuestion = newQuestion.syncColumnsAndSettings(
-      currentQuestion,
-      queryResult,
-    );
+    newQuestion = newQuestion.syncColumnsAndSettings(queryResult);
 
     if (!newQuestion.canAutoRun()) {
       run = false;
@@ -228,34 +215,12 @@ export const updateQuestion = (
     }
 
     const currentDependencies = currentQuestion
-      ? [
-          ...currentQuestion.dependentMetadata(),
-          ...currentQuestion
-            .legacyQuery({ useStructuredQuery: true })
-            .dependentMetadata(),
-        ]
+      ? Lib.dependentMetadata(currentQuestion.query())
       : [];
-    const nextDependencies = [
-      ...newQuestion.dependentMetadata(),
-      ...newQuestion
-        .legacyQuery({ useStructuredQuery: true })
-        .dependentMetadata(),
-    ];
+    const nextDependencies = Lib.dependentMetadata(newQuestion.query());
     try {
       if (!_.isEqual(currentDependencies, nextDependencies)) {
         await dispatch(loadMetadataForCard(newQuestion.card()));
-      }
-
-      // setDefaultQuery requires metadata be loaded, need getQuestion to use new metadata
-      const question = getQuestion(getState()) as Question;
-      const questionWithDefaultQuery = question.setDefaultQuery();
-      if (!questionWithDefaultQuery.isEqual(question)) {
-        await dispatch({
-          type: UPDATE_QUESTION,
-          payload: {
-            card: questionWithDefaultQuery.setDefaultDisplay().card(),
-          },
-        });
       }
     } catch (e) {
       // this will fail if user doesn't have data permissions but thats ok

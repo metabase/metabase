@@ -1,8 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
 import type { DatabaseId, DatasetColumn, TableId } from "metabase-types/api";
-import type Field from "./metadata/Field";
-import type Metadata from "./metadata/Metadata";
+
 import type {
   AggregationClause,
   AggregationClauseDisplayInfo,
@@ -12,8 +11,8 @@ import type {
   BreakoutClauseDisplayInfo,
   Bucket,
   BucketDisplayInfo,
-  CardMetadata,
   CardDisplayInfo,
+  CardMetadata,
   Clause,
   ClauseDisplayInfo,
   ColumnDisplayInfo,
@@ -29,9 +28,9 @@ import type {
   JoinConditionOperatorDisplayInfo,
   JoinStrategy,
   JoinStrategyDisplayInfo,
+  LegacyMetricDisplayInfo,
+  LegacyMetricMetadata,
   MetadataProvider,
-  MetricMetadata,
-  MetricDisplayInfo,
   OrderByClause,
   OrderByClauseDisplayInfo,
   Query,
@@ -41,6 +40,8 @@ import type {
   TableMetadata,
   QueryDisplayInfo,
 } from "./types";
+import type Field from "./v1/metadata/Field";
+import type Metadata from "./v1/metadata/Metadata";
 
 export function metadataProvider(
   databaseId: DatabaseId | null,
@@ -114,8 +115,8 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
-  metric: MetricMetadata,
-): MetricDisplayInfo;
+  metric: LegacyMetricMetadata,
+): LegacyMetricDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,

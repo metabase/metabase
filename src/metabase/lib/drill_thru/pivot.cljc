@@ -13,8 +13,7 @@
 
   For different query types/shapes different breakout columns are allowed:
 
-  - No aggregations and no breakouts - `type/Date`, `type/Address`, and `type/Category` (only which are not also
-    `type/Address`)
+  - No breakouts - `type/Date`, `type/Address`, and `type/Category` (only which are not also `type/Address`)
 
   - At least 1 aggregation and exactly 1 breakout based on `Address` column - `Date`, `Category`
 

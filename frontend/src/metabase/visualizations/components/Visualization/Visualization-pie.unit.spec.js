@@ -1,8 +1,7 @@
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import registerVisualizations from "metabase/visualizations/register";
-
-import Visualization from "metabase/visualizations/components/Visualization";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import Visualization from "metabase/visualizations/components/Visualization";
+import registerVisualizations from "metabase/visualizations/register";
 
 registerVisualizations();
 

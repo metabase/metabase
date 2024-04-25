@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openOrdersTable,
@@ -8,8 +9,6 @@ import {
   updateDashboardCards,
   addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -98,7 +97,7 @@ describe("scenarios > question > null", () => {
       cy.findByDisplayValue("13626D");
 
       cy.log("Reported failing in v0.37.0.2");
-      cy.get(".DashCard").within(() => {
+      cy.findByTestId("dashcard-container").within(() => {
         cy.findByTestId("loading-spinner").should("not.exist");
         cy.findByTestId("legend-caption-title").should("have.text", "13626");
         cy.findByTestId("pie-chart").should("be.visible");
@@ -135,7 +134,7 @@ describe("scenarios > question > null", () => {
           cy.log("P0 regression in v0.37.1!");
           cy.findByTestId("loading-spinner").should("not.exist");
           cy.findByText("13801_Q1");
-          cy.get(".ScalarValue").should("contain", "0");
+          cy.findAllByTestId("scalar-value").should("contain", "0");
           cy.findByText("13801_Q2");
         });
       });
@@ -148,7 +147,7 @@ describe("scenarios > question > null", () => {
     // Total of "39.72", and the next cell is the `discount` (which is empty)
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72")
-      .closest(".TableInteractive-cellWrapper")
+      .closest(".test-TableInteractive-cellWrapper")
       .next()
       .find("div")
       .should("be.empty")

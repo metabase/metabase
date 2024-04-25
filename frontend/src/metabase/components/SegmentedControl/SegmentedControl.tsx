@@ -1,8 +1,10 @@
-import { useMemo } from "react";
-import type * as React from "react";
 import PropTypes from "prop-types";
+import type * as React from "react";
+import { useMemo } from "react";
 import _ from "underscore";
+
 import type { IconName } from "metabase/ui";
+
 import {
   SegmentedList,
   SegmentedItem,

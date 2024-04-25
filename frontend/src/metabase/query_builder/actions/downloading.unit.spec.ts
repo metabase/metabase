@@ -1,4 +1,5 @@
 import api from "metabase/lib/api";
+
 import * as downloading from "./downloading";
 
 describe("getDatasetResponse", () => {
@@ -17,12 +18,17 @@ describe("getDatasetResponse", () => {
       const url = "/embed/question/123.xlsx";
 
       expect(downloading.getDatasetDownloadUrl(url)).toBe(
-        `${origin}/embed/question/123.xlsx`,
+        `/embed/question/123.xlsx`,
       );
     });
   });
 
   describe("subpath deployment", () => {
+    /**
+     * We will assert that the result is a relative path without subpath.
+     * Because this URL will be pass to `frontend/src/metabase/lib/api.js`
+     * which already takes care of the subpath (api.basename)
+     */
     const origin = "http://localhost";
     const subpath = "/mb";
     const originalBasename = api.basename;
@@ -39,7 +45,7 @@ describe("getDatasetResponse", () => {
       const url = `${origin}${subpath}/embed/question/123.xlsx`;
 
       expect(downloading.getDatasetDownloadUrl(url)).toBe(
-        `${origin}${subpath}/embed/question/123.xlsx`,
+        `/embed/question/123.xlsx`,
       );
     });
 
@@ -47,7 +53,7 @@ describe("getDatasetResponse", () => {
       const url = "/embed/question/123.xlsx";
 
       expect(downloading.getDatasetDownloadUrl(url)).toBe(
-        `${origin}${subpath}/embed/question/123.xlsx`,
+        `/embed/question/123.xlsx`,
       );
     });
   });

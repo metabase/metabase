@@ -1,7 +1,19 @@
+import {
+  setupDatabaseCandidatesEndpoint,
+  setupDatabasesEndpoints,
+  setupPopularItemsEndpoints,
+  setupRecentViewsEndpoints,
+} from "__support__/server-mocks";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import type {
   Database,
   PopularItem,
   RecentItem,
+  Settings,
   User,
 } from "metabase-types/api";
 import {
@@ -14,17 +26,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
-import {
-  setupDatabaseCandidatesEndpoint,
-  setupDatabasesEndpoints,
-  setupPopularItemsEndpoints,
-  setupRecentViewsEndpoints,
-} from "__support__/server-mocks";
+
 import { HomeContent } from "./HomeContent";
 
 interface SetupOpts {
@@ -33,6 +35,7 @@ interface SetupOpts {
   recentItems?: RecentItem[];
   popularItems?: PopularItem[];
   isXrayEnabled?: boolean;
+  settings?: Partial<Settings>;
 }
 
 const setup = async ({
@@ -41,11 +44,13 @@ const setup = async ({
   recentItems = [],
   popularItems = [],
   isXrayEnabled = true,
+  settings = {},
 }: SetupOpts) => {
   const state = createMockState({
     currentUser: user,
     settings: createMockSettingsState({
       "enable-xrays": isXrayEnabled,
+      ...settings,
     }),
   });
 
@@ -61,8 +66,12 @@ const setup = async ({
 
 describe("HomeContent", () => {
   beforeEach(() => {
-    jest.useFakeTimers({ advanceTimers: true });
-    jest.setSystemTime(new Date(2020, 0, 10));
+    jest.useFakeTimers({
+      advanceTimers: true,
+      now: new Date(2020, 0, 10),
+      doNotFake: ["setTimeout"],
+    });
+    localStorage.clear();
   });
 
   afterEach(() => {
@@ -82,7 +91,7 @@ describe("HomeContent", () => {
     });
 
     expect(
-      screen.getByText("Here are some popular tables"),
+      await screen.findByText("Here are some popular tables"),
     ).toBeInTheDocument();
   });
 
@@ -172,5 +181,37 @@ describe("HomeContent", () => {
     expect(
       screen.queryByText(/Here are some explorations/),
     ).not.toBeInTheDocument();
+  });
+
+  describe("embed-focused homepage", () => {
+    it("should show it for admins if 'embedding-homepage' is visible", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        settings: { "embedding-homepage": "visible" },
+      });
+
+      expect(screen.getByText("Embedding Metabase")).toBeInTheDocument();
+      expect(screen.getByText("The TL;DR:")).toBeInTheDocument();
+    });
+
+    it("should not show it for non-admins even if 'embedding-homepage' is visible", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: false }),
+        settings: { "embedding-homepage": "visible" },
+      });
+
+      expect(screen.queryByText("Embedding Metabase")).not.toBeInTheDocument();
+      expect(screen.queryByText("The TL;DR:")).not.toBeInTheDocument();
+    });
+
+    it("should not show it if 'embedding-homepage' is not 'visible'", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        settings: { "embedding-homepage": "hidden" },
+      });
+
+      expect(screen.queryByText("Embedding Metabase")).not.toBeInTheDocument();
+      expect(screen.queryByText("The TL;DR:")).not.toBeInTheDocument();
+    });
   });
 });

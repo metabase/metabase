@@ -4,16 +4,16 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 (def ^:private ^:const earliest-date "2005-01-01")
 (def ^:private ^:const latest-date   "today")
@@ -81,7 +81,7 @@
 (defn- handle-aggregation
   [{ags :aggregation}]
   (when (seq ags)
-    {:metrics (str/join "," (mbql.u/match ags [:metric (metric-name :guard string?)] metric-name))}))
+    {:metrics (str/join "," (lib.util.match/match ags [:metric (metric-name :guard string?)] metric-name))}))
 
 
 ;;; ---------------------------------------------------- breakout ----------------------------------------------------
@@ -107,7 +107,7 @@
   {:dimensions (if-not breakout-clause
                  ""
                  (str/join "," (for [breakout-field breakout-clause]
-                                 (mbql.u/match-one breakout-field
+                                 (lib.util.match/match-one breakout-field
                                    [:field _ (options :guard :temporal-unit)]
                                    (unit->ga-dimension (:temporal-unit options))
 
@@ -183,7 +183,7 @@
     ;;
     ;; (Recall that `auto-bucket-datetimes` guarantees all datetime Fields will get `:temporal-unit`
     ;; clauses in a fully-preprocessed query.)
-    (let [filter-str (parse-filter (mbql.u/replace filter-clause
+    (let [filter-str (parse-filter (lib.util.match/replace filter-clause
                                      [:segment (_ :guard mbql.u/ga-id?)]
                                      nil
 
@@ -210,8 +210,11 @@
   [_ _ x]
   {:start-date (->rvalue x), :end-date (->rvalue x)})
 
-(s/defn ^:private day-date-range :- (s/maybe {(s/optional-key :start-date) s/Str, (s/optional-key :end-date) s/Str})
-  [comparison-type :- s/Keyword n :- s/Int]
+(mu/defn ^:private day-date-range :- [:maybe [:map
+                                              [:start-date {:optional true} :string]
+                                              [:end-date   {:optional true} :string]]]
+  [comparison-type :- :keyword
+   n               :- :int]
   ;; since GA is normally inclusive add 1 to `:<` or `:>` filters so it starts and ends on the correct date
   ;; e.g
   ;;
@@ -261,7 +264,7 @@
   (format-range (u.date/comparison-range t unit comparison-type {:end :inclusive, :resolution :day})))
 
 (defn- field->unit [field]
-  (or (mbql.u/match-one field
+  (or (lib.util.match/match-one field
         [:field _ (options :guard :temporal-unit)]
         (:temporal-unit options))
       :day))
@@ -329,7 +332,7 @@
 (defn- remove-non-datetime-filter-clauses
   "Replace any filter clauses that operate on a non-datetime Field with `nil`."
   [filter-clause]
-  (mbql.u/replace filter-clause
+  (lib.util.match/replace filter-clause
     ;; we don't support any of the following as datetime filters
     #{:!= :starts-with :ends-with :contains}
     nil
@@ -343,7 +346,7 @@
 (defn- normalize-datetime-units
   "Replace all unsupported datetime units with the default"
   [filter-clause]
-  (mbql.u/replace filter-clause
+  (lib.util.match/replace filter-clause
     [:field field (options :guard :temporal-unit)]
     [:field field (update options :temporal-unit normalize-unit)]
 
@@ -372,7 +375,7 @@
 
 (mu/defn ^:private built-in-segment :- [:maybe ::lib.schema.common/non-blank-string]
   [{filter-clause :filter}]
-  (let [segments (mbql.u/match filter-clause [:segment (segment-name :guard mbql.u/ga-id?)] segment-name)]
+  (let [segments (lib.util.match/match filter-clause [:segment (segment-name :guard mbql.u/ga-id?)] segment-name)]
     (when (> (count segments) 1)
       (throw (Exception. (tru "Only one Google Analytics segment allowed at a time."))))
     (first segments)))
@@ -394,7 +397,7 @@
                        (str (case direction
                               :asc  ""
                               :desc "-")
-                            (mbql.u/match-one field
+                            (lib.util.match/match-one field
                               [:field _ (options :guard :temporal-unit)]
                               (unit->ga-dimension (:temporal-unit options))
 

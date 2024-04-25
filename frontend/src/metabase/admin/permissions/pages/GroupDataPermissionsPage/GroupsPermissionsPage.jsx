@@ -1,31 +1,33 @@
-import { Fragment, useCallback } from "react";
-import { useAsync } from "react-use";
-import PropTypes from "prop-types";
 import { bindActionCreators } from "@reduxjs/toolkit";
+import PropTypes from "prop-types";
+import { Fragment, useCallback } from "react";
+import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
-import { connect } from "react-redux";
-import { useSelector, useDispatch } from "metabase/lib/redux";
 
+import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
+import { useSelector, useDispatch } from "metabase/lib/redux";
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import { PermissionsApi } from "metabase/services";
 import { Loader, Center } from "metabase/ui";
 
-import { PermissionsApi } from "metabase/services";
+import {
+  PermissionsEditor,
+  PermissionsEditorEmptyState,
+} from "../../components/PermissionsEditor";
+import { PermissionsSidebar } from "../../components/PermissionsSidebar";
+import {
+  updateDataPermission,
+  LOAD_DATA_PERMISSIONS_FOR_GROUP,
+} from "../../permissions";
 import {
   getDatabasesPermissionEditor,
   getIsLoadingDatabaseTables,
   getLoadingDatabaseTablesError,
   getGroupsSidebar,
 } from "../../selectors/data-permissions";
-import {
-  updateDataPermission,
-  LOAD_DATA_PERMISSIONS_FOR_GROUP,
-} from "../../permissions";
-import { PermissionsSidebar } from "../../components/PermissionsSidebar";
-import {
-  PermissionsEditor,
-  PermissionsEditorEmptyState,
-} from "../../components/PermissionsEditor";
 import {
   getGroupFocusPermissionsUrl,
   GROUPS_BASE_PATH,
@@ -141,6 +143,9 @@ function GroupsPermissionsPage({
   const handleBreadcrumbsItemSelect = item => dispatch(push(item.url));
 
   const showEmptyState = !permissionEditor && !isEditorLoading && !editorError;
+  const showLegacyNoSelfServiceWarning =
+    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
+    !!permissionEditor?.hasLegacyNoSelfServiceValueInPermissionGraph;
   return (
     <Fragment>
       <PermissionsSidebar
@@ -171,6 +176,13 @@ function GroupsPermissionsPage({
           onChange={handlePermissionChange}
           onAction={handleAction}
           onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}
+          warnings={() => (
+            <>
+              {showLegacyNoSelfServiceWarning && (
+                <PermissionsEditorLegacyNoSelfServiceWarning />
+              )}
+            </>
+          )}
         />
       )}
 

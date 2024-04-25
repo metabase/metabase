@@ -2,28 +2,24 @@ import { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-import Input from "metabase/core/components/Input";
-import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-
-import type {
-  DashboardCard,
-  LinkCardSettings,
-  SearchModelType,
-  UnrestrictedLinkEntity,
-} from "metabase-types/api";
-
-import { useToggle } from "metabase/hooks/use-toggle";
 import Search from "metabase/entities/search";
-
+import { useToggle } from "metabase/hooks/use-toggle";
+import { getUrlTarget } from "metabase/lib/dom";
+import { SearchResults } from "metabase/nav/components/search/SearchResults";
+import type {
+  LinkCardSettings,
+  SearchModel,
+  UnrestrictedLinkEntity,
+  VirtualDashboardCard,
+} from "metabase-types/api";
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
+
 import {
   EntityDisplay,
   UrlLinkDisplay,
   RestrictedEntityDisplay,
 } from "./EntityDisplay";
-import { settings } from "./LinkVizSettings";
-
 import {
   EditLinkCardWrapper,
   DisplayLinkCardWrapper,
@@ -31,12 +27,13 @@ import {
   SearchResultsContainer,
   StyledRecentsList,
   ExternalLink,
+  StyledInput,
 } from "./LinkViz.styled";
-
-import { isUrlString } from "./utils";
+import { settings } from "./LinkVizSettings";
 import type { WrappedUnrestrictedLinkEntity } from "./types";
+import { isUrlString } from "./utils";
 
-const MODELS_TO_SEARCH: SearchModelType[] = [
+const MODELS_TO_SEARCH: SearchModel[] = [
   "card",
   "dataset",
   "dashboard",
@@ -46,12 +43,12 @@ const MODELS_TO_SEARCH: SearchModelType[] = [
 ];
 
 export interface LinkVizProps {
-  dashcard: DashboardCard;
+  dashcard: VirtualDashboardCard;
   isEditing: boolean;
   onUpdateVisualizationSettings: (
-    newSettings: Partial<DashboardCard["visualization_settings"]>,
+    newSettings: Partial<VirtualDashboardCard["visualization_settings"]>,
   ) => void;
-  settings: DashboardCard["visualization_settings"] & {
+  settings: VirtualDashboardCard["visualization_settings"] & {
     link: LinkCardSettings;
   };
   isEditingParameter?: boolean;
@@ -162,7 +159,7 @@ function LinkVizInner({
           }
           placement="bottom"
         >
-          <Input
+          <StyledInput
             fullWidth
             value={url ?? ""}
             autoFocus={autoFocus}
@@ -185,7 +182,11 @@ function LinkVizInner({
       data-testid="custom-view-text-link"
       fade={isEditingParameter}
     >
-      <ExternalLink href={url ?? ""} target="_blank" rel="noreferrer">
+      <ExternalLink
+        href={url ?? ""}
+        target={getUrlTarget(url)}
+        rel="noreferrer"
+      >
         <UrlLinkDisplay url={url} />
       </ExternalLink>
     </DisplayLinkCardWrapper>

@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { Box } from "metabase/ui";
+
 import type { BoxProps } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 export const PickerGrid = styled(Box)<BoxProps>`
   display: grid;

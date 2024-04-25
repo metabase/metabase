@@ -134,4 +134,6 @@ serdes/meta:
 - id: OCkxXZM5KPJ9zOjYVEnqY
   label: slowest_questions
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (901f705)
+type: question

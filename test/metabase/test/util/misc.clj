@@ -3,17 +3,11 @@
   (:require
    [clojure.data :as data]
    [clojure.test :refer :all]
-   [environ.core :as env]
    [java-time.api :as t]
    [mb.hawk.init]
-   [mb.hawk.parallel]
-   [medley.core :as m]
    [metabase.models :refer [PermissionsGroupMembership User]]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.query-processor.context :as qp.context]
-   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.test.initialize :as initialize]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -72,63 +66,6 @@
   [[binding-form & [options-map]] & body]
   `(do-with-single-admin-user ~options-map (fn [~binding-form]
                                              ~@body)))
-
-;;;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
-
-(defn test-qp-middleware
-  "Helper for testing QP middleware that uses the
-
-    (defn middleware [qp]
-      (fn [query rff context]
-        (qp query rff context)))
-
-  pattern, such as stuff in [[metabase.query-processor/around-middleware]]. Changes are returned in a map with keys:
-
-    * `:result`   ­ final result
-    * `:pre`      ­ `query` after preprocessing
-    * `:metadata` ­ `metadata` after post-processing. Should be a map e.g. with `:cols`
-    * `:post`     ­ `rows` after post-processing transduction"
-  ([middleware-fn]
-   (test-qp-middleware middleware-fn {}))
-
-  ([middleware-fn query]
-   (test-qp-middleware middleware-fn query []))
-
-  ([middleware-fn query rows]
-   (test-qp-middleware middleware-fn query {} rows))
-
-  ([middleware-fn query metadata rows]
-   (test-qp-middleware middleware-fn query metadata rows nil))
-
-  ([middleware-fn query metadata rows {:keys [run async?], :as context}]
-   {:pre [((some-fn nil? map?) metadata)]}
-   (let [async-qp (qp.reducible/async-qp
-                   (qp.reducible/combine-middleware
-                    (if (sequential? middleware-fn)
-                      middleware-fn
-                      [middleware-fn])))
-         context  (merge
-                   ;; CI is S U P E R  S L O W so give this a longer timeout.
-                   {:timeout (if (env/env :ci)
-                               5000
-                               500)
-                    :runf    (fn [query rff context]
-                               (try
-                                 (when run (run))
-                                 (qp.context/reducef rff context (assoc metadata :pre query) rows)
-                                 (catch Throwable e
-                                   (log/errorf "Error in test-qp-middleware runf: %s" e)
-                                   (throw e))))}
-                   context)]
-     (if async?
-       (async-qp query context)
-       (binding [qp.reducible/*run-on-separate-thread?* true]
-         (let [qp     (qp.reducible/sync-qp async-qp)
-               result (qp query context)]
-           {:result   (m/dissoc-in result [:data :pre])
-            :pre      (-> result :data :pre)
-            :post     (-> result :data :rows)
-            :metadata (update result :data #(dissoc % :pre :rows))}))))))
 
 (def ^{:arglists '([toucan-model])} object-defaults
   "Return the default values for columns in an instance of a `toucan-model`, excluding ones that differ between

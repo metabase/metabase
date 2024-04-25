@@ -1,16 +1,17 @@
-import { useState } from "react";
-import { thaw } from "icepick";
 import userEvent from "@testing-library/user-event";
+import { thaw } from "icepick";
+import { useState } from "react";
+
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import ChartSettings from "metabase/visualizations/components/ChartSettings";
+import registerVisualizations from "metabase/visualizations/register";
+import Question from "metabase-lib/v1/Question";
 import {
   createSampleDatabase,
   ORDERS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import registerVisualizations from "metabase/visualizations/register";
-import ChartSettings from "metabase/visualizations/components/ChartSettings";
-import Question from "metabase-lib/Question";
 
 registerVisualizations();
 
@@ -70,40 +71,42 @@ const setup = ({ vizType }) => {
 // these visualizations share column settings, so all the tests should work for both
 ["table", "object"].forEach(vizType => {
   describe(`${vizType} column settings`, () => {
-    it("should show you related columns in structured queries", () => {
+    it("should show you related columns in structured queries", async () => {
       setup({ vizType });
-      userEvent.click(screen.getByText("Add or remove columns"));
+      await userEvent.click(screen.getByText("Add or remove columns"));
 
       expect(screen.getByText("User")).toBeInTheDocument();
       expect(screen.getByText("Product")).toBeInTheDocument();
 
-      const userColumList = screen.getByRole("list", {
-        name: "user-table-columns",
-      });
+      const userColumList = screen.getByTestId("user-table-columns");
 
       expect(within(userColumList).getByLabelText("Address")).not.toBeChecked();
       expect(within(userColumList).getByLabelText("State")).not.toBeChecked();
     });
 
-    it("should allow you to show and hide columns", () => {
+    it("should allow you to show and hide columns", async () => {
       setup({ vizType });
-      userEvent.click(screen.getByTestId("Tax-hide-button"));
+      await userEvent.click(await screen.findByTestId("Tax-hide-button"));
 
-      expect(screen.getByRole("listitem", { name: "Tax" })).toHaveAttribute(
-        "data-enabled",
-        "false",
-      );
+      expect(
+        await screen.findByRole("listitem", { name: "Tax" }),
+      ).toHaveAttribute("data-enabled", "false");
 
-      userEvent.click(screen.getByTestId("Tax-show-button"));
+      await userEvent.click(await screen.findByTestId("Tax-show-button"));
       //If we can see the hide button, then we know it's been added back in.
-      expect(screen.getByTestId("Tax-hide-button")).toBeInTheDocument();
+      expect(await screen.findByTestId("Tax-hide-button")).toBeInTheDocument();
     });
 
     it("should allow you to update a column name", async () => {
       setup({ vizType });
-      userEvent.click(await screen.findByTestId("Subtotal-settings-button"));
-      userEvent.type(await screen.findByDisplayValue("Subtotal"), " Updated");
-      userEvent.click(await screen.findByText("Tax"));
+      await userEvent.click(
+        await screen.findByTestId("Subtotal-settings-button"),
+      );
+      await userEvent.type(
+        await screen.findByDisplayValue("Subtotal"),
+        " Updated",
+      );
+      await userEvent.click(await screen.findByText("Tax"));
       expect(await screen.findByText("Subtotal Updated")).toBeInTheDocument();
     });
   });

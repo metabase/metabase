@@ -1,28 +1,31 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import type {
-  SettingKey,
-  Settings,
-  TokenStatus,
-  Version,
-} from "metabase-types/api";
-import type { State } from "metabase-types/store";
 import { getPlan } from "metabase/common/utils/plan";
+import type { TokenStatus, Version } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
-export const getSettings = createSelector(
-  (state: State) => state.settings,
-  settings => settings.values,
-);
+export const getSettings: <S extends State>(state: S) => GetSettings<S> =
+  createSelector(
+    (state: State) => state.settings,
+    settings => settings.values,
+  );
 
 export const getSettingsLoading = createSelector(
   (state: State) => state.settings,
   settings => settings.loading,
 );
 
-export const getSetting = <T extends SettingKey>(
-  state: State,
+type GetSettings<S extends State> = S["settings"]["values"];
+type GetSettingKey<S extends State> = keyof GetSettings<S>;
+
+export const getSetting = <S extends State, T extends GetSettingKey<S>>(
+  state: S,
   key: T,
-): Settings[T] => getSettings(state)[key];
+): GetSettings<S>[T] => {
+  const settings = getSettings(state);
+  const setting = settings[key];
+  return setting;
+};
 
 export const getStoreUrl = (path = "") => {
   return `https://store.metabase.com/${path}`;
@@ -44,6 +47,9 @@ export const getDocsUrl = createSelector(
   (state: State, props: DocsUrlProps) => props.anchor,
   (version, page, anchor) => getDocsUrlForVersion(version, page, anchor),
 );
+
+export const getDocsSearchUrl = (query: Record<string, string>) =>
+  `https://www.metabase.com/search?${new URLSearchParams(query)}`;
 
 // should be private, but exported until there are usages of deprecated MetabaseSettings.docsUrl
 export const getDocsUrlForVersion = (
@@ -103,6 +109,9 @@ export const getUpgradeUrl = createSelector(
   },
 );
 
+/**
+ * ! The tokenStatus is only visible to admins
+ */
 export const getIsPaidPlan = createSelector(
   (state: State) => getSetting(state, "token-status"),
   (tokenStatus: TokenStatus | null) => {

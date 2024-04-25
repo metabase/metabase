@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import EntityMenu from "metabase/components/EntityMenu";
+import { color } from "metabase/lib/colors";
 
 export const CardRoot = styled.div`
   flex: 1;

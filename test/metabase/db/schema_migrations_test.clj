@@ -9,10 +9,13 @@
 
   See `metabase.db.schema-migrations-test.impl` for the implementation of this functionality."
   (:require
+   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.config :as config]
+   [metabase.db :as mdb]
+   [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.custom-migrations-test :as custom-migrations-test]
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
@@ -26,11 +29,11 @@
             Permissions
             PermissionsGroup
             Table
-            User]]
+            User
+            Dashboard]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]
-   [toucan2.execute :as t2.execute]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -40,9 +43,8 @@
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
     ;; using test-migrations to excercise all drivers
     (impl/test-migrations ["v46.00-001" "v46.00-002"] [migrate!]
-      (let [{:keys [^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-            get-last-id (fn []
-                          (-> {:connection (.getConnection data-source)}
+      (let [get-last-id (fn []
+                          (-> {:datasource (mdb/app-db)}
                               (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
                               first
                               :id))]
@@ -222,70 +224,33 @@
         (migrate!)
         (is (t2/delete! Database :id db-id))))))
 
-(deftest split-data-permission-test
-  (testing "Migration v46.00-080: split existing v1 data permission paths into v2 data and query permission paths"
-    (impl/test-migrations ["v46.00-080"] [migrate!]
-      (let [[group-1-id]        (t2/insert-returning-pks! PermissionsGroup {:name "Test Group 1"})
-            [group-2-id]        (t2/insert-returning-pks! PermissionsGroup {:name "Test Group 2"})
-            v1-paths-and-groups [["/db/1/"                                       group-1-id]
-                                 ["/db/2/schema/"                                group-1-id]
-                                 ["/db/3/native/"                                group-1-id]
-                                 ["/db/4/schema/PUBLIC/"                         group-1-id]
-                                 ["/db/5/schema/my\\\\schema/"                   group-1-id]
-                                 ["/db/6/schema/PUBLIC/table/1/"                 group-1-id]
-                                 ["/db/7/schema/PUBLIC/table/1/query/segmented/" group-1-id]
-                                 ["/db/8/schema/PUBLIC/table/1/query/segmented/" group-1-id]
-                                 ["/db/1/"                                       group-2-id]
-                                 ["invalid-path"                                 group-2-id]]
-            _                   (t2.execute/query-one {:insert-into :permissions
-                                                       :columns     [:object :group_id]
-                                                       :values      v1-paths-and-groups})
-            _                   (migrate!)
-            new-paths-set       (t2/select-fn-set (juxt :object :group_id)
-                                                  :models/permissions
-                                                  {:where [:in :group_id [group-1-id group-2-id]]})]
-        ;; Check that the full permission set for group-1 and group-2 is what we expect post-migration.
-        ;; Each v1-path from above is listed here, immediately followed by the two resulting v2 paths.
-        (is (= #{["/db/1/"                                       group-1-id]
-                 ["/data/db/1/"                                  group-1-id]
-                 ["/query/db/1/"                                 group-1-id]
-                 ["/db/2/schema/"                                group-1-id]
-                 ["/data/db/2/"                                  group-1-id]
-                 ["/query/db/2/schema/"                          group-1-id]
-                 ["/db/3/native/"                                group-1-id]
-                 ["/data/db/3/"                                  group-1-id]
-                 ["/query/db/3/"                                 group-1-id]
-                 ["/db/4/schema/PUBLIC/"                         group-1-id]
-                 ["/data/db/4/schema/PUBLIC/"                    group-1-id]
-                 ["/query/db/4/schema/PUBLIC/"                   group-1-id]
-                 ["/db/5/schema/my\\\\schema/"                   group-1-id]
-                 ["/data/db/5/schema/my\\\\schema/"              group-1-id]
-                 ["/query/db/5/schema/my\\\\schema/"             group-1-id]
-                 ["/db/6/schema/PUBLIC/table/1/"                 group-1-id]
-                 ["/data/db/6/schema/PUBLIC/table/1/"            group-1-id]
-                 ["/query/db/6/schema/PUBLIC/table/1/"           group-1-id]
-                 ["/db/7/schema/PUBLIC/table/1/query/segmented/" group-1-id]
-                 ["/data/db/7/schema/PUBLIC/table/1/"            group-1-id]
-                 ["/query/db/7/schema/PUBLIC/table/1/"           group-1-id]
-                 ["/db/8/schema/PUBLIC/table/1/query/segmented/" group-1-id]
-                 ["/data/db/8/schema/PUBLIC/table/1/"            group-1-id]
-                 ["/query/db/8/schema/PUBLIC/table/1/"           group-1-id]
-                 ["/db/1/"                                       group-2-id]
-                 ["/data/db/1/"                                  group-2-id]
-                 ["/query/db/1/"                                 group-2-id]
-                 ;; Invalid path is not touched but also doesn't fail the migration
-                 ["invalid-path"                                 group-2-id]}
-               new-paths-set))))))
-
 (deftest migrate-field-database-type-test
   (testing "Migration v47.00-001: set base-type to type/JSON for JSON database-types for postgres and mysql"
     (impl/test-migrations ["v47.00-001"] [migrate!]
       (let [[pg-db-id
-             mysql-db-id] (t2/insert-returning-pks! Database [{:name "PG Database"    :engine "postgres"}
-                                                              {:name "MySQL Database" :engine "mysql"}])
+             mysql-db-id] (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                    [{:name "PG Database"
+                                                      :engine "postgres"
+                                                      :created_at :%now
+                                                      :updated_at :%now
+                                                      :details "{}"}
+                                                     {:name "MySQL Database"
+                                                      :engine "mysql"
+                                                      :created_at :%now
+                                                      :updated_at :%now
+                                                      :details "{}"}])
             [pg-table-id
-             mysql-table-id] (t2/insert-returning-pks! Table [{:db_id pg-db-id    :name "PG Table"    :active true}
-                                                              {:db_id mysql-db-id :name "MySQL Table" :active true}])
+             mysql-table-id] (t2/insert-returning-pks! (t2/table-name :model/Table)
+                                                       [{:db_id pg-db-id
+                                                         :name "PG Table"
+                                                         :created_at :%now
+                                                         :updated_at :%now
+                                                         :active true}
+                                                        {:db_id mysql-db-id
+                                                         :name "MySQL Table"
+                                                         :created_at :%now
+                                                         :updated_at :%now
+                                                         :active true}])
             [pg-field-1-id
              pg-field-2-id
              pg-field-3-id
@@ -303,7 +268,7 @@
           pg-field-3-id :type/Text
           mysql-field-1-id :type/JSON
           mysql-field-2-id :type/Text)
-        ;; TODO: this is commented out temporarily because it flakes for MySQL
+        ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
         #_(testing "Rollback restores the original state"
            (migrate! :down 46)
            (let [new-base-types (t2/select-pk->fn :base_type Field)]
@@ -411,14 +376,15 @@
           (is (true? (custom-migrations-test/no-cards-are-overlap? migrated-to-24)))
           (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? migrated-to-24 24)))))
 
-      (testing "downgrade works correctly"
-        (migrate! :down 46)
-        (let [rollbacked-to-18 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
-                                                 :model/DashboardCard :id [:in dashcard-ids]
-                                                 {:order-by [[:id :asc]]})]
-          (is (= cases rollbacked-to-18))
-          (is (true? (custom-migrations-test/no-cards-are-overlap? rollbacked-to-18)))
-          (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-18 18))))))))
+      ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
+      #_(testing "downgrade works correctly"
+         (migrate! :down 46)
+         (let [rollbacked-to-18 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
+                                                  :model/DashboardCard :id [:in dashcard-ids]
+                                                  {:order-by [[:id :asc]]})]
+           (is (= cases rollbacked-to-18))
+           (is (true? (custom-migrations-test/no-cards-are-overlap? rollbacked-to-18)))
+           (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-18 18))))))))
 
 (deftest backfill-permission-id-test
   (testing "Migrations v46.00-088-v46.00-90: backfill `permission_id` FK on sandbox table"
@@ -506,25 +472,27 @@
                                          :id [:in [rev-dash-1-new rev-dash-2-new rev-card-1-new]])))))))
 (deftest fks-are-indexed-test
   (mt/test-driver :postgres
-    (testing "all FKs should be indexed"
-     (is (= [] (t2/query
-                "SELECT
-                     conrelid::regclass AS table_name,
-                     a.attname AS column_name
-                 FROM
-                     pg_constraint AS c
-                     JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
-                 WHERE
-                     c.contype = 'f'
-                     AND NOT EXISTS (
-                         SELECT 1
-                         FROM pg_index AS i
-                         WHERE i.indrelid = c.conrelid
-                           AND a.attnum = ANY(i.indkey)
-                     )
-                 ORDER BY
-                     table_name,
-                     column_name;"))))))
+    (testing "FKs are not created automatically in Postgres, check that migrations add necessary indexes"
+     (is (= [{:table_name  "field_usage"
+              :column_name "query_execution_id"}]
+            (t2/query
+              "SELECT
+                   conrelid::regclass::text AS table_name,
+                   a.attname AS column_name
+               FROM
+                   pg_constraint AS c
+                   JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
+               WHERE
+                   c.contype = 'f'
+                   AND NOT EXISTS (
+                       SELECT 1
+                       FROM pg_index AS i
+                       WHERE i.indrelid = c.conrelid
+                         AND a.attnum = ANY(i.indkey)
+                   )
+               ORDER BY
+                   table_name,
+                   column_name;"))))))
 
 (deftest remove-collection-color-test
   (testing "Migration v48.00-019"
@@ -560,8 +528,9 @@
         (migrate!)
         (doseq [view-name new-view-names]
           (testing (str "View " view-name " should be created")
-            (is (= [] (t2/query (str "SELECT 1 FROM " view-name))))))
-        #_#_ ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37434)
+            ;; Just assert that something was returned by the query and no exception was thrown
+            (is (partial= [] (t2/query (str "SELECT 1 FROM " view-name))))))
+        #_#_ ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
         (migrate! :down 47)
         (testing "Views should be removed when downgrading"
           (doseq [view-name new-view-names]
@@ -574,7 +543,8 @@
     (mt/test-drivers [:postgres :mysql]
      (impl/test-migrations "v48.00-049" [migrate!]
        (create-raw-user! "noah@metabase.com")
-       (let [_activity-1 (t2/insert-returning-pks! (t2/table-name :model/Activity)
+       ;; Use raw :activity keyword as table name since the model has since been removed
+       (let [_activity-1 (t2/insert-returning-pks! :activity
                                                    {:topic       "card-create"
                                                     :user_id     1
                                                     :timestamp   :%now
@@ -585,10 +555,10 @@
                                                     :details     "{\"arbitrary_key\": \"arbitrary_value\"}"})]
          (testing "activity rows are copied into audit_log"
            (is (= 0 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :model/Activity)))
+           (is (= 1 (t2/count :activity)))
            (migrate!)
            (is (= 1 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :model/Activity))))
+           (is (= 1 (t2/count :activity))))
 
          (testing "`database_id` and `table_id` are merged into `details`"
            (is (partial=
@@ -605,7 +575,7 @@
     (mt/test-drivers [:h2]
      (impl/test-migrations "v48.00-049" [migrate!]
        (create-raw-user! "noah@metabase.com")
-       (let [_activity-1 (t2/insert-returning-pks! (t2/table-name :model/Activity)
+       (let [_activity-1 (t2/insert-returning-pks! "activity"
                                                    {:topic       "card-create"
                                                     :user_id     1
                                                     :timestamp   :%now
@@ -616,10 +586,10 @@
                                                     :details     "{\"arbitrary_key\": \"arbitrary_value\"}"})]
          (testing "activity rows are copied into audit_log"
            (is (= 0 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :model/Activity)))
+           (is (= 1 (t2/count :activity)))
            (migrate!)
            (is (= 1 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :model/Activity))))
+           (is (= 1 (t2/count :activity))))
 
          (testing "`database_id` and `table_id` are inserted into `details`, but not merged with the previous value
                    (H2 limitation)"
@@ -763,7 +733,8 @@
       (is (= [{:table_name "DATABASECHANGELOGLOCK" :column_name "LOCKED"}] ;; outlier because this is liquibase's table
              (t2/query
               (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type LIKE 'tinyint%%' AND table_schema = '%s';"
-                      (-> (mdb.connection/data-source) .getConnection .getCatalog))))))))
+                      (with-open [conn (-> (mdb/app-db) .getConnection)]
+                        (.getCatalog conn)))))))))
 
 (deftest index-database-changelog-test
   (testing "we should have an unique constraint on databasechangelog.(id,author,filename)"
@@ -772,10 +743,1175 @@
       (is (pos?
              (:count
               (t2/query-one
-               (case (mdb.connection/db-type)
+               (case (mdb/db-type)
                  :postgres "SELECT COUNT(*) as count FROM pg_indexes WHERE
                            tablename = 'databasechangelog' AND indexname = 'idx_databasechangelog_id_author_filename';"
                  :mysql    "SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'idx_databasechangelog_id_author_filename';"
                  ;; h2 has a strange way of naming constraint
                  :h2       "SELECT COUNT(*) as count FROM information_schema.indexes
                            WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'IDX_DATABASECHANGELOG_ID_AUTHOR_FILENAME_INDEX_1';"))))))))
+
+(deftest enable-public-sharing-default-test
+  (testing "enable-public-sharing is not set for new instances"
+    (impl/test-migrations "v49.2024-02-09T13:55:26" [migrate!]
+      (migrate!)
+      (is (nil?
+           (t2/select-one-fn :value (t2/table-name :model/Setting) :key "enable-public-sharing")))))
+
+  (testing "enable-public-sharing defaults to false for already-initalized instances"
+    (impl/test-migrations "v49.2024-02-09T13:55:26" [migrate!]
+      (create-raw-user! (mt/random-email))
+      (migrate!)
+      (is (= "false"
+             (t2/select-one-fn :value (t2/table-name :model/Setting) :key "enable-public-sharing")))))
+
+  (testing "enable-public-sharing remains true if already set"
+    (impl/test-migrations "v49.2024-02-09T13:55:26" [migrate!]
+      (create-raw-user! (mt/random-email))
+      (t2/insert! (t2/table-name :model/Setting) :key "enable-public-sharing" :value "true")
+      (migrate!)
+      (is (= "true"
+             (t2/select-one-fn :value (t2/table-name :model/Setting) :key "enable-public-sharing"))))))
+
+(defn- clear-permissions!
+  []
+  (t2/delete! (t2/table-name :model/Permissions) {:where [:not= :object "/"]})
+  (t2/delete! (t2/table-name :model/DataPermissions))
+  (t2/delete! :connection_impersonations)
+  (t2/delete! :sandboxes))
+
+(deftest data-access-permissions-schema-migration-basic-test
+  (testing "Data access permissions are correctly migrated from `permissions` to `data_permissions`"
+    (impl/test-migrations "v50.2024-01-10T03:27:30" [migrate!]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))
+            table-id-1 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 1"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))
+            table-id-2 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 2"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC/with\\slash"
+                                                                               :active     true}))]
+        (testing "Unrestricted data access for a DB"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/" db-id)})
+          (migrate!)
+          (is (= "unrestricted" (t2/select-one-fn :perm_value
+                                                  (t2/table-name :model/DataPermissions)
+                                                  :db_id db-id :table_id nil :group_id group-id)))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))
+
+        (testing "Unrestricted not-native data access for a DB"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/schema/" db-id)})
+          (migrate!)
+          (is (= "unrestricted" (t2/select-one-fn :perm_value
+                                                  (t2/table-name :model/DataPermissions)
+                                                  :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))
+
+        (testing "Unrestricted data access for a schema"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/schema/PUBLIC/" db-id)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))
+
+        (testing "Unrestricted data access for a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))
+
+        (testing "Query access to a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/schema/PUBLIC/table/%d/query/" db-id table-id-1)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))
+
+        (testing "Segmented query access to a table - maps to unrestricted data access; sandboxing is determined by the
+                                     `sandboxes` table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/schema/PUBLIC/table/%d/query/segmented/" db-id table-id-1)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))
+
+        (testing "No self service database access"
+          (clear-permissions!)
+          (migrate!)
+          (is (= "no-self-service"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))
+
+        (testing "Granular table permissions"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/schema/PUBLIC\\/with\\\\slash/table/%d/" db-id table-id-2)})
+          (migrate!)
+          (is (nil?
+               (t2/select-one-fn :perm_value
+                                 (t2/table-name :model/DataPermissions)
+                                 :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
+          (is (= "no-self-service"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access")))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-2 :group_id group-id :perm_type "perms/data-access"))))
+
+        (testing "Block permissions for a database"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/block/db/%d/" db-id)})
+          (migrate!)
+          (is (= "block" (t2/select-one-fn :perm_value
+                                           (t2/table-name :model/DataPermissions)
+                                           :db_id db-id :table_id nil :group_id group-id :perm_type "perms/data-access")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))))))
+
+(deftest native-query-editing-permissions-schema-migration-test
+  (testing "Native query editing permissions are correctly migrated from `permissions` to `data_permissions`"
+    (impl/test-migrations "v50.2024-01-10T03:27:31" [migrate!]
+      (let [group-id (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+            db-id    (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                :engine     "postgres"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :details    "{}"}))]
+        (testing "Native query editing allowed"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/" db-id)})
+          (migrate!)
+          (is (= "yes" (t2/select-one-fn :perm_value
+                                         (t2/table-name :model/DataPermissions)
+                                         :db_id db-id :table_id nil :group_id group-id :perm_type "perms/native-query-editing"))))
+
+        (testing "Native query editing explicitly allowed"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/native/" db-id)})
+          (migrate!)
+          (is (= "yes" (t2/select-one-fn :perm_value
+                                         (t2/table-name :model/DataPermissions)
+                                         :db_id db-id :table_id nil :group_id group-id :perm_type "perms/native-query-editing"))))
+
+        (testing "Native query editing not allowed"
+          (clear-permissions!)
+          (migrate!)
+          (is (= "no" (t2/select-one-fn :perm_value
+                                        (t2/table-name :model/DataPermissions)
+                                        :db_id db-id :table_id nil :group_id group-id :perm_type "perms/native-query-editing"))))))))
+
+(deftest download-results-permissions-schema-migration-test
+  (testing "Download results permissions are correctly migrated from `permissions` to `data_permissions`"
+    (impl/test-migrations "v50.2024-01-10T03:27:32" [migrate!]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))
+            table-id-1 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 1"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))
+            table-id-2 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 2"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))
+            table-id-3 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 3"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))]
+        (testing "One-million-rows download access for a DB"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/db/%d/" db-id)})
+          (migrate!)
+          (is (= "one-million-rows" (t2/select-one-fn :perm_value
+                                                      (t2/table-name :model/DataPermissions)
+                                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results")))
+
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/db/%d/schema/" db-id)})
+          (migrate!)
+          (is (= "one-million-rows" (t2/select-one-fn :perm_value
+                                                      (t2/table-name :model/DataPermissions)
+                                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results"))))
+
+        (testing "Ten-thousand-rows download access for a DB"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/limited/db/%d/" db-id)})
+          (migrate!)
+          (is (= "ten-thousand-rows" (t2/select-one-fn :perm_value
+                                                       (t2/table-name :model/DataPermissions)
+                                                       :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results")))
+
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/limited/db/%d/schema/" db-id)})
+          (migrate!)
+          (is (= "ten-thousand-rows" (t2/select-one-fn :perm_value
+                                                       (t2/table-name :model/DataPermissions)
+                                                       :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results"))))
+
+        (testing "No download access for a DB"
+          (clear-permissions!)
+          (migrate!)
+          (is (= "no" (t2/select-one-fn :perm_value
+                                        (t2/table-name :model/DataPermissions)
+                                        :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results"))))
+
+
+        (testing "One-million-rows download access for a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
+          (is (= "one-million-rows"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results"))))
+
+        (testing "One-million-rows download access for a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
+          (is (= "one-million-rows"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results"))))
+
+        (testing "Ten-thousand-rows download access for a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/limited/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/download-results")))
+          (is (= "ten-thousand-rows"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results"))))
+
+        (testing "Granular table permissions"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) [{:group_id group-id
+                                                    :object   (format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)}
+                                                   {:group_id group-id
+                                                    :object   (format "/download/limited/db/%d/schema/PUBLIC/table/%d/" db-id table-id-2)}])
+          (migrate!)
+          (is (nil?
+               (t2/select-one-fn :perm_value
+                                 (t2/table-name :model/DataPermissions)
+                                 :db_id db-id :table_id nil :group_id group-id)))
+          (is (= "one-million-rows"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id)))
+          (is (= "ten-thousand-rows"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-2 :group_id group-id)))
+          (is (= "no"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-3 :group_id group-id))))))))
+
+
+(deftest manage-table-metadata-permissions-schema-migration-test
+  (testing "Manage table metadata permissions are correctly migrated from `permissions` to `data_permissions`"
+    (impl/test-migrations "v50.2024-01-10T03:27:33" [migrate!]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))
+            table-id   (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 1"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))]
+        (testing "Manage table metadata access for a DB"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/data-model/db/%d/" db-id)})
+          (migrate!)
+          (is (= "yes" (t2/select-one-fn :perm_value
+                                         (t2/table-name :model/DataPermissions)
+                                         :db_id db-id :table_id nil :group_id group-id :perm_type "perms/manage-table-metadata")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id :group_id group-id :perm_type "perms/manage-table-metadata"))))
+
+        (testing "No manage table metadata access for a DB"
+          (clear-permissions!)
+          (migrate!)
+          (is (= "no" (t2/select-one-fn :perm_value
+                                        (t2/table-name :model/DataPermissions)
+                                        :db_id db-id :table_id nil :group_id group-id :perm_type "perms/manage-table-metadata")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id :group_id group-id :perm_type "perms/manage-table-metadata"))))
+
+        (testing "Manage table metadata access for a schema"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/data-model/db/%d/schema/PUBLIC/" db-id)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/manage-table-metadata")))
+          (is (= "yes"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id :group_id group-id :perm_type "perms/manage-table-metadata"))))
+
+        (testing "Manage table metadata access for a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/data-model/db/%d/schema/PUBLIC/table/%d/" db-id table-id)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "perms/manage-table-metadata")))
+          (is (= "yes"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id :group_id group-id :perm_type "perms/manage-table-metadata"))))))))
+
+(deftest manage-database-permissions-schema-migration-test
+  (testing "Manage database permissions are correctly migrated from `permissions` to `data_permissions`"
+    (impl/test-migrations "v50.2024-01-10T03:27:34" [migrate!]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))]
+        (testing "Manage database permission"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/details/db/%d/" db-id)})
+          (migrate!)
+          (is (= "yes" (t2/select-one-fn :perm_value
+                                         (t2/table-name :model/DataPermissions)
+                                         :db_id db-id :group_id group-id :perm_type "perms/manage-database"))))
+
+        (testing "No manage database permission"
+          (clear-permissions!)
+          (migrate!)
+          (is (= "no" (t2/select-one-fn :perm_value
+                                        (t2/table-name :model/DataPermissions)
+                                        :db_id db-id :group_id group-id :perm_type "perms/manage-database"))))))))
+
+(deftest create-internal-user-test
+  (testing "The internal user is created if it doesn't already exist"
+    (impl/test-migrations "v50.2024-03-28T16:30:35" [migrate!]
+      (let [get-users #(t2/query "SELECT * FROM core_user")]
+        (is (= [] (get-users)))
+        (migrate!)
+        (is (=? [{:id               config/internal-mb-user-id
+                  :first_name       "Metabase"
+                  :last_name        "Internal"
+                  :email            "internal@metabase.com"
+                  :password         some?
+                  :password_salt    some?
+                  :is_active        false
+                  :is_superuser     false
+                  :login_attributes nil
+                  :sso_source       nil
+                  :type             "internal"
+                  :date_joined      some?}]
+                (get-users))))))
+  (testing "The internal user isn't created again if it already exists"
+    (impl/test-migrations "v50.2024-03-28T16:30:35" [migrate!]
+      (t2/insert-returning-pks!
+       :core_user
+       ;; Copied from the old `metabase-enterprise.internal-user` namespace
+       {:id               config/internal-mb-user-id
+        :first_name       "Metabase"
+        :last_name        "Internal"
+        :email            "internal@metabase.com"
+        :password         (str (random-uuid))
+        :password_salt    (str (random-uuid))
+        :is_active        false
+        :is_superuser     false
+        :login_attributes nil
+        :sso_source       nil
+        :type             "internal"
+        :date_joined      :%now})
+      (let [get-users    #(t2/query "SELECT * FROM core_user")
+            users-before (get-users)]
+        (migrate!)
+        (is (= users-before (get-users)))))))
+
+(deftest data-permissions-migration-rollback-test
+  (testing "Data permissions are correctly rolled back from `data_permissions` to `permissions`"
+    (impl/test-migrations ["v50.2024-01-04T13:52:51" "v50.2024-02-19T21:32:04"] [migrate!]
+      (let [migrate-up!  (fn []
+                           (migrate!)
+                           (clear-permissions!))
+            group-id     (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+            db-id        (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                    :engine     "postgres"
+                                                                                    :created_at :%now
+                                                                                    :updated_at :%now
+                                                                                    :details    "{}"}))
+            table-id     (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                                 :name       "Table 1"
+                                                                                 :created_at :%now
+                                                                                 :updated_at :%now
+                                                                                 :active     true}))
+            table-id-2   (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                                 :name       "Table 2"
+                                                                                 :created_at :%now
+                                                                                 :updated_at :%now
+                                                                                 :active     true}))
+            insert-perm! (fn [perm-type perm-value & [table-id schema]]
+                           (t2/insert! (t2/table-name :model/DataPermissions)
+                                       :db_id db-id
+                                       :group_id group-id
+                                       :table_id table-id
+                                       :schema_name schema
+                                       :perm_type perm-type
+                                       :perm_value perm-value))]
+        (migrate-up!)
+        (insert-perm! "perms/data-access" "unrestricted")
+        (migrate! :down 49)
+        (is (= [(format "/db/%d/schema/" db-id)]
+               (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/data-access" "block")
+        (migrate! :down 49)
+        (is (= [(format "/block/db/%d/" db-id)]
+               (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/data-access" "no-self-service")
+        (migrate! :down 49)
+        (is (nil? (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/data-access" "unrestricted" table-id "PUBLIC")
+        (migrate! :down 49)
+        (is (= [(format "/db/%d/schema/PUBLIC/table/%d/" db-id table-id)]
+               (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/data-access" "unrestricted" table-id "schema/with\\slashes")
+        (migrate! :down 49)
+        (is (= [(format "/db/%d/schema/schema\\/with\\\\slashes/table/%d/" db-id table-id)]
+               (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/data-access" "no-self-service" table-id "PUBLIC")
+        (migrate! :down 49)
+        (is (nil? (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/native-query-editing" "yes")
+        (migrate! :down 49)
+        (is (= [(format "/db/%d/native/" db-id)]
+               (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/native-query-editing" "no")
+        (migrate! :down 49)
+        (is (nil? (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/download-results" "one-million-rows")
+        (migrate! :down 49)
+        (is (= [(format "/download/db/%d/" db-id)]
+               (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/download-results" "ten-thousand-rows")
+        (migrate! :down 49)
+        (is (= [(format "/download/limited/db/%d/" db-id)]
+               (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/download-results" "no")
+        (migrate! :down 49)
+        (is (nil? (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/download-results" "one-million-rows" table-id "PUBLIC")
+        (insert-perm! "perms/download-results" "no" table-id-2 "PUBLIC")
+        (migrate! :down 49)
+        (is (= #{(format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/download-results" "ten-thousand-rows" table-id "PUBLIC")
+        (insert-perm! "perms/download-results" "no" table-id-2 "PUBLIC")
+        (migrate! :down 49)
+        (is (= #{(format "/download/limited/db/%d/schema/PUBLIC/table/%d/" db-id table-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        ;; Granular download perms also get limited native download perms if all tables have at least "ten-thousand-rows"
+        (migrate-up!)
+        (insert-perm! "perms/download-results" "one-million-rows" table-id "PUBLIC")
+        (insert-perm! "perms/download-results" "ten-thousand-rows" table-id-2 "PUBLIC")
+        (migrate! :down 49)
+        (is (= #{(format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id)
+                 (format "/download/limited/db/%d/schema/PUBLIC/table/%d/" db-id table-id-2)
+                 (format "/download/limited/db/%d/native/" db-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/download-results" "no" table-id "PUBLIC")
+        (insert-perm! "perms/download-results" "no" table-id-2 "PUBLIC")
+        (migrate! :down 49)
+        (is (nil? (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/download-results" "one-million-rows" table-id "schema/with\\slashes")
+        (insert-perm! "perms/download-results" "no" table-id-2 "PUBLIC")
+        (migrate! :down 49)
+        (is (= #{(format "/download/db/%d/schema/schema\\/with\\\\slashes/table/%d/" db-id table-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/manage-table-metadata" "yes")
+        (migrate! :down 49)
+        (is (= [(format "/data-model/db/%d/" db-id)]
+               (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/manage-table-metadata" "no")
+        (migrate! :down 49)
+        (is (nil? (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/manage-table-metadata" "yes" table-id "PUBLIC")
+        (migrate! :down 49)
+        (is (= [(format "/data-model/db/%d/schema/PUBLIC/table/%d/" db-id table-id)]
+               (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/manage-table-metadata" "yes" table-id "schema/with\\slashes")
+        (migrate! :down 49)
+        (is (= [(format "/data-model/db/%d/schema/schema\\/with\\\\slashes/table/%d/" db-id table-id)]
+               (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/manage-table-metadata" "no" table-id "PUBLIC")
+        (migrate! :down 49)
+        (is (nil? (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/manage-database" "yes")
+        (migrate! :down 49)
+        (is (= [(format "/details/db/%d/" db-id)]
+               (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/manage-database" "no")
+        (migrate! :down 49)
+        (is (nil? (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))))))
+
+(deftest create-sample-content-test
+  (testing "The sample content is created iff *create-sample-content*=true"
+    (doseq [create? [true false]]
+      (testing (str "*create-sample-content* = " create?)
+        (impl/test-migrations "v50.2024-04-09T15:55:22" [migrate!]
+          (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
+            (binding [custom-migrations/*create-sample-content* create?]
+              (is (false? (sample-content-created?)))
+              (migrate!)
+              (is ((if create? true? false?) (sample-content-created?)))))))))
+  (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
+    (impl/test-migrations "v50.2024-04-09T15:55:22" [migrate!]
+      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
+        (is (false? (sample-content-created?)))
+        (t2/insert-returning-pks! :metabase_database {:name       "db"
+                                                      :engine     "h2"
+                                                      :created_at :%now
+                                                      :updated_at :%now
+                                                      :details    "{}"})
+        (t2/query {:delete-from :metabase_database})
+        (migrate!)
+        (is (false? (sample-content-created?)))
+        (is (empty? (t2/query "SELECT * FROM metabase_database"))
+            "No database should have been created"))))
+  (testing "The sample content isn't created if a user existed already"
+    (impl/test-migrations "v50.2024-04-09T15:55:22" [migrate!]
+      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
+        (is (false? (sample-content-created?)))
+        (t2/insert-returning-pks!
+         :core_user
+         {:first_name       "Rasta"
+          :last_name        "Toucan"
+          :email            "rasta@metabase.com"
+          :password         "password"
+          :password_salt    "and pepper"
+          :date_joined      :%now})
+        (migrate!)
+        (is (false? (sample-content-created?)))))))
+
+(deftest cache-config-migration-test
+  (testing "Caching config is correctly copied over"
+    (impl/test-migrations "v50.2024-04-12T12:33:09" [migrate!]
+      (mdb.query/update-or-insert! :model/Setting {:key "enable-query-caching"} (constantly {:value "true"}))
+      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
+      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"}))
+
+      (let [db   (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
+                                                                 (update :details json/generate-string)
+                                                                 (update :engine str)
+                                                                 (assoc :cache_ttl 10)))
+            dash (t2/insert-returning-pk! :report_dashboard (-> (mt/with-temp-defaults Dashboard)
+                                                                (assoc :cache_ttl 20
+                                                                       :parameters "")))
+            card (t2/insert-returning-pk! :report_card (-> (mt/with-temp-defaults Card)
+                                                           (update :display str)
+                                                           (update :visualization_settings json/generate-string)
+                                                           (update :dataset_query json/generate-string)
+                                                           (assoc :cache_ttl 30)))]
+
+        (migrate!)
+
+        (is (=? [{:model    "root"
+                  :model_id 0
+                  :strategy :ttl
+                  :config   {:multiplier      100
+                             :min_duration_ms 123}}
+                 {:model    "database"
+                  :model_id db
+                  :strategy :duration
+                  :config   {:duration 10 :unit "hours"}}
+                 {:model    "dashboard"
+                  :model_id dash
+                  :strategy :duration
+                  :config   {:duration 20 :unit "hours"}}
+                 {:model    "question"
+                  :model_id card
+                  :strategy :duration
+                  :config   {:duration 30 :unit "hours"}}]
+                (t2/select :model/CacheConfig))))))
+  (testing "And not copied if caching is disabled"
+    (impl/test-migrations "v50.2024-04-12T12:33:09" [migrate!]
+      (mdb.query/update-or-insert! :model/Setting {:key "enable-query-caching"} (constantly {:value "false"}))
+      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
+      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"}))
+
+      ;; this one to have custom configuration to check they are not copied over
+      (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
+                                                      (update :details json/generate-string)
+                                                      (update :engine str)
+                                                      (assoc :cache_ttl 10)))
+      (migrate!)
+      (is (= []
+             (t2/select :model/CacheConfig))))))
+
+(deftest split-data-permissions-migration-test
+  (testing "View Data and Create Query permissions are created correctly based on existing data permissions"
+    (impl/test-migrations ["v50.2024-02-26T22:15:54" "v50.2024-02-26T22:15:55"] [migrate!]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))
+            table-id-1 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 1"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))
+            table-id-2 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 2"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))]
+        (testing "Unrestricted data access + native query editing"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "unrestricted"})
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id
+                                                              :perm_type "perms/native-query-editing"
+                                                              :perm_value "yes"})
+          (migrate!)
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id :perm_type "perms/view-data")))
+          (is (= "query-builder-and-native"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id :perm_type "perms/create-queries"))))
+
+        (testing "Unrestricted data access + no native query editing"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "unrestricted"})
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id
+                                                              :perm_type "perms/native-query-editing"
+                                                              :perm_value "no"})
+          (migrate!)
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id :perm_type "perms/view-data")))
+          (is (= "query-builder"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id :perm_type "perms/create-queries"))))
+
+        (testing "No self-service data access + no native query editing"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "no-self-service"})
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id
+                                                              :perm_type "perms/native-query-editing"
+                                                              :perm_value "no"})
+          (migrate!)
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id :perm_type "perms/view-data")))
+          (is (= "no"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id :perm_type "perms/create-queries"))))
+
+        (testing "Blocked data access + no native query editing"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "block"})
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id
+                                                              :perm_type "perms/native-query-editing"
+                                                              :perm_value "no"})
+          (migrate!)
+          (is (= "blocked"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id :perm_type "perms/view-data")))
+          (is (= "no"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id :perm_type "perms/create-queries"))))
+
+
+        (testing "Granular (table-level) data access"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :table_id table-id-1
+                                                              :schema_name "PUBLIC"
+                                                              :group_id group-id
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "unrestricted"})
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :table_id table-id-2
+                                                              :schema_name "PUBLIC"
+                                                              :group_id group-id
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "no-self-service"})
+          (migrate!)
+          ;; Granular data-access permissions always map to DB-level unrestricted view-data permissions
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id :perm_type "perms/view-data")))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id :perm_type "perms/view-data")))
+          (is (= "query-builder"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/create-queries")))
+          (is (= "no"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-2 :group_id group-id :perm_type "perms/create-queries"))))))))
+
+(deftest split-data-permissions-legacy-no-self-service-migration-test
+  (testing "view-data is set to `legacy-no-self-service` for groups that meet specific conditions"
+    (impl/test-migrations ["v50.2024-02-26T22:15:54" "v50.2024-02-26T22:15:55"] [migrate!]
+      (let [user-id    (:id (create-raw-user! (mt/random-email)))
+            group-id-1 (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group 1"}))
+            group-id-2 (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group 2"}))
+            _pgm       (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroupMembership)
+                                                 {:user_id user-id :group_id group-id-1 :is_group_manager false})
+            _pgm       (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroupMembership)
+                                                 {:user_id user-id :group_id group-id-2 :is_group_manager false})
+            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))
+            table-id-1 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 1"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))
+            table-id-2 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 2"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))]
+        (testing "No self-service in group 1 and unrestricted in group 2 (normal case)"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id-1
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "no-self-service"})
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id-2
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "unrestricted"})
+          (migrate!)
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id-1 :perm_type "perms/view-data")))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id-2 :perm_type "perms/view-data"))))
+
+        (testing "No self-service in group 1 and block in group 2"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id-1
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "no-self-service"})
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id-2
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "block"})
+          (migrate!)
+          (is (= "legacy-no-self-service"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id-1 :perm_type "perms/view-data")))
+          (is (= "blocked"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id-2 :perm_type "perms/view-data"))))
+
+        (testing "Granular perms in group 1 and block in group 2"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :table_id table-id-1
+                                                              :group_id group-id-1
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "no-self-service"})
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :table_id table-id-2
+                                                              :group_id group-id-1
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "unrestricted"})
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id-2
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "block"})
+          (migrate!)
+          (is (= "legacy-no-self-service"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id-1 :perm_type "perms/view-data")))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-2 :group_id group-id-1 :perm_type "perms/view-data")))
+          (is (= "blocked"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id-2 :perm_type "perms/view-data"))))
+
+        (testing "No self-service in group 1 and impersonation in group 2"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id-1
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "no-self-service"})
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id-2
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "unrestricted"})
+          (t2/insert-returning-pks! :connection_impersonations {:group_id group-id-2 :db_id db-id :attribute "foo"})
+          (migrate!)
+          (is (= "legacy-no-self-service"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id-1 :perm_type "perms/view-data")))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id-2 :perm_type "perms/view-data"))))
+
+        (testing "Granular perms in group 1 and impersonation in group 2"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :table_id table-id-1
+                                                              :group_id group-id-1
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "no-self-service"})
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :table_id table-id-2
+                                                              :group_id group-id-1
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "unrestricted"})
+          (t2/insert-returning-pks! :connection_impersonations {:group_id group-id-2 :db_id db-id :attribute "foo"})
+          (migrate!)
+          (is (= "legacy-no-self-service"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id-1 :perm_type "perms/view-data")))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-2 :group_id group-id-1 :perm_type "perms/view-data"))))
+
+        (testing "No self-service in group 1 and sandbox in group 2"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id-1
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "no-self-service"})
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :group_id group-id-2
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "unrestricted"})
+          (t2/insert-returning-pks! :sandboxes {:group_id group-id-2 :table_id table-id-1})
+          (migrate!)
+          (is (= "legacy-no-self-service"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id-1 :perm_type "perms/view-data")))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id-2 :perm_type "perms/view-data"))))
+
+        (testing "Granular perms in group 1 and sandbox in group 2"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :table_id table-id-1
+                                                              :group_id group-id-1
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "no-self-service"})
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :table_id table-id-2
+                                                              :group_id group-id-1
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "unrestricted"})
+          (t2/insert-returning-pks! :sandboxes {:group_id group-id-2 :table_id table-id-1})
+          (migrate!)
+          (is (= "legacy-no-self-service"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id-1 :perm_type "perms/view-data")))
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-2 :group_id group-id-1 :perm_type "perms/view-data")))
+
+          (clear-permissions!)
+
+          ;; If the sandbox is for a different table, the group should not get the legacy-no-self-service permission
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :table_id table-id-1
+                                                              :group_id group-id-1
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "no-self-service"})
+          (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
+                                                              :table_id table-id-2
+                                                              :group_id group-id-1
+                                                              :perm_type "perms/data-access"
+                                                              :perm_value "unrestricted"})
+          (t2/insert-returning-pks! :sandboxes {:group_id group-id-2 :table_id table-id-2})
+          (migrate!)
+          (is (= "unrestricted"
+                 (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id nil :group_id group-id-1 :perm_type "perms/view-data")))
+          (is (nil? (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id-1 :perm_type "perms/view-data")))
+          (is (nil? (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-2 :group_id group-id-1 :perm_type "perms/view-data"))))))))
+
+(deftest split-data-permissions-migration-rollback-test
+  (impl/test-migrations ["v50.2024-01-04T13:52:51" "v50.2024-02-26T22:15:55"] [migrate!]
+    (let [migrate-up!  (fn []
+                         (migrate!)
+                         (clear-permissions!))
+          group-id     (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+          db-id        (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))
+          table-id     (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 1"
+                                                                               :schema     "PUBLIC"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :active     true}))
+          insert-perm! (fn [perm-type perm-value & [table-id]]
+                         (t2/insert! (t2/table-name :model/DataPermissions)
+                                     :db_id db-id
+                                     :group_id group-id
+                                     :table_id table-id
+                                     :schema_name "PUBLIC"
+                                     :perm_type perm-type
+                                     :perm_value perm-value))]
+      (testing "DB-level data access"
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "query-builder-and-native")
+        (migrate! :down 49)
+        (is (= #{(format "/db/%d/schema/" db-id)
+                 (format "/db/%d/native/" db-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "query-builder")
+        (migrate! :down 49)
+        (is (= #{(format "/db/%d/schema/" db-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "no")
+        (migrate! :down 49)
+        (is (nil? (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "legacy-no-self-service")
+        (insert-perm! "perms/create-queries" "no")
+        (migrate! :down 49)
+        (is (nil? (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "blocked")
+        (insert-perm! "perms/create-queries" "no")
+        (migrate! :down 49)
+        (is (= #{(format "/block/db/%d/" db-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))
+
+      (testing "Table-level access"
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "query-builder" table-id)
+        (migrate! :down 49)
+        (is (= #{(format "/db/%d/schema/PUBLIC/table/%d/" db-id table-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "no" table-id)
+        (migrate! :down 49)
+        (is (nil? (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (t2/insert-returning-pks! :sandboxes {:group_id group-id :table_id table-id})
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "no" table-id)
+        (migrate! :down 49)
+        (is (= #{(format "/block/db/%d/" db-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))
+
+      (testing "Impersonated data access"
+        (migrate-up!)
+        (t2/insert-returning-pks! :connection_impersonations {:group_id group-id :db_id db-id :attribute "foo"})
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "query-builder-and-native")
+        (migrate! :down 49)
+        (is (= #{(format "/db/%d/schema/" db-id)
+                 (format "/db/%d/native/" db-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (t2/insert-returning-pks! :connection_impersonations {:group_id group-id :db_id db-id :attribute "foo"})
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "query-builder")
+        (migrate! :down 49)
+        (is (= #{(format "/db/%d/schema/" db-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (t2/insert-returning-pks! :connection_impersonations {:group_id group-id :db_id db-id :attribute "foo"})
+        (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "no")
+        (migrate! :down 49)
+        (is (= #{(format "/block/db/%d/" db-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))))))

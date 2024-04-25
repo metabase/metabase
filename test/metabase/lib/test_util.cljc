@@ -76,7 +76,7 @@
   (lib/composed-metadata-provider
    meta/metadata-provider
    (providers.mock/mock-metadata-provider
-    (assoc-in cards [:cards 0 :dataset] true))))
+    (assoc-in cards [:cards 0 :type] :model))))
 
 (def query-with-source-card
   "A query against `:source-card 1`, with a metadata provider that has that Card. Card's name is `My Card`. Card
@@ -229,13 +229,42 @@
                                         (mapv #(if native? (dissoc % :table-id :id :fk-target-field-id) %)))}))])))
         table-key-and-ids))
 
+(defn- make-mock-cards-special-cases
+  [metadata-provider]
+  (let [{products "PRODUCTS"
+         reviews  "REVIEWS"} (m/index-by :name (lib.metadata/tables metadata-provider))
+        {pk "ID"}            (m/index-by :name (lib.metadata/fields metadata-provider (:id products)))
+        {fk "PRODUCT_ID"}    (m/index-by :name (lib.metadata/fields metadata-provider (:id reviews)))]
+    {:model/products-and-reviews
+     {:lib/type      :metadata/card
+      :id            1000
+      :database-id   (:id (lib.metadata/database metadata-provider))
+      :name          "Mock model - Products and Reviews"
+      :type          :model
+      :dataset-query
+      {:database (:id (lib.metadata/database metadata-provider))
+       :type     :query
+       :query    {:source-table (:id products)
+                  :joins        [{:fields       :all
+                                  :alias        "Reviews"
+                                  :source-table (:id reviews)
+                                  :condition    [:=
+                                                 [:field (:id pk) {:base-type :type/BigInteger}]
+                                                 [:field (:id fk)
+                                                  {:base-type :type/Integer
+                                                   :join-alias "Reviews"}]]}]}}}}))
+
 (def mock-cards
   "Map of mock MBQL query Card against the test tables. There are three versions of the Card for each table:
 
   * `:venues`, a Card WITH `:result-metadata`
   * `:venues/no-metadata`, a Card WITHOUT `:result-metadata`
-  * `:venues/native`, a Card with `:result-metadata` and a NATIVE query."
-  (make-mock-cards meta/metadata-provider (map (juxt identity (comp :id meta/table-metadata)) (meta/tables))))
+  * `:venues/native`, a Card with `:result-metadata` and a NATIVE query.
+
+  There are also some specialized mock cards used for corner cases:
+  * `:model/products-and-reviews`, a model joining products to reviews"
+  (merge (make-mock-cards meta/metadata-provider (map (juxt identity (comp :id meta/table-metadata)) (meta/tables)))
+         (make-mock-cards-special-cases meta/metadata-provider)))
 
 (defn metadata-provider-with-mock-card [card]
   (lib/composed-metadata-provider

@@ -1,14 +1,13 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitQuestionAdhoc,
   sidebar,
   getDraggableElements,
-  moveColumnDown,
   popover,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -33,7 +32,7 @@ describe("scenarios > visualizations > funnel chart", () => {
     sidebar().findByText("Data").click();
   });
 
-  it("hould allow you to reorder and show/hide rows", () => {
+  it("should allow you to reorder and show/hide rows", () => {
     cy.log("ensure that rows are shown");
     getDraggableElements().should("have.length", 5);
 
@@ -46,7 +45,7 @@ describe("scenarios > visualizations > funnel chart", () => {
           .first()
           .should("have.text", name);
 
-        moveColumnDown(getDraggableElements().first(), 2);
+        moveDnDKitElement(getDraggableElements().first(), { vertical: 100 });
 
         getDraggableElements().eq(2).should("have.text", name);
 
@@ -72,7 +71,7 @@ describe("scenarios > visualizations > funnel chart", () => {
   });
 
   it("should handle row items being filterd out and returned gracefully", () => {
-    moveColumnDown(getDraggableElements().first(), 2);
+    moveDnDKitElement(getDraggableElements().first(), { vertical: 100 });
 
     getDraggableElements()
       .eq(1)

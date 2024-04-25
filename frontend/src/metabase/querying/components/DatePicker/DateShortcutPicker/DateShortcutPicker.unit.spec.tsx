@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
+
 import { DATE_PICKER_OPERATORS, DATE_PICKER_SHORTCUTS } from "../constants";
 import type { DatePickerOperator, DatePickerShortcut } from "../types";
+
 import { DateShortcutPicker } from "./DateShortcutPicker";
 
 interface SetupOpts {
@@ -29,9 +32,9 @@ function setup({
 }
 
 describe("DateShortcutPicker", () => {
-  it("should be able to create a filter via shortcuts", () => {
+  it("should be able to create a filter via shortcuts", async () => {
     const { onChange } = setup();
-    userEvent.click(screen.getByText("Today"));
+    await userEvent.click(screen.getByText("Today"));
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
       value: "current",
@@ -39,9 +42,9 @@ describe("DateShortcutPicker", () => {
     });
   });
 
-  it("should be able to navigate to a more specific filter type", () => {
+  it("should be able to navigate to a more specific filter type", async () => {
     const { onSelectType } = setup();
-    userEvent.click(screen.getByText("Specific dates…"));
+    await userEvent.click(screen.getByText("Specific dates…"));
     expect(onSelectType).toHaveBeenCalledWith("specific");
   });
 });

@@ -1,6 +1,8 @@
+import userEvent from "@testing-library/user-event";
 import type { AnySchema } from "yup";
 import * as Yup from "yup";
-import userEvent from "@testing-library/user-event";
+
+import { render, screen, waitFor } from "__support__/ui";
 import {
   Form,
   FormProvider,
@@ -8,7 +10,6 @@ import {
   FormSubmitButton,
   requiredErrorMessage,
 } from "metabase/forms";
-import { render, screen, waitFor } from "__support__/ui";
 
 const OPTIONS = [
   { value: "line", label: "Line" },
@@ -70,9 +71,9 @@ describe("FormSelect", () => {
   it("should submit a non-empty value", async () => {
     const { onSubmit } = setup();
 
-    userEvent.click(screen.getByLabelText("Display"));
-    userEvent.click(screen.getByText("Line"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByLabelText("Display"));
+    await userEvent.click(screen.getByText("Line"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -87,8 +88,8 @@ describe("FormSelect", () => {
       initialValues: { display: "line" },
     });
 
-    userEvent.click(screen.getByLabelText("Clear"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByLabelText("Clear"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -104,8 +105,8 @@ describe("FormSelect", () => {
       nullable: true,
     });
 
-    userEvent.click(screen.getByLabelText("Clear"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByLabelText("Clear"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -123,10 +124,10 @@ describe("FormSelect", () => {
     setup({ initialValues: validationSchema.getDefault(), validationSchema });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
 
-    userEvent.click(screen.getByPlaceholderText("No display type"));
-    userEvent.click(screen.getByText("Line"));
-    userEvent.click(screen.getByLabelText("Clear"));
-    userEvent.tab();
+    await userEvent.click(screen.getByPlaceholderText("No display type"));
+    await userEvent.click(screen.getByText("Line"));
+    await userEvent.click(screen.getByLabelText("Clear"));
+    await userEvent.tab();
 
     await waitFor(() => {
       expect(screen.getByText("Required")).toBeInTheDocument();
@@ -147,10 +148,10 @@ describe("FormSelect", () => {
     });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
 
-    userEvent.click(screen.getByPlaceholderText("No display type"));
-    userEvent.click(screen.getByText("Line"));
-    userEvent.click(screen.getByLabelText("Clear"));
-    userEvent.tab();
+    await userEvent.click(screen.getByPlaceholderText("No display type"));
+    await userEvent.click(screen.getByText("Line"));
+    await userEvent.click(screen.getByLabelText("Clear"));
+    await userEvent.tab();
 
     await waitFor(() => {
       expect(screen.getByText("Required")).toBeInTheDocument();

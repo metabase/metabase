@@ -1,10 +1,12 @@
 import { assoc } from "icepick";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { t } from "ttag";
 
 import { titleize, humanize } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
-import { isTypePK } from "metabase-lib/types/utils/isa";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
+import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 
 export const idsToObjectMap = (ids, objects) =>
   ids
@@ -121,7 +123,7 @@ function filterBySegmentId(query, segmentId) {
 
 function aggregateByMetricId(query, metricId) {
   const stageIndex = -1;
-  const metricMetadata = Lib.metricMetadata(query, metricId);
+  const metricMetadata = Lib.legacyMetricMetadata(query, metricId);
 
   if (!metricMetadata) {
     return query;
@@ -136,3 +138,9 @@ export const getQuestionUrl = getQuestionArgs =>
 // little utility function to determine if we 'has' things, useful
 // for handling entity empty states
 export const has = entity => entity && entity.length > 0;
+
+export const getDescription = question => {
+  const timestamp = moment(question.getCreatedAt()).fromNow();
+  const author = question.getCreator().common_name;
+  return t`Created ${timestamp} by ${author}`;
+};

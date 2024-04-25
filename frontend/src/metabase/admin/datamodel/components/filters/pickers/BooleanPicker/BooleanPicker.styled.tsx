@@ -1,11 +1,11 @@
-import PropTypes from "prop-types";
 import styled from "@emotion/styled";
+import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
+import { color } from "metabase/lib/colors";
+import { space } from "metabase/styled-components/theme";
 
 export const FilterRadio = styled(Radio)`
   font-weight: 700;

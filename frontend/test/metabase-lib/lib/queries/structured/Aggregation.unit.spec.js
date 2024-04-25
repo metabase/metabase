@@ -1,11 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
+import Aggregation from "metabase-lib/v1/queries/structured/Aggregation";
 import { createMockMetric } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import Aggregation from "metabase-lib/queries/structured/Aggregation";
 
 const TOTAL_ORDER_VALUE_METRIC = createMockMetric({
   id: 1,

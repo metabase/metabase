@@ -100,7 +100,7 @@
 (defn- clean-entity
  "Removes any comparison-confounding fields, like `:created_at`."
  [entity]
- (dissoc entity :created_at :result_metadata))
+ (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest e2e-storage-ingestion-test
@@ -154,7 +154,7 @@
                                                {:spec-gen {:dataset_query {:database 1
                                                                            :type     :native
                                                                            :native   {:query "SELECT * FROM whatever;"}}
-                                                           :dataset       true}}
+                                                           :type          :model}}
                                                {:table_id      [:t    100]
                                                 :collection_id [:coll 100]
                                                 :creator_id    [:u    10]}))
@@ -167,7 +167,7 @@
                                                 {:spec-gen {:dataset_query {:database 1
                                                                             :query {:source-table 3}
                                                                             :type :query}
-                                                            :dataset       true}}
+                                                            :type          :model}}
                                                 {:table_id      [:t    10]
                                                  :collection_id [:coll 10]
                                                  :creator_id    [:u    10]}))
@@ -222,7 +222,7 @@
                :pulse-channel-recipient (many-random-fks 40 {} {:pulse_channel_id [:pulse-channel 30]
                                                                 :user_id          [:u 100]})}))
 
-          (is (= 100 (count (t2/select-fn-set :email 'User))))
+          (is (= 101 (count (t2/select-fn-set :email 'User)))) ; +1 for the internal user
 
           (testing "extraction"
             (reset! extraction (serdes/with-cache (into [] (extract/extract {}))))
@@ -550,7 +550,7 @@
 
              Card          {model-id   :id
                             model-name :name
-                            model-eid  :entity_id}   {:dataset       true
+                            model-eid  :entity_id}   {:type          :model
                                                       :name          "Linked model"
                                                       :description   "Linked model desc"
                                                       :display       "table"}

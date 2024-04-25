@@ -1,11 +1,19 @@
 import { t } from "ttag";
 
-import { singularize, formatValue } from "metabase/lib/formatting";
-
 import {
   isImplicitDeleteAction,
   isImplicitUpdateAction,
 } from "metabase/actions/utils";
+import { singularize, formatValue } from "metabase/lib/formatting";
+import type Question from "metabase-lib/v1/Question";
+import { canRunAction } from "metabase-lib/v1/actions/utils";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Table from "metabase-lib/v1/metadata/Table";
+import {
+  getIsPKFromTablePredicate,
+  isEntityName,
+  isPK,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   DatasetData,
@@ -13,16 +21,6 @@ import type {
   VisualizationSettings,
   WritebackAction,
 } from "metabase-types/api";
-
-import {
-  getIsPKFromTablePredicate,
-  isEntityName,
-  isPK,
-} from "metabase-lib/types/utils/isa";
-import { canRunAction } from "metabase-lib/actions/utils";
-import type Database from "metabase-lib/metadata/Database";
-import type Table from "metabase-lib/metadata/Table";
-import type Question from "metabase-lib/Question";
 
 import type { ObjectId } from "./types";
 

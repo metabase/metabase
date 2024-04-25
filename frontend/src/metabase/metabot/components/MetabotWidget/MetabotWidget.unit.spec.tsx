@@ -1,12 +1,6 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import type { Card, CollectionItem, Database, User } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockCollectionItem,
-  createMockDatabase,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { Route } from "react-router";
+
 import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
@@ -17,6 +11,14 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import type { Card, CollectionItem, Database, User } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockCollectionItem,
+  createMockDatabase,
+  createMockUser,
+} from "metabase-types/api/mocks";
+
 import MetabotWidget from "./MetabotWidget";
 
 const TEST_DATABASE = createMockDatabase({
@@ -41,7 +43,7 @@ const TEST_USER_2 = createMockUser({
 
 const TEST_MODEL = createMockCard({
   name: "Orders",
-  dataset: true,
+  type: "model",
   dataset_query: {
     database: TEST_DATABASE.id,
     type: "query",
@@ -97,8 +99,11 @@ describe("MetabotWidget", () => {
   it("should redirect to the database metabot page with the prompt", async () => {
     const { history } = await setup();
 
-    userEvent.type(screen.getByPlaceholderText(TEST_MODEL_PLACEHOLDER), "How");
-    userEvent.click(screen.getByRole("button", { name: "Get Answer" }));
+    await userEvent.type(
+      screen.getByPlaceholderText(TEST_MODEL_PLACEHOLDER),
+      "How",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Get Answer" }));
 
     const location = history?.getCurrentLocation();
     expect(location?.pathname).toBe(`/metabot/database/${TEST_DATABASE.id}`);
@@ -109,10 +114,13 @@ describe("MetabotWidget", () => {
       databases: [TEST_DATABASE, TEST_DATABASE_2],
     });
 
-    userEvent.click(screen.getByText(TEST_DATABASE.name));
-    userEvent.click(screen.getByText(TEST_DATABASE_2.name));
-    userEvent.type(screen.getByPlaceholderText(TEST_MODEL_PLACEHOLDER), "How");
-    userEvent.click(screen.getByRole("button", { name: "Get Answer" }));
+    await userEvent.click(screen.getByText(TEST_DATABASE.name));
+    await userEvent.click(screen.getByText(TEST_DATABASE_2.name));
+    await userEvent.type(
+      screen.getByPlaceholderText(TEST_MODEL_PLACEHOLDER),
+      "How",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Get Answer" }));
 
     const location = history?.getCurrentLocation();
     expect(location?.pathname).toBe(`/metabot/database/${TEST_DATABASE_2.id}`);
@@ -154,7 +162,7 @@ describe("MetabotWidget", () => {
       ],
     });
 
-    userEvent.click(screen.getByText(TEST_DATABASE.name));
+    await userEvent.click(screen.getByText(TEST_DATABASE.name));
     expect(screen.queryByText(mongoDbName)).not.toBeInTheDocument();
   });
 });

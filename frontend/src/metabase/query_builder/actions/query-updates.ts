@@ -1,9 +1,9 @@
+import type { Limit } from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type { Dispatch, GetState } from "metabase-types/store";
 
-import * as Lib from "metabase-lib";
-import type { Limit } from "metabase-lib/types";
-
 import { getQuestion } from "../selectors";
+
 import { updateQuestion } from "./core";
 
 export const setLimit =

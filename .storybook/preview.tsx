@@ -1,5 +1,6 @@
 import React from "react";
-import "metabase/css/index.css";
+import "metabase/css/vendor.css";
+import "metabase/css/index.module.css";
 import "metabase/lib/dayjs";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";

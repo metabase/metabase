@@ -1,12 +1,12 @@
 import { getIn } from "icepick";
 
+import type { IconName } from "metabase/ui";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   ClickBehaviorType,
-  DashboardCard,
+  QuestionDashboardCard,
   DatasetColumn,
 } from "metabase-types/api";
-import type { IconName } from "metabase/ui";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 type ClickBehaviorOption = {
   value: ClickBehaviorType;
@@ -20,7 +20,7 @@ export const clickBehaviorOptions: ClickBehaviorOption[] = [
 ];
 
 export function getClickBehaviorForColumn(
-  dashcard: DashboardCard,
+  dashcard: QuestionDashboardCard,
   column: DatasetColumn,
 ) {
   return getIn(dashcard, [

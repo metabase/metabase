@@ -41,4 +41,6 @@ serdes/meta:
 - id: hFpp3c-7Y-CtMOrs3zeyn
   label: last_login_date
   model: Card
+initially_published_at: null
 metabase_version: null
+type: question

@@ -1,30 +1,28 @@
 import { useEffect, useCallback } from "react";
-import { push } from "react-router-redux";
 import { connect } from "react-redux";
 import type { Route } from "react-router";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
+import Collections from "metabase/entities/collections";
+import Groups from "metabase/entities/groups";
 import type { Collection, CollectionId, GroupId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
-import Groups from "metabase/entities/groups";
-import Collections from "metabase/entities/collections";
-import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
 
 import {
   PermissionsEditor,
   PermissionsEditorEmptyState,
 } from "../../components/PermissionsEditor";
-
 import PermissionsPageLayout from "../../components/PermissionsPageLayout";
+import { PermissionsSidebar } from "../../components/PermissionsSidebar";
 import {
   initializeCollectionPermissions,
   updateCollectionPermission,
   saveCollectionPermissions,
   loadCollectionPermissions,
 } from "../../permissions";
-
 import type {
   CollectionIdProps,
   CollectionPermissionEditorType,
@@ -37,8 +35,6 @@ import {
   getIsDirty,
   collectionsQuery,
 } from "../../selectors/collection-permissions";
-
-import { PermissionsSidebar } from "../../components/PermissionsSidebar";
 
 const mapDispatchToProps = {
   initialize: initializeCollectionPermissions,
@@ -101,7 +97,12 @@ function CollectionsPermissionsPageView({
   }, [initialize]);
 
   const handlePermissionChange = useCallback(
-    (item, _permission, value, toggleState) => {
+    (
+      item: { id: GroupId },
+      _permission: unknown,
+      value: unknown,
+      toggleState: boolean,
+    ) => {
       updateCollectionPermission({
         groupId: item.id,
         collection,

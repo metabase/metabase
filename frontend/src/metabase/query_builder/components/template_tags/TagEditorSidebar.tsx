@@ -1,12 +1,17 @@
-import { Component } from "react";
-import PropTypes from "prop-types";
-import { t } from "ttag";
 import cx from "classnames";
+import { Component } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   DatabaseId,
@@ -17,13 +22,13 @@ import type {
   TemplateTag,
   TemplateTagId,
 } from "metabase-types/api";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import type Database from "metabase-lib/metadata/Database";
-import type Field from "metabase-lib/metadata/Field";
-import type Question from "metabase-lib/Question";
 
-import { TagEditorParam } from "./TagEditorParam";
 import { TagEditorHelp } from "./TagEditorHelp";
+import { TagEditorParam } from "./TagEditorParam";
+
+type GetEmbeddedParamVisibility = (
+  slug: string,
+) => EmbeddingParameterVisibility;
 
 interface TagEditorSidebarProps {
   card: Card;
@@ -37,6 +42,7 @@ interface TagEditorSidebarProps {
   setTemplateTagConfig: (tag: TemplateTag, config: Parameter) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   onClose: () => void;
+  getEmbeddedParameterVisibility: GetEmbeddedParamVisibility;
 }
 
 interface TagEditorSidebarState {
@@ -46,17 +52,6 @@ interface TagEditorSidebarState {
 export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
   state: TagEditorSidebarState = {
     section: "settings",
-  };
-
-  static propTypes = {
-    card: PropTypes.object.isRequired,
-    onClose: PropTypes.func.isRequired,
-    databaseFields: PropTypes.array,
-    sampleDatabaseId: PropTypes.number,
-    setDatasetQuery: PropTypes.func.isRequired,
-    setTemplateTag: PropTypes.func.isRequired,
-    setTemplateTagConfig: PropTypes.func.isRequired,
-    setParameterValue: PropTypes.func.isRequired,
   };
 
   setSection(section: "settings" | "help") {
@@ -80,6 +75,7 @@ export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
       setTemplateTagConfig,
       setParameterValue,
       onClose,
+      getEmbeddedParameterVisibility,
     } = this.props;
     const tags = query.variableTemplateTags();
     const database = question.database();
@@ -96,18 +92,39 @@ export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
     return (
       <SidebarContent title={t`Variables`} onClose={onClose}>
         <div data-testid="tag-editor-sidebar">
-          <div className="mx3 text-centered Button-group Button-group--brand text-uppercase mb2 flex flex-full">
+          <div
+            className={cx(
+              CS.mx3,
+              CS.textCentered,
+              ButtonsS.ButtonGroup,
+              ButtonsS.ButtonGroupBrand,
+              CS.textUppercase,
+              CS.mb2,
+              CS.flex,
+              CS.flexFull,
+            )}
+          >
             <a
-              className={cx("Button flex-full Button--small", {
-                "Button--active": section === "settings",
-                disabled: tags.length === 0,
-              })}
+              className={cx(
+                ButtonsS.Button,
+                CS.flexFull,
+                ButtonsS.ButtonSmall,
+                {
+                  [ButtonsS.ButtonActive]: section === "settings",
+                  [CS.disabled]: tags.length === 0,
+                },
+              )}
               onClick={() => this.setSection("settings")}
             >{t`Settings`}</a>
             <a
-              className={cx("Button flex-full Button--small", {
-                "Button--active": section === "help",
-              })}
+              className={cx(
+                ButtonsS.Button,
+                CS.flexFull,
+                ButtonsS.ButtonSmall,
+                {
+                  [ButtonsS.ButtonActive]: section === "help",
+                },
+              )}
               onClick={() => this.setSection("help")}
             >{t`Help`}</a>
           </div>
@@ -121,6 +138,7 @@ export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
               setTemplateTag={setTemplateTag}
               setTemplateTagConfig={setTemplateTagConfig}
               setParameterValue={setParameterValue}
+              getEmbeddedParameterVisibility={getEmbeddedParameterVisibility}
             />
           ) : (
             <TagEditorHelp
@@ -145,6 +163,7 @@ interface SettingsPaneProps {
   setTemplateTag: (tag: TemplateTag) => void;
   setTemplateTagConfig: (tag: TemplateTag, config: Parameter) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
+  getEmbeddedParameterVisibility: GetEmbeddedParamVisibility;
 }
 
 const SettingsPane = ({
@@ -156,14 +175,20 @@ const SettingsPane = ({
   setTemplateTag,
   setTemplateTagConfig,
   setParameterValue,
+  getEmbeddedParameterVisibility,
 }: SettingsPaneProps) => (
   <div>
     {tags.map(tag => (
-      <div key={tag.name}>
+      <div key={tag.id}>
         <TagEditorParam
           tag={tag}
           key={tag.name}
           parameter={parametersById[tag.id]}
+          embeddedParameterVisibility={
+            parametersById[tag.id]
+              ? getEmbeddedParameterVisibility(parametersById[tag.id].slug)
+              : null
+          }
           databaseFields={databaseFields}
           database={database}
           databases={databases}

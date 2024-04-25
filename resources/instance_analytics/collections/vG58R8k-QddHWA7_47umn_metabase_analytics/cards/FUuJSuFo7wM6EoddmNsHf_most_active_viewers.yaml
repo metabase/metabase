@@ -134,4 +134,6 @@ serdes/meta:
 - id: FUuJSuFo7wM6EoddmNsHf
   label: most_active_viewers
   model: Card
+initially_published_at: null
 metabase_version: null
+type: question

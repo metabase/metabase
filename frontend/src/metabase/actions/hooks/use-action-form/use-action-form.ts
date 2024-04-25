@@ -2,7 +2,6 @@ import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import { getForm, getFormValidationSchema } from "metabase/actions/utils";
-
 import type {
   ActionFormInitialValues,
   ParametersForActionExecution,

@@ -5,6 +5,7 @@ redirect_from:
   - /docs/latest/users-guide
   - /docs/latest/administration-guide
   - /docs/latest/operations-guide
+  - /docs/latest/faq
 ---
 
 # Metabase documentation
@@ -52,6 +53,7 @@ Metabase's reference documentation.
 - [Commands](./installation-and-operation/commands.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
 - [Privacy](./installation-and-operation/privacy.md)
+- [About the anonymous usage data we collect](./installation-and-operation/information-collection.md)
 
 ### Databases
 
@@ -89,6 +91,7 @@ Metabase's reference documentation.
 - [Sharing answers](./questions/sharing/answers.md)
 - [Alerts](./questions/sharing/alerts.md)
 - [Public sharing](./questions/sharing/public-links.md)
+- [Exporting data](./questions/sharing/exporting-results.md)
 
 ### Dashboards
 
@@ -107,6 +110,7 @@ Metabase's reference documentation.
 - [Table metadata admin settings](./data-modeling/metadata-editing.md)
 - [Field types](./data-modeling/field-types.md)
 - [Formatting defaults](./data-modeling/formatting.md)
+- [Working with JSON](./data-modeling/json-unfolding.md)
 - [Segments and metrics](./data-modeling/segments-and-metrics.md)
 
 ### Actions

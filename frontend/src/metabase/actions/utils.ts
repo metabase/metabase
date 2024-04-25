@@ -2,7 +2,8 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import * as Errors from "metabase/lib/errors";
-
+import type Field from "metabase-lib/v1/metadata/Field";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   ActionDashboardCard,
   ActionFormOption,
@@ -19,10 +20,8 @@ import type {
   WritebackActionBase,
   WritebackImplicitQueryAction,
   WritebackParameter,
+  VirtualCard,
 } from "metabase-types/api";
-
-import { TYPE } from "metabase-lib/types/constants";
-import type Field from "metabase-lib/metadata/Field";
 
 import type {
   ActionFormProps,
@@ -158,10 +157,11 @@ export function isActionDashCard(
   dashCard: BaseDashboardCard,
 ): dashCard is ActionDashboardCard {
   const virtualCard = dashCard?.visualization_settings?.virtual_card;
-  return isActionCard(virtualCard as Card);
+  return isActionCard(virtualCard);
 }
 
-export const isActionCard = (card: Card) => card?.display === "action";
+export const isActionCard = (card?: Card | VirtualCard) =>
+  card?.display === "action";
 
 export const getFormTitle = (action: WritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;

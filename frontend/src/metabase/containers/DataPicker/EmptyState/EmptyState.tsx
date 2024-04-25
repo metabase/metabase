@@ -1,6 +1,8 @@
 import { t } from "ttag";
+
 import DefaultEmptyState from "metabase/components/EmptyState";
 import type { IconName } from "metabase/ui";
+
 import { EmptyStateContainer } from "./EmptyState.styled";
 
 interface Props {

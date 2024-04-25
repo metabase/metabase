@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen, getIcon } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
@@ -6,7 +7,9 @@ import {
   columnFinder,
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
+
 import { createMockNotebookStep } from "../../test-utils";
+
 import { AggregateStep } from "./AggregateStep";
 
 function createAggregatedQuery({
@@ -82,12 +85,12 @@ describe("AggregateStep", () => {
     expect(screen.getByText("Average of Product → Rating")).toBeInTheDocument();
   });
 
-  it("should add an aggregation with a basic operator", () => {
+  it("should add an aggregation with a basic operator", async () => {
     const { getRecentAggregationClause } = setup();
 
-    userEvent.click(screen.getByText("Pick the metric you want to see"));
-    userEvent.click(screen.getByText("Average of ..."));
-    userEvent.click(screen.getByText("Quantity"));
+    await userEvent.click(screen.getByText("Pick the metric you want to see"));
+    await userEvent.click(screen.getByText("Average of ..."));
+    await userEvent.click(screen.getByText("Quantity"));
 
     const clause = getRecentAggregationClause();
     expect(clause).toEqual(
@@ -98,14 +101,14 @@ describe("AggregateStep", () => {
     );
   });
 
-  it("should change an aggregation operator", () => {
+  it("should change an aggregation operator", async () => {
     const { getNextQuery, getRecentAggregationClause } = setup(
       createMockNotebookStep({ query: createAggregatedQuery() }),
     );
 
-    userEvent.click(screen.getByText("Average of Quantity"));
-    userEvent.click(screen.getByText("Average of ...")); // go back to operator selection
-    userEvent.click(screen.getByText("Count of rows"));
+    await userEvent.click(screen.getByText("Average of Quantity"));
+    await userEvent.click(screen.getByText("Average of ...")); // go back to operator selection
+    await userEvent.click(screen.getByText("Count of rows"));
 
     const nextQuery = getNextQuery();
     const clause = getRecentAggregationClause();
@@ -118,13 +121,13 @@ describe("AggregateStep", () => {
     );
   });
 
-  it("should change an aggregation column", () => {
+  it("should change an aggregation column", async () => {
     const { getNextQuery, getRecentAggregationClause } = setup(
       createMockNotebookStep({ query: createAggregatedQuery() }),
     );
 
-    userEvent.click(screen.getByText("Average of Quantity"));
-    userEvent.click(screen.getByText("Total"));
+    await userEvent.click(screen.getByText("Average of Quantity"));
+    await userEvent.click(screen.getByText("Total"));
 
     const nextQuery = getNextQuery();
     const clause = getRecentAggregationClause();
@@ -137,12 +140,12 @@ describe("AggregateStep", () => {
     );
   });
 
-  it("should remove an aggregation", () => {
+  it("should remove an aggregation", async () => {
     const { getNextQuery } = setup(
       createMockNotebookStep({ query: createAggregatedQuery() }),
     );
 
-    userEvent.click(getIcon("close"));
+    await userEvent.click(getIcon("close"));
 
     const nextQuery = getNextQuery();
     expect(Lib.aggregations(nextQuery, 0)).toHaveLength(0);

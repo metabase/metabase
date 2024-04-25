@@ -1,21 +1,19 @@
 import { screen, waitFor } from "@testing-library/react";
-
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "__support__/ui";
+import fetchMock from "fetch-mock";
+
 import { mockSettings } from "__support__/settings";
-
-import {
-  createMockAdminState,
-  createMockAdminAppState,
-} from "metabase-types/store/mocks";
-
+import { renderWithProviders } from "__support__/ui";
 import { ProfileLink } from "metabase/nav/components/ProfileLink";
+import type { HelpLinkSetting } from "metabase-types/api";
 import {
   createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { HelpLinkSetting } from "metabase-types/api";
+import {
+  createMockAdminState,
+  createMockAdminAppState,
+} from "metabase-types/store/mocks";
 
 const REGULAR_ITEMS = [
   "Account settings",
@@ -194,6 +192,6 @@ describe("ProfileLink", () => {
 });
 
 const openMenu = async () => {
-  userEvent.click(screen.getByRole("img", { name: /gear/i }));
+  await userEvent.click(screen.getByRole("img", { name: /gear/i }));
   await screen.findByRole("dialog");
 };

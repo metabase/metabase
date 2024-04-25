@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { color } from "metabase/lib/colors";
 
 export const Container = styled.div`
   display: flex;

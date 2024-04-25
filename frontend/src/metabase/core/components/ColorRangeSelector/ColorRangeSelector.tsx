@@ -1,7 +1,9 @@
 import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
-import ColorRange from "metabase/core/components/ColorRange";
+
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import ColorRange from "metabase/core/components/ColorRange";
+
 import ColorRangePopover from "./ColorRangePopover";
 
 export type ColorRangeSelectorAttributes = Omit<

@@ -3,14 +3,26 @@ import type { MantineThemeOverride } from "@mantine/core";
 export const getTooltipOverrides = (): MantineThemeOverride["components"] => ({
   Tooltip: {
     defaultProps: {
+      arrowSize: 10,
+      withArrow: true,
       withinPortal: true,
+      transitionProps: {
+        transition: "fade",
+        duration: 200,
+      },
+      events: {
+        hover: true,
+        focus: true,
+        touch: true,
+      },
     },
     styles: theme => ({
       tooltip: {
-        fontSize: theme.fontSizes.md,
-        padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+        backgroundColor: theme.fn.themeColor("bg-black"),
         color: theme.white,
-        backgroundColor: theme.black,
+        fontSize: theme.fontSizes.sm,
+        fontWeight: "bold",
+        padding: "0.6rem 0.75rem",
       },
     }),
   },

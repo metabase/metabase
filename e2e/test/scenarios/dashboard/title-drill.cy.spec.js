@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   filterWidget,
@@ -7,7 +8,6 @@ import {
   getDashboardCard,
   appBar,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -305,7 +305,7 @@ describe("scenarios > dashboard > title drill", () => {
         });
 
         // rerun the query with the newly set filter
-        cy.get(".RunButton").first().click();
+        cy.findAllByTestId("run-button").first().click();
         cy.wait("@cardQuery");
 
         // make sure the results reflect the new filter
@@ -327,7 +327,7 @@ describe("scenarios > dashboard > title drill", () => {
         });
 
         // rerun the query with the newly set filter
-        cy.get(".RunButton").first().click();
+        cy.findAllByTestId("run-button").first().click();
         cy.wait("@cardQuery");
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -400,21 +400,19 @@ describe("scenarios > dashboard > title drill", () => {
     });
 
     it("should lead you to a table question with filtered ID (metabase#17213)", () => {
-      cy.get("@dashboardId").then(dashboardId => {
-        const productRecordId = 3;
-        visitDashboard(dashboardId, { params: { id: productRecordId } });
+      const productRecordId = 3;
+      visitDashboard("@dashboardId", { params: { id: productRecordId } });
 
-        getDashboardCard().findByText(baseNestedQuestionDetails.name).click();
+      getDashboardCard().findByText(baseNestedQuestionDetails.name).click();
 
-        appBar()
-          .contains(`Started from ${baseNestedQuestionDetails.name}`)
-          .should("be.visible");
-        cy.findByTestId("question-row-count")
-          .findByText("Showing 1 row")
-          .should("be.visible");
+      appBar()
+        .contains(`Started from ${baseNestedQuestionDetails.name}`)
+        .should("be.visible");
+      cy.findByTestId("question-row-count")
+        .findByText("Showing 1 row")
+        .should("be.visible");
 
-        cy.findByTestId("object-detail").should("not.exist");
-      });
+      cy.findByTestId("object-detail").should("not.exist");
     });
   });
 });
@@ -425,5 +423,5 @@ function checkFilterLabelAndValue(label, value) {
 }
 
 function checkScalarResult(result) {
-  cy.get(".ScalarValue").invoke("text").should("eq", result);
+  cy.findByTestId("scalar-value").invoke("text").should("eq", result);
 }

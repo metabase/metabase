@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import type { CardDisplayType } from "metabase-types/api";
+
 import type { ChartSkeletonProps } from "./ChartSkeleton";
 import ChartSkeleton from "./ChartSkeleton";
 
@@ -69,21 +71,21 @@ describe("ChartSkeleton", () => {
       expect(screen.queryByLabelText("info icon")).not.toBeInTheDocument();
     });
 
-    it(`should render ${name} visualization with description`, () => {
+    it(`should render ${name} visualization with description`, async () => {
       setup({ name, description: displayDescription, display });
-      userEvent.hover(screen.getByLabelText("info icon"));
+      await userEvent.hover(screen.getByLabelText("info icon"));
       expect(screen.getByText(name)).toBeInTheDocument();
       expect(screen.getByText(displayDescription)).toBeInTheDocument();
     });
 
-    it(`should render ${name} visualization with description and action menu`, () => {
+    it(`should render ${name} visualization with description and action menu`, async () => {
       setup({
         name,
         description: displayDescription,
         actionMenu: MockActionMenu,
         display,
       });
-      userEvent.hover(screen.getByLabelText("info icon"));
+      await userEvent.hover(screen.getByLabelText("info icon"));
       expect(screen.getByText(name)).toBeInTheDocument();
       expect(screen.getByText(displayDescription)).toBeInTheDocument();
       expect(screen.getByText("Action Menu")).toBeInTheDocument();

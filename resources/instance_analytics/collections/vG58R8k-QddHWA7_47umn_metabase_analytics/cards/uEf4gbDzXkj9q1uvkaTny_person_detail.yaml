@@ -89,4 +89,6 @@ serdes/meta:
 - id: uEf4gbDzXkj9q1uvkaTny
   label: person_detail
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (ad99d37)
+type: question

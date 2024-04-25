@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   filterWidget,
@@ -6,7 +7,6 @@ import {
   editDashboard,
   saveDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -95,7 +95,7 @@ describe("issues 15279 and 24500", () => {
     popover().contains("Organic").click();
     cy.button("Add filter").click();
 
-    cy.get(".DashCard")
+    cy.findByTestId("dashcard-container")
       .should("contain", "Lora Cronin")
       .and("contain", "Dagmar Fay");
 
@@ -104,7 +104,7 @@ describe("issues 15279 and 24500", () => {
     cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
     cy.button("Add filter").click();
 
-    cy.get(".DashCard")
+    cy.findByTestId("dashcard-container")
       .should("contain", "Lora Cronin")
       .and("not.contain", "Dagmar Fay");
 
@@ -127,7 +127,7 @@ describe("issues 15279 and 24500", () => {
     cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
     cy.button("Add filter").click();
 
-    cy.get(".DashCard")
+    cy.findByTestId("dashcard-container")
       .should("contain", "Lora Cronin")
       .and("not.contain", "Dagmar Fay");
   });

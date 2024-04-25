@@ -6,8 +6,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.annotate :as annotate]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -620,7 +620,7 @@
             (add-column-info
              (lib.tu.macros/mbql-query venues
                {:aggregation [[:count]
-                              [:sum]
+                              [:sum $price]
                               [:count]
                               [:aggregation-options [:count] {:display-name "count_2"}]]})
              {:cols [{:name "count", :display_name "count", :base_type :type/Number}
@@ -666,7 +666,7 @@
 (deftest ^:parallel mbql-cols-nested-queries-test
   (testing "Should be able to infer MBQL columns with nested queries"
     (qp.store/with-metadata-provider meta/metadata-provider
-      (let [base-query (qp/preprocess
+      (let [base-query (qp.preprocess/preprocess
                         (lib.tu.macros/mbql-query venues
                           {:joins [{:fields       :all
                                     :source-table $$categories
@@ -705,7 +705,7 @@
                                                        {:name "max"}]]
                                                      :breakout     [$category]
                                                      :order-by     [[:asc $category]]}})])
-      (let [query (qp/preprocess
+      (let [query (qp.preprocess/preprocess
                    (lib.tu.macros/mbql-query nil
                      {:source-table "card__1"
                       :aggregation  [[:aggregation-options
@@ -733,7 +733,7 @@
                 (select-keys result [:name :display_name :base_type :semantic_type :id :field_ref])))]
       (qp.store/with-metadata-provider meta/metadata-provider
         (testing "Make sure metadata is correct for the 'EAN' column with"
-          (let [base-query (qp/preprocess
+          (let [base-query (qp.preprocess/preprocess
                             (lib.tu.macros/mbql-query orders
                               {:joins [{:fields       :all
                                         :source-table $$products
@@ -766,7 +766,7 @@
                                          (lib.tu.macros/mbql-query people)])
         (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side"
           (lib.tu.macros/$ids nil
-            (let [base-query (qp/preprocess
+            (let [base-query (qp.preprocess/preprocess
                               (lib.tu.macros/mbql-query nil
                                 {:source-table "card__1"
                                  :joins        [{:fields       :all
@@ -813,7 +813,7 @@
                                                                [:field "B_COLUMN" {:base-type  :type/Text
                                                                                    :join-alias "alias"}]]
                                                 :alias        "alias"}]}}
-              cols  (qp/query->expected-cols query)]
+              cols  (qp.preprocess/query->expected-cols query)]
           (is (= "alias → B Column"
                  (-> cols second :display_name))
               "cols has wrong display name"))))))

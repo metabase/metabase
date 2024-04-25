@@ -1,10 +1,13 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { useSelector } from "metabase/lib/redux";
+
 import Tooltip from "metabase/core/components/Tooltip";
+import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
+
 import { getHasMetabotLogo } from "../../selectors";
+
 import {
   GreetingLogo,
   GreetingMessage,

@@ -1,4 +1,5 @@
 import type { WritebackQueryAction } from "metabase-types/api";
+
 import { getDefaultFormSettings } from "./../../../utils";
 
 export function createEmptyWritebackAction(): Partial<WritebackQueryAction> {

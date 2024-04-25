@@ -1,17 +1,20 @@
 import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
-import * as Lib from "metabase-lib";
+
 import { isNumber } from "metabase/lib/types";
-import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
 import type { NumberValue } from "metabase/querying/hooks/use-coordinate-filter";
 import { useCoordinateFilter } from "metabase/querying/hooks/use-coordinate-filter";
+import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
+import * as Lib from "metabase-lib";
+
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
+import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterPickerFooter } from "../FilterPickerFooter";
+import { FilterPickerHeader } from "../FilterPickerHeader";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
-import { FilterPickerHeader } from "../FilterPickerHeader";
-import { FilterPickerFooter } from "../FilterPickerFooter";
-import { FilterOperatorPicker } from "../FilterOperatorPicker";
+
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
 
 export function CoordinateFilterPicker({
@@ -131,7 +134,7 @@ function CoordinateValueInput({
 }: CoordinateValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
+      <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
         <NumberFilterValuePicker
           query={query}
           stageIndex={stageIndex}

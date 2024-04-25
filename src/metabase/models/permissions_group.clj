@@ -9,8 +9,9 @@
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
@@ -32,7 +33,7 @@
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
 (defn- magic-group [group-name]
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn []
      (u/prog1 (t2/select-one PermissionsGroup :name group-name)
        ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
@@ -91,6 +92,17 @@
  (u/prog1 group
    (check-name-not-already-taken group-name)))
 
+(defn- set-default-permission-values!
+  [group]
+  (t2/with-transaction [_conn]
+    (doseq [db-id (t2/select-pks-vec :model/Database)]
+      (data-perms/set-new-group-permissions! group db-id (u/the-id (all-users))))))
+
+(t2/define-after-insert :model/PermissionsGroup
+  [group]
+  (u/prog1 group
+    (set-default-permission-values! group)))
+
 (t2/define-before-delete :model/PermissionsGroup
   [{id :id, :as group}]
   (check-not-magic-group group)
@@ -137,3 +149,9 @@
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
   []
   (t2/select PermissionsGroup :name [:not= admin-group-name]))
+
+(defn non-magic-groups
+  "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group and the All Users group."
+  []
+  (t2/select PermissionsGroup {:where [:and [:not= :name admin-group-name]
+                                            [:not= :name all-users-group-name]]}))

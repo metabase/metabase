@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -331,7 +332,26 @@
                 :display-name             "Count"
                 :base-type                :type/Integer
                 :lib/source               :source/card
-                :lib/desired-column-alias "count"}]
+                :lib/desired-column-alias "count"}
+               ;; Implicitly joinable columns
+               {:name                     "ID"
+                :display-name             "ID"
+                :base-type                :type/BigInteger
+                :lib/source               :source/implicitly-joinable
+                :lib/desired-column-alias "USERS__via__USER_ID__ID"
+                :fk-field-id              (meta/id :checkins :user-id)}
+               {:name                     "NAME"
+                :display-name             "Name"
+                :base-type                :type/Text
+                :lib/source               :source/implicitly-joinable
+                :lib/desired-column-alias "USERS__via__USER_ID__NAME"
+                :fk-field-id              (meta/id :checkins :user-id)}
+               {:name                     "LAST_LOGIN"
+                :display-name             "Last Login"
+                :base-type                :type/DateTime
+                :lib/source               :source/implicitly-joinable
+                :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"
+                :fk-field-id              (meta/id :checkins :user-id)}]
               (lib/orderable-columns query)))
       (testing `lib/display-info
         (is (=? [{:name                   "USER_ID"
@@ -343,7 +363,32 @@
                   :display-name           "Count"
                   :table                  {:name "My Card", :display-name "My Card"}
                   :is-from-previous-stage false
-                  :is-implicitly-joinable false}]
+                  :is-implicitly-joinable false}
+                 ;; Implicitly joinable columns
+                 {:name                   "ID"
+                  :display-name           "ID"
+                  :long-display-name      "User → ID"
+                  :table                  {:name            "USERS"
+                                           :display-name    "Users"
+                                           :is-source-table false}
+                  :is-from-previous-stage false
+                  :is-implicitly-joinable true}
+                 {:name                   "NAME"
+                  :display-name           "Name"
+                  :long-display-name      "User → Name"
+                  :table                  {:name            "USERS"
+                                           :display-name    "Users"
+                                           :is-source-table false}
+                  :is-from-previous-stage false
+                  :is-implicitly-joinable true}
+                 {:name                   "LAST_LOGIN"
+                  :display-name           "Last Login"
+                  :long-display-name      "User → Last Login"
+                  :table                  {:name            "USERS"
+                                           :display-name    "Users"
+                                           :is-source-table false}
+                  :is-from-previous-stage false
+                  :is-implicitly-joinable true}]
                 (for [col (lib/orderable-columns query)]
                   (lib/display-info query col))))))))
 
@@ -782,3 +827,12 @@
       (is (= opposite (first new-order-by)))
       (is (= (assoc-in query [:stages 0 :order-by 0 0] opposite)
              new-query)))))
+
+(deftest ^:parallel remove-all-order-bys-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/order-by (meta/field-metadata :venues :id)))]
+    (is (=? {:stages [{:order-by [[:asc {} [:field {} (meta/id :venues :id)]]]}]}
+            query))
+    (let [query' (lib.order-by/remove-all-order-bys query)]
+      (is (=? {:stages [{:order-by (symbol "nil #_\"key is not present.\"")}]}
+              query')))))

@@ -1,5 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+
 import { Stack } from "metabase/ui";
 
 export const LegaleseStepDetailsContainer = styled(Stack)`

@@ -1,5 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+
+import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
 
 interface InputContainerProps {
@@ -22,12 +24,12 @@ export const InputContainer = styled.div<InputContainerProps>`
     padding-left: calc(0.75rem - 1px); // adjust for border on hover
   }
 
-  .DashCard:hover &,
-  .DashCard:focus-within & {
+  .${DashboardS.DashCard}:hover &,
+  .${DashboardS.DashCard}:focus-within & {
     border: 1px solid ${color("brand")};
   }
 
-  .DashCard.resizing & {
+  .${DashboardS.DashCard}.resizing & {
     border: 1px solid ${color("brand")};
   }
 

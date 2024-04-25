@@ -1,13 +1,16 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+
 import {
   createQuery,
   createQueryWithBooleanFilter,
   findBooleanColumn,
   storeInitialState,
 } from "../test-utils";
+
 import { BooleanFilterPicker } from "./BooleanFilterPicker";
 
 type SetupOpts = {
@@ -79,7 +82,7 @@ const TEST_CASES: Array<[string, TestCase]> = [
 
 describe("BooleanFilterPicker", () => {
   describe("new filter", () => {
-    it("should render a list of options", () => {
+    it("should render a list of options", async () => {
       setup();
 
       expect(screen.getByText("User → Is Active")).toBeInTheDocument();
@@ -89,7 +92,9 @@ describe("BooleanFilterPicker", () => {
       expect(screen.queryByText("Empty")).not.toBeInTheDocument();
       expect(screen.queryByText("Not empty")).not.toBeInTheDocument();
 
-      userEvent.click(screen.getByRole("button", { name: "More options" }));
+      await userEvent.click(
+        screen.getByRole("button", { name: "More options" }),
+      );
 
       expect(screen.getByLabelText("True")).toBeChecked();
       expect(screen.getByLabelText("False")).not.toBeChecked();
@@ -99,14 +104,16 @@ describe("BooleanFilterPicker", () => {
 
     it.each(TEST_CASES)(
       "should create a filter with the '%s' option",
-      (title, { expectedOperator, expectedValues, isAdvanced }) => {
+      async (title, { expectedOperator, expectedValues, isAdvanced }) => {
         const { getNextFilterParts, getNextFilterColumnName } = setup();
 
         if (isAdvanced) {
-          userEvent.click(screen.getByText("More options"));
+          await userEvent.click(screen.getByText("More options"));
         }
-        userEvent.click(screen.getByLabelText(title));
-        userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+        await userEvent.click(screen.getByLabelText(title));
+        await userEvent.click(
+          screen.getByRole("button", { name: "Add filter" }),
+        );
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
@@ -118,12 +125,12 @@ describe("BooleanFilterPicker", () => {
       },
     );
 
-    it("should create a filter via keyboard", () => {
+    it("should create a filter via keyboard", async () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
       const option = screen.getByLabelText("True");
-      userEvent.click(option);
-      userEvent.type(option, "{enter}");
+      await userEvent.click(option);
+      await userEvent.type(option, "{enter}");
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -134,16 +141,16 @@ describe("BooleanFilterPicker", () => {
       expect(getNextFilterColumnName()).toBe("User → Is Active");
     });
 
-    it("should go back", () => {
+    it("should go back", async () => {
       const { onBack, onChange } = setup();
-      userEvent.click(screen.getByLabelText("Back"));
+      await userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
     });
   });
 
   describe("existing filter", () => {
-    it("should render a list of options", () => {
+    it("should render a list of options", async () => {
       setup(
         createQueryWithBooleanFilter({
           operator: "=",
@@ -158,7 +165,9 @@ describe("BooleanFilterPicker", () => {
       expect(screen.queryByText("Empty")).not.toBeInTheDocument();
       expect(screen.queryByText("Not empty")).not.toBeInTheDocument();
 
-      userEvent.click(screen.getByRole("button", { name: "More options" }));
+      await userEvent.click(
+        screen.getByRole("button", { name: "More options" }),
+      );
 
       expect(screen.getByLabelText("True")).not.toBeChecked();
       expect(screen.getByLabelText("False")).toBeChecked();
@@ -183,16 +192,18 @@ describe("BooleanFilterPicker", () => {
 
     it.each(TEST_CASES)(
       "should create a filter with the '%s' option",
-      (title, { expectedOperator, expectedValues, isAdvanced }) => {
+      async (title, { expectedOperator, expectedValues, isAdvanced }) => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(
           createQueryWithBooleanFilter(),
         );
 
         if (isAdvanced) {
-          userEvent.click(screen.getByText("More options"));
+          await userEvent.click(screen.getByText("More options"));
         }
-        userEvent.click(screen.getByLabelText(title));
-        userEvent.click(screen.getByRole("button", { name: "Update filter" }));
+        await userEvent.click(screen.getByLabelText(title));
+        await userEvent.click(
+          screen.getByRole("button", { name: "Update filter" }),
+        );
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
@@ -204,9 +215,9 @@ describe("BooleanFilterPicker", () => {
       },
     );
 
-    it("should go back", () => {
+    it("should go back", async () => {
       const { onBack, onChange } = setup(createQueryWithBooleanFilter());
-      userEvent.click(screen.getByLabelText("Back"));
+      await userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
     });

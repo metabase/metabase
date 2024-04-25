@@ -3,12 +3,14 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.domain-entities.specs :refer [domain-entity-specs MBQL]]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
-   [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
    [metabase.util :as u]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (def ^:private ^{:arglists '([field])} field-type
   "Return the most specific type of a given field."
@@ -16,27 +18,31 @@
 
 (def SourceName
   "A reference to a `SourceEntity`."
-  s/Str)
+  :string)
 
-(def ^:private DimensionReference s/Str)
+(def ^:private DimensionReference :string)
 
 (def DimensionBindings
   "Mapping from dimension name to the corresponding instantiated MBQL snippet"
-  {DimensionReference MBQL})
+  [:map-of DimensionReference MBQL])
 
 (def SourceEntity
   "A source for a card. Can be either a table or another card."
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (s/cond-pre (mi/InstanceOf:Schema Table) (mi/InstanceOf:Schema Card)))
+  [:or (ms/InstanceOf Table) (ms/InstanceOf Card)])
 
 (def Bindings
   "Top-level lexical context mapping source names to their corresponding entity and constituent dimensions. See also
   `DimensionBindings`."
-  {SourceName {(s/optional-key :entity)     SourceEntity
-               (s/required-key :dimensions) DimensionBindings}})
+  [:map-of
+   SourceName
+   [:map
+    [:dimensions DimensionBindings]
+    [:entity {:optional true} SourceEntity]]])
 
-(s/defn ^:private get-dimension-binding :- MBQL
-  [bindings :- Bindings, source :- SourceName, dimension-reference :- DimensionReference]
+(mu/defn ^:private get-dimension-binding :- MBQL
+  [bindings            :- Bindings
+   source              :- SourceName
+   dimension-reference :- DimensionReference]
   (let [[table-or-dimension maybe-dimension] (str/split dimension-reference #"\.")]
     (if maybe-dimension
       (let [field-clause (get-in bindings [table-or-dimension :dimensions maybe-dimension])]
@@ -44,15 +50,17 @@
           (not= source table-or-dimension) (mbql.u/assoc-field-options :join-alias table-or-dimension)))
       (get-in bindings [source :dimensions table-or-dimension]))))
 
-(s/defn resolve-dimension-clauses
+(mu/defn resolve-dimension-clauses
   "Instantiate all dimension reference in given (nested) structure"
-  [bindings :- Bindings, source :- SourceName, obj]
-  (mbql.u/replace obj
+  [bindings :- Bindings
+   source   :- SourceName
+   obj]
+  (lib.util.match/replace obj
     [:dimension dimension] (->> dimension
                                 (get-dimension-binding bindings source)
                                 (resolve-dimension-clauses bindings source))))
 
-(s/defn mbql-reference :- MBQL
+(mu/defn mbql-reference :- MBQL
   "Return MBQL clause for a given field-like object."
   [{:keys [id name base_type]}]
   (if id
@@ -84,7 +92,7 @@
   (into (empty entities) ; this way we don't care if we're dealing with a map or a vec
         (for [entity entities
               :when (every? (get-in bindings [source :dimensions])
-                            (mbql.u/match entity [:dimension dimension] dimension))]
+                            (lib.util.match/match entity [:dimension dimension] dimension))]
           (resolve-dimension-clauses bindings source entity))))
 
 (defn- instantiate-domain-entity
@@ -105,7 +113,7 @@
 (defn domain-entity-for-table
   "Find the best fitting domain entity for given table."
   [table]
-  (let [table (assoc table :fields (table/fields table))]
+  (let [table (t2/hydrate table :fields)]
     (some->> @domain-entity-specs
              vals
              (filter (partial satisfies-requierments? table))

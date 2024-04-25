@@ -1,9 +1,10 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders } from "__support__/ui";
+import type { EmbedResource } from "metabase/public/lib/types";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
-import type { EmbedResource } from "metabase/public/lib/types";
 
 import type { EmbedModalContentProps } from "./EmbedModalContent";
 import { EmbedModalContent } from "./EmbedModalContent";
@@ -17,12 +18,12 @@ describe("EmbedModalContent", () => {
       expect(screen.getByText("Public embed")).toBeInTheDocument();
     });
 
-    it("should switch to StaticEmbedSetupPane", () => {
+    it("should switch to StaticEmbedSetupPane", async () => {
       const { goToNextStep } = setup();
 
       expect(goToNextStep).toHaveBeenCalledTimes(0);
 
-      userEvent.click(screen.getByText("Set this up"));
+      await userEvent.click(screen.getByText("Set this up"));
 
       expect(goToNextStep).toHaveBeenCalledTimes(1);
     });

@@ -1,8 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { assoc, getIn } from "icepick";
+import { getIn } from "icepick";
 
 import Dashboards from "metabase/entities/dashboards";
-
 import { resourceListToMap } from "metabase/lib/redux";
 import {
   getShallowDatabases as getDatabases,
@@ -11,8 +10,6 @@ import {
   getShallowMetrics as getMetrics,
   getShallowSegments as getSegments,
 } from "metabase/selectors/metadata";
-
-import Question from "metabase-lib/Question";
 
 import { idsToObjectMap, databaseToForeignKeys } from "./utils";
 
@@ -113,14 +110,6 @@ export const getFieldBySegment = createSelector(
 const getQuestions = (state, props) =>
   getIn(state, ["entities", "questions"]) || {};
 
-export const getMetricQuestions = createSelector(
-  [getMetricId, getQuestions],
-  (metricId, questions) =>
-    Object.values(questions)
-      .filter(question => new Question(question).usesMetric(metricId))
-      .reduce((map, question) => assoc(map, question.id, question), {}),
-);
-
 const getRevisions = (state, props) => state.revisions;
 
 export const getMetricRevisions = createSelector(
@@ -131,14 +120,6 @@ export const getMetricRevisions = createSelector(
 export const getSegmentRevisions = createSelector(
   [getSegmentId, getRevisions],
   (segmentId, revisions) => getIn(revisions, ["segment", segmentId]) || {},
-);
-
-export const getSegmentQuestions = createSelector(
-  [getSegmentId, getQuestions],
-  (segmentId, questions) =>
-    Object.values(questions)
-      .filter(question => new Question(question).usesSegment(segmentId))
-      .reduce((map, question) => assoc(map, question.id, question), {}),
 );
 
 export const getTableQuestions = createSelector(

@@ -1,88 +1,66 @@
 import { IndexRedirect, IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
-import { Route } from "metabase/hoc/Title";
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
-
-import { loadCurrentUser } from "metabase/redux/user";
-import MetabaseSettings from "metabase/lib/settings";
-
 import App from "metabase/App.tsx";
-
-import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
-import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
-
-// auth containers
+import getAccountRoutes from "metabase/account/routes";
+import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
+import getAdminRoutes from "metabase/admin/routes";
+import { ArchiveApp } from "metabase/archive/containers/ArchiveApp";
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
-
-/* Dashboards */
-import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
-
-/* Browse data */
 import { BrowseApp } from "metabase/browse/components/BrowseApp";
 import SchemaBrowser from "metabase/browse/components/SchemaBrowser";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
-
-import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
-
-import MoveCollectionModal from "metabase/collections/containers/MoveCollectionModal";
+import CollectionLanding from "metabase/collections/components/CollectionLanding";
+import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
-import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
-import { UserCollectionList } from "metabase/containers/UserCollectionList";
-
-import { Setup } from "metabase/setup/components/Setup";
-
-import NewModelOptions from "metabase/models/containers/NewModelOptions";
-
-import { UnsubscribePage } from "metabase/containers/Unsubscribe";
-import { Unauthorized } from "metabase/containers/ErrorPages";
+import { Unauthorized } from "metabase/components/ErrorPages";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
-
-// Reference Metrics
-import MetricListContainer from "metabase/reference/metrics/MetricListContainer";
+import { UnsubscribePage } from "metabase/containers/Unsubscribe";
+import { UserCollectionList } from "metabase/containers/UserCollectionList";
+import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
+import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
+import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
+import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
+import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { Route } from "metabase/hoc/Title";
+import { HomePage } from "metabase/home/components/HomePage";
+import { trackPageView } from "metabase/lib/analytics";
+import MetabaseSettings from "metabase/lib/settings";
+import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
+import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
+import NewModelOptions from "metabase/models/containers/NewModelOptions";
+import { getRoutes as getModelRoutes } from "metabase/models/routes";
+import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
+import { PublicDashboard } from "metabase/public/containers/PublicDashboard";
+import { PublicQuestion } from "metabase/public/containers/PublicQuestion";
+import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
+import { loadCurrentUser } from "metabase/redux/user";
+import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
+import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
+import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
+import FieldListContainer from "metabase/reference/databases/FieldListContainer";
+import TableDetailContainer from "metabase/reference/databases/TableDetailContainer";
+import TableListContainer from "metabase/reference/databases/TableListContainer";
+import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
 import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer";
+import MetricListContainer from "metabase/reference/metrics/MetricListContainer";
 import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer";
 import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer";
-
-// Reference Segments
-import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
+import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
+import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
+import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
-import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
-import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
-
-// Reference Databases
-import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
-import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
-import TableListContainer from "metabase/reference/databases/TableListContainer";
-import TableDetailContainer from "metabase/reference/databases/TableDetailContainer";
-import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
-import FieldListContainer from "metabase/reference/databases/FieldListContainer";
-import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
-
-import getAccountRoutes from "metabase/account/routes";
-import getAdminRoutes from "metabase/admin/routes";
-import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
-import { getRoutes as getModelRoutes } from "metabase/models/routes";
-
-import { PublicQuestion } from "metabase/public/containers/PublicQuestion";
-import PublicDashboard from "metabase/public/containers/PublicDashboard";
-import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
-import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
-import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
-
-import { HomePage } from "metabase/home/components/HomePage";
-import CollectionLanding from "metabase/collections/components/CollectionLanding";
-
-import { ArchiveApp } from "metabase/archive/containers/ArchiveApp";
 import SearchApp from "metabase/search/containers/SearchApp";
-import { trackPageView } from "metabase/lib/analytics";
+import { Setup } from "metabase/setup/components/Setup";
+import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
+
+import { BrowseRedirect } from "./browse/components/BrowseRedirect";
 import {
   CanAccessMetabot,
   CanAccessSettings,
@@ -167,7 +145,7 @@ export const getRoutes = store => {
           </Route>
 
           <Route path="collection/:slug" component={CollectionLanding}>
-            <ModalRoute path="move" modal={MoveCollectionModal} />
+            <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
             <ModalRoute path="archive" modal={ArchiveCollectionModal} />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
             {getCollectionTimelineRoutes()}
@@ -178,7 +156,11 @@ export const getRoutes = store => {
             title={t`Dashboard`}
             component={DashboardAppConnected}
           >
-            <ModalRoute path="move" modal={DashboardMoveModalConnected} />
+            <ModalRoute
+              path="move"
+              modal={DashboardMoveModalConnected}
+              noWrap
+            />
             <ModalRoute path="copy" modal={DashboardCopyModalConnected} />
             <ModalRoute path="archive" modal={ArchiveDashboardModalConnected} />
           </Route>
@@ -207,7 +189,6 @@ export const getRoutes = store => {
               title={t`New Model`}
               component={NewModelOptions}
             />
-            <Route path="notebook" component={QueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/query" component={QueryBuilder} />
@@ -219,7 +200,7 @@ export const getRoutes = store => {
           </Route>
 
           <Route path="browse">
-            <IndexRedirect to="/browse/models" />
+            <IndexRoute component={BrowseRedirect} />
             <Route path="models" component={() => <BrowseApp tab="models" />} />
             <Route
               path="databases"

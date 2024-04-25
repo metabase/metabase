@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
 import { createRef, Component } from "react";
-
 import { t } from "ttag";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Tooltip from "metabase/core/components/Tooltip";
-import CountdownIcon from "metabase/components/icons/CountdownIcon";
 
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import CountdownIcon from "metabase/components/icons/CountdownIcon";
+import Tooltip from "metabase/core/components/Tooltip";
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
+
 import {
   RefreshOptionIcon,
   RefreshOptionItem,

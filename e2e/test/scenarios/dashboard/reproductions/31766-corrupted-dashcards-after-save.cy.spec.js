@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   editDashboard,
   modal,
@@ -7,7 +8,6 @@ import {
   updateDashboardCards,
   saveDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -74,7 +74,9 @@ function saveUpdatedQuestion() {
   cy.intercept("PUT", "/api/card/*").as("updateQuestion");
 
   cy.findByText("Save").click();
-  modal().button("Save").click();
+  cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByText("Save").click();
+  });
 }
 
 function assertQuestionIsUpdatedWithoutError() {

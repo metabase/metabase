@@ -1,7 +1,6 @@
 (ns metabase-enterprise.content-management.api.collection-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -57,15 +56,9 @@
             [:model/Collection {id :id} {:authority_level nil}]
             (is (= "official"
                    (:authority_level (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level "official"}))))
-            (is (= :official (t2/select-one-fn :authority_level :model/Collection id))))
+            (is (= :official (t2/select-one-fn :authority_level :model/Collection id)))))
 
-          (testing "but cannot update for personal collection"
-            (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
-              (mt/user-http-request :crowberto :put 403 (str "collection/" (:id personal-coll))
-                                    {:authority_level "official"})
-              (is (nil? (t2/select-one-fn :authority_level :model/Collection :id (:id personal-coll)))))))
-
-        (testing "Non-adminds can patch without the :authority_level"
+        (testing "Non-admins can patch without the :authority_level"
           (t2.with-temp/with-temp [:model/Collection collection {:name "whatever" :authority_level "official"}]
             (is (= "official"
                    (-> (mt/user-http-request :rasta :put 200 (str "collection/" (:id collection))
@@ -106,7 +99,7 @@
 (deftest moderation-review-test
   (t2.with-temp/with-temp
     [:model/Card {card-id :id} {:name "A question"}
-     :model/Card {model-id :id} {:name "A question" :dataset true}]
+     :model/Card {model-id :id} {:name "A question" :type :model}]
     (testing "can't use verified questions/models if has :official-collections feature"
       (mt/with-premium-features #{:official-collections}
         (is (= "Content verification is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"

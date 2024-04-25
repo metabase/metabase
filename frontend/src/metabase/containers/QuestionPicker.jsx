@@ -20,5 +20,7 @@ QuestionPicker.propTypes = {
   // callback that takes a question ID
   onChange: PropTypes.func.isRequired,
 };
-
+/**
+ * @deprecated use metabase/common/components QuestionPicker instead
+ */
 export default QuestionPicker;

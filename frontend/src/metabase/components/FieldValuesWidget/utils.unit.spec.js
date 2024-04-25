@@ -1,12 +1,11 @@
 import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
 
-import { isSearchable, getValuesMode, searchField } from "./utils";
-
 import {
   metadata,
   LISTABLE_FIELD_WITH_MANY_VALUES_ID,
   STRING_PK_FIELD_ID,
 } from "./testMocks";
+import { isSearchable, getValuesMode, searchField } from "./utils";
 
 describe("Components > FieldValuesWidget > utils", () => {
   describe("isSearchable", () => {

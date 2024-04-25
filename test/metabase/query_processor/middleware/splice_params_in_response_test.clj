@@ -3,14 +3,16 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.splice-params-in-response
     :as splice-params-in-response]
+   [metabase.test :as mt]
    [metabase.test.data :as data]))
 
-(defn- do-with-splice-params-call? [f]
+(defn- do-with-splice-params-call? [thunk]
   (with-redefs [driver/splice-parameters-into-native-query (fn [& args]
-                                                             (cons 'splice-parameters-into-native-query args))]
-    (f)))
+                                                             {::call (cons 'splice-parameters-into-native-query args)})]
+    (thunk)))
 
 (defmacro ^:private with-splice-params-call?
   "Instead of actually calling `splice-parameters-into-native-query`, the results and correct implementation of which
@@ -25,8 +27,8 @@
 
 (deftest basic-test
   (testing "Middleware should attempt to splice parameters into native query for queries that have params"
-    (is (= {:native_form '(splice-parameters-into-native-query :h2 {:query  "SELECT * FROM birds WHERE name = ?"
-                                                                    :params ["Reggae"]})}
+    (is (= {:native_form {::call '(splice-parameters-into-native-query :h2 {:query  "SELECT * FROM birds WHERE name = ?"
+                                                                            :params ["Reggae"]})}}
            (splice-params {:native_form {:query "SELECT * FROM birds WHERE name = ?", :params ["Reggae"]}})))))
 
 (deftest empty-params-test
@@ -46,30 +48,31 @@
               :limit 1}})
 
 (deftest compile-and-splice-parameters
-  (testing "`qp/compile-and-splice-parameters`, should, as the name implies, attempt to splice the params into the query"
+  (testing "`qp.compile/compile-and-splice-parameters`, should, as the name implies, attempt to splice the params into the query"
     (with-splice-params-call?
-      (is (= '(splice-parameters-into-native-query
-               :h2
-               {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
-                :params ["Beyond Sushi"]})
-             (qp/compile-and-splice-parameters (sushi-query)))))))
+      (is (= {::call '(splice-parameters-into-native-query
+                       :h2
+                       {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
+                        :params ["Beyond Sushi"]})}
+             (qp.compile/compile-and-splice-parameters (sushi-query)))))))
 
 (deftest compile-test
   (testing "`compile` should not call `splice-parameters-into-native-query`"
     (with-splice-params-call?
-      (is (= {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
-              :params ["Beyond Sushi"]}
-             (qp/compile (sushi-query)))))))
+      (is (=? {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
+               :params ["Beyond Sushi"]}
+              (qp.compile/compile (sushi-query)))))))
 
-(deftest e2e-test
+(deftest ^:parallel e2e-test
   (testing (str "`splice-parameters-into-native-query` should get called on the `:native_form` returned in query "
                 "results, because this is currently what is ultimately used by the frontend when you click 'Convert "
                 "this Question to SQL'")
     ;; (This is implied by the middleware tests above; this test serves as an end-to-end test to verify that the
     ;; middleware is actually being applied)
-    (is (= true
-           (boolean
-            '(splice-parameters-into-native-query
-              :h2
-              {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
-               :params ["Beyond Sushi"]}))))))
+    (is (=? {:data {:native_form {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = 'Beyond Sushi' LIMIT 1",
+                                  :params nil}}}
+            (qp/process-query
+             {:database (mt/id)
+              :type     :native
+              :native   {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
+                         :params ["Beyond Sushi"]}})))))

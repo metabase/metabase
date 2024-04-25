@@ -1,16 +1,16 @@
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
 import type { MouseEventHandler } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
 
-import { getUser } from "metabase/selectors/user";
+import { TextButton } from "metabase/components/Button.styled";
+import DateTime from "metabase/components/DateTime";
 import type { NamedUser } from "metabase/lib/user";
 import { getFullName } from "metabase/lib/user";
-import { TextButton } from "metabase/components/Button.styled";
+import { getUser } from "metabase/selectors/user";
 import type { TooltipProps } from "metabase/ui";
 import { Tooltip } from "metabase/ui";
-import DateTime from "metabase/components/DateTime";
 import type { User } from "metabase-types/api";
 
 dayjs.extend(relativeTime);
@@ -22,10 +22,8 @@ export type ItemWithLastEditInfo = {
 export type Edit = {
   id?: number;
   timestamp: string;
-  first_name?: string;
-  last_name?: string;
   full_name?: string | null;
-};
+} & Partial<NamedUser>;
 
 export const getHowLongAgo = (timestamp: string) => {
   const date = dayjs(timestamp);

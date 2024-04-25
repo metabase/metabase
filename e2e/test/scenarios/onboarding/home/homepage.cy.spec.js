@@ -1,3 +1,8 @@
+import { USERS } from "e2e/support/cypress_data";
+import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   popover,
   restore,
@@ -12,24 +17,21 @@ import {
   resetSnowplow,
   enableTracking,
   main,
+  undoToast,
+  setTokenFeatures,
 } from "e2e/support/helpers";
-import { USERS } from "e2e/support/cypress_data";
-import {
-  ADMIN_PERSONAL_COLLECTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const { admin } = USERS;
 
 describe("scenarios > home > homepage", () => {
   beforeEach(() => {
-    cy.intercept("GET", `/api/dashboard/**`).as("getDashboard");
+    cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
     cy.intercept("GET", "/api/automagic-*/table/**").as("getXrayDashboard");
     cy.intercept("GET", "/api/automagic-*/database/**").as("getXrayCandidates");
     cy.intercept("GET", "/api/activity/recent_views").as("getRecentItems");
     cy.intercept("GET", "/api/activity/popular_items").as("getPopularItems");
     cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
-    cy.intercept("POST", `/api/card/*/query`).as("getQuestionQuery");
+    cy.intercept("POST", "/api/card/*/query").as("getQuestionQuery");
   });
 
   describe("after setup", () => {
@@ -99,6 +101,10 @@ describe("scenarios > home > homepage", () => {
   describe("after content creation", () => {
     beforeEach(() => {
       restore("default");
+      cy.signInAsAdmin();
+      // Setting this to true so that displaying popular items for new users works.
+      // This requires the audit-app feature to be enabled
+      setTokenFeatures("all");
     });
 
     it("should display recent items", () => {
@@ -122,6 +128,7 @@ describe("scenarios > home > homepage", () => {
 
     it("should display popular items for a new user", () => {
       cy.signInAsAdmin();
+
       visitDashboard(ORDERS_DASHBOARD_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard");
@@ -179,14 +186,14 @@ describe("scenarios > home > custom homepage", () => {
 
       popover().findByText("Orders in a dashboard").click();
 
-      cy.findByRole("status").findByText("Saved");
+      undoToast().findByText("Changes saved").should("be.visible");
 
       cy.log(
         "disabling custom-homepge-setting should also remove custom-homepage-dashboard-setting",
       );
 
       cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
-      cy.findByRole("status").findByText("Saved");
+      undoToast().findByText("Changes saved").should("be.visible");
 
       cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
       cy.findByTestId("custom-homepage-dashboard-setting").should(
@@ -222,12 +229,12 @@ describe("scenarios > home > custom homepage", () => {
     it("should give you the option to set a custom home page using home page CTA", () => {
       cy.request("POST", "/api/collection", {
         name: "Personal nested Collection",
-        description: `nested 1 level`,
+        description: "nested 1 level",
         parent_id: ADMIN_PERSONAL_COLLECTION_ID,
       }).then(({ body }) => {
         cy.request("POST", "/api/collection", {
           name: "Personal nested nested Collection",
-          description: `nested 2 levels`,
+          description: "nested 2 levels",
           parent_id: body.id,
         }).then(({ body }) => {
           cy.createDashboard({
@@ -415,7 +422,7 @@ describeWithSnowplow("scenarios > setup", () => {
 
     popover().findByText("Orders in a dashboard").click();
 
-    cy.findByRole("status").findByText("Saved");
+    undoToast().findByText("Changes saved").should("be.visible");
 
     expectGoodSnowplowEvent({
       event: "homepage_dashboard_enabled",

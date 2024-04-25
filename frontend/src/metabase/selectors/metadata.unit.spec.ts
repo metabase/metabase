@@ -1,6 +1,7 @@
 import { createMockEntitiesState } from "__support__/store";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
+import Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   createMockDatabase,
   createMockMetric,
@@ -17,7 +18,6 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import Metadata from "metabase-lib/metadata/Metadata";
 
 function setup() {
   const sampleDatabase = createSampleDatabase();

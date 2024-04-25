@@ -1,27 +1,26 @@
-import { t } from "ttag";
 import { createAction } from "redux-actions";
+import { t } from "ttag";
 
-import * as Lib from "metabase-lib";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
+import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
-
 import { getSensibleDisplays } from "metabase/visualizations";
-import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
-import { isSameField } from "metabase-lib/queries/utils/field-ref";
+import * as Lib from "metabase-lib";
+import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import {
+  getIsResultDirty,
   getIsRunning,
   getOriginalQuestion,
+  getOriginalQuestionWithParameterValues,
   getQueryBuilderMode,
   getQueryResults,
   getQuestion,
   getTimeoutId,
-  getIsResultDirty,
-  getOriginalQuestionWithParameterValues,
 } from "../selectors";
 
 import { updateUrl } from "./navigation";
@@ -95,6 +94,8 @@ export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
   overrideWithQuestion = null,
+  prevQueryResults = undefined,
+  settingsSyncOptions = undefined,
 } = {}) => {
   return async (dispatch, getState) => {
     dispatch(loadStartUIControls());
@@ -111,7 +112,7 @@ export const runQuestionQuery = ({
 
     if (shouldUpdateUrl) {
       const isAdHocModel =
-        question.isDataset() &&
+        question.type() === "model" &&
         isAdHocModelQuestion(question, originalQuestion);
 
       dispatch(updateUrl(question, { dirty: !isAdHocModel && cardIsDirty }));
@@ -132,11 +133,16 @@ export const runQuestionQuery = ({
           MetabaseAnalytics.trackStructEvent(
             "QueryBuilder",
             "Run Query",
-            question.type(),
+            question.datasetQuery().type,
             duration,
           ),
         );
-        return dispatch(queryCompleted(question, queryResults));
+        return dispatch(
+          queryCompleted(question, queryResults, {
+            prevQueryResults: prevQueryResults ?? getQueryResults(getState()),
+            settingsSyncOptions,
+          }),
+        );
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
 
@@ -147,7 +153,9 @@ export const runQuestionQuery = ({
 const loadStartUIControls = createThunkAction(
   LOAD_START_UI_CONTROLS,
   () => (dispatch, getState) => {
-    const loadingMessage = getWhiteLabeledLoadingMessage(getState());
+    const getLoadingMessage = getWhiteLabeledLoadingMessageFactory(getState());
+    const loadingMessage = getLoadingMessage();
+
     const title = {
       onceQueryIsRun: loadingMessage,
       ifQueryTakesLong: t`Still Here...`,
@@ -169,23 +177,24 @@ export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
-export const queryCompleted = (question, queryResults) => {
+export const queryCompleted = (
+  question,
+  queryResults,
+  { prevQueryResults, settingsSyncOptions } = {},
+) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
-    const [{ data: prevData }] = getQueryResults(getState()) || [{}];
+    const [{ data: prevData }] = prevQueryResults ?? [{}];
     const originalQuestion = getOriginalQuestionWithParameterValues(getState());
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     const isDirty = isEditable && question.isDirtyComparedTo(originalQuestion);
 
     if (isDirty) {
-      const { isNative } = Lib.queryDisplayInfo(question.query());
-
-      if (isNative) {
-        question = question.syncColumnsAndSettings(
-          originalQuestion,
-          queryResults[0],
-        );
-      }
+      question = question.syncColumnsAndSettings(
+        queryResults[0],
+        prevQueryResults?.[0],
+        settingsSyncOptions,
+      );
 
       question = question.maybeResetDisplay(
         data,

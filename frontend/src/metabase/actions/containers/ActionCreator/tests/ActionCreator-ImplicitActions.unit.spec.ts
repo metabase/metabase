@@ -1,5 +1,4 @@
 import { screen, queryIcon } from "__support__/ui";
-
 import {
   createMockActionParameter,
   createMockImplicitQueryAction,

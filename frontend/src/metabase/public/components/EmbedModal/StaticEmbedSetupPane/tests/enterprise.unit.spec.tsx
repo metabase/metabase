@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+
 import { getBrokenUpTextMatcher } from "__support__/ui";
 
 import { setup } from "./setup";
@@ -13,8 +14,8 @@ describe("Static Embed Setup phase - EE, no token", () => {
     },
   ])("$resourceType", ({ resourceType }) => {
     describe("Appearance tab", () => {
-      it("should not render Font selector", () => {
-        setup({
+      it("should not render Font selector", async () => {
+        await setup({
           props: {
             resourceType,
           },
@@ -29,8 +30,8 @@ describe("Static Embed Setup phase - EE, no token", () => {
         ).toBeVisible();
       });
 
-      it('should render "Powered by Metabase" banner caption', () => {
-        setup({
+      it('should render "Powered by Metabase" banner caption', async () => {
+        await setup({
           props: {},
           activeTab: "Appearance",
           hasEnterprisePlugins: true,

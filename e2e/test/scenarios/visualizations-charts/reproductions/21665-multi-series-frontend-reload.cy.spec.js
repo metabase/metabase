@@ -47,9 +47,7 @@ describe("issue 21665", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(Q2.name).click();
 
-    cy.get(".AddSeriesModal").within(() => {
-      cy.button("Done").click();
-    });
+    cy.findByTestId("add-series-modal").button("Done").click();
 
     saveDashboard();
     cy.wait("@getDashboard");
@@ -60,9 +58,7 @@ describe("issue 21665", () => {
       editQ2NativeQuery("select order by --", questionId);
     });
 
-    cy.get("@dashboardId").then(id => {
-      visitDashboard(id);
-    });
+    visitDashboard("@dashboardId");
 
     cy.get("@dashboardLoaded").should("have.been.calledThrice");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

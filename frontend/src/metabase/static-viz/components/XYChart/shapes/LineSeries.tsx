@@ -1,12 +1,12 @@
 import { Group } from "@visx/group";
 import { LinePath } from "@visx/shape";
 import type { PositionScale } from "@visx/shape/lib/types";
-import { getY } from "metabase/static-viz/components/XYChart/utils";
 
 import type {
   Series,
   SeriesDatum,
 } from "metabase/static-viz/components/XYChart/types";
+import { getY } from "metabase/static-viz/components/XYChart/utils";
 
 interface LineSeriesProps {
   series: Series[];

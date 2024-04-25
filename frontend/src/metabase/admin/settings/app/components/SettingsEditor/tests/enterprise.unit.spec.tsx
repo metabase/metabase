@@ -1,12 +1,13 @@
 import "metabase/plugins/builtin";
 import userEvent from "@testing-library/user-event";
+
+import { setupGroupsEndpoint } from "__support__/server-mocks";
+import { screen } from "__support__/ui";
 import {
   createMockGroup,
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
-import { setupGroupsEndpoint } from "__support__/server-mocks";
 
 import type { SetupOpts } from "./setup";
 import { setup, EMAIL_URL } from "./setup";
@@ -25,8 +26,8 @@ describe("SettingsEditor", () => {
       settingValues: createMockSettings({ "enable-embedding": true }),
     });
 
-    userEvent.click(screen.getByText("Embedding"));
-    userEvent.click(screen.getByText("Interactive embedding"));
+    await userEvent.click(screen.getByText("Embedding"));
+    await userEvent.click(screen.getByText("Interactive embedding"));
     expect(screen.queryByText("Authorized origins")).not.toBeInTheDocument();
     expect(
       screen.queryByText("SameSite cookie setting"),
@@ -45,7 +46,7 @@ describe("SettingsEditor", () => {
       }),
     });
 
-    userEvent.click(screen.getByText("Authentication"));
+    await userEvent.click(screen.getByText("Authentication"));
     expect(screen.getByText("Sign in with Google")).toBeInTheDocument();
     expect(
       screen.queryByText("Enable Password Authentication"),

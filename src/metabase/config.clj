@@ -34,24 +34,25 @@
 
 (def ^:private app-defaults
   "Global application defaults"
-  {:mb-run-mode            "prod"
+  {:mb-run-mode                     "prod"
    ;; DB Settings
-   :mb-db-type             "h2"
-   :mb-db-file             "metabase.db"
-   :mb-db-automigrate      "true"
-   :mb-db-logging          "true"
+   :mb-db-type                      "h2"
+   :mb-db-file                      "metabase.db"
+   :mb-db-automigrate               "true"
+   :mb-db-logging                   "true"
    ;; Jetty Settings. Full list of options is available here: https://github.com/ring-clojure/ring/blob/master/ring-jetty-adapter/src/ring/adapter/jetty.clj
-   :mb-jetty-port          "3000"
-   :mb-jetty-join          "true"
+   :mb-jetty-port                   "3000"
+   :mb-jetty-join                   "true"
    ;; other application settings
-   :mb-password-complexity "normal"
-   :mb-version-info-url    "https://static.metabase.com/version-info.json"
-   :mb-version-info-ee-url "https://static.metabase.com/version-info-ee.json"
-   :mb-ns-trace            ""                                             ; comma-separated namespaces to trace
-   :max-session-age        "20160"                                        ; session length in minutes (14 days)
-   :mb-colorize-logs       (str (not is-windows?))                        ; since PowerShell and cmd.exe don't support ANSI color escape codes or emoji,
-   :mb-emoji-in-logs       (str (not is-windows?))                        ; disable them by default when running on Windows. Otherwise they're enabled
-   :mb-qp-cache-backend    "db"})
+   :mb-password-complexity          "normal"
+   :mb-version-info-url             "https://static.metabase.com/version-info.json"
+   :mb-version-info-ee-url          "https://static.metabase.com/version-info-ee.json"
+   :mb-ns-trace                     ""                      ; comma-separated namespaces to trace
+   :max-session-age                 "20160"                 ; session length in minutes (14 days)
+   :mb-colorize-logs                (str (not is-windows?)) ; since PowerShell and cmd.exe don't support ANSI color escape codes or emoji,
+   :mb-emoji-in-logs                (str (not is-windows?)) ; disable them by default when running on Windows. Otherwise they're enabled
+   :mb-qp-cache-backend             "db"
+   :mb-jetty-async-response-timeout (str (* 10 60 1000))})  ; 10m
 
 ;; separate map for EE stuff so merge conflicts aren't annoying.
 (def ^:private ee-app-defaults
@@ -144,7 +145,21 @@
   (when-let [user-json (env/env :mb-user-defaults)]
     (json/parse-string user-json true)))
 
+(def ^:const audit-db-id
+  "ID of Audit DB which is loaded when running an EE build. ID is placed in OSS code to facilitate permission checks."
+  13371337)
+
 (def ^:const internal-mb-user-id
   "The user-id of the internal metabase user.
    This is needed in the OSS edition to filter out users for setup/has-user-setup."
    13371338)
+
+(def ^:dynamic *disable-setting-cache*
+  "Whether to disable database cache. Here for loading circularity reasons."
+  false)
+
+(defn load-sample-content?
+  "Load sample content on fresh installs?
+  Using this effectively means `MB_LOAD_SAMPLE_CONTENT` defaults to true."
+  []
+  (not (false? (config-bool :mb-load-sample-content))))

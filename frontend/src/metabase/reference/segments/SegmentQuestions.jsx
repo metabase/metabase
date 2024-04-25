@@ -1,34 +1,24 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
 import { t } from "ttag";
-import visualizations from "metabase/visualizations";
-import * as Urls from "metabase/lib/urls";
 
-import S from "metabase/components/List/List.css";
-
-import List from "metabase/components/List";
-import ListItem from "metabase/components/ListItem";
+import { useQuestionListQuery } from "metabase/common/hooks";
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
-
+import List from "metabase/components/List";
+import S from "metabase/components/List/List.module.css";
+import ListItem from "metabase/components/ListItem";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import CS from "metabase/css/core/index.css";
+import * as Urls from "metabase/lib/urls";
 import * as metadataActions from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
+import visualizations from "metabase/visualizations";
+
 import ReferenceHeader from "../components/ReferenceHeader";
-
-import { getQuestionUrl } from "../utils";
-
-import {
-  getSegmentQuestions,
-  getError,
-  getLoading,
-  getTableBySegment,
-  getSegment,
-} from "../selectors";
+import { getTableBySegment, getSegment } from "../selectors";
+import { getQuestionUrl, getDescription } from "../utils";
 
 const emptyStateData = (table, segment, metadata) => {
   return {
@@ -46,9 +36,6 @@ const emptyStateData = (table, segment, metadata) => {
 const mapStateToProps = (state, props) => ({
   segment: getSegment(state, props),
   table: getTableBySegment(state, props),
-  entities: getSegmentQuestions(state, props),
-  loading: getLoading(state, props),
-  loadingError: getError(state, props),
   metadata: getMetadata(state),
 });
 
@@ -56,66 +43,60 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-class SegmentQuestions extends Component {
-  static propTypes = {
-    table: PropTypes.object.isRequired,
-    segment: PropTypes.object.isRequired,
-    style: PropTypes.object.isRequired,
-    entities: PropTypes.object.isRequired,
-    loading: PropTypes.bool,
-    loadingError: PropTypes.object,
-    metadata: PropTypes.object.isRequired,
-  };
+export const SegmentQuestions = ({ style, table, segment, metadata }) => {
+  const {
+    data = [],
+    isLoading,
+    error,
+  } = useQuestionListQuery({
+    query: { f: "using_segment", model_id: segment.id },
+  });
 
-  render() {
-    const { entities, style, loadingError, loading, table, segment, metadata } =
-      this.props;
+  return (
+    <div style={style} className={CS.full}>
+      <ReferenceHeader
+        name={t`Questions about ${segment.name}`}
+        type="questions"
+        headerIcon="segment"
+      />
+      <LoadingAndErrorWrapper loading={!error && isLoading} error={error}>
+        {() =>
+          data.length > 0 ? (
+            <div className={cx(CS.wrapper, CS.wrapperTrim)}>
+              <List>
+                {data.map(
+                  question =>
+                    question.id() &&
+                    question.displayName() && (
+                      <ListItem
+                        key={question.id()}
+                        name={question.displayName()}
+                        description={getDescription(question)}
+                        url={Urls.question(question.card())}
+                        icon={visualizations.get(question.display()).iconName}
+                      />
+                    ),
+                )}
+              </List>
+            </div>
+          ) : (
+            <div className={S.empty}>
+              <AdminAwareEmptyState
+                {...emptyStateData(table, segment, metadata)}
+              />
+            </div>
+          )
+        }
+      </LoadingAndErrorWrapper>
+    </div>
+  );
+};
 
-    return (
-      <div style={style} className="full">
-        <ReferenceHeader
-          name={t`Questions about ${this.props.segment.name}`}
-          type="questions"
-          headerIcon="segment"
-        />
-        <LoadingAndErrorWrapper
-          loading={!loadingError && loading}
-          error={loadingError}
-        >
-          {() =>
-            Object.keys(entities).length > 0 ? (
-              <div className="wrapper wrapper--trim">
-                <List>
-                  {Object.values(entities).map(
-                    entity =>
-                      entity &&
-                      entity.id &&
-                      entity.name && (
-                        <ListItem
-                          key={entity.id}
-                          name={entity.display_name || entity.name}
-                          description={t`Created ${moment(
-                            entity.created_at,
-                          ).fromNow()} by ${entity.creator.common_name}`}
-                          url={Urls.question(entity)}
-                          icon={visualizations.get(entity.display).iconName}
-                        />
-                      ),
-                  )}
-                </List>
-              </div>
-            ) : (
-              <div className={S.empty}>
-                <AdminAwareEmptyState
-                  {...emptyStateData(table, segment, metadata)}
-                />
-              </div>
-            )
-          }
-        </LoadingAndErrorWrapper>
-      </div>
-    );
-  }
-}
+SegmentQuestions.propTypes = {
+  table: PropTypes.object,
+  segment: PropTypes.object.isRequired,
+  style: PropTypes.object.isRequired,
+  metadata: PropTypes.object.isRequired,
+};
 
 export default connect(mapStateToProps, mapDispatchToProps)(SegmentQuestions);

@@ -1,9 +1,10 @@
-import { parse } from "metabase-lib/expressions/recursive-parser";
-import { resolve } from "metabase-lib/expressions/resolver";
+import { parse } from "metabase-lib/v1/expressions/recursive-parser";
+import { resolve } from "metabase-lib/v1/expressions/resolver";
 
-describe("metabase-lib/expressions/recursive-parser", () => {
+describe("metabase-lib/v1/expressions/recursive-parser", () => {
   const mockResolve = (kind, name) => [kind, name];
-  const process = (source, type) => resolve(parse(source), type, mockResolve);
+  const process = (source, type) =>
+    resolve({ expression: parse(source), type, fn: mockResolve });
   const filter = expr => process(expr, "boolean");
 
   // handy references
@@ -185,7 +186,8 @@ describe("metabase-lib/expressions/recursive-parser", () => {
       throw new ReferenceError(`Unknown ["${kind}", "${name}"]`);
     };
     const type = "aggregation";
-    const aggregation = expr => resolve(parse(expr), type, mockResolve);
+    const aggregation = expr =>
+      resolve({ expression: parse(expr), type, fn: mockResolve });
 
     // sanity check first
     expect(aggregation("SUM(A)")).toEqual(["sum", ["dimension", "A"]]);
@@ -203,7 +205,8 @@ describe("metabase-lib/expressions/recursive-parser", () => {
 
   it("should handle aggregation with another function", () => {
     const type = "aggregation";
-    const aggregation = expr => resolve(parse(expr), type, mockResolve);
+    const aggregation = expr =>
+      resolve({ expression: parse(expr), type, fn: mockResolve });
 
     const A = ["dimension", "A"];
     const B = ["dimension", "B"];
@@ -223,7 +226,8 @@ describe("metabase-lib/expressions/recursive-parser", () => {
       throw new ReferenceError(`Unknown ["${kind}", "${name}"]`);
     };
     const type = "aggregation";
-    const aggregation = expr => resolve(parse(expr), type, mockResolve);
+    const aggregation = expr =>
+      resolve({ expression: parse(expr), type, fn: mockResolve });
 
     // sanity check first
     expect(aggregation("SUM(A)")).toEqual(["sum", ["dimension", "A"]]);

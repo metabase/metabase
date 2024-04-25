@@ -4,17 +4,18 @@
   data from an application database to any empty application database for all combinations of supported application
   database types."
   (:require
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.db :as mdb]
    [metabase.db.setup :as mdb.setup]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
@@ -52,8 +53,8 @@
     :model/Field
     :model/FieldValues
     :model/Segment
-    :model/Metric
-    :model/MetricImportantField
+    :model/LegacyMetric
+    :model/LegacyMetricImportantField
     :model/ModerationReview
     :model/Revision
     :model/ViewLog
@@ -64,11 +65,11 @@
     :model/Card
     :model/CardBookmark
     :model/DashboardBookmark
+    :model/DataPermissions
     :model/CollectionBookmark
     :model/BookmarkOrdering
     :model/DashboardCard
     :model/DashboardCardSeries
-    :model/Activity
     :model/Pulse
     :model/PulseCard
     :model/PulseChannel
@@ -109,7 +110,7 @@
   ;; should be ok now that #16344 is resolved -- we might be able to remove this code entirely now. Quoting identifiers
   ;; is still a good idea tho.)
   (let [source-keys (keys (first objs))
-        quote-fn    (partial mdb.setup/quote-for-application-db (mdb.connection/quoting-style target-db-type))
+        quote-fn    (partial mdb.setup/quote-for-application-db (mdb/quoting-style target-db-type))
         dest-keys   (for [k source-keys]
                       (quote-fn (name k)))]
     {:cols dest-keys
@@ -179,11 +180,11 @@
        (fn
          ([cnt]
           (when (pos? cnt)
-            (log/info (str " " (u/colorize 'green (trs "copied {0} instances." cnt))))))
+            (log/info (str " " (u/format-color :green "copied %s instances." cnt)))))
          ([cnt chunkk]
           (when (seq chunkk)
             (when (zero? cnt)
-              (log/info (u/colorize 'blue (trs "Copying instances of {0}..." (name model)))))
+              (log/info (u/format-color :blue "Copying instances of %s..." (name model))))
             (try
               (insert-chunk! target-db-type target-db-conn-spec table-name chunkk)
               (catch Throwable e
@@ -194,11 +195,13 @@
        0
        results))))
 
-(defn- assert-db-empty
-  "Make sure [target] application DB is empty before we start copying data."
+(defn- assert-has-no-users
+  "Make sure [target] application DB has no users set up before we start copying data. This is a safety check to make
+   sure we're not accidentally copying data into an existing application DB."
   [data-source]
   ;; check that there are no Users yet
-  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} "SELECT count(*) AS cnt FROM core_user;")]
+  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} ["SELECT count(*) AS cnt FROM core_user where not id = ?;"
+                                                               config/internal-mb-user-id])]
     (assert (integer? cnt))
     (when (pos? cnt)
       (throw (ex-info (trs "Target DB is already populated!")
@@ -369,26 +372,26 @@
                                         table-name table-name)]]
         (jdbc/execute! target-db-conn sql)))))
 
-(s/defn copy!
+(mu/defn copy!
   "Copy data from a source application database into an empty destination application database."
-  [source-db-type     :- (s/enum :h2 :postgres :mysql)
-   source-data-source :- javax.sql.DataSource
-   target-db-type     :- (s/enum :h2 :postgres :mysql)
-   target-data-source :- javax.sql.DataSource]
+  [source-db-type     :- [:enum :h2 :postgres :mysql]
+   source-data-source :- (ms/InstanceOfClass javax.sql.DataSource)
+   target-db-type     :- [:enum :h2 :postgres :mysql]
+   target-data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   ;; make sure the entire system is loaded before running this test, to make sure we account for all the models.
   (doseq [ns-symb u/metabase-namespace-symbols]
     (classloader/require ns-symb))
   ;; make sure the source database is up-do-date
   (step (trs "Set up {0} source database and run migrations..." (name source-db-type))
-    (mdb.setup/setup-db! source-db-type source-data-source true))
+    (mdb.setup/setup-db! source-db-type source-data-source true false))
   ;; make sure the dest DB is up-to-date
   ;;
   ;; don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
   (step (trs "Set up {0} target database and run migrations..." (name target-db-type))
-    (mdb.setup/setup-db! target-db-type target-data-source true))
+    (mdb.setup/setup-db! target-db-type target-data-source true false))
   ;; make sure target DB is empty
   (step (trs "Testing if target {0} database is already populated..." (name target-db-type))
-    (assert-db-empty target-data-source))
+    (assert-has-no-users target-data-source))
   ;; clear any rows created by the Liquibase migrations.
   (step (trs "Clearing default entries created by Liquibase migrations...")
     (clear-existing-rows! target-db-type target-data-source))

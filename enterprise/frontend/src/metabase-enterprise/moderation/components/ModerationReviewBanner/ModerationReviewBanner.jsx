@@ -1,17 +1,16 @@
 import PropTypes from "prop-types";
-import _ from "underscore";
 import { connect } from "react-redux";
+import _ from "underscore";
 
-import { Icon } from "metabase/ui";
-
+import Users from "metabase/entities/users";
 import { color, alpha } from "metabase/lib/colors";
-import { getUser } from "metabase/selectors/user";
 import { getRelativeTime } from "metabase/lib/time";
+import { getUser } from "metabase/selectors/user";
+import { Icon } from "metabase/ui";
 import {
   getTextForReviewBanner,
   getIconForReview,
 } from "metabase-enterprise/moderation/service";
-import User from "metabase/entities/users";
 
 import {
   Container,
@@ -27,7 +26,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 export default _.compose(
-  User.load({
+  Users.load({
     id: (state, props) => props.moderationReview.moderator_id,
     loadingAndErrorWrapper: false,
   }),

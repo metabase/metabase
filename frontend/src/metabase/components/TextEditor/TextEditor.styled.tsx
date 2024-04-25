@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { alpha, color } from "metabase/lib/colors";
 
 export const TextEditorRoot = styled.div`

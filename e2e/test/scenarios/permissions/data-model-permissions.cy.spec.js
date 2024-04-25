@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   modal,
@@ -6,9 +8,6 @@ import {
   modifyPermission,
   setTokenFeatures,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -120,8 +119,6 @@ describeEE("scenarios > admin > permissions", () => {
     // Change data model permission
     modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Granular");
     modifyPermission("Orders", DATA_MODEL_PERMISSION_INDEX, "Yes");
-    modifyPermission("Orders", DATA_ACCESS_PERMISSION_INDEX, "Unrestricted");
-    cy.button("Change").click();
 
     savePermissionsGraph();
 

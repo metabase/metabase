@@ -1,22 +1,20 @@
 import { getIn } from "icepick";
-
+import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
 
-import { denormalize, normalize, schema } from "normalizr";
+import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { defer } from "metabase/lib/promise";
 import {
   createAction,
   createAsyncThunk,
   createThunkAction,
 } from "metabase/lib/redux";
-import { defer } from "metabase/lib/promise";
-
+import { equals } from "metabase/lib/utils";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
-
-import { equals } from "metabase/lib/utils";
-
 import { addParamValues, addFields } from "metabase/redux/metadata";
-
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   DashboardApi,
   CardApi,
@@ -26,12 +24,10 @@ import {
   MetabaseApi,
   maybeUsePivotEndpoint,
 } from "metabase/services";
+import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
+import { applyParameters } from "metabase-lib/v1/queries/utils/card";
 
-import { getMetadata } from "metabase/selectors/metadata";
-import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
-import { applyParameters } from "metabase-lib/queries/utils/card";
+import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 import {
   getDashboardComplete,
   getDashCardBeforeEditing,
@@ -41,18 +37,17 @@ import {
   getDashboardById,
   getDashCardById,
   getSelectedTabId,
+  getQuestions,
 } from "../selectors";
-
 import {
   expandInlineDashboard,
   isVirtualDashCard,
   getAllDashboardCards,
   getDashboardType,
   fetchDataOrError,
-  getDatasetQueryParams,
   getCurrentTabDashboardCards,
 } from "../utils";
-import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
+
 import { loadMetadataForDashboard } from "./metadata";
 
 // normalizr schemas
@@ -266,7 +261,13 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       const metadata = getMetadata(getState());
-      const parameters = getDashboardUiParameters(result, metadata);
+      const questions = getQuestions(getState());
+      const parameters = getDashboardUiParameters(
+        result.dashcards,
+        result.parameters,
+        metadata,
+        questions,
+      );
 
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
@@ -440,26 +441,29 @@ export const fetchCardData = createThunkAction(
           dashcardBeforeEditing &&
           dashcardBeforeEditing.card_id !== dashcard.card_id;
 
-        // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
-        const endpoint =
+        const shouldUseCardQueryEndpoint =
           isNewDashcard(dashcard) ||
           isNewAdditionalSeriesCard(card, dashcard) ||
-          hasReplacedCard
-            ? CardApi.query
-            : DashboardApi.cardQuery;
+          hasReplacedCard;
 
-        result = await fetchDataOrError(
-          maybeUsePivotEndpoint(endpoint, card)(
-            {
+        // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
+        const endpoint = shouldUseCardQueryEndpoint
+          ? CardApi.query
+          : DashboardApi.cardQuery;
+
+        const requestBody = shouldUseCardQueryEndpoint
+          ? { cardId: card.id, ignore_cache: ignoreCache }
+          : {
               dashboardId: dashcard.dashboard_id,
               dashcardId: dashcard.id,
               cardId: card.id,
               parameters: datasetQuery.parameters,
               ignore_cache: ignoreCache,
               dashboard_id: dashcard.dashboard_id,
-            },
-            queryOptions,
-          ),
+            };
+
+        result = await fetchDataOrError(
+          maybeUsePivotEndpoint(endpoint, card)(requestBody, queryOptions),
         );
       }
 
@@ -611,3 +615,22 @@ export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, card => ({
   id: card.id,
   result: true,
 }));
+
+function getDatasetQueryParams(datasetQuery = {}) {
+  const { type, query, native, parameters = [] } = datasetQuery;
+  return {
+    type,
+    query,
+    native,
+    parameters: parameters
+      .map(parameter => ({
+        ...parameter,
+        value: parameter.value ?? null,
+      }))
+      .sort(sortById),
+  };
+}
+
+function sortById(a, b) {
+  return a.id.localeCompare(b.id);
+}

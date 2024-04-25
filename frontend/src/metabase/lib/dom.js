@@ -1,5 +1,6 @@
-import _ from "underscore";
 import querystring from "querystring";
+import _ from "underscore";
+
 import { isCypressActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -26,7 +27,7 @@ window.METABASE = true;
 // used for detecting if we're previewing an embed
 export const IFRAMED_IN_SELF = (function () {
   try {
-    return window.self !== window.top && window.top.METABASE;
+    return window.self !== window.parent && window.parent.METABASE;
   } catch (e) {
     return false;
   }
@@ -220,7 +221,7 @@ export function constrainToScreen(element, direction, padding) {
   return false;
 }
 
-function getSitePath() {
+export function getSitePath() {
   return new URL(MetabaseSettings.get("site-url")).pathname.toLowerCase();
 }
 
@@ -229,6 +230,17 @@ function isMetabaseUrl(url) {
 
   if (!isAbsoluteUrl(url)) {
     return true;
+  }
+
+  const pathNameWithoutSubPath = getPathnameWithoutSubPath(urlPath);
+  const isPublicLink = pathNameWithoutSubPath.startsWith("/public/");
+  const isEmbedding = pathNameWithoutSubPath.startsWith("/embed/");
+  /**
+   * (metabase#38640) We don't want to use client-side navigation for public links or embedding
+   * because public app, or embed app are built using separate routes.
+   **/
+  if (isPublicLink || isEmbedding) {
+    return false;
   }
 
   return isSameOrSiteUrlOrigin(url) && urlPath.startsWith(getSitePath());

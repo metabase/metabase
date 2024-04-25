@@ -1,16 +1,18 @@
-import { Route } from "react-router";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createMockCard } from "metabase-types/api/mocks";
+import { Route } from "react-router";
+
+import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
+import { DEFAULT_EMBED_OPTIONS } from "metabase/redux/embed";
+import { createMockCard } from "metabase-types/api/mocks";
+import type { EmbedOptions } from "metabase-types/store";
 import {
   createMockAppState,
   createMockEmbedState,
   createMockQueryBuilderState,
 } from "metabase-types/store/mocks";
-import { setupCollectionsEndpoints } from "__support__/server-mocks";
-import type { EmbedOptions } from "metabase-types/store";
-import { DEFAULT_EMBED_OPTIONS } from "metabase/redux/embed";
+
 import AppBar from "./AppBar";
 
 describe("AppBar", () => {
@@ -89,7 +91,7 @@ describe("AppBar", () => {
         }
 
         expect(history.getCurrentLocation().pathname).toBe("/question/1");
-        userEvent.click(screen.getByTestId("main-logo"));
+        await userEvent.click(screen.getByTestId("main-logo"));
         expect(history.getCurrentLocation().pathname).toBe("/");
       });
     });
@@ -156,7 +158,7 @@ describe("AppBar", () => {
         }
 
         expect(history.getCurrentLocation().pathname).toBe("/question/1");
-        userEvent.click(screen.getByTestId("main-logo"));
+        await userEvent.click(screen.getByTestId("main-logo"));
         expect(history.getCurrentLocation().pathname).toBe("/");
       });
     });

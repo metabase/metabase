@@ -467,4 +467,6 @@ serdes/meta:
 - id: 9shJ0y29V5o1lOSDL4ImJ
   label: most_viewed_questions
   model: Card
+initially_published_at: null
 metabase_version: null
+type: question

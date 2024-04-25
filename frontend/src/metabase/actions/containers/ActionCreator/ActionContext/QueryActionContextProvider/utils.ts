@@ -1,3 +1,5 @@
+import type Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   ActionFormSettings,
   FieldType,
@@ -7,9 +9,6 @@ import type {
   TemplateTag,
   TemplateTagType,
 } from "metabase-types/api";
-
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import type Question from "metabase-lib/Question";
 
 type FieldTypeMap = Record<string, ParameterType>;
 type TagTypeMap = Record<string, TemplateTagType>;

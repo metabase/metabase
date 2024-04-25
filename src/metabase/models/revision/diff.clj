@@ -76,17 +76,23 @@
     [:dataset_query _ _]
     (deferred-tru "modified the query")
 
-    [:dataset false true]
-    (deferred-tru "turned this into a model")
+    ;; report_card.type
+    [:type (_ :guard #{:question "question"}) (_ :guard #{:model "model"})]
+    (deferred-tru "turned this to a model")
 
-    [:dataset true false]
-    (deferred-tru "changed this from a model to a saved question")
+    [:type old new]
+    (deferred-tru "type changed from {0} to {1}" old new)
 
     [:display _ _]
     (deferred-tru "changed the display from {0} to {1}" (name v1) (name v2))
 
     [:result_metadata _ _]
     (deferred-tru "edited the metadata")
+
+    [:width v1 v2]
+    (if (and v1 v2)
+      (deferred-tru "changed the width setting from {0} to {1}" (name v1) (name v2))
+      (deferred-tru "changed the width setting"))
 
     ;;  whenever database_id, query_type, table_id changed,
     ;; the dataset_query will changed so we don't need a description for this
@@ -107,10 +113,10 @@
 (defn ^:private model-str->i18n-str
   [model-str]
   (case model-str
-    "Dashboard" (deferred-tru "Dashboard")
-    "Card"      (deferred-tru "Card")
-    "Segment"   (deferred-tru "Segment")
-    "Metric"    (deferred-tru "Metric")))
+    "Dashboard"    (deferred-tru "Dashboard")
+    "Card"         (deferred-tru "Card")
+    "Segment"      (deferred-tru "Segment")
+    "LegacyMetric" (deferred-tru "Metric")))
 
 (defn diff-strings*
   "Create a seq of string describing how `o1` is different from `o2`.

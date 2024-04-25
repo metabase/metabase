@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 services:
   postgres-sample:
@@ -6,9 +6,9 @@ services:
       - TZ=US/Pacific
     image: metabase/qa-databases:postgres-sample-12
     ports:
-      - "5404:5432"
+      - 5404:5432
   mongo-sample:
-    image: metabase/qa-databases:mongo-sample-4.0
+    image: metabase/qa-databases:mongo-sample-5.0
     ports:
       - 27004:27017
   mysql-sample:

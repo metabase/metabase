@@ -10,7 +10,6 @@
    [metabase.models.collection :as collection]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.util :as qp.util]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -18,15 +17,15 @@
 
 (def ^Long grid-width
   "Total grid width."
-  18)
+  24)
 
 (def ^Long default-card-width
   "Default card width."
-  6)
+  12)
 
 (def ^Long default-card-height
   "Default card height"
-  4)
+  6)
 
 (defn create-collection!
   "Create and return a new collection."
@@ -111,20 +110,26 @@
         {:graph.colors (map-to-colors color-keys)}))))
 
 (defn- visualization-settings
-  [{:keys [metrics x_label y_label series_labels visualization dimensions] :as card}]
-  (let [[display visualization-settings] visualization]
+  [{:keys [metrics x_label y_label series_labels visualization
+           dimensions dimension-name->field metric-definition]
+    :as   card}]
+  (let [{:keys [aggregation]} metric-definition
+        [display visualization-settings] visualization
+        viz-dims (mapv
+                   (comp :name dimension-name->field ffirst)
+                   dimensions)]
     {:display                display
      :visualization_settings (-> visualization-settings
                                  (assoc :graph.series_labels (map :name metrics)
-                                        :graph.metrics       (map :op metrics)
-                                        :graph.dimensions    dimensions)
+                                        :graph.metrics (mapv first aggregation)
+                                        :graph.dimensions (seq viz-dims))
                                  (merge (colorize card))
                                  (cond->
-                                     series_labels (assoc :graph.series_labels series_labels)
+                                   series_labels (assoc :graph.series_labels series_labels)
 
-                                     x_label       (assoc :graph.x_axis.title_text x_label)
+                                   x_label (assoc :graph.x_axis.title_text x_label)
 
-                                     y_label       (assoc :graph.y_axis.title_text y_label)))}))
+                                   y_label (assoc :graph.y_axis.title_text y_label)))}))
 
 
 (defn card-defaults
@@ -317,10 +322,10 @@
                                      ;; Height doesn't need to be precise, just some
                                      ;; safe upper bound.
                                      (make-grid grid-width (* n grid-width))]))]
-     (log/debug (trs "Adding {0} cards to dashboard {1}:\n{2}"
-                     (count cards)
-                     title
-                     (str/join "; " (map :title cards))))
+     (log/debugf "Adding %s cards to dashboard %s:\n%s"
+                 (count cards)
+                 title
+                 (str/join "; " (map :title cards)))
      (cond-> (update dashboard :dashcards (partial sort-by (juxt :row :col)))
        (not-empty filters) (filters/add-filters filters max-filters)))))
 

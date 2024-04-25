@@ -1,13 +1,16 @@
 import { assocIn } from "icepick";
 
-import { createEntity } from "metabase/lib/entities";
 import {
   CREATE_MEMBERSHIP,
   DELETE_MEMBERSHIP,
   CLEAR_MEMBERSHIPS,
 } from "metabase/admin/people/events";
-import { PermissionsApi } from "metabase/services";
+import { permissionApi } from "metabase/api";
+import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Groups = createEntity({
   name: "groups",
   path: "/api/permissions/group",
@@ -16,12 +19,52 @@ const Groups = createEntity({
     fields: [{ name: "name" }],
   },
 
-  actions: {
-    clearMember: async ({ id }) => {
-      await PermissionsApi.clearGroupMembership({ id });
+  api: {
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        permissionApi.endpoints.listPermissionsGroups,
+      ),
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery.id,
+        dispatch,
+        permissionApi.endpoints.getPermissionsGroup,
+      ),
+    create: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        permissionApi.endpoints.createPermissionsGroup,
+      ),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        permissionApi.endpoints.updatePermissionsGroup,
+      ),
+    delete: ({ id }, dispatch) =>
+      entityCompatibleQuery(
+        id,
+        dispatch,
+        permissionApi.endpoints.deletePermissionsGroup,
+      ),
+  },
 
-      return { type: CLEAR_MEMBERSHIPS, payload: { groupId: id } };
-    },
+  actions: {
+    clearMember:
+      async ({ id }) =>
+      async dispatch => {
+        await dispatch(
+          entityCompatibleQuery(
+            id,
+            dispatch,
+            permissionApi.endpoints.clearGroupMembership,
+          ),
+        );
+        dispatch({ type: CLEAR_MEMBERSHIPS, payload: { groupId: id } });
+      },
   },
 
   reducer: (state = {}, { type, payload, error }) => {
@@ -29,8 +72,8 @@ const Groups = createEntity({
       const { membership, group_id } = payload;
       const members = state[group_id]?.members;
       if (members) {
-        members.push(membership);
-        return assocIn(state, [group_id, "members"], members);
+        const updatedMembers = [...members, membership];
+        return assocIn(state, [group_id, "members"], updatedMembers);
       } else {
         return state;
       }

@@ -1,11 +1,11 @@
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import type { Ref } from "react";
 import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import type { Moment } from "moment-timezone";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+
 import Tooltip from "metabase/core/components/Tooltip";
+
 import {
   InputClearButton,
   InputClearIcon,
@@ -50,7 +50,7 @@ const TimeInput = forwardRef(function TimeInput(
   const pmText = moment.localeData().meridiem(12, 0, false);
 
   const handleHoursChange = useCallback(
-    (hours = 0) => {
+    (hours: number = 0) => {
       const newValue = value.clone();
       if (is24HourMode) {
         newValue.hours(hours % 24);
@@ -63,7 +63,7 @@ const TimeInput = forwardRef(function TimeInput(
   );
 
   const handleMinutesChange = useCallback(
-    (minutes = 0) => {
+    (minutes: number = 0) => {
       const newValue = value.clone();
       newValue.minutes(minutes % 60);
       onChange?.(newValue);

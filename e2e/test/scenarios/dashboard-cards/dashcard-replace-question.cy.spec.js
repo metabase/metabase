@@ -1,16 +1,23 @@
+import { USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  FIRST_COLLECTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   saveDashboard,
   modal,
   popover,
   restore,
   visitDashboard,
+  findDashCardAction,
+  resetSnowplow,
+  enableTracking,
+  describeWithSnowplow,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  entityPickerModal,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { USER_GROUPS } from "e2e/support/cypress_data";
-import {
-  FIRST_COLLECTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 import {
   createMockDashboardCard,
   createMockHeadingDashboardCard,
@@ -24,6 +31,7 @@ const PARAMETER = {
     id: "1",
     name: "Created At",
     type: "date/all-options",
+    sectionId: "date",
   }),
   CATEGORY: createMockParameter({
     id: "2",
@@ -34,6 +42,7 @@ const PARAMETER = {
     id: "3",
     name: "Not mapped to anything",
     type: "number/=",
+    sectionId: "number",
   }),
 
   // Used to reproduce:
@@ -42,6 +51,7 @@ const PARAMETER = {
     id: "2",
     name: "Created At (2)",
     type: "date/range",
+    sectionId: "date",
   }),
 };
 
@@ -103,12 +113,14 @@ function getDashboardCards(mappedQuestionId) {
   ];
 }
 
-describe("scenarios > dashboard cards > replace question", () => {
+describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
   beforeEach(() => {
+    resetSnowplow();
     restore();
-    cy.signInAsNormalUser();
+    cy.signInAsAdmin();
+    enableTracking();
 
-    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     cy.createQuestion(MAPPED_QUESTION_CREATE_INFO).then(
       ({ body: { id: mappedQuestionId } }) => {
@@ -127,6 +139,10 @@ describe("scenarios > dashboard cards > replace question", () => {
     );
   });
 
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
   it("should replace a dashboard card question (metabase#36984)", () => {
     visitDashboardAndEdit();
 
@@ -137,6 +153,7 @@ describe("scenarios > dashboard cards > replace question", () => {
       nextQuestionName: "Next question",
       collectionName: "First collection",
     });
+    expectGoodSnowplowEvent({ event: "dashboard_card_replaced" });
     findTargetDashcard().within(() => {
       assertDashCardTitle("Next question");
       cy.findByText("Ean").should("exist");
@@ -144,7 +161,10 @@ describe("scenarios > dashboard cards > replace question", () => {
     });
 
     // Ensure can replace with a model
-    replaceQuestion(findTargetDashcard(), { nextQuestionName: "Orders Model" });
+    replaceQuestion(findTargetDashcard(), {
+      nextQuestionName: "Orders Model",
+      tab: "Models",
+    });
     findTargetDashcard().within(() => {
       assertDashCardTitle("Orders Model");
       cy.findByText("Product ID").should("exist");
@@ -230,10 +250,8 @@ describe("scenarios > dashboard cards > replace question", () => {
 });
 
 function visitDashboardAndEdit() {
-  cy.get("@dashboardId").then(dashboardId => {
-    visitDashboard(dashboardId);
-    cy.findByLabelText("Edit dashboard").click();
-  });
+  visitDashboard("@dashboardId");
+  cy.findByLabelText("Edit dashboard").click();
 }
 
 function findHeadingDashcard() {
@@ -244,16 +262,15 @@ function findTargetDashcard() {
   return cy.findAllByTestId("dashcard").eq(2);
 }
 
-function findDashCardAction(dashcardElement, labelText) {
-  return dashcardElement.realHover().findByLabelText(labelText);
-}
-
 function replaceQuestion(
   dashcardElement,
-  { nextQuestionName, collectionName },
+  { nextQuestionName, collectionName, tab },
 ) {
   dashcardElement.realHover().findByLabelText("Replace").click();
-  modal().within(() => {
+  entityPickerModal().within(() => {
+    if (tab) {
+      cy.findByRole("tablist").findByText(tab).click();
+    }
     if (collectionName) {
       cy.findByText(collectionName).click();
     }

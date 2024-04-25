@@ -1,10 +1,12 @@
 import { connect } from "react-redux";
 import _ from "underscore";
+
 import Databases from "metabase/entities/databases";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { getUser } from "metabase/selectors/user";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { State } from "metabase-types/store";
-import type Database from "metabase-lib/metadata/Database";
+
 import DatabaseStatus from "../../components/DatabaseStatus";
 
 const RELOAD_INTERVAL = 2000;

@@ -1,10 +1,15 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { Component } from "react";
+
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
+
 import ExplicitSize from "../../components/ExplicitSize";
-import styles from "./Legend.css";
+
+import styles from "./Legend.module.css";
 import { LegendHeaderItem } from "./LegendHeader.styled";
 
 const DEFAULT_COLORS = getAccentColors();
@@ -55,7 +60,14 @@ class LegendHeader extends Component {
       <div
         className={cx(
           styles.LegendHeader,
-          "Card-title mx1 flex flex-no-shrink flex-row align-center",
+          DashboardS.CardTitle,
+          CS.textDefault,
+          CS.textSmaller,
+          CS.mx1,
+          CS.flex,
+          CS.flexNoShrink,
+          CS.flexRow,
+          CS.alignCenter,
         )}
       >
         {series.map((s, index) => [
@@ -84,7 +96,7 @@ class LegendHeader extends Component {
           />,
         ])}
         {actionButtons && (
-          <span className="flex-no-shrink flex-align-right relative">
+          <span className={cx(CS.flexNoShrink, CS.flexAlignRight, CS.relative)}>
             {actionButtons}
           </span>
         )}

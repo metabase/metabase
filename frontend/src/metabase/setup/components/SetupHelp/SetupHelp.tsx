@@ -1,6 +1,9 @@
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
+import MetabaseSettings from "metabase/lib/settings";
+
 import { SetupFooterRoot } from "./SetupHelp.styled";
 
 export const SetupHelp = (): JSX.Element => {
@@ -8,8 +11,7 @@ export const SetupHelp = (): JSX.Element => {
     <SetupFooterRoot>
       {t`If you feel stuck`},{" "}
       <ExternalLink
-        className="link"
-        // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup
+        className={CS.link}
         href={MetabaseSettings.docsUrl(
           "configuring-metabase/setting-up-metabase",
         )}

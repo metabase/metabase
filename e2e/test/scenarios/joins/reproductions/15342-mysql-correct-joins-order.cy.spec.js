@@ -36,7 +36,7 @@ describe("issue 15342", { tags: "@external" }, () => {
 
     visualize();
 
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("Email"); // from People table
       cy.findByText("Orders → ID"); // joined Orders table columns
       cy.findByText("Products → ID"); // joined Products table columns

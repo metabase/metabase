@@ -6,6 +6,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
+
 import { getIsPaidPlan, getUpgradeUrl } from "./settings";
 
 describe("getUpgradeUrl", () => {

@@ -12,6 +12,7 @@ import {
   crudGroupMappingsWidget,
   checkGroupConsistencyAfterDeletingMappings,
 } from "./shared/group-mappings-widget";
+import { getUserProvisioningInput, getSuccessUi } from "./shared/helpers";
 
 describe(
   "scenarios > admin > settings > SSO > LDAP",
@@ -62,6 +63,15 @@ describe(
       popover().findByText("Resume").click();
       cy.wait("@updateSetting");
       getLdapCard().findByText("Active").should("exist");
+    });
+
+    it("should not show the user provision UI to OSS users", () => {
+      setupLdap();
+      cy.visit("/admin/settings/authentication/ldap");
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("User Provisioning")
+        .should("not.exist");
     });
 
     it("should allow to reset ldap settings", () => {
@@ -160,6 +170,20 @@ describeEE(
       restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
+      cy.intercept("PUT", "/api/ldap/settings").as("updateLdapSettings");
+    });
+
+    it("should allow the user to enable/disable user provisioning", () => {
+      setupLdap();
+      cy.visit("/admin/settings/authentication/ldap");
+
+      const { label, input } = getUserProvisioningInput();
+      input.should("be.checked");
+      label.click();
+      cy.button("Save changes").click();
+      cy.wait("@updateLdapSettings");
+
+      getSuccessUi().should("exist");
     });
 
     it("should show the login form when ldap is enabled but password login isn't (metabase#25661)", () => {
@@ -192,7 +216,7 @@ describeEE(
 
       // Check that attributes are synced
       cy.visit("/admin/people");
-      cy.get(".ContentTable").within(() => {
+      cy.findByTestId("admin-people-list-table").within(() => {
         cy.findByText("Bar1 Bar1")
           .closest("tr")
           .within(() => {

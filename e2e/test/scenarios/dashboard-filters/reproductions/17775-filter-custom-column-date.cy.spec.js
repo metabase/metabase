@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
@@ -7,7 +8,6 @@ import {
   visitDashboard,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { setQuarterAndYear } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -56,7 +56,9 @@ describe("issue 17775", () => {
     editDashboard();
 
     // Make sure filter can be connected to the custom column using UI, rather than using API.
-    cy.get("main header").find(".Icon-gear").click();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .find(".Icon-gear")
+      .click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column to filter on")

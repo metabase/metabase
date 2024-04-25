@@ -38,3 +38,4 @@ serdes/meta:
 - id: updated_at
   model: Field
 database_indexed: null
+database_partitioned: null

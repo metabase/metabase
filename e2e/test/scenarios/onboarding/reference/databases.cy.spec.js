@@ -56,7 +56,9 @@ describe("scenarios > reference > databases", () => {
     cy.visit("/reference/databases/1");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Edit").click();
-    cy.get(".wrapper input").clear().type("My definitely profitable business");
+    cy.findByPlaceholderText("Sample Database")
+      .clear()
+      .type("My definitely profitable business");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -98,8 +100,8 @@ function checkQuestionSourceDatabasesOrder(question_type) {
   const lastDatabaseIndex = -1;
   const selector =
     question_type === "Native query"
-      ? ".List-item-title"
-      : ".List-section-title";
+      ? "[data-element-id=list-item]-title"
+      : "[data-element-id=list-section-title]";
 
   startNewQuestion();
   popover().within(() => {

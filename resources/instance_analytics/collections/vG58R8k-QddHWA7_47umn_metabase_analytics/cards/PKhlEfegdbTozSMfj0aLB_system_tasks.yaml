@@ -194,4 +194,6 @@ serdes/meta:
 - id: PKhlEfegdbTozSMfj0aLB
   label: system_tasks
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (1308cef)
+type: model

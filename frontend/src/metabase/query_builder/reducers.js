@@ -1,13 +1,13 @@
-import { handleActions } from "redux-actions";
 import { assoc, merge } from "icepick";
+import { handleActions } from "redux-actions";
 import _ from "underscore";
-import { copy } from "metabase/lib/utils";
 
-import TimelineEvents from "metabase/entities/timeline-events";
 import {
   EDIT_QUESTION,
   NAVIGATE_TO_NEW_CARD,
 } from "metabase/dashboard/actions";
+import TimelineEvents from "metabase/entities/timeline-events";
+import { copy } from "metabase/lib/utils";
 
 import {
   RESET_QB,
@@ -399,6 +399,7 @@ export const card = handleActions(
       next: (state, { payload }) => ({
         ...state,
         embedding_params: payload.embedding_params,
+        initially_published_at: payload.initially_published_at,
       }),
     },
   },

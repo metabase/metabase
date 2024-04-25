@@ -534,21 +534,21 @@
   The input map requires:
   `:card` which contains a map with the necessary keys to configure a visualization.
   `:data` which is map that mimics the shape and settings returned by executing a card's :dataset_query with
-  `metabase.query-processor/process-query-and-save-execution!`, and the :process-viz-settings? middleware.
-  For example:
+  [[metabase.query-processor/process-query]] + [[metabase.query-processor/userland-query]], and
+  the :process-viz-settings? middleware. For example:
 
   ```
   (let [card-id 1
       {:keys [dataset_query] :as card} (t2/select-one card/Card :id card-id)
       user                             (t2/select-one user/User)
       query-results                    (binding [qp.perms/*card-id* nil]
-                                         (qp/process-query-and-save-execution!
-                                           (-> dataset_query
-                                               (assoc :async? false)
+                                         (qp/process-query
+                                           (qp/userland-query
+                                            (-> dataset_query
                                                (assoc-in [:middleware :process-viz-settings?] true))
-                                           {:executed-by (:id user)
-                                            :context     :pulse
-                                            :card-id     card-id}))]
+                                            {:executed-by (:id user)
+                                             :context     :pulse
+                                             :card-id     card-id})))]
   {:data query-results})
   ```
 
@@ -557,10 +557,10 @@
 
   Rendering the result as a hiccup tree is acheived by redefining 2 functions:
 
-  `metabase.pulse.render.js-svg/svg-string->bytes` normally takes an svg-string from the static-viz js (via gaalvm)
+  [[metabase.pulse.render.js-svg/svg-string->bytes]] normally takes an svg-string from the static-viz js (via gaalvm)
   and returns PNG bytes. It is redefined to pass the svg-string without any encoding.
 
-  `metabase.pulse.render.image-bundle/make-image-bundle` normally takes a render-type (:inline :attachment) and
+  [[metabase.pulse.render.image-bundle/make-image-bundle]] normally takes a render-type (:inline :attachment) and
   image-bytes, and returns a map containing the image as a base64 encoded string, suitable for an inline src string
   to embed the PNG in an html img tag. It is redefined to pass the string unmodified.
 
@@ -643,25 +643,6 @@
                     (zip/replace loc (into [k] c))))]
     (edit-nodes tree matcher edit-fn)))
 
-(defn render-card-as-hiccup
-  "Render the card with `card-id` using the static-viz rendering pipeline as a hiccup data structure.
-
-  Redefines some internal rendering functions to keep svg from being rendered into a png."
-  [card-id]
-  (let [{:keys [visualization_settings] :as card} (t2/select-one :model/Card :id card-id)
-        query                                     (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
-        results                                   (qp/process-query (assoc query :viz-settings visualization_settings))]
-    (with-redefs [js-svg/svg-string->bytes       identity
-                  image-bundle/make-image-bundle (fn [_ s]
-                                                   {:image-src   s
-                                                    :render-type :inline})]
-      (let [content (-> (render/render-pulse-card :inline "UTC" card nil results)
-                        :content)]
-        (-> content
-            (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
-            (edit-nodes wrapped-node? unwrap-node)    ;; eg: ([:div "content"]) -> [:div "content"]
-            (edit-nodes wrapped-children? unwrap-children))))))
-
 (defn render-card-as-hickory
   "Render the card with `card-id` using the static-viz rendering pipeline as a hickory data structure.
   Redefines some internal rendering functions to keep svg from being rendered into a png.
@@ -675,9 +656,9 @@
                                                    {:image-src   s
                                                     :render-type :inline})]
       (let [content (-> (render/render-pulse-card :inline "UTC" card nil results)
-                            :content)]
+                        :content)]
         (-> content
-              (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
-              hiccup/html
-              hik/parse
-              hik/as-hickory)))))
+            (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
+            hiccup/html
+            hik/parse
+            hik/as-hickory)))))

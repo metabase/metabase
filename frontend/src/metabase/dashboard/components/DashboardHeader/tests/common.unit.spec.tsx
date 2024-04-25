@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+
 import { screen, within } from "__support__/ui";
 
 import { setup, TEST_DASHBOARD, TEST_DASHBOARD_WITH_TABS } from "./setup";
@@ -12,7 +13,7 @@ describe("DashboardHeader", () => {
       dashboard: TEST_DASHBOARD,
     });
 
-    userEvent.click(screen.getByLabelText("dashboard-menu-button"));
+    await userEvent.click(screen.getByLabelText("dashboard-menu-button"));
     await screen.findByRole("dialog");
 
     const exportPdfButton = within(
@@ -26,7 +27,7 @@ describe("DashboardHeader", () => {
       dashboard: TEST_DASHBOARD_WITH_TABS,
     });
 
-    userEvent.click(screen.getByLabelText("dashboard-menu-button"));
+    await userEvent.click(screen.getByLabelText("dashboard-menu-button"));
     await screen.findByRole("dialog");
 
     const exportPdfButton = within(

@@ -1,57 +1,56 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+import { assoc } from "icepick";
 import { PureComponent } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { assoc } from "icepick";
 import _ from "underscore";
 
-import { Mode } from "metabase/visualizations/click-actions/Mode";
+import ErrorBoundary from "metabase/ErrorBoundary";
 import ExplicitSize from "metabase/components/ExplicitSize";
-
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { formatNumber } from "metabase/lib/formatting";
 import { equals } from "metabase/lib/utils";
-
+import { getIsShowingRawTable } from "metabase/query_builder/selectors";
+import { getFont } from "metabase/styled-components/selectors";
 import {
-  getVisualizationTransformed,
   extractRemappings,
+  getVisualizationTransformed,
 } from "metabase/visualizations";
+import { Mode } from "metabase/visualizations/click-actions/Mode";
+import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
-
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import {
-  MinRowsError,
   ChartSettingsError,
+  MinRowsError,
 } from "metabase/visualizations/lib/errors";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { isSameSeries, getCardKey } from "metabase/visualizations/lib/utils";
-
-import { getMode } from "metabase/visualizations/click-actions/lib/modes";
-import { getFont } from "metabase/styled-components/selectors";
-import { getIsShowingRawTable } from "metabase/query_builder/selectors";
-
-import ErrorBoundary from "metabase/ErrorBoundary";
+import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
 import { isRegularClickAction } from "metabase/visualizations/types";
-import Question from "metabase-lib/Question";
-import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
-import { memoizeClass } from "metabase-lib/utils";
+import Question from "metabase-lib/v1/Question";
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
+import { memoizeClass } from "metabase-lib/v1/utils";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
 import LoadingView from "./LoadingView";
 import NoResultsView from "./NoResultsView";
 import {
-  VisualizationRoot,
-  VisualizationHeader,
   VisualizationActionButtonsContainer,
+  VisualizationHeader,
+  VisualizationRoot,
   VisualizationSlowSpinner,
 } from "./Visualization.styled";
 
 const defaultProps = {
   errorMessageOverride: undefined,
   showTitle: false,
+  isAction: false,
   isDashboard: false,
   isEditing: false,
   isSettings: false,
@@ -67,6 +66,8 @@ const mapStateToProps = state => ({
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
 });
+
+const SMALL_CARD_WIDTH_THRESHOLD = 150;
 
 class Visualization extends PureComponent {
   state = {
@@ -195,20 +196,9 @@ class Visualization extends PureComponent {
   };
 
   _getQuestionForCardCached(metadata, card) {
-    if (!metadata || !card) {
-      return;
-    }
-    const { isQueryBuilder, queryBuilderMode } = this.props;
-    const question = new Question(card, metadata);
-
-    // Datasets in QB should behave as raw tables opened in simple mode
-    // composeDataset replaces the dataset_query with a clean query using the dataset as a source table
-    // Ideally, this logic should happen somewhere else
-    return question.isDataset() &&
-      isQueryBuilder &&
-      queryBuilderMode !== "dataset"
-      ? question.composeDataset()
-      : question;
+    return card != null && metadata != null
+      ? new Question(card, metadata)
+      : undefined;
   }
 
   getMode(maybeModeOrQueryMode, question) {
@@ -304,13 +294,23 @@ class Visualization extends PureComponent {
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = ({ nextCard, seriesIndex, objectId }) => {
+  handleOnChangeCardAndRun = ({
+    nextCard,
+    seriesIndex,
+    objectId,
+    settingsSyncOptions,
+  }) => {
     const { series, clicked } = this.state;
 
     const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
     const previousCard = series && series[index] && series[index].card;
 
-    this.props.onChangeCardAndRun({ nextCard, previousCard, objectId });
+    this.props.onChangeCardAndRun({
+      nextCard,
+      previousCard,
+      objectId,
+      settingsSyncOptions,
+    });
   };
 
   onRender = ({ yAxisSplit, warnings = [] } = {}) => {
@@ -340,6 +340,7 @@ class Visualization extends PureComponent {
       height,
       headerIcon,
       errorIcon,
+      isAction,
       isSlow,
       isMobile,
       expectedDuration,
@@ -348,7 +349,7 @@ class Visualization extends PureComponent {
       onUpdateVisualizationSettings,
     } = this.props;
     const { visualization } = this.state;
-    const small = width < 330;
+    const small = width < SMALL_CARD_WIDTH_THRESHOLD;
 
     // these may be overridden below
     let { series, hovered, clicked } = this.state;
@@ -418,7 +419,7 @@ class Visualization extends PureComponent {
       <VisualizationActionButtonsContainer>
         {isSlow && !loading && (
           <VisualizationSlowSpinner
-            className="Visualization-slow-spinner"
+            className={DashboardS.VisualizationSlowSpinner}
             size={18}
             isUsuallySlow={isSlow === "usually-slow"}
           />
@@ -462,7 +463,7 @@ class Visualization extends PureComponent {
       (showTitle &&
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
-      (replacementContent && (dashcard.size_y !== 1 || isMobile));
+      (replacementContent && (dashcard.size_y !== 1 || isMobile) && !isAction);
 
     return (
       <ErrorBoundary>
@@ -503,12 +504,16 @@ class Visualization extends PureComponent {
           ) : (
             <div
               data-card-key={getCardKey(series[0].card?.id)}
-              className="flex flex-column flex-full"
+              className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
             >
               <CardVisualization
                 {...this.props}
-                // NOTE: CardVisualization class used to target ExplicitSize HOC
-                className="CardVisualization flex-full flex-basis-none"
+                // NOTE: CardVisualization class used as a selector for tests
+                className={cx(
+                  "CardVisualization",
+                  CS.flexFull,
+                  CS.flexBasisNone,
+                )}
                 isPlaceholder={isPlaceholder}
                 isMobile={isMobile}
                 series={series}

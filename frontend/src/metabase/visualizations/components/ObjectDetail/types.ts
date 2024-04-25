@@ -1,8 +1,12 @@
-import type { Card, DatasetData, DashboardCard } from "metabase-types/api";
-
-import type Table from "metabase-lib/metadata/Table";
-import type ForeignKey from "metabase-lib/metadata/ForeignKey";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
+import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type Table from "metabase-lib/v1/metadata/Table";
+import type {
+  Card,
+  DatasetData,
+  QuestionDashboardCard,
+} from "metabase-types/api";
 
 export type ObjectId = number | string;
 
@@ -21,8 +25,9 @@ export type OnVisualizationClickType =
 export interface ObjectDetailProps {
   data: DatasetData;
   question?: Question;
+  metadata?: Metadata;
   card?: Card;
-  dashcard?: DashboardCard;
+  dashcard?: QuestionDashboardCard;
   isObjectDetail?: boolean; // whether this should be shown in a modal
   table?: Table | null;
   zoomedRow?: unknown[] | undefined;

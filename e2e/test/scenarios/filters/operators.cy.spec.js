@@ -1,6 +1,5 @@
-import { restore, popover, openTable } from "e2e/support/helpers";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, popover, openTable } from "e2e/support/helpers";
 
 const { PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -87,7 +86,7 @@ describe("operators in questions", () => {
 
       popover().within(() => {
         cy.findByText("Price").click();
-        cy.findByDisplayValue("Equal to").click();
+        cy.findByDisplayValue("Between").click();
       });
 
       cy.findByRole("listbox").within(() => {

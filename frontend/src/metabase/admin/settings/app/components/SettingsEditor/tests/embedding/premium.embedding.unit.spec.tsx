@@ -1,4 +1,6 @@
 import { screen } from "__support__/ui";
+
+import type { SetupOpts } from "./setup";
 import {
   goToInteractiveEmbeddingSettings,
   goToStaticEmbeddingSettings,
@@ -8,7 +10,6 @@ import {
   interactiveEmbeddingSettingsUrl,
   staticEmbeddingSettingsUrl,
 } from "./setup";
-import type { SetupOpts } from "./setup";
 
 const setupPremium = (opts?: SetupOpts) => {
   return setupEmbedding({
@@ -26,9 +27,9 @@ describe("[EE, with token] embedding settings", () => {
           settingValues: { "enable-embedding": false },
         });
 
-        expect(() => {
-          goToStaticEmbeddingSettings();
-        }).toThrow();
+        expect(
+          await screen.findByRole("button", { name: "Manage" }),
+        ).toBeDisabled();
 
         history.push(staticEmbeddingSettingsUrl);
 
@@ -54,9 +55,9 @@ describe("[EE, with token] embedding settings", () => {
           settingValues: { "enable-embedding": false },
         });
 
-        expect(() => {
-          goToInteractiveEmbeddingSettings();
-        }).toThrow();
+        expect(
+          await screen.findByRole("button", { name: "Configure" }),
+        ).toBeDisabled();
 
         history.push(interactiveEmbeddingSettingsUrl);
 
@@ -86,7 +87,7 @@ describe("[EE, with token] embedding settings", () => {
         settingValues: { "enable-embedding": true },
       });
 
-      goToStaticEmbeddingSettings();
+      await goToStaticEmbeddingSettings();
 
       const location = history.getCurrentLocation();
       expect(location.pathname).toEqual(staticEmbeddingSettingsUrl);
@@ -97,7 +98,7 @@ describe("[EE, with token] embedding settings", () => {
         settingValues: { "enable-embedding": true },
       });
 
-      goToInteractiveEmbeddingSettings();
+      await goToInteractiveEmbeddingSettings();
 
       const location = history.getCurrentLocation();
       expect(location.pathname).toEqual(interactiveEmbeddingSettingsUrl);

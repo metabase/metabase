@@ -1,10 +1,13 @@
 import { useMemo } from "react";
+
 import { Group, Stack } from "metabase/ui";
+
 import { SimpleRelativeDatePicker } from "../RelativeDatePicker";
 import { SimpleSpecificDatePicker } from "../SpecificDatePicker";
 import type { DatePickerOperator, DatePickerValue } from "../types";
-import { getAvailableOptions, getOptionType, setOptionType } from "./utils";
+
 import { FlexSelect } from "./DateOperatorPicker.styled";
+import { getAvailableOptions, getOptionType, setOptionType } from "./utils";
 
 interface DateOperatorPickerProps {
   value?: DatePickerValue;

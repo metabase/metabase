@@ -1,12 +1,12 @@
+import type { LocationDescriptor } from "history";
 import { Component } from "react";
 import * as React from "react";
+import { connect } from "react-redux";
 import { Route } from "react-router";
 import { push } from "react-router-redux";
-import { connect } from "react-redux";
-import type { LocationDescriptor } from "history";
 
-import MetabaseSettings from "metabase/lib/settings";
 import Modal from "metabase/components/Modal";
+import MetabaseSettings from "metabase/lib/settings";
 
 type IRoute = {
   path: string;
@@ -50,6 +50,7 @@ interface WrappedModalRouteProps {
 const ModalWithRoute = (
   ComposedModal: React.ComponentType<ComposedModalProps>,
   modalProps = {},
+  noWrap = false,
 ) => {
   class ModalRouteComponent extends Component<WrappedModalRouteProps> {
     static displayName: string = `ModalWithRoute[${
@@ -64,6 +65,10 @@ const ModalWithRoute = (
     };
 
     render() {
+      if (noWrap) {
+        return <ComposedModal {...this.props} onClose={this.onClose} />;
+      }
+
       return (
         <Modal {...modalProps} onClose={this.onClose}>
           <ComposedModal {...this.props} onClose={this.onClose} />
@@ -84,11 +89,11 @@ interface ModalRouteProps {
 // react-router Route wrapper that handles routed modals
 class _ModalRoute extends Route {
   static createRouteFromReactElement(element: React.ReactElement) {
-    const { modal, modalProps } = element.props;
+    const { modal, modalProps, noWrap } = element.props;
 
     if (modal) {
       element = React.cloneElement(element, {
-        component: ModalWithRoute(modal, modalProps),
+        component: ModalWithRoute(modal, modalProps, noWrap),
       });
 
       // @ts-expect-error - Route.createRouteFromReactElement is not typed

@@ -1,15 +1,15 @@
-import {
-  restore,
-  visitDashboard,
-  filterWidget,
-  updateDashboardCards,
-} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  restore,
+  visitDashboard,
+  filterWidget,
+  updateDashboardCards,
+} from "e2e/support/helpers";
 
 const { ORDERS } = SAMPLE_DATABASE;
 
@@ -101,7 +101,7 @@ describe("issue 12720", () => {
 
 function clickThrough(title) {
   visitDashboard(ORDERS_DASHBOARD_ID);
-  cy.get(".DashCard").contains(title).click();
+  cy.findAllByTestId("dashcard-container").contains(title).click();
 
   cy.location("search").should("contain", dashboardFilter.default);
   filterWidget().contains("After January 1, 2026");

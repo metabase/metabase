@@ -14,7 +14,7 @@
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x])
   (:import
-   (java.time LocalDateTime)))
+   (java.time LocalDate LocalDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -46,7 +46,9 @@
               :h2
               {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :venues :name))
                :value {:type  :string/=
-                       :value ["Doohickey"]}})))))
+                       :value ["Doohickey"]}}))))))
+
+(deftest ^:parallel field-filter->replacement-snippet-info-test-2
   (testing "Compound filters should be wrapped in parens"
     (mt/dataset test-data
       (mt/with-metadata-provider meta/metadata-provider
@@ -83,8 +85,10 @@
   [_driver _field _param-type _value]
   nil)
 
-;; The original implementation will call this method despite the value being past30minutes. This is likely a bug.
-;; However, `metabase.query-processor-test.alternative-date-test/substitute-native-parameters-test` depends on it.
+(defmethod sql.qp/date [::temporal-unit-alignment-original :minute]
+  [_driver _unit expr]
+  (h2x/minute expr))
+
 (defmethod sql.qp/date [::temporal-unit-alignment-original :day]
   [_driver _unit expr]
   (h2x/day expr))
@@ -92,20 +96,39 @@
 (deftest ^:parallel align-temporal-unit-with-param-type-test
   (mt/with-clock #t "2018-07-01T12:30:00.000Z"
     (mt/with-metadata-provider meta/metadata-provider
-      (let [field-filter (params/map->FieldFilter
-                          {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :checkins :date))
-                           :value {:type :date/all-options, :value "past30minutes"}})
-            expected-args [(LocalDateTime/of 2018 7 1 12 00 00)
-                           (LocalDateTime/of 2018 7 1 12 29 00)]]
-        (testing "default implementation"
-          (driver/with-driver ::temporal-unit-alignment-original
-            (is (= {:prepared-statement-args expected-args
-                    ;; `sql.qp/date [driver :day]` was called due to `:day` returned from the multimethod by default
-                    :replacement-snippet "DAY(\"PUBLIC\".\"CHECKINS\".\"DATE\") BETWEEN ? AND ?"}
-                   (sql.params.substitution/->replacement-snippet-info ::temporal-unit-alignment-original field-filter)))))
-        (testing "override"
-          (driver/with-driver ::temporal-unit-alignment-override
-            (is (= {:prepared-statement-args expected-args
-                    ;; no extra `sql.qp/date` calls due to `nil` returned from the override
-                    :replacement-snippet "\"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?"}
-                   (sql.params.substitution/->replacement-snippet-info ::temporal-unit-alignment-override field-filter)))))))))
+      (testing "date"
+        (let [field-filter (params/map->FieldFilter
+                             {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :orders :created-at))
+                              :value {:type :date/all-options, :value "next3days"}})
+              expected-args [(LocalDate/of 2018 7 2)
+                             (LocalDate/of 2018 7 4)]]
+          (testing "default implementation"
+            (driver/with-driver ::temporal-unit-alignment-original
+              (is (= {:prepared-statement-args expected-args
+                      ;; `sql.qp/date [driver :day]` was called due to `:day` returned from the multimethod by default
+                      :replacement-snippet "DAY(\"PUBLIC\".\"ORDERS\".\"CREATED_AT\") BETWEEN ? AND ?"}
+                     (sql.params.substitution/->replacement-snippet-info ::temporal-unit-alignment-original field-filter)))))
+          (testing "override"
+            (driver/with-driver ::temporal-unit-alignment-override
+              (is (= {:prepared-statement-args expected-args
+                      ;; no extra `sql.qp/date` calls due to `nil` returned from the override
+                      :replacement-snippet "\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" BETWEEN ? AND ?"}
+                     (sql.params.substitution/->replacement-snippet-info ::temporal-unit-alignment-override field-filter)))))))
+      (testing "datetime"
+        (let [field-filter (params/map->FieldFilter
+                             {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :orders :created-at))
+                              :value {:type :date/all-options, :value "past30minutes"}})
+              expected-args [(LocalDateTime/of 2018 7 1 12 00 00)
+                             (LocalDateTime/of 2018 7 1 12 29 00)]]
+          (testing "default implementation"
+            (driver/with-driver ::temporal-unit-alignment-original
+              (is (= {:prepared-statement-args expected-args
+                      ;; `sql.qp/date [driver :day]` was called due to `:day` returned from the multimethod by default
+                      :replacement-snippet "MINUTE(\"PUBLIC\".\"ORDERS\".\"CREATED_AT\") BETWEEN ? AND ?"}
+                     (sql.params.substitution/->replacement-snippet-info ::temporal-unit-alignment-original field-filter)))))
+          (testing "override"
+            (driver/with-driver ::temporal-unit-alignment-override
+              (is (= {:prepared-statement-args expected-args
+                      ;; no extra `sql.qp/date` calls due to `nil` returned from the override
+                      :replacement-snippet "\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" BETWEEN ? AND ?"}
+                     (sql.params.substitution/->replacement-snippet-info ::temporal-unit-alignment-override field-filter))))))))))

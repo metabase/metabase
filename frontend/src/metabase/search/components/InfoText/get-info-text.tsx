@@ -1,15 +1,13 @@
 import { t } from "ttag";
+
+import { collection as collectionUrl } from "metabase/lib/urls";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
   PLUGIN_COLLECTIONS,
 } from "metabase/plugins";
 import type { WrappedResult } from "metabase/search/types";
-import type { Collection } from "metabase-types/api";
-import { collection as collectionUrl } from "metabase/lib/urls";
-
 import { Box } from "metabase/ui";
-
-const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
+import type { Collection } from "metabase-types/api";
 
 export type InfoTextData = {
   link?: string | null;
@@ -67,7 +65,10 @@ const getCollectionResult = (result: WrappedResult): InfoTextData => {
     ? {
         icon: collection.authority_level ? (
           <Box ml="-1.5px" display="inherit" pos="relative" top="-0.5px">
-            <CollectionAuthorityLevelIcon size={12} collection={collection} />
+            <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
+              size={12}
+              collection={collection}
+            />
           </Box>
         ) : null,
         link: colUrl,

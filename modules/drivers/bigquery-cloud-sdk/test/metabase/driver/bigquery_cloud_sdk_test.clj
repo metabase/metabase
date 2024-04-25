@@ -10,6 +10,9 @@
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.models :refer [Database Field Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
@@ -20,7 +23,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (com.google.cloud.bigquery BigQuery)))
+   (com.google.cloud.bigquery BigQuery DatasetId)))
 
 (set! *warn-on-reflection* true)
 
@@ -417,6 +420,106 @@
            (finally
             (drop-table-if-exists! table-name))))))))
 
+(deftest search-field-from-table-requires-a-filter-test
+  (testing "#40673"
+    (mt/test-driver :bigquery-cloud-sdk
+      (mt/with-model-cleanup [:model/Table]
+        (let [partitioned-table "fv_partitioned_table"]
+          (try
+           (doseq [sql [(format "CREATE TABLE %s (id INT64, category STRING)
+                                PARTITION BY _PARTITIONDATE
+                                OPTIONS (require_partition_filter = TRUE);"
+                                (fmt-table-name partitioned-table))
+                        (format "INSERT INTO %s (id, category)
+                                VALUES (1, \"coffee\"), (2, \"tea\"), (3, \"matcha\");"
+                                (fmt-table-name partitioned-table))]]
+             (bigquery.tx/execute! sql))
+           (sync/sync-database! (mt/db) {:scan :schema})
+           (let [category-field-id (mt/id :fv_partitioned_table :category)]
+             (t2/update! :model/Field category-field-id {:has_field_values :search})
+             (t2/delete! :model/FieldValues :field_id category-field-id)
+             (= [["coffee"]]
+                (mt/user-http-request :crowberto :get 200 (format "/field/%d/search/%d" category-field-id category-field-id)
+                                      :value "co")))
+           (finally
+            (drop-table-if-exists! partitioned-table))))))))
+
+(deftest chain-filter-with-fields-from-table-requires-a-filter-test
+  (testing "#40673"
+    (mt/test-driver :bigquery-cloud-sdk
+      (binding [qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests* true]
+        (mt/with-model-cleanup [:model/Table]
+          (let [category-table-name "cf_category"
+                product-table-name  "cf_product"]
+            (try
+              (doseq [sql [(format "CREATE TABLE %s (id INT64, category STRING, PRIMARY KEY(id) NOT ENFORCED)
+                                   PARTITION BY _PARTITIONDATE
+                                   OPTIONS (require_partition_filter = TRUE);"
+                                   (fmt-table-name category-table-name))
+                           (format "INSERT INTO %s (id, category)
+                                   VALUES (1, \"coffee\"), (2, \"tea\");"
+                                   (fmt-table-name category-table-name))
+                           (format "CREATE TABLE %s (id INT64, category_id INT64, name STRING)
+                                   PARTITION BY _PARTITIONDATE
+                                   OPTIONS (require_partition_filter = TRUE);"
+                                   (fmt-table-name product-table-name))
+                           (format "ALTER TABLE %1$s
+                                   ADD CONSTRAINT fk_product_category_id FOREIGN KEY (category_id)
+                                   REFERENCES %2$s(id) NOT ENFORCED;"
+                                   (fmt-table-name product-table-name)
+                                   (fmt-table-name category-table-name))
+                           (format "INSERT INTO %s (id, category_id, name)
+                                   VALUES (1, 1, \"Americano\"), (2, 1, \"Cold brew\"), (3, 2, \"Herbal\"), (4, 2, \"Oolong\");"
+                                   (fmt-table-name product-table-name))]]
+                (bigquery.tx/execute! sql))
+              (sync/sync-database! (mt/db) {:scan :schema})
+              ;; Fake fk relationship for bigquery because apparently fk on bigquery is not a thing.
+              ;; We want this to test whether chain filter add a filter on partitioned fields from joned tables.
+              (t2/update! :model/Field (mt/id :cf_product :category_id) {:fk_target_field_id (mt/id :cf_category :id)})
+              (mt/with-temp
+                [:model/Card          card-category {:database_id   (mt/id)
+                                                     :table_id      (mt/id :cf_category)
+                                                     :dataset_query (mt/mbql-query cf_category)}
+                 :model/Card          card-product  {:database_id   (mt/id)
+                                                     :table_id      (mt/id :cf_product)
+                                                     :dataset_query (mt/mbql-query cf_product)}
+                 :model/Dashboard     dashboard     {:parameters [{:name "Category"
+                                                                   :slug "category"
+                                                                   :id   "_CATEGORY_"
+                                                                   :type :string/=}
+                                                                  {:name "Product Name"
+                                                                   :slug "Product name"
+                                                                   :id   "_NAME_"
+                                                                   :type :string/=}]}
+                 :model/DashboardCard _dashcard     {:card_id            (:id card-category)
+                                                     :dashboard_id       (:id dashboard)
+                                                     :parameter_mappings [{:parameter_id "_CATEGORY_"
+                                                                           :card_id      (:id card-category)
+                                                                           :target       [:dimension (mt/$ids $cf_category.category)]}]}
+                 :model/DashboardCard _dashcard     {:card_id            (:id card-product)
+                                                     :dashboard_id       (:id dashboard)
+                                                     :parameter_mappings [{:parameter_id "_NAME_"
+                                                                           :card_id      (:id card-product)
+                                                                           :target       [:dimension (mt/$ids $cf_product.name)]}]}]
+
+                (testing "chained filter works"
+                  (is (= {:has_more_values false
+                          :values          [["Americano"] ["Cold brew"]]}
+                         (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/values?%s=%s"
+                                                                           (:id dashboard) "_NAME_" "_CATEGORY_" "coffee")))))
+                (testing "getting values works"
+                  (is (= {:has_more_values false
+                          :values          [["Americano"] ["Cold brew"] ["Herbal"] ["Oolong"]]}
+                         (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/values" (:id dashboard) "_NAME_")))))
+                (testing "searching values works"
+                  (is (= {:has_more_values false
+                          :values          [["Oolong"]]}
+                         (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/search/oo" (:id dashboard) "_NAME_"))))))
+
+             (finally
+               (doseq [table-name [product-table-name category-table-name]]
+                 (drop-table-if-exists! table-name))))))))))
+
 (deftest query-integer-pk-or-fk-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should be able to query a Table that has a :type/Integer column marked as a PK or FK"
@@ -592,13 +695,17 @@
           (try
             ;; there's a race. Some data might be processed, and if so we get the partial result
             (mt/dataset test-data
-              (let [rows      (mt/rows (mt/process-query (mt/query orders) {:canceled-chan canceled-chan}))
+              (let [query     (mt/query orders)
+                    rows      (mt/rows
+                               (binding [qp.pipeline/*canceled-chan* canceled-chan]
+                                 (mt/process-query query)))
                     row-count (count rows)]
                 (log/debugf "Loaded %d rows before BigQuery query was canceled" row-count)
                 (testing "Somewhere between 0 and the size of the orders table rows were loaded before cancellation"
                   (is (< 0 row-count 10000)))))
             (catch clojure.lang.ExceptionInfo e
-              (is (= (ex-message e) "Query cancelled")))))))))
+              (is (= "Query cancelled"
+                     (ex-message e))))))))))
 
 ;; TODO Temporarily disabling due to flakiness (#33140)
 #_
@@ -633,7 +740,7 @@
                                                      :details
                                                      (dissoc :dataset-filters-type
                                                              :dataset-filters-patterns)))
-              dataset-ids (map #(.getDataset %) datasets)
+              dataset-ids (map #(.getDataset ^DatasetId %) datasets)
               ;; get the first 4 characters of each dataset-id. The first 4 characters are used because the first 3 are
               ;; often used for bigquery dataset names e.g. `v4_test_data`
               prefixes (->> dataset-ids
@@ -761,6 +868,6 @@
                   str/join
                   pretty-sql-lines)
              (->> (mt/mbql-query venues {:aggregation [:count]})
-                  qp/compile-and-splice-parameters
+                  qp.compile/compile-and-splice-parameters
                   :query
                   pretty-sql-lines))))))

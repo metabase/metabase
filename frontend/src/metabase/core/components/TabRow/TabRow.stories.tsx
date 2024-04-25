@@ -1,14 +1,16 @@
-import { useState } from "react";
-import type { ComponentStory } from "@storybook/react";
-import { useArgs } from "@storybook/addons";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
+import { useArgs } from "@storybook/addons";
+import type { ComponentStory } from "@storybook/react";
+import { useState } from "react";
 
 import { color } from "metabase/lib/colors";
+
+import { Sortable } from "../Sortable";
 import type { TabButtonMenuItem, TabButtonMenuAction } from "../TabButton";
 import { TabButton } from "../TabButton";
 import TabLink from "../TabLink";
-import { Sortable } from "../Sortable";
+
 import { TabRow } from "./TabRow";
 
 export default {
@@ -31,15 +33,12 @@ const Template: ComponentStory<typeof TabRow> = args => {
   const handleChange = (value: unknown) => updateArgs({ value });
   const [message, setMessage] = useState("");
 
-  const action: TabButtonMenuAction<unknown> = (
-    { value: selectedValue },
-    value,
-  ) =>
+  const action: TabButtonMenuAction = ({ value: selectedValue }, value) =>
     setMessage(
       `Clicked ${value}, currently selected value is ${selectedValue}`,
     );
 
-  const menuItems: TabButtonMenuItem<unknown>[] = [
+  const menuItems: TabButtonMenuItem[] = [
     {
       label: "Click me!",
       action,

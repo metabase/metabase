@@ -1,21 +1,22 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openTable,
   popover,
   enterCustomColumnDetails,
   filter,
-  openOrdersTable,
+  startNewQuestion,
   visualize,
   getNotebookStep,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > custom column > data type", () => {
   beforeEach(() => {
     restore();
+    restore("postgres-12");
+
     cy.signInAsAdmin();
   });
 
@@ -39,7 +40,12 @@ describe("scenarios > question > custom column > data type", () => {
   });
 
   it("should understand date functions", () => {
-    openOrdersTable({ mode: "notebook" });
+    startNewQuestion();
+    popover().within(() => {
+      cy.findByText("Raw Data").click();
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("Orders").click();
+    });
 
     addCustomColumns([
       { name: "Year", formula: "year([Created At])" },
@@ -133,11 +139,11 @@ function addCustomColumns(columns) {
     if (index) {
       getNotebookStep("expression").icon("add").click();
     } else {
-      cy.findByText("Custom column").click();
+      cy.findByLabelText("Custom column").click();
     }
 
     enterCustomColumnDetails(column);
-    cy.button("Done").click();
+    cy.button("Done").click({ force: true });
   });
 }
 

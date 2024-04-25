@@ -11,6 +11,7 @@ import {
   crudGroupMappingsWidget,
   checkGroupConsistencyAfterDeletingMappings,
 } from "./shared/group-mappings-widget";
+import { getUserProvisioningInput, getSuccessUi } from "./shared/helpers";
 
 describeEE("scenarios > admin > settings > SSO > SAML", () => {
   beforeEach(() => {
@@ -74,6 +75,17 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     cy.wait("@updateSettings");
 
     getSamlCard().findByText("Set up").should("exist");
+  });
+
+  it("should allow the user to enable/disable user provisioning", () => {
+    setupSaml();
+    cy.visit("/admin/settings/authentication/saml");
+
+    getUserProvisioningInput().label.click();
+    cy.button("Save changes").click();
+    cy.wait("@updateSamlSettings");
+
+    getSuccessUi().should("exist");
   });
 
   describe("Group Mappings Widget", () => {

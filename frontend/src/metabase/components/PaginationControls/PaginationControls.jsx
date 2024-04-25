@@ -1,8 +1,10 @@
-import { Fragment } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { Fragment } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 
 export default function PaginationControls({
   page,
@@ -19,17 +21,23 @@ export default function PaginationControls({
     return null;
   }
 
+  const isLastPage = (pageIndex, pageSize, total) =>
+    pageIndex === Math.ceil(total / pageSize) - 1;
+
   const isPreviousDisabled = page === 0;
   const isNextDisabled =
     total != null ? isLastPage(page, pageSize, total) : !onNextPage;
 
   return (
-    <div className="flex align-center text-bold" aria-label="pagination">
-      <span className="mr1">
+    <div
+      className={cx(CS.flex, CS.alignCenter, CS.textBold)}
+      aria-label="pagination"
+    >
+      <span className={CS.mr1}>
         {page * pageSize + 1} - {page * pageSize + itemsLength}
         {showTotal && (
           <Fragment>
-            <span className="text-light">&nbsp;{t`of`}&nbsp;</span>
+            <span className={CS.textLight}>&nbsp;{t`of`}&nbsp;</span>
             <span data-testid="pagination-total">{total}</span>
           </Fragment>
         )}
@@ -68,6 +76,3 @@ PaginationControls.propTypes = {
 PaginationControls.defaultProps = {
   showTotal: false,
 };
-
-export const isLastPage = (pageIndex, pageSize, total) =>
-  pageIndex === Math.ceil(total / pageSize) - 1;

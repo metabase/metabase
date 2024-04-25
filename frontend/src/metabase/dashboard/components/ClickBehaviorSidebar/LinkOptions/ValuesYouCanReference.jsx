@@ -1,13 +1,14 @@
 import { t } from "ttag";
 
-import AccordionList from "metabase/core/components/AccordionList";
-import { Icon } from "metabase/ui";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-
+import AccordionList from "metabase/core/components/AccordionList";
+import CS from "metabase/css/core/index.css";
 import {
   withUserAttributes,
   isMappableColumn,
 } from "metabase/dashboard/components/ClickMappings";
+import { Icon } from "metabase/ui";
+
 import { PopoverTrigger } from "./ValuesYouCanReference.styled";
 
 function prefixIfNeeded(values, prefix, otherLists) {
@@ -55,7 +56,7 @@ export const ValuesYouCanReference = withUserAttributes(
         triggerElement={
           <PopoverTrigger>
             <h4>{t`Values you can reference`}</h4>
-            <Icon name="chevrondown" className="ml1" size={12} />
+            <Icon name="chevrondown" className={CS.ml1} size={12} />
           </PopoverTrigger>
         }
       >

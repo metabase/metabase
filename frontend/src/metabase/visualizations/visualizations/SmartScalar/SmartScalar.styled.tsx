@@ -1,9 +1,11 @@
 import styled from "@emotion/styled";
+
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { Icon } from "metabase/ui";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { color, lighten } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
 import { isEmpty } from "metabase/lib/validate";
+import { space } from "metabase/styled-components/theme";
+import { Icon } from "metabase/ui";
 
 export const Variation = styled.div`
   color: ${props => (isEmpty(props.color) ? color("text-light") : props.color)};
@@ -11,7 +13,9 @@ export const Variation = styled.div`
   align-items: center;
   max-width: 100%;
 
-  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text &,
+  .${DashboardS.Dashboard}.${DashboardS.DashboardNight}.${DashboardS.DashboardFullscreen}
+    .${DashboardS.fullscreenNightText}
+    &,
   .variation-container-tooltip & {
     color: ${props =>
       isEmpty(props.color) ? lighten("text-medium", 0.3) : props.color};
@@ -54,7 +58,9 @@ export const Separator = styled.span`
   margin: 0 0.2rem;
   color: ${lighten("text-light", 0.25)};
 
-  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text &,
+  .${DashboardS.Dashboard}.${DashboardS.DashboardNight}.${DashboardS.DashboardFullscreen}
+    .${DashboardS.fullscreenNightText}
+    &,
   .variation-container-tooltip & {
     color: ${lighten("text-medium", 0.15)};
   }
@@ -64,7 +70,9 @@ export const PreviousValueDetails = styled.h4`
   color: ${color("text-medium")};
   white-space: pre;
 
-  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text &,
+  .${DashboardS.Dashboard}.${DashboardS.DashboardNight}.${DashboardS.DashboardFullscreen}
+    .${DashboardS.fullscreenNightText}
+    &,
   .variation-container-tooltip & {
     color: ${lighten("text-light", 0.25)};
   }
@@ -73,7 +81,9 @@ export const PreviousValueDetails = styled.h4`
 export const PreviousValueNumber = styled.span`
   color: ${color("text-light")};
 
-  .Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text &,
+  .${DashboardS.Dashboard}.${DashboardS.DashboardNight}.${DashboardS.DashboardFullscreen}
+    .${DashboardS.fullscreenNightText}
+    &,
   .variation-container-tooltip & {
     color: ${lighten("text-medium", 0.45)};
   }

@@ -1,12 +1,14 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { t } from "ttag";
 
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
-import { isRows } from "metabase-lib/queries/utils/aggregation";
+import { isRows } from "metabase-lib/v1/queries/utils/aggregation";
+
 import { AggregationPopover } from "../AggregationPopover";
 import { Clearable } from "../Clearable";
+
 import { AggregationLabel } from "./AggregationWidget.styled";
 // NOTE: lots of duplication between AggregationWidget and BreakoutWidget
 

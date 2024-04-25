@@ -1,6 +1,6 @@
-import { measureTextHeight } from "metabase/static-viz/lib/text";
 import { CHART_PADDING } from "metabase/static-viz/components/XYChart/constants";
 import type { ChartSettings } from "metabase/static-viz/components/XYChart/types";
+import { measureTextHeight } from "metabase/static-viz/lib/text";
 
 export const LABEL_OFFSET = 12;
 export const MARGIN = 6;

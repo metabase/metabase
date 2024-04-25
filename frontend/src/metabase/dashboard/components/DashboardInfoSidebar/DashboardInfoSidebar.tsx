@@ -1,26 +1,23 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { PLUGIN_CACHING } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
-import { Switch } from "metabase/ui";
-
 import { Timeline } from "metabase/common/components/Timeline";
+import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
+import { useRevisionListQuery } from "metabase/common/hooks";
 import EditableText from "metabase/core/components/EditableText";
-
-import type { Dashboard } from "metabase-types/api";
-import { getUser } from "metabase/selectors/user";
-
 import {
   revertToRevision,
   updateDashboard,
   toggleAutoApplyFilters,
 } from "metabase/dashboard/actions";
-
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
-import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import MetabaseSettings from "metabase/lib/settings";
+import { PLUGIN_CACHING } from "metabase/plugins";
+import { getUser } from "metabase/selectors/user";
+import { Switch } from "metabase/ui";
+import type { Dashboard } from "metabase-types/api";
+
 import {
   DashboardInfoSidebarRoot,
   HistoryHeader,

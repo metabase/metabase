@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import type { TooltipRowModel } from "metabase/visualizations/types";
 
 export const getTotalValue = (

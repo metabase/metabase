@@ -1,12 +1,13 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
+import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
+import type { DashboardSharingEmbeddingModalProps } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
 import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
-import type { DashboardSharingEmbeddingModalProps } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
 
 interface SetupProps {
   isAdmin: boolean;
@@ -74,7 +75,7 @@ describe("DashboardEmbedAction", () => {
           publicLinksEnabled: true,
           embeddingEnabled: false,
         });
-        userEvent.click(screen.getByLabelText("share icon"));
+        await userEvent.click(screen.getByLabelText("share icon"));
         expect(
           await screen.findByTestId("embed-header-menu"),
         ).toBeInTheDocument();
@@ -84,13 +85,13 @@ describe("DashboardEmbedAction", () => {
 
       it("should have a `Sharing` tooltip if public sharing is enabled", async () => {
         setup({ isAdmin: true, publicLinksEnabled: true });
-        userEvent.hover(screen.getByLabelText("share icon"));
+        await userEvent.hover(screen.getByLabelText("share icon"));
         expect(await screen.findByText("Sharing")).toBeInTheDocument();
       });
 
-      it("should have an `Embedding` tooltip if public sharing is disabled", () => {
+      it("should have an `Embedding` tooltip if public sharing is disabled", async () => {
         setup({ isAdmin: true, publicLinksEnabled: false });
-        userEvent.hover(screen.getByLabelText("share icon"));
+        await userEvent.hover(screen.getByLabelText("share icon"));
         expect(screen.getByText("Embedding")).toBeInTheDocument();
       });
     });
@@ -102,7 +103,7 @@ describe("DashboardEmbedAction", () => {
           isAdmin: false,
         });
 
-        userEvent.hover(screen.getByLabelText("share icon"));
+        await userEvent.hover(screen.getByLabelText("share icon"));
         expect(
           await screen.findByText("Public links are disabled"),
         ).toBeInTheDocument();
@@ -115,7 +116,7 @@ describe("DashboardEmbedAction", () => {
           publicLinksEnabled: true,
         });
 
-        userEvent.hover(screen.getByLabelText("share icon"));
+        await userEvent.hover(screen.getByLabelText("share icon"));
         expect(
           await screen.findByText("Ask your admin to create a public link"),
         ).toBeInTheDocument();
@@ -135,7 +136,7 @@ describe("DashboardEmbedAction", () => {
   describe("when the popover or modal should be rendered", () => {
     it("should render the popover when public sharing is enabled", async () => {
       setup({ publicLinksEnabled: true, isAdmin: true });
-      userEvent.click(screen.getByLabelText("share icon"));
+      await userEvent.click(screen.getByLabelText("share icon"));
       expect(
         await screen.findByTestId("embed-header-menu"),
       ).toBeInTheDocument();
@@ -144,14 +145,16 @@ describe("DashboardEmbedAction", () => {
     it("should render the embedding modal and disabled public sharing item when public sharing is disabled", async () => {
       setup({ publicLinksEnabled: false, isAdmin: true });
 
-      userEvent.click(screen.getByLabelText("share icon"));
+      await userEvent.click(screen.getByLabelText("share icon"));
 
       expect(
         await screen.findByText("Public links are off"),
       ).toBeInTheDocument();
       expect(screen.getByText("Enable them in settings")).toBeInTheDocument();
 
-      userEvent.click(await screen.findByTestId("embed-menu-embed-modal-item"));
+      await userEvent.click(
+        await screen.findByTestId("embed-menu-embed-modal-item"),
+      );
 
       expect(
         await screen.findByTestId("dashboard-sharing-embedding-modal"),
@@ -160,14 +163,16 @@ describe("DashboardEmbedAction", () => {
 
     it("should not render the embedding modal when the modal is closed", async () => {
       setup({ publicLinksEnabled: false, isAdmin: true });
-      userEvent.click(await screen.findByLabelText("share icon"));
-      userEvent.click(await screen.findByTestId("embed-menu-embed-modal-item"));
+      await userEvent.click(await screen.findByLabelText("share icon"));
+      await userEvent.click(
+        await screen.findByTestId("embed-menu-embed-modal-item"),
+      );
 
       expect(
         await screen.findByTestId("dashboard-sharing-embedding-modal"),
       ).toBeInTheDocument();
 
-      userEvent.click(await screen.findByTestId("close-embedding-modal"));
+      await userEvent.click(await screen.findByTestId("close-embedding-modal"));
 
       expect(
         screen.queryByTestId("dashboard-sharing-embedding-modal"),
@@ -183,7 +188,7 @@ describe("DashboardEmbedAction", () => {
           publicLinksEnabled: true,
           isAdmin: true,
         });
-        userEvent.click(screen.getByLabelText("share icon"));
+        await userEvent.click(screen.getByLabelText("share icon"));
         expect(
           await screen.findByText("Create a public link"),
         ).toBeInTheDocument();
@@ -197,7 +202,7 @@ describe("DashboardEmbedAction", () => {
           isAdmin: true,
         });
 
-        userEvent.click(screen.getByLabelText("share icon"));
+        await userEvent.click(screen.getByLabelText("share icon"));
 
         expect(await screen.findByText("Public link")).toBeInTheDocument();
         expect(await screen.findByText("Embed")).toBeInTheDocument();

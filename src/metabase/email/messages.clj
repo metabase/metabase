@@ -14,7 +14,9 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.email :as email]
+   [metabase.lib.util :as lib.util]
    [metabase.models.collection :as collection]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
@@ -28,7 +30,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -95,7 +96,7 @@
 
 ;;; Various Context Helper Fns. Used to build Stencil template context
 
-(defn- common-context
+(defn common-context
   "Context that is used across multiple email templates, and that is the same for all emails"
   []
   {:applicationName           (public-settings/application-name)
@@ -158,7 +159,7 @@
                                                  :joinedUserName    (or (:first_name new-user) (:email new-user))
                                                  :joinedViaSSO      google-auth?
                                                  :joinedUserEmail   (:email new-user)
-                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13". TODO - is this what we want?
+                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
                                                  :adminEmail        (first recipients)
                                                  :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}))})))
 
@@ -213,25 +214,22 @@
    If ee that also means users with monitoring and details permissions."
   [database-id]
   (let [monitoring (perms/application-perms-path :monitoring)
-        db-details (perms/feature-perms-path :details :yes database-id)
-        user-ids (when (premium-features/enable-advanced-permissions?)
-                   (->> {:select   [:pgm.user_id]
-                         :from     [[:permissions_group_membership :pgm]]
-                         :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
-                         :where    [:and
-                                    [:exists {:select [1]
-                                              :from [[:permissions :p]]
-                                              :where [:and
-                                                      [:= :p.group_id :pg.id]
-                                                      [:= :p.object monitoring]]}]
-                                    [:exists {:select [1]
-                                              :from [[:permissions :p]]
-                                              :where [:and
-                                                      [:= :p.group_id :pg.id]
-                                                      [:= :p.object db-details]]}]]
-                         :group-by [:pgm.user_id]}
-                        mdb.query/query
-                        (mapv :user_id)))]
+        user-ids-with-monitoring (when (premium-features/enable-advanced-permissions?)
+                                   (->> {:select   [:pgm.user_id]
+                                         :from     [[:permissions_group_membership :pgm]]
+                                         :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
+                                         :where    [:and
+                                                    [:exists {:select [1]
+                                                              :from [[:permissions :p]]
+                                                              :where [:and
+                                                                      [:= :p.group_id :pg.id]
+                                                                      [:= :p.object monitoring]]}]]
+                                         :group-by [:pgm.user_id]}
+                                        mdb.query/query
+                                        (mapv :user_id)))
+        user-ids (filter
+                  #(data-perms/user-has-permission-for-database? % :perms/manage-database :yes database-id)
+                  user-ids-with-monitoring)]
     (into
       []
       (distinct)
@@ -290,6 +288,32 @@
                :message-type :html
                :message      (stencil/render-file "metabase/email/follow_up_email" context)}]
     (email/send-message! email)))
+
+
+
+(defn send-creator-sentiment-email!
+  "Format and send an email to a creator with a link to a survey. If a [[blob]] is included, it will be turned into json
+  and then base64 encoded."
+  [{:keys [email first_name]} blob]
+  {:pre [(u/email? email)]}
+  (let [encoded-info    (when blob
+                          (-> blob
+                              json/generate-string
+                              .getBytes
+                              codecs/bytes->b64-str))
+        context (merge (common-context)
+                       {:emailType  "notification"
+                        :logoHeader true
+                        :first-name first_name
+                        :link       (cond-> "https://metabase.com/feedback/creator"
+                                      encoded-info (str "?context=" encoded-info))}
+                       (when-not (premium-features/is-hosted?)
+                         {:self-hosted (public-settings/site-url)}))
+        message {:subject      "Metabase would love your take on something"
+                 :recipients   [email]
+                 :message-type :html
+                 :message      (stencil/render-file "metabase/email/creator_sentiment_email" context)}]
+    (email/send-message! message)))
 
 (defn- make-message-attachment [[content-id url]]
   {:type         :inline
@@ -355,7 +379,10 @@
   (let [{:keys [content-type]} (qp.si/stream-options export-type)]
     {:type         :attachment
      :content-type content-type
-     :file-name    (format "%s.%s" card-name (name export-type))
+     :file-name    (format "%s_%s.%s"
+                           (or (u/slugify card-name) "query_result")
+                           (u.date/format (t/zoned-date-time))
+                           (name export-type))
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))
 
@@ -368,39 +395,41 @@
   point in the future; for now, this function is a stopgap.
 
   Results are streamed synchronously. Caller is responsible for closing `os` when this call is complete."
-  [export-format ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
+  [export-format format-rows? ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results
   (driver/with-driver (driver.u/database->driver database-id)
     (qp.store/with-metadata-provider database-id
-      (binding [qp.xlsx/*parse-temporal-string-values* true]
-        (let [w                           (qp.si/streaming-results-writer export-format os)
-              cols                        (-> results :data :cols)
-              viz-settings                (-> results :data :viz-settings)
-              [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
-              viz-settings'               (assoc viz-settings :output-order output-order)]
-          (qp.si/begin! w
-                        (assoc-in results [:data :ordered-cols] ordered-cols)
-                        viz-settings')
-          (dorun
-           (map-indexed
-            (fn [i row]
-              (qp.si/write-row! w row i ordered-cols viz-settings'))
-            rows))
-          (qp.si/finish! w results))))))
+      (let [w                           (qp.si/streaming-results-writer export-format os)
+            cols                        (-> results :data :cols)
+            viz-settings                (-> results :data :viz-settings)
+            [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
+            viz-settings'               (assoc viz-settings :output-order output-order)]
+        (qp.si/begin! w
+                      (-> results
+                          (assoc-in [:data :format-rows?] format-rows?)
+                          (assoc-in [:data :ordered-cols] ordered-cols))
+                      viz-settings')
+        (dorun
+         (map-indexed
+          (fn [i row]
+            (qp.si/write-row! w row i ordered-cols viz-settings'))
+          rows))
+        (qp.si/finish! w results)))))
 
 (defn- result-attachment
-  [{{card-name :name :as card} :card {{:keys [rows]} :data :as result} :result}]
+  [{{card-name :name format-rows :format_rows :as card} :card
+    {{:keys [rows]} :data :as result}                   :result}]
   (when (seq rows)
     [(when-let [temp-file (and (:include_csv card)
                                (create-temp-file-or-throw "csv"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :csv os result))
+         (stream-api-results-to-export-format :csv format-rows os result))
        (create-result-attachment-map "csv" card-name temp-file))
      (when-let [temp-file (and (:include_xls card)
                                (create-temp-file-or-throw "xlsx"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :xlsx os result))
+         (stream-api-results-to-export-format :xlsx format-rows os result))
        (create-result-attachment-map "xlsx" card-name temp-file))]))
 
 (defn- part-attachments [parts]
@@ -483,7 +512,7 @@
   (for [{{result-card-id :id} :card :as result} results
         :let [pulse-card (m/find-first #(= (:id %) result-card-id) (:cards pulse))]]
     (if result-card-id
-      (update result :card merge (select-keys pulse-card [:include_csv :include_xls]))
+      (update result :card merge (select-keys pulse-card [:include_csv :include_xls :format_rows]))
       result)))
 
 (defn render-pulse-email
@@ -678,3 +707,38 @@
                                  (merge (common-context)
                                         {:logoHeader  true
                                          :settingsUrl (str (public-settings/site-url) "/admin/settings/slack")}))))
+
+(defn send-broken-subscription-notification!
+  "Email dashboard and subscription creators information about a broken subscription due to bad parameters"
+  [{:keys [dashboard-id dashboard-name pulse-creator dashboard-creator affected-users bad-parameters]}]
+  (let [{:keys [siteUrl] :as context} (common-context)]
+    (email/send-message!
+      :subject (trs "Subscription to {0} removed" dashboard-name)
+      :recipients (distinct (map :email [pulse-creator dashboard-creator]))
+      :message-type :html
+      :message (stencil/render-file
+                 "metabase/email/broken_subscription_notification.mustache"
+                 (merge context
+                        {:dashboardName            dashboard-name
+                         :badParameters            (map
+                                                     (fn [{:keys [value] :as param}]
+                                                       (cond-> param
+                                                         (coll? value)
+                                                         (update :value #(lib.util/join-strings-with-conjunction
+                                                                           (i18n/tru "or")
+                                                                           %))))
+                                                     bad-parameters)
+                         :affectedUsers            (map
+                                                     (fn [{:keys [notification-type] :as m}]
+                                                       (cond-> m
+                                                         notification-type
+                                                         (update :notification-type name)))
+                                                     (into
+                                                       [{:notification-type :email
+                                                         :recipient         (:common_name dashboard-creator)
+                                                         :role              "Dashboard Creator"}
+                                                        {:notification-type :email
+                                                         :recipient         (:common_name pulse-creator)
+                                                         :role              "Subscription Creator"}]
+                                                       (map #(assoc % :role "Subscriber") affected-users)))
+                         :dashboardUrl             (format "%s/dashboard/%s" siteUrl dashboard-id)})))))

@@ -1,10 +1,9 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import { Icon } from "metabase/ui";
-
 import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export interface ItemRootProps {
   canSelect: boolean;

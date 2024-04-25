@@ -17,7 +17,6 @@ describe("issue 12578", () => {
   });
 
   it("should not fetch cards that are still loading when refreshing", () => {
-    console.log("clock");
     cy.clock(Date.now());
     cy.createQuestionAndDashboard({ questionDetails: ORDERS_QUESTION }).then(
       ({ body: { dashboard_id } }) => {

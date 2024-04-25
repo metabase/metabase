@@ -1,16 +1,18 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 
-import D from "metabase/reference/components/Detail.css";
-import L from "metabase/components/List/List.css";
-
-import FieldToGroupBy from "metabase/reference/components/FieldToGroupBy";
-
+import L from "metabase/components/List/List.module.css";
+import CS from "metabase/css/core/index.css";
 import { fetchTableMetadata } from "metabase/redux/metadata";
+import D from "metabase/reference/components/Detail.module.css";
+import FieldToGroupBy from "metabase/reference/components/FieldToGroupBy";
 import { getMetadata } from "metabase/selectors/metadata";
+
 import { getQuestionUrl } from "../utils";
-import S from "./UsefulQuestions.css";
+
+import S from "./UsefulQuestions.module.css";
 
 const mapDispatchToProps = {
   fetchTableMetadata,
@@ -29,14 +31,14 @@ class FieldsToGroupBy extends Component {
       <div>
         <div className={D.detailBody}>
           <div className={D.detailTitle}>
-            <span className={D.detailName}>{title}</span>
+            <span>{title}</span>
           </div>
           <div className={S.usefulQuestions}>
             {fields &&
               Object.values(fields).map((field, index, fields) => (
                 <FieldToGroupBy
                   key={field.id}
-                  className="px1 mb1 rounded bg-light-hover"
+                  className={cx(CS.px1, CS.mb1, CS.rounded, CS.bgLightHover)}
                   iconClass={L.icon}
                   field={field}
                   metric={metric}

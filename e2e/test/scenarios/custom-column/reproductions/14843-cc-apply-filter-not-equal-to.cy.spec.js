@@ -1,12 +1,13 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
   visualize,
   filter,
   openNotebook,
+  selectFilterOperator,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 const CC_NAME = "City Length";
@@ -38,8 +39,7 @@ describe("issue 14843", () => {
 
     filter({ mode: "notebook" });
     popover().findByText(CC_NAME).click();
-    popover().findByDisplayValue("Equal to").click();
-    cy.findByRole("listbox").findByText("Not equal to").click();
+    selectFilterOperator("Not equal to");
     popover().within(() => {
       cy.findByPlaceholderText("Enter a number").type("3");
       cy.button("Add filter").click();

@@ -1,9 +1,10 @@
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockUserListResult } from "metabase-types/api/mocks";
 import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { UserListResult } from "metabase-types/api";
-import { UserNameDisplay } from "./UserNameDisplay";
+import { createMockUserListResult } from "metabase-types/api/mocks";
+
 import type { UserNameDisplayProps } from "./UserNameDisplay";
+import { UserNameDisplay } from "./UserNameDisplay";
 
 const TEST_USER_LIST_RESULTS = [
   createMockUserListResult({ id: 1, common_name: "Testy Tableton" }),

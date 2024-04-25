@@ -1,11 +1,12 @@
 import { useRef } from "react";
-import Questions from "metabase/entities/questions";
+
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
+import Questions from "metabase/entities/questions";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 export interface PinnedQuestionLoaderProps {
   id: number;

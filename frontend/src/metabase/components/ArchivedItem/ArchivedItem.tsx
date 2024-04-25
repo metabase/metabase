@@ -1,14 +1,14 @@
+import cx from "classnames";
 import { t } from "ttag";
 
-import type { CollectionItemModel } from "metabase-types/api";
-import type { IconName } from "metabase/ui";
-
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import CheckBox from "metabase/core/components/CheckBox";
 import Swapper from "metabase/core/components/Swapper";
 import Tooltip from "metabase/core/components/Tooltip";
-
+import CS from "metabase/css/core/index.css";
 import { color as c } from "metabase/lib/colors";
-import { getTranslatedEntityName } from "metabase/common/utils/model-names";
+import type { IconName } from "metabase/ui";
+import type { CollectionItemModel } from "metabase-types/api";
 
 import { ActionIcon, ItemIcon, ItemIconContainer } from "./ArchivedItem.styled";
 
@@ -36,7 +36,15 @@ export const ArchivedItem = ({
   showSelect,
 }: ArchivedItemProps) => (
   <div
-    className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover"
+    className={cx(
+      CS.flex,
+      CS.alignCenter,
+      CS.p2,
+      CS.hoverParent,
+      CS.hoverVisibility,
+      CS.borderBottom,
+      CS.bgLightHover,
+    )}
     data-testid={`archive-item-${name}`}
   >
     <Swapper
@@ -55,7 +63,7 @@ export const ArchivedItem = ({
     />
     {name}
     {(onUnarchive || onDelete) && (
-      <span className="ml-auto mr2">
+      <span className={cx(CS.mlAuto, CS.mr2)}>
         {onUnarchive && (
           <Tooltip
             tooltip={t`Unarchive this ${getTranslatedEntityName(
@@ -64,7 +72,7 @@ export const ArchivedItem = ({
           >
             <ActionIcon
               onClick={onUnarchive}
-              className="hover-child"
+              className={CS.hoverChild}
               name="unarchive"
             />
           </Tooltip>
@@ -77,7 +85,7 @@ export const ArchivedItem = ({
           >
             <ActionIcon
               onClick={onDelete}
-              className="hover-child"
+              className={CS.hoverChild}
               name="trash"
             />
           </Tooltip>

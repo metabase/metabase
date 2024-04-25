@@ -1,10 +1,9 @@
 import styled from "@emotion/styled";
 
 import SelectList from "metabase/components/SelectList";
-import { Icon } from "metabase/ui";
-
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
+import { Icon } from "metabase/ui";
 
 export const DataBucketList = styled(SelectList)`
   width: 300px;

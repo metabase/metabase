@@ -1,4 +1,5 @@
 import { RuleTester } from "eslint";
+
 import noUnconditionalMetabaseLinksRender from "../eslint-rules/no-unconditional-metabase-links-render";
 
 const ruleTester = new RuleTester({
@@ -56,6 +57,14 @@ import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 function MyComponent() {
   return <a href="https://metabase.com/docs/latest/troubleshooting-guide/bugs.html">Troubleshooting</a>;
+}`,
+  },
+  {
+    code: `
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+
+function MyComponent() {
+  return <a href={\`https://metabase.com/docs/latest/troubleshooting-guide/bugs.html\`}>Troubleshooting</a>;
 }`,
   },
   {
@@ -136,10 +145,28 @@ function MyComponent() {
       /Metabase links must be rendered conditionally\.(.|\n)*Please import `getShowMetabaseLinks`(.|\n)*Or add comment to indicate the reason why this rule needs to be disabled/,
   },
   {
+    name: 'Detect "metabase.com/docs" in template strings',
+    code: `
+function MyComponent() {
+  return <a href={\`https://metabase.com/docs/latest/troubleshooting-guide/bugs.html\`}>Troubleshooting</a>;
+}`,
+    error:
+      /Metabase links must be rendered conditionally\.(.|\n)*Please import `getShowMetabaseLinks`(.|\n)*Or add comment to indicate the reason why this rule needs to be disabled/,
+  },
+  {
     name: 'Detect "metabase.com/learn"',
     code: `
 function MyComponent() {
   return <a href="https://www.metabase.com/learn/getting-started/">Getting started</a>;
+}`,
+    error:
+      /Metabase links must be rendered conditionally\.(.|\n)*Please import `getShowMetabaseLinks`(.|\n)*Or add comment to indicate the reason why this rule needs to be disabled/,
+  },
+  {
+    name: 'Detect "metabase.com/learn" in template strings',
+    code: `
+function MyComponent() {
+  return <a href={\`https://www.metabase.com/learn/getting-started/\`}>Getting started</a>;
 }`,
     error:
       /Metabase links must be rendered conditionally\.(.|\n)*Please import `getShowMetabaseLinks`(.|\n)*Or add comment to indicate the reason why this rule needs to be disabled/,

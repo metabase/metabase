@@ -3,6 +3,7 @@
   (:require
    [metabase.models :refer [Database]]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -19,29 +20,32 @@
   this dynamic var to the JVM TZ rather than UTC"
   "UTC")
 
-(defn service-account-json->service-account-credential
+(mu/defn service-account-json->service-account-credential
   "Returns a `ServiceAccountCredentials` (not scoped) for the given `service-account-json` (String)."
   {:added "0.42.0"}
-  ^ServiceAccountCredentials [^String service-account-json]
+  ^ServiceAccountCredentials [^String service-account-json :- :string]
   (ServiceAccountCredentials/fromStream (ByteArrayInputStream. (.getBytes service-account-json))))
 
-(defn database-details->service-account-credential
+(def ^:private RequiredDetails
+  [:map [:service-account-json :string]])
+
+(mu/defn database-details->service-account-credential
   "Returns a `ServiceAccountCredentials` (not scoped) for the given `db-details`, which is based upon the value
   associated to its `service-account-json` key (a String)."
   {:added "0.42.0"}
-  ^ServiceAccountCredentials [{:keys [^String service-account-json] :as db-details}]
+  ^ServiceAccountCredentials [{:keys [^String service-account-json] :as db-details} :- RequiredDetails]
   {:pre [(map? db-details) (seq service-account-json)]}
   (service-account-json->service-account-credential service-account-json))
 
-(defn database-details->credential-project-id
+(mu/defn database-details->credential-project-id
   "Uses the given DB `details` credentials to determine the embedded project-id.  This is basically an
   inferred/calculated key (not something the user will ever\n  set directly), since it's simply encoded within the
   `service-account-json` payload."
-  [details]
+  [details :- RequiredDetails]
   (-> (database-details->service-account-credential details)
       .getProjectId))
 
-(defn populate-project-id-from-credentials!
+(mu/defn populate-project-id-from-credentials!
   "Update the given `database` details blob to include the credentials' project-id as a separate entry (under a
   `project-id-from-credentials` key). This is basically an inferred/calculated key (not something the user will ever
   set directly), since it's simply encoded within the `service-account-json` payload.
@@ -54,9 +58,9 @@
 
   Returns the calculated project-id (see [[database-details->credential-project-id]]) String from the credentials."
   {:added "0.42.0"}
-  ^String [{:keys [details] :as database}]
+  ^String [{:keys [details] :as database} :- [:map [:details RequiredDetails]]]
   (let [creds-proj-id (database-details->credential-project-id details)]
     (t2/update! Database
-      (u/the-id database)
-      {:details (assoc details :project-id-from-credentials creds-proj-id)})
+                (u/the-id database)
+                {:details (assoc details :project-id-from-credentials creds-proj-id)})
     creds-proj-id))

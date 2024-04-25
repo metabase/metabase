@@ -1,15 +1,17 @@
 import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
-import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
+
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
+import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
 import { StringFilterValuePicker } from "../../FilterValuePicker";
+import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterPickerFooter } from "../FilterPickerFooter";
+import { FilterPickerHeader } from "../FilterPickerHeader";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
-import { FilterPickerHeader } from "../FilterPickerHeader";
-import { FilterPickerFooter } from "../FilterPickerFooter";
-import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
 export function StringFilterPicker({
   query,
@@ -122,7 +124,7 @@ function StringValueInput({
 }: StringValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
+      <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
         <StringFilterValuePicker
           query={query}
           stageIndex={stageIndex}

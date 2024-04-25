@@ -68,4 +68,6 @@ serdes/meta:
 - id: ybsNZp-876qEMoA1U51dc
   label: alerts_and_subscriptions_created_last_week
   model: Card
+initially_published_at: null
 metabase_version: null
+type: question

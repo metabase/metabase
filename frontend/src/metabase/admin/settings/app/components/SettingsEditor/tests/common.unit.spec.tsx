@@ -1,9 +1,10 @@
 import userEvent from "@testing-library/user-event";
+
+import { screen } from "__support__/ui";
 import {
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
 
 import { setup, FULL_APP_EMBEDDING_URL, EMAIL_URL } from "./setup";
 
@@ -15,8 +16,8 @@ describe("SettingsEditor", () => {
         settingValues: createMockSettings({ "enable-embedding": true }),
       });
 
-      userEvent.click(screen.getByText("Embedding"));
-      userEvent.click(screen.getByText("Interactive embedding"));
+      await userEvent.click(screen.getByText("Embedding"));
+      await userEvent.click(screen.getByText("Interactive embedding"));
       expect(screen.queryByText("Authorized origins")).not.toBeInTheDocument();
       expect(
         screen.queryByText("SameSite cookie setting"),

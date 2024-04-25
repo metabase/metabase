@@ -327,4 +327,6 @@ serdes/meta:
 - id: ZmDKwRQBuRwfXfGipg7-k
   label: fields
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (0e09ac7)
+type: model

@@ -1,13 +1,15 @@
 import { Group } from "@visx/group";
 import type { PositionScale } from "@visx/shape/lib/types";
+
 import { LineArea } from "metabase/static-viz/components/XYChart/shapes/LineArea";
-import { getY } from "metabase/static-viz/components/XYChart/utils";
 import type {
   Series,
   SeriesDatum,
   DatumAccessor,
   StackedDatumAccessor,
 } from "metabase/static-viz/components/XYChart/types";
+import { getY } from "metabase/static-viz/components/XYChart/utils";
+
 import { AreaSeriesStacked } from "./AreaSeriesStacked";
 
 interface AreaSeriesProps {
@@ -30,7 +32,6 @@ export const AreaSeries = ({
       <AreaSeriesStacked
         series={multipleSeries}
         // Stacked charts work only for a single dataset with one dimension and left Y-axis
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         yScale={yScaleLeft!}
         xAccessor={xAccessor as unknown as StackedDatumAccessor}
       />

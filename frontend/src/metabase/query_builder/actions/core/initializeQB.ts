@@ -1,45 +1,45 @@
 import type { LocationDescriptorObject } from "history";
 import querystring from "querystring";
-import _ from "underscore";
 
+import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import Questions from "metabase/entities/questions";
+import Snippets from "metabase/entities/snippets";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
+import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
-
+import {
+  getIsEditingInDashboard,
+  getIsNotebookNativePreviewShown,
+  getNotebookNativePreviewSidebarWidth,
+} from "metabase/query_builder/selectors";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser } from "metabase/selectors/user";
-
-import Snippets from "metabase/entities/snippets";
-import Questions from "metabase/entities/questions";
-import { loadMetadataForCard } from "metabase/questions/actions";
-import { fetchAlertsForQuestion } from "metabase/alert/alert";
-import { getIsEditingInDashboard } from "metabase/query_builder/selectors";
-
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
+import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
+import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type { Card, MetricId, SegmentId } from "metabase-types/api";
+import { isSavedCard } from "metabase-types/guards";
 import type {
   Dispatch,
   GetState,
   QueryBuilderUIControls,
 } from "metabase-types/store";
-import { isSavedCard } from "metabase-types/guards";
-import { isNotNull } from "metabase/lib/types";
-import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
-import { normalize } from "metabase-lib/queries/utils/normalize";
-import Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { updateCardTemplateTagNames } from "metabase-lib/queries/NativeQuery";
 
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { updateUrl } from "../navigation";
-
 import { cancelQuery, runQuestionQuery } from "../querying";
+
 import { resetQB } from "./core";
 import {
-  propagateDashboardParameters,
   getParameterValuesForQuestion,
+  propagateDashboardParameters,
 } from "./parameterUtils";
 
 type BlankQueryOptions = {
@@ -110,7 +110,7 @@ function filterBySegmentId(question: Question, segmentId: SegmentId) {
 function aggregateByMetricId(question: Question, metricId: MetricId) {
   const stageIndex = -1;
   const query = question.query();
-  const metricMetadata = Lib.metricMetadata(query, metricId);
+  const metricMetadata = Lib.legacyMetricMetadata(query, metricId);
 
   if (!metricMetadata) {
     return question;
@@ -295,7 +295,7 @@ async function handleQBInit(
 
   if (
     isSavedCard(card) &&
-    !card?.dataset &&
+    card.type !== "model" &&
     location.pathname?.startsWith("/model")
   ) {
     dispatch(setErrorPage(NOT_FOUND_ERROR));
@@ -333,7 +333,9 @@ async function handleQBInit(
   const { isNative, isEditable } = Lib.queryDisplayInfo(query);
 
   if (question.isSaved()) {
-    if (!question.isDataset()) {
+    const type = question.type();
+
+    if (type === "question") {
       question = question.lockDisplay();
     }
 
@@ -364,6 +366,12 @@ async function handleQBInit(
   });
 
   const objectId = params?.objectId || queryParams?.objectId;
+
+  uiControls.isShowingNotebookNativePreview = getIsNotebookNativePreviewShown(
+    getState(),
+  );
+  uiControls.notebookNativePreviewSidebarWidth =
+    getNotebookNativePreviewSidebarWidth(getState());
 
   dispatch({
     type: INITIALIZE_QB,

@@ -1,30 +1,23 @@
 import { t } from "ttag";
 import _ from "underscore";
-import type {
-  DashboardCard,
-  DashboardParameterMapping,
-  DashCardId,
-} from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
+
+import type { SetMultipleDashCardAttributesOpts } from "metabase/dashboard/actions";
 import {
   setDashCardAttributes,
   setMultipleDashCardAttributes,
 } from "metabase/dashboard/actions";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
+import type { QuestionDashboardCard, DashCardId } from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
 
 export const AUTO_WIRE_TOAST_ID = _.uniqueId();
 
-type ShowAutoWireParametersToastType = {
-  dashcardAttributes: {
-    id: DashCardId;
-    attributes: {
-      parameter_mappings: DashboardParameterMapping[] | null | undefined;
-    };
-  }[];
-};
-
 export const showAutoWireParametersToast =
-  ({ dashcardAttributes }: ShowAutoWireParametersToastType) =>
+  ({
+    dashcardAttributes,
+  }: {
+    dashcardAttributes: SetMultipleDashCardAttributesOpts;
+  }) =>
   (dispatch: Dispatch) => {
     dispatch(
       addUndo({
@@ -48,7 +41,7 @@ export const showAddedCardAutoWireParametersToast =
     targetDashcard,
     dashcard_id,
   }: {
-    targetDashcard: DashboardCard;
+    targetDashcard: QuestionDashboardCard;
     dashcard_id: DashCardId;
   }) =>
   (dispatch: Dispatch) => {

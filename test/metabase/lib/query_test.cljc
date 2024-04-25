@@ -3,12 +3,14 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
+   [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
@@ -90,10 +92,36 @@
                                                 [:expression
                                                  {}
                                                  ;; TODO Fill these in?
+                                                 ;; tech debt issue: #39376
                                                  #_{:base-type :type/Integer}
                                                  "CC"]]]}]}]}
 
               (lib/query meta/metadata-provider converted-query))))))
+
+(deftest ^:parallel converted-query-leaves-stage-metadata-refs-alone
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                  (lib/expression "BirthMonth" (lib/+ 1 1))
+                  (as-> $q (lib/breakout $q (m/find-first #(= (:name %) "BirthMonth") (lib/breakoutable-columns $q))))
+                  (lib/aggregate (lib/count))
+                  (lib/append-stage)
+                  (lib/aggregate (lib/count)))]
+    (is (=? {:stages [{:lib/stage-metadata {:columns [{:field-ref [:expression "BirthMonth" {:base-type :type/Integer}]} {}]}} {}]}
+          (lib/query meta/metadata-provider (assoc-in (lib.convert/->pMBQL (lib.convert/->legacy-MBQL query))
+                                                      [:stages 0 :lib/stage-metadata]
+                                                      {:columns [{:base-type :type/Float,
+                                                                  :display-name "BirthMonth",
+                                                                  :field-ref [:expression
+                                                                              "BirthMonth"
+                                                                              {:base-type :type/Integer}],
+                                                                  :name "BirthMonth",
+                                                                  :lib/type :metadata/column}
+                                                                 {:base-type :type/Integer,
+                                                                  :display-name "Count",
+                                                                  :field-ref [:aggregation 0],
+                                                                  :name "count",
+                                                                  :semantic-type :type/Quantity,
+                                                                  :lib/type :metadata/column}],
+                                                       :lib/type :metadata/results}))))))
 
 (deftest ^:parallel stage-count-test
   (is (= 1 (lib/stage-count lib.tu/venues-query)))
@@ -135,6 +163,72 @@
                                   (mu/disable-enforcement
                                    (lib/display-info query -1 query)))
           true  editable
-          false (assoc editable :database 999999999)    ; database unknown - no permissions
-          false (mock-db-native-perms :none)            ; native-permissions explicitly set to :none
-          false (mock-db-native-perms nil))))))         ; native-permissions not found on the database
+          false (assoc editable :database 999999999) ; database unknown - no permissions
+          false (mock-db-native-perms :none)         ; native-permissions explicitly set to :none
+          false (mock-db-native-perms nil))))))      ; native-permissions not found on the database
+
+(deftest ^:parallel convert-from-legacy-preserve-info-test
+  (testing ":info key should be converted when converting from legacy to pMBQL"
+    (is (=? {:lib/type     :mbql/query
+             :lib/metadata meta/metadata-provider
+             :database     (meta/id)
+             :stages       [{:lib/type    :mbql.stage/mbql
+                             :source-card 1}]
+             :info         {:card-id 1000}}
+            (lib.query/query meta/metadata-provider (assoc (lib.tu.macros/mbql-query nil {:source-table "card__1"})
+                                                           :info {:card-id 1000}))))))
+
+(deftest ^:parallel convert-from-legacy-remove-type-test
+  (testing "legacy keys like :type and :query should get removed"
+    (is (= {:database               (meta/id)
+            :lib/type               :mbql/query
+            :lib/metadata           meta/metadata-provider
+            :stages                 [{:lib/type :mbql.stage/mbql, :source-table 74040}]
+            :lib.convert/converted? true}
+           (lib.query/query meta/metadata-provider
+             {:database 74001, :type :query, :query {:source-table 74040}})))))
+
+(deftest ^:parallel can-save-test
+  (mu/disable-enforcement
+    (are [can-save? query]
+      (= can-save?  (lib.query/can-save query))
+      true lib.tu/venues-query
+      false (assoc lib.tu/venues-query :database nil)           ; database unknown - no permissions
+      true (lib/native-query meta/metadata-provider "SELECT")
+      false (lib/native-query meta/metadata-provider ""))))
+
+(deftest ^:parallel normalize-test
+  (testing "Normalize (including adding :lib/uuids) when creating a new query"
+    (are [x] (=? {:lib/type :mbql/query
+                  :database (meta/id)
+                  :stages   [{:lib/type     :mbql.stage/mbql
+                              :source-table 1
+                              :aggregation  [[:count {:lib/uuid string?}]]
+                              :filters      [[:=
+                                              {:lib/uuid string?}
+                                              [:field {:lib/uuid string?} 1]
+                                              4]]}]}
+                 (lib/query meta/metadata-provider x))
+      {"lib/type" "mbql/query"
+       "database" (meta/id)
+       "stages"   [{"lib/type"     "mbql.stage/mbql"
+                    "source-table" 1
+                    "aggregation"  [["count" {}]]
+                    "filters"      [["=" {} ["field" {} 1] 4]]}]}
+
+      {:lib/type :mbql/query
+       :database (meta/id)
+       :stages   [{:lib/type     :mbql.stage/mbql
+                   :source-table 1
+                   :aggregation  [[:count {}]]
+                   :filters      [[:=
+                                   {}
+                                   [:field {} 1]
+                                   4]]}]}
+
+      ;; denormalized legacy query
+      {"type"     "query"
+       "database" (meta/id)
+       "query"    {"source-table" 1
+                   "aggregation"  [["count"]]
+                   "filter"       ["=" ["field" 1 nil] 4]}})))

@@ -1,16 +1,18 @@
+import type { ChangeEventHandler } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
-import Toggle from "metabase/core/components/Toggle";
+
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { Box, Switch } from "metabase/ui";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { FieldId, Parameter, ParameterId } from "metabase-types/api";
-import type Table from "metabase-lib/metadata/Table";
-import type Field from "metabase-lib/metadata/Field";
+
 import { usableAsLinkedFilter } from "../../utils/linked-filters";
-import useFilterFields from "./use-filter-fields";
+
 import {
-  SectionRoot,
   SectionHeader,
   SectionMessage,
   SectionMessageLink,
@@ -24,6 +26,7 @@ import {
   FieldListHeader,
   FieldListTitle,
 } from "./ParameterLinkedFilters.styled";
+import useFilterFields from "./use-filter-fields";
 
 export interface ParameterLinkedFiltersProps {
   parameter: Parameter;
@@ -32,7 +35,7 @@ export interface ParameterLinkedFiltersProps {
   onShowAddParameterPopover: () => void;
 }
 
-const ParameterLinkedFilters = ({
+export const ParameterLinkedFilters = ({
   parameter,
   otherParameters,
   onChangeFilteringParameters,
@@ -44,7 +47,7 @@ const ParameterLinkedFilters = ({
   );
 
   return (
-    <SectionRoot>
+    <Box p="1.5rem 1rem">
       <SectionHeader>{t`Limit this filter's choices`}</SectionHeader>
       <Content
         usableParameters={usableParameters}
@@ -52,7 +55,7 @@ const ParameterLinkedFilters = ({
         onChangeFilteringParameters={onChangeFilteringParameters}
         onShowAddParameterPopover={onShowAddParameterPopover}
       />
-    </SectionRoot>
+    </Box>
   );
 };
 
@@ -200,9 +203,9 @@ const LinkedParameter = ({
   onFilterChange,
   onExpandedChange,
 }: LinkedParameterProps): JSX.Element => {
-  const handleFilterToggle = useCallback(
-    (isFiltered: boolean) => {
-      onFilterChange(otherParameter, isFiltered);
+  const handleFilterToggle: ChangeEventHandler<HTMLInputElement> = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onFilterChange(otherParameter, e.target.checked);
     },
     [otherParameter, onFilterChange],
   );
@@ -217,7 +220,11 @@ const LinkedParameter = ({
         <ParameterName onClick={handleExpandedChange}>
           {otherParameter.name}
         </ParameterName>
-        <Toggle value={isFiltered} onChange={handleFilterToggle} />
+        <Switch
+          role="switch"
+          checked={isFiltered}
+          onChange={handleFilterToggle}
+        />
       </ParameterBody>
       {isExpanded && (
         <LinkedFieldList
@@ -282,6 +289,3 @@ const LinkedField = ({ fieldId }: LinkedFieldProps) => {
     </Fields.Loader>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ParameterLinkedFilters;

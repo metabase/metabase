@@ -1,23 +1,27 @@
-import type { ReactNode } from "react";
+import type { UniqueIdentifier } from "@dnd-kit/core";
+import { useSensor, PointerSensor } from "@dnd-kit/core";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
-import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
+
+import Grabber from "metabase/components/Grabber";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import AccordionList from "metabase/core/components/AccordionList";
+import type { DragEndEvent } from "metabase/core/components/Sortable";
+import { SortableList } from "metabase/core/components/Sortable";
+import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
 import { Icon } from "metabase/ui";
-import AccordionList from "metabase/core/components/AccordionList";
-import Grabber from "metabase/components/Grabber";
-import {
-  SortableContainer,
-  SortableElement,
-  SortableHandle,
-} from "metabase/components/sortable";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { FieldId, SchemaId, TableFieldOrder } from "metabase-types/api";
-import type Table from "metabase-lib/metadata/Table";
-import type Field from "metabase-lib/metadata/Field";
+
 import MetadataTableColumn from "../MetadataTableColumn";
+
 import { SortButtonContainer } from "./MetadataTableColumnList.styled";
 
 const ORDER_SECTIONS = [
@@ -42,17 +46,14 @@ interface DispatchProps {
   onUpdateFieldOrder: (table: Table, fieldOrder: FieldId[]) => void;
 }
 
-interface DragProps {
-  oldIndex: number;
-  newIndex: number;
-}
-
 type MetadataTableColumnListProps = OwnProps & DispatchProps;
 
 const mapDispatchToProps: DispatchProps = {
   onUpdateTable: Tables.actions.updateProperty,
   onUpdateFieldOrder: Tables.actions.setFieldOrder,
 };
+
+const getId = (field: Field) => field.getId();
 
 const MetadataTableColumnList = ({
   table,
@@ -64,36 +65,44 @@ const MetadataTableColumnList = ({
   const { fields = [], visibility_type } = table;
   const isHidden = visibility_type != null;
 
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 15 },
+  });
+
   const sortedFields = useMemo(
     () => _.sortBy(fields, field => field.position),
     [fields],
   );
 
-  const handleSortStart = useCallback(() => {
-    document.body.classList.add("grabbing");
-  }, []);
-
   const handleSortEnd = useCallback(
-    ({ oldIndex, newIndex }: DragProps) => {
-      document.body.classList.remove("grabbing");
-
-      const fieldOrder = updateFieldOrder(sortedFields, oldIndex, newIndex);
-      onUpdateFieldOrder(table, fieldOrder);
+    ({ itemIds: fieldOrder }: DragEndEvent) => {
+      onUpdateFieldOrder(table, fieldOrder as number[]);
     },
-    [table, sortedFields, onUpdateFieldOrder],
+    [table, onUpdateFieldOrder],
+  );
+
+  const renderItem = ({ item, id }: { item: Field; id: string | number }) => (
+    <SortableColumn
+      key={`sortable-${id}`}
+      id={id}
+      field={item}
+      idFields={idFields}
+      table={table}
+      selectedSchemaId={selectedSchemaId}
+    />
   );
 
   return (
-    <div id="ColumnsList" className={cx("mt3", { disabled: isHidden })}>
-      <div className="text-uppercase text-medium py1">
-        <div className="relative">
+    <div id="ColumnsList" className={cx(CS.mt3, { disabled: isHidden })}>
+      <div className={cx(CS.textUppercase, CS.textMedium, CS.py1)}>
+        <div className={CS.relative}>
           <div
             style={{ minWidth: 420 }}
-            className="float-left px1"
+            className={cx(CS.floatLeft, CS.px1)}
           >{t`Column`}</div>
-          <div className="flex">
-            <div className="flex-half pl3">{t`Visibility`}</div>
-            <div className="flex-half">
+          <div className={CS.flex}>
+            <div className={cx(CS.flexHalf, CS.pl3)}>{t`Visibility`}</div>
+            <div className={CS.flexHalf}>
               <span>{t`Type`}</span>
             </div>
           </div>
@@ -105,39 +114,18 @@ const MetadataTableColumnList = ({
           </SortButtonContainer>
         </div>
       </div>
-      <SortableColumnList
-        helperClass="ColumnSortHelper"
-        useDragHandle={true}
-        onSortStart={handleSortStart}
-        onSortEnd={handleSortEnd}
-      >
-        {sortedFields.map((field, index) => (
-          <SortableColumn
-            key={field.getId()}
-            index={index}
-            field={field}
-            idFields={idFields}
-            selectedDatabaseId={table.db_id}
-            selectedSchemaId={selectedSchemaId}
-            selectedTableId={table.id}
-            dragHandle={<SortableColumnHandle />}
-          />
-        ))}
-      </SortableColumnList>
+      <div>
+        <SortableList
+          items={sortedFields}
+          renderItem={renderItem}
+          getId={getId}
+          onSortEnd={handleSortEnd}
+          sensors={[pointerSensor]}
+          useDragOverlay={false}
+        />
+      </div>
     </div>
   );
-};
-
-interface ColumnListProps {
-  children?: ReactNode;
-}
-
-const ColumnList = ({ children, ...props }: ColumnListProps) => {
-  return <div {...props}>{children}</div>;
-};
-
-const ColumnGrabber = () => {
-  return <Grabber style={{ width: 10 }} />;
 };
 
 interface TableFieldOrderOption {
@@ -158,12 +146,12 @@ const TableFieldOrderDropdown = ({
     <TippyPopoverWithTrigger
       triggerContent={
         <span
-          className="text-brand text-bold"
+          className={cx(CS.textBrand, CS.textBold)}
           style={{ textTransform: "none", letterSpacing: 0 }}
           aria-label={t`Sort`}
         >
           <Icon
-            className="ml1"
+            className={CS.ml1}
             name="sort_arrows"
             size={14}
             style={{ transform: "translateY(2px)" }}
@@ -172,7 +160,7 @@ const TableFieldOrderDropdown = ({
       }
       popoverContent={({ closePopover }) => (
         <AccordionList
-          className="text-brand"
+          className={CS.textBrand}
           sections={ORDER_SECTIONS}
           alwaysExpanded
           itemIsSelected={({ value }: TableFieldOrderOption) =>
@@ -188,31 +176,56 @@ const TableFieldOrderDropdown = ({
   );
 };
 
-const SortableColumn = SortableElement(MetadataTableColumn);
-const SortableColumnList = SortableContainer(ColumnList);
-const SortableColumnHandle = SortableHandle(ColumnGrabber);
+interface SortableColumnProps {
+  id: UniqueIdentifier;
+  field: Field;
+  idFields: Field[];
+  table: Table;
+  selectedSchemaId: SchemaId;
+}
 
-const updateFieldOrder = (
-  fields: Field[],
-  oldIndex: number,
-  newIndex: number,
-) => {
-  const fieldOrder = new Array<FieldId>(fields.length);
-
-  fields.forEach((field, prevIndex) => {
-    const nextIndex =
-      newIndex <= prevIndex && prevIndex < oldIndex
-        ? prevIndex + 1 // shift down
-        : oldIndex < prevIndex && prevIndex <= newIndex
-        ? prevIndex - 1 // shift up
-        : prevIndex === oldIndex
-        ? newIndex // move dragged column to new location
-        : prevIndex; // otherwise, leave it where it is
-
-    fieldOrder[nextIndex] = Number(field.id);
+const SortableColumn = ({
+  id,
+  field,
+  table,
+  idFields,
+  selectedSchemaId,
+}: SortableColumnProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id,
   });
 
-  return fieldOrder;
+  const dragHandle = (
+    <Grabber style={{ width: 10 }} {...attributes} {...listeners} />
+  );
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        position: "relative",
+        zIndex: isDragging ? 100 : 1,
+      }}
+    >
+      <MetadataTableColumn
+        field={field}
+        idFields={idFields}
+        selectedDatabaseId={table.db_id}
+        selectedSchemaId={selectedSchemaId}
+        selectedTableId={table.id}
+        dragHandle={dragHandle}
+      />
+    </div>
+  );
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

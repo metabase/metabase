@@ -1,5 +1,6 @@
-import { useState } from "react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+
 import {
   getIcon,
   queryIcon,
@@ -8,9 +9,10 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { FormProvider } from "metabase/forms";
 import { getDefaultFieldSettings } from "metabase/actions/utils";
+import { FormProvider } from "metabase/forms";
 import type { FieldSettings } from "metabase-types/api";
+
 import type { FormFieldEditorProps } from "./FormFieldEditor";
 import FormFieldEditor from "./FormFieldEditor";
 
@@ -66,10 +68,10 @@ describe("FormFieldEditor", () => {
     expect(getIcon("grabber")).toBeInTheDocument();
   });
 
-  it("handles field type change", () => {
+  it("handles field type change", async () => {
     const { onChange } = setup();
 
-    userEvent.click(screen.getByText("Date"));
+    await userEvent.click(screen.getByText("Date"));
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith({
@@ -78,7 +80,7 @@ describe("FormFieldEditor", () => {
       inputType: "date",
     });
 
-    userEvent.click(screen.getByText("Number"));
+    await userEvent.click(screen.getByText("Number"));
 
     expect(onChange).toHaveBeenLastCalledWith({
       ...getDefaultFieldSettings(),
@@ -108,11 +110,13 @@ describe("FormFieldEditor", () => {
 
     it("keeps value options when switching between input types", async () => {
       const { onChange } = setup({ fieldSettings: TEST_STRING_FIELD_SETTINGS });
-      userEvent.click(screen.getByLabelText("Field settings"));
-      userEvent.unhover(screen.getByLabelText("Field settings"));
+      await userEvent.click(screen.getByLabelText("Field settings"));
+      await userEvent.unhover(screen.getByLabelText("Field settings"));
       const popover = await screen.findByRole("tooltip");
 
-      userEvent.click(within(popover).getByRole("radio", { name: "Text" }));
+      await userEvent.click(
+        within(popover).getByRole("radio", { name: "Text" }),
+      );
       await waitFor(() =>
         expect(onChange).toHaveBeenLastCalledWith({
           ...TEST_STRING_FIELD_SETTINGS,
@@ -120,7 +124,7 @@ describe("FormFieldEditor", () => {
         }),
       );
 
-      userEvent.click(
+      await userEvent.click(
         within(popover).getByRole("radio", { name: "Inline select" }),
       );
       await waitFor(() =>
@@ -134,7 +138,7 @@ describe("FormFieldEditor", () => {
     it("handles value options when switching between field types", async () => {
       const { onChange } = setup({ fieldSettings: TEST_STRING_FIELD_SETTINGS });
 
-      userEvent.click(screen.getByText("Number"));
+      await userEvent.click(screen.getByText("Number"));
       await waitFor(() =>
         expect(onChange).toHaveBeenLastCalledWith({
           ...TEST_STRING_FIELD_SETTINGS,
@@ -143,7 +147,7 @@ describe("FormFieldEditor", () => {
         }),
       );
 
-      userEvent.click(screen.getByText("Date"));
+      await userEvent.click(screen.getByText("Date"));
       await waitFor(() =>
         expect(onChange).toHaveBeenLastCalledWith({
           ...TEST_STRING_FIELD_SETTINGS,
@@ -165,11 +169,11 @@ describe("FormFieldEditor", () => {
 
       const { onChange } = setup({ fieldSettings });
 
-      userEvent.click(screen.getByLabelText("Field settings"));
-      userEvent.unhover(screen.getByLabelText("Field settings"));
+      await userEvent.click(screen.getByLabelText("Field settings"));
+      await userEvent.unhover(screen.getByLabelText("Field settings"));
       expect(await screen.findByRole("tooltip")).toBeInTheDocument();
 
-      userEvent.click(screen.getByRole("radio", { name: "Long text" }));
+      await userEvent.click(screen.getByRole("radio", { name: "Long text" }));
 
       expect(onChange).toHaveBeenLastCalledWith({
         ...fieldSettings,
@@ -187,11 +191,11 @@ describe("FormFieldEditor", () => {
       });
 
       const { onChange } = setup({ fieldSettings });
-      userEvent.click(screen.getByLabelText("Field settings"));
-      userEvent.unhover(screen.getByLabelText("Field settings"));
+      await userEvent.click(screen.getByLabelText("Field settings"));
+      await userEvent.unhover(screen.getByLabelText("Field settings"));
       expect(await screen.findByRole("tooltip")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText("Number"));
+      await userEvent.click(screen.getByText("Number"));
       expect(onChange).toHaveBeenLastCalledWith({
         ...fieldSettings,
         fieldType: "number",
@@ -199,7 +203,7 @@ describe("FormFieldEditor", () => {
         defaultValue: 123,
       });
 
-      userEvent.click(screen.getByText("Date"));
+      await userEvent.click(screen.getByText("Date"));
       expect(onChange).toHaveBeenLastCalledWith({
         ...fieldSettings,
         fieldType: "date",

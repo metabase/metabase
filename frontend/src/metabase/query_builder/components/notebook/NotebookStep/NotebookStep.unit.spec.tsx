@@ -1,15 +1,16 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-
+import { renderWithProviders, screen } from "__support__/ui";
+import type Question from "metabase-lib/v1/Question";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import type Question from "metabase-lib/Question";
-
-import type { NotebookStep as INotebookStep, NotebookStepType } from "../types";
 import { createMockNotebookStep, DEFAULT_QUESTION } from "../test-utils";
+import type { NotebookStep as INotebookStep, NotebookStepType } from "../types";
+
 import NotebookStep from "./NotebookStep";
 
 type SetupOpts = {
@@ -76,5 +77,18 @@ describe("NotebookStep", () => {
     expect(
       screen.queryByRole("button", { name: "Remove step" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("sets the row limit only on blur", async () => {
+    const step = createMockNotebookStep({ type: "limit" });
+    const { updateQuery } = setup({ step });
+
+    const input = screen.getByPlaceholderText("Enter a limit");
+    await userEvent.type(input, "38");
+    await userEvent.type(input, "clear");
+    await userEvent.type(input, "42");
+    input.blur();
+
+    expect(updateQuery).toHaveBeenCalledTimes(1);
   });
 });

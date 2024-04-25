@@ -1,9 +1,10 @@
 import type * as React from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import _ from "underscore";
-import { useUnmount } from "react-use";
+
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
+import { useUnmountLayout } from "metabase/hooks/use-unmount-layout";
 
 /**
  * A small wrapper around <input>, primarily should be used for the
@@ -57,7 +58,7 @@ const InputBlurChange = (props: InputBlurChangeProps) => {
     [normalize, onBlurChange, value],
   );
 
-  useUnmount(() => {
+  useUnmountLayout(() => {
     const lastPropsValue = value || "";
     const currentValue = inputRef.current?.value || "";
 

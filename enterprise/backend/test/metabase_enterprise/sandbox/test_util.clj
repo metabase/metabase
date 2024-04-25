@@ -1,12 +1,12 @@
 (ns metabase-enterprise.sandbox.test-util
   "Shared test utilities for sandbox tests."
   (:require
+   [malli.core :as mc]
    [mb.hawk.parallel]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy
+    :refer [GroupTableAccessPolicy]]
    [metabase.models.card :refer [Card]]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.table :refer [Table]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.user :refer [User]]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
@@ -15,8 +15,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [schema.core :as s]
-   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn do-with-user-attributes [test-user-name-or-user-id attributes-map thunk]
@@ -34,7 +32,7 @@
   [test-user-name-or-user-id attributes-map & body]
   `(do-with-user-attributes ~test-user-name-or-user-id ~attributes-map (fn [] ~@body)))
 
-(defn- do-with-gtap-defs
+(defn- do-with-gtap-defs!
   {:style/indent 2}
   [group [[table-kw {:keys [query remappings]} :as gtap-def] & more] f]
   (if-not gtap-def
@@ -50,39 +48,38 @@
                                                                 :table_id             (data/id table-kw)
                                                                 :card_id              card-id
                                                                 :attribute_remappings remappings}]
-           (perms/grant-permissions! group (perms/table-sandboxed-query-path (t2/select-one Table :id (data/id table-kw))))
-           (do-with-gtap-defs group more f)))))))
+           (data-perms/set-database-permission! group (data/id) :perms/view-data :unrestricted)
+           (data-perms/set-table-permission! group (data/id table-kw) :perms/create-queries :query-builder)
+           (do-with-gtap-defs! group more f)))))))
 
 (def ^:private WithGTAPsArgs
   "Schema for valid arguments to `with-gtaps`."
-  {:gtaps
-   {(s/named s/Keyword "Table") (s/maybe
-                                 {(s/optional-key :query)      (s/pred map?)
-                                  (s/optional-key :remappings) (s/pred map?)})}
+  [:map
+   [:gtaps [:map-of :keyword [:maybe
+                              [:map
+                               [:query      {:optional true} :map]
+                               [:remappings {:optional true} :map]]]]]
+   [:attributes {:optional true} :map]])
 
-   (s/optional-key :attributes)
-   (s/pred map?)})
-
-(defn do-with-gtaps-for-user [args-fn test-user-name-or-user-id f]
-  (mb.hawk.parallel/assert-test-is-not-parallel "with-gtaps-for-user")
+(defn do-with-gtaps-for-user! [args-fn test-user-name-or-user-id f]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-gtaps-for-user!")
   (letfn [(thunk []
-            ;; remove perms for All Users group
-            (perms/revoke-data-perms! (perms-group/all-users) (data/db))
-            ;; create new perms group
-            (test.users/with-group-for-user [group test-user-name-or-user-id]
-              (let [{:keys [gtaps attributes]} (s/validate WithGTAPsArgs (args-fn))]
-                ;; set user login_attributes
-                (with-user-attributes test-user-name-or-user-id attributes
-                  (mt/with-additional-premium-features #{:sandboxes}
-                    ;; create Cards/GTAPs from defs
-                    (do-with-gtap-defs group gtaps
-                      (fn []
-                        ;; bind user as current user, then run f
-                        (if (keyword? test-user-name-or-user-id)
-                          (test.users/with-test-user test-user-name-or-user-id
-                            (f group))
-                          (mw.session/with-current-user (u/the-id test-user-name-or-user-id)
-                            (f group))))))))))]
+            (mt/with-no-data-perms-for-all-users!
+              ;; create new perms group
+              (test.users/with-group-for-user [group test-user-name-or-user-id]
+                (let [{:keys [gtaps attributes]} (mc/assert WithGTAPsArgs (args-fn))]
+                  ;; set user login_attributes
+                  (with-user-attributes test-user-name-or-user-id attributes
+                    (mt/with-additional-premium-features #{:sandboxes}
+                      ;; create Cards/GTAPs from defs
+                      (do-with-gtap-defs! group gtaps
+                        (fn []
+                          ;; bind user as current user, then run f
+                          (if (keyword? test-user-name-or-user-id)
+                            (test.users/with-test-user test-user-name-or-user-id
+                              (f group))
+                            (mw.session/with-current-user (u/the-id test-user-name-or-user-id)
+                              (f group)))))))))))]
     ;; create a temp copy of the current DB if we haven't already created one. If one is already created, keep using
     ;; that so we can test multiple sandboxed users against the same DB
     (if data.impl/*db-is-temp-copy?*
@@ -90,14 +87,14 @@
       (data/with-temp-copy-of-db
         (thunk)))))
 
-(defmacro with-gtaps-for-user
-  "Like `with-gtaps`, but for an arbitrary User. `test-user-name-or-user-id` can be a predefined test user e.g. `:rasta`
+(defmacro with-gtaps-for-user!
+  "Like `with-gtaps!`, but for an arbitrary User. `test-user-name-or-user-id` can be a predefined test user e.g. `:rasta`
   or an arbitrary User ID."
   {:style/indent :defn}
   [test-user-name-or-user-id gtaps-and-attributes-map & body]
-  `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) ~test-user-name-or-user-id (fn [~'&group] ~@body)))
+  `(do-with-gtaps-for-user! (fn [] ~gtaps-and-attributes-map) ~test-user-name-or-user-id (fn [~'&group] ~@body)))
 
-(defmacro with-gtaps
+(defmacro with-gtaps!
   "Execute `body` with `gtaps` and optionally user `attributes` in effect, for the :rasta test user. All underlying
   objects and permissions are created automatically.
 
@@ -111,15 +108,15 @@
 
   *  `:remappings`, if specified, is saved as the `:attribute_remappings` property of the GTAP.
 
-    (met/with-gtaps {:gtaps      {:checkins {:query      {:database (data/id), ...}
-                                             :remappings {:user_category [\"variable\" ...]}}}
+    (met/with-gtaps! {:gtaps      {:checkins {:query      {:database (data/id), ...}
+                                              :remappings {:user_category [\"variable\" ...]}}}
                      :attributes {\"user_category\" 1}}
       (mt/run-mbql-query checkins {:limit 2}))
 
   Introduces `&group` anaphor, bound to the PermissionsGroup associated with this GTAP."
   {:style/indent :defn}
   [gtaps-and-attributes-map & body]
-  `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) :rasta (fn [~'&group] ~@body)))
+  `(do-with-gtaps-for-user! (fn [] ~gtaps-and-attributes-map) :rasta (fn [~'&group] ~@body)))
 
 (defn restricted-column-query
   "An MBQL query against Venues that only returns a subset of the columns."

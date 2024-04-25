@@ -13,6 +13,34 @@ on:
         required: true
 
 jobs:
+  start-message:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Send build start message
+        uses: actions/github-script@v6
+        env:
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendReleaseMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            await sendReleaseMessage({
+              stage: 'build-start',
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              version: '${{ inputs.version }}',
+              runId: '${{ github.run_id }}',
+              releaseSha: '${{ inputs.commit }}',
+            }).catch(console.error);
+
   check-version:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -33,7 +61,7 @@ jobs:
     - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && yarn && yarn build
     - name: Get Release Version
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       id: canonical_version
       with:
         script: | # js
@@ -82,7 +110,7 @@ jobs:
     - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && yarn && yarn build
     - name: Get Release Branch
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       id: release_branch
       with:
         result_encoding: string
@@ -113,7 +141,7 @@ jobs:
     - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && yarn && yarn build
     - name: Get build dependencies
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       id: dependencies
       with:
         script: | # js
@@ -151,12 +179,12 @@ jobs:
 
         echo "VERSION=$version" >> $GITHUB_ENV
     - name: Setup Java ${{ needs.get-build-requirements.outputs.java_version }}
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: ${{ needs.get-build-requirements.outputs.java_version }}
     - name: Setup Node.js ${{ needs.get-build-requirements.outputs.node_version }}
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ needs.get-build-requirements.outputs.node_version }}.x
     - name: Check out the code
@@ -185,7 +213,7 @@ jobs:
       run: sha256sum ./metabase.jar > SHA256.sum
       shell: bash
     - name: Upload JARs as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: metabase-release-${{ matrix.edition }}-${{ inputs.commit }}-uberjar
         path: |
@@ -201,7 +229,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: trigger pre-release testing
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: | # js
             github.rest.actions.createWorkflowDispatch({

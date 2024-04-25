@@ -1,11 +1,11 @@
 import { useCallback } from "react";
-import cx from "classnames";
 import { t } from "ttag";
-import * as MetabaseCore from "metabase/lib/core";
+
 import type { SelectChangeEvent } from "metabase/core/components/Select/Select";
 import Select from "metabase/core/components/Select/Select";
+import * as MetabaseCore from "metabase/lib/core";
+import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldVisibilityType } from "metabase-types/api";
-import type Field from "metabase-lib/metadata/Field";
 
 interface FieldVisibilityPickerProps {
   className?: string;
@@ -27,7 +27,7 @@ const FieldVisibilityPicker = ({
 
   return (
     <Select
-      className={cx("TableEditor-field-visibility", className)}
+      className={className}
       value={field.visibility_type}
       options={MetabaseCore.field_visibility_types}
       optionValueFn={getFieldId}

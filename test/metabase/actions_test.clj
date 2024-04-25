@@ -10,6 +10,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
@@ -26,27 +27,13 @@
      (binding [*current-user-permissions-set* (delay #{"/"})]
        ~@body)))
 
-(deftest normalize-as-mbql-query-test
-  (testing "Make sure normalize-as-mbql-query can exclude certain keys from normalization"
-    (is (= {:database    1
-            :type        :query
-            :updated-row {:my_snake_case_column 1000
-                          "CamelCaseColumn"     {:ABC 200}}
-            :query       {:source-table 2}}
-           (#'actions/normalize-as-mbql-query
-            {"database"   1
-             :updated_row {:my_snake_case_column 1000
-                           "CamelCaseColumn"     {:ABC 200}}
-             :query       {"source_table" 2}}
-            :exclude #{:updated-row})))))
-
-(defn- format-field-name
+(mu/defn ^:private format-field-name :- :string
   "Format `field-name` appropriately for the current driver (e.g. uppercase it if we're testing against H2)."
   [field-name]
-  (keyword (mt/format-name (name field-name))))
+  (mt/format-name (name field-name)))
 
 (defn- categories-row-count []
-  (first (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]]}))))
+  (first (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]], :limit 1}))))
 
 (deftest create-test
   (testing "row/create"
@@ -139,11 +126,15 @@
       (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
         (binding [*current-user-permissions-set* (delay #{"/"})]
           (testing "Should return a 400 if Database feature flag is disabled."
-            (is (partial= ["Actions are not enabled." {:database-id (mt/id)}]
-                          (try
-                            (actions/perform-action! action request-body)
-                            (catch Exception e
-                              [(ex-message e) (ex-data e)]))))))))))
+            (is (thrown-with-msg?
+                 Throwable
+                 #"\QActions are not enabled.\E"
+                 (actions/perform-action! action request-body)))
+            (try
+              (actions/perform-action! action request-body)
+              (catch Throwable e
+                (is (=? {:database-id (mt/id)}
+                        (ex-data e)))))))))))
 
 (driver/register! ::feature-flag-test-driver, :parent :h2)
 
@@ -252,7 +243,7 @@
               (is (= 75
                      (categories-row-count))))))))))
 
-(defmacro is-ex-data [expected-schema actual-call]
+(defmacro ^:private is-ex-data [expected-schema actual-call]
   `(try
      ~actual-call
      (is (= true false))
@@ -343,7 +334,7 @@
             (is-ex-data
              {:errors
               [{:index 1
-                :error #"Error filtering against :type/(?:Big)?Integer Field: unable to parse String \"foo\" to a :type/(?:Big)?Integer"}
+                :error #".*Error filtering against :type/(?:Big)?Integer Field: unable to parse String \"foo\" to a :type/(?:Big)?Integer"}
                {:index 3
                 :error #"Sorry, the row you're trying to delete doesn't exist"}]
               :status-code 400}
@@ -543,7 +534,7 @@
                                                            :type "number"
                                                            :display-name "Id"}}})
                                     :type name)]
-                  (mt/with-actions [{card-id :id} {:dataset true
+                  (mt/with-actions [{card-id :id} {:type :model
                                                    :dataset_query (mt/mbql-query categories)}
                                     {action-id :action-id} {:name                   "Query example"
                                                             :type                   :query

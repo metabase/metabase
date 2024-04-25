@@ -1,26 +1,24 @@
-import { useState } from "react";
 import PropTypes from "prop-types";
-import _ from "underscore";
+import { useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
-import { Icon } from "metabase/ui";
+import { isPublicCollection } from "metabase/collections/utils";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
-import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
-import { getCrumbs } from "metabase/lib/collections";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import SelectList from "metabase/components/SelectList";
 import { getDashboard } from "metabase/dashboard/selectors";
+import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
+import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { getCrumbs } from "metabase/lib/collections";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useSelector } from "metabase/lib/redux";
-import { isPublicCollection } from "metabase/collections/utils";
-import { QuestionList } from "./QuestionList";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { Icon } from "metabase/ui";
 
+import { QuestionList } from "./QuestionList";
 import {
   BreadcrumbsWrapper,
   QuestionPickerRoot,
@@ -61,6 +59,7 @@ function QuestionPickerInner({ onSelect, collectionsById, getCollectionIcon }) {
       <SearchInput
         fullWidth
         autoFocus
+        data-autofocus
         placeholder={t`Search…`}
         value={searchText}
         icon={<Icon name="search" size={16} />}

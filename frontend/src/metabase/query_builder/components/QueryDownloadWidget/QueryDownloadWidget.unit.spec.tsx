@@ -1,4 +1,8 @@
 import userEvent from "@testing-library/user-event";
+
+import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card, Dataset } from "metabase-types/api";
@@ -9,9 +13,7 @@ import {
 } from "metabase-types/api/mocks";
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+
 import QueryDownloadWidget from "./QueryDownloadWidget";
 
 const TEST_CARD = createMockCard({
@@ -51,7 +53,8 @@ describe("QueryDownloadWidget", () => {
   it("should display query export options", async () => {
     setup();
 
-    userEvent.click(getIcon("download"));
+    await userEvent.click(getIcon("download"));
+    await userEvent.unhover(getIcon("download"));
 
     expect(
       await screen.findByText("Download full results"),

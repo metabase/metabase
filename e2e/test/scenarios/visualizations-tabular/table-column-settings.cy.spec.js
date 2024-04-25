@@ -1,7 +1,7 @@
 import _ from "underscore";
 
-import { openNotebook, popover, restore, visualize } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { openNotebook, popover, restore, visualize } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -243,7 +243,7 @@ describe("scenarios > visualizations > table column settings", () => {
     visualization().findByText(columnName).should("not.exist");
 
     cy.findByRole("button", { name: /Add or remove columns/ }).click();
-    cy.findByRole("list", { name: `${table}-table-columns` })
+    cy.findByTestId(`${table}-table-columns`)
       .findByLabelText(column)
       .should("be.checked");
     cy.findByRole("button", { name: /Done picking columns/ }).click();
@@ -279,7 +279,7 @@ describe("scenarios > visualizations > table column settings", () => {
   }) => {
     cy.log("remove the column");
     cy.findByRole("button", { name: /Add or remove columns/ }).click();
-    cy.findByRole("list", { name: `${table}-table-columns` })
+    cy.findByTestId(`${table}-table-columns`)
       .findByLabelText(column)
       .should("be.checked")
       .click();
@@ -309,7 +309,7 @@ describe("scenarios > visualizations > table column settings", () => {
   }) => {
     cy.log("add the column");
     cy.findByRole("button", { name: /Add or remove columns/ }).click();
-    cy.findByRole("list", { name: `${table}-table-columns` })
+    cy.findByTestId(`${table}-table-columns`)
       .findByLabelText(column)
       .should("not.be.checked")
       .click();
@@ -390,7 +390,7 @@ describe("scenarios > visualizations > table column settings", () => {
 
       cy.findByRole("button", { name: /Add or remove columns/ }).click();
 
-      cy.findByRole("list", { name: "products-table-columns" })
+      cy.findByTestId("products-table-columns")
         .findByLabelText("Remove all")
         .click();
 
@@ -399,7 +399,7 @@ describe("scenarios > visualizations > table column settings", () => {
         .findByText("Doing science...")
         .should("not.exist");
 
-      cy.findByRole("list", { name: "products-table-columns" }).within(() => {
+      cy.findByTestId("products-table-columns").within(() => {
         //Check a few columns as a sanity check
         cy.findByLabelText("Title").should("not.be.checked");
         cy.findByLabelText("Category").should("not.be.checked");
@@ -414,7 +414,7 @@ describe("scenarios > visualizations > table column settings", () => {
         .findByText("Doing science...")
         .should("not.exist");
 
-      cy.findByRole("list", { name: "products-table-columns" }).within(() => {
+      cy.findByTestId("products-table-columns").within(() => {
         //Check a few columns as a sanity check
         cy.findByLabelText("Title").should("be.checked");
         cy.findByLabelText("Category").should("be.checked");
@@ -496,8 +496,6 @@ describe("scenarios > visualizations > table column settings", () => {
 
       _hideColumn(testData);
       _showColumn(testData);
-      _removeColumn(testData);
-      _addColumn(testData);
     });
 
     it("should be able to show and hide custom expressions for a table with selected fields", () => {
@@ -515,8 +513,6 @@ describe("scenarios > visualizations > table column settings", () => {
 
       _hideColumn(testData);
       _showColumn(testData);
-      _removeColumn(testData);
-      _addColumn(testData);
     });
 
     it("should be able to show and hide columns from aggregations", () => {
@@ -600,8 +596,8 @@ describe("scenarios > visualizations > table column settings", () => {
       openSettings();
 
       const testData = {
-        column: "Products → Ean",
-        columnName: "Products → Ean",
+        column: "Products → Category",
+        columnName: "Products → Category",
         table: "test question",
       };
 
@@ -731,7 +727,7 @@ describe("scenarios > visualizations > table column settings", () => {
         const taxColumn = {
           column: "Tax",
           columnName: `Question ${card.id} → Tax`,
-          table: `test question 2`,
+          table: "test question 2",
           scrollTimes: 3,
         };
 
@@ -753,7 +749,7 @@ describe("scenarios > visualizations > table column settings", () => {
         const mathColumn = {
           column: "Math",
           columnName: `Question ${card.id} → Math`,
-          table: `test question`,
+          table: "test question",
           needsScroll: false,
         };
 
@@ -824,7 +820,7 @@ const visualization = () => {
 };
 
 const scrollVisualization = (position = "right") => {
-  cy.get(".TableInteractive-header.scroll-hide-all").scrollTo(position, {
+  cy.get("#main-data-grid").scrollTo(position, {
     force: true,
   });
 };

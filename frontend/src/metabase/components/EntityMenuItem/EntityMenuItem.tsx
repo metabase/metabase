@@ -1,6 +1,8 @@
 import type { MouseEvent, ReactNode } from "react";
+
 import Tooltip from "metabase/core/components/Tooltip";
 import type { IconName } from "metabase/ui";
+
 import {
   MenuExternalLink,
   MenuItemContent,

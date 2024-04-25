@@ -3,19 +3,22 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
-import * as Urls from "metabase/lib/urls";
+
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Search from "metabase/entities/search";
+import * as Urls from "metabase/lib/urls";
+import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { getUser } from "metabase/selectors/user";
+import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { CollectionItem, DatabaseId, User } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
-import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
-import type Question from "metabase-lib/Question";
-import type Database from "metabase-lib/metadata/Database";
+
 import DatabasePicker from "../DatabasePicker";
 import MetabotMessage from "../MetabotMessage";
 import MetabotPrompt from "../MetabotPrompt";
+
 import { MetabotHeader } from "./MetabotWidget.styled";
 
 interface DatabaseLoaderProps {
@@ -115,7 +118,7 @@ const getPromptPlaceholder = (model: Question | undefined) => {
 export default _.compose(
   Search.loadList({
     query: {
-      models: "dataset",
+      models: ["dataset"],
       limit: 1,
     },
     listName: "models",

@@ -1,10 +1,11 @@
-import { getSize, getStylesRef, px, rem } from "@mantine/core";
 import type {
   MantineSize,
   MantineTheme,
   MantineThemeOverride,
   CSSObject,
 } from "@mantine/core";
+import { getStylesRef, px, rem, getSize } from "@mantine/core";
+
 import { SelectDropdown } from "./SelectDropdown";
 import { SelectItem } from "./SelectItem";
 
@@ -21,15 +22,22 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       },
     }),
     styles: (theme, _, { size = "md" }) => ({
-      ...getSelectInputOverrides(theme, size),
+      ...getSelectInputOverrides(theme),
       ...getSelectItemsOverrides(theme, size),
+      // For epic (metabase#38699)
+      dropdown: {
+        ">div": {
+          maxHeight: "none !important",
+        },
+        padding: 0,
+        overflow: "auto",
+      },
     }),
   },
 });
 
 export const getSelectInputOverrides = (
   theme: MantineTheme,
-  size: MantineSize | number,
 ): Record<string, CSSObject> => {
   return {
     root: {
@@ -42,9 +50,7 @@ export const getSelectInputOverrides = (
       },
     },
     label: {
-      color: theme.fn.themeColor("text-medium"),
       ref: getStylesRef("label"),
-      fontSize: getSize({ size, sizes: theme.fontSizes }),
     },
     description: {
       ref: getStylesRef("description"),
@@ -55,9 +61,6 @@ export const getSelectInputOverrides = (
     wrapper: {
       ref: getStylesRef("wrapper"),
       color: theme.fn.themeColor("text-dark"),
-      "&:not(:only-child)": {
-        marginTop: theme.spacing.xs,
-      },
       [`&:has(.${getStylesRef("input")}[data-disabled])`]: {
         opacity: 1,
         pointerEvents: "auto",

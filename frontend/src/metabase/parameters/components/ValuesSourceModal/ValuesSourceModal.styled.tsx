@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 export const ModalBody = styled.div`

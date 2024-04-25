@@ -4,8 +4,8 @@ import {
   filterWidget,
   popover,
 } from "e2e/support/helpers";
-import * as DateFilter from "./helpers/e2e-date-filter-helpers";
 
+import * as DateFilter from "./helpers/e2e-date-filter-helpers";
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
 describe("scenarios > filters > sql filters > basic filter types", () => {
@@ -30,7 +30,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Rustic Paper Wallet");
         cy.findAllByText("Doohickey").should("not.exist");
       });
@@ -42,24 +42,15 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Rustic Paper Wallet");
         cy.findAllByText("Doohickey").should("not.exist");
       });
     });
 
     describe("required tag", () => {
-      it("needs a default value to run or save the query", () => {
+      it("does not need a default value to run and save the query", () => {
         SQLFilter.toggleRequired();
-        SQLFilter.getRunQueryButton().should("be.disabled");
-        SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
-
-        SQLFilter.getSaveQueryButton().realHover();
-        cy.get("body").findByText(
-          'The "TextFilter" variable requires a default value but none was provided.',
-        );
-
-        SQLFilter.setDefaultValue("Some text");
         SQLFilter.getRunQueryButton().should("not.be.disabled");
         SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
       });
@@ -87,7 +78,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         SQLFilter.toggleRequired();
         filterWidget().within(() => {
           cy.get("input").type("abc").should("have.value", "defaultabc");
-          cy.icon("refresh").click();
+          cy.icon("time_history").click();
           cy.get("input").should("have.value", "default");
         });
       });
@@ -109,7 +100,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Aerodynamic Linen Coat");
         cy.findAllByText("4.3");
       });
@@ -121,25 +112,15 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Aerodynamic Linen Coat");
         cy.findAllByText("4.3");
       });
     });
 
     describe("required tag", () => {
-      it("needs a default value to run or save the query", () => {
+      it("does not need a default value to run and save the query", () => {
         SQLFilter.toggleRequired();
-        SQLFilter.getRunQueryButton().should("be.disabled");
-        SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
-
-        SQLFilter.getSaveQueryButton().realHover();
-
-        cy.get("body").findByText(
-          'The "NumberFilter" variable requires a default value but none was provided.',
-        );
-
-        SQLFilter.setDefaultValue("33");
         SQLFilter.getRunQueryButton().should("not.be.disabled");
         SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
       });
@@ -167,7 +148,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         SQLFilter.toggleRequired();
         filterWidget().within(() => {
           cy.get("input").type(".11").should("have.value", "3.11");
-          cy.icon("refresh").click();
+          cy.icon("time_history").click();
           cy.get("input").should("have.value", "3");
         });
       });
@@ -188,14 +169,15 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       filterWidget().click();
       // Since we have fixed dates in Sample Database (dating back a couple of years), it'd be cumbersome to click back month by month.
       // Instead, let's choose the 15th of the current month and assert that there are no products / no results.
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("15").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Update filter").click();
+
+      popover().within(() => {
+        cy.findByText("15").click();
+        cy.findByText("Add filter").click();
+      });
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("No results!");
       });
     });
@@ -203,44 +185,34 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     it("when set as the default value for a required filter", () => {
       SQLFilter.toggleRequired();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Select a default value…").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("15").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Update filter").click();
+      cy.findByTestId("sidebar-content")
+        .findByPlaceholderText("Select a default value…")
+        .click();
+      popover().within(() => {
+        cy.findByText("15").click();
+        cy.findByText("Add filter").click();
+      });
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("No results!");
       });
     });
 
     function setDefaultDate(year = "2024", month = "01", day = "22") {
       cy.findByTestId("sidebar-content")
-        .findByText("Select a default value…")
+        .findByPlaceholderText("Select a default value…")
         .click();
       popover().within(() => {
         DateFilter.setSingleDate(`${month}/${day}/${year}`);
-        cy.findByText("Update filter").click();
+        cy.findByText("Add filter").click();
       });
     }
 
     describe("required tag", () => {
-      it("needs a default value for to run or save query", () => {
+      it("does not need a default value to run and save the query", () => {
         SQLFilter.toggleRequired();
-        SQLFilter.getRunQueryButton().should("be.disabled");
-        SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
-
-        SQLFilter.getSaveQueryButton().realHover();
-
-        cy.get("body").findByText(
-          'The "DateFilter" variable requires a default value but none was provided.',
-        );
-
-        setDefaultDate();
-
         SQLFilter.getRunQueryButton().should("not.be.disabled");
         SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
       });
@@ -262,7 +234,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
           cy.findByText("15").click();
           cy.findByText("Update filter").click();
         });
-        filterWidget().icon("refresh").click();
+        filterWidget().icon("time_history").click();
         filterWidget()
           .findByTestId("field-set-content")
           .should("have.text", "November 1, 2023");

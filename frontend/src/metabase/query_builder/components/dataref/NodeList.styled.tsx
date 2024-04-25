@@ -1,9 +1,13 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { Icon } from "metabase/ui";
+import {
+  HoverParent,
+  TableColumnInfoIcon,
+} from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
+import { Icon } from "metabase/ui";
 
 export const NodeListItemName = styled.span`
   font-weight: 700;
@@ -34,6 +38,7 @@ export const NodeListItemLink = styled.a<NodeListItemLinkProps>`
   overflow-wrap: anywhere;
   word-break: break-word;
   word-wrap: anywhere;
+  min-height: 2.2rem;
   display: flex;
   padding: ${space(1)};
   text-decoration: none;
@@ -73,4 +78,16 @@ export const QuestionId = styled.span`
   font-size: 0.75rem;
   color: ${color("text-medium")};
   margin-left: ${space(0)};
+`;
+
+export const NodeListInfoIcon = styled(TableColumnInfoIcon)`
+  margin-left: auto;
+`;
+
+export const NodeListItem = styled(HoverParent)`
+  ${NodeListItemLink} {
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-right: 0;
+  }
 `;

@@ -1,6 +1,8 @@
-import * as Yup from "yup";
-import type { AnySchema } from "yup";
 import userEvent from "@testing-library/user-event";
+import type { AnySchema } from "yup";
+import * as Yup from "yup";
+
+import { render, screen, waitFor } from "__support__/ui";
 import {
   Form,
   FormProvider,
@@ -8,7 +10,6 @@ import {
   FormTextarea,
   requiredErrorMessage,
 } from "metabase/forms";
-import { render, screen, waitFor } from "__support__/ui";
 
 interface FormValues {
   name: string | null | undefined;
@@ -55,8 +56,8 @@ describe("FormTextarea", () => {
   it("should submit a non-empty value", async () => {
     const { onSubmit } = setup();
 
-    userEvent.type(screen.getByLabelText("Name"), "Test");
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.type(screen.getByLabelText("Name"), "Test");
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -71,8 +72,8 @@ describe("FormTextarea", () => {
       initialValues: { name: "Test" },
     });
 
-    userEvent.clear(screen.getByLabelText("Name"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.clear(screen.getByLabelText("Name"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -88,8 +89,8 @@ describe("FormTextarea", () => {
       nullable: true,
     });
 
-    userEvent.clear(screen.getByLabelText("Name"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.clear(screen.getByLabelText("Name"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({ name: null }, expect.anything());
@@ -103,9 +104,9 @@ describe("FormTextarea", () => {
     setup({ initialValues: validationSchema.getDefault(), validationSchema });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
 
-    userEvent.type(screen.getByLabelText("Name"), "Test");
-    userEvent.clear(screen.getByLabelText("Name"));
-    userEvent.tab();
+    await userEvent.type(screen.getByLabelText("Name"), "Test");
+    await userEvent.clear(screen.getByLabelText("Name"));
+    await userEvent.tab();
 
     await waitFor(() => {
       expect(screen.getByText("Required")).toBeInTheDocument();
@@ -122,9 +123,9 @@ describe("FormTextarea", () => {
     setup({ initialValues: validationSchema.getDefault(), validationSchema });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
 
-    userEvent.type(screen.getByLabelText("Name"), "Test");
-    userEvent.clear(screen.getByLabelText("Name"));
-    userEvent.tab();
+    await userEvent.type(screen.getByLabelText("Name"), "Test");
+    await userEvent.clear(screen.getByLabelText("Name"));
+    await userEvent.tab();
     await waitFor(() => {
       expect(screen.getByText("Required")).toBeInTheDocument();
     });

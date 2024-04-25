@@ -1,13 +1,15 @@
-import _ from "underscore";
 import { getIn } from "icepick";
-import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
-import { isNotNull } from "metabase/lib/types";
+import _ from "underscore";
+
 import { formatNullable } from "metabase/lib/formatting/nullable";
+import { isNotNull } from "metabase/lib/types";
 import type {
   ChartColumns,
   ColumnDescriptor,
 } from "metabase/visualizations/lib/graph/columns";
 import { getColumnDescriptors } from "metabase/visualizations/lib/graph/columns";
+import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
+import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
 import type {
   BarData,
   Series,
@@ -18,18 +20,17 @@ import type {
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
 import { sumMetric } from "metabase/visualizations/shared/utils/data";
-import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
 import type {
   DataPoint,
   StackedTooltipModel,
   TooltipRowModel,
 } from "metabase/visualizations/types";
-import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import { isMetric } from "metabase-lib/types/utils/isa";
 import type {
   ClickObject,
   ClickObjectDimension,
-} from "metabase-lib/queries/drills/types";
+} from "metabase-lib/v1/queries/drills/types";
+import { isMetric } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
 const getMetricColumnData = (
   columns: DatasetColumn[],
@@ -37,7 +38,6 @@ const getMetricColumnData = (
   visualizationSettings: VisualizationSettings,
 ) => {
   return Object.entries(metricDatum).map(([columnName, value]) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const col = columns.find(column => column.name === columnName)!;
     const key =
       getIn(visualizationSettings, ["series_settings", col.name, "title"]) ??

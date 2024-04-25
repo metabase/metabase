@@ -1,10 +1,11 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import ActionButton from "metabase/components/ActionButton";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Button from "metabase/core/components/Button";
-import ActionButton from "metabase/components/ActionButton";
 import NumericInput from "metabase/core/components/NumericInput";
+import CS from "metabase/css/core/index.css";
 
 import { normalizeCacheTTL } from "../../utils";
 
@@ -37,7 +38,7 @@ const CacheSection = ({ initialCacheTTL, onSave }: CacheSectionProps) => {
         renderTrigger={({ onClick, visible }) => (
           <Button
             borderless
-            className="text-brand"
+            className={CS.textBrand}
             onClick={onClick}
             iconRight={visible ? "chevronup" : "chevrondown"}
           >

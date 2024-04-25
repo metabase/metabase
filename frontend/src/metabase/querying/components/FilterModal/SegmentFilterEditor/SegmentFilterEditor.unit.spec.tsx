@@ -1,15 +1,18 @@
 import userEvent from "@testing-library/user-event";
+
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { createQuery, findSegment } from "metabase-lib/test-helpers";
 import { createMockSegment } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import * as Lib from "metabase-lib";
-import { createQuery, findSegment } from "metabase-lib/test-helpers";
+
 import type { SegmentItem } from "../types";
+
 import { SegmentFilterEditor } from "./SegmentFilterEditor";
 
 const SEGMENT1 = createMockSegment({
@@ -65,8 +68,8 @@ describe("SegmentFilterEditor", () => {
       segmentItems: getSegmentItems(defaultQuery, stageIndex),
     });
 
-    userEvent.click(screen.getByPlaceholderText("Filter segments"));
-    userEvent.click(await screen.findByText(SEGMENT2.name));
+    await userEvent.click(screen.getByPlaceholderText("Filter segments"));
+    await userEvent.click(await screen.findByText(SEGMENT2.name));
 
     const nextSegmentItems = getNextSegmentItems();
     expect(nextSegmentItems).toHaveLength(1);
@@ -85,7 +88,10 @@ describe("SegmentFilterEditor", () => {
     expect(screen.getByText(SEGMENT1.name)).toBeInTheDocument();
     expect(screen.queryByText(SEGMENT2.name)).not.toBeInTheDocument();
 
-    userEvent.type(screen.getByLabelText("Filter segments"), "{backspace}");
+    await userEvent.type(
+      screen.getByLabelText("Filter segments"),
+      "{backspace}",
+    );
     const nextSegmentItems = getNextSegmentItems();
     expect(nextSegmentItems).toHaveLength(0);
   });

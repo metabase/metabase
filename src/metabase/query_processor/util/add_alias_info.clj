@@ -50,18 +50,19 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.malli :as mu]))
 
-(defn prefix-field-alias
+(defn- prefix-field-alias
   "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for
   columns that are the result of joins."
   [prefix field-alias]
@@ -104,7 +105,7 @@
   `:qp/refs`. This removes `:source-field` if it is present -- don't use the output of this for anything but internal
   key/distinct comparison purposes."
   [clause]
-  (mbql.u/match-one clause
+  (lib.util.match/match-one clause
     ;; optimization: don't need to rewrite a `:field` clause without any options
     [:field _ nil]
     &match
@@ -145,7 +146,7 @@
      [breakout
       (map-indexed
        (fn [i ag]
-         (mbql.u/replace ag
+         (lib.util.match/replace ag
            [:aggregation-options wrapped opts]
            [:aggregation i]
 
@@ -196,7 +197,7 @@
                        :query  inner-query})))))
 
 (defn- exports [query]
-  (into #{} (mbql.u/match (dissoc query :source-query :source-metadata :joins)
+  (into #{} (lib.util.match/match (dissoc query :source-query :source-metadata :joins)
               [(_ :guard #{:field :expression :aggregation-options}) _ (_ :guard (every-pred map? ::position))])))
 
 (defn- join-with-alias [{:keys [joins]} join-alias]
@@ -234,22 +235,38 @@
             (m/find-first (fn [[_field an-id-or-name _opts]]
                             (= an-id-or-name id-or-name))
                           field-exports)))
-        ;; look for a matching expression clause with the same name if still no match
+        ;; otherwise if this is a nominal field literal ref then look for matches based on the string name used
         (when-let [field-name (let [[_ id-or-name] field-clause]
                                 (when (string? id-or-name)
                                   id-or-name))]
-          (or (m/find-first (fn [[_ expression-name :as _expression-clause]]
+          (or ;; First, look for Expressions or fields from the source query stage whose `::desired-alias` matches the
+              ;; name we're searching for.
+              (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
+                              (when (#{:expression :field} tag)
+                                (= desired-alias field-name)))
+                            all-exports)
+              ;; Expressions by exact name.
+              (m/find-first (fn [[_ expression-name :as _expression-clause]]
                               (= expression-name field-name))
                             (filter (partial mbql.u/is-clause? :expression) all-exports))
-              (m/find-first (fn [[_ _ opts :as _aggregation-options-clause]]
-                              (= (::source-alias opts) field-name))
-                            (filter (partial mbql.u/is-clause? :aggregation-options) all-exports))))
-        ;; look for a field referenced by the name in source-metadata
-        (let [field-name (second field-clause)]
-          (when (string? field-name)
-            (when-let [column (m/find-first #(= (:name %) field-name) source-metadata)]
-              (let [signature (field-signature (:field_ref column))]
-                (m/find-first #(= (field-signature %) signature) field-exports))))))))
+              ;; aggregation clauses from the previous stage based on their `::desired-alias`. If THAT doesn't work,
+              ;; then try to match based on their `::source-alias` (not 100% sure why we're checking `::source-alias` at
+              ;; all TBH -- Cam)
+              (when-let [ag-clauses (seq (filter (partial mbql.u/is-clause? :aggregation-options) all-exports))]
+                (some (fn [k]
+                        (m/find-first (fn [[_tag _ag-clause opts :as _aggregation-options-clause]]
+                                        (= (get opts k) field-name))
+                                      ag-clauses))
+                      [::desired-alias ::source-alias]))
+              ;; look for a field referenced by the name in source-metadata
+              (when-let [column (m/find-first #(= (:name %) field-name) source-metadata)]
+                (let [signature (field-signature (:field_ref column))]
+                  (or ;; First try to match with the join alias.
+                   (m/find-first #(= (field-signature %) signature) field-exports)
+                   ;; Then just the names, but if the match is ambiguous, warn and return nil.
+                   (let [matches (filter #(= (second %) field-name) field-exports)]
+                     (when (= (count matches) 1)
+                       (first matches)))))))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
@@ -279,7 +296,7 @@
 
 (defn- field-alias-in-source-query
   [inner-query field-clause]
-  (when-let [[_ _ {::keys [desired-alias]}] (matching-field-in-source-query inner-query field-clause)]
+  (when-let [[_tag _id-or-name {::keys [desired-alias]}] (matching-field-in-source-query inner-query field-clause)]
     desired-alias))
 
 (defmulti ^String field-reference
@@ -316,6 +333,11 @@
                        (qp.store/->legacy-metadata field)))
     (:name field)))
 
+(defn- field-requires-original-field-name
+  "JSON extraction fields need to be named with their outer `field-name`, not use any existing `::desired-alias`."
+  [field-clause]
+  (boolean (some-> field-clause field-instance :nfc-path)))
+
 (defn- field-name
   "*Actual* name of a `:field` from the database or source query (for Field literals)."
   [_inner-query [_ id-or-name :as field-clause]]
@@ -330,6 +352,7 @@
   it around instead of recalculating it a bunch of times."
   [inner-query field-clause]
   {:field-name              (field-name inner-query field-clause)
+   :override-alias?         (field-requires-original-field-name field-clause)
    :join-is-this-level?     (field-is-from-join-in-this-level? inner-query field-clause)
    :alias-from-join         (field-alias-in-join-at-this-level inner-query field-clause)
    :alias-from-source-query (field-alias-in-source-query inner-query field-clause)})
@@ -360,10 +383,14 @@
   "Determine the appropriate `::desired-alias` for a `field-clause`."
   {:arglists '([inner-query field-clause expensive-field-info])}
   [_inner-query
-   [_ _id-or-name {:keys [join-alias]} :as _field-clause]
-   {:keys [field-name alias-from-join alias-from-source-query]}]
+   [_ _id-or-name {:keys [join-alias], ::keys [desired-alias], explicit-name :name} :as _field-clause]
+   {:keys [field-name alias-from-join alias-from-source-query override-alias?], :as _expensive-field-info}]
   (cond
     join-alias              (prefix-field-alias join-alias (or alias-from-join field-name))
+    ;; JSON fields and similar have to be aliased by the outer field name.
+    override-alias?         field-name
+    explicit-name           explicit-name
+    desired-alias           desired-alias
     alias-from-source-query alias-from-source-query
     :else                   field-name))
 
@@ -430,7 +457,7 @@
 (defn- add-alias-info* [inner-query]
   (assert (not (:strategy inner-query)) "add-alias-info* should not be called on a join") ; not user-facing
   (let [unique-alias-fn (make-unique-alias-fn)]
-    (-> (mbql.u/replace inner-query
+    (-> (lib.util.match/replace inner-query
           ;; don't rewrite anything inside any source queries or source metadata.
           (_ :guard (constantly (some (partial contains? (set &parents))
                                       [:source-query :source-metadata])))

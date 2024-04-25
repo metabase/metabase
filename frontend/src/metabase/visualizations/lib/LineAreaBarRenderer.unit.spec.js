@@ -1,11 +1,5 @@
 import "__support__/ui-mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
 
-import registerVisualizations from "metabase/visualizations/register";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { createMockCard } from "metabase-types/api/mocks";
-import lineAreaBarRenderer, {
-  getDimensionsAndGroupsAndUpdateSeriesDisplayNames,
-} from "metabase/visualizations/lib/LineAreaBarRenderer";
 import {
   NumberColumn,
   DateTimeColumn,
@@ -14,6 +8,12 @@ import {
   renderLineAreaBar,
   getFormattedTooltips,
 } from "__support__/visualizations";
+import lineAreaBarRenderer, {
+  getDimensionsAndGroupsAndUpdateSeriesDisplayNames,
+} from "metabase/visualizations/lib/LineAreaBarRenderer";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import registerVisualizations from "metabase/visualizations/register";
+import { createMockCard } from "metabase-types/api/mocks";
 
 registerVisualizations();
 

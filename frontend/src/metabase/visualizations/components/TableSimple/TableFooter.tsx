@@ -1,11 +1,12 @@
+import cx from "classnames";
 import type { MouseEvent } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
-import cx from "classnames";
 
+import DashboardS from "metabase/css/dashboard.module.css";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Icon } from "metabase/ui";
-
-import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import {
   TableFooterRoot,
@@ -74,7 +75,9 @@ const TableFooter = forwardRef<HTMLDivElement, TableFooterProps>(
       <TableFooterRoot
         className={cx(
           className,
-          "fullscreen-normal-text fullscreen-night-text",
+          DashboardS.fullscreenNormalText,
+          DashboardS.fullscreenNightText,
+          EmbedFrameS.fullscreenNightText,
         )}
         data-testid={dataTestId}
         ref={ref}

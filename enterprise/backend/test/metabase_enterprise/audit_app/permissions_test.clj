@@ -10,11 +10,10 @@
    [metabase.models.collection :refer [Collection]]
    [metabase.models.collection.graph :refer [update-graph!]]
    [metabase.models.collection.graph-test :refer [graph]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions
-    :as perms
-    :refer [Permissions table-query-path]]
+   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
@@ -40,7 +39,7 @@
       (mt/with-premium-features #{:audit-app}
         (mt/with-test-user :crowberto
           (testing "A query using a saved audit model as the source table runs succesfully"
-            (let [audit-card (t2/select-one :model/Card :database_id perms/audit-db-id :dataset true)]
+            (let [audit-card (t2/select-one :model/Card :database_id perms/audit-db-id :type :model)]
               (is (partial=
                    {:status :completed}
                    (qp/process-query
@@ -87,17 +86,19 @@
 
           (testing "Users without access to the audit collection cannot run any queries on the audit DB, even if they
                    have data perms for the audit DB"
-            (binding [api/*current-user-permissions-set* (delay #{(perms/data-perms-path perms/audit-db-id)})]
-              (let [audit-view (t2/select-one :model/Table :db_id perms/audit-db-id)]
-                (is (thrown-with-msg?
-                     clojure.lang.ExceptionInfo
-                     #"You do not have access to the audit database"
-                     (qp/process-query
-                      {:database perms/audit-db-id
-                       :type     :query
-                       :query    {:source-table (u/the-id audit-view)}})))))))))))
+            (mt/with-full-data-perms-for-all-users!
+              (mt/with-test-user :rasta
+                (binding [api/*current-user-permissions-set* (delay #{})]
+                  (let [audit-view (t2/select-one :model/Table :db_id perms/audit-db-id)]
+                    (is (thrown-with-msg?
+                         clojure.lang.ExceptionInfo
+                         #"You do not have access to the audit database"
+                         (qp/process-query
+                          {:database perms/audit-db-id
+                           :type     :query
+                           :query    {:source-table (u/the-id audit-view)}})))))))))))))
 
-(deftest permissions-instance-analytics-audit-v2-test
+(deftest analytics-permissions-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [PermissionsGroup {group-id :id}    {}
                    Database         {database-id :id} {}
@@ -105,10 +106,14 @@
                    Collection       collection        {}]
       (with-redefs [perms/audit-db-id                 database-id
                     audit-db/default-audit-collection (constantly collection)]
-        (testing "Adding instance analytics adds audit db permissions"
+        (testing "Updating permissions for the audit collection also updates audit DB permissions"
+          ;; Audit DB starts with full data access but no query builder access
+          (is (= :unrestricted (data-perms/table-permission-for-group group-id :perms/view-data database-id (:id view-table))))
+          (is (= :no (data-perms/table-permission-for-group group-id :perms/create-queries database-id (:id view-table))))
+          ;; Granting access to the audit collection also grants query builder access to the DB
           (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :read))
-          (let [new-perms (t2/select-fn-set :object Permissions {:where [:= :group_id group-id]})]
-            (is (contains? new-perms (table-query-path view-table)))))
+          (is (= :unrestricted (data-perms/table-permission-for-group group-id :perms/view-data database-id (:id view-table))))
+          (is (= :query-builder (data-perms/table-permission-for-group group-id :perms/create-queries database-id (:id view-table)))))
         (testing "Unable to update instance analytics to writable"
           (is (thrown-with-msg?
                Exception
@@ -116,7 +121,7 @@
                (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :write)))))))))
 
 ;; TODO: re-enable these tests once they're no longer flaky
-(defn- install-audit-db-if-needed!
+(defn install-audit-db-if-needed!
   "Checks if there's an audit-db. if not, it will create it and serialize audit content, including the
   `default-audit-collection`. If the audit-db is there, this does nothing."
   []
@@ -125,7 +130,10 @@
         cards (t2/exists? :model/Card :collection_id default-audit-id)
         dashboards (t2/exists? :model/Dashboard :collection_id default-audit-id)]
     (when-not (and coll cards dashboards)
-      (mbc/ensure-audit-db-installed!))))
+      ;; Force audit db to load, even if the checksum has not changed. Sometimes analytics bits get removed by tests,
+      ;; but next time we go to load analytics data, we find the existing checksum and don't bother loading it again.
+      (mt/with-temporary-setting-values [last-analytics-checksum -1]
+        (mbc/ensure-audit-db-installed!)))))
 
 (deftest can-write-false-for-audit-card-content-test
   (install-audit-db-if-needed!)

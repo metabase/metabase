@@ -1,11 +1,11 @@
-import { DataPermissionsHelp } from "metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp";
 import { mockSettings } from "__support__/settings";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { DataPermissionsHelp } from "metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 async function setup({ hasAdvancedPermissions = false } = {}) {
   const settings = mockSettings({
@@ -23,7 +23,7 @@ async function setup({ hasAdvancedPermissions = false } = {}) {
   await waitForLoaderToBeRemoved();
 }
 
-describe("DataPermissionsHelp", function () {
+describe("DataPermissionsHelp", () => {
   it("shows link to the plans page on non-enterprise instances", () => {
     setup({ hasAdvancedPermissions: false });
 

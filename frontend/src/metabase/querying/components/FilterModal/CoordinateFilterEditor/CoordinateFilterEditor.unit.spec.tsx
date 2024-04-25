@@ -1,11 +1,9 @@
 import userEvent from "@testing-library/user-event";
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
+
+import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+
 import { CoordinateFilterEditor } from "./CoordinateFilterEditor";
 
 interface SetupOpts {
@@ -41,7 +39,7 @@ function setup({ query, stageIndex, column, filter }: SetupOpts) {
   return { onChange, onInput, getNextFilterName };
 }
 
-describe("StringFilterEditor", () => {
+describe("CoordinateFilterEditor", () => {
   const query = createQuery();
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(query, stageIndex);
@@ -56,13 +54,12 @@ describe("StringFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByText("between"));
-      userEvent.click(await screen.findByText("Is"));
-      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
-      userEvent.type(screen.getByLabelText("Filter value"), "10");
-      userEvent.tab();
-      userEvent.type(screen.getByLabelText("Filter value"), "20");
-      userEvent.tab();
+      await userEvent.click(screen.getByText("between"));
+      await userEvent.click(await screen.findByText("Is"));
+      await userEvent.type(screen.getByLabelText("Filter value"), "10");
+      await userEvent.tab();
+      await userEvent.type(screen.getByLabelText("Filter value"), "20");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Latitude is equal to 2 selections");
       expect(onInput).toHaveBeenCalled();
@@ -75,26 +72,25 @@ describe("StringFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByText("between"));
-      userEvent.click(await screen.findByText("Greater than"));
-      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
-      userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
-      userEvent.tab();
+      await userEvent.click(screen.getByText("between"));
+      await userEvent.click(await screen.findByText("Greater than"));
+      await userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Latitude is greater than 20");
       expect(onInput).toHaveBeenCalled();
     });
 
-    it("should add a filter with two values", () => {
+    it("should add a filter with two values", async () => {
       const { getNextFilterName, onInput } = setup({
         query,
         stageIndex,
         column,
       });
 
-      userEvent.type(screen.getByPlaceholderText("Min"), "10");
-      userEvent.type(screen.getByPlaceholderText("Max"), "20");
-      userEvent.tab();
+      await userEvent.type(screen.getByPlaceholderText("Min"), "10");
+      await userEvent.type(screen.getByPlaceholderText("Max"), "20");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Latitude is between 10 and 20");
       expect(onInput).toHaveBeenCalled();
@@ -107,14 +103,22 @@ describe("StringFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByText("between"));
-      userEvent.click(await screen.findByText("Inside"));
-      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
-      userEvent.type(screen.getByPlaceholderText("Lower latitude"), "-10");
-      userEvent.type(screen.getByPlaceholderText("Upper latitude"), "20");
-      userEvent.type(screen.getByPlaceholderText("Left longitude"), "-30");
-      userEvent.type(screen.getByPlaceholderText("Right longitude"), "40");
-      userEvent.tab();
+      await userEvent.click(screen.getByText("between"));
+      await userEvent.click(await screen.findByText("Inside"));
+      await userEvent.type(
+        screen.getByPlaceholderText("Lower latitude"),
+        "-10",
+      );
+      await userEvent.type(screen.getByPlaceholderText("Upper latitude"), "20");
+      await userEvent.type(
+        screen.getByPlaceholderText("Left longitude"),
+        "-30",
+      );
+      await userEvent.type(
+        screen.getByPlaceholderText("Right longitude"),
+        "40",
+      );
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe(
         "Latitude is between -10 and 20 and Longitude is between -30 and 40",
@@ -129,24 +133,24 @@ describe("StringFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByText("between"));
-      userEvent.click(await screen.findByText("Greater than"));
+      await userEvent.click(screen.getByText("between"));
+      await userEvent.click(await screen.findByText("Greater than"));
       expect(getNextFilterName()).toBeNull();
 
-      userEvent.type(screen.getByPlaceholderText("Enter a number"), "10");
-      userEvent.clear(screen.getByPlaceholderText("Enter a number"));
+      await userEvent.type(screen.getByPlaceholderText("Enter a number"), "10");
+      await userEvent.clear(screen.getByPlaceholderText("Enter a number"));
       expect(getNextFilterName()).toBeNull();
     });
 
-    it("should coerce invalid filter values", () => {
+    it("should coerce invalid filter values", async () => {
       const { getNextFilterName, onInput } = setup({
         query,
         stageIndex,
         column,
       });
 
-      userEvent.type(screen.getByPlaceholderText("Min"), "10");
-      userEvent.tab();
+      await userEvent.type(screen.getByPlaceholderText("Min"), "10");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe(
         "Latitude is greater than or equal to 10",
@@ -156,7 +160,7 @@ describe("StringFilterEditor", () => {
   });
 
   describe("existing filter", () => {
-    it("should update a filter with multiple values", () => {
+    it("should update a filter with multiple values", async () => {
       const { query, stageIndex, column, filter } = createQueryWithFilter({
         operator: "=",
         values: [10],
@@ -169,13 +173,13 @@ describe("StringFilterEditor", () => {
       });
       expect(screen.getByDisplayValue("10")).toBeInTheDocument();
 
-      userEvent.type(screen.getByLabelText("Filter value"), "20");
-      userEvent.tab();
+      await userEvent.type(screen.getByLabelText("Filter value"), "20");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Latitude is equal to 2 selections");
     });
 
-    it("should update a filter with one value", () => {
+    it("should update a filter with one value", async () => {
       const { query, stageIndex, column, filter } = createQueryWithFilter({
         operator: ">",
         values: [10],
@@ -187,14 +191,14 @@ describe("StringFilterEditor", () => {
         filter,
       });
 
-      userEvent.clear(screen.getByDisplayValue("10"));
-      userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
-      userEvent.tab();
+      await userEvent.clear(screen.getByDisplayValue("10"));
+      await userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Latitude is greater than 20");
     });
 
-    it("should update a filter with two values", () => {
+    it("should update a filter with two values", async () => {
       const { query, stageIndex, column, filter } = createQueryWithFilter({
         operator: "between",
         values: [10, 20],
@@ -206,16 +210,16 @@ describe("StringFilterEditor", () => {
         filter,
       });
 
-      userEvent.clear(screen.getByDisplayValue("10"));
-      userEvent.type(screen.getByPlaceholderText("Min"), "15");
-      userEvent.clear(screen.getByDisplayValue("20"));
-      userEvent.type(screen.getByPlaceholderText("Max"), "25");
-      userEvent.tab();
+      await userEvent.clear(screen.getByDisplayValue("10"));
+      await userEvent.type(screen.getByPlaceholderText("Min"), "15");
+      await userEvent.clear(screen.getByDisplayValue("20"));
+      await userEvent.type(screen.getByPlaceholderText("Max"), "25");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Latitude is between 15 and 25");
     });
 
-    it("should update a filter with four values", () => {
+    it("should update a filter with four values", async () => {
       const { query, stageIndex, column, filter } = createQueryWithFilter({
         operator: "inside",
         values: [20, -30, -10, 40],
@@ -227,15 +231,24 @@ describe("StringFilterEditor", () => {
         filter,
       });
 
-      userEvent.clear(screen.getByDisplayValue("-10"));
-      userEvent.type(screen.getByPlaceholderText("Lower latitude"), "-11");
-      userEvent.clear(screen.getByDisplayValue("20"));
-      userEvent.type(screen.getByPlaceholderText("Upper latitude"), "22");
-      userEvent.clear(screen.getByDisplayValue("-30"));
-      userEvent.type(screen.getByPlaceholderText("Left longitude"), "-33");
-      userEvent.clear(screen.getByDisplayValue("40"));
-      userEvent.type(screen.getByPlaceholderText("Right longitude"), "44");
-      userEvent.tab();
+      await userEvent.clear(screen.getByDisplayValue("-10"));
+      await userEvent.type(
+        screen.getByPlaceholderText("Lower latitude"),
+        "-11",
+      );
+      await userEvent.clear(screen.getByDisplayValue("20"));
+      await userEvent.type(screen.getByPlaceholderText("Upper latitude"), "22");
+      await userEvent.clear(screen.getByDisplayValue("-30"));
+      await userEvent.type(
+        screen.getByPlaceholderText("Left longitude"),
+        "-33",
+      );
+      await userEvent.clear(screen.getByDisplayValue("40"));
+      await userEvent.type(
+        screen.getByPlaceholderText("Right longitude"),
+        "44",
+      );
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe(
         "Latitude is between -11 and 22 and Longitude is between -33 and 44",

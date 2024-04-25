@@ -1,4 +1,4 @@
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import DateTime from "metabase/components/DateTime";
@@ -8,21 +8,26 @@ import {
 } from "metabase/components/MetadataInfo/MetadataInfo.styled";
 import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
+import Tables from "metabase/entities/tables";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import type { IconName } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
+import type Table from "metabase-lib/v1/metadata/Table";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import type { Collection } from "metabase-types/api/collection";
 import type { State } from "metabase-types/store";
-import type Table from "metabase-lib/metadata/Table";
-import type Question from "metabase-lib/Question";
-import * as ML_Urls from "metabase-lib/urls";
+
 import FieldList from "../FieldList";
 import { PaneContent } from "../Pane.styled";
+
 import {
+  QuestionPaneDescription,
   QuestionPaneDetail,
   QuestionPaneDetailLink,
   QuestionPaneDetailLinkText,
   QuestionPaneDetailText,
   QuestionPaneIcon,
-  QuestionPaneDescription,
 } from "./QuestionPane.styled";
 
 interface QuestionPaneProps {
@@ -30,21 +35,36 @@ interface QuestionPaneProps {
   onBack: () => void;
   onClose: () => void;
   question: Question;
+  table: Table;
   collection: Collection | null;
 }
+
+const getIcon = (question: Question): IconName => {
+  const type = question.type();
+
+  if (type === "question") {
+    return "table";
+  }
+
+  if (type === "model") {
+    return "model";
+  }
+
+  throw new Error(`Unknown question.type(): ${type}`);
+};
 
 const QuestionPane = ({
   onItemClick,
   question,
+  table,
   collection,
   onBack,
   onClose,
 }: QuestionPaneProps) => {
-  const table = question.composeThisQuery()?.table() as Table; // ? is only needed to satisfy type-checker
   return (
     <SidebarContent
       title={question.displayName() || undefined}
-      icon={question.isDataset() ? "model" : "table"}
+      icon={getIcon(question)}
       onBack={onBack}
       onClose={onClose}
     >
@@ -105,6 +125,12 @@ const QuestionPane = ({
 export default _.compose(
   Questions.load({
     id: (_state: State, props: QuestionPaneProps) => props.question.id,
+  }),
+  Tables.load({
+    id: (_state: State, props: QuestionPaneProps) =>
+      getQuestionVirtualTableId(props.question.id()),
+    fetchType: "fetchMetadata",
+    requestType: "fetchMetadata",
   }),
   Collections.load({
     id: (_state: State, props: QuestionPaneProps) =>

@@ -1,8 +1,11 @@
+import cx from "classnames";
 import type { Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
-import cx from "classnames";
+
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 
 interface RunButtonProps {
   className?: string;
@@ -39,11 +42,13 @@ const RunButton = forwardRef(function RunButton(
       {...props}
       icon={icon}
       primary={isDirty}
-      className={cx(className, "RunButton", {
-        "RunButton--hidden": hidden,
-        "RunButton--compact": circular && !props.borderless && compact,
-        circular: circular,
+      className={cx(className, QueryBuilderS.RunButton, {
+        [QueryBuilderS.RunButtonHidden]: hidden,
+        [QueryBuilderS.RunButtonCompact]:
+          circular && !props.borderless && compact,
+        [CS.circular]: circular,
       })}
+      data-testid="run-button"
       onClick={isRunning ? onCancel : onRun}
       ref={ref}
       aria-label={ariaLabel}

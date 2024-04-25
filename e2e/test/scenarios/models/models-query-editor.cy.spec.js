@@ -1,3 +1,4 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   modal,
   restore,
@@ -6,7 +7,7 @@ import {
   popover,
   openQuestionActions,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+
 import { selectFromDropdown } from "./helpers/e2e-models-helpers";
 
 describe("scenarios > models query editor", () => {
@@ -23,7 +24,7 @@ describe("scenarios > models query editor", () => {
     beforeEach(() => {
       cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
         name: "Orders Model",
-        dataset: true,
+        type: "model",
       });
     });
 
@@ -31,7 +32,9 @@ describe("scenarios > models query editor", () => {
       cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
-      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
 
       openQuestionActions();
 
@@ -44,12 +47,12 @@ describe("scenarios > models query editor", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row limit").click();
-      cy.findByPlaceholderText("Enter a limit").type("2");
+      cy.findByPlaceholderText("Enter a limit").type("2").blur();
 
-      cy.get(".RunButton").click();
+      cy.findByTestId("run-button").click();
       cy.wait("@dataset");
 
-      cy.get(".cellData")
+      cy.get("[data-testid=cell-data]")
         .should("contain", "37.65")
         .and("not.contain", "109.22");
 
@@ -61,7 +64,7 @@ describe("scenarios > models query editor", () => {
         .and("not.include", "/query");
       cy.location("hash").should("eq", "");
 
-      cy.get(".cellData")
+      cy.get("[data-testid=cell-data]")
         .should("contain", "37.65")
         .and("not.contain", "109.22");
     });
@@ -70,7 +73,9 @@ describe("scenarios > models query editor", () => {
       cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
-      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
 
       openQuestionActions();
 
@@ -80,12 +85,12 @@ describe("scenarios > models query editor", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row limit").click();
-      cy.findByPlaceholderText("Enter a limit").type("2");
+      cy.findByPlaceholderText("Enter a limit").type("2").blur();
 
-      cy.get(".RunButton").click();
+      cy.findByTestId("run-button").click();
       cy.wait("@dataset");
 
-      cy.get(".cellData")
+      cy.get("[data-testid=cell-data]")
         .should("contain", "37.65")
         .and("not.contain", "109.22");
 
@@ -98,7 +103,9 @@ describe("scenarios > models query editor", () => {
         .and("not.include", "/query");
       cy.location("hash").should("eq", "");
 
-      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
     });
 
     it("locks display to table", () => {
@@ -108,12 +115,13 @@ describe("scenarios > models query editor", () => {
 
       selectFromDropdown("Count of rows");
 
-      cy.get(".RunButton").click();
+      cy.findByTestId("run-button").click();
       cy.wait("@dataset");
 
       // FE chooses the scalar visualization to display count of rows for regular questions
-      cy.get(".TableInteractive");
-      cy.get(".ScalarValue").should("not.exist");
+      // TODO (styles): migrate
+      cy.get(".test-TableInteractive");
+      cy.findByTestId("scalar-value").should("not.exist");
     });
   });
 
@@ -122,7 +130,7 @@ describe("scenarios > models query editor", () => {
       cy.createNativeQuestion(
         {
           name: "Native Model",
-          dataset: true,
+          type: "model",
           native: {
             query: "SELECT * FROM orders limit 5",
           },
@@ -130,7 +138,9 @@ describe("scenarios > models query editor", () => {
         { visitQuestion: true },
       );
 
-      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
 
       openQuestionActions();
 
@@ -145,14 +155,14 @@ describe("scenarios > models query editor", () => {
 
       runNativeQuery();
 
-      cy.get(".cellData")
+      cy.get("[data-testid=cell-data]")
         .should("contain", "37.65")
         .and("not.contain", "109.22");
 
       cy.button("Save changes").click();
       cy.wait("@updateCard");
 
-      cy.get(".cellData")
+      cy.get("[data-testid=cell-data]")
         .should("contain", "37.65")
         .and("not.contain", "109.22");
     });
@@ -161,7 +171,7 @@ describe("scenarios > models query editor", () => {
       cy.createNativeQuestion(
         {
           name: "Native Model",
-          dataset: true,
+          type: "model",
           native: {
             query: "SELECT * FROM orders limit 5",
           },
@@ -169,7 +179,9 @@ describe("scenarios > models query editor", () => {
         { visitQuestion: true },
       );
 
-      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
 
       openQuestionActions();
 
@@ -184,7 +196,7 @@ describe("scenarios > models query editor", () => {
 
       runNativeQuery();
 
-      cy.get(".cellData")
+      cy.get("[data-testid=cell-data]")
         .should("contain", "37.65")
         .and("not.contain", "109.22");
 
@@ -192,14 +204,16 @@ describe("scenarios > models query editor", () => {
       modal().button("Discard changes").click();
       cy.wait("@cardQuery");
 
-      cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
     });
 
     it("handles failing queries", () => {
       cy.createNativeQuestion(
         {
           name: "Erroring Model",
-          dataset: true,
+          type: "model",
           native: {
             // Let's use API to type the most of the query, but stil make it invalid
             query: "SELECT 1 FROM",
@@ -226,14 +240,14 @@ describe("scenarios > models query editor", () => {
       cy.get(".ace_content").type("{backspace}".repeat(" FROM".length));
       runNativeQuery();
 
-      cy.get(".cellData").contains(1);
+      cy.get("[data-testid=cell-data]").contains(1);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("not.exist");
 
       cy.button("Save changes").click();
       cy.wait("@updateCard");
 
-      cy.get(".cellData").contains(1);
+      cy.get("[data-testid=cell-data]").contains(1);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("not.exist");
     });

@@ -1,5 +1,9 @@
-import { t } from "ttag";
 import type { MantineThemeOverride } from "@mantine/core";
+import { t } from "ttag";
+
+// See `zIndex` prop at https://v6.mantine.dev/core/modal/?t=props
+export const DEFAULT_MODAL_Z_INDEX = 200;
+const DEFAULT_MODAL_SPACING = "lg";
 
 export const getModalOverrides = (): MantineThemeOverride["components"] => ({
   Modal: {
@@ -20,6 +24,17 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
       shadow: "md",
       radius: "sm",
       withinPortal: true,
+    },
+  },
+  ModalHeader: {
+    defaultProps: {
+      p: DEFAULT_MODAL_SPACING,
+      pb: "sm",
+    },
+  },
+  ModalBody: {
+    defaultProps: {
+      p: DEFAULT_MODAL_SPACING,
     },
   },
   ModalCloseButton: {

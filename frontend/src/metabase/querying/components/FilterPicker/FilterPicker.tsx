@@ -1,10 +1,8 @@
 import { useCallback, useLayoutEffect, useState } from "react";
 
 import { useToggle } from "metabase/hooks/use-toggle";
-
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
-
 import * as Lib from "metabase-lib";
 
 import { FilterColumnPicker } from "./FilterColumnPicker";
@@ -17,9 +15,7 @@ export interface FilterPickerProps {
   filter?: Lib.FilterClause;
   filterIndex?: number;
 
-  onSelect: (
-    filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
-  ) => void;
+  onSelect: (filter: Lib.Filterable) => void;
   onClose?: () => void;
 }
 
@@ -48,9 +44,7 @@ export function FilterPicker({
     setFilter(initialFilter);
   }, [initialFilter]);
 
-  const handleChange = (
-    filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
-  ) => {
+  const handleChange = (filter: Lib.Filterable) => {
     onSelect(filter);
     onClose?.();
   };

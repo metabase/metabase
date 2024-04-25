@@ -1,6 +1,9 @@
 import styled from "@emotion/styled";
-import { Icon } from "metabase/ui";
+
 import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
+
+import { DEFAULT_ICON_PADDING } from "./constants";
 import type {
   CheckBoxContainerProps,
   CheckBoxIconContainerProps,
@@ -8,8 +11,6 @@ import type {
   CheckBoxInputProps,
   CheckBoxLabelProps,
 } from "./types";
-
-import { DEFAULT_ICON_PADDING } from "./constants";
 
 export const CheckBoxRoot = styled.label`
   display: block;

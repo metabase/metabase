@@ -228,12 +228,12 @@
    (next-method query-type model parsed-args honeysql)
    {:select    [:card/collection_id
                 :card/database_id
-                :card/dataset
                 :card/dataset_query
                 :card/id
                 :card/name
                 :card/result_metadata
                 :card/table_id
+                :card/type
                 :card/visualization_settings
                 :persisted/active
                 :persisted/state
@@ -263,14 +263,14 @@
 ;;; Metric
 ;;;
 
-(derive :metadata/metric :model/Metric)
+(derive :metadata/legacy-metric :model/LegacyMetric)
 
-(methodical/defmethod t2.model/resolve-model :metadata/metric
+(methodical/defmethod t2.model/resolve-model :metadata/legacy-metric
   [model]
-  (classloader/require 'metabase.models.metric)
+  (classloader/require 'metabase.models.legacy-metric)
   model)
 
-(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/metric
+(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/legacy-metric
                                              #_resolved-query clojure.lang.IPersistentMap
                                              #_k              :default]
   [model honeysql k v]
@@ -280,7 +280,7 @@
     (next-method model honeysql k v)))
 
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
-                                         #_model          :metadata/metric
+                                         #_model          :metadata/legacy-metric
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge
@@ -291,13 +291,13 @@
                 :metric/description
                 :metric/archived
                 :metric/definition]
-    :from      [[(t2/table-name :model/Metric) :metric]]
+    :from      [[(t2/table-name :model/LegacyMetric) :metric]]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :metric/table_id :table/id]]}))
 
-(t2/define-after-select :metadata/metric
+(t2/define-after-select :metadata/legacy-metric
   [metric]
-  (instance->metadata metric :metadata/metric))
+  (instance->metadata metric :metadata/legacy-metric))
 
 ;;;
 ;;; Segment
@@ -354,11 +354,11 @@
                       {})))
     (t2/select-one :metadata/database database-id))
 
-  (table   [_this table-id]   (t2/select-one :metadata/table   :id table-id   :db_id       database-id))
-  (field   [_this field-id]   (t2/select-one :metadata/column  :id field-id   :table/db_id database-id))
-  (card    [_this card-id]    (t2/select-one :metadata/card    :id card-id    :database_id database-id))
-  (metric  [_this metric-id]  (t2/select-one :metadata/metric  :id metric-id  :table/db_id database-id))
-  (segment [_this segment-id] (t2/select-one :metadata/segment :id segment-id :table/db_id database-id))
+  (table         [_this table-id]   (t2/select-one :metadata/table         :id table-id   :db_id       database-id))
+  (field         [_this field-id]   (t2/select-one :metadata/column        :id field-id   :table/db_id database-id))
+  (card          [_this card-id]    (t2/select-one :metadata/card          :id card-id    :database_id database-id))
+  (legacy-metric [_this metric-id]  (t2/select-one :metadata/legacy-metric :id metric-id  :table/db_id database-id))
+  (segment       [_this segment-id] (t2/select-one :metadata/segment       :id segment-id :table/db_id database-id))
 
   (tables [_this]
     (t2/select :metadata/table
@@ -372,8 +372,8 @@
                :active          true
                :visibility_type [:not-in #{"sensitive" "retired"}]))
 
-  (metrics [_this table-id]
-    (t2/select :metadata/metric :table_id table-id, :archived false))
+  (legacy-metrics [_this table-id]
+    (t2/select :metadata/legacy-metric :table_id table-id, :archived false))
 
   (segments [_this table-id]
     (t2/select :metadata/segment :table_id table-id, :archived false))
@@ -394,7 +394,12 @@
 
   pretty/PrettyPrintable
   (pretty [_this]
-    (list `->UncachedApplicationDatabaseMetadataProvider database-id)))
+    (list `->UncachedApplicationDatabaseMetadataProvider database-id))
+
+  Object
+  (equals [_this another]
+    (and (instance? UncachedApplicationDatabaseMetadataProvider another)
+         (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
 
 (mu/defn application-database-metadata-provider :- lib.metadata/MetadataProvider
   "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.

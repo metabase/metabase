@@ -1,16 +1,33 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Button, Flex, Modal, Stack, Tabs, Text, Icon } from "metabase/ui";
 
+import {
+  Button,
+  Flex,
+  Modal,
+  Stack,
+  Tabs,
+  Text,
+  Icon,
+  DelayGroup,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
+
 import { ColumnFilterSection } from "./ColumnFilterSection";
+import {
+  TabPanelItem,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  TabPanelRoot,
+} from "./FilterModal.styled";
 import { FilterSearchInput } from "./FilterSearchInput";
 import { SegmentFilterEditor } from "./SegmentFilterEditor";
 import { SEARCH_KEY } from "./constants";
+import type { ColumnItem, GroupItem, SegmentItem } from "./types";
 import {
   addSegmentFilters,
   appendStageIfAggregated,
-  dropStageIfEmpty,
   findColumnFilters,
   findVisibleFilters,
   getGroupItems,
@@ -23,14 +40,6 @@ import {
   searchGroupItems,
   sortColumns,
 } from "./utils";
-import type { ColumnItem, GroupItem, SegmentItem } from "./types";
-import {
-  TabPanelItem,
-  ModalBody,
-  ModalFooter,
-  ModalHeader,
-  TabPanelRoot,
-} from "./FilterModal.styled";
 
 interface FilterModalProps {
   query: Lib.Query;
@@ -77,7 +86,7 @@ export function FilterModal({
   };
 
   const handleSubmit = () => {
-    onSubmit(dropStageIfEmpty(query));
+    onSubmit(Lib.dropEmptyStages(query));
     onClose();
   };
 
@@ -300,7 +309,7 @@ function TabPanelColumnItem({
   const visibleFilters = findVisibleFilters(currentFilters, initialFilterCount);
 
   return (
-    <>
+    <DelayGroup>
       {visibleFilters.map((filter, filterIndex) => (
         <TabPanelFilterItem
           key={filterIndex}
@@ -312,7 +321,7 @@ function TabPanelColumnItem({
           onInput={onInput}
         />
       ))}
-    </>
+    </DelayGroup>
   );
 }
 
@@ -346,12 +355,7 @@ function TabPanelFilterItem({
   };
 
   return (
-    <TabPanelItem
-      component="li"
-      px="2rem"
-      py="1rem"
-      data-testid={`filter-column-${displayName}`}
-    >
+    <TabPanelItem component="li" data-testid={`filter-column-${displayName}`}>
       <ColumnFilterSection
         query={query}
         stageIndex={stageIndex}

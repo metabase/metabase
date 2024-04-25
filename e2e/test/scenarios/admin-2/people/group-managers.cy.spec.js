@@ -1,3 +1,4 @@
+import { USERS } from "e2e/support/cypress_data";
 import {
   restore,
   modal,
@@ -6,7 +7,6 @@ import {
   getFullName,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import { USERS } from "e2e/support/cypress_data";
 
 const { normal, nocollection } = USERS;
 
@@ -37,7 +37,7 @@ describeEE("scenarios > admin > people", () => {
 
   describe("group managers", () => {
     it("can manage groups from the group page", () => {
-      cy.get(".AdminList").within(() => {
+      cy.findByTestId("admin-left-nav-pane").within(() => {
         cy.findByTextEnsureVisible("Groups").click();
       });
 

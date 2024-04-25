@@ -1,10 +1,12 @@
 import userEvent from "@testing-library/user-event";
+
+import { screen } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
 import {
   createMockCard,
   createMockModerationReview,
 } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
+
 import { setup } from "./setup";
 
 const DESCRIPTION = "abc";
@@ -15,12 +17,12 @@ describe("QuestionInfoSidebar", () => {
       createMockCard({
         name: "Question",
         description: DESCRIPTION,
-        dataset: false,
+        type: "question",
       }),
       createMockCard({
         name: "Model",
         description: DESCRIPTION,
-        dataset: true,
+        type: "model",
       }),
     ])("should display description of a $name", async card => {
       await setup({ card });
@@ -42,7 +44,7 @@ describe("QuestionInfoSidebar", () => {
       await setup({ card });
 
       // show input
-      userEvent.click(screen.getByTestId("editable-text"));
+      await userEvent.click(screen.getByTestId("editable-text"));
 
       const input = screen.getByPlaceholderText("Add description");
       expect(input).toHaveValue(card.description);
@@ -52,7 +54,10 @@ describe("QuestionInfoSidebar", () => {
 
   describe("model detail link", () => {
     it("is shown for models", async () => {
-      const card = createMockCard({ name: "abc", dataset: true });
+      const card = createMockCard({
+        name: "abc",
+        type: "model",
+      });
       await setup({ card });
 
       const link = screen.getByText("Model details");
@@ -65,7 +70,6 @@ describe("QuestionInfoSidebar", () => {
       const card = createMockCard({
         name: "abc",
         description: DESCRIPTION,
-        dataset: false,
       });
       await setup({ card });
       expect(screen.getByText(DESCRIPTION)).toBeInTheDocument();

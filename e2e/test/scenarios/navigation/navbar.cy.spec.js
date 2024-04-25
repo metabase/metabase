@@ -1,3 +1,4 @@
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   appBar,
   describeEE,
@@ -7,7 +8,6 @@ import {
   visitDashboard,
   restore,
 } from "e2e/support/helpers";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > navigation > navbar", () => {
   describe("OSS", () => {
@@ -18,6 +18,12 @@ describe("scenarios > navigation > navbar", () => {
     it("should be open after logging in", () => {
       cy.visit("/");
       navigationSidebar().should("be.visible");
+    });
+
+    it("should display error ui when data fetching fails", () => {
+      cy.intercept("GET", "/api/database", req => req.reply(500));
+      cy.visit("/");
+      navigationSidebar().findByText(/An error occurred/);
     });
 
     it("state should preserve when clicking the mb logo", () => {

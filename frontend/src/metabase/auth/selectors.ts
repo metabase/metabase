@@ -1,7 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
+
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
-import { getSetting, getSettings } from "metabase/selectors/settings";
 import type { AuthProvider } from "metabase/plugins/types";
+import { getSetting, getSettings } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
 const EMPTY_PROVIDERS: AuthProvider[] = [];
@@ -28,10 +29,6 @@ export const getIsLdapEnabled = (state: State) => {
 
 export const getHasSessionCookies = (state: State) => {
   return getSetting(state, "session-cookies") ?? false;
-};
-
-export const getHasIllustration = (state: State) => {
-  return getSetting(state, "show-lighthouse-illustration");
 };
 
 export const getSiteLocale = (state: State) => {

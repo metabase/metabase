@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models :refer [PermissionsGroup]]
-   [metabase.models.permissions :as perms]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -19,7 +19,7 @@
           (let [impersonation {:group_id  (u/the-id group)
                                :db_id     (mt/id)
                                :attribute "Attribute Name"}
-                graph         (assoc (perms/data-perms-graph) :impersonations [impersonation])]
+                graph         (assoc (data-perms.graph/api-graph) :impersonations [impersonation])]
             (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)
             (is (=? [impersonation]
                     (t2/select :model/ConnectionImpersonation :group_id (u/the-id group)))))
@@ -28,7 +28,7 @@
             (let [impersonation {:group_id  (u/the-id group)
                                  :db_id     (mt/id)
                                  :attribute "New Attribute Name"}
-                  graph         (assoc (perms/data-perms-graph) :impersonations [impersonation])]
+                  graph         (assoc (data-perms.graph/api-graph) :impersonations [impersonation])]
               (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)
               (is (=?
                    [{:group_id  (u/the-id group)
@@ -106,9 +106,9 @@
                                                                :db_id    (mt/id)
                                                                :attribute "Attribute Name"}]
         ;; Grant full data access to the DB and group
-        (let [graph (assoc-in (perms/data-perms-graph)
-                              [:groups group-id (mt/id) :data :schemas]
-                              :all)]
+        (let [graph (assoc-in (data-perms.graph/api-graph)
+                              [:groups group-id (mt/id) :view-data]
+                              :unrestricted)]
           (mt/user-http-request :crowberto :put 200 "permissions/graph" graph))
         (is (nil? (t2/select-one :model/ConnectionImpersonation :id impersonation-id)))))
 
@@ -119,7 +119,7 @@
                                                                :db_id    (mt/id)
                                                                :attribute "Attribute Name"}]
         ;; Grant full database editing permissions
-        (let [graph (assoc-in (perms/data-perms-graph)
+        (let [graph (assoc-in (data-perms.graph/api-graph)
                               [:groups group-id (mt/id) :details]
                               :yes)]
           (mt/user-http-request :crowberto :put 200 "permissions/graph" graph))

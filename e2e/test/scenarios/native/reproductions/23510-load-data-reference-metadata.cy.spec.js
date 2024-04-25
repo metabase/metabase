@@ -1,5 +1,5 @@
-import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore } from "e2e/support/helpers";
 const { PRODUCTS } = SAMPLE_DATABASE;
 
 describe("issue 23510", () => {
@@ -12,7 +12,7 @@ describe("issue 23510", () => {
     cy.createNativeQuestion(
       {
         database: 1,
-        name: `Q23510`,
+        name: "Q23510",
         native: {
           query:
             "select count(*) from orders left join products on products.id=orders.product_id where {{category}}",

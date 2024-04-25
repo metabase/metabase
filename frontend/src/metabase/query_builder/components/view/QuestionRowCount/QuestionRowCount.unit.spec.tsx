@@ -2,18 +2,20 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
+  setupDatabasesEndpoints,
+  setupUnauthorizedDatabasesEndpoints,
+} from "__support__/server-mocks";
+import {
   fireEvent,
   renderWithProviders,
   screen,
   waitFor,
 } from "__support__/ui";
-import {
-  setupDatabasesEndpoints,
-  setupUnauthorizedDatabasesEndpoints,
-} from "__support__/server-mocks";
-
 import { checkNotNull } from "metabase/lib/types";
-
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
   createMockDataset,
@@ -29,11 +31,6 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
-
-import * as Lib from "metabase-lib";
-import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
-import Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
 
 import QuestionRowCount from "./QuestionRowCount";
 
@@ -154,7 +151,7 @@ describe("QuestionRowCount", () => {
         it("allows setting a limit", async () => {
           const { rowCount } = await setup({ question: getCard() });
 
-          userEvent.click(rowCount);
+          await userEvent.click(rowCount);
           const input = await screen.findByPlaceholderText("Pick a limit");
           fireEvent.change(input, { target: { value: "25" } });
           fireEvent.keyPress(input, { key: "Enter", charCode: 13 });
@@ -169,7 +166,7 @@ describe("QuestionRowCount", () => {
             question: getCard({ dataset_query: getDatasetQueryWithLimit(25) }),
           });
 
-          userEvent.click(rowCount);
+          await userEvent.click(rowCount);
           const input = await screen.findByDisplayValue("25");
           fireEvent.change(input, { target: { value: "400" } });
           fireEvent.keyPress(input, { key: "Enter", charCode: 13 });
@@ -184,8 +181,8 @@ describe("QuestionRowCount", () => {
             question: getCard({ dataset_query: getDatasetQueryWithLimit(25) }),
           });
 
-          userEvent.click(rowCount);
-          userEvent.click(
+          await userEvent.click(rowCount);
+          await userEvent.click(
             await screen.findByRole("radio", { name: /Show maximum/i }),
           );
 
@@ -206,7 +203,7 @@ describe("QuestionRowCount", () => {
             screen.queryByRole("button", { name: "Row count" }),
           ).not.toBeInTheDocument();
 
-          userEvent.click(rowCount);
+          await userEvent.click(rowCount);
 
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         });
@@ -264,7 +261,7 @@ describe("QuestionRowCount", () => {
             screen.queryByRole("button", { name: "Row count" }),
           ).not.toBeInTheDocument();
 
-          userEvent.click(rowCount);
+          await userEvent.click(rowCount);
 
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         });

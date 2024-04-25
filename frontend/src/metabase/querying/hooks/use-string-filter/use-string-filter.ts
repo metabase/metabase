@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
+
 import * as Lib from "metabase-lib";
+
 import {
   getAvailableOptions,
+  getDefaultOperator,
   getDefaultValues,
   getFilterClause,
   getOptionByOperator,
@@ -31,8 +34,8 @@ export function useStringFilter({
     [query, stageIndex, column],
   );
 
-  const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : "=",
+  const [operator, setOperator] = useState(() =>
+    filterParts ? filterParts.operator : getDefaultOperator(column),
   );
 
   const [values, setValues] = useState(() =>

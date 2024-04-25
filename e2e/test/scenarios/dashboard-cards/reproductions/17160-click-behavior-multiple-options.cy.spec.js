@@ -1,9 +1,9 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -92,7 +92,7 @@ function assertMultipleValuesFilterState() {
 
 function setup() {
   cy.createNativeQuestion({
-    name: `17160Q`,
+    name: "17160Q",
     native: {
       query: "SELECT * FROM products WHERE {{CATEGORY}}",
       "template-tags": {

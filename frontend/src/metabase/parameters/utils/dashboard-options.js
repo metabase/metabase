@@ -1,6 +1,7 @@
 import { t } from "ttag";
-import { ID_OPTION } from "metabase-lib/parameters/constants";
-import { buildTypedOperatorOptions } from "metabase-lib/parameters/utils/operators";
+
+import { ID_OPTION } from "metabase-lib/v1/parameters/constants";
+import { buildTypedOperatorOptions } from "metabase-lib/v1/parameters/utils/operators";
 
 export function getDashboardParameterSections() {
   return [
@@ -40,4 +41,39 @@ export function getDashboardParameterSections() {
       options: buildTypedOperatorOptions("string", "string", t`Text`),
     },
   ].filter(Boolean);
+}
+
+export function getDefaultOptionForParameterSection() {
+  const sections = getDashboardParameterSections();
+
+  const map = Object.fromEntries(
+    sections.map(section => {
+      const { id: sectionId, options } = section;
+      let defaultOption;
+
+      if (sectionId === "id") {
+        defaultOption = options[0];
+      }
+
+      if (sectionId === "location") {
+        defaultOption = options.find(o => o.type === "string/=");
+      }
+
+      if (sectionId === "number") {
+        defaultOption = options.find(o => o.type === "number/=");
+      }
+
+      if (sectionId === "string") {
+        defaultOption = options.find(o => o.type === "string/=");
+      }
+
+      if (sectionId === "date") {
+        defaultOption = options.find(o => o.type === "date/all-options");
+      }
+
+      return [sectionId, defaultOption];
+    }),
+  );
+
+  return map;
 }

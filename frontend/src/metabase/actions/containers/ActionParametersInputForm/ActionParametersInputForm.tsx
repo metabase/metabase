@@ -2,7 +2,6 @@ import type { FormikHelpers } from "formik";
 import { useCallback, useMemo } from "react";
 
 import ActionForm from "metabase/actions/components/ActionForm";
-
 import type {
   OnSubmitActionForm,
   ParametersForActionExecution,
@@ -44,7 +43,10 @@ function ActionParametersInputForm({
   }, [mappedParameters, action.visualization_settings?.fields]);
 
   const handleSubmit = useCallback(
-    async (parameters, actions) => {
+    async (
+      parameters: ParametersForActionExecution,
+      actions: FormikHelpers<ParametersForActionExecution>,
+    ) => {
       actions.setSubmitting(true);
       const { success, error } = await onSubmit(parameters);
       if (success) {

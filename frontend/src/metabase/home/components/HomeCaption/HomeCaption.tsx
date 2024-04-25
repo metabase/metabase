@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+
 import { CaptionRoot } from "./HomeCaption.styled";
 
 interface HomeCaptionProps {

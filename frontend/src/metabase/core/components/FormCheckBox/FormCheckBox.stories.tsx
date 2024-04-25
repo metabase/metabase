@@ -1,5 +1,7 @@
 import type { ComponentStory } from "@storybook/react";
+
 import { Form, FormProvider } from "metabase/forms";
+
 import FormCheckBox from "./FormCheckBox";
 
 export default {

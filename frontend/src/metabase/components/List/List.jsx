@@ -1,8 +1,8 @@
 /* eslint "react/prop-types": "warn" */
-import { memo } from "react";
 import PropTypes from "prop-types";
+import { memo } from "react";
 
-import S from "./List.css";
+import S from "./List.module.css";
 
 const List = ({ children }) => <ul className={S.list}>{children}</ul>;
 

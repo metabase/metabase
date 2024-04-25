@@ -1,3 +1,9 @@
+import { USERS } from "e2e/support/cypress_data";
+import {
+  NO_DATA_PERSONAL_COLLECTION_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
+  NORMAL_USER_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
@@ -7,13 +13,6 @@ import {
   getCollectionActions,
   openCollectionMenu,
 } from "e2e/support/helpers";
-
-import { USERS } from "e2e/support/cypress_data";
-import {
-  NO_DATA_PERSONAL_COLLECTION_ID,
-  ADMIN_PERSONAL_COLLECTION_ID,
-  NORMAL_USER_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 describe("personal collections", () => {
   beforeEach(() => {
@@ -97,7 +96,7 @@ describe("personal collections", () => {
       // Check that it's not possible to open permissions modal via URL for personal collection
       // cy.location().then(location => {
       //   cy.visit(`${location}/permissions`);
-      //   cy.get(".Modal").should("not.exist");
+      //   modal().should("not.exist");
       //   cy.url().should("eq", String(location));
       // });
 
@@ -114,7 +113,7 @@ describe("personal collections", () => {
       // Check that it's not possible to open permissions modal via URL for personal collection child
       // cy.location().then(location => {
       //   cy.visit(`${location}/permissions`);
-      //   cy.get(".Modal").should("not.exist");
+      //   modal().should("not.exist");
       //   cy.url().should("eq", String(location));
       // });
 
@@ -182,6 +181,11 @@ describe("personal collections", () => {
 
 function addNewCollection(name) {
   openNewCollectionItemFlowFor("collection");
-  cy.findByLabelText("Name").type(name, { delay: 0 });
-  cy.button("Create").click();
+  cy.findByPlaceholderText("My new fantastic collection").type(name, {
+    delay: 0,
+  });
+
+  cy.findByTestId("new-collection-modal").then(modal => {
+    cy.findByText("Create").click();
+  });
 }

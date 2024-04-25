@@ -30,6 +30,18 @@ There are only two access types for the Metabase analytics collection: **View** 
 
 Additionally, this Metabase analytics collection has a default sub-collection called "Custom reports" which you can use to save duplicated/modified questions, dashboards, and models. This sub-collection inherits the same permissions, but it's not view-only; admins have curate access by default, and can grant other groups view access.
 
+## Viewing usage insights for a question, dashboard, or model
+
+> Only people in groups with view access to the Metabase analytics collection will see this Usage insights option.
+
+To view usage analytics for a question, dashboard, or model:
+
+- Visit the item.
+- Click on the dot menu (**...**).
+- Select **Usage insights**.
+
+Metabase will take you to the relevant usage dashboard and plug in the item's ID.
+
 ## Creating custom reports
 
 You can duplicate any of the questions, dashboards and models in the Metabase analytics collection and tweak them to your liking, but you'll need to save them to a different collection.

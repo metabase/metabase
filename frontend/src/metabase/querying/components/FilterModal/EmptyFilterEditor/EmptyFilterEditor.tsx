@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { getColumnIcon } from "metabase/common/utils/columns";
-import { Flex, Text, Icon } from "metabase/ui";
 
-import * as Lib from "metabase-lib";
+import { getColumnIcon } from "metabase/common/utils/columns";
+
+import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
 
 export function EmptyFilterEditor({
@@ -10,20 +10,19 @@ export function EmptyFilterEditor({
   stageIndex,
   column,
 }: FilterEditorProps) {
-  const columnInfo = useMemo(() => {
-    return Lib.displayInfo(query, stageIndex, column);
-  }, [query, stageIndex, column]);
-
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);
 
   return (
-    <Flex direction="row" align="center" gap="sm" py="1rem">
-      <Icon name={columnIcon} />
-      <Text color="text-dark" weight="bold">
-        {columnInfo.displayName}
-      </Text>
-    </Flex>
+    <HoverParent>
+      <FilterTitle
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        columnIcon={columnIcon}
+        isSearching={false}
+      />
+    </HoverParent>
   );
 }

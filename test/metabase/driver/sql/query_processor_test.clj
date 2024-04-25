@@ -14,6 +14,7 @@
    [metabase.models.setting :as setting]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]
@@ -37,7 +38,7 @@
   (testing "[[sql.qp/sql-source-query]] should throw Exceptions if you pass in invalid nonsense"
     (doseq [params [nil [1000]]]
       (testing (format "Params = %s" (pr-str params))
-        (is (= [::sql.qp/sql-source-query "SELECT *" params]
+        (is (= {::sql.qp/sql-source-query ["SELECT *" params]}
                (sql.qp/sql-source-query "SELECT *" params)))))
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -64,7 +65,7 @@
                                      (qp.store/metadata-provider)
                                      meta/metadata-provider)
     (driver/with-driver :h2
-      (-> (sql.qp/mbql->native :h2 (qp/preprocess query))
+      (-> (sql.qp/mbql->native :h2 (qp.preprocess/preprocess query))
           :query
           sql.qp-test-util/pretty-sql))))
 
@@ -245,16 +246,19 @@
   (driver/with-driver :h2
     (with-redefs [driver/db-start-of-week   (constantly :monday)
                   setting/get-value-of-type (constantly :sunday)]
-      (is (= [:dateadd
-              (h2x/literal "day")
-              (h2x/with-database-type-info [:cast [:inline -1] [:raw "long"]] "long")
-              (h2x/with-database-type-info
-               [:cast
-                [:week [:dateadd (h2x/literal "day")
-                        (h2x/with-database-type-info [:cast [:inline 1] [:raw "long"]] "long")
-                        (h2x/with-database-type-info [:cast :created_at [:raw "datetime"]] "datetime")]]
-                [:raw "datetime"]]
-               "datetime")]
+      (is (= (-> [:dateadd
+                  (h2x/literal "day")
+                  [:inline -1]
+                  (-> [:cast
+                       [:week (-> [:dateadd
+                                   (h2x/literal "day")
+                                   [:inline 1]
+                                   (-> [:cast :created_at [:raw "datetime"]]
+                                       (h2x/with-database-type-info "datetime"))]
+                                  (h2x/with-database-type-info "datetime"))]
+                       [:raw "datetime"]]
+                      (h2x/with-database-type-info "datetime"))]
+                 (h2x/with-database-type-info "datetime"))
              (sql.qp/adjust-start-of-week :h2 (fn [x] [:week x]) :created_at))))
     (testing "Do we skip the adjustment if offset = 0"
       (with-redefs [driver/db-start-of-week   (constantly :monday)
@@ -274,7 +278,8 @@
                  query)})))
 
 (deftest ^:parallel correct-for-null-behaviour
-  (testing "NULLs should be treated intuitively in filters (SQL has somewhat unintuitive semantics where NULLs get propagated out of expressions)."
+  (testing (str "NULLs should be treated intuitively in filters (SQL has somewhat unintuitive semantics where NULLs "
+                "get propagated out of expressions).")
     (is (= [[nil] ["bar"]]
            (query-on-dataset-with-nils {:filter [:not [:starts-with [:field "A" {:base-type :type/Text}] "f"]]})))
     (is (= [[nil] ["bar"]]
@@ -407,6 +412,7 @@
                                      ORDERS.CREATED_AT                  AS CREATED_AT
                                      ABS (0)                            AS pivot-grouping
                                      ;; TODO -- I'm not sure if the order here is deterministic
+                                     ;; Tech debt issue: #39396
                                      PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
                                      PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
                                      PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
@@ -420,7 +426,7 @@
                                      AND
                                      ((PRODUCTS__via__PRODUCT_ID.CATEGORY = ?) OR (PRODUCTS__via__PRODUCT_ID.CATEGORY = ?))
                                      AND
-                                     (ORDERS.CREATED_AT >= DATE_TRUNC ("year" DATEADD ("year" CAST (-2 AS long) CAST (NOW () AS datetime))))
+                                     (ORDERS.CREATED_AT >= DATE_TRUNC ("year" DATEADD ("year" -2 NOW ())))
                                      AND
                                      (ORDERS.CREATED_AT < DATE_TRUNC ("year" NOW ()))]}
                         AS source]
@@ -719,7 +725,7 @@
 
 (deftest ^:parallel expression-with-duplicate-column-name-test
   (testing "Can we use expression with same column name as table (#14267)"
-    (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
+    (is (= '{:select   [source.CATEGORY_2 AS CATEGORY
                         COUNT (*)         AS count]
              :from     [{:select [PRODUCTS.CATEGORY            AS CATEGORY
                                   CONCAT (PRODUCTS.CATEGORY ?) AS CATEGORY_2]
@@ -1078,6 +1084,7 @@
 
       ;; String containing semicolon followed by double dash followed by THE _comment or semicolon or end of input_.
       ;; TODO: Enable when better sql parsing solution is found in the [[sql.qp/make-nestable-sql]]].
+      ;; Tech debt issue: #39401
       #_#_
       "SELECT 'string with \n ; -- ending on the same line';"
       "(SELECT 'string with \n ; -- ending on the same line')"

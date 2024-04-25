@@ -1,6 +1,7 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
+
 import type { ButtonProps } from "metabase/ui";
 import { Stack, Button, Group, TextInput } from "metabase/ui";
 

@@ -5,7 +5,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [tru]])
   (:import
-   (java.text NumberFormat)
+   (java.text NumberFormat ParsePosition)
    (java.time LocalDate)
    (java.time.format DateTimeFormatter DateTimeFormatterBuilder ResolverStyle)
    (java.util Locale)))
@@ -139,13 +139,22 @@
   (defn- parse-plain-number [number-separators s]
     (let [has-parens?       (re-matches #"\(.*\)" s)
           deparenthesized-s (str/replace s #"[()]" "")
+          parse-pos         (ParsePosition. 0)
           parsed-number     (case number-separators
-                              ("." ".,") (. us parse deparenthesized-s)
-                              ",."       (. de parse deparenthesized-s)
-                              ", "       (. fr parse (str/replace deparenthesized-s \space \u00A0)) ; \u00A0 is a non-breaking space
-                              ".’"       (. ch parse deparenthesized-s))]
+                              ("." ".,") (. us parse deparenthesized-s parse-pos)
+                              ",."       (. de parse deparenthesized-s parse-pos)
+                              ", "       (. fr parse (str/replace deparenthesized-s \space \u00A0) parse-pos) ; \u00A0 is a non-breaking space
+                              ".’"       (. ch parse deparenthesized-s parse-pos))]
+      (let [parsed-idx (.getIndex parse-pos)]
+        (when-not (= parsed-idx (count deparenthesized-s))
+          (throw (ex-info "Unexpected trailing characters - this is probably not a number"
+                          {:full-string    s
+                           :parsed-number  parsed-number
+                           :parsed-string  (.substring deparenthesized-s 0 parsed-idx)
+                           :ignored-string (.substring deparenthesized-s parsed-idx)}))))
       (if has-parens?
-        (- parsed-number)
+        ;; By casting to double we ensure that the sign is preserved for 0.0
+        (- (double parsed-number))
         parsed-number))))
 
 (defn- parse-number
@@ -156,8 +165,8 @@
          (str/trim)
          (remove-currency-signs)
          (parse-plain-number number-separators))
-    (catch Exception _
-      (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable number" s))))))
+    (catch Exception e
+      (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable number" s) e)))))
 
 (defn- parse-as-biginteger
   "Parses a string representing a number as a java.math.BigInteger, rounding down if necessary."
@@ -174,45 +183,45 @@
   (fn [upload-type _]
     upload-type))
 
-(defmethod upload-type->parser :metabase.upload/varchar-255
+(defmethod upload-type->parser :metabase.upload.types/varchar-255
   [_ _]
   identity)
 
-(defmethod upload-type->parser :metabase.upload/text
+(defmethod upload-type->parser :metabase.upload.types/text
   [_ _]
   identity)
 
-(defmethod upload-type->parser :metabase.upload/int
+(defmethod upload-type->parser :metabase.upload.types/int
   [_ {:keys [number-separators]}]
   (partial parse-as-biginteger number-separators))
 
-(defmethod upload-type->parser :metabase.upload/float
+(defmethod upload-type->parser :metabase.upload.types/float
   [_ {:keys [number-separators]}]
   (partial parse-number number-separators))
 
-(defmethod upload-type->parser :metabase.upload/auto-incrementing-int-pk
+(defmethod upload-type->parser :metabase.upload.types/auto-incrementing-int-pk
   [_ {:keys [number-separators]}]
   (partial parse-as-biginteger number-separators))
 
-(defmethod upload-type->parser :metabase.upload/boolean
+(defmethod upload-type->parser :metabase.upload.types/boolean
   [_ _]
   (comp
    parse-bool
    str/trim))
 
-(defmethod upload-type->parser :metabase.upload/date
+(defmethod upload-type->parser :metabase.upload.types/date
   [_ _]
   (comp
    parse-local-date
    str/trim))
 
-(defmethod upload-type->parser :metabase.upload/datetime
+(defmethod upload-type->parser :metabase.upload.types/datetime
   [_ _]
   (comp
    parse-as-datetime
    str/trim))
 
-(defmethod upload-type->parser :metabase.upload/offset-datetime
+(defmethod upload-type->parser :metabase.upload.types/offset-datetime
   [_ _]
   (comp
    parse-offset-datetime

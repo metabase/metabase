@@ -1,3 +1,5 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   filterWidget,
@@ -5,8 +7,6 @@ import {
   editDashboard,
   getDashboardCard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 

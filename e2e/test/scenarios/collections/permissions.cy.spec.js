@@ -1,5 +1,7 @@
 import { onlyOn } from "@cypress/skip-test";
 
+import { USERS } from "e2e/support/cypress_data";
+import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data.js";
 import {
   restore,
   popover,
@@ -11,10 +13,9 @@ import {
   modal,
   setTokenFeatures,
   sidebar,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
-import { USERS } from "e2e/support/cypress_data";
-import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data.js";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
 const PERMISSIONS = {
@@ -25,6 +26,7 @@ const PERMISSIONS = {
 
 describe("collection permissions", () => {
   beforeEach(() => {
+    cy.intercept("GET", "/api/search*").as("search");
     restore();
   });
 
@@ -50,7 +52,7 @@ describe("collection permissions", () => {
                   });
                   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                   cy.findByText("Dashboard").click();
-                  cy.findByTestId("select-button").findByText(
+                  cy.findByLabelText(/Which collection/).findByText(
                     "Second collection",
                   );
                 });
@@ -64,7 +66,7 @@ describe("collection permissions", () => {
                       cy.icon("add").click();
                     });
                     popover().findByText("Dashboard").click();
-                    cy.findByTestId("select-button").findByText(
+                    cy.findByLabelText(/Which collection/).findByText(
                       "Our analytics",
                     );
                   });
@@ -103,34 +105,6 @@ describe("collection permissions", () => {
                 it("should let a user move/undo move a dashboard", () => {
                   move("Orders in a dashboard");
                 });
-
-                function move(item) {
-                  cy.visit("/collection/root");
-                  openCollectionItemMenu(item);
-                  popover().within(() => {
-                    cy.findByText("Move").click();
-                  });
-                  cy.get(".Modal").within(() => {
-                    cy.findByText(`Move "${item}"?`);
-                    // Let's move it into a nested collection
-                    cy.findByText("First collection")
-                      .siblings("[data-testid='expand-btn']")
-                      .click();
-                    cy.findByText("Second collection").click();
-                    cy.findByText("Move").click();
-                  });
-                  cy.findByText(item).should("not.exist");
-                  // Make sure item was properly moved to a correct sub-collection
-                  exposeChildrenFor("First collection");
-                  cy.findByText("Second collection").click();
-                  cy.findByText(item);
-                  // Undo the whole thing
-                  cy.findByText(/Moved (question|dashboard)/);
-                  cy.findByText("Undo").click();
-                  cy.findByText(item).should("not.exist");
-                  cy.visit("/collection/root");
-                  cy.findByText(item);
-                }
               });
 
               describe("duplicate", () => {
@@ -141,20 +115,6 @@ describe("collection permissions", () => {
                 it.skip("should be able to duplicate the question (metabase#15255)", () => {
                   duplicate("Orders");
                 });
-
-                function duplicate(item) {
-                  cy.visit("/collection/root");
-                  openCollectionItemMenu(item);
-                  cy.findByText("Duplicate").click();
-                  cy.get(".Modal")
-                    .as("modal")
-                    .within(() => {
-                      clickButton("Duplicate");
-                      cy.findByText("Failed").should("not.exist");
-                    });
-                  cy.get("@modal").should("not.exist");
-                  cy.findByText(`${item} - Duplicate`);
-                }
               });
 
               describe("archive", () => {
@@ -170,7 +130,7 @@ describe("collection permissions", () => {
                   cy.skipOn(user === "nodata");
                   cy.createNativeQuestion({
                     name: "Model",
-                    dataset: true,
+                    type: "model",
                     native: {
                       query: "SELECT * FROM ORDERS",
                     },
@@ -226,7 +186,7 @@ describe("collection permissions", () => {
                     openCollectionMenu();
                     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     popover().within(() => cy.findByText("Archive").click());
-                    cy.get(".Modal").findByText("Archive").click();
+                    modal().findByText("Archive").click();
 
                     cy.wait("@editCollection");
 
@@ -318,7 +278,7 @@ describe("collection permissions", () => {
                       cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
                       openCollectionMenu();
                       popover().within(() => cy.findByText("Archive").click());
-                      cy.get(".Modal").findByText("Cancel").click();
+                      modal().findByText("Cancel").click();
                       cy.location("pathname").should(
                         "eq",
                         `/collection/${THIRD_COLLECTION_ID}-third-collection`,
@@ -366,7 +326,8 @@ describe("collection permissions", () => {
               cy.visit("/collection/root");
               openCollectionItemMenu("Orders in a dashboard");
               popover().findByText("Duplicate").click();
-              cy.findByTestId("select-button").findByText(
+              cy.findByTestId("collection-picker-button").should(
+                "have.text",
                 `${first_name} ${last_name}'s Personal Collection`,
               );
             });
@@ -406,15 +367,15 @@ describe("collection permissions", () => {
                   ).click();
                 });
 
-                popover().within(() => {
-                  cy.findByText("My personal collection");
+                cy.findByLabelText("Select a collection").within(() => {
+                  cy.findByText("Read Only Tableton's Personal Collection");
                   // Test will fail on this step first
                   cy.findByText("First collection").should("not.exist");
                   // This is the second step that makes sure not even search returns collections with read-only access
-                  cy.icon("search").click();
-                  cy.findByPlaceholderText("Search")
-                    .click()
-                    .type("third{Enter}");
+                  cy.findByPlaceholderText("Search…").type("third{Enter}");
+
+                  cy.wait("@search");
+                  cy.findByText(/Loading/i).should("not.exist");
                   cy.findByText("Third collection").should("not.exist");
                 });
               });
@@ -432,7 +393,7 @@ describe("collection permissions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
-    cy.findByTestId("select-button").findByText("Our analytics");
+    cy.findByLabelText(/Which collection/).findByText("Our analytics");
   });
 
   it("should load the collection permissions admin pages", () => {
@@ -483,4 +444,43 @@ function exposeChildrenFor(collectionName) {
     .find(".Icon-chevronright")
     .eq(0) // there may be more nested icons, but we need the top level one
     .click();
+}
+
+function move(item) {
+  cy.visit("/collection/root");
+  openCollectionItemMenu(item);
+  popover().findByText("Move").click();
+  entityPickerModal().within(() => {
+    cy.findByText(`Move "${item}"?`);
+    // Let's move it into a nested collection
+    cy.findByText("First collection").click();
+    cy.findByText("Second collection").click();
+    cy.button("Move").click();
+  });
+
+  cy.findByText(item).should("not.exist");
+  // Make sure item was properly moved to a correct sub-collection
+  exposeChildrenFor("First collection");
+  cy.findByText("Second collection").click();
+  cy.findByText(item);
+  // Undo the whole thing
+  cy.findByText(/Moved (question|dashboard)/);
+  cy.findByText("Undo").click();
+  cy.findByText(item).should("not.exist");
+  cy.visit("/collection/root");
+  cy.findByText(item);
+}
+
+function duplicate(item) {
+  cy.visit("/collection/root");
+  openCollectionItemMenu(item);
+  cy.findByText("Duplicate").click();
+  modal()
+    .as("modal")
+    .within(() => {
+      clickButton("Duplicate");
+      cy.findByText("Failed").should("not.exist");
+    });
+  cy.get("@modal").should("not.exist");
+  cy.findByText(`${item} - Duplicate`);
 }

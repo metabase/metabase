@@ -1,18 +1,21 @@
 import { useEffect } from "react";
 import { useTimeout } from "react-use";
 import { t } from "ttag";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+
 import LogoIcon from "metabase/components/LogoIcon";
-import { loadDefaults, selectStep } from "../../actions";
-import { LANGUAGE_STEP, LOCALE_TIMEOUT } from "../../constants";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+
+import { goToNextStep, loadDefaults } from "../../actions";
+import { LOCALE_TIMEOUT } from "../../constants";
 import { getIsLocaleLoaded } from "../../selectors";
 import { SetupHelp } from "../SetupHelp";
+
 import {
-  PageRoot,
-  PageMain,
-  PageTitle,
   PageBody,
   PageButton,
+  PageMain,
+  PageRoot,
+  PageTitle,
 } from "./WelcomePage.styled";
 
 export const WelcomePage = (): JSX.Element | null => {
@@ -21,7 +24,7 @@ export const WelcomePage = (): JSX.Element | null => {
   const dispatch = useDispatch();
 
   const handleStepSubmit = () => {
-    dispatch(selectStep(LANGUAGE_STEP));
+    dispatch(goToNextStep());
   };
 
   useEffect(() => {

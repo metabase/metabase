@@ -1,11 +1,9 @@
 import { t } from "ttag";
-import * as Lib from "metabase-lib";
-import type { LegacyDrill } from "metabase/visualizations/types";
+
 import { onUpdateVisualizationSettings } from "metabase/query_builder/actions";
-import {
-  findColumnSettingIndex,
-  getColumnSettingsWithRefs,
-} from "metabase/visualizations/components/settings/ChartSettingTableColumns/utils";
+import type { LegacyDrill } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
+import { findColumnSettingIndexesForColumns } from "metabase-lib/v1/queries/utils/dataset";
 
 export const HideColumnAction: LegacyDrill = ({
   question,
@@ -36,24 +34,20 @@ export const HideColumnAction: LegacyDrill = ({
       tooltip: t`Hide column`,
       default: true,
       action: () => {
-        const columnSettings = getColumnSettingsWithRefs(
-          settings?.["table.columns"] || [],
-        );
-        const query = question.query();
-
-        const columnSettingIndex = findColumnSettingIndex(
-          query,
-          column,
+        const columnSettings = settings?.["table.columns"] ?? [];
+        const [columnSettingIndex] = findColumnSettingIndexesForColumns(
+          [column],
           columnSettings,
         );
 
         const columnSettingsCopy = [...columnSettings];
-        if (columnSettingIndex !== -1) {
+        if (columnSettingIndex >= 0) {
           columnSettingsCopy[columnSettingIndex] = {
             ...columnSettingsCopy[columnSettingIndex],
             enabled: false,
           };
         }
+
         return onUpdateVisualizationSettings({
           "table.columns": columnSettingsCopy,
         });

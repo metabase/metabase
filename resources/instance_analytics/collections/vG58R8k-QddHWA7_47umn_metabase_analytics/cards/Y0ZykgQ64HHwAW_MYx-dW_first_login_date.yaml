@@ -38,4 +38,6 @@ serdes/meta:
 - id: Y0ZykgQ64HHwAW_MYx-dW
   label: first_login_date
   model: Card
+initially_published_at: null
 metabase_version: null
+type: question

@@ -1,12 +1,12 @@
-import type { Dashboard } from "metabase-types/api";
-import type { EmbedOptions } from "metabase-types/store";
+import { getParameters } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
   EmbedModal,
   EmbedModalContent,
 } from "metabase/public/components/EmbedModal";
-import { getParameters } from "metabase/dashboard/selectors";
+import type { Dashboard } from "metabase-types/api";
+import type { EmbedOptions } from "metabase-types/store";
 
 import {
   createPublicLink,

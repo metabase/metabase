@@ -1,3 +1,8 @@
+import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visitQuestion,
@@ -6,11 +11,6 @@ import {
   visitIframe,
   openStaticEmbeddingModal,
 } from "e2e/support/helpers";
-import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const standalonePath =
@@ -29,7 +29,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
   it("should not offer to share or embed models (metabase#20815)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
 
     cy.visit(`/model/${ORDERS_QUESTION_ID}`);
     cy.wait("@dataset");
@@ -155,7 +155,9 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           cy.findByRole("tab", { name: "Appearance" }).click();
 
           cy.findByText("Background");
-          cy.findByText("Dashboard title");
+          cy.findByText(
+            object === "dashboard" ? "Dashboard title" : "Question title",
+          );
           cy.findByText("Border");
           cy.findByText(
             (_, element) =>
@@ -183,7 +185,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
         cy.findByTestId("embed-frame").within(() => {
           cy.findByRole("heading", { name: objectName });
-          cy.get(".cellData").contains("37.65");
+          cy.get("[data-testid=cell-data]").contains("37.65");
         });
 
         cy.findByRole("contentinfo").within(() => {

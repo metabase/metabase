@@ -59,4 +59,6 @@ serdes/meta:
 - id: WoQnk12nwOaJ1pcb1wsr4
   label: new_dashboards_per_month
   model: Card
+initially_published_at: null
 metabase_version: null
+type: question

@@ -1,6 +1,6 @@
 import { color } from "metabase/lib/colors";
-
 import type { IconName } from "metabase/ui";
+
 import { SidebarItem } from "../SidebarItem";
 
 export const LinkOption = ({

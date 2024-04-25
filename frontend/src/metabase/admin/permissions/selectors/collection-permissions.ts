@@ -1,38 +1,40 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { t } from "ttag";
 import { getIn } from "icepick";
+import { t } from "ttag";
 import _ from "underscore";
 
-import Group from "metabase/entities/groups";
-import Collections, {
-  getCollectionIcon,
-  ROOT_COLLECTION,
-} from "metabase/entities/collections";
-import SnippetCollections from "metabase/entities/snippet-collections";
 import {
   nonPersonalOrArchivedCollection,
   isInstanceAnalyticsCollection,
 } from "metabase/collections/utils";
+import Collections, {
+  getCollectionIcon,
+  ROOT_COLLECTION,
+} from "metabase/entities/collections";
+import Group from "metabase/entities/groups";
+import SnippetCollections from "metabase/entities/snippet-collections";
 import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
-
-import type {
-  State,
-  ExpandedCollection,
-  CollectionTreeItem,
-} from "metabase-types/store";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
   Collection,
   Group as GroupType,
   CollectionPermissions,
   CollectionId,
 } from "metabase-types/api";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import type {
+  State,
+  ExpandedCollection,
+  CollectionTreeItem,
+} from "metabase-types/store";
+
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../constants/messages";
+import type { DataPermissionValue } from "../types";
+
 import { getPermissionWarningModal } from "./confirmations";
 
 export const collectionsQuery = {
@@ -244,7 +246,7 @@ export const getCollectionsPermissionEditor = createSelector(
         collection.id,
       );
 
-      const confirmations = (newValue: string) => [
+      const confirmations = (newValue: DataPermissionValue) => [
         getPermissionWarningModal(
           newValue,
           defaultGroupPermission,

@@ -1,9 +1,9 @@
 import styled from "@emotion/styled";
 
-import { color, alpha } from "metabase/lib/colors";
-import Link from "metabase/core/components/Link";
-import { Icon } from "metabase/ui";
 import Label from "metabase/components/type/Label";
+import Link from "metabase/core/components/Link";
+import { color, alpha } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 const tableBorder = `1px solid ${alpha(color("border"), 0.5)}`;
 
@@ -20,6 +20,7 @@ export const PermissionsTableRoot = styled.table`
   border-collapse: collapse;
   max-height: 100%;
   overflow-y: auto;
+  min-width: max-content;
 `;
 
 export const PermissionsTableCell = styled.td`
@@ -81,8 +82,6 @@ export const EntityNameLink = styled(Link)`
   text-decoration: underline;
   color: ${color("admin-navbar")};
 `;
-
-export const PermissionTableHeaderRow = styled.tr``;
 
 export const HintIcon = styled(Icon)`
   color: ${color("text-light")};

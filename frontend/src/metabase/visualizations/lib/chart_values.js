@@ -1,7 +1,8 @@
 import _ from "underscore";
 
-import { COMPACT_CURRENCY_OPTIONS } from "metabase/lib/formatting";
 import { moveToFront } from "metabase/lib/dom";
+import { COMPACT_CURRENCY_OPTIONS } from "metabase/lib/formatting";
+
 import { isHistogramBar, xValueForWaterfallTotal } from "./renderer_utils";
 
 const sumY = data => data.reduce((sum, [, y]) => sum + y, 0);

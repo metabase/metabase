@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openOrdersTable,
@@ -5,8 +6,6 @@ import {
   enterCustomColumnDetails,
   visualize,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -50,7 +49,7 @@ describe("issue 20627", () => {
 
     visualize();
 
-    cy.get(".cellData")
+    cy.get("[data-testid=cell-data]")
       .should("contain", "Math")
       .and("contain", "Doohickey")
       .and("contain", "3,976");

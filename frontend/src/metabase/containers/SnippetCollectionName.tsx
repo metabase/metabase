@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
-import SnippetCollections from "metabase/entities/snippet-collections";
 import { isRootCollection } from "metabase/collections/utils";
-
+import SnippetCollections from "metabase/entities/snippet-collections";
 import type { CollectionId } from "metabase-types/api";
 
 function SnippetCollectionName({ id }: { id: CollectionId }) {

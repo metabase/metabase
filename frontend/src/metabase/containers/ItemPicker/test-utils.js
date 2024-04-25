@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+
 import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
 
 export function getItemPickerHeader() {
@@ -15,12 +16,12 @@ export function queryListItem(itemName) {
     .closest("[data-testid=item-picker-item]");
 }
 
-export function openCollection(itemName) {
+export async function openCollection(itemName) {
   const collectionNode = within(queryListItem(itemName));
-  userEvent.click(collectionNode.getByLabelText("chevronright icon"));
+  await userEvent.click(collectionNode.getByLabelText("chevronright icon"));
 }
 
 export async function openCollectionWait(itemName) {
-  openCollection(itemName);
+  await openCollection(itemName);
   await waitForLoaderToBeRemoved();
 }

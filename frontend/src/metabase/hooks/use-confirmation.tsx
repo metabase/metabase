@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import _Modal from "metabase/components/Modal";
 import _ConfirmContent from "metabase/components/ConfirmContent";
+import _Modal from "metabase/components/Modal";
 
 const Modal = _Modal as any;
 const ConfirmContent = _ConfirmContent as any;

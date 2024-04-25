@@ -1,9 +1,11 @@
 import { connect } from "react-redux";
 import _ from "underscore";
+
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import TimelineEvents from "metabase/entities/timeline-events";
 import type { TimelineEvent } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+
 import TimelinePanel from "../../components/TimelinePanel";
 
 interface TimelinePanelProps {

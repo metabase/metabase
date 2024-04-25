@@ -1,27 +1,42 @@
+/* eslint-disable import/order */
 import { t } from "ttag";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";
 
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
+import {
+  formatColumn,
+  getCurrencySymbol,
+  getDateFormatFromStyle,
+  numberFormatterForOptions,
+} from "metabase/lib/formatting";
+
+import { hasHour } from "metabase/lib/formatting/datetime-utils";
+
+import { currency } from "cljs/metabase.shared.util.currency";
+import MetabaseSettings from "metabase/lib/settings";
+import {
+  isCoordinate,
+  isCurrency,
+  isDate,
+  isDateWithoutTime,
+  isNumber,
+  isPercentage,
+} from "metabase-lib/v1/types/utils/isa";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import {
+  findColumnIndexesForColumnSettings,
+  findColumnSettingIndexesForColumns,
+  getColumnSettingKey,
+} from "metabase-lib/v1/queries/utils/dataset";
+import { nestedSettings } from "./nested";
 
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
 function getVisualizationRaw(...args) {
   return require("metabase/visualizations").getVisualizationRaw(...args);
 }
-
-import {
-  formatColumn,
-  numberFormatterForOptions,
-  getCurrencySymbol,
-  getDateFormatFromStyle,
-} from "metabase/lib/formatting";
-
-import { hasHour } from "metabase/lib/formatting/datetime-utils";
-
-import { currency } from "cljs/metabase.shared.util.currency";
 
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
   [].concat(...series.map(s => (s.data && s.data.cols) || []));
@@ -44,19 +59,6 @@ export function columnSettings({
     ...def,
   });
 }
-
-import MetabaseSettings from "metabase/lib/settings";
-import {
-  isDate,
-  isNumber,
-  isCoordinate,
-  isCurrency,
-  isDateWithoutTime,
-  isPercentage,
-} from "metabase-lib/types/utils/isa";
-import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {
   const columnSettings = {};
@@ -345,9 +347,16 @@ export const NUMBER_COLUMN_SETTINGS = {
       ],
     },
     default: true,
-    getHidden: (column, settings, { series }) =>
-      settings["number_style"] !== "currency" ||
-      series[0].card.display !== "table",
+    getHidden: (_column, settings, { series, forAdminSettings }) => {
+      if (forAdminSettings === true) {
+        return false;
+      } else {
+        return (
+          settings["number_style"] !== "currency" ||
+          series[0].card.display !== "table"
+        );
+      }
+    },
     readDependencies: ["number_style"],
   },
   number_separators: {
@@ -522,25 +531,46 @@ export const buildTableColumnSettings = ({
     // title: t`Columns`,
     widget: ChartSettingTableColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-    isValid: ([{ card, data }]) => {
-      const columns = card.visualization_settings["table.columns"];
-      const enabledColumns = columns.filter(column => column.enabled);
-      return _.all(
-        enabledColumns,
-        columnSetting =>
-          findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-      );
+    getValue: ([{ data }], vizSettings) => {
+      const { cols } = data;
+
+      function isValid(columnSettings) {
+        const columnIndexes = findColumnIndexesForColumnSettings(
+          cols,
+          columnSettings.filter(({ enabled }) => enabled),
+        );
+        return columnIndexes.every(columnIndex => columnIndex >= 0);
+      }
+
+      function getValue(columnSettings) {
+        const settingIndexes = findColumnSettingIndexesForColumns(
+          cols,
+          columnSettings,
+        );
+
+        return [
+          ...columnSettings.map(setting => ({
+            ...setting,
+            key: getColumnSettingKey(setting),
+          })),
+          ...cols
+            .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
+            .map(column => ({
+              name: column.name,
+              key: getColumnKey(column),
+              enabled: getIsColumnVisible(column),
+              fieldRef: column.field_ref,
+            })),
+        ];
+      }
+
+      const columnSettings = vizSettings["table.columns"];
+      if (!columnSettings || !isValid(columnSettings)) {
+        return getValue([]);
+      } else {
+        return getValue(columnSettings);
+      }
     },
-    getDefault: ([
-      {
-        data: { cols },
-      },
-    ]) =>
-      cols.map(col => ({
-        name: col.name,
-        fieldRef: col.field_ref,
-        enabled: getIsColumnVisible(col),
-      })),
     getProps: (series, settings) => {
       const [
         {

@@ -41,8 +41,8 @@ export const createMockSubscribeInfo = (
 export const createMockSetupState = (
   opts?: Partial<SetupState>,
 ): SetupState => ({
-  step: 0,
+  step: "welcome",
   isLocaleLoaded: false,
-  isTrackingAllowed: false,
+  isTrackingAllowed: true,
   ...opts,
 });

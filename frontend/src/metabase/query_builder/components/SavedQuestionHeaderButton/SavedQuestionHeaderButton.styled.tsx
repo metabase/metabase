@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import EditableText from "metabase/core/components/EditableText";
 
 export const HeaderRoot = styled.div`

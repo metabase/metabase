@@ -1,6 +1,6 @@
-import { useState, forwardRef } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState, forwardRef } from "react";
 
 import Tooltip from "./Tooltip";
 
@@ -27,17 +27,17 @@ function setup({
 }
 
 describe("Tooltip", () => {
-  it("should be visible on hover of child target element", () => {
+  it("should be visible on hover of child target element", async () => {
     setup();
-    userEvent.hover(screen.getByText("child target element"));
+    await userEvent.hover(screen.getByText("child target element"));
     expect(screen.getByText("tooltip content")).toBeInTheDocument();
   });
 
   describe("isOpen", () => {
-    it("should override hover behavior", () => {
+    it("should override hover behavior", async () => {
       setup({ isOpen: false });
 
-      userEvent.hover(screen.getByText("child target element"));
+      await userEvent.hover(screen.getByText("child target element"));
       expect(screen.queryByText("tooltip content")).not.toBeInTheDocument();
     });
 
@@ -48,31 +48,31 @@ describe("Tooltip", () => {
   });
 
   describe("isEnabled", () => {
-    it("should override hover behavior when false", () => {
+    it("should override hover behavior when false", async () => {
       setup({ isEnabled: false });
 
-      userEvent.hover(screen.getByText("child target element"));
+      await userEvent.hover(screen.getByText("child target element"));
       expect(screen.queryByText("tooltip content")).not.toBeInTheDocument();
     });
 
-    it("should not override hover behavior when true", () => {
+    it("should not override hover behavior when true", async () => {
       setup({ isEnabled: true });
 
-      userEvent.hover(screen.getByText("child target element"));
+      await userEvent.hover(screen.getByText("child target element"));
       expect(screen.getByText("tooltip content")).toBeInTheDocument();
     });
 
-    it("should override isOpen when false", () => {
+    it("should override isOpen when false", async () => {
       setup({ isEnabled: false, isOpen: true });
 
-      userEvent.hover(screen.getByText("child target element"));
+      await userEvent.hover(screen.getByText("child target element"));
       expect(screen.queryByText("tooltip content")).not.toBeInTheDocument();
     });
 
-    it("should not override isOpen when true", () => {
+    it("should not override isOpen when true", async () => {
       setup({ isEnabled: true, isOpen: true });
 
-      userEvent.hover(screen.getByText("child target element"));
+      await userEvent.hover(screen.getByText("child target element"));
       expect(screen.getByText("tooltip content")).toBeInTheDocument();
     });
   });

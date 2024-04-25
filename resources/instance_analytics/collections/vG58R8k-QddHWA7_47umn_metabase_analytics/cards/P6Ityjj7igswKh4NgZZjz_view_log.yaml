@@ -218,4 +218,6 @@ serdes/meta:
 - id: P6Ityjj7igswKh4NgZZjz
   label: view_log
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (7c47e04)
+type: model

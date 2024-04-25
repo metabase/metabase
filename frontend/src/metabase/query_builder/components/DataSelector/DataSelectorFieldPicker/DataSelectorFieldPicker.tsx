@@ -1,10 +1,17 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import {
+  HoverParent,
+  TableColumnInfoIcon,
+} from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import AccordionList from "metabase/core/components/AccordionList";
+import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
-import type Table from "metabase-lib/metadata/Table";
-import type Field from "metabase-lib/metadata/Field";
+import { Icon, DelayGroup } from "metabase/ui";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Table from "metabase-lib/v1/metadata/Table";
+
 import DataSelectorLoading from "../DataSelectorLoading";
 
 import {
@@ -73,23 +80,35 @@ const DataSelectorFieldPicker = ({
 
   return (
     <Container>
-      <AccordionList
-        id="FieldPicker"
-        key="fieldPicker"
-        className="text-brand"
-        hasInitialFocus={hasInitialFocus}
-        sections={sections}
-        maxHeight={Infinity}
-        width="100%"
-        searchable={hasFiltering}
-        onChange={(item: { field: Field }) => onChangeField(item.field)}
-        itemIsSelected={checkIfItemIsSelected}
-        itemIsClickable={(item: FieldWithName) => item.field}
-        renderItemIcon={renderItemIcon}
-      />
+      <DelayGroup>
+        <AccordionList
+          id="FieldPicker"
+          key="fieldPicker"
+          className={CS.textBrand}
+          hasInitialFocus={hasInitialFocus}
+          sections={sections}
+          maxHeight={Infinity}
+          width="100%"
+          searchable={hasFiltering}
+          onChange={(item: { field: Field }) => onChangeField(item.field)}
+          itemIsSelected={checkIfItemIsSelected}
+          itemIsClickable={(item: FieldWithName) => item.field}
+          renderItemWrapper={renderItemWrapper}
+          renderItemIcon={renderItemIcon}
+          renderItemExtra={renderItemExtra}
+        />
+      </DelayGroup>
     </Container>
   );
 };
+
+function renderItemWrapper(content: ReactNode) {
+  return <HoverParent>{content}</HoverParent>;
+}
+
+function renderItemExtra(item: FieldWithName) {
+  return <TableColumnInfoIcon field={item.field} position="top-end" />;
+}
 
 const Header = ({ onBack, selectedTable }: HeaderProps) => (
   <HeaderContainer onClick={onBack}>

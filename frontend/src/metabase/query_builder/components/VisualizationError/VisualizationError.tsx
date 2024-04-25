@@ -1,17 +1,21 @@
-import { t } from "ttag";
-import { getIn } from "icepick";
 import cx from "classnames";
+import { getIn } from "icepick";
+import { t } from "ttag";
 
-import * as Lib from "metabase-lib";
-import MetabaseSettings from "metabase/lib/settings";
-import { getEngineNativeType } from "metabase/lib/engine";
-import { ErrorMessage } from "metabase/components/ErrorMessage";
 import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
+import { ErrorMessage } from "metabase/components/ErrorMessage";
+import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { getEngineNativeType } from "metabase/lib/engine";
+import { useSelector } from "metabase/lib/redux";
+import MetabaseSettings from "metabase/lib/settings";
 import { isNotNull } from "metabase/lib/types";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { useSelector } from "metabase/lib/redux";
-import type Question from "metabase-lib/Question";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+
 import { VISUALIZATION_SLOW_TIMEOUT } from "../../constants";
+
 import {
   QueryError,
   QueryErrorHeader,
@@ -26,8 +30,8 @@ import { adjustPositions, stripRemarks } from "./utils";
 function EmailAdmin(): JSX.Element | null {
   const hasAdminEmail = isNotNull(MetabaseSettings.adminEmail());
   return hasAdminEmail ? (
-    <span className="QueryError-adminEmail">
-      <a className="no-decoration" href={`mailto:${hasAdminEmail}`}>
+    <span className={QueryBuilderS.QueryErrorAdminEmail}>
+      <a className={CS.noDecoration} href={`mailto:${hasAdminEmail}`}>
         {hasAdminEmail}
       </a>
     </span>
@@ -77,11 +81,26 @@ export function VisualizationError({
     }
   } else if (error instanceof Error) {
     return (
-      <div className={cx(className, "QueryError2 flex justify-center")}>
-        <div className="QueryError-image QueryError-image--queryError mr4" />
-        <div className="QueryError2-details">
-          <h1 className="text-bold">{t`There was a problem with this visualization`}</h1>
-          <ErrorDetails className="pt2" details={error} />
+      <div
+        className={cx(
+          className,
+          QueryBuilderS.QueryError2,
+          CS.flex,
+          CS.justifyCenter,
+        )}
+      >
+        <div
+          className={cx(
+            QueryBuilderS.QueryErrorImage,
+            QueryBuilderS.QueryErrorImageQueryError,
+            CS.mr4,
+          )}
+        />
+        <div className={QueryBuilderS.QueryError2Details}>
+          <h1
+            className={CS.textBold}
+          >{t`There was a problem with this visualization`}</h1>
+          <ErrorDetails className={CS.pt2} details={error} />
         </div>
       </div>
     );
@@ -118,12 +137,29 @@ export function VisualizationError({
     );
   } else {
     return (
-      <div className={cx(className, "QueryError2 flex justify-center")}>
-        <div className="QueryError-image QueryError-image--queryError mr4" />
-        <div className="QueryError2-details">
-          <h1 className="text-bold">{t`There was a problem with your question`}</h1>
-          <p className="QueryError-messageText">{t`Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query.`}</p>
-          <ErrorDetails className="pt2" details={error} />
+      <div
+        className={cx(
+          className,
+          QueryBuilderS.QueryError2,
+          CS.flex,
+          CS.justifyCenter,
+        )}
+      >
+        <div
+          className={cx(
+            QueryBuilderS.QueryErrorImage,
+            QueryBuilderS.QueryErrorImageQueryError,
+            CS.mr4,
+          )}
+        />
+        <div className={QueryBuilderS.QueryError2Details}>
+          <h1
+            className={CS.textBold}
+          >{t`There was a problem with your question`}</h1>
+          <p
+            className={QueryBuilderS.QueryErrorMessageText}
+          >{t`Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query.`}</p>
+          <ErrorDetails className={CS.pt2} details={error} />
         </div>
       </div>
     );

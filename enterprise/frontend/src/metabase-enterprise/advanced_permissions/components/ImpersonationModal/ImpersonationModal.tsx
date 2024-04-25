@@ -1,26 +1,32 @@
 import { useCallback } from "react";
+import { useSelector } from "react-redux";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { useAsyncFn, useMount } from "react-use";
-import { useSelector } from "react-redux";
-import { useDispatch } from "metabase/lib/redux";
 
+import { updateDataPermission } from "metabase/admin/permissions/permissions";
+import {
+  DataPermission,
+  DataPermissionType,
+  DataPermissionValue,
+} from "metabase/admin/permissions/types";
+import { useDatabaseQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import { getParentPath } from "metabase/hoc/ModalRoute";
+import { useDispatch } from "metabase/lib/redux";
+import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
+import { getImpersonation } from "metabase-enterprise/advanced_permissions/selectors";
 import type {
   AdvancedPermissionsStoreState,
   ImpersonationModalParams,
   ImpersonationParams,
 } from "metabase-enterprise/advanced_permissions/types";
-import { getParentPath } from "metabase/hoc/ModalRoute";
-import { useDatabaseQuery } from "metabase/common/hooks";
-import { getImpersonation } from "metabase-enterprise/advanced_permissions/selectors";
-import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
-import { updateDataPermission } from "metabase/admin/permissions/permissions";
-import { ImpersonationApi } from "metabase-enterprise/advanced_permissions/services";
-import type { Impersonation } from "metabase-types/api";
+import { getImpersonatedDatabaseId } from "metabase-enterprise/advanced_permissions/utils";
+import { ImpersonationApi } from "metabase-enterprise/services";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
-import { getImpersonatedDatabaseId } from "metabase-enterprise/advanced_permissions/utils";
+import type { Impersonation, UserAttribute } from "metabase-types/api";
+
 import { ImpersonationModalView } from "./ImpersonationModalView";
 
 interface ImpersonationModalProps {
@@ -86,12 +92,15 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
   }, [dispatch, route]);
 
   const handleSave = useCallback(
-    attribute => {
+    (attribute: UserAttribute) => {
       dispatch(
         updateDataPermission({
           groupId,
-          permission: { type: "access", permission: "data" },
-          value: "impersonated",
+          permission: {
+            type: DataPermissionType.ACCESS,
+            permission: DataPermission.VIEW_DATA,
+          },
+          value: DataPermissionValue.IMPERSONATED,
           entityId: { databaseId },
         }),
       );
@@ -105,6 +114,7 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
           }),
         );
       }
+
       close();
     },
     [close, databaseId, dispatch, groupId, selectedAttribute],

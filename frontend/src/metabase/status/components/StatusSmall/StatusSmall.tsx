@@ -1,6 +1,7 @@
 import Tooltip from "metabase/core/components/Tooltip";
-import type { InitialSyncStatus } from "metabase-types/api";
 import type { IconName } from "metabase/ui";
+import type { InitialSyncStatus } from "metabase-types/api";
+
 import {
   StatusRoot,
   StatusIconContainer,

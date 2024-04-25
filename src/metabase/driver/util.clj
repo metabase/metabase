@@ -5,10 +5,11 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
@@ -17,8 +18,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli :as mu])
   (:import
    (java.io ByteArrayInputStream)
    (java.security KeyFactory KeyStore PrivateKey)
@@ -111,8 +111,6 @@
       (contains? message :message) (update :message str)
       (contains? message :errors)  (update :errors update-vals str))))
 
-(comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
-
 ;; This is normally set via the env var `MB_DB_CONNECTION_TIMEOUT_MS`
 (defsetting db-connection-timeout-ms
   "Consider [[metabase.driver/can-connect?]] / [[can-connect-with-details?]] to have failed if they were not able to
@@ -150,7 +148,7 @@
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e
-        (log/errorf e "Failed to connect to Database")
+        (log/error e "Failed to connect to Database")
         (throw (if-let [humanized-message (some->> (.getMessage e)
                                                    (driver/humanize-connection-error-message driver))]
                  (let [error-data (cond
@@ -167,7 +165,7 @@
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e
-        (log/error e (trs "Failed to connect to database"))
+        (log/error e "Failed to connect to database")
         false))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -181,7 +179,7 @@
          (qp.store/with-metadata-provider db-id
            (:engine (lib.metadata.protocols/database (qp.store/metadata-provider)))))
        (vary-meta assoc ::memoize/args-fn (fn [[db-id]]
-                                            [(mdb.connection/unique-identifier) db-id])))
+                                            [(mdb/unique-identifier) db-id])))
    :ttl/threshold 1000))
 
 (mu/defn database->driver :- :keyword
@@ -211,7 +209,7 @@
 (defn features
   "Return a set of all features supported by `driver` with respect to `database`."
   [driver database]
-  (set (for [feature driver/driver-features
+  (set (for [feature driver/features
              :when (driver/database-supports? driver feature database)]
          feature)))
 
@@ -231,8 +229,8 @@
    (semantic-version-gte [4 0 1] [4 1]) => false
    (semantic-version-gte [4 1] [4]) => true
    (semantic-version-gte [3 1] [4]) => false"
-  [xv :- [:maybe [:sequential ms/IntGreaterThanOrEqualToZero]]
-   yv :- [:maybe [:sequential ms/IntGreaterThanOrEqualToZero]]]
+  [xv :- [:maybe [:sequential ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+   yv :- [:maybe [:sequential ::lib.schema.common/int-greater-than-or-equal-to-zero]]]
   (loop [xv (seq xv), yv (seq yv)]
     (or (nil? yv)
         (let [[x & xs] xv
@@ -298,8 +296,7 @@
   (let [content (or placeholder
                     (try (getter)
                          (catch Throwable e
-                           (log/error e (trs "Error invoking getter for connection property {0}"
-                                             (:name conn-prop))))))]
+                           (log/errorf e "Error invoking getter for connection property %s" (:name conn-prop)))))]
     (when (string? content)
       (-> conn-prop
           (assoc :placeholder content)
@@ -505,7 +502,7 @@
                                  (->> (driver/connection-properties driver)
                                       (connection-props-server->client driver))
                                  (catch Throwable e
-                                   (log/error e (trs "Unable to determine connection properties for driver {0}" driver))))]
+                                   (log/errorf e "Unable to determine connection properties for driver %s" driver)))]
                  :when  props]
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
              [driver {:source {:type (driver-source (name driver))
@@ -597,15 +594,20 @@
     (.init trust-manager-factory trust-store)
     (.getTrustManagers trust-manager-factory)))
 
-(defn ssl-socket-factory
-  "Generates an `SocketFactory` with the custom certificates added"
-  ^SocketFactory [& {:keys [private-key own-cert trust-cert]}]
+(defn ssl-context
+  "Generates a `SSLContext` with the custom certificates added."
+  ^javax.net.ssl.SSLContext [& {:keys [private-key own-cert trust-cert]}]
   (let [ssl-context (SSLContext/getInstance "TLS")]
     (.init ssl-context
            (when (and private-key own-cert) (key-managers private-key (str (random-uuid)) own-cert))
            (when trust-cert (trust-managers trust-cert))
            nil)
-    (.getSocketFactory ssl-context)))
+    ssl-context))
+
+(defn ssl-socket-factory
+  "Generates a `SocketFactory` with the custom certificates added."
+  ^SocketFactory [& {:keys [_private-key _own-cert _trust-cert] :as args}]
+    (.getSocketFactory (ssl-context args)))
 
 (def default-sensitive-fields
   "Set of fields that should always be obfuscated in API responses, as they contain sensitive data."

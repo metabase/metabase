@@ -406,6 +406,50 @@ result_metadata:
   semantic_type: null
   settings: null
   visibility_type: details-only
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Action Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - action_qualified_id
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - action_qualified_id
+  name: action_qualified_id
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Query
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_query_log
+    - query
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_query_log
+  - query
+  name: query
+  semantic_type: type/SerializedJSON
+  settings: null
+  visibility_type: normal
 visualization_settings:
   column_settings: null
   table.cell_column: running_time_seconds
@@ -414,4 +458,6 @@ serdes/meta:
 - id: QOtZaiTLf2FDD4AT6Oinb
   label: query_log
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (0e09ac7)
+type: model

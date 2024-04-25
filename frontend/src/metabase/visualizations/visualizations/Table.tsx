@@ -1,17 +1,16 @@
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
-import { formatColumn } from "metabase/lib/formatting";
+import CS from "metabase/css/core/index.css";
 import * as DataGrid from "metabase/lib/data_grid";
-
+import { formatColumn } from "metabase/lib/formatting";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
-import ChartSettingsTableFormatting, {
+import {
+  ChartSettingsTableFormatting,
   isFormattable,
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
-
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import {
   columnSettings,
   buildTableColumnSettings,
@@ -19,20 +18,16 @@ import {
   isPivoted as _isPivoted,
 } from "metabase/visualizations/lib/settings/column";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
+import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { getDefaultPivotColumn } from "metabase/visualizations/lib/utils";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-
-import type {
-  DatasetColumn,
-  DatasetData,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
+import { isNative } from "metabase-lib/v1/queries/utils/card";
+import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import {
   isMetric,
   isDimension,
@@ -41,13 +36,17 @@ import {
   isEmail,
   isImageURL,
   isAvatarURL,
-} from "metabase-lib/types/utils/isa";
-import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
-import * as Q_DEPRECATED from "metabase-lib/queries/utils";
+} from "metabase-lib/v1/types/utils/isa";
+import type {
+  DatasetColumn,
+  DatasetData,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 
-import type { ColumnSettingDefinition, VisualizationProps } from "../types";
-import { TableSimple } from "../components/TableSimple";
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
+import { TableSimple } from "../components/TableSimple";
+import type { ColumnSettingDefinition, VisualizationProps } from "../types";
 
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;
@@ -93,7 +92,7 @@ class Table extends Component<TableProps, TableState> {
         if (
           !data ||
           data.cols.length !== 3 ||
-          !Q_DEPRECATED.isStructured(card.dataset_query) ||
+          isNative(card) ||
           data.cols.filter(isMetric).length !== 1 ||
           data.cols.filter(isDimension).length !== 2
         ) {
@@ -321,6 +320,8 @@ class Table extends Component<TableProps, TableState> {
 
   _updateData({ series, settings, metadata }: VisualizationProps) {
     const [{ card, data }] = series;
+    // construct a Question that is in-sync with query results
+    const question = new Question(card, metadata);
 
     if (Table.isPivoted(series, settings)) {
       const pivotIndex = _.findIndex(
@@ -340,16 +341,13 @@ class Table extends Component<TableProps, TableState> {
       });
     } else {
       const { cols, rows, results_timezone } = data;
-      const columnSettings = settings["table.columns"];
-      const columnIndexes = (columnSettings || [])
-        .filter(
-          columnSetting =>
-            columnSetting.enabled || this.props.isShowingDetailsOnlyColumns,
-        )
-        .map(columnSetting =>
-          findColumnIndexForColumnSetting(cols, columnSetting),
-        )
-        .filter(columnIndex => columnIndex >= 0 && columnIndex < cols.length);
+      const columnSettings = settings["table.columns"] ?? [];
+      const columnIndexes = findColumnIndexesForColumnSettings(
+        cols,
+        this.props.isShowingDetailsOnlyColumns
+          ? columnSettings
+          : columnSettings.filter(({ enabled }) => enabled),
+      ).filter(columnIndex => columnIndex >= 0);
 
       this.setState({
         data: {
@@ -357,10 +355,8 @@ class Table extends Component<TableProps, TableState> {
           rows: rows.map(row => columnIndexes.map(i => row[i])),
           results_timezone,
         },
-
-        // construct a Question that is in-sync with query results
-        // cache it here for performance reasons
-        question: new Question(card, metadata),
+        // cache question for performance reasons
+        question,
       });
     }
   }
@@ -417,8 +413,14 @@ class Table extends Component<TableProps, TableState> {
       return (
         <div
           className={cx(
-            "flex-full px1 pb1 text-centered flex flex-column layout-centered",
-            { "text-slate-light": isDashboard, "text-slate": !isDashboard },
+            CS.flexFull,
+            CS.px1,
+            CS.pb1,
+            CS.textCentered,
+            CS.flex,
+            CS.flexColumn,
+            CS.layoutCentered,
+            { [CS.textSlateLight]: isDashboard, [CS.textSlate]: !isDashboard },
           )}
         >
           <img
@@ -428,9 +430,11 @@ class Table extends Component<TableProps, TableState> {
               app/assets/img/hidden-field.png     1x,
               app/assets/img/hidden-field@2x.png  2x
             "
-            className="mb2"
+            className={CS.mb2}
           />
-          <span className="h4 text-bold">{t`Every field is hidden right now`}</span>
+          <span
+            className={cx(CS.h4, CS.textBold)}
+          >{t`Every field is hidden right now`}</span>
         </div>
       );
     }
@@ -438,6 +442,7 @@ class Table extends Component<TableProps, TableState> {
     return (
       <TableComponent
         {...this.props}
+        question={this.state.question}
         data={data}
         isPivoted={isPivoted}
         getColumnTitle={this.getColumnTitle}

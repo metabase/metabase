@@ -11,15 +11,17 @@
    [clojure.test :refer :all]
    [mb.hawk.init]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.test-util :as driver.tu]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.add-implicit-joins
     :as qp.add-implicit-joins]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test.data :as data]
@@ -61,7 +63,7 @@
                           (every? #(driver/database-supports? driver % db) features)))]
            driver))))
 
-(alter-meta! #'normal-drivers-with-feature assoc :arglists (list (into ['&] (sort driver/driver-features))))
+(alter-meta! #'normal-drivers-with-feature assoc :arglists (list (into ['&] (sort driver/features))))
 
 (defn normal-drivers-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid and Google Analytics) that DO NOT support
@@ -69,7 +71,7 @@
   [feature]
   (set/difference (normal-drivers) (normal-drivers-with-feature feature)))
 
-(alter-meta! #'normal-drivers-without-feature assoc :arglists (list (into ['&] (sort driver/driver-features))))
+(alter-meta! #'normal-drivers-without-feature assoc :arglists (list (into ['&] (sort driver/features))))
 
 (defn normal-drivers-except
   "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."
@@ -199,14 +201,14 @@
 (declare cols)
 
 (def ^:private ^{:arglists '([db-id table-id field-id])} native-query-col*
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn [db-id table-id field-id]
      (first
       (cols
        (qp/process-query
          {:database db-id
           :type     :native
-          :native   (qp/compile
+          :native   (qp.compile/compile
                       {:database db-id
                        :type     :query
                        :query    {:source-table table-id
@@ -497,9 +499,10 @@
    (lib.tu/metadata-provider-with-cards-for-queries parent-metadata-provider queries)))
 
 (mu/defn metadata-provider-with-cards-with-metadata-for-queries :- lib.metadata/MetadataProvider
-  "Like [[metadata-provider-with-cards-for-queries]], but includes the results of [[qp/query->expected-cols]] as
-  `:result-metadata` for each Card. The metadata provider is built up progressively, meaning metadata for previous Cards
-  is available when calculating metadata for subsequent Cards."
+  "Like [[metadata-provider-with-cards-for-queries]], but includes the results
+  of [[metabase.query-processor.preprocess/query->expected-cols]] as `:result-metadata` for each Card. The metadata
+  provider is built up progressively, meaning metadata for previous Cards is available when calculating metadata for
+  subsequent Cards."
   ([queries]
    (metadata-provider-with-cards-with-metadata-for-queries
     (lib.metadata.jvm/application-database-metadata-provider (data/id))
@@ -519,7 +522,7 @@
      (fn [metadata-provider {query :dataset-query, :as card}]
        (qp.store/with-metadata-provider metadata-provider
          (let [result-metadata (if (= (:type query) :query)
-                                 (qp/query->expected-cols query)
+                                 (qp.preprocess/query->expected-cols query)
                                  (actual-query-results query))
                card            (assoc card :result-metadata result-metadata)]
            (lib.tu/mock-metadata-provider metadata-provider {:cards [card]})))))
@@ -542,7 +545,7 @@
 
 (deftest ^:parallel metadata-provider-with-cards-with-metadata-for-queries-native-query-test
   (let [provider (metadata-provider-with-cards-with-metadata-for-queries
-                  [(data/native-query (qp/compile (data/mbql-query venues)))])]
+                  [(data/native-query (qp.compile/compile (data/mbql-query venues)))])]
     (is (partial= {:id              1
                    :name            "Card 1"
                    :dataset-query   {:type :native}
@@ -577,19 +580,19 @@
 
 ;;; ------------------------------------------------- Timezone Stuff -------------------------------------------------
 
-(defn do-with-report-timezone-id
-  "Impl for `with-report-timezone-id`."
+(defn do-with-report-timezone-id!
+  "Impl for `with-report-timezone-id!`."
   [timezone-id thunk]
   {:pre [((some-fn nil? string?) timezone-id)]}
-  (driver.tu/wrap-notify-all-databases-updated
+  (driver.tu/wrap-notify-all-databases-updated!
     (binding [qp.timezone/*report-timezone-id-override* (or timezone-id ::nil)]
       (testing (format "\nreport timezone id = %s" (pr-str timezone-id))
         (thunk)))))
 
-(defmacro with-report-timezone-id
+(defmacro with-report-timezone-id!
   "Override the `report-timezone` Setting and execute `body`. Intended primarily for REPL and test usage."
   [timezone-id & body]
-  `(do-with-report-timezone-id ~timezone-id (fn [] ~@body)))
+  `(do-with-report-timezone-id! ~timezone-id (fn [] ~@body)))
 
 (defn do-with-database-timezone-id
   "Impl for `with-database-timezone-id`."

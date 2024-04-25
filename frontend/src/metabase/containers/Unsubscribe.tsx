@@ -1,17 +1,10 @@
+import type { Location } from "history";
 import { useState } from "react";
 import { useAsync } from "react-use";
-import type { Location } from "history";
 import { t, jt } from "ttag";
 
-import { Center, Stack, Text } from "metabase/ui";
-import { SessionApi } from "metabase/services";
-import { isEmpty } from "metabase/lib/validate";
-import { NotFound } from "metabase/containers/ErrorPages";
-import { color } from "metabase/lib/colors";
-
+import { NotFound } from "metabase/components/ErrorPages";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Button from "metabase/core/components/Button";
 import LogoIcon from "metabase/components/LogoIcon";
 import {
   StyledMetabotLogo,
@@ -21,6 +14,14 @@ import {
   LayoutRoot,
   CheckmarkIcon,
 } from "metabase/containers/Unsubscribe.styled";
+import Button from "metabase/core/components/Button";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import { color } from "metabase/lib/colors";
+import { useSelector } from "metabase/lib/redux";
+import { isEmpty } from "metabase/lib/validate";
+import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
+import { SessionApi } from "metabase/services";
+import { Center, Stack, Text } from "metabase/ui";
 
 const ERRORS = {
   MISSING_REQUIRED_PARAMETERS: "missing required parameters",
@@ -179,9 +180,16 @@ function useUnsubscribeRequest({
 }
 
 function UnsubscribeRoot({ children }: { children: JSX.Element }) {
+  const loginPageIllustration = useSelector(getLoginPageIllustration);
   return (
     <LayoutRoot>
-      <LayoutIllustration />
+      {loginPageIllustration && (
+        <LayoutIllustration
+          data-testid="unsubscribe-page-illustration"
+          backgroundImageSrc={loginPageIllustration.src}
+          isDefault={loginPageIllustration.isDefault}
+        />
+      )}
       <LayoutBody>
         <Center mih={"100%"} miw={"100%"}>
           <Stack>

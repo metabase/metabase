@@ -1,9 +1,11 @@
-import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+
 import Tab from "../Tab";
 import TabList from "../TabList";
 import TabPanel from "../TabPanel";
+
 import TabContent from "./TabContent";
 
 const TestTabContent = () => {
@@ -22,12 +24,12 @@ const TestTabContent = () => {
 };
 
 describe("TabContent", () => {
-  it("should navigate between tabs", () => {
+  it("should navigate between tabs", async () => {
     render(<TestTabContent />);
     expect(screen.getByText("Panel 1")).toBeInTheDocument();
     expect(screen.queryByText("Panel 2")).not.toBeInTheDocument();
 
-    userEvent.click(screen.getByRole("tab", { name: "Tab 2" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Tab 2" }));
     expect(screen.queryByText("Panel 1")).not.toBeInTheDocument();
     expect(screen.getByText("Panel 2")).toBeInTheDocument();
   });

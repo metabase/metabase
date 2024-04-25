@@ -1,10 +1,12 @@
 import { renderHook } from "@testing-library/react-hooks";
+
 import {
   createMockActionParameter,
   createMockFieldSettings,
   createMockImplicitQueryAction,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
+
 import useActionForm from "./use-action-form";
 
 describe("useActionForm", () => {

@@ -1,4 +1,5 @@
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+
 import { LoadingStateContainer } from "./LoadingState.styled";
 
 function LoadingState() {

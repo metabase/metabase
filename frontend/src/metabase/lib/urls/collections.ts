@@ -1,7 +1,10 @@
 import slugg from "slugg";
 
-import type { Collection as BaseCollection } from "metabase-types/api";
 import { isRootPersonalCollection } from "metabase/collections/utils";
+import type {
+  Collection as BaseCollection,
+  CollectionId,
+} from "metabase-types/api";
 
 import { appendSlug, extractEntityId } from "./utils";
 
@@ -52,7 +55,7 @@ export function isCollectionPath(path: string) {
   return /collection\/.*/.test(path);
 }
 
-export function extractCollectionId(slug = "") {
+export function extractCollectionId(slug = ""): CollectionId | undefined {
   if (slug === "root" || slug === "users") {
     return slug;
   }

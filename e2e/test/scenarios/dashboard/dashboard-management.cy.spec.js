@@ -1,4 +1,7 @@
 import { onlyOn } from "@cypress/skip-test";
+
+import { USERS } from "e2e/support/cypress_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
@@ -12,10 +15,9 @@ import {
   undoToast,
   openDashboardMenu,
   toggleDashboardInfoSidebar,
+  entityPickerModal,
+  collectionOnTheGoModal,
 } from "e2e/support/helpers";
-
-import { USERS } from "e2e/support/cypress_data";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -187,16 +189,21 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                   cy.findByLabelText("Only duplicate the dashboard").should(
                     "not.be.checked",
                   );
-                  cy.findByTestId("select-button").click();
+                  cy.findByTestId("collection-picker-button").click();
                 });
-                popover().findByText("New collection").click();
+                entityPickerModal()
+                  .findByText("Create a new collection")
+                  .click();
                 const NEW_COLLECTION = "Foo Collection";
-                modal().within(() => {
-                  cy.findByLabelText("Name").type(NEW_COLLECTION);
+                collectionOnTheGoModal().within(() => {
+                  cy.findByPlaceholderText("My new collection").type(
+                    NEW_COLLECTION,
+                  );
                   cy.button("Create").click();
-                  cy.button("Duplicate").click();
-                  assertOnRequest("copyDashboard");
                 });
+                cy.button("Select").click();
+                cy.button("Duplicate").click();
+                assertOnRequest("copyDashboard");
 
                 cy.url().should("contain", `/dashboard/${newDashboardId}`);
 
@@ -221,9 +228,9 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 popover().findByText("Move").click();
                 cy.location("pathname").should("eq", `/dashboard/${id}/move`);
 
-                modal().within(() => {
+                entityPickerModal().within(() => {
                   cy.findByText("First collection").click();
-                  clickButton("Move");
+                  cy.button("Move").click();
                 });
 
                 assertOnRequest("updateDashboard");
@@ -256,7 +263,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 );
                 modal().within(() => {
                   cy.findByRole("heading", { name: "Archive this dashboard?" }); //Without this, there is some race condition and the button click fails
-                  clickButton("Archive");
+                  cy.button("Archive").click();
                   assertOnRequest("updateDashboard");
                 });
 
@@ -267,7 +274,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 );
                 undoToast().within(() => {
                   cy.findByText("Archived dashboard");
-                  clickButton("Undo");
+                  cy.button("Undo").click();
                   assertOnRequest("updateDashboard");
                 });
 
@@ -301,7 +308,8 @@ describe("managing dashboard from the dashboard's edit menu", () => {
             const { first_name, last_name } = USERS[user];
 
             popover().findByText("Duplicate").click();
-            cy.findByTestId("select-button").findByText(
+            cy.findByTestId("collection-picker-button").should(
+              "have.text",
               `${first_name} ${last_name}'s Personal Collection`,
             );
           });
@@ -311,10 +319,6 @@ describe("managing dashboard from the dashboard's edit menu", () => {
   });
 });
 
-function clickButton(name) {
-  cy.findByRole("button", { name }).should("not.be.disabled").click();
-}
-
 function assertOnRequest(xhr_alias) {
   cy.wait("@" + xhr_alias).then(xhr => {
     expect(xhr.status).not.to.eq(403);
@@ -322,5 +326,5 @@ function assertOnRequest(xhr_alias) {
   cy.findByText("Sorry, you don’t have permission to see that.").should(
     "not.exist",
   );
-  cy.get(".Modal").should("not.exist");
+  modal().should("not.exist");
 }

@@ -4,11 +4,21 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
    [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(deftest ^:parallel fk-filter-availability-test
+  (testing "fk-filter is available for cell clicks on FKs with non-NULL values"
+    (doseq [[test-case context {:keys [click column-type]}] (canned/canned-clicks)]
+      (if (and (= click :cell)
+               (= column-type :fk)
+               (not= (:value context) :null))
+        (is (canned/returned test-case context :drill-thru/fk-filter))
+        (is (not (canned/returned test-case context :drill-thru/fk-filter)))))))
 
 (deftest ^:parallel returns-fk-filter-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -134,3 +144,35 @@
             :column-name "Venues → Category ID"
             :table-name "Checkins"}
            (lib/display-info query fk-filter-drill)))))
+
+(deftest ^:parallel fk-filter-application-test
+  (testing "adds an = filter for the selected column and value"
+    (testing "in the same stage for a plain query"
+      (lib.drill-thru.tu/test-drill-application
+        {:click-type     :cell
+         :query-type     :unaggregated
+         :column-name    "USER_ID"
+         :drill-type     :drill-thru/fk-filter
+         :expected       {:lib/type  :metabase.lib.drill-thru/drill-thru
+                          :type      :drill-thru/fk-filter
+                          :column-name "User ID"
+                          :table-name  "Orders"}
+         :expected-query {:stages [{:source-table (meta/id :orders)
+                                    :filters      [[:= {}
+                                                    [:field {} (meta/id :orders :user-id)]
+                                                    (get-in lib.drill-thru.tu/test-queries
+                                                            ["ORDERS" :unaggregated :row "USER_ID"])]]}]}}))
+    (testing "in a new stage for an aggregated query"
+      (lib.drill-thru.tu/test-drill-application
+        {:click-type     :cell
+         :query-type     :aggregated
+         :column-name    "PRODUCT_ID"
+         :drill-type     :drill-thru/fk-filter
+         :expected       {:lib/type  :metabase.lib.drill-thru/drill-thru
+                          :type      :drill-thru/fk-filter
+                          :column-name "Product ID"
+                          :table-name  "Orders"}
+         :expected-query {:stages [(-> (get lib.drill-thru.tu/test-queries "ORDERS") :aggregated :query :stages first)
+                                   {:filters [[:= {} [:field {} (meta/id :orders :product-id)]
+                                               (get-in lib.drill-thru.tu/test-queries
+                                                       ["ORDERS" :aggregated :row "PRODUCT_ID"])]]}]}}))))

@@ -1,10 +1,12 @@
 import userEvent from "@testing-library/user-event";
+
+import { screen } from "__support__/ui";
 import {
   createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
+
 import type { SetupOpts } from "./setup";
 import { setup } from "./setup";
 
@@ -32,8 +34,8 @@ describe("SettingsEditor", () => {
       }),
     });
 
-    userEvent.click(screen.getByText("Embedding"));
-    goToInteractiveEmbeddingSettings();
+    await userEvent.click(screen.getByText("Embedding"));
+    await goToInteractiveEmbeddingSettings();
     expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
 
     expect(screen.getByText("Authorized origins")).toBeInTheDocument();
@@ -59,8 +61,8 @@ describe("SettingsEditor", () => {
         }),
       });
 
-      userEvent.click(screen.getByText("Embedding"));
-      goToInteractiveEmbeddingSettings();
+      await userEvent.click(screen.getByText("Embedding"));
+      await goToInteractiveEmbeddingSettings();
 
       expect(screen.getByTestId("authorized-origins-note")).toBeInTheDocument();
     });
@@ -79,8 +81,8 @@ describe("SettingsEditor", () => {
         }),
       });
 
-      userEvent.click(screen.getByText("Embedding"));
-      goToInteractiveEmbeddingSettings();
+      await userEvent.click(screen.getByText("Embedding"));
+      await goToInteractiveEmbeddingSettings();
 
       expect(
         screen.queryByTestId("authorized-origins-note"),
@@ -101,8 +103,8 @@ describe("SettingsEditor", () => {
         }),
       });
 
-      userEvent.click(screen.getByText("Embedding"));
-      goToInteractiveEmbeddingSettings();
+      await userEvent.click(screen.getByText("Embedding"));
+      await goToInteractiveEmbeddingSettings();
 
       expect(
         screen.queryByTestId("authorized-origins-note"),
@@ -111,6 +113,6 @@ describe("SettingsEditor", () => {
   });
 });
 
-const goToInteractiveEmbeddingSettings = () => {
-  userEvent.click(screen.getByText("Configure"));
+const goToInteractiveEmbeddingSettings = async () => {
+  await userEvent.click(screen.getByText("Configure"));
 };

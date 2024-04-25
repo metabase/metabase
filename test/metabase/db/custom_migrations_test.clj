@@ -12,14 +12,19 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.api.database-test :as api.database-test]
+   [metabase.db :as mdb]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
-   [metabase.models :refer [Database User]]
+   [metabase.driver :as driver]
+   [metabase.models :refer [User]]
+   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
+   [metabase.native-query-analyzer :as query-analyzer]
    [metabase.task :as task]
+   [metabase.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -27,13 +32,40 @@
    [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2])
   (:import
-   [clojure.lang ExceptionInfo]))
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
 (jobs/defjob AbandonmentEmail [_] :default)
+
+(defn- table-default [table]
+  (case table
+    :core_user         {:first_name  (mt/random-name)
+                        :last_name   (mt/random-name)
+                        :email       (mt/random-email)
+                        :password    "superstrong"
+                        :date_joined :%now}
+    :metabase_database {:name       (mt/random-name)
+                        :engine     "h2"
+                        :details    "{}"
+                        :created_at :%now
+                        :updated_at :%now}
+    :report_card       {:name                   (mt/random-name)
+                        :dataset_query          "{}"
+                        :display                "table"
+                        :visualization_settings "{}"
+                        :created_at             :%now
+                        :updated_at             :%now}
+    :revision          {:timestamp :%now}
+    {}))
+
+(defn- new-instance-with-default
+  ([table]
+   (new-instance-with-default table {}))
+  ([table properties]
+   (t2/insert-returning-instance! table (merge (table-default table) properties))))
 
 (deftest delete-abandonment-email-task-test
   (testing "Migration v46.00-086: Delete the abandonment email task"
@@ -83,16 +115,18 @@
                                     ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
                                    (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
-            database-id (t2/insert-returning-pks! :model/Database {:name       "DB"
-                                                                   :engine     "h2"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now
-                                                                   :details    "{}"})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   {:name                   "My Saved Question"
                                                    :created_at             :%now
@@ -150,16 +184,18 @@
                              {"field_ref" ["field" 42 {"source-field" 41}]}
                              {"field_ref" ["aggregation" 0]}
                              {"field_ref" ["expression" "expr"]}]
-            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
-            database-id (t2/insert-returning-pks! Database {:name       "DB"
-                                                            :engine     "h2"
-                                                            :created_at :%now
-                                                            :updated_at :%now
-                                                            :details    "{}"})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   {:name                   "My Saved Question"
                                                    :created_at             :%now
@@ -223,16 +259,18 @@
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
                                     ["name" "column_name"]                                    {"column_title" "6"}}
                                    (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
-            database-id (t2/insert-returning-pks! :model/Database {:name       "DB"
-                                                                   :engine     "h2"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now
-                                                                   :details    "{}"})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   {:name                   "My Saved Question"
                                                    :created_at             :%now
@@ -252,14 +290,15 @@
                                     :where  [:= :id card-id]})
                      :visualization_settings
                      json/parse-string))))
-        (migrate! :down 46)
-        (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
-          (is (= visualization-settings
-                 (-> (t2/query-one {:select [:visualization_settings]
-                                    :from   [:report_card]
-                                    :where  [:= :id card-id]})
-                     :visualization_settings
-                     json/parse-string))))))))
+        (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+          (migrate! :down 46)
+          (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
+            (is (= visualization-settings
+                   (-> (t2/query-one {:select [:visualization_settings]
+                                      :from   [:report_card]
+                                      :where  [:= :id card-id]})
+                       :visualization_settings
+                       json/parse-string)))))))))
 
 (deftest downgrade-dashboard-tabs-test
   (testing "Migrations v47.00-029: downgrade dashboard tab test"
@@ -673,11 +712,12 @@
                                                         :email       "howard@aircraft.com"
                                                         :password    "superstrong"
                                                         :date_joined :%now})
-            database-id (t2/insert-returning-pks! :model/Database {:name       "DB"
-                                                                   :engine     "h2"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now
-                                                                   :details    "{}"})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   {:name                   "My Saved Question"
                                                    :created_at             :%now
@@ -762,11 +802,12 @@
                                                                :email       "howard@aircraft.com"
                                                                :password    "superstrong"
                                                                :date_joined :%now})
-            database-id (t2/insert-returning-pks! :model/Database {:name       "DB"
-                                                                   :engine     "h2"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now
-                                                                   :details    "{}"})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   {:name                   "My Saved Question"
                                                    :created_at             :%now
@@ -895,11 +936,12 @@
                                                                       :email       "howard@aircraft.com"
                                                                       :password    "superstrong"
                                                                       :date_joined :%now})
-            database-id        (t2/insert-returning-pks! :model/Database {:name       "DB"
-                                                                          :engine     "h2"
-                                                                          :created_at :%now
-                                                                          :updated_at :%now
-                                                                          :details    "{}"})
+            database-id        (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                         {:name       "DB"
+                                                          :engine     "h2"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :details    "{}"})
             [card-id]          (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                          {:name                   "My Saved Question"
                                                           :created_at             :%now
@@ -950,79 +992,84 @@
 (deftest migrate-database-options-to-database-settings-test
   (let [do-test
         (fn [encrypted?]
-          (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
-            (let [default-db                {:name       "DB"
-                                             :engine     "postgres"
-                                             :created_at :%now
-                                             :updated_at :%now}
-                  success-id                (first (t2/insert-returning-pks!
+          ;; set-new-database-permissions! relies on the data_permissions table, which was added after the migrations
+          ;; we're testing here, so let's override it to be a no-op. Other tests add DBs using the table name instead of
+          ;; model name, so they don't hit the post-insert hook, but here we're relying on the transformations being
+          ;; applied so we can't do that.
+          (with-redefs [database/set-new-database-permissions! (constantly nil)]
+           (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
+             (let [default-db                {:name       "DB"
+                                              :engine     "postgres"
+                                              :created_at :%now
+                                              :updated_at :%now}
+                   success-id                (first (t2/insert-returning-pks!
                                                      :model/Database
                                                      (merge default-db
                                                             {:options  (json/generate-string {:persist-models-enabled true})
                                                              :settings {:database-enable-actions true}})))
-                  options-nil-settings-id   (first (t2/insert-returning-pks!
+                   options-nil-settings-id   (first (t2/insert-returning-pks!
                                                      :model/Database
                                                      (merge default-db
                                                             {:options  (json/generate-string {:persist-models-enabled true})
                                                              :settings nil})))
-                  options-empty-settings-id (first (t2/insert-returning-pks!
+                   options-empty-settings-id (first (t2/insert-returning-pks!
                                                      :model/Database
                                                      (merge default-db
                                                             {:options  (json/generate-string {:persist-models-enabled true})
                                                              :settings {}})))
-                  nil-options-id            (first (t2/insert-returning-pks!
+                   nil-options-id            (first (t2/insert-returning-pks!
                                                      :model/Database
                                                      (merge default-db
                                                             {:options  nil
                                                              :settings {:database-enable-actions true}})))
-                  empty-options-id          (first (t2/insert-returning-pks!
+                   empty-options-id          (first (t2/insert-returning-pks!
                                                      :model/Database
                                                      (merge default-db
                                                             {:options  "{}"
                                                              :settings {:database-enable-actions true}})))]
-              (testing "fowward migration\n"
-                (when encrypted?
-                  (testing "make sure the settings is encrypted before the migration"
-                    (is (true? (encryption/possibly-encrypted-string?
-                                 (:settings (t2/query-one {:select [:settings]
-                                                           :from [:metabase_database]
-                                                           :where [[:= :id success-id]]})))))))
-                (migrate!)
-                (when encrypted?
-                  (testing "make sure the settings is encrypted after the migration"
-                    (is (true? (encryption/possibly-encrypted-string?
-                                 (:settings (t2/query-one {:select [:settings]
-                                                           :from [:metabase_database]
-                                                           :where [[:= :id success-id]]})))))))
+               (testing "fowward migration\n"
+                 (when encrypted?
+                   (testing "make sure the settings is encrypted before the migration"
+                     (is (true? (encryption/possibly-encrypted-string?
+                                  (:settings (t2/query-one {:select [:settings]
+                                                            :from [:metabase_database]
+                                                            :where [[:= :id success-id]]})))))))
+                 (migrate!)
+                 (when encrypted?
+                   (testing "make sure the settings is encrypted after the migration"
+                     (is (true? (encryption/possibly-encrypted-string?
+                                  (:settings (t2/query-one {:select [:settings]
+                                                            :from [:metabase_database]
+                                                            :where [[:= :id success-id]]})))))))
 
-                (testing "the options is merged into settings correctly"
-                  (is (= {:persist-models-enabled true
-                          :database-enable-actions true}
-                         (t2/select-one-fn :settings :model/Database success-id)))
-                  (testing "even when settings is nil"
-                    (is (= {:persist-models-enabled true}
-                           (t2/select-one-fn :settings :model/Database options-nil-settings-id))))
-                  (testing "even when settings is empty"
-                    (is (= {:persist-models-enabled true}
-                           (t2/select-one-fn :settings :model/Database options-empty-settings-id)))))
+                 (testing "the options is merged into settings correctly"
+                   (is (= {:persist-models-enabled true
+                           :database-enable-actions true}
+                          (t2/select-one-fn :settings :model/Database success-id)))
+                   (testing "even when settings is nil"
+                     (is (= {:persist-models-enabled true}
+                            (t2/select-one-fn :settings :model/Database options-nil-settings-id))))
+                   (testing "even when settings is empty"
+                     (is (= {:persist-models-enabled true}
+                            (t2/select-one-fn :settings :model/Database options-empty-settings-id)))))
 
-                (testing "nil or empty options doesn't break migration"
-                  (is (= {:database-enable-actions true}
-                         (t2/select-one-fn :settings :model/Database nil-options-id)))
-                  (is (= {:database-enable-actions true}
-                         (t2/select-one-fn :settings :model/Database empty-options-id)))))
+                 (testing "nil or empty options doesn't break migration"
+                   (is (= {:database-enable-actions true}
+                          (t2/select-one-fn :settings :model/Database nil-options-id)))
+                   (is (= {:database-enable-actions true}
+                          (t2/select-one-fn :settings :model/Database empty-options-id)))))
 
-             (testing "rollback migration"
-                 (migrate! :down 46)
-                 (testing "the persist-models-enabled is assoced back to options"
-                   (is (= {:options  "{\"persist-models-enabled\":true}"
-                           :settings {:database-enable-actions true}}
-                          (t2/select-one [:model/Database :settings :options] success-id)))
-                   (is (= {:options  nil
-                           :settings {:database-enable-actions true}}
-                          (t2/select-one [:model/Database :settings :options] empty-options-id))))
+              (testing "rollback migration"
+                  (migrate! :down 46)
+                  (testing "the persist-models-enabled is assoced back to options"
+                    (is (= {:options  "{\"persist-models-enabled\":true}"
+                            :settings {:database-enable-actions true}}
+                           (t2/select-one [:model/Database :settings :options] success-id)))
+                    (is (= {:options  nil
+                            :settings {:database-enable-actions true}}
+                           (t2/select-one [:model/Database :settings :options] empty-options-id))))
 
-                 (testing "if settings doesn't have :persist-models-enabled, then options is empty map")))))]
+                  (testing "if settings doesn't have :persist-models-enabled, then options is empty map"))))))]
     (do-test false)
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))
@@ -1320,19 +1367,22 @@
                                                                :email       "howard@aircraft.com"
                                                                :password    "superstrong"
                                                                :date_joined :%now})
-                [database-id]  (t2/insert-returning-pks! Database {:name       "DB"
-                                                                   :engine     "h2"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now
-                                                                   :details    "{}"})
+                [database-id]  (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                         {:name       "DB"
+                                                          :engine     "h2"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :details    "{}"})
                 [card-id]      (t2/insert-returning-pks!
-                                :model/Card
+                                :report_card
                                 {:visualization_settings card-vis
                                  :display                "table"
                                  :dataset_query          "{}"
                                  :creator_id             user-id
                                  :database_id            database-id
-                                 :name                   "My Card"})
+                                 :name                   "My Card"
+                                 :created_at             :%now
+                                 :updated_at             :%now})
                 [dashboard-id] (t2/insert-returning-pks! :model/Dashboard {:name       "My Dashboard"
                                                                            :creator_id user-id
                                                                            :parameters []})
@@ -1460,13 +1510,13 @@
 (defn- table-and-column-of-type
   [ttype]
   (->> (t2/query
-        [(case (mdb.connection/db-type)
+        [(case (mdb/db-type)
            :postgres
            (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s' AND table_schema = 'public';"
                    ttype)
            :mysql
            (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s' AND table_schema = '%s';"
-                   ttype (-> (mdb.connection/data-source) .getConnection .getCatalog))
+                   ttype (-> (mdb/data-source) .getConnection .getCatalog))
            :h2
            (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s';"
                    ttype))])
@@ -1476,7 +1526,7 @@
 
 (deftest unify-type-of-time-columns-test
   (impl/test-migrations ["v49.00-054"] [migrate!]
-    (let [db-type       (mdb.connection/db-type)
+    (let [db-type       (mdb/db-type)
           datetime-type (case db-type
                           :postgres "timestamp without time zone"
                           :h2       "TIMESTAMP"
@@ -1511,3 +1561,146 @@
             (testing "created_at shouldn't change if there is an update"
               (is (= (:created_at session)
                      (t2/select-one-fn :created_at :core_session :id (:id session))))))))))
+
+(deftest card-revision-add-type-test
+  (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
+    (let [user-id          (:id (new-instance-with-default :core_user))
+          db-id            (:id (new-instance-with-default :metabase_database))
+          card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
+          model            (new-instance-with-default :report_card {:dataset true :creator_id user-id :database_id db-id})
+          card-revision-id (:id (new-instance-with-default :revision
+                                                           {:object    (json/generate-string (dissoc card :type))
+                                                            :model     "Card"
+                                                            :model_id  (:id card)
+                                                            :user_id   user-id}))
+          model-revision-id (:id (new-instance-with-default :revision
+                                                            {:object    (json/generate-string (dissoc model :type))
+                                                             :model     "Card"
+                                                             :model_id  (:id card)
+                                                             :user_id   user-id}))]
+      (testing "sanity check revision object"
+        (let [card-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
+          (testing "doesn't have type"
+            (is (not (contains? card-revision-object "type"))))
+          (testing "has dataset"
+            (is (contains? card-revision-object "dataset")))))
+
+      (testing "after migration card revisions should have type"
+        (migrate!)
+        (let [card-revision-object  (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)
+              model-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision model-revision-id)]
+          (is (= "question" (get card-revision-object "type")))
+          (is (= "model" (get model-revision-object "type")))))
+
+      (testing "rollback should remove type and keep dataset"
+        (migrate! :down 48)
+        (let [card-revision-object  (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)
+              model-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision model-revision-id)]
+          (is (contains? card-revision-object "dataset"))
+          (is (contains? model-revision-object "dataset"))
+          (is (not (contains? card-revision-object "type")))
+          (is (not (contains? model-revision-object "type"))))))))
+
+(deftest card-revision-add-type-null-character-test
+  (testing "CardRevisionAddType migration works even if there's a null character in revision.object (metabase#40835)")
+  (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
+    (let [user-id          (:id (new-instance-with-default :core_user))
+          db-id            (:id (new-instance-with-default :metabase_database))
+          card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
+          viz-settings     "{\"table.pivot_column\":\"\u0000..\\u0000\"}" ; note the escaped and unescaped null characters
+          card-revision-id (:id (new-instance-with-default :revision
+                                                           {:object    (json/generate-string
+                                                                        (assoc (dissoc card :type)
+                                                                               :visualization_settings viz-settings))
+                                                            :model     "Card"
+                                                            :model_id  (:id card)
+                                                            :user_id   user-id}))]
+      (testing "sanity check revision object"
+        (let [card-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
+          (testing "doesn't have type"
+            (is (not (contains? card-revision-object "type"))))))
+      (testing "after migration card revisions should have type"
+        (migrate!)
+        (let [card-revision-object  (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
+          (is (= "question" (get card-revision-object "type")))
+          (testing "original visualization_settings should be preserved"
+            (is (= viz-settings
+                   (get card-revision-object "visualization_settings")))))))))
+
+(deftest delete-scan-field-values-trigger-test
+  (testing "We should delete the triggers for DBs that are configured not to scan their field values\n"
+    (impl/test-migrations "v49.2024-04-09T10:00:03" [migrate!]
+      (api.database-test/with-db-scheduler-setup
+        (let [db-with-full-schedules (new-instance-with-default :metabase_database
+                                                                {:metadata_sync_schedule      "0 0 * * * ? *"
+                                                                 :cache_field_values_schedule "0 0 1 * * ? *"
+                                                                 :is_full_sync                true
+                                                                 :is_on_demand                false})
+              db-manual-schedule     (new-instance-with-default :metabase_database
+                                                                {:details                     (json/generate-string {:let-user-control-scheduling true})
+                                                                 :is_full_sync                true
+                                                                 :is_on_demand                false
+                                                                 :metadata_sync_schedule      "0 0 * * * ? *"
+                                                                 :cache_field_values_schedule "0 0 2 * * ? *"})
+              db-on-demand           (new-instance-with-default :metabase_database
+                                                                {:details                     (json/generate-string {:let-user-control-scheduling true})
+                                                                 :is_full_sync                false
+                                                                 :is_on_demand                true
+                                                                 :metadata_sync_schedule      "0 0 * * * ? *"
+                                                                 :cache_field_values_schedule "0 0 2 * * ? *"})
+              db-never-scan          (new-instance-with-default :metabase_database
+                                                                {:details                     (json/generate-string {:let-user-control-scheduling true})
+                                                                 :is_full_sync                false
+                                                                 :is_on_demand                false
+                                                                 :metadata_sync_schedule      "0 0 * * * ? *"
+                                                                 :cache_field_values_schedule "0 0 2 * * ? *"})
+              db-with-scan-fv        [db-with-full-schedules db-manual-schedule]
+              db-without-scan-fv     [db-on-demand db-never-scan]]
+          (doseq [db (concat db-with-scan-fv db-without-scan-fv)]
+            (#'database/check-and-schedule-tasks-for-db! (t2/instance :model/Database db))
+            (testing "sanity check that the schedule exists"
+              (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
+                     (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
+
+          (migrate!)
+          (testing "default options and scan with manual schedules should have scan field values"
+            (doseq [db db-with-scan-fv]
+              (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
+                     (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
+
+          (testing "never scan and on demand should not have scan field values"
+            (doseq [db (t2/select :model/Database :id [:in (map :id db-without-scan-fv)])]
+              (is (= #{(#'api.database-test/sync-and-analyze-trigger-name db)}
+                     (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))
+              (is (nil? (:cache_field_values_schedule db))))))))))
+
+(deftest backfill-query-field-test
+  (impl/test-migrations "v50.2024-04-09T15:55:23" [migrate!]
+    (let [user-id     (:id (new-instance-with-default :core_user))
+          ;; it is already `false`, but binding it anyway to indicate it's important
+          card-id     (binding [query-analyzer/*parse-queries-in-test?* false]
+                        (:id (new-instance-with-default
+                              :report_card
+                              {:creator_id    user-id
+                               :database_id   (mt/id)
+                               :query_type    "native"
+                               :dataset_query (json/generate-string (mt/native-query {:query "SELECT id FROM venues"}))})))
+          archived-id (binding [query-analyzer/*parse-queries-in-test?* false]
+                        (:id (new-instance-with-default
+                              :report_card
+                              {:archived      true
+                               :creator_id    user-id
+                               :database_id   (mt/id)
+                               :query_type    "native"
+                               :dataset_query (json/generate-string (mt/native-query {:query "SELECT id FROM venues"}))})))
+          ;; (first (vals %)) are necessary since h2 generates :count(id) as name for column
+          get-count   #(t2/select-one-fn (comp first vals) [:model/QueryField [[:count :id]]] :card_id %)]
+      (testing "QueryField is empty - queries weren't analyzed"
+        (is (zero? (get-count card-id)))
+        (is (zero? (get-count archived-id))))
+      (binding [query-analyzer/*parse-queries-in-test?* true]
+        (migrate!))
+      (testing "QueryField is filled now"
+        (is (pos? (get-count card-id)))
+        (testing "but not for archived card"
+          (is (zero? (get-count archived-id))))))))

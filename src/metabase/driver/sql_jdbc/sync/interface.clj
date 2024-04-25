@@ -1,6 +1,8 @@
 (ns metabase.driver.sql-jdbc.sync.interface
   (:require
-   [metabase.driver :as driver]))
+   [honey.sql :as sql]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]))
 
 (defmulti active-tables
   "Return a reducible sequence of maps containing information about the active tables/views, collections, or equivalent
@@ -12,7 +14,6 @@
   functions for more details on the differences."
   {:added "0.37.1"
    :arglists '([driver
-                database
                 ^java.sql.Connection connection
                 ^String schema-inclusion-filters
                 ^String schema-exclusion-filters])}
@@ -103,3 +104,40 @@
   {:added "0.43.0", :arglists '([driver database table])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
+
+(defmulti current-user-table-privileges
+  "Returns the rows of data as arrays needed to populate the table_privileges table
+   with the DB connection's current user privileges.
+   The data contains the privileges that the user has on the given `database`.
+   The privileges include select, insert, update, and delete.
+
+   The rows have the following keys and value types:
+     - role            :- [:maybe :string]
+     - schema          :- [:maybe :string]
+     - table           :- :string
+     - select          :- :boolean
+     - update          :- :boolean
+     - insert          :- :boolean
+     - delete          :- :boolean
+
+   Either:
+   (1) role is null, corresponding to the privileges of the DB connection's current user
+   (2) role is not null, corresponding to the privileges of the role"
+  {:added "0.49.0" :arglists '([driver conn-spec & args])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmulti alter-columns-sql
+  "Generate the query to be used with [[driver/alter-columns!]]."
+  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod alter-columns-sql :sql-jdbc
+  [driver table-name column-definitions]
+  (first (sql/format {:alter-table  (keyword table-name)
+                      :alter-column (map (fn [[column-name type-and-constraints]]
+                                           (vec (cons column-name type-and-constraints)))
+                                         column-definitions)}
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))

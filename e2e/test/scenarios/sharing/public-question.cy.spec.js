@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   filterWidget,
@@ -10,7 +11,6 @@ import {
   modal,
   openNativeEditor,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 
@@ -53,7 +53,7 @@ const USERS = {
 
 describe("scenarios > public > question", () => {
   beforeEach(() => {
-    cy.intercept("GET", `/api/public/card/*/query?*`).as("publicQuery");
+    cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
 
     restore();
     cy.signInAsAdmin();
@@ -66,7 +66,7 @@ describe("scenarios > public > question", () => {
       visitQuestion(id);
 
       // Make sure metadata fully loaded before we continue
-      cy.get(".cellData").contains("Winner");
+      cy.get("[data-testid=cell-data]").contains("Winner");
 
       openNewPublicLinkDropdown("card");
 
@@ -83,7 +83,7 @@ describe("scenarios > public > question", () => {
 
       cy.wait("@publicQuery");
       // Name of a city from the expected results
-      cy.get(".cellData").contains("Winner");
+      cy.get("[data-testid=cell-data]").contains("Winner");
 
       // Make sure we can download the public question (metabase#21993)
       cy.get("@uuid").then(publicUid => {
@@ -117,7 +117,7 @@ describe("scenarios > public > question", () => {
 
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
-      it(`should be able to view public questions`, () => {
+      it("should be able to view public questions", () => {
         cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
           cy.request("POST", `/api/card/${id}/public_link`).then(
             ({ body: { uuid } }) => {
@@ -129,7 +129,7 @@ describe("scenarios > public > question", () => {
               filterWidget().contains("Previous 30 Years");
               filterWidget().contains("Affiliate");
 
-              cy.get(".cellData").contains("Winner");
+              cy.get("[data-testid=cell-data]").contains("Winner");
             },
           );
         });
@@ -146,13 +146,13 @@ describe("scenarios > public > question", () => {
 
     modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
-        `'test'`,
+        "'test'",
       );
       cy.findByLabelText("Give your snippet a name").type("string 'test'");
       cy.findByText("Save").click();
     });
 
-    cy.get("@editor").type(`{moveToStart}select `);
+    cy.get("@editor").type("{moveToStart}select ");
 
     saveQuestion("test question", { wrapId: true });
 
@@ -161,7 +161,7 @@ describe("scenarios > public > question", () => {
         cy.signOut();
         cy.signInAsNormalUser().then(() => {
           cy.visit(`/public/question/${uuid}`);
-          cy.get(".cellData").contains("test");
+          cy.get("[data-testid=cell-data]").contains("test");
         });
       });
     });
@@ -187,7 +187,7 @@ describe("scenarios > public > question", () => {
           cy.signInAsNormalUser().then(() => {
             cy.visit(`/public/question/${uuid}`);
             // Check the name of the first person in the PEOPLE table
-            cy.get(".cellData").contains("Hudson Borer");
+            cy.get("[data-testid=cell-data]").contains("Hudson Borer");
           });
         });
       });

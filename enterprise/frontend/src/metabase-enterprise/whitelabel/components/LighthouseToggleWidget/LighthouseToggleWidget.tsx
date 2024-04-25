@@ -1,7 +1,9 @@
 import { t } from "ttag";
-import ImageToggle from "../ImageToggle";
-import type { LighthouseSetting } from "./types";
+
+import { ImageToggle } from "../ImageToggle";
+
 import { LighthouseImage } from "./LighthouseToggleWidget.styled";
+import type { LighthouseSetting } from "./types";
 
 interface LighthouseToggleWidgetProps {
   setting: LighthouseSetting;

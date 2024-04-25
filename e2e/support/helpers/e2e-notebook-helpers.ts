@@ -1,4 +1,5 @@
 import type { CyHttpMessages } from "cypress/types/net-stubbing";
+
 import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import type { NotebookStepType } from "metabase/query_builder/components/notebook/types";
 
@@ -186,4 +187,9 @@ export function selectSavedQuestionsToJoin(
       .click();
     cy.findByText(secondQuestionName).click();
   });
+}
+
+export function selectFilterOperator(operatorName: string) {
+  cy.findByLabelText("Filter operator").click();
+  cy.findByRole("listbox").findByText(operatorName).click();
 }

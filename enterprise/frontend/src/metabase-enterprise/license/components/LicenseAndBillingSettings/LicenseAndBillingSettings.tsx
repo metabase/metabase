@@ -1,19 +1,8 @@
-import { t, jt } from "ttag";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { connect } from "react-redux";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import { t, jt } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-
-import MetabaseSettings from "metabase/lib/settings";
-
-import { getUpgradeUrl } from "metabase/selectors/settings";
-
-import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
-
-import type { TokenStatus } from "metabase/admin/settings/hooks/use-license";
-import { useLicense } from "metabase/admin/settings/hooks/use-license";
+import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import {
   ExplorePaidPlansContainer,
   LoaderContainer,
@@ -21,11 +10,18 @@ import {
   SectionHeader,
   SettingsLicenseContainer,
 } from "metabase/admin/settings/components/SettingsLicense";
-import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import { getUpgradeUrl } from "metabase/selectors/settings";
+import { useGetBillingInfoQuery } from "metabase-enterprise/api";
+import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
+import type { TokenStatus } from "metabase-enterprise/settings/hooks/use-license";
+import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 import type { SettingDefinition } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import { Text, Anchor } from "metabase/ui";
+
+import { BillingInfo } from "../BillingInfo";
 
 const HOSTING_FEATURE_KEY = "hosting";
 const STORE_MANAGED_FEATURE_KEY = "metabase-store-managed";
@@ -83,9 +79,31 @@ const LicenseAndBillingSettings = ({
     setting => setting.key === "premium-embedding-token",
   ) ?? {};
 
-  const { isLoading, error, tokenStatus, updateToken, isUpdating } = useLicense(
-    showLicenseAcceptedToast,
-  );
+  const {
+    loading: licenseLoading,
+    error: licenseError,
+    tokenStatus,
+    updateToken,
+    isUpdating,
+  } = useLicense(showLicenseAcceptedToast);
+
+  const isInvalidToken =
+    !!licenseError || (tokenStatus != null && !tokenStatus.isValid);
+
+  const isStoreManagedBilling =
+    tokenStatus?.features?.has(STORE_MANAGED_FEATURE_KEY) ?? false;
+  const shouldFetchBillingInfo =
+    !licenseLoading && !isInvalidToken && isStoreManagedBilling;
+
+  const {
+    isLoading: billingLoading,
+    error: billingError,
+    data: billingInfo,
+  } = useGetBillingInfoQuery(undefined, {
+    skip: !shouldFetchBillingInfo,
+  });
+
+  const isLoading = licenseLoading || billingLoading;
 
   if (isLoading) {
     return (
@@ -97,48 +115,22 @@ const LicenseAndBillingSettings = ({
     );
   }
 
-  const isInvalid = !!error || (tokenStatus != null && !tokenStatus.isValid);
-  const description = getDescription(tokenStatus, !!token);
+  const hasToken = Boolean(!!token || is_env_setting);
+  const description = getDescription(tokenStatus, hasToken);
 
-  const isStoreManagedBilling = tokenStatus?.features?.includes(
-    STORE_MANAGED_FEATURE_KEY,
-  );
   const shouldShowLicenseInput =
-    !tokenStatus?.features?.includes(HOSTING_FEATURE_KEY);
+    !tokenStatus?.features?.has(HOSTING_FEATURE_KEY);
 
-  const shouldUpsell = !tokenStatus?.features?.includes(NO_UPSELL_FEATURE_HEY);
+  const shouldUpsell = !tokenStatus?.features?.has(NO_UPSELL_FEATURE_HEY);
 
   return (
     <SettingsLicenseContainer data-testid="license-and-billing-content">
-      <>
-        <SectionHeader>{t`Billing`}</SectionHeader>
-
-        {isStoreManagedBilling && (
-          <>
-            <SectionDescription>
-              {t`Manage your Cloud account, including billing preferences, in your Metabase Store account.`}
-            </SectionDescription>
-
-            <ExternalLink
-              href={MetabaseSettings.storeUrl()}
-              className="Button Button--primary"
-            >
-              {t`Go to the Metabase Store`}
-            </ExternalLink>
-          </>
-        )}
-
-        {!isStoreManagedBilling && (
-          <>
-            <Text color="text-medium">
-              {t`To manage your billing preferences, please email `}
-              <Anchor href="mailto:billing@metabase.com">
-                billing@metabase.com
-              </Anchor>
-            </Text>
-          </>
-        )}
-      </>
+      <BillingInfo
+        isStoreManagedBilling={isStoreManagedBilling}
+        hasToken={hasToken}
+        billingInfo={billingInfo}
+        error={!!billingError}
+      />
 
       {shouldShowLicenseInput && (
         <>
@@ -149,9 +141,9 @@ const LicenseAndBillingSettings = ({
           <LicenseInput
             disabled={is_env_setting}
             placeholder={is_env_setting ? t`Using ${env_name}` : undefined}
-            invalid={isInvalid}
+            invalid={isInvalidToken}
             loading={isUpdating}
-            error={error}
+            error={licenseError}
             token={token ? String(token) : undefined}
             onUpdate={updateToken}
           />

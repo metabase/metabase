@@ -1,25 +1,30 @@
+import cx from "classnames";
+import PropTypes from "prop-types";
 import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
-import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import _ from "underscore";
+
+import SettingHeader from "metabase/admin/settings/components/SettingHeader";
+import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+import { updateSamlSettings } from "metabase/admin/settings/settings";
+import { settingToFormField } from "metabase/admin/settings/utils";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { FormSection } from "metabase/containers/FormikForm";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
-  FormTextarea,
+  FormSwitch,
   FormTextInput,
+  FormTextarea,
 } from "metabase/forms";
-import { Stack } from "metabase/ui";
 import MetabaseSettings from "metabase/lib/settings";
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+import { Stack } from "metabase/ui";
 
-import { updateSamlSettings } from "metabase/admin/settings/settings";
-import { settingToFormField } from "metabase/admin/settings/utils";
 import {
   SAMLFormCaption,
   SAMLFormFooter,
@@ -71,15 +76,15 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
       enableReinitialize
     >
       {({ dirty }) => (
-        <Form className="mx2">
+        <Form className={CS.mx2}>
           <Breadcrumbs
-            className="mb3"
+            className={CS.mb3}
             crumbs={[
               [t`Authentication`, "/admin/settings/authentication"],
               [t`SAML`],
             ]}
           />
-          <h2 className="mb3">{t`Set up SAML-based SSO`}</h2>
+          <h2 className={CS.mb2}>{t`Set up SAML-based SSO`}</h2>
           <SAMLFormCaption>
             {jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
               <ExternalLink
@@ -87,9 +92,25 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               >{t`documentation`}</ExternalLink>
             )}.`}
           </SAMLFormCaption>
+          <Stack spacing="0.75rem" m="2.5rem 0">
+            <SettingHeader
+              id="saml-user-provisioning-enabled?"
+              setting={settings["saml-user-provisioning-enabled?"]}
+            />
+            <FormSwitch
+              id="saml-user-provisioning-enabled?"
+              name={fields["saml-user-provisioning-enabled?"].name}
+            />
+          </Stack>
           <SAMLFormSection>
-            <h3 className="mb0">{t`Configure your identity provider (IdP)`}</h3>
-            <p className="mb4 mt1 text-medium">{t`Your identity provider will need the following info about Metabase.`}</p>
+            <h3
+              className={CS.mb0}
+            >{t`Configure your identity provider (IdP)`}</h3>
+
+            <p className={cx(CS.mb4, CS.mt1, CS.textMedium)}>
+              {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+              {t`Your identity provider will need the following info about Metabase.`}
+            </p>
 
             <FormTextInput
               name={FAKE_ACS_URL_KEY}
@@ -99,8 +120,10 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               label={t`URL the IdP should redirect back to`}
             />
 
-            <h4 className="pt2">{t`SAML attributes`}</h4>
-            <p className="mb3 mt1 text-medium">{t`In most IdPs, you'll need to put each of these in an input box labeled
+            <h4 className={CS.pt2}>{t`SAML attributes`}</h4>
+            <p
+              className={cx(CS.mb3, CS.mt1, CS.textMedium)}
+            >{t`In most IdPs, you'll need to put each of these in an input box labeled
                         "Name" in the attribute statements section.`}</p>
 
             <Stack gap="md">
@@ -123,8 +146,14 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           </SAMLFormSection>
 
           <SAMLFormSection>
-            <h3 className="mb0">{t`Tell Metabase about your identity provider`}</h3>
-            <p className="mb4 mt1 text-medium">{t`Metabase will need the following info about your provider.`}</p>
+            <h3 className={CS.mb0}>
+              {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+              {t`Tell Metabase about your identity provider`}
+            </h3>
+            <p className={cx(CS.mb4, CS.mt1, CS.textMedium)}>
+              {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+              {t`Metabase will need the following info about your provider.`}
+            </p>
             <Stack gap="md">
               <FormTextInput
                 {...fields["saml-identity-provider-uri"]}
@@ -136,7 +165,6 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
                 {...fields["saml-identity-provider-certificate"]}
                 label={t`SAML Identity Provider Certificate`}
                 required
-                monospaceText
               />
               <FormTextInput
                 {...fields["saml-application-name"]}
@@ -171,8 +199,11 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           </SAMLFormSection>
 
           <SAMLFormSection wide>
-            <h3 className="mb0">{t`Synchronize group membership with your SSO`}</h3>
-            <p className="mb4 mt1 text-medium">
+            <h3
+              className={CS.mb0}
+            >{t`Synchronize group membership with your SSO`}</h3>
+            <p className={cx(CS.mb4, CS.mt1, CS.textMedium)}>
+              {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
               {t`To enable this, you'll need to create mappings to tell Metabase which group(s) your users should
                be added to based on the SSO group they're in.`}
             </p>
@@ -212,6 +243,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
 // 1) Our `settingValues` has settings unrelated to SAML, which was previously sifted by collecting only those matching inline field names in our form.
 // 2) Some values should be replaced by defaults.
 const IS_SAML_ATTR_DEFAULTABLE = {
+  "saml-user-provisioning-enabled?": true,
   "saml-attribute-email": true,
   "saml-attribute-firstname": true,
   "saml-attribute-lastname": true,

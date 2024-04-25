@@ -1,6 +1,8 @@
-import * as Yup from "yup";
-import type { AnySchema } from "yup";
 import userEvent from "@testing-library/user-event";
+import type { AnySchema } from "yup";
+import * as Yup from "yup";
+
+import { render, screen, waitFor } from "__support__/ui";
 import {
   Form,
   FormCheckboxGroup,
@@ -9,7 +11,6 @@ import {
   requiredErrorMessage,
 } from "metabase/forms";
 import { Checkbox } from "metabase/ui";
-import { render, screen, waitFor } from "__support__/ui";
 
 interface FormValues {
   columns: string[];
@@ -58,8 +59,8 @@ describe("FormCheckboxGroup", () => {
   it("should submit a non-empty value", async () => {
     const { onSubmit } = setup();
 
-    userEvent.click(screen.getByLabelText("Name"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByLabelText("Name"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -81,9 +82,9 @@ describe("FormCheckboxGroup", () => {
     });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
 
-    userEvent.click(screen.getByLabelText("Name"));
-    userEvent.click(screen.getByLabelText("Name"));
-    userEvent.tab();
+    await userEvent.click(screen.getByLabelText("Name"));
+    await userEvent.click(screen.getByLabelText("Name"));
+    await userEvent.tab();
     await waitFor(() => {
       expect(screen.getByText("Required")).toBeInTheDocument();
     });

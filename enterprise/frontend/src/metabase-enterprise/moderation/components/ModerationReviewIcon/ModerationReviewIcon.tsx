@@ -1,9 +1,11 @@
+import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
 import { getRelativeTime } from "metabase/lib/time";
 import { Icon } from "metabase/ui";
-import Tooltip from "metabase/core/components/Tooltip";
 import type { ModerationReview, User } from "metabase-types/api";
+
 import { getIconForReview, getModeratorDisplayText } from "../../service";
+
 import { TooltipTime } from "./ModerationReviewIcon.styled";
 
 export interface ModerationReviewIconProps {

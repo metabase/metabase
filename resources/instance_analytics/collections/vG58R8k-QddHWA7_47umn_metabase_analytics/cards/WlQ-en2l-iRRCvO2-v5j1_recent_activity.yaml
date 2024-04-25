@@ -202,4 +202,6 @@ serdes/meta:
 - id: WlQ-en2l-iRRCvO2-v5j1
   label: recent_activity
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (ad99d37)
+type: question

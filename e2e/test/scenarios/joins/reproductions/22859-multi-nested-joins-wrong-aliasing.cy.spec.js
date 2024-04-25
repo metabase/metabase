@@ -1,11 +1,10 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
   visualize,
   startNewQuestion,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { REVIEWS, REVIEWS_ID, PRODUCTS, PRODUCTS_ID, ORDERS_ID, ORDERS } =
   SAMPLE_DATABASE;
@@ -75,7 +74,7 @@ describe("issue 22859 - multiple levels of nesting", () => {
   it("model based on multi-level nested saved question should work (metabase#22859-1)", () => {
     cy.get("@q2Id").then(id => {
       // Convert the second question to a model
-      cy.request("PUT", `/api/card/${id}`, { dataset: true });
+      cy.request("PUT", `/api/card/${id}`, { type: "model" });
 
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.visit(`/model/${id}`);

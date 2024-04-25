@@ -1,9 +1,9 @@
-import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, within } from "__support__/ui";
-
 // these tests use ChartSettings directly, but logic we're testing lives in ChartNestedSettingSeries
-import registerVisualizations from "metabase/visualizations/register";
+import userEvent from "@testing-library/user-event";
+
+import { renderWithProviders, screen, within } from "__support__/ui";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
+import registerVisualizations from "metabase/visualizations/register";
 
 registerVisualizations();
 
@@ -64,7 +64,7 @@ describe("ChartNestedSettingSeries", () => {
     expect(screen.getByRole("img", { name: /bar/i })).toBeInTheDocument();
   });
 
-  it("should show and open 'More options' on visualizations with multiple lines (metabase#17619)", () => {
+  it("should show and open 'More options' on visualizations with multiple lines (metabase#17619)", async () => {
     setup("line", 3);
     //Check that all series are present
     expect(screen.getByDisplayValue("Test 0")).toBeInTheDocument();
@@ -86,7 +86,7 @@ describe("ChartNestedSettingSeries", () => {
     ).not.toBeInTheDocument();
 
     //Expand a section
-    userEvent.click(expandButtons[0]);
+    await userEvent.click(expandButtons[0]);
     expect(screen.getByRole("img", { name: /chevronup/i })).toBeInTheDocument();
     expect(screen.getByText("Line style")).toBeInTheDocument();
     expect(screen.getByText("Show dots on lines")).toBeInTheDocument();
@@ -95,7 +95,7 @@ describe("ChartNestedSettingSeries", () => {
     expect(screen.getByText("Show values for this series")).toBeInTheDocument();
 
     //Expand another section, should only be 1 open section
-    userEvent.click(expandButtons[1]);
+    await userEvent.click(expandButtons[1]);
     expect(screen.getByRole("img", { name: /chevronup/i })).toBeInTheDocument();
   });
 

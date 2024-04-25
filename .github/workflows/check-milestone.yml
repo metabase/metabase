@@ -16,7 +16,7 @@ jobs:
       pull-requests: write
       issues: read
     steps:
-      - uses: actions/github-script@v6
+      - uses: actions/github-script@v7
         with:
           script: | # js
             const owner = context.repo.owner;
@@ -26,8 +26,8 @@ jobs:
 
             // the github API doesn't expose linked issues, so we have to parse the body ourselves
             function getLinkedIssueId(pull) {
-              // https://regexr.com/7mjnp
-              const match = pull.data.body.match(/(\/issues\/|#)(\d+)/);
+              // https://regexr.com/7sk94
+              const match = pull.data.body.match(/(close(s|d)?|fixe?(s|d)?|resolve(s|d)?) (#|https?:\/\/github.com\/.+\/issues\/)(\d+)/i);
               return match && match?.[2];
             }
 

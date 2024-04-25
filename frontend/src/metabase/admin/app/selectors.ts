@@ -1,7 +1,7 @@
 import { isDeprecatedEngine } from "metabase/lib/engine";
 import { getSetting } from "metabase/selectors/settings";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { State } from "metabase-types/store";
-import type Database from "metabase-lib/metadata/Database";
 
 interface Props {
   databases?: Database[];

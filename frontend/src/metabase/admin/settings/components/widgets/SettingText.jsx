@@ -1,6 +1,9 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
+
 const SettingText = ({
   setting,
   onChange,
@@ -10,9 +13,16 @@ const SettingText = ({
   fireOnChange,
 }) => (
   <textarea
-    className={cx("AdminInput bordered rounded h3 SettingsInput", {
-      "border-error bg-error-input": errorMessage,
-    })}
+    className={cx(
+      AdminS.AdminInput,
+      AdminS.SettingsInput,
+      CS.bordered,
+      CS.rounded,
+      CS.h3,
+      {
+        [cx(CS.borderError, CS.bgErrorInput)]: errorMessage,
+      },
+    )}
     defaultValue={setting.value || ""}
     placeholder={setting.placeholder}
     onChange={fireOnChange ? e => onChange(e.target.value) : null}

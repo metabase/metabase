@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import type { PaperProps } from "metabase/ui";
 import { Icon, Group, Paper, Title } from "metabase/ui";
 

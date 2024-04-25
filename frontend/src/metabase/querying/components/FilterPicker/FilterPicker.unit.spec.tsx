@@ -1,24 +1,22 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
+
+import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
 import {
-  act,
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
-
 import { checkNotNull } from "metabase/lib/types";
-
+import * as Lib from "metabase-lib";
+import * as Lib_ColumnTypes from "metabase-lib/column_types";
 import {
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
 } from "metabase-types/api/mocks/presets";
 
-import * as Lib from "metabase-lib";
-import * as Lib_ColumnTypes from "metabase-lib/column_types";
-
+import { FilterPicker } from "./FilterPicker";
 import {
   createQuery,
   createFilteredQuery,
@@ -36,7 +34,6 @@ import {
   createQueryWithExcludeDateFilter,
   createQueryWithRelativeDateFilter,
 } from "./test-utils";
-import { FilterPicker } from "./FilterPicker";
 
 const productCategories = PRODUCT_CATEGORY_VALUES.values.flat() as string[];
 const productVendors = PRODUCT_VENDOR_VALUES.values.flat() as string[];
@@ -177,13 +174,13 @@ function setup({ query = createQuery(), filter }: SetupOpts = {}) {
 
 describe("FilterPicker", () => {
   describe("without a filter", () => {
-    it("should list filterable columns", () => {
+    it("should list filterable columns", async () => {
       setup();
 
       expect(screen.getByText("Order")).toBeInTheDocument();
       expect(screen.getByText("Discount")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText("Product"));
+      await userEvent.click(screen.getByText("Product"));
       expect(screen.getByText("Category")).toBeInTheDocument();
     });
 
@@ -218,7 +215,7 @@ describe("FilterPicker", () => {
     it("should add a segment filter", async () => {
       const { query, getNextFilter } = setup();
 
-      userEvent.click(screen.getByText("Discounted"));
+      await userEvent.click(screen.getByText("Discounted"));
 
       const filter = getNextFilter();
       const name = Lib.displayInfo(query, 0, filter).displayName;
@@ -228,21 +225,21 @@ describe("FilterPicker", () => {
     describe("filter pickers", () => {
       it.each(WIDGET_TEST_CASES)(
         "should open correct picker for a %s column",
-        (type, query, { section, columnName, pickerId }) => {
+        async (type, query, { section, columnName, pickerId }) => {
           setup();
 
           if (section) {
-            userEvent.click(screen.getByText(section));
+            await userEvent.click(screen.getByText(section));
           }
-          userEvent.click(screen.getByText(columnName));
+          await userEvent.click(screen.getByText(columnName));
 
           expect(screen.getByTestId(pickerId)).toBeInTheDocument();
         },
       );
 
-      it("should open a number picker for a numeric column", () => {
+      it("should open a number picker for a numeric column", async () => {
         setup();
-        userEvent.click(screen.getByText("Total"));
+        await userEvent.click(screen.getByText("Total"));
         expect(screen.getByTestId("number-filter-picker")).toBeInTheDocument();
       });
     });
@@ -252,7 +249,7 @@ describe("FilterPicker", () => {
     it("should highlight the selected column", async () => {
       setup(createQueryWithNumberFilter());
 
-      userEvent.click(screen.getByLabelText("Back"));
+      await userEvent.click(screen.getByLabelText("Back"));
 
       expect(await screen.findByLabelText("Total")).toHaveAttribute(
         "aria-selected",
@@ -291,8 +288,8 @@ describe("FilterPicker", () => {
       );
       await waitForLoaderToBeRemoved(); // fetching Vendor field values
 
-      userEvent.click(screen.getByLabelText("Back"));
-      userEvent.click(screen.getByText("Category"));
+      await userEvent.click(screen.getByLabelText("Back"));
+      await userEvent.click(screen.getByText("Category"));
       await waitForLoaderToBeRemoved(); // fetching Category field values
 
       productCategories.forEach(category => {
@@ -302,9 +299,9 @@ describe("FilterPicker", () => {
         expect(screen.queryByText(vendor)).not.toBeInTheDocument();
       });
 
-      userEvent.click(screen.getByText("Gadget"));
-      userEvent.click(screen.getByText("Gizmo"));
-      userEvent.click(screen.getByText("Update filter"));
+      await userEvent.click(screen.getByText("Gadget"));
+      await userEvent.click(screen.getByText("Gizmo"));
+      await userEvent.click(screen.getByText("Update filter"));
 
       const filter = getNextFilter();
       const filterParts = Lib.stringFilterParts(query, 0, filter);
@@ -345,18 +342,18 @@ describe("FilterPicker", () => {
       });
     });
 
-    it("should initialize widgets correctly after changing a column", () => {
+    it("should initialize widgets correctly after changing a column", async () => {
       const { query, getNextFilter, getNextFilterColumnName } = setup(
         createQueryWithNumberFilter(),
       );
 
-      userEvent.click(screen.getByLabelText("Back"));
-      userEvent.click(screen.getByText("Time"));
+      await userEvent.click(screen.getByLabelText("Back"));
+      await userEvent.click(screen.getByText("Time"));
 
       expect(screen.getByLabelText("Filter operator")).toHaveValue("Before");
       expect(screen.getByDisplayValue("00:00")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText("Update filter"));
+      await userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = Lib.timeFilterParts(query, 0, getNextFilter());
       expect(filterParts?.operator).toBe("<");
@@ -364,25 +361,27 @@ describe("FilterPicker", () => {
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
-    it("should change a filter segment", () => {
+    it("should change a filter segment", async () => {
       const { query, getNextFilter } = setup(createQueryWithSegmentFilter());
 
-      userEvent.click(screen.getByText("Many items"));
+      await userEvent.click(screen.getByText("Many items"));
 
       const filter = getNextFilter();
       const name = Lib.displayInfo(query, 0, filter).displayName;
       expect(name).toBe("Many items");
     });
 
-    it("should replace a segment filter with a column filter", () => {
+    it("should replace a segment filter with a column filter", async () => {
       const { query, getNextFilter, getNextFilterColumnName } = setup(
         createQueryWithSegmentFilter(),
       );
 
-      userEvent.click(screen.getByText("Total"));
+      await userEvent.click(screen.getByText("Total"));
+      await userEvent.click(screen.getByDisplayValue("Between"));
+      await userEvent.click(screen.getByText("Equal to"));
       const input = screen.getByPlaceholderText("Enter a number");
-      userEvent.type(input, "100");
-      userEvent.click(screen.getByText("Update filter"));
+      await userEvent.type(input, "100");
+      await userEvent.click(screen.getByText("Update filter"));
 
       const filter = getNextFilter();
       const filterParts = Lib.numberFilterParts(query, 0, filter);
@@ -405,21 +404,20 @@ describe("FilterPicker", () => {
 
       // The expression editor applies changes on blur,
       // but for some reason it doesn't work without `act`.
-      // eslint-disable-next-line testing-library/no-unnecessary-act
-      await act(async () => {
-        await userEvent.type(input, text, { delay });
-        await userEvent.tab();
-      });
+
+      await userEvent.clear(input);
+      await userEvent.type(input, text, { delay });
+      await userEvent.tab();
 
       await waitFor(() => expect(button).toBeEnabled());
-      userEvent.click(button);
+      await userEvent.click(button);
     }
 
     it("should create a filter with a custom expression", async () => {
       const { query, getNextFilter } = setup();
 
-      userEvent.click(screen.getByText(/Custom expression/i));
-      await editExpressionAndSubmit("[[Total] > [[Discount]{enter}");
+      await userEvent.click(screen.getByText(/Custom expression/i));
+      await editExpressionAndSubmit("[[Total] > [[Discount]");
 
       const filter = getNextFilter();
 

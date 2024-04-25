@@ -1,17 +1,14 @@
 import { t } from "ttag";
 
 import EditableText from "metabase/core/components/EditableText";
-
-import { PLUGIN_MODERATION, PLUGIN_CACHING } from "metabase/plugins";
-
-import * as Urls from "metabase/lib/urls";
-
 import Link from "metabase/core/components/Link";
+import * as Urls from "metabase/lib/urls";
+import { PLUGIN_MODERATION, PLUGIN_CACHING } from "metabase/plugins";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
-
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 import ModelCacheManagementSection from "../ModelCacheManagementSection";
+
 import {
   Root,
   ContentSection,
@@ -29,8 +26,7 @@ export const QuestionInfoSidebar = ({
 }: QuestionInfoSidebarProps) => {
   const description = question.description();
   const canWrite = question.canWrite();
-  const isDataset = question.isDataset();
-  const isPersisted = isDataset && question.isPersisted();
+  const isPersisted = question.isPersisted();
   const hasCacheSection = PLUGIN_CACHING.hasQuestionCacheSection(question);
 
   const handleSave = (description: string | null) => {
@@ -50,7 +46,7 @@ export const QuestionInfoSidebar = ({
       <ContentSection>
         <HeaderContainer>
           <h3>{t`About`}</h3>
-          {question.isDataset() && (
+          {question.type() === "model" && (
             <Link
               variant="brand"
               to={Urls.modelDetail(question.card())}
@@ -71,7 +67,7 @@ export const QuestionInfoSidebar = ({
         <PLUGIN_MODERATION.QuestionModerationSection question={question} />
       </ContentSection>
 
-      {isPersisted && (
+      {question.type() === "model" && isPersisted && (
         <ContentSection extraPadding>
           <ModelCacheManagementSection model={question} />
         </ContentSection>

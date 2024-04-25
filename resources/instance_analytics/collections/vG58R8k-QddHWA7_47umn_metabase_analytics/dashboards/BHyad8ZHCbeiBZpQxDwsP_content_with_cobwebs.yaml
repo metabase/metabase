@@ -45,6 +45,7 @@ dashcards:
     - dimension
     - - expression
       - Days since last view
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: mxTQVlyG8xLO1U3c0miCm
@@ -63,6 +64,7 @@ dashcards:
     - dimension
     - - expression
       - Days since last view
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: LWnMbIRc4ei2M70S-ow37
@@ -81,6 +83,9 @@ dashcards:
     - dimension
     - - expression
       - Days since last view
+  series: []
   visualization_settings:
     column_settings: null
+initially_published_at: null
 tabs: []
+width: full

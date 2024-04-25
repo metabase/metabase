@@ -1,5 +1,3 @@
-import { modal } from "e2e/support/helpers/e2e-ui-elements-helpers";
-
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
 export function typeAndBlurUsingLabel(label, value) {
@@ -37,7 +35,16 @@ export function openNativeEditor({
 
   databaseName && cy.findByText(databaseName).click();
 
-  return cy.findByTestId("native-query-editor").as(alias).should("be.visible");
+  return focusNativeEditor().as(alias);
+}
+
+export function focusNativeEditor() {
+  return cy
+    .findByTestId("native-query-editor")
+    .should("be.visible")
+    .should("have.class", "ace_editor")
+    .click()
+    .should("have.class", "ace_focus");
 }
 
 /**
@@ -92,36 +99,47 @@ export function interceptPromise(method, path) {
  *   cy.visit(`/dashboard/1`);
  * });
  */
-const cypressWaitAllRecursive = (results, currentCommand, commands) => {
-  return currentCommand.then(result => {
+const cypressWaitAllRecursive = (results, commands) => {
+  const [nextCommand, ...restCommands] = commands;
+  if (!nextCommand) {
+    return;
+  }
+
+  return nextCommand.then(result => {
     results.push(result);
 
-    const [nextCommand, ...rest] = Array.from(commands);
-
     if (nextCommand == null) {
-      return results;
+      return;
     }
 
-    return cypressWaitAllRecursive(results, nextCommand, rest);
+    return cypressWaitAllRecursive(results, restCommands);
   });
 };
 
 export const cypressWaitAll = function (commands) {
   const results = [];
 
-  return cypressWaitAllRecursive(
-    results,
-    cy.wrap(null, { log: false }),
-    commands,
-  );
+  return cy.wrap(results).then(() => {
+    cypressWaitAllRecursive(results, commands);
+  });
 };
 
 /**
  * Visit a question and wait for its query to load.
  *
- * @param {number} id
+ * @param {number|string} questionIdOrAlias
  */
-export function visitQuestion(id) {
+export function visitQuestion(questionIdOrAlias) {
+  if (typeof questionIdOrAlias === "number") {
+    visitQuestionById(questionIdOrAlias);
+  }
+
+  if (typeof questionIdOrAlias === "string") {
+    cy.get(questionIdOrAlias).then(id => visitQuestionById(id));
+  }
+}
+
+function visitQuestionById(id) {
   // In case we use this function multiple times in a test, make sure aliases are unique for each question
   const alias = "cardQuery" + id;
 
@@ -142,7 +160,7 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
   const alias = "modelQuery" + id;
 
   if (hasDataAccess) {
-    cy.intercept("POST", `/api/dataset`).as(alias);
+    cy.intercept("POST", "/api/dataset").as(alias);
   } else {
     cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
   }
@@ -155,9 +173,20 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
 /**
  * Visit a dashboard and wait for the related queries to load.
  *
- * @param {number} dashboard_id
+ * @param {number|string} dashboardIdOrAlias
+ * @param {Object} config
  */
-export function visitDashboard(dashboard_id, { params = {} } = {}) {
+export function visitDashboard(dashboardIdOrAlias, { params = {} } = {}) {
+  if (typeof dashboardIdOrAlias === "number") {
+    visitDashboardById(dashboardIdOrAlias, { params });
+  }
+
+  if (typeof dashboardIdOrAlias === "string") {
+    cy.get(dashboardIdOrAlias).then(id => visitDashboardById(id, { params }));
+  }
+}
+
+function visitDashboardById(dashboard_id, config) {
   // Some users will not have permissions for this request
   cy.request({
     method: "GET",
@@ -174,7 +203,7 @@ export function visitDashboard(dashboard_id, { params = {} } = {}) {
     let validQuestions = dashboardHasQuestions(dashcards);
 
     // if dashboard has tabs, only expect cards on the first tab
-    if (tabs?.length > 0) {
+    if (tabs?.length > 0 && validQuestions) {
       const firstTab = tabs[0];
       validQuestions = validQuestions.filter(
         card => card.dashboard_tab_id === firstTab.id,
@@ -203,7 +232,7 @@ export function visitDashboard(dashboard_id, { params = {} } = {}) {
 
       cy.visit({
         url: `/dashboard/${dashboard_id}`,
-        qs: params,
+        qs: config.params,
       });
 
       cy.wait(aliases);
@@ -260,11 +289,11 @@ export function saveQuestion(
   cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByText("Save").click();
 
-  modal().within(() => {
+  cy.findByTestId("save-question-modal").within(modal => {
     if (name) {
       cy.findByLabelText("Name").clear().type(name);
     }
-    cy.button("Save").click();
+    cy.findByText("Save").click();
   });
 
   cy.wait("@saveQuestion").then(({ response: { body } }) => {
@@ -273,7 +302,7 @@ export function saveQuestion(
     }
   });
 
-  modal().within(() => {
+  cy.get("#QuestionSavedModal").within(() => {
     cy.button("Not now").click();
   });
 }
@@ -282,8 +311,8 @@ export function saveSavedQuestion() {
   cy.intercept("PUT", "/api/card/**").as("updateQuestion");
   cy.findByText("Save").click();
 
-  modal().within(() => {
-    cy.button("Save").click();
+  cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByText("Save").click();
   });
   cy.wait("@updateQuestion");
 }

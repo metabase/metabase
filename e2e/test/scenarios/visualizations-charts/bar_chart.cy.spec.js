@@ -1,16 +1,15 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitQuestionAdhoc,
   sidebar,
   getDraggableElements,
-  moveColumnDown,
   popover,
   visitDashboard,
   cypressWaitAll,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -144,12 +143,14 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     it("should allow you to show/hide and reorder columns", () => {
-      moveColumnDown(getDraggableElements().eq(0), 2);
+      moveDnDKitElement(getDraggableElements().eq(0), { vertical: 100 });
 
-      getDraggableElements().each((element, index) => {
-        const draggableName = element[0].innerText;
-        cy.findAllByTestId("legend-item").eq(index).contains(draggableName);
-      });
+      cy.findAllByTestId("legend-item").eq(0).should("contain.text", "Gadget");
+      cy.findAllByTestId("legend-item").eq(1).should("contain.text", "Gizmo");
+      cy.findAllByTestId("legend-item")
+        .eq(2)
+        .should("contain.text", "Doohickey");
+      cy.findAllByTestId("legend-item").eq(3).should("contain.text", "Widget");
 
       const columnIndex = 1;
 
@@ -163,9 +164,11 @@ describe("scenarios > visualizations > bar chart", () => {
         .eq(columnIndex)
         .invoke("text")
         .then(columnName => {
-          cy.get(".Visualization").findByText(columnName).should("not.exist");
+          cy.findByTestId("query-visualization-root")
+            .findByText(columnName)
+            .should("not.exist");
           cy.findAllByTestId("legend-item").should("have.length", 3);
-          cy.get(".enable-dots").should("have.length", 3);
+          cy.findAllByTestId("chart-series").should("have.length", 3);
         });
 
       getDraggableElements()
@@ -178,9 +181,11 @@ describe("scenarios > visualizations > bar chart", () => {
         .eq(columnIndex)
         .invoke("text")
         .then(columnName => {
-          cy.get(".Visualization").findByText(columnName).should("exist");
+          cy.findByTestId("query-visualization-root")
+            .findByText(columnName)
+            .should("exist");
           cy.findAllByTestId("legend-item").should("have.length", 4);
-          cy.get(".enable-dots").should("have.length", 4);
+          cy.findAllByTestId("chart-series").should("have.length", 4);
         });
 
       cy.findAllByTestId("legend-item").contains("Gadget").click();
@@ -191,7 +196,7 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
-      moveColumnDown(getDraggableElements().first(), 2);
+      moveDnDKitElement(getDraggableElements().first(), { vertical: 100 });
 
       getDraggableElements()
         .eq(1)
@@ -299,7 +304,7 @@ describe("scenarios > visualizations > bar chart", () => {
           type: "native",
           native: {
             query:
-              `SELECT products.category AS "x", COUNT(*) AS "m1", AVG(orders.discount) AS "m2" ` +
+              'SELECT products.category AS "x", COUNT(*) AS "m1", AVG(orders.discount) AS "m2" ' +
               "FROM orders " +
               "JOIN products ON orders.product_id = products.id " +
               "GROUP BY products.category",
@@ -504,7 +509,7 @@ describe("scenarios > visualizations > bar chart", () => {
             cy.createQuestionAndAddToDashboard(breakoutQuestion, dashboard.id, {
               col: 0,
               row: 9,
-              size_x: 15,
+              size_x: 20,
             }),
           ]).then(() => {
             visitDashboard(dashboard.id);

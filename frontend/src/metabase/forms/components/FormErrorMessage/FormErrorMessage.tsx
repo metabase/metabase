@@ -1,7 +1,9 @@
 import type { Ref } from "react";
 import { forwardRef } from "react";
-import { Text } from "metabase/ui";
+
 import type { TextProps } from "metabase/ui";
+import { Text } from "metabase/ui";
+
 import { useFormErrorMessage } from "../../hooks";
 
 export type FormErrorMessageProps = TextProps;

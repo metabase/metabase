@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]
    [clojure.walk :as walk]
+   [metabase.config :as config]
+   [metabase.test :as mt]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
    [metabase.util.malli.registry :as mr]))
@@ -234,14 +236,30 @@
     (testing "sanity check-error-location that it works"
       (is (= :yes (works? "valid input"))))))
 
-(deftest instrumentation-can-be-omitted
+(deftest instrument-ns-test
+  (doseq [mode ["test" "prod" "dev"]]
+    (with-redefs [config/is-prod? (= mode "prod")
+                  config/is-dev?  (= mode "dev")
+                  config/is-test? (= mode "test")]
+      (testing (str "In " mode)
+        (testing (str "\na namespace without :instrument/always meta should " (if (= mode "prod") "" "not") " be skipped")
+          (let [n (create-ns (symbol (mt/random-name)))]
+            (if (= mode "prod")
+              (is (false? (mu.fn/instrument-ns? n)))
+              (is (true? (mu.fn/instrument-ns? n))))))
+        (testing (str "\na namespace with :instrument/always meta should not be skipped")
+          (let [n (doto ^clojure.lang.Namespace (create-ns (symbol (mt/random-name)))
+                    (.resetMeta {:instrument/always true}))]
+            (is (true? (mu.fn/instrument-ns? n)))))))))
+
+(deftest ^:parallel instrumentation-can-be-omitted
   (testing "omission in macroexpansion"
     (testing "returns a simple fn*"
-      (binding [mu.fn/*skip-ns-decision-fn* (constantly true)]
+      (mt/with-dynamic-redefs [mu.fn/instrument-ns? (constantly false)]
         (let [expansion (macroexpand `(mu.fn/fn :- :int [] "foo"))]
           (is (= expansion '(fn* ([] "foo")))))))
     (testing "returns an instrumented fn"
-      (binding [mu.fn/*skip-ns-decision-fn* (constantly false)]
+      (mt/with-dynamic-redefs [mu.fn/instrument-ns? (constantly true)]
         (let [expansion (macroexpand `(mu.fn/fn :- :int [] "foo"))]
           (is (= (take 2 expansion)
                  '(let* [&f (clojure.core/fn [] "foo")]
@@ -252,10 +270,10 @@
            (is false "(f) did not throw")
            (catch Exception e
              (is (=? {:type ::mu.fn/invalid-output} (ex-data e)))))))
-  (testing "when skip-ns-decision-fn returns true, unvalidated form is emitted"
-    (binding [mu.fn/*skip-ns-decision-fn* (constantly (fn [_ns] true))]
+  (testing "when instrument-ns? returns false, unvalidated form is emitted"
+    (mt/with-dynamic-redefs [mu.fn/instrument-ns? (constantly false)]
       ;; we have to use eval here because `mu.fn/fn` is expanded at _read_ time and we want to change the
-      ;; expansion via [[*skip-ns-decision-fn*]]. So that's why we call eval here. Could definitely use some
+      ;; expansion via [[mu.fn/instrument-ns?]]. So that's why we call eval here. Could definitely use some
       ;; macroexpansion tests as well.
       (let [f (eval `(mu.fn/fn :- :int [] "schemas aren't checked if this is returned"))]
         (try (f)

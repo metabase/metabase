@@ -1,7 +1,7 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockGroup } from "metabase-types/api/mocks";
 
 import { SettingsJWTForm } from "./SettingsJWTForm";
@@ -24,6 +24,16 @@ const elements = [
     originalValue: null,
     display_name: "JWT Authentication",
     type: "boolean",
+  },
+  {
+    key: "jwt-user-provisioning-enabled?",
+    value: null,
+    is_env_setting: false,
+    env_name: "MB_JWT_USER_PROVISIONING_ENABLED",
+    display_name: "User Provisioning",
+    description:
+      "When we enable JWT user provisioning, we automatically create a Metabase account on LDAP signin for users who\ndon't have one.",
+    default: true,
   },
   {
     placeholder: "https://jwt.yourdomain.org",
@@ -132,6 +142,7 @@ describe("SettingsJWTForm", () => {
     const { onSubmit } = setup();
 
     const ATTRS = {
+      "jwt-user-provisioning-enabled?": false,
       "jwt-identity-provider-uri": "http://example.com",
       "jwt-shared-secret":
         "590ab155f412d477b8ab9c8b0e7b2e3ab4d4523e83770a724a2088edbde7f19a",
@@ -142,31 +153,33 @@ describe("SettingsJWTForm", () => {
       "jwt-group-sync": true,
     };
 
-    userEvent.type(
+    await userEvent.click(screen.getByLabelText(/User Provisioning/));
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /JWT Identity Provider URI/ }),
       ATTRS["jwt-identity-provider-uri"],
     );
-    userEvent.type(
+    await userEvent.type(
       await screen.findByRole("textbox", {
         name: /String used by the JWT signing key/,
       }),
       ATTRS["jwt-shared-secret"],
     );
-    userEvent.type(
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /Email attribute/ }),
       ATTRS["jwt-attribute-email"],
     );
-    userEvent.type(
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /First name attribute/ }),
       ATTRS["jwt-attribute-firstname"],
     );
-    userEvent.type(
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /Last name attribute/ }),
       ATTRS["jwt-attribute-lastname"],
     );
-    userEvent.click(screen.getByRole("checkbox")); // checkbox for "jwt-group-sync"
+    const groupSchema = await screen.findByTestId("jwt-group-schema");
+    await userEvent.click(within(groupSchema).getByRole("checkbox")); // checkbox for "jwt-group-sync"
 
-    userEvent.click(await screen.findByRole("button", { name: /Save/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Save/ }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(ATTRS);

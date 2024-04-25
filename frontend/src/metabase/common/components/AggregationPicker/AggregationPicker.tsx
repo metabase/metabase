@@ -2,28 +2,23 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
-import { Icon } from "metabase/ui";
-
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
-
+import { getMetadata } from "metabase/selectors/metadata";
+import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
+
 import {
   Root,
   ColumnPickerContainer,
   ColumnPickerHeaderContainer,
   ColumnPickerHeaderTitleContainer,
   ColumnPickerHeaderTitle,
-  InfoIconContainer,
 } from "./AggregationPicker.styled";
-
-const DEFAULT_MAX_HEIGHT = 610;
 
 interface AggregationPickerProps {
   className?: string;
@@ -32,7 +27,6 @@ interface AggregationPickerProps {
   stageIndex: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
-  maxHeight?: number;
   onSelect: (operator: Lib.Aggregable) => void;
   onClose?: () => void;
 }
@@ -41,17 +35,18 @@ type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
   operator: Lib.AggregationOperator;
 };
 
-type MetricListItem = Lib.MetricDisplayInfo & {
-  metric: Lib.MetricMetadata;
+type LegacyMetricListItem = Lib.LegacyMetricDisplayInfo & {
+  metric: Lib.LegacyMetricMetadata;
 };
 
-type ListItem = OperatorListItem | MetricListItem;
+type ListItem = OperatorListItem | LegacyMetricListItem;
 
 type Section = {
   name: string;
   key: string;
   items: ListItem[];
   icon?: string;
+  type?: string;
 };
 
 function isOperatorListItem(item: ListItem): item is OperatorListItem {
@@ -65,7 +60,6 @@ export function AggregationPicker({
   stageIndex,
   operators,
   hasExpressionInput = true,
-  maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
   onClose,
 }: AggregationPickerProps) {
@@ -96,7 +90,7 @@ export function AggregationPicker({
   const sections = useMemo(() => {
     const sections: Section[] = [];
 
-    const metrics = Lib.availableMetrics(query);
+    const metrics = Lib.availableLegacyMetrics(query, stageIndex);
     const databaseId = Lib.databaseID(query);
     const database = metadata.database(databaseId);
     const canUseExpressions = database?.hasFeature("expression-aggregations");
@@ -129,6 +123,7 @@ export function AggregationPicker({
         name: t`Custom Expression`,
         items: [],
         icon: "sum",
+        type: "action",
       });
     }
 
@@ -170,7 +165,7 @@ export function AggregationPicker({
   );
 
   const handleMetricSelect = useCallback(
-    (item: MetricListItem) => {
+    (item: LegacyMetricListItem) => {
       onSelect(item.metric);
       onClose?.();
     },
@@ -238,9 +233,8 @@ export function AggregationPicker({
           stageIndex={stageIndex}
           columnGroups={columnGroups}
           hasTemporalBucketing
-          maxHeight={maxHeight}
           color="summarize"
-          checkIsColumnSelected={checkColumnSelected}
+          checkIsColumnSelected={checkIsColumnSelected}
           onSelect={handleColumnSelect}
           onClose={onClose}
         />
@@ -252,14 +246,16 @@ export function AggregationPicker({
     <Root className={className} color="summarize">
       <AccordionList
         sections={sections}
-        maxHeight={maxHeight}
         alwaysExpanded={false}
         onChange={handleChange}
         onChangeSection={handleSectionChange}
         itemIsSelected={checkIsItemSelected}
         renderItemName={renderItemName}
         renderItemDescription={omitItemDescription}
-        renderItemExtra={renderItemExtra}
+        // disable scrollbars inside the list
+        style={{ overflow: "visible" }}
+        maxHeight={Infinity}
+        withBorders
       />
     </Root>
   );
@@ -287,17 +283,6 @@ function renderItemName(item: ListItem) {
 }
 
 function omitItemDescription() {
-  return null;
-}
-
-function renderItemExtra(item: ListItem) {
-  if (item.description) {
-    return (
-      <InfoIconContainer>
-        <Icon name="question" size={20} tooltip={item.description} />
-      </InfoIconContainer>
-    );
-  }
   return null;
 }
 
@@ -345,8 +330,8 @@ function getOperatorListItem(
 function getMetricListItem(
   query: Lib.Query,
   stageIndex: number,
-  metric: Lib.MetricMetadata,
-): MetricListItem {
+  metric: Lib.LegacyMetricMetadata,
+): LegacyMetricListItem {
   const metricInfo = Lib.displayInfo(query, stageIndex, metric);
   return {
     ...metricInfo,
@@ -354,6 +339,6 @@ function getMetricListItem(
   };
 }
 
-function checkColumnSelected(columnInfo: Lib.ColumnDisplayInfo) {
+function checkIsColumnSelected(columnInfo: Lib.ColumnDisplayInfo) {
   return !!columnInfo.selected;
 }

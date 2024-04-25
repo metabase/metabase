@@ -1,16 +1,19 @@
-import { jt, t } from "ttag";
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { Box, Center, Stack, Text } from "metabase/ui";
+import { jt, t } from "ttag";
+
+import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { getDocsUrl, getSetting } from "metabase/selectors/settings";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
+import { getEmbedClientCodeExampleOptions } from "metabase/public/lib/code";
 import type {
   EmbedResourceType,
   ServerCodeSampleConfig,
 } from "metabase/public/lib/types";
-import { getEmbedClientCodeExampleOptions } from "metabase/public/lib/code";
-import { getPlan } from "metabase/common/utils/plan";
+import { getDocsUrl, getSetting } from "metabase/selectors/settings";
+import { Box, Center, Stack, Text } from "metabase/ui";
 
 import { ClientEmbedCodePane } from "./ClientEmbedCodePane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
@@ -20,6 +23,7 @@ export interface OverviewSettingsProps {
   resourceType: EmbedResourceType;
   serverEmbedCodeSlot: ReactNode;
   selectedServerCodeOption: ServerCodeSampleConfig | undefined;
+  onClientCodeCopy: (language: string) => void;
 }
 
 const clientCodeOptions = getEmbedClientCodeExampleOptions();
@@ -28,6 +32,7 @@ export const OverviewSettings = ({
   resourceType,
   serverEmbedCodeSlot,
   selectedServerCodeOption,
+  onClientCodeCopy,
 }: OverviewSettingsProps): JSX.Element => {
   const docsUrl = useSelector(state =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- Only appear to admins
@@ -37,8 +42,9 @@ export const OverviewSettings = ({
     getPlan(getSetting(state, "token-features")),
   );
 
-  const [selectedClientCodeOptionName, setSelectedClientCodeOptionName] =
-    useState(clientCodeOptions[0].name);
+  const [selectedClientCodeOptionId, setSelectedClientCodeOptionId] = useState(
+    clientCodeOptions[0].id,
+  );
 
   useEffect(() => {
     if (selectedServerCodeOption) {
@@ -46,9 +52,9 @@ export const OverviewSettings = ({
 
       if (
         embedOption &&
-        clientCodeOptions.find(({ name }) => name === embedOption)
+        clientCodeOptions.find(({ id }) => id === embedOption)
       ) {
-        setSelectedClientCodeOptionName(embedOption);
+        setSelectedClientCodeOptionId(embedOption);
       }
     }
   }, [selectedServerCodeOption]);
@@ -76,13 +82,14 @@ export const OverviewSettings = ({
         </StaticEmbedSetupPaneSettingsContentSection>
       }
       previewSlot={
-        <Stack spacing="2rem" className="flex-full w-full">
+        <Stack spacing="2rem" className={cx(CS.flexFull, CS.wFull)}>
           {serverEmbedCodeSlot}
 
           <ClientEmbedCodePane
             clientCodeOptions={clientCodeOptions}
-            selectedClientCodeOptionName={selectedClientCodeOptionName}
-            setSelectedClientCodeOptionName={setSelectedClientCodeOptionName}
+            selectedClientCodeOptionId={selectedClientCodeOptionId}
+            setSelectedClientCodeOptionId={setSelectedClientCodeOptionId}
+            onCopy={() => onClientCodeCopy(selectedClientCodeOptionId)}
           />
 
           <Box my="1rem">

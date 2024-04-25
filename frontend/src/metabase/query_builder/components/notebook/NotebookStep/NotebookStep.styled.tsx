@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import Button from "metabase/core/components/Button";
 import { alpha, color, darken, lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
@@ -23,13 +24,10 @@ export interface StepHeaderProps {
 
 export const StepContent = styled.div`
   width: ${getPercentage(11 / 12)};
-
-  ${breakpointMinSmall} {
-    width: ${getPercentage(8 / 12)};
-  }
+  max-width: 75rem;
 `;
 
-export const StepHeader = styled(StepContent)<StepHeaderProps>`
+export const StepHeader = styled(StepContent)`
   display: flex;
   color: ${props => props.color};
   font-weight: bold;

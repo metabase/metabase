@@ -23,8 +23,20 @@ export const createMockCollectionItem = (
   description: null,
   collection_position: null,
   collection_preview: true,
+  collection_id: null,
   fully_parameterized: true,
   getIcon: () => ({ name: "question" }),
   getUrl: () => "/question/1",
   ...opts,
 });
+
+export const createMockCollectionItemFromCollection = (
+  opts?: Partial<Collection>,
+): CollectionItem =>
+  createMockCollectionItem({
+    ...opts,
+    id: opts?.id as number,
+    model: "collection",
+    type: undefined,
+    location: opts?.location || "/",
+  });

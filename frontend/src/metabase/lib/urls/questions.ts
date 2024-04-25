@@ -2,11 +2,10 @@ import slugg from "slugg";
 
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
-
+import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import type { CardId, Card as SavedCard } from "metabase-types/api";
-import type { QuestionCreatorOpts } from "metabase-lib/Question";
-import Question from "metabase-lib/Question";
-import * as ML_Urls from "metabase-lib/urls";
 
 import { appendSlug, getEncodedUrlSearchParams } from "./utils";
 
@@ -14,8 +13,6 @@ type Card = Partial<SavedCard> & {
   card_id?: CardId | string;
   model?: "card" | "dataset";
 };
-
-export const newQuestionFlow = () => "/question/new";
 
 export type QuestionUrlBuilderParams = {
   mode?: "view" | "notebook";
@@ -49,8 +46,10 @@ export function question(
     query = "?" + query;
   }
 
-  const isModel = card?.dataset || card?.model === "dataset";
-  let path = isModel ? "model" : "question";
+  const isModel = card?.type === "model" || card?.model === "dataset";
+  const fallbackPath = isModel ? "model" : "question";
+  let path: string = card?.type ?? fallbackPath;
+
   if (!card || !card.id) {
     return `/${path}${query}${hash}`;
   }
@@ -106,13 +105,13 @@ export function newQuestion({
     query: objectId ? { objectId } : undefined,
   });
 
-  const entity = question.isDataset() ? "model" : "question";
+  const type = question.type();
 
   if (mode) {
-    return url.replace(/^\/(question|model)/, `/${entity}\/${mode}`);
-  } else {
-    return url;
+    return url.replace(/^\/(question|model)/, `/${type}\/${mode}`);
   }
+
+  return url;
 }
 
 export function publicQuestion({

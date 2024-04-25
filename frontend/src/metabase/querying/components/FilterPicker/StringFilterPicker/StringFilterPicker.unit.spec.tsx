@@ -1,27 +1,30 @@
 import userEvent from "@testing-library/user-event";
+
+import {
+  setupFieldsValuesEndpoints,
+  setupFieldSearchValuesEndpoints,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import {
-  setupFieldsValuesEndpoints,
-  setupFieldSearchValuesEndpoints,
-} from "__support__/server-mocks";
 import { checkNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
 import {
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
   PEOPLE,
 } from "metabase-types/api/mocks/presets";
-import * as Lib from "metabase-lib";
+
 import {
   createQuery,
   createQueryWithStringFilter,
   findStringColumn,
   storeInitialState,
 } from "../test-utils";
+
 import { StringFilterPicker } from "./StringFilterPicker";
 
 type SetupOpts = {
@@ -86,8 +89,8 @@ function setup({
 }
 
 async function setOperator(operator: string) {
-  userEvent.click(screen.getByLabelText("Filter operator"));
-  userEvent.click(await screen.findByText(operator));
+  await userEvent.click(screen.getByLabelText("Filter operator"));
+  await userEvent.click(await screen.findByText(operator));
 }
 
 describe("StringFilterPicker", () => {
@@ -104,7 +107,7 @@ describe("StringFilterPicker", () => {
       setup();
 
       expect(screen.getByText("Product → Description")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("Is")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("Contains")).toBeInTheDocument();
       expect(screen.getByPlaceholderText("Enter some text")).toHaveValue("");
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
     });
@@ -112,7 +115,7 @@ describe("StringFilterPicker", () => {
     it("should list operators", async () => {
       setup();
 
-      userEvent.click(screen.getByLabelText("Filter operator"));
+      await userEvent.click(screen.getByLabelText("Filter operator"));
       const listbox = await screen.findByRole("listbox");
       const options = within(listbox).getAllByRole("option");
 
@@ -136,12 +139,12 @@ describe("StringFilterPicker", () => {
       expect(screen.getByText("Gizmo")).toBeInTheDocument();
       expect(screen.getByText("Widget")).toBeInTheDocument();
 
-      userEvent.type(screen.getByPlaceholderText("Search the list"), "G");
+      await userEvent.type(screen.getByPlaceholderText("Search the list"), "G");
 
       expect(screen.queryByText("Doohickey")).not.toBeInTheDocument();
-      userEvent.click(screen.getByText("Gadget"));
-      userEvent.click(screen.getByText("Widget"));
-      userEvent.click(screen.getByText("Add filter"));
+      await userEvent.click(screen.getByText("Gadget"));
+      await userEvent.click(screen.getByText("Widget"));
+      await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -164,11 +167,13 @@ describe("StringFilterPicker", () => {
       });
       await waitForLoaderToBeRemoved();
 
-      userEvent.type(screen.getByPlaceholderText("Search by Email"), "t");
+      await userEvent.click(screen.getByDisplayValue("Contains"));
+      await userEvent.click(screen.getByText("Is"));
+      await userEvent.type(screen.getByPlaceholderText("Search by Email"), "t");
       jest.advanceTimersByTime(500);
-      userEvent.click(await screen.findByText("test@metabase.test"));
+      await userEvent.click(await screen.findByText("test@metabase.test"));
 
-      userEvent.click(screen.getByText("Add filter"));
+      await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -183,8 +188,11 @@ describe("StringFilterPicker", () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
       await setOperator("Contains");
-      userEvent.type(screen.getByPlaceholderText("Enter some text"), "green");
-      userEvent.click(screen.getByText("Add filter"));
+      await userEvent.type(
+        screen.getByPlaceholderText("Enter some text"),
+        "green",
+      );
+      await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -201,10 +209,10 @@ describe("StringFilterPicker", () => {
 
       await setOperator("Contains");
       const input = screen.getByPlaceholderText("Enter some text");
-      userEvent.type(input, "{enter}");
+      await userEvent.type(input, "{enter}");
       expect(onChange).not.toHaveBeenCalled();
 
-      userEvent.type(input, "green{enter}");
+      await userEvent.type(input, "green{enter}");
       expect(onChange).toHaveBeenCalled();
       expect(getNextFilterParts()).toMatchObject({
         operator: "contains",
@@ -219,9 +227,12 @@ describe("StringFilterPicker", () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
       await setOperator("Does not contain");
-      userEvent.type(screen.getByPlaceholderText("Enter some text"), "Ga");
-      userEvent.click(screen.getByLabelText("Case sensitive"));
-      userEvent.click(screen.getByText("Add filter"));
+      await userEvent.type(
+        screen.getByPlaceholderText("Enter some text"),
+        "Ga",
+      );
+      await userEvent.click(screen.getByLabelText("Case sensitive"));
+      await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -242,9 +253,9 @@ describe("StringFilterPicker", () => {
       });
       await waitForLoaderToBeRemoved();
 
-      userEvent.click(screen.getByLabelText("Doohickey"));
-      userEvent.click(screen.getByLabelText("Widget"));
-      userEvent.click(screen.getByText("Add filter"));
+      await userEvent.click(screen.getByLabelText("Doohickey"));
+      await userEvent.click(screen.getByLabelText("Widget"));
+      await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -266,12 +277,12 @@ describe("StringFilterPicker", () => {
       await waitForLoaderToBeRemoved();
 
       const input = screen.getByPlaceholderText("Search the list");
-      userEvent.type(input, "{enter}");
+      await userEvent.type(input, "{enter}");
       expect(onChange).not.toHaveBeenCalled();
 
-      userEvent.click(screen.getByLabelText("Doohickey"));
-      userEvent.click(screen.getByLabelText("Widget"));
-      userEvent.type(input, "{enter}");
+      await userEvent.click(screen.getByLabelText("Doohickey"));
+      await userEvent.click(screen.getByLabelText("Widget"));
+      await userEvent.type(input, "{enter}");
       expect(onChange).toHaveBeenCalled();
       expect(getNextFilterParts()).toMatchObject({
         operator: "=",
@@ -286,7 +297,7 @@ describe("StringFilterPicker", () => {
       const { getNextFilterParts, getNextFilterColumnName } = await setup();
 
       await setOperator("Is empty");
-      userEvent.click(screen.getByText("Add filter"));
+      await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -302,8 +313,11 @@ describe("StringFilterPicker", () => {
       const { getNextFilterParts } = setup();
 
       await setOperator("Starts with");
-      userEvent.type(screen.getByPlaceholderText("Enter some text"), "123");
-      userEvent.click(screen.getByText("Add filter"));
+      await userEvent.type(
+        screen.getByPlaceholderText("Enter some text"),
+        "123",
+      );
+      await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -319,8 +333,8 @@ describe("StringFilterPicker", () => {
 
       await setOperator("Contains");
       const input = screen.getByPlaceholderText("Enter some text");
-      userEvent.type(input, "Ga");
-      userEvent.clear(input);
+      await userEvent.type(input, "Ga");
+      await userEvent.clear(input);
 
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
     });
@@ -334,7 +348,7 @@ describe("StringFilterPicker", () => {
       await setOperator("Does not contain");
       expect(screen.getByLabelText("Case sensitive")).not.toBeChecked();
 
-      userEvent.click(screen.getByLabelText("Case sensitive"));
+      await userEvent.click(screen.getByLabelText("Case sensitive"));
       await setOperator("Starts with");
       expect(screen.getByLabelText("Case sensitive")).toBeChecked();
 
@@ -346,9 +360,9 @@ describe("StringFilterPicker", () => {
       expect(screen.getByLabelText("Case sensitive")).toBeChecked();
     });
 
-    it("should go back", () => {
+    it("should go back", async () => {
       const { onBack, onChange } = setup();
-      userEvent.click(screen.getByLabelText("Back"));
+      await userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
     });
@@ -377,12 +391,12 @@ describe("StringFilterPicker", () => {
       it("should update a filter", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(opts);
 
-        userEvent.type(
-          screen.getByDisplayValue("abc"),
-          "{selectall}{backspace}foo",
-        );
-        userEvent.click(screen.getByLabelText("Case sensitive"));
-        userEvent.click(screen.getByText("Update filter"));
+        const input = screen.getByRole("textbox", { name: "Filter value" });
+        await userEvent.clear(input);
+
+        await userEvent.type(input, "foo");
+        await userEvent.click(screen.getByLabelText("Case sensitive"));
+        await userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
@@ -421,9 +435,9 @@ describe("StringFilterPicker", () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(opts);
         await waitForLoaderToBeRemoved();
 
-        userEvent.click(screen.getByLabelText("Gadget"));
-        userEvent.click(screen.getByLabelText("Widget"));
-        userEvent.click(screen.getByText("Update filter"));
+        await userEvent.click(screen.getByLabelText("Gadget"));
+        await userEvent.click(screen.getByLabelText("Widget"));
+        await userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
@@ -456,7 +470,7 @@ describe("StringFilterPicker", () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(opts);
 
         await setOperator("Not empty");
-        userEvent.click(screen.getByText("Update filter"));
+        await userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
@@ -472,7 +486,7 @@ describe("StringFilterPicker", () => {
     it("should list operators", async () => {
       setup(createQueryWithStringFilter());
 
-      userEvent.click(screen.getByLabelText("Filter operator"));
+      await userEvent.click(screen.getByLabelText("Filter operator"));
       const listbox = await screen.findByRole("listbox");
       const options = within(listbox).getAllByRole("option");
 
@@ -488,7 +502,7 @@ describe("StringFilterPicker", () => {
       );
 
       await setOperator("Contains");
-      userEvent.click(screen.getByText("Update filter"));
+      await userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts).toMatchObject({
@@ -544,7 +558,7 @@ describe("StringFilterPicker", () => {
 
     it("should go back", async () => {
       const { onBack, onChange } = setup(createQueryWithStringFilter());
-      userEvent.click(screen.getByLabelText("Back"));
+      await userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
     });

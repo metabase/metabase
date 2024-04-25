@@ -1,9 +1,11 @@
 import { t } from "ttag";
 
-import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
+import MetabaseSettings from "metabase/lib/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+
 import { CaveatText } from "./CaveatMessage.styled";
 
 export function CaveatMessage() {
@@ -15,7 +17,7 @@ export function CaveatMessage() {
         <>
           &nbsp;
           <ExternalLink
-            className="link"
+            className={CS.link}
             target="_blank"
             href={MetabaseSettings.docsUrl("dashboards/subscriptions")}
           >

@@ -1,17 +1,18 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
   (:require
-   [metabase.query-processor.context :as qp.context]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.utils])
+   [metabase.util.malli :as mu])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.sql SQLException)
-   (schema.utils NamedError ValidationError)))
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -31,55 +32,15 @@
   [^InterruptedException _e]
   {:status :interrupted})
 
-;; TODO - consider moving this into separate middleware as part of a try-catch setup so queries running in a
-;; non-userland context can still have sane Exceptions
-(defn- explain-schema-validation-error
-  "Return a nice error message to explain the Schema validation error."
-  [error]
-  (cond
-    (instance? NamedError error)
-    (let [nested-error (.error ^NamedError error)]
-      ;; recurse until we find the innermost nested named error, which is the reason
-      ;; we actually failed
-      (if (instance? NamedError nested-error)
-        (recur nested-error)
-        (or (when (map? nested-error)
-              (explain-schema-validation-error nested-error))
-            (.name ^NamedError error))))
-
-    (map? error)
-    (first (for [e     (vals error)
-                 :when (or (instance? NamedError e)
-                           (instance? ValidationError e))
-                 :let  [explanation (explain-schema-validation-error e)]
-                 :when explanation]
-             explanation))
-
-    ;; When an exception is thrown, a ValidationError comes back like
-    ;;    (throws? ("foreign-keys is not supported by this driver." 10))
-    ;; Extract the message if applicable
-    (instance? ValidationError error)
-    (let [explanation (schema.utils/validation-error-explain error)]
-      (or (when (list? explanation)
-            (let [[reason [msg]] explanation]
-              (when (= reason 'throws?)
-                msg)))
-          explanation))))
-
 (defmethod format-exception ExceptionInfo
   [e]
-  (let [{error :error, error-type :type, :as data} (ex-data e)]
+  (let [{error-type :type, :as data} (ex-data e)]
     (merge
      ((get-method format-exception Throwable) e)
-     (when (= error-type :schema.core/error)
-       (merge
-        {:error_type qp.error-type/invalid-query}
-        (when-let [error-msg (explain-schema-validation-error error)]
-          {:error error-msg})))
      (when (qp.error-type/known-error-type? error-type)
        {:error_type error-type})
      ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
-     {:ex-data (dissoc data :schema)})))
+     {:ex-data data})))
 
 (defmethod format-exception SQLException
   [^SQLException e]
@@ -93,18 +54,18 @@
   [e]
   (reverse (u/full-exception-chain e)))
 
-(defn- best-top-level-error
+(mu/defn ^:private best-top-level-error
   "In cases where the top-level Exception doesn't have the best error message, return a better one to use instead. We
   usually want to show SQLExceptions at the top level since they contain more useful information."
-  [maps]
+  [maps :- [:sequential {:min 1} :map]]
   (some (fn [m]
           (when (isa? (:class m) SQLException)
             (select-keys m [:error])))
         maps))
 
-(defn exception-response
+(mu/defn exception-response :- [:map [:status :keyword]]
   "Convert an Exception to a nicely-formatted Clojure map suitable for returning in userland QP responses."
-  [^Throwable e]
+  [^Throwable e :- (lib.schema.common/instance-of-class Throwable)]
   (let [[m & more :as maps] (for [e (exception-chain e)]
                               (format-exception e))]
     (merge
@@ -128,46 +89,51 @@
       :native       (when (qp.perms/current-user-has-adhoc-native-query-perms? query)
                       native)})))
 
-(defn- query-execution-info [query-execution]
+(mu/defn ^:private query-execution-info :- :map
+  [query-execution :- :map]
   (dissoc query-execution :result_rows :hash :executor_id :dashboard_id :pulse_id :native :start_time_millis))
 
-(defn- format-exception*
+(mu/defn ^:private format-exception* :- [:map [:status :keyword]]
   "Format a `Throwable` into the usual userland error-response format."
-  [query ^Throwable e extra-info]
+  [query        :- :map
+   ^Throwable e :- (lib.schema.common/instance-of-class Throwable)
+   extra-info   :- [:maybe :map]]
   (try
+    ;; [[metabase.query-processor.middleware.process-userland-query/process-userland-query-middleware]] wraps exceptions
+    ;; to add query execution info, unwrap them and format the wrapped one
     (if-let [query-execution (:query-execution (ex-data e))]
       (merge (query-execution-info query-execution)
-             (format-exception* query (.getCause e) extra-info))
+             (format-exception* query (ex-cause e) extra-info))
       (merge
        {:data {:rows [], :cols []}, :row_count 0}
        (exception-response e)
        (query-info query extra-info)))
     (catch Throwable e
-      e)))
+      (assoc (Throwable->map e) :status :failed))))
 
-(defn catch-exceptions
+(mu/defn catch-exceptions :- ::qp.schema/qp
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
   exceptions to the `result-chan`."
-  [qp]
-  (fn [query rff context]
-    (let [extra-info (delay
-                      {:native       (u/ignore-exceptions
-                                      ((resolve 'metabase.query-processor/compile) query))
-                       :preprocessed (u/ignore-exceptions
-                                      ((resolve 'metabase.query-processor/preprocess) query))})]
-      (letfn [(raisef* [e context]
-                ;; format the Exception and return it
-                (let [formatted-exception (format-exception* query e @extra-info)]
-                  (log/error (str (trs "Error processing query: {0}"
-                                       (or (:error formatted-exception)
-                                           ;; log in server locale, respond in user locale
-                                           (trs "Error running query")))
-                                  "\n" (u/pprint-to-str formatted-exception)))
-                  ;; ensure always a message on the error otherwise FE thinks query was successful.  (#23258, #23281)
-                  (qp.context/resultf (update formatted-exception
-                                              :error (fnil identity (trs "Error running query")))
-                                      context)))]
+  [qp :- ::qp.schema/qp]
+  (mu/fn [query :- ::qp.schema/query
+          rff   :- ::qp.schema/rff]
+    (if-not (get-in query [:middleware :userland-query?])
+      (qp query rff)
+      (let [extra-info (delay
+                         {:native       (u/ignore-exceptions
+                                          ((requiring-resolve 'metabase.query-processor.compile/compile) query))
+                          :preprocessed (u/ignore-exceptions
+                                          ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))})]
         (try
-          (qp query rff (assoc context :raisef raisef*))
+          (qp query rff)
           (catch Throwable e
-            (raisef* e context)))))))
+            ;; format the Exception and return it
+            (let [formatted-exception (format-exception* query e @extra-info)]
+              (log/errorf "Error processing query: %s\n%s"
+                          (or (:error formatted-exception) "Error running query")
+                          (u/pprint-to-str formatted-exception))
+              ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
+              (let [result (update formatted-exception
+                                   :error (fnil identity (trs "Error running query")))]
+                (assert (:status result))
+                (qp.pipeline/*result* result)))))))))

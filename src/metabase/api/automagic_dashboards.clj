@@ -5,16 +5,17 @@
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.comparison :refer [comparison-dashboard]]
-   [metabase.automagic-dashboards.core :as magic
+   [metabase.automagic-dashboards.core
+    :as magic
     :refer [automagic-analysis candidate-tables]]
-   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
+   [metabase.automagic-dashboards.dashboard-templates
+    :as dashboard-templates]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
-   [metabase.models.metric :refer [Metric]]
+   [metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.model-index :refer [ModelIndex ModelIndexValue]]
-   [metabase.models.permissions :as perms]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.segment :refer [Segment]]
@@ -72,9 +73,10 @@
 
 (defn- adhoc-query-read-check
   [query]
-  (api/check-403 (perms/set-has-partial-permissions-for-set?
-                   @api/*current-user-permissions-set*
-                   (query-perms/perms-set (:dataset_query query), :throw-exceptions? true)))
+  (api/check-403
+   (query-perms/check-data-perms (:dataset_query query)
+                                 (query-perms/required-perms (:dataset_query query))
+                                 :throw-exceptions? false))
   query)
 
 (defn- ensure-int
@@ -107,7 +109,7 @@
   [_entity-type card-id-str]
   (api/read-check (t2/select-one Card
                                  :id (ensure-int card-id-str)
-                                 :dataset true)))
+                                 :type :model)))
 
 (defmethod ->entity :question
   [_entity-type card-id-str]
@@ -119,7 +121,7 @@
 
 (defmethod ->entity :metric
   [_entity-type metric-id-str]
-  (api/read-check (t2/select-one Metric :id (ensure-int metric-id-str))))
+  (api/read-check (t2/select-one LegacyMetric :id (ensure-int metric-id-str))))
 
 (defmethod ->entity :field
   [_entity-type field-id-str]
@@ -270,12 +272,13 @@
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`."
   [entity entity-id-or-query prefix dashboard-template show]
-  {entity Entity
-   show   Show
-   prefix Prefix
-   dashboard-template   DashboardTemplate}
+  {entity             Entity
+   entity-id-or-query ms/NonBlankString
+   show               Show
+   prefix             Prefix
+   dashboard-template DashboardTemplate}
   (-> (->entity entity entity-id-or-query)
-      (automagic-analysis {:show (coerce-show show)
+      (automagic-analysis {:show               (coerce-show show)
                            :dashboard-template ["table" prefix dashboard-template]})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query"
@@ -283,9 +286,10 @@
    defined by
    query `cell-query`."
   [entity entity-id-or-query cell-query show]
-  {entity     Entity
-   show       Show
-   cell-query Base64EncodedJSON}
+  {entity             Entity
+   entity-id-or-query ms/NonBlankString
+   show               Show
+   cell-query         Base64EncodedJSON}
   (-> (->entity entity entity-id-or-query)
       (automagic-analysis {:show       (coerce-show show)
                            :cell-query (decode-base64-json cell-query)})))
@@ -294,23 +298,25 @@
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-query` using dashboard-template `dashboard-template`."
   [entity entity-id-or-query cell-query prefix dashboard-template show]
-  {entity     Entity
-   show       Show
-   prefix     Prefix
-   dashboard-template       DashboardTemplate
-   cell-query Base64EncodedJSON}
+  {entity             Entity
+   entity-id-or-query ms/NonBlankString
+   show               Show
+   prefix             Prefix
+   dashboard-template DashboardTemplate
+   cell-query         Base64EncodedJSON}
   (-> (->entity entity entity-id-or-query)
-      (automagic-analysis {:show       (coerce-show show)
-                           :dashboard-template       ["table" prefix dashboard-template]
-                           :cell-query (decode-base64-json cell-query)})))
+      (automagic-analysis {:show               (coerce-show show)
+                           :dashboard-template ["table" prefix dashboard-template]
+                           :cell-query         (decode-base64-json cell-query)})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`"
   [entity entity-id-or-query show comparison-entity comparison-entity-id-or-query]
-  {show              Show
-   entity            Entity
-   comparison-entity ComparisonEntity}
+  {show               Show
+   entity-id-or-query ms/NonBlankString
+   entity             Entity
+   comparison-entity  ComparisonEntity}
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (coerce-show show)
@@ -322,17 +328,18 @@
   "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`;
    compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`."
   [entity entity-id-or-query prefix dashboard-template show comparison-entity comparison-entity-id-or-query]
-  {entity            Entity
-   show              Show
-   prefix            Prefix
-   dashboard-template              DashboardTemplate
-   comparison-entity ComparisonEntity}
+  {entity             Entity
+   entity-id-or-query ms/NonBlankString
+   show               Show
+   prefix             Prefix
+   dashboard-template DashboardTemplate
+   comparison-entity  ComparisonEntity}
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
-        dashboard (automagic-analysis left {:show         (coerce-show show)
-                                            :dashboard-template         ["table" prefix dashboard-template]
-                                            :query-filter nil
-                                            :comparison?  true})]
+        dashboard (automagic-analysis left {:show               (coerce-show show)
+                                            :dashboard-template ["table" prefix dashboard-template]
+                                            :query-filter       nil
+                                            :comparison?        true})]
     (comparison-dashboard dashboard left right {})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id-or-query"
@@ -340,10 +347,11 @@
    with id `id` defined by query `cell-query`; compared with entity `comparison-entity` with id
    `comparison-entity-id-or-query.`."
   [entity entity-id-or-query cell-query show comparison-entity comparison-entity-id-or-query]
-  {entity            Entity
-   show              Show
-   cell-query        Base64EncodedJSON
-   comparison-entity ComparisonEntity}
+  {entity             Entity
+   entity-id-or-query ms/NonBlankString
+   show               Show
+   cell-query         Base64EncodedJSON
+   comparison-entity  ComparisonEntity}
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (coerce-show show)
@@ -356,17 +364,18 @@
    with id `id` defined by query `cell-query` using dashboard-template `dashboard-template`; compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`."
   [entity entity-id-or-query cell-query prefix dashboard-template show comparison-entity comparison-entity-id-or-query]
-  {entity            Entity
-   show              Show
-   prefix            Prefix
-   dashboard-template              DashboardTemplate
-   cell-query        Base64EncodedJSON
-   comparison-entity ComparisonEntity}
+  {entity             Entity
+   entity-id-or-query ms/NonBlankString
+   show               Show
+   prefix             Prefix
+   dashboard-template DashboardTemplate
+   cell-query         Base64EncodedJSON
+   comparison-entity  ComparisonEntity}
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
-        dashboard (automagic-analysis left {:show         (coerce-show show)
-                                            :dashboard-template         ["table" prefix dashboard-template]
-                                            :query-filter nil})]
+        dashboard (automagic-analysis left {:show               (coerce-show show)
+                                            :dashboard-template ["table" prefix dashboard-template]
+                                            :query-filter       nil})]
     (comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
 
 (api/define-routes)

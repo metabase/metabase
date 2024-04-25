@@ -11,10 +11,13 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.automagic-dashboards.populate :as populate]
+   [metabase.email.messages :as messages]
    [metabase.events :as events]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection]
@@ -27,6 +30,7 @@
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
+   [metabase.models.pulse :as pulse]
    [metabase.models.query :as query :refer [Query]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
@@ -288,7 +292,7 @@
     (reduce (fn [m [id card]]
               (assoc-in m
                         [:copied id]
-                        (if (:dataset card)
+                        (if (= (:type card) :model)
                           card
                           (card/create-card!
                            (cond-> (assoc card :collection_id dest-coll-id)
@@ -425,16 +429,12 @@
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
-;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
-;; be setting `:archived` to `true` via the `PUT` endpoint instead
 (api/defendpoint DELETE "/:id"
-  "Delete a Dashboard.
+  "Hard delete a Dashboard. To soft delete, use `PUT /api/dashboard/:id`
 
   This will remove also any questions/models/segments/metrics that use this database."
   [id]
   {id ms/PositiveInt}
-  (log/warn (str "DELETE /api/dashboard/:id is deprecated. Instead of deleting a Dashboard, you should change its "
-                 "`archived` value via PUT /api/dashboard/:id."))
   (let [dashboard (api/write-check :model/Dashboard id)]
     (t2/delete! :model/Dashboard :id id)
     (events/publish-event! :event/dashboard-delete {:object dashboard :user-id api/*current-user-id*}))
@@ -442,7 +442,7 @@
 
 (defn- param-target->field-id [target query]
   (when-let [field-clause (params/param-target->field-clause target {:dataset_query query})]
-    (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)))
+    (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
 (mu/defn ^:private check-parameter-mapping-permissions
@@ -598,13 +598,106 @@
                             :num-tabs       (count created-tab-ids)
                             :total-num-tabs total-num-tabs})))
 
+;;;;;;;;;;;; Bad pulse check & repair
+
+(defn- bad-pulse-notification-data
+  "Given a pulse and bad parameters, return relevant notification data:
+  - The name of the pulse
+  - Which selected parameter values are broken
+  - The user info for the creator of the pulse
+  - The users affected by the pulse"
+  [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]}]
+  (let [creator (t2/select-one [:model/User :first_name :last_name :email] creator_id)]
+    {:pulse-id       bad-pulse-id
+     :pulse-name     pulse-name
+     :bad-parameters parameters
+     :pulse-creator  creator
+     :affected-users (flatten
+                       (for [{pulse-channel-id  :id
+                              channel-type      :channel_type
+                              {:keys [channel]} :details} (t2/select [:model/PulseChannel :id :channel_type :details]
+                                                            :pulse_id [:= bad-pulse-id])]
+                         (case channel-type
+                           :email (let [pulse-channel-recipients (when (= :email channel-type)
+                                                                   (t2/select :model/PulseChannelRecipient
+                                                                     :pulse_channel_id pulse-channel-id))]
+                                    (when (seq pulse-channel-recipients)
+                                      (map
+                                        (fn [{:keys [common_name] :as recipient}]
+                                          (assoc recipient
+                                            :notification-type channel-type
+                                            :recipient common_name))
+                                        (t2/select [:model/User :first_name :last_name :email]
+                                          :id [:in (map :user_id pulse-channel-recipients)]))))
+                           :slack {:notification-type channel-type
+                                   :recipient         channel}
+                           nil)))}))
+
+(defn- broken-pulses
+  "Identify and return any pulses used in a subscription that contain parameters that are no longer on the dashboard."
+  [dashboard-id original-dashboard-params]
+  (when (seq original-dashboard-params)
+    (let [{:keys [resolved-params]} (t2/hydrate
+                                      (t2/select-one [:model/Dashboard :id :parameters] dashboard-id)
+                                      :resolved-params)
+          dashboard-params (set (keys resolved-params))]
+      (->> (t2/select :model/Pulse :dashboard_id dashboard-id :archived false)
+           (keep (fn [{:keys [parameters] :as pulse}]
+                   (let [bad-params (filterv
+                                      (fn [{param-id :id}] (not (contains? dashboard-params param-id)))
+                                      parameters)]
+                     (when (seq bad-params)
+                       (assoc pulse :parameters bad-params)))))
+           seq))))
+
+(defn- broken-subscription-data
+  "Given a dashboard id and original parameters, return data (if any) on any broken subscriptions. This will be a seq
+  of maps, each containing:
+  - The pulse id that was broken
+  - name and email data for the dashboard creator and pulse creator
+  - Affected recipient information
+  - Basic descriptive data on the affected dashboard, pulse, and parameters for use in downstream notifications"
+  [dashboard-id original-dashboard-params]
+  (when-some [broken-pulses (broken-pulses dashboard-id original-dashboard-params)]
+    (let [{dashboard-name        :name
+           dashboard-description :description
+           dashboard-creator     :creator} (t2/hydrate
+                                             (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id)
+                                             :creator)]
+      (for [broken-pulse broken-pulses]
+        (assoc
+          (bad-pulse-notification-data broken-pulse)
+          :dashboard-id dashboard-id
+          :dashboard-name dashboard-name
+          :dashboard-description dashboard-description
+          :dashboard-creator (select-keys dashboard-creator [:first_name :last_name :email :common_name]))))))
+
+(defn- handle-broken-subscriptions
+  "Given a dashboard id and original parameters, determine if any of the subscriptions are broken (we've removed params
+  that subscriptions require). If so, delete the subscriptions and notify the dashboard and pulse creators."
+  [dashboard-id original-dashboard-params]
+  (doseq [{:keys [pulse-id] :as broken-subscription} (broken-subscription-data dashboard-id original-dashboard-params)]
+    ;; Archive the pulse
+    (pulse/update-pulse! {:id pulse-id :archived true})
+    ;; Let the pulse and subscription creator know about the broken pulse
+    (messages/send-broken-subscription-notification! broken-subscription)))
+
+;;;;;;;;;;;;;;;;;;;;; End functions to handle broken subscriptions
+
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
-  [id {:keys [dashcards tabs] :as dash-updates}]
+  [id {:keys [dashcards tabs parameters] :as dash-updates}]
   (span/with-span!
     {:name       "update-dashboard"
      :attributes {:dashboard/id id}}
     (let [current-dash               (api/write-check Dashboard id)
+          ;; If there are parameters in the update, we want the old params so that we can do a check to see if any of
+          ;; the notifications were broken by the update.
+          {original-params :resolved-params} (when parameters
+                                               (t2/hydrate
+                                                 (t2/select-one :model/Dashboard id)
+                                                 [:dashcards :card]
+                                                 :resolved-params))
           changes-stats              (atom nil)
           ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
           ;; tests that exclude it. so this only checks for dashcards
@@ -620,10 +713,13 @@
             (when-let [updates (not-empty
                                  (u/select-keys-when
                                    dash-updates
-                                   :present #{:description :position :collection_id :collection_position :cache_ttl}
+                                   :present #{:description :position :width :collection_id :collection_position :cache_ttl}
                                    :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                               :embedding_params :archived :auto_apply_filters}))]
-              (t2/update! Dashboard id updates))
+              (t2/update! Dashboard id updates)
+              ;; Handle broken subscriptions, if any, when parameters changed
+              (when parameters
+                (handle-broken-subscriptions id original-params)))
             (when update-dashcards-and-tabs?
               (when (not (false? (:archived false)))
                 (api/check-not-archived current-dash))
@@ -669,8 +765,8 @@
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
   structure as the response from `GET /api/dashboard/:id`."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived collection_id collection_position cache_ttl dashcards tabs]
-            :as dash-updates} :body}]
+                   embedding_params position width archived collection_id collection_position cache_ttl dashcards tabs]
+            :as   dash-updates} :body}]
   {id                      ms/PositiveInt
    name                    [:maybe ms/NonBlankString]
    description             [:maybe :string]
@@ -681,6 +777,7 @@
    embedding_params        [:maybe ms/EmbeddingParams]
    parameters              [:maybe [:sequential ms/Parameter]]
    position                [:maybe ms/PositiveInt]
+   width                   [:maybe [:enum "fixed" "full"]]
    archived                [:maybe :boolean]
    collection_id           [:maybe ms/PositiveInt]
    collection_position     [:maybe ms/PositiveInt]
@@ -823,7 +920,7 @@
     (get-in card [:dataset_query :native :template-tags (u/qualified-name tag)])))
 
 (defn- param-type->op [type]
-  (if (get-in mbql.s/parameter-types [type :operator])
+  (if (get-in lib.schema.parameter/types [type :operator])
     (keyword (name type))
     :=))
 
@@ -842,7 +939,7 @@
                field-id  (or
                           ;; Get the field id from the field-clause if it contains it. This is the common case
                           ;; for mbql queries.
-                          (mbql.u/match-one dimension [:field (id :guard integer?) _] id)
+                          (lib.util.match/match-one dimension [:field (id :guard integer?) _] id)
                           ;; Attempt to get the field clause from the model metadata corresponding to the field.
                           ;; This is the common case for native queries in which mappings from original columns
                           ;; have been performed using model metadata.
@@ -997,10 +1094,8 @@
 
   `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
   [:as {{:keys [filtered filtering]} :params}]
-  {filtered  [:or ms/IntGreaterThanOrEqualToZero
-              [:+ ms/IntGreaterThanOrEqualToZero]]
-   filtering [:maybe [:or ms/IntGreaterThanOrEqualToZero
-                      [:+ ms/IntGreaterThanOrEqualToZero]]]}
+  {filtered  (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)
+   filtering [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]}
   (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
         filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})]
     (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]
@@ -1038,10 +1133,10 @@
   [dashboard-id dashcard-id :as {{:keys [parameters], :as _body} :body}]
   {dashboard-id ms/PositiveInt
    dashcard-id  ms/PositiveInt
-   parameters  [:maybe [:map-of :keyword :any]]}
+   parameters  [:maybe [:map-of :string :any]]}
   (api/read-check :model/Dashboard dashboard-id)
   ;; Undo middleware string->keyword coercion
-  (actions.execution/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name)))
+  (actions.execution/execute-dashcard! dashboard-id dashcard-id parameters))
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
@@ -1052,7 +1147,7 @@
    dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    parameters    [:maybe [:sequential ParameterWithID]]}
-  (m/mapply qp.dashboard/run-query-for-dashcard-async
+  (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body
              {:dashboard-id dashboard-id
@@ -1065,13 +1160,14 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [dashboard-id dashcard-id card-id export-format :as {{:keys [parameters], :as request-parameters} :params}]
+  [dashboard-id dashcard-id card-id export-format :as {{:keys [parameters format_rows], :as request-parameters} :params}]
   {dashboard-id  ms/PositiveInt
    dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
-   export-format api.dataset/ExportFormat}
-  (m/mapply qp.dashboard/run-query-for-dashcard-async
+   export-format api.dataset/ExportFormat
+   format_rows   [:maybe :boolean]}
+  (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              request-parameters
              {:dashboard-id  dashboard-id
@@ -1087,7 +1183,7 @@
               :middleware    {:process-viz-settings?  true
                               :skip-results-metadata? true
                               :ignore-cached-results? true
-                              :format-rows?           false
+                              :format-rows?           format_rows
                               :js-int-to-string?      false}})))
 
 (api/defendpoint POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
@@ -1097,12 +1193,12 @@
    dashcard-id  ms/PositiveInt
    card-id      ms/PositiveInt
    parameters   [:maybe [:sequential ParameterWithID]]}
-  (m/mapply qp.dashboard/run-query-for-dashcard-async
+  (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body
              {:dashboard-id dashboard-id
               :card-id      card-id
               :dashcard-id  dashcard-id
-              :qp-runner    qp.pivot/run-pivot-query})))
+              :qp           qp.pivot/run-pivot-query})))
 
 (api/define-routes)

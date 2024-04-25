@@ -1,7 +1,12 @@
 import {
+  createMockActionDashboardCard,
   createMockDashboard,
   createMockDashboardCard,
+  createMockHeadingDashboardCard,
+  createMockLinkDashboardCard,
+  createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
+
 import { createMockCard } from "./../../../metabase-types/api/mocks/card";
 import {
   getDashCardMoveToTabUndoMessage,
@@ -216,36 +221,24 @@ describe("dashboard > actions > utils", () => {
     });
 
     it("should return the correct message for a link dashCard", () => {
-      const dashCard = createMockDashboardCard({
-        card: createMockCard({ name: undefined }),
-        visualization_settings: { virtual_card: { display: "link" } },
-      });
+      const dashCard = createMockLinkDashboardCard();
       expect(getDashCardMoveToTabUndoMessage(dashCard)).toBe("Link card moved");
     });
 
     it("should return the correct message for an action dashCard", () => {
-      const dashCard = createMockDashboardCard({
-        card: createMockCard({ name: undefined }),
-        visualization_settings: { virtual_card: { display: "action" } },
-      });
+      const dashCard = createMockActionDashboardCard();
       expect(getDashCardMoveToTabUndoMessage(dashCard)).toBe(
         "Action card moved",
       );
     });
 
     it("should return the correct message for a text dashCard", () => {
-      const dashCard = createMockDashboardCard({
-        card: createMockCard({ name: undefined }),
-        visualization_settings: { virtual_card: { display: "text" } },
-      });
+      const dashCard = createMockTextDashboardCard();
       expect(getDashCardMoveToTabUndoMessage(dashCard)).toBe("Text card moved");
     });
 
     it("should return the correct message for a heading dashCard", () => {
-      const dashCard = createMockDashboardCard({
-        card: createMockCard({ name: undefined }),
-        visualization_settings: { virtual_card: { display: "heading" } },
-      });
+      const dashCard = createMockHeadingDashboardCard();
       expect(getDashCardMoveToTabUndoMessage(dashCard)).toBe(
         "Heading card moved",
       );

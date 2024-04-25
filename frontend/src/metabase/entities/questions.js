@@ -1,56 +1,81 @@
-import { t } from "ttag";
 import { updateIn } from "icepick";
+import { t } from "ttag";
 
-import { createEntity, undo } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
+import { cardApi } from "metabase/api";
+import { canonicalCollectionId } from "metabase/collections/utils";
+import Collections, {
+  getCollectionType,
+  normalizedCollection,
+} from "metabase/entities/collections";
 import { color } from "metabase/lib/colors";
+import {
+  createEntity,
+  entityCompatibleQuery,
+  undo,
+} from "metabase/lib/entities";
+import * as Urls from "metabase/lib/urls";
+import { PLUGIN_MODERATION } from "metabase/plugins";
+import {
+  API_UPDATE_QUESTION,
+  SOFT_RELOAD_CARD,
+} from "metabase/query_builder/actions/core/types";
 import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
 
-import Collections, {
-  getCollectionType,
-  normalizedCollection,
-} from "metabase/entities/collections";
-import {
-  API_UPDATE_QUESTION,
-  SOFT_RELOAD_CARD,
-} from "metabase/query_builder/actions";
-
-import { canonicalCollectionId } from "metabase/collections/utils";
 import forms from "./questions/forms";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Questions = createEntity({
   name: "questions",
   nameOne: "question",
   path: "/api/card",
 
+  api: {
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(entityQuery, dispatch, cardApi.endpoints.listCards),
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(
+        { ...entityQuery, ignore_error: options?.noEvent },
+        dispatch,
+        cardApi.endpoints.getCard,
+      ),
+    create: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        cardApi.endpoints.createCard,
+      ),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        cardApi.endpoints.updateCard,
+      ),
+    delete: ({ id }, dispatch) =>
+      entityCompatibleQuery(id, dispatch, cardApi.endpoints.deleteCard),
+  },
+
   objectActions: {
-    setArchived: ({ id, dataset, model }, archived, opts) =>
+    setArchived: (card, archived, opts) =>
       Questions.actions.update(
-        { id },
+        { id: card.id },
         { archived },
-        undo(
-          opts,
-          dataset || model === "dataset" ? t`model` : t`question`,
-          archived ? t`archived` : t`unarchived`,
-        ),
+        undo(opts, getLabel(card), archived ? t`archived` : t`unarchived`),
       ),
 
-    setCollection: ({ id, dataset, model }, collection, opts) => {
+    setCollection: (card, collection, opts) => {
       return async dispatch => {
         const result = await dispatch(
           Questions.actions.update(
-            { id },
+            { id: card.id },
             {
               collection_id: canonicalCollectionId(collection && collection.id),
             },
-            undo(
-              opts,
-              dataset || model === "dataset" ? t`model` : t`question`,
-              t`moved`,
-            ),
+            undo(opts, getLabel(card), t`moved`),
           ),
         );
         dispatch(
@@ -63,9 +88,9 @@ const Questions = createEntity({
           ),
         );
 
-        const card = result?.payload?.question;
-        if (card) {
-          dispatch({ type: API_UPDATE_QUESTION, payload: card });
+        const updatedCard = result?.payload?.question;
+        if (updatedCard) {
+          dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
         }
 
         return result;
@@ -100,11 +125,10 @@ const Questions = createEntity({
   },
 
   objectSelectors: {
-    getName: question => question && question.name,
-    getUrl: (question, opts) => question && Urls.question(question, opts),
+    getName: card => card && card.name,
+    getUrl: (card, opts) => card && Urls.question(card, opts),
     getColor: () => color("text-medium"),
-    getCollection: question =>
-      question && normalizedCollection(question.collection),
+    getCollection: card => card && normalizedCollection(card.collection),
     getIcon,
   },
 
@@ -127,7 +151,7 @@ const Questions = createEntity({
   writableProperties: [
     "name",
     "cache_ttl",
-    "dataset",
+    "type",
     "dataset_query",
     "display",
     "description",
@@ -151,12 +175,37 @@ const Questions = createEntity({
   forms,
 });
 
-export function getIcon(question) {
-  if (question.dataset || question.model === "dataset") {
+function getLabel(card) {
+  if (card.type === "model" || card.model === "dataset") {
+    return t`model`;
+  }
+
+  return t`question`;
+}
+
+export function getIcon(card) {
+  const type = PLUGIN_MODERATION.getQuestionIcon(card);
+
+  if (type) {
+    return {
+      name: type.icon,
+      color: type.color ? color(type.color) : undefined,
+      tooltip: type.tooltip,
+    };
+  }
+  /**
+   * `card.dataset` is still used here because this very function is used
+   * by getIcon in frontend/src/metabase/entities/bookmarks.js, which passes
+   * a bookmark instead of a card to this function.
+   *
+   * `dataset` flag in boomarks will be migrated in https://github.com/metabase/metabase/issues/38807
+   */
+  if (card.dataset || card.type === "model" || card.model === "dataset") {
     return { name: "model" };
   }
+
   const visualization = require("metabase/visualizations").default.get(
-    question.display,
+    card.display,
   );
   return {
     name: visualization?.iconName ?? "beaker",

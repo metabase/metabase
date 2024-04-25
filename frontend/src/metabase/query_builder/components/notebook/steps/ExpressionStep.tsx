@@ -1,8 +1,9 @@
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import * as Lib from "metabase-lib";
-import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
+import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
 import type { NotebookStepUiComponentProps } from "../types";
+
 import { ClauseStep } from "./ClauseStep";
 
 export const ExpressionStep = ({
@@ -16,8 +17,27 @@ export const ExpressionStep = ({
   const { query, stageIndex } = step;
   const expressions = Lib.expressions(query, stageIndex);
 
-  const renderExpressionName = (expression: Lib.ExpressionClause) =>
-    Lib.displayInfo(query, stageIndex, expression).longDisplayName;
+  const renderExpressionName = (expression: Lib.ExpressionClause) => {
+    return Lib.displayInfo(query, stageIndex, expression).longDisplayName;
+  };
+
+  const handleReorderExpression = (
+    sourceClause: Lib.ExpressionClause,
+    targetClause: Lib.ExpressionClause,
+  ) => {
+    const nextQuery = Lib.swapClauses(
+      query,
+      stageIndex,
+      sourceClause,
+      targetClause,
+    );
+    updateQuery(nextQuery);
+  };
+
+  const handleRemoveExpression = (clause: Lib.ExpressionClause) => {
+    const nextQuery = Lib.removeClause(query, stageIndex, clause);
+    updateQuery(nextQuery);
+  };
 
   return (
     <ClauseStep
@@ -25,7 +45,7 @@ export const ExpressionStep = ({
       items={expressions}
       renderName={renderExpressionName}
       readOnly={readOnly}
-      renderPopover={({ item, index: expressionPosition }) => (
+      renderPopover={({ item, index: expressionPosition, onClose }) => (
         <ExpressionWidget
           query={query}
           stageIndex={stageIndex}
@@ -66,14 +86,12 @@ export const ExpressionStep = ({
             }
           }}
           reportTimezone={reportTimezone}
+          onClose={onClose}
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={clause => {
-        const nextQuery = Lib.removeClause(query, stageIndex, clause);
-        updateQuery(nextQuery);
-      }}
-      withLegacyPopover
+      onReorder={handleReorderExpression}
+      onRemove={handleRemoveExpression}
     />
   );
 };

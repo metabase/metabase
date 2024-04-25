@@ -3,16 +3,23 @@ import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
+
+import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import type { RadioOption } from "metabase/core/components/Radio";
 import Radio from "metabase/core/components/Radio";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select, { Option } from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
-import ModalContent from "metabase/components/ModalContent";
-import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
-import Tables from "metabase/entities/tables";
 import Questions from "metabase/entities/questions";
+import Tables from "metabase/entities/tables";
+import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
+import type Question from "metabase-lib/v1/Question";
+import type Field from "metabase-lib/v1/metadata/Field";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import { isValidSourceConfig } from "metabase-lib/v1/parameters/utils/parameter-source";
 import type {
   ValuesSourceConfig,
   ValuesSourceType,
@@ -21,14 +28,10 @@ import type {
   ParameterValue,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type Question from "metabase-lib/Question";
-import type Field from "metabase-lib/metadata/Field";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-import { isValidSourceConfig } from "metabase-lib/parameters/utils/parameter-source";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
+
 import type { FetchParameterValuesOpts } from "../../actions";
 import { fetchParameterValues } from "../../actions";
+
 import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import {
   ModalHelpMessage,
@@ -322,9 +325,7 @@ const CardSourceModal = ({
               </Select>
             ) : (
               <ModalErrorMessage>
-                {question.isDataset()
-                  ? t`This model doesn’t have any text columns.`
-                  : t`This question doesn’t have any text columns.`}{" "}
+                {getErrorMessage(question)}{" "}
                 {t`Please pick a different model or question.`}
               </ModalErrorMessage>
             )}
@@ -344,6 +345,20 @@ const CardSourceModal = ({
       </ModalMain>
     </ModalBodyWithPane>
   );
+};
+
+const getErrorMessage = (question: Question) => {
+  const type = question.type();
+
+  if (type === "question") {
+    return t`This question doesn’t have any text columns.`;
+  }
+
+  if (type === "model") {
+    return t`This model doesn’t have any text columns.`;
+  }
+
+  throw new Error(`Unsupported or unknown question.type(): ${type}`);
 };
 
 interface ListSourceModalProps {
@@ -414,7 +429,8 @@ const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
 };
 
 const getSupportedFields = (question: Question) => {
-  const fields = question.composeThisQuery()?.table()?.fields ?? [];
+  const fields =
+    question.composeQuestionAdhoc().legacyQueryTable()?.fields ?? [];
   return fields.filter(field => field.isString());
 };
 

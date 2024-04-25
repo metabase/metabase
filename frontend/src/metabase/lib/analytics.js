@@ -1,4 +1,5 @@
 import * as Snowplow from "@snowplow/browser-tracker";
+
 import { shouldLogAnalytics } from "metabase/env";
 import Settings from "metabase/lib/settings";
 import { getUserId } from "metabase/selectors/user";
@@ -31,6 +32,9 @@ export const trackPageView = url => {
   }
 };
 
+/**
+ * @deprecated This uses GA which is not setup. We should use `trackSchemaEvent`.
+ */
 export const trackStructEvent = (category, action, label, value) => {
   if (!category || !label || !Settings.trackingEnabled()) {
     return;

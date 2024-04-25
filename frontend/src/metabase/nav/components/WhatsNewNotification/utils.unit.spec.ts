@@ -1,8 +1,9 @@
+import { createMockVersionInfoRecord as mockVersion } from "metabase-types/api/mocks";
 import type {
   VersionInfo,
   VersionInfoRecord,
 } from "metabase-types/api/settings";
-import { createMockVersionInfoRecord as mockVersion } from "metabase-types/api/mocks";
+
 import { getLatestEligibleReleaseNotes } from "./utils";
 
 const buildVersionInfo = (versions: VersionInfoRecord[]): VersionInfo => {

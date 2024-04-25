@@ -1,3 +1,13 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
+  NORMAL_PERSONAL_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   saveDashboard,
@@ -25,23 +35,17 @@ import {
   updateDashboardCards,
   goToTab,
   moveDashCardToTab,
-  addTextBoxWhileEditing,
+  addLinkWhileEditing,
   expectGoodSnowplowEvent,
   selectDashboardFilter,
   filterWidget,
   popover,
+  createDashboardWithTabs,
+  dashboardGrid,
+  modal,
+  addHeadingWhileEditing,
+  setFilter,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
-  ORDERS_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_BY_YEAR_QUESTION_ID,
-  ADMIN_PERSONAL_COLLECTION_ID,
-  NORMAL_PERSONAL_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
@@ -98,7 +102,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
     dashboardCards().within(() => {
       cy.findByText("Orders").should("not.exist");
-      cy.findByText(`There's nothing here, yet.`).should("be.visible");
+      cy.findByText("There's nothing here, yet.").should("be.visible");
     });
 
     // Add card to second tab
@@ -178,6 +182,31 @@ describe("scenarios > dashboard > tabs", () => {
     ]);
   });
 
+  it("should handle canceling adding a new tab (#38055, #38278)", () => {
+    visitDashboardAndCreateTab({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      save: false,
+    });
+
+    cy.findByTestId("edit-bar").button("Cancel").click();
+    modal().button("Discard changes").click();
+
+    // Reproduces #38055
+    dashboardGrid().within(() => {
+      cy.findByText(/There's nothing here/).should("not.exist");
+      getDashboardCards().should("have.length", 1);
+    });
+
+    // Reproduces #38278
+    editDashboard();
+    addHeadingWhileEditing("New heading");
+    saveDashboard();
+    dashboardGrid().within(() => {
+      cy.findByText("New heading").should("exist");
+      getDashboardCards().should("have.length", 2);
+    });
+  });
+
   it("should allow undoing a tab deletion", () => {
     visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -208,7 +237,7 @@ describe("scenarios > dashboard > tabs", () => {
       goToTab("Tab 1");
 
       cy.log("add second card");
-      addTextBoxWhileEditing("Text card");
+      addLinkWhileEditing("https://www.metabase.com");
 
       cy.log("should stay on the same tab");
       cy.findByRole("tab", { selected: true }).should("have.text", "Tab 1");
@@ -236,7 +265,7 @@ describe("scenarios > dashboard > tabs", () => {
 
       cy.log("should show undo toast with the correct text");
       cy.findByTestId("undo-list").within(() => {
-        cy.findByText("Text card moved").should("be.visible");
+        cy.findByText("Link card moved").should("be.visible");
         cy.findByText("Card moved: Orders").should("be.visible");
       });
 
@@ -376,6 +405,7 @@ describe("scenarios > dashboard > tabs", () => {
 
   it("should only fetch cards on the current tab", () => {
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -388,16 +418,22 @@ describe("scenarios > dashboard > tabs", () => {
     sidebar().within(() => {
       cy.findByText("Orders, Count").click();
     });
+
+    cy.wait("@cardQuery");
+
     saveDashboard();
 
     cy.wait("@saveDashboardCards").then(({ response }) => {
       cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
     });
 
+    // it's possible to have two requests firing (but first one is canceled before running second)
     cy.intercept(
       "POST",
       `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/${ORDERS_DASHBOARD_DASHCARD_ID}/card/${ORDERS_QUESTION_ID}/query`,
-      cy.spy().as("firstTabQuery"),
+      req => {
+        req.on("response", cy.spy().as("firstTabQuery"));
+      },
     );
 
     cy.get("@secondTabDashcardId").then(secondTabDashcardId => {
@@ -469,14 +505,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findByText("Orders, Count").click();
     });
 
-    cy.findByTestId("dashboard-header").within(() => {
-      cy.icon("filter").click();
-    });
-
-    popover().within(() => {
-      cy.contains("Time").click();
-      cy.findByText("Relative Date").click();
-    });
+    setFilter("Time", "Relative Date");
 
     // Auto-connection happens here
     selectDashboardFilter(getDashboardCard(0), "Created At");
@@ -488,10 +517,8 @@ describe("scenarios > dashboard > tabs", () => {
       delayResponse(500),
     ).as("saveCard");
 
-    filterWidget().contains("Relative Date").click();
-    popover().within(() => {
-      cy.findByText("Today").click();
-    });
+    filterWidget().click();
+    popover().findByText("Past 7 days").click();
 
     // Loader in the 2nd tab
     getDashboardCard(0).within(() => {
@@ -561,7 +588,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Ensure the tab name has reverted to the long name after the drag has completed
-    cy.findByRole("button", { name: longName });
+    cy.findByRole("button", { name: longName }).should("be.visible");
 
     saveDashboard();
 
@@ -644,16 +671,6 @@ function delayResponse(delayMs) {
       res.setDelay(delayMs);
     });
   };
-}
-
-function createDashboardWithTabs({ dashcards, tabs, ...dashboardDetails }) {
-  return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
-    cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-      ...dashboard,
-      dashcards,
-      tabs,
-    }).then(({ body: dashboard }) => cy.wrap(dashboard));
-  });
 }
 
 const createTextFilterMapping = ({ card_id }) => {

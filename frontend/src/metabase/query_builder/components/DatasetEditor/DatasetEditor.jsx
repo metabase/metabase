@@ -1,60 +1,60 @@
-import { useEffect, useCallback, useMemo, useState } from "react";
+import cx from "classnames";
+import { merge } from "icepick";
 import PropTypes from "prop-types";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
-import { merge } from "icepick";
-import { usePrevious } from "react-use";
 
-import * as Lib from "metabase-lib";
 import ActionButton from "metabase/components/ActionButton";
-import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
-
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
-import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
-import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
-import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
-
+import Button from "metabase/core/components/Button";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import { modelIndexes } from "metabase/entities";
-
+import { useToggle } from "metabase/hooks/use-toggle";
+import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
+import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
+import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
+import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
+import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
+  getIsResultDirty,
   getResultsMetadata,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 import { getMetadata } from "metabase/selectors/metadata";
-
-import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
-import { useToggle } from "metabase/hooks/use-toggle";
-
-import { MODAL_TYPES } from "metabase/query_builder/constants";
-import { isSameField } from "metabase-lib/queries/utils/field-ref";
+import { Tooltip } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import {
   checkCanBeModel,
   getSortedModelFields,
-} from "metabase-lib/metadata/utils/models";
-import { EDITOR_TAB_INDEXES } from "./constants";
-import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
-import DatasetQueryEditor from "./DatasetQueryEditor";
-import EditorTabs from "./EditorTabs";
-import { TabHintToast } from "./TabHintToast";
+} from "metabase-lib/v1/metadata/utils/models";
+import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
 import {
-  Root,
   DatasetEditBar,
   FieldTypeIcon,
   MainContainer,
   QueryEditorContainer,
-  TableHeaderColumnName,
-  TableContainer,
+  Root,
   TabHintToastContainer,
+  TableContainer,
+  TableHeaderColumnName,
 } from "./DatasetEditor.styled";
+import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
+import DatasetQueryEditor from "./DatasetQueryEditor";
+import EditorTabs from "./EditorTabs";
+import { TabHintToast } from "./TabHintToast";
+import { EDITOR_TAB_INDEXES } from "./constants";
 
 const propTypes = {
   question: PropTypes.object.isRequired,
@@ -65,6 +65,7 @@ const propTypes = {
   result: PropTypes.object,
   height: PropTypes.number,
   isDirty: PropTypes.bool.isRequired,
+  isResultDirty: PropTypes.bool.isRequired,
   isRunning: PropTypes.bool.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
@@ -95,6 +96,7 @@ function mapStateToProps(state) {
     datasetEditorTab: getDatasetEditorTab(state),
     isMetadataDirty: isResultsMetadataDirty(state),
     resultsMetadata: getResultsMetadata(state),
+    isResultDirty: getIsResultDirty(state),
   };
 }
 
@@ -198,6 +200,7 @@ function DatasetEditor(props) {
     isMetadataDirty,
     height,
     isDirty: isModelQueryDirty,
+    isResultDirty,
     setQueryBuilderMode,
     runQuestionQuery,
     setDatasetEditorTab,
@@ -415,18 +418,21 @@ function DatasetEditor(props) {
     [datasetEditorTab, renderSelectableTableColumnHeader],
   );
 
-  const canSaveChanges = useMemo(() => {
-    const { isNative } = Lib.queryDisplayInfo(dataset.query());
-    const isEmpty = !isNative
-      ? Lib.databaseID(dataset.query()) == null
-      : dataset.legacyQuery().isEmpty();
+  const { isNative } = Lib.queryDisplayInfo(dataset.query());
 
-    if (isEmpty) {
-      return false;
-    }
-    const everyFieldHasDisplayName = fields.every(field => field.display_name);
-    return everyFieldHasDisplayName && isDirty;
-  }, [dataset, fields, isDirty]);
+  const canSaveChanges =
+    isDirty &&
+    (!isNative || !isResultDirty) &&
+    fields.every(field => field.display_name) &&
+    Lib.canSave(dataset.query());
+
+  const saveButtonTooltipLabel =
+    isDirty &&
+    isNative &&
+    isResultDirty &&
+    Lib.rawNativeQuery(dataset.query()).length > 0
+      ? t`You must run the query before you can save this model`
+      : undefined;
 
   const sidebar = getSidebar(
     { ...props, modelIndexes },
@@ -466,16 +472,27 @@ function DatasetEditor(props) {
             small
             onClick={handleCancelClick}
           >{t`Cancel`}</Button>,
-          <ActionButton
+          <Tooltip
             key="save"
-            disabled={!canSaveChanges}
-            actionFn={handleSave}
-            normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
-            activeText={t`Saving…`}
-            failedText={t`Save failed`}
-            successText={t`Saved`}
-            className="Button Button--primary Button--small"
-          />,
+            refProp="innerRef"
+            label={saveButtonTooltipLabel}
+            disabled={!saveButtonTooltipLabel}
+          >
+            <ActionButton
+              key="save"
+              disabled={!canSaveChanges}
+              actionFn={handleSave}
+              normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
+              activeText={t`Saving…`}
+              failedText={t`Save failed`}
+              successText={t`Saved`}
+              className={cx(
+                ButtonsS.Button,
+                ButtonsS.ButtonPrimary,
+                ButtonsS.ButtonSmall,
+              )}
+            />
+          </Tooltip>,
         ]}
       />
       <Root>
@@ -498,10 +515,10 @@ function DatasetEditor(props) {
             )}
           </QueryEditorContainer>
           <TableContainer isSidebarOpen={!!sidebar}>
-            <DebouncedFrame className="flex-full" enabled>
+            <DebouncedFrame className={cx(CS.flexFull)} enabled>
               <QueryVisualization
                 {...props}
-                className="spread"
+                className={CS.spread}
                 noHeader
                 queryBuilderMode="dataset"
                 isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}

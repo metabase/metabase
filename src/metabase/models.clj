@@ -1,9 +1,9 @@
 (ns metabase.models
   (:require
    [metabase.models.action :as action]
-   [metabase.models.activity :as activity]
    [metabase.models.application-permissions-revision :as a-perm-revision]
    [metabase.models.bookmark :as bookmark]
+   [metabase.models.cache-config :as cache-config]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision
@@ -15,10 +15,11 @@
    [metabase.models.database :as database]
    [metabase.models.dimension :as dimension]
    [metabase.models.field :as field]
+   [metabase.models.field-usage :as field-usage]
    [metabase.models.field-values :as field-values]
+   [metabase.models.legacy-metric :as legacy-metric]
+   [metabase.models.legacy-metric-important-field :as legacy-metric-important-field]
    [metabase.models.login-history :as login-history]
-   [metabase.models.metric :as metric]
-   [metabase.models.metric-important-field :as metric-important-field]
    [metabase.models.model-index :as model-index]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.native-query-snippet :as native-query-snippet]
@@ -35,6 +36,7 @@
    [metabase.models.pulse-channel-recipient :as pulse-channel-recipient]
    [metabase.models.query-cache :as query-cache]
    [metabase.models.query-execution :as query-execution]
+   [metabase.models.query-field :as query-field]
    [metabase.models.revision :as revision]
    [metabase.models.secret :as secret]
    [metabase.models.segment :as segment]
@@ -55,25 +57,26 @@
    [toucan2.model :as t2.model]))
 
 ;; Fool the linter
-(comment action/keep-me
-         activity/keep-me
-         card/keep-me
+(comment a-perm-revision/keep-me
+         action/keep-me
          bookmark/keep-me
-         collection/keep-me
          c-perm-revision/keep-me
-         dashboard/keep-me
-         dashboard-card/keep-me
+         cache-config/keep-me
+         card/keep-me
+         collection/keep-me
          dashboard-card-series/keep-me
+         dashboard-card/keep-me
          dashboard-tab/keep-me
+         dashboard/keep-me
          database/keep-me
          dimension/keep-me
          field/keep-me
+         field-usage/keep-me
          field-values/keep-me
-         a-perm-revision/keep-me
+         legacy-metric/keep-me
+         legacy-metric-important-field/keep-me
          login-history/keep-me
-         metric/keep-me
          moderation-review/keep-me
-         metric-important-field/keep-me
          native-query-snippet/keep-me
          parameter-card/keep-me
          perms-group-membership/keep-me
@@ -87,6 +90,7 @@
          pulse/keep-me
          query-cache/keep-me
          query-execution/keep-me
+         query-field/keep-me
          revision/keep-me
          secret/keep-me
          segment/keep-me
@@ -101,11 +105,11 @@
 
 (p/import-vars
  [action Action HTTPAction ImplicitAction QueryAction]
- [activity Activity]
  [bookmark CardBookmark]
  [bookmark DashboardBookmark]
  [bookmark CollectionBookmark]
  [bookmark BookmarkOrdering]
+ [cache-config CacheConfig]
  [card Card]
  [collection Collection]
  [c-perm-revision CollectionPermissionGraphRevision]
@@ -116,11 +120,11 @@
  [dimension Dimension]
  [field Field]
  [field-values FieldValues]
+ [legacy-metric LegacyMetric]
  [login-history LoginHistory]
- [metric Metric]
  [moderation-review ModerationReview]
  [model-index ModelIndex ModelIndexValue]
- [metric-important-field MetricImportantField]
+ [legacy-metric-important-field LegacyMetricImportantField]
  [native-query-snippet NativeQuerySnippet]
  [parameter-card ParameterCard]
  [perms Permissions]

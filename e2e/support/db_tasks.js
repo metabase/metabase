@@ -1,7 +1,8 @@
 import Knex from "knex";
+
 import { WRITABLE_DB_CONFIG, QA_DB_CONFIG } from "./cypress_data";
-import * as testTables from "./test_tables";
 import { Roles } from "./test_roles";
+import * as testTables from "./test_tables";
 
 const dbClients = {};
 

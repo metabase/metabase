@@ -8,7 +8,7 @@
    [metabase.driver :as driver]
    [metabase.http-client :as client]
    [metabase.models :refer [Database]]
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.server.protocols :as server.protocols]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -66,7 +66,7 @@
          (reset! start-execution-chan nil)))))
 
 (defmethod driver/execute-reducible-query ::test-driver
-  [_ {{{:keys [sleep]} :query} :native, database-id :database} context respond]
+  [_driver {{{:keys [sleep]} :query} :native, database-id :database} _context respond]
   {:pre [(integer? sleep) (integer? database-id)]}
   (let [futur (future
                 (try
@@ -75,12 +75,14 @@
                   (Thread/sleep (long sleep))
                   (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]])
                   (catch InterruptedException e
-                    (reset! canceled? true)
+                    (reset! canceled? ::interrupted-exception)
                     (throw e))))]
-    (a/go
-      (when (a/<! (qp.context/canceled-chan context))
-        (reset! canceled? true)
-        (future-cancel futur)))))
+    (when-let [canceled-chan qp.pipeline/*canceled-chan*]
+      (a/go
+        (when (a/<! canceled-chan)
+          (reset! canceled? ::canceled-chan-message)
+          (future-cancel futur))))
+    (u/deref-with-timeout futur 5000)))
 
 (defmethod driver/connection-properties ::test-driver
   [& _]
@@ -91,11 +93,11 @@
     (with-test-driver-db!
       (is (= [[10]]
              (mt/rows
-               (mt/user-http-request :lucky
-                :post 202 "dataset"
-                {:database (mt/id)
-                 :type     "native"
-                 :native   {:query {:sleep 10}}})))))))
+              (mt/user-http-request :lucky
+                                    :post 202 "dataset"
+                                    {:database (mt/id)
+                                     :type     "native"
+                                     :native   {:query {:sleep 10}}})))))))
 
 (deftest truly-async-test
   (testing "StreamingResponses should truly be asynchronous, and not block Jetty threads while waiting for results"
@@ -142,14 +144,13 @@
               (mt/wait-for-result start-chan (u/seconds->ms 15))
               (future-cancel futur)
               ;; check every 50ms, up to 1000ms, whether `canceled?` is now `true`
-              (is (= true
-                     (loop [[wait & more] (repeat 10 100)]
-                       (or @canceled?
-                           (if wait
-                             (do
-                              (Thread/sleep (long wait))
-                              (recur more))
-                             ::timed-out))))))))))))
+              (is (loop [[wait & more] (repeat 10 100)]
+                    (or @canceled?
+                        (if wait
+                          (do
+                            (Thread/sleep (long wait))
+                            (recur more))
+                          ::timed-out)))))))))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 

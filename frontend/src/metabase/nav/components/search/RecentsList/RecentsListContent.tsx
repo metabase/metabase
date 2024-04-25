@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import type { RecentItem } from "metabase-types/api";
+
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import EmptyState from "metabase/components/EmptyState";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
@@ -9,17 +9,18 @@ import {
   SearchLoadingSpinner,
   EmptyStateContainer,
 } from "metabase/nav/components/search/SearchResults";
-
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   ItemIcon,
   LoadingSection,
-  ModerationIcon,
   ResultNameSection,
   ResultTitle,
   SearchResultContainer,
 } from "metabase/search/components/SearchResult";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import { Group, Loader, Stack, Title } from "metabase/ui";
+import type { RecentItem } from "metabase-types/api";
+
 import { getItemName, getItemUrl, isItemActive } from "./util";
 
 type RecentsListContentProps = {
@@ -57,7 +58,13 @@ export const RecentsListContent = ({
   }
 
   return (
-    <Stack spacing="md" px="sm" py="md" data-testid="recents-list-container">
+    <Stack
+      spacing="sm"
+      px="sm"
+      pt="md"
+      pb="sm"
+      data-testid="recents-list-container"
+    >
       <Title order={4} px="sm">{t`Recently viewed`}</Title>
       <Stack spacing={0}>
         {results.map((item, index) => {
@@ -84,7 +91,7 @@ export const RecentsListContent = ({
                   >
                     {getItemName(item)}
                   </ResultTitle>
-                  <ModerationIcon
+                  <PLUGIN_MODERATION.ModerationStatusIcon
                     status={getModeratedStatus(item)}
                     filled
                     size={14}

@@ -1,12 +1,11 @@
 import { t } from "ttag";
 
-import type { Card } from "metabase-types/api";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import * as ML_Urls from "metabase-lib/urls";
-import type Table from "metabase-lib/metadata/Table";
+import type Question from "metabase-lib/v1/Question";
+import type Table from "metabase-lib/v1/metadata/Table";
+import * as ML_Urls from "metabase-lib/v1/urls";
+import type { Card } from "metabase-types/api";
 
-import ModelRelationships from "./ModelRelationships";
 import {
   ModelInfoPanel,
   ModelInfoTitle,
@@ -15,6 +14,7 @@ import {
   ModelDescription,
   ModelInfoLink,
 } from "./ModelInfoSidePanel.styled";
+import ModelRelationships from "./ModelRelationships";
 
 interface Props {
   model: Question;

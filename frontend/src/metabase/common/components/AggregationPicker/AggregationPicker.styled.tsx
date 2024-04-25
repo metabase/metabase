@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 
@@ -29,15 +30,4 @@ export const ColumnPickerHeaderTitle = styled.span`
   display: inline-block;
   font-weight: 700;
   font-size: 1.17em;
-`;
-
-export const InfoIconContainer = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  padding-right: 0.5rem;
-
-  opacity: 0.7;
-  cursor: pointer;
 `;

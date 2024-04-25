@@ -51,8 +51,12 @@ function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
 function saveQuestion(name) {
   cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByText("Save").click();
-  cy.findByLabelText("Name").clear().type(name);
-  cy.button("Save").click();
+
+  cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByLabelText("Name").clear().type(name);
+    cy.findByText("Save").click();
+  });
+
   cy.button("Not now").click();
   cy.wait("@saveQuestion");
 }

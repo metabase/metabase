@@ -13,11 +13,10 @@ import {
   isPivotGroupColumn,
 } from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
-
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
-
+import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
@@ -27,17 +26,14 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { isDimension } from "metabase-lib/types/utils/isa";
-
 import { partitions } from "./partitions";
-
+import type { PivotSetting } from "./types";
 import {
   addMissingCardBreakouts,
   isColumnValid,
   isFormattablePivotColumn,
   updateValueWithCurrentColumns,
 } from "./utils";
-import type { PivotSetting } from "./types";
 
 export const getTitleForColumn = (
   column: DatasetColumn,

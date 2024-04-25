@@ -1,5 +1,6 @@
-import type { HTMLAttributes } from "react";
 import styled from "@emotion/styled";
+import type { HTMLAttributes } from "react";
+
 import type { MenuItemProps } from "metabase/ui";
 import { Menu } from "metabase/ui";
 

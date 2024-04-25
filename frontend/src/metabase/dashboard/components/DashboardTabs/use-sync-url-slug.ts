@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react";
-import { usePrevious } from "react-use";
-import { push, replace } from "react-router-redux";
 import type { Location } from "history";
-
+import { useEffect, useState } from "react";
+import { push, replace } from "react-router-redux";
+import { usePrevious } from "react-use";
 import _ from "underscore";
+
+import { getIdFromSlug, initTabs } from "metabase/dashboard/actions";
+import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { SelectedTabId } from "metabase-types/store";
-import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
-import { initTabs } from "metabase/dashboard/actions";
 
 export function parseSlug({ location }: { location: Location }) {
   const slug = location.query["tab"];
@@ -69,6 +69,13 @@ export function useSyncURLSlug({ location }: { location: Location }) {
     const slugChanged = slug && slug !== prevSlug;
     if (slugChanged) {
       dispatch(initTabs({ slug }));
+      const slugId = getIdFromSlug(slug);
+      const hasTabs = tabs.length > 0;
+      const isValidSlug = !!tabs.find(t => t.id === slugId);
+      if (hasTabs && !isValidSlug) {
+        const [tab] = tabs;
+        updateURLSlug({ slug: getSlug({ tabId: tab.id, name: tab.name }) });
+      }
       return;
     }
 

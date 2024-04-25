@@ -1,10 +1,11 @@
 import userEvent from "@testing-library/user-event";
+
 import { setupDashboardPublicLinkEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { NonAdminEmbedMenu } from "metabase/dashboard/components/EmbedMenu/NonAdminEmbedMenu";
 import { createMockDashboard } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { NonAdminEmbedMenu } from "metabase/dashboard/components/EmbedMenu/NonAdminEmbedMenu";
 
 const setup = ({
   hasPublicLink = true,
@@ -46,13 +47,13 @@ describe("NonAdminEmbedMenu", () => {
       setup();
     });
 
-    it("should render a button with a `Sharing` tooltip", () => {
-      userEvent.hover(screen.getByLabelText("share icon"));
+    it("should render a button with a `Sharing` tooltip", async () => {
+      await userEvent.hover(screen.getByLabelText("share icon"));
       expect(screen.getByText("Sharing")).toBeInTheDocument();
     });
 
     it("should render the public link dropdown when clicked", async () => {
-      userEvent.click(screen.getByLabelText("share icon"));
+      await userEvent.click(screen.getByLabelText("share icon"));
 
       expect(
         await screen.findByTestId("public-link-popover-content"),
@@ -78,8 +79,8 @@ describe("NonAdminEmbedMenu", () => {
       setup({ hasPublicLink: false });
     });
 
-    it("should render a disabled button with a `Ask your admin to create a public link` tooltip", () => {
-      userEvent.hover(screen.getByLabelText("share icon"));
+    it("should render a disabled button with a `Ask your admin to create a public link` tooltip", async () => {
+      await userEvent.hover(screen.getByLabelText("share icon"));
       expect(
         screen.getByText("Ask your admin to create a public link"),
       ).toBeInTheDocument();
@@ -91,8 +92,8 @@ describe("NonAdminEmbedMenu", () => {
       setup({ isPublicSharingEnabled: false });
     });
 
-    it("should render a disabled button with a `Public links are disabled` tooltip", () => {
-      userEvent.hover(screen.getByLabelText("share icon"));
+    it("should render a disabled button with a `Public links are disabled` tooltip", async () => {
+      await userEvent.hover(screen.getByLabelText("share icon"));
       expect(screen.getByText("Public links are disabled")).toBeInTheDocument();
     });
   });

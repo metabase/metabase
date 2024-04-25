@@ -1,18 +1,19 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+import { createMockEntitiesState } from "__support__/store";
+import { testDataset } from "__support__/testDataset";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
 import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
 import type { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
-import { testDataset } from "__support__/testDataset";
+import { createMockCard } from "metabase-types/api/mocks";
+import { createProductsTable } from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { createMockCard } from "metabase-types/api/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
-import { createProductsTable } from "metabase-types/api/mocks/presets";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
 
 const DATABASE_ID = 1;
 
@@ -110,12 +111,12 @@ describe("Object Detail Wrapper", () => {
 
     // first tab should focus on the close button, since there's only
     // one element to show here.
-    userEvent.tab();
+    await userEvent.tab();
     expect(screen.getByTestId("object-detail-close-button")).toHaveFocus();
 
     // second tab should *keep* focus on the close button, not go
     // to the body
-    userEvent.tab();
+    await userEvent.tab();
     expect(screen.getByTestId("object-detail-close-button")).toHaveFocus();
   });
 });

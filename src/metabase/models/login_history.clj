@@ -3,9 +3,9 @@
    [java-time.api :as t]
    [metabase.email.messages :as messages]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.server.request.util :as request.u]
+   [metabase.server.request.util :as req.util]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.connection :as t2.conn]
@@ -28,7 +28,7 @@
   or another -- keep that in mind when using this."
   [history-items]
   (let [ip-addresses (map :ip_address history-items)
-        ip->info     (request.u/geocode-ip-addresses ip-addresses)]
+        ip->info     (req.util/geocode-ip-addresses ip-addresses)]
     (for [history-item history-items
           :let         [{location-description :description, timezone :timezone} (get ip->info (:ip_address history-item))]]
       (-> history-item
@@ -38,7 +38,7 @@
                                (if (and timestamp timezone)
                                  (t/zoned-date-time (u.date/with-time-zone-same-instant timestamp timezone) timezone)
                                  timestamp)))
-          (update :device_description request.u/describe-user-agent)))))
+          (update :device_description req.util/describe-user-agent)))))
 
 (defsetting send-email-on-first-login-from-new-device
   ;; no need to i18n -- this isn't user-facing
@@ -93,7 +93,7 @@
           (let [[info] (human-friendly-infos [login-history])]
             (messages/send-login-from-new-device-email! info))
           (catch Throwable e
-            (log/error e (trs "Error sending ''login from new device'' notification email"))))))))
+            (log/error e "Error sending 'login from new device' notification email")))))))
 
 (t2/define-after-insert :model/LoginHistory
   [login-history]

@@ -21,7 +21,7 @@
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.pulse-test :as pulse-test]
    [metabase.pulse.render.style :as style]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
@@ -43,7 +43,7 @@
       (update :collection_id boolean)
       ;; why? these fields in this last assoc are from the PulseCard model and this function takes the Card model
       ;; because PulseCard is somewhat hidden behind the scenes
-      (assoc :include_csv false, :include_xls false, :dashboard_card_id nil, :dashboard_id nil,
+      (assoc :include_csv false, :include_xls false, :dashboard_card_id nil, :dashboard_id nil, :format_rows true
              :parameter_mappings nil)))
 
 (defn- pulse-channel-details [channel]
@@ -99,8 +99,8 @@
 ;; authentication test on every single individual endpoint
 
 (deftest authentication-test
-  (is (= (:body mw.util/response-unauthentic) (client/client :get 401 "pulse")))
-  (is (= (:body mw.util/response-unauthentic) (client/client :put 401 "pulse/13"))))
+  (is (= (:body req.util/response-unauthentic) (client/client :get 401 "pulse")))
+  (is (= (:body req.util/response-unauthentic) (client/client :put 401 "pulse/13"))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -111,7 +111,8 @@
   {:errors
    {:cards (str "one or more value must be a map with the following keys "
                 "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
-                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
+                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., "
+                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
 
 (deftest create-pulse-validation-test
   (doseq [[input expected-error]
@@ -328,10 +329,12 @@
                                                                            :cards         [{:id                (u/the-id card-1)
                                                                                             :include_csv       true
                                                                                             :include_xls       true
+                                                                                            :format_rows       true
                                                                                             :dashboard_card_id nil}
                                                                                            {:id                (u/the-id card-2)
                                                                                             :include_csv       false
                                                                                             :include_xls       false
+                                                                                            :format_rows       true
                                                                                             :dashboard_card_id nil}]
                                                                            :channels      [daily-email-channel]
                                                                            :skip_if_empty false})
@@ -382,7 +385,8 @@
   {:errors
    {:cards (str "nullable one or more value must be a map with the following keys "
                 "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
-                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
+                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., "
+                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
 
 (deftest update-pulse-validation-test
   (testing "PUT /api/pulse/:id"
@@ -978,6 +982,30 @@
                                     :bcc?    true})
                (mt/regex-email-bodies #"Daily Sad Toucans")))))))
 
+(deftest send-placeholder-card-test-pulse-test
+  (testing "POST /api/pulse/test should work with placeholder cards"
+    (mt/with-temp [Dashboard {dashboard-id :id} {}]
+      (mt/with-fake-inbox
+        (is (= {:ok true}
+               (mt/user-http-request :rasta :post 200 "pulse/test" {:name          "Daily Sad Toucans"
+                                                                    :dashboard_id  dashboard-id
+                                                                    :cards         [{:display           "placeholder"
+                                                                                     :id                nil
+                                                                                     :include_csv       false
+                                                                                     :include_xls       false
+                                                                                     :dashboard_card_id nil}]
+                                                                    :channels      [{:enabled       true
+                                                                                     :channel_type  "email"
+                                                                                     :schedule_type "daily"
+                                                                                     :schedule_hour 12
+                                                                                     :schedule_day  nil
+                                                                                     :recipients    [(mt/fetch-user :rasta)]}]
+                                                                    :skip_if_empty false})))
+        (is (= (mt/email-to :rasta {:subject "Daily Sad Toucans"
+                                    :body    {"Daily Sad Toucans" true}
+                                    :bcc?    true})
+               (mt/regex-email-bodies #"Daily Sad Toucans")))))))
+
 ;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
 ;; that pulse and testing it. The primary purpose of this test is to ensure tha the pulse/test endpoint accepts data
 ;; of the same format that the pulse GET returns
@@ -1020,23 +1048,14 @@
                                           :bcc?    true})
                      (mt/regex-email-bodies #"A Pulse"))))))))))
 
-(deftest pulse-card-query-results-test
-  (testing "A Card saved with `:async?` true should not be ran async for a Pulse"
-    (is (map? (#'api.pulse/pulse-card-query-results
-               {:id            1
-                :dataset_query {:database (mt/id)
-                                :type     :query
-                                :query    {:source-table (mt/id :venues)
-                                           :limit        1}
-                                :async?   true}}))))
+(deftest ^:parallel pulse-card-query-results-test
   (testing "viz-settings saved in the DB for a Card should be loaded"
     (is (some? (get-in (#'api.pulse/pulse-card-query-results
                         {:id            1
                          :dataset_query {:database (mt/id)
                                          :type     :query
                                          :query    {:source-table (mt/id :venues)
-                                                    :limit        1}
-                                         :async?   true}})
+                                                    :limit        1}}})
                        [:data :viz-settings])))))
 
 (deftest form-input-test

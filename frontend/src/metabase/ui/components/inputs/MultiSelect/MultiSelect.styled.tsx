@@ -1,14 +1,15 @@
-import { getSize, rem } from "@mantine/core";
 import type {
   MantineThemeOverride,
   MultiSelectStylesParams,
 } from "@mantine/core";
-import { SelectDropdown } from "../Select/SelectDropdown";
-import { SelectItem } from "../Select/SelectItem";
+import { getSize, rem } from "@mantine/core";
+
 import {
   getSelectInputOverrides,
   getSelectItemsOverrides,
 } from "../Select/Select.styled";
+import { SelectDropdown } from "../Select/SelectDropdown";
+import { SelectItem } from "../Select/SelectItem";
 
 const SIZES = {
   xs: rem(16),
@@ -33,7 +34,7 @@ export const getMultiSelectOverrides =
         { invalid }: MultiSelectStylesParams,
         { size = "md" },
       ) => ({
-        ...getSelectInputOverrides(theme, size),
+        ...getSelectInputOverrides(theme),
         ...getSelectItemsOverrides(theme, size),
         values: {
           minHeight: getSize({ size, sizes: SIZES }),

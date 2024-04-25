@@ -17,6 +17,8 @@ import {
 
 export const createMockCard = (opts?: Partial<Card>): Card => ({
   id: 1,
+  created_at: "2024-01-01T00:00:00Z",
+  updated_at: "2024-01-01T00:00:00Z",
   name: "Question",
   description: null,
   display: "table",
@@ -24,15 +26,19 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   dataset_query: createMockStructuredDatasetQuery(),
   visualization_settings: createMockVisualizationSettings(),
   result_metadata: [],
-  dataset: false,
+  type: "question",
   can_write: true,
   cache_ttl: null,
   collection: null,
   collection_id: null,
+  collection_position: null,
   last_query_start: null,
   average_query_time: null,
+  based_on_upload: null,
   archived: false,
   enable_embedding: false,
+  embedding_params: null,
+  initially_published_at: null,
   ...opts,
 });
 
@@ -103,6 +109,7 @@ export const createMockTableColumnOrderSetting = (
   opts?: Partial<TableColumnOrderSetting>,
 ): TableColumnOrderSetting => ({
   name: "Column",
+  key: '["ref",["field",1,null]]',
   enabled: true,
   ...opts,
 });

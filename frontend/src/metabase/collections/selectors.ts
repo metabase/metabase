@@ -1,5 +1,5 @@
-import type { State } from "metabase-types/store";
 import type { Bookmark, CollectionId } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 type GetIsBookmarkedProps = {
   bookmarks: Bookmark[];

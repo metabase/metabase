@@ -1,49 +1,54 @@
+import cx from "classnames";
+import type { Location } from "history";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { Location } from "history";
+import { useListDatabasesQuery } from "metabase/api";
 import { Grid } from "metabase/components/Grid";
-import NewModelOption from "metabase/models/components/NewModelOption";
-
+import CS from "metabase/css/core/index.css";
+import Databases from "metabase/entities/databases";
+import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
-import Databases from "metabase/entities/databases";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
-
-import { useSelector } from "metabase/lib/redux";
+import NewModelOption from "metabase/models/components/NewModelOption";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
+import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
+import { getSetting } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import type Database from "metabase-lib/metadata/Database";
+
 import {
+  EducationalButton,
   OptionsGridItem,
   OptionsRoot,
-  EducationalButton,
 } from "./NewModelOptions.styled";
 
 const EDUCATIONAL_LINK = MetabaseSettings.learnUrl("data-modeling/models");
 
 interface NewModelOptionsProps {
-  databases?: Database[];
   location: Location;
 }
 
-const NewModelOptions = (props: NewModelOptionsProps) => {
-  const hasDataAccess = useSelector(() =>
-    getHasDataAccess(props.databases ?? []),
-  );
-  const hasNativeWrite = useSelector(() =>
-    getHasNativeWrite(props.databases ?? []),
+const NewModelOptions = ({ location }: NewModelOptionsProps) => {
+  const { data } = useListDatabasesQuery();
+  const databases = data?.data ?? [];
+  const hasDataAccess = getHasDataAccess(databases);
+  const hasNativeWrite = getHasNativeWrite(databases);
+
+  const lastUsedDatabaseId = useSelector(state =>
+    getSetting(state, "last-used-native-database-id"),
   );
 
   const collectionId = Urls.extractEntityId(
-    props.location.query.collectionId as string,
+    location.query.collectionId as string,
   );
 
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   if (!hasDataAccess && !hasNativeWrite) {
     return (
-      <div className="full-height flex align-center justify-center">
+      <div
+        className={cx(CS.fullHeight, CS.flex, CS.alignCenter, CS.justifyCenter)}
+      >
         <NoDatabasesEmptyState />
       </div>
     );
@@ -54,7 +59,7 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
 
   return (
     <OptionsRoot data-testid="new-model-options">
-      <Grid className="justifyCenter">
+      <Grid>
         {hasDataAccess && (
           <OptionsGridItem itemsCount={itemsCount}>
             <NewModelOption
@@ -65,7 +70,7 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
               to={Urls.newQuestion({
                 mode: "query",
                 creationType: "custom_question",
-                dataset: true,
+                cardType: "model",
                 collectionId,
               })}
             />
@@ -81,8 +86,9 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
                 mode: "query",
                 type: "native",
                 creationType: "native_question",
-                dataset: true,
+                cardType: "model",
                 collectionId,
+                databaseId: lastUsedDatabaseId || undefined,
               })}
               width={180}
             />
@@ -94,7 +100,7 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
         <EducationalButton
           target="_blank"
           href={EDUCATIONAL_LINK}
-          className="mt4"
+          className={CS.mt4}
         >
           {t`What's a model?`}
         </EducationalButton>

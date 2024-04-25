@@ -1,9 +1,11 @@
 import _ from "underscore";
+
 import type {
   SearchResult,
-  SearchResults,
+  SearchResponse,
   SearchScore,
 } from "metabase-types/api";
+
 import { createMockCollection } from "./collection";
 
 export const createMockSearchResult = (
@@ -21,10 +23,12 @@ export const createMockSearchResult = (
     archived: null,
     collection,
     collection_position: null,
+    can_write: null,
     table_id: 1,
     table_name: null,
     bookmark: null,
     database_id: 1,
+    database_name: "test-data",
     pk_ref: null,
     table_schema: null,
     collection_authority_level: null,
@@ -60,8 +64,8 @@ export const createMockSearchResults = ({
   options = {},
 }: {
   items?: SearchResult[];
-  options?: Partial<SearchResults>;
-} = {}): SearchResults => {
+  options?: Partial<SearchResponse>;
+} = {}): SearchResponse => {
   const uniqueModels = _.uniq(items.map(item => item.model));
 
   return {
@@ -75,3 +79,6 @@ export const createMockSearchResults = ({
     ...options,
   };
 };
+
+export const createMockModelResult = (model: Partial<SearchResult>) =>
+  createMockSearchResult({ model: "dataset", ...model });

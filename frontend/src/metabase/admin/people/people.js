@@ -1,17 +1,15 @@
-import _ from "underscore";
 import { assoc, dissoc } from "icepick";
+import _ from "underscore";
+
+import Users from "metabase/entities/users";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   createAction,
   createThunkAction,
   handleActions,
   combineReducers,
 } from "metabase/lib/redux";
-
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 import { PermissionsApi } from "metabase/services";
-
-import Users from "metabase/entities/users";
 
 import {
   LOAD_MEMBERSHIPS,
@@ -20,7 +18,6 @@ import {
   UPDATE_MEMBERSHIP,
   CLEAR_TEMPORARY_PASSWORD,
 } from "./events";
-
 import { getMemberships } from "./selectors";
 
 // ACTION CREATORS

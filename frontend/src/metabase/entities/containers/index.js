@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
-import EntityListLoader, { entityListLoader } from "./EntityListLoader";
-import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
-import { EntityName } from "./EntityName";
 import EntityForm from "./EntityForm";
 import EntityLink from "./EntityLink";
+import EntityListLoader, { entityListLoader } from "./EntityListLoader";
+import { EntityName } from "./EntityName";
+import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
 
 export function addEntityContainers(entity) {
   const ObjectName = entity.nameOne;

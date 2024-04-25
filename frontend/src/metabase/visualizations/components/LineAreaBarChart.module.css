@@ -1,0 +1,288 @@
+.LineAreaBarChart .LineAreaBarChartRenderer {
+  margin-top: -5px;
+  margin-left: -0.5em;
+  margin-right: -0.5em;
+  margin-bottom: -0.5em;
+  overflow: hidden;
+}
+
+/* `.dc-chart` is a global class from dc.js */
+.LineAreaBarChart :global(.dc-chart .grid-line.horizontal) {
+  stroke: var(--color-text-medium) !important;
+  opacity: 1 !important;
+  stroke-dasharray: 3, 5;
+}
+
+.LineAreaBarChart :global(.dc-chart .axis) {
+  z-index: -1;
+}
+
+.LineAreaBarChart :global(.dc-chart .axis text) {
+  font-size: 12px;
+  font-family: var(--mb-default-font-family), sans-serif;
+  font-weight: 700;
+}
+
+.LineAreaBarChart :global(.dc-chart .axis .domain),
+.LineAreaBarChart :global(.dc-chart .axis .tick line) {
+  stroke: var(--color-border);
+}
+
+.LineAreaBarChart :global(.dc-chart .axis .tick text) {
+  fill: var(--color-text-medium);
+}
+
+.LineAreaBarChart :global(.dc-chart g.row text.outside) {
+  fill: var(--color-text-medium);
+  font-weight: 700;
+}
+
+.LineAreaBarChart :global(.dc-chart g.row text.inside) {
+  fill: white;
+  font-weight: bold;
+}
+
+/* turn off ticks and domain lines */
+.LineAreaBarChart :global(.dc-chart .axis.y .domain),
+.LineAreaBarChart :global(.dc-chart .axis.yr .domain),
+.LineAreaBarChart :global(.dc-chart .axis.y .tick line),
+.LineAreaBarChart :global(.dc-chart .axis.yr .tick line) {
+  display: none;
+}
+
+.LineAreaBarChart :global(.dc-chart .x-axis-label),
+.LineAreaBarChart :global(.dc-chart .y-axis-label) {
+  fill: var(--color-text-dark);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* disable grid lines */
+.LineAreaBarChart :global(.dc-chart .tick line) {
+  display: none;
+}
+
+/* enabled grid lines for row charts */
+.LineAreaBarChart :global(.dc-chart .rowChart .tick .grid-line) {
+  display: inherit;
+}
+
+/* restyle grid-line for 0 to look like X axis */
+.LineAreaBarChart :global(.dc-chart .stacked line.zero) {
+  stroke: var(--color-text-light);
+  opacity: 1;
+  stroke-dasharray: none;
+}
+
+/* restyle X axis for stacked charts to look like a grid line */
+.LineAreaBarChart :global(.dc-chart .stacked .domain) {
+  stroke: color-mod(var(--color-text-medium) alpha(-80%));
+  stroke-dasharray: 5, 5;
+}
+
+/* gridline at 0 overlaps with X axis */
+.LineAreaBarChart :global(.dc-chart .grid-line.horizontal line:first-child) {
+  display: none;
+}
+
+/* disable pointer events on all chart elements while dragging to avoid weird interactions */
+.LineAreaBarChart :global(.dc-chart .dragging .area),
+.LineAreaBarChart :global(.dc-chart .dragging .bar),
+.LineAreaBarChart :global(.dc-chart .dragging .line),
+.LineAreaBarChart :global(.dc-chart .dragging .dot),
+.LineAreaBarChart :global(.dc-chart .dragging .row),
+.LineAreaBarChart :global(.dc-chart .dragging .bubble),
+.LineAreaBarChart :global(.dc-chart .dragging .voronoi) {
+  pointer-events: none !important;
+}
+
+/* disable dc default behavior */
+.LineAreaBarChart :global(.dc-chart rect.bar:hover) {
+  fill-opacity: 1;
+}
+
+.LineAreaBarChart :global(.dc-chart g.row rect) {
+  fill-opacity: 1;
+}
+
+/* highlight single series bar and row charts */
+.LineAreaBarChart.LineAreaBarChartMute0 :global(.dc-chart rect.bar:hover),
+.LineAreaBarChart.LineAreaBarChartMute0 :global(.dc-chart g.row:hover) {
+  opacity: 1 !important;
+}
+
+.LineAreaBarChart :global(.dc-chart circle.bubble) {
+  fill-opacity: 0.8;
+  stroke-width: 1;
+  stroke: white;
+}
+
+.LineAreaBarChart :global(.dc-chart .enable-dots .dc-tooltip .dot:hover),
+.LineAreaBarChart :global(.dc-chart .enable-dots .dc-tooltip .dot.hover) {
+  fill: currentColor;
+}
+
+/* line width = 2px (default) */
+.LineAreaBarChart :global(.dc-chart .line) {
+  stroke-width: 2px;
+}
+
+.LineAreaBarChart :global(.dc-chart .dc-tooltip .dot) {
+  r: 3px !important;
+  stroke-width: 2px;
+}
+
+/* line width = 3px */
+.LineAreaBarChart :global(.dc-chart .line--medium .line) {
+  stroke-width: 3px;
+}
+
+.LineAreaBarChart :global(.dc-chart .line--medium .dc-tooltip .dot) {
+  r: 3px !important;
+  stroke-width: 2px;
+}
+
+/* line width = 4px */
+.LineAreaBarChart :global(.dc-chart .line--heavy .line) {
+  stroke-width: 4px;
+}
+
+.LineAreaBarChart :global(.dc-chart .line--heavy .dc-tooltip .dot) {
+  r: 3.5px !important;
+  stroke-width: 3px;
+}
+
+.LineAreaBarChart :global(.dc-chart) .enableDots :global(.dc-tooltip .dot),
+.LineAreaBarChart :global(.dc-chart .dc-tooltip .dot.selected),
+.LineAreaBarChart
+  :global(.dc-chart)
+  .enableDotsOnHover
+  :global(.dc-tooltip .dot:hover) {
+  fill: white;
+  stroke: currentColor;
+  fill-opacity: 1 !important;
+  stroke-opacity: 1 !important;
+}
+
+.LineAreaBarChart :global(.dc-chart .dc-tooltip .dot.deselected) {
+  opacity: 0;
+}
+
+.LineAreaBarChart :global(.dc-chart .line.deselected) {
+  color: var(--color-text-light);
+}
+
+.LineAreaBarChart :global(.dc-chart .area),
+.LineAreaBarChart :global(.dc-chart .bar),
+.LineAreaBarChart :global(.dc-chart .line),
+.LineAreaBarChart :global(.dc-chart .dot),
+.LineAreaBarChart :global(.dc-chart .row),
+.LineAreaBarChart :global(.dc-chart .bubble) {
+  transition: opacity 0.15s linear;
+}
+
+.LineAreaBarChart :global(.dc-chart .axis.y),
+.LineAreaBarChart :global(.dc-chart .y-axis-label),
+.LineAreaBarChart :global(.dc-chart .axis.yr),
+.LineAreaBarChart :global(.dc-chart .yr-axis-label) {
+  transition: opacity 0.25s linear;
+}
+
+/* :global .mute-* selectors dynamically generated in LineAreaBarChart.js */
+
+.LineAreaBarChart.LineAreaBarChartMuteYl :global(.dc-chart .axis.y),
+.LineAreaBarChart.LineAreaBarChartMuteYl
+  :global(.dc-chart .y-axis-label.y-label) {
+  opacity: 0;
+}
+
+.LineAreaBarChart.LineAreaBarChartMuteYr :global(.dc-chart .axis.yr),
+.LineAreaBarChart.LineAreaBarChartMuteYr
+  :global(.dc-chart .y-axis-label.yr-label) {
+  opacity: 0;
+}
+
+.LineAreaBarChart :global(.dc-chart .voronoi) {
+  fill: transparent;
+}
+
+.LineAreaBarChart :global(.dc-chart .voronoi-drill) {
+  cursor: pointer;
+}
+
+/* grid lines aren't clickable, and get in the way of the brush */
+.LineAreaBarChart :global(.dc-chart .grid-line) {
+  pointer-events: none;
+}
+
+/* brush handles */
+.LineAreaBarChart :global(.dc-chart .brush .resize path) {
+  fill: var(--color-bg-light);
+  stroke: var(--color-text-medium);
+}
+
+.LineAreaBarChart :global(.dc-chart .goal .line) {
+  stroke: var(--color-text-medium);
+  stroke-dasharray: 3, 5;
+}
+
+.LineAreaBarChart :global(.dc-chart .trend .line) {
+  stroke-dasharray: 3, 5;
+}
+
+:global(text.value-label) {
+  pointer-events: none;
+  fill: var(--color-text-dark);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  stroke: var(--color-text-white);
+  stroke-width: 3px;
+  paint-order: stroke;
+}
+
+:global(text.value-label-white) {
+  fill: var(--color-text-white);
+  font-weight: 800;
+  stroke: var(--color-text-dark);
+  stroke-width: 3px;
+  paint-order: stroke;
+}
+
+/* timeline events */
+
+.LineAreaBarChart :global(.dc-chart .event-axis .event-tick) {
+  cursor: pointer;
+  pointer-events: all;
+}
+
+/* Overrides dc:global .js styles */
+.LineAreaBarChart :global(.dc-chart .event-axis .event-icon path) {
+  fill: var(--color-text-light);
+  stroke: unset;
+  shape-rendering: geometricPrecision;
+}
+
+.LineAreaBarChart :global(.dc-chart .event-axis .event-text) {
+  fill: var(--color-text-light);
+}
+
+.LineAreaBarChart
+  :global(.dc-chart .event-axis .event-tick.hover .event-icon path) {
+  fill: var(--mb-color-brand);
+}
+
+.LineAreaBarChart :global(.dc-chart .event-axis .event-tick.hover .event-text) {
+  fill: var(--mb-color-brand);
+}
+
+.LineAreaBarChart :global(.dc-chart .event-line) {
+  transition: stroke 0.15s linear;
+  stroke: color-mod(var(--color-text-medium) alpha(-80%));
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+.LineAreaBarChart :global(.dc-chart .event-line.hover) {
+  stroke: var(--mb-color-brand);
+}

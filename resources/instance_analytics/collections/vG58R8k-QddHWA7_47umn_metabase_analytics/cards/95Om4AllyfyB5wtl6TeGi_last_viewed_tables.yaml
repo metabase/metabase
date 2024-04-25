@@ -204,4 +204,6 @@ serdes/meta:
 - id: 95Om4AllyfyB5wtl6TeGi
   label: last_viewed_tables
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (ad99d37)
+type: question

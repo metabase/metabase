@@ -1,10 +1,12 @@
 import { connect } from "react-redux";
 import _ from "underscore";
+
 import Databases from "metabase/entities/databases";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { State } from "metabase-types/store";
-import type Database from "metabase-lib/metadata/Database";
-import DeprecationNotice from "../../components/DeprecationNotice";
+
 import { disableNotice } from "../../actions";
+import DeprecationNotice from "../../components/DeprecationNotice";
 import {
   hasDeprecatedDatabase,
   hasSlackBot,

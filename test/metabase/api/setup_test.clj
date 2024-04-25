@@ -7,10 +7,12 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.setup :as api.setup]
    [metabase.config :as config]
+   [metabase.core :as mbc]
+   [metabase.db :as mdb]
    [metabase.driver.h2 :as h2]
    [metabase.events :as events]
    [metabase.http-client :as client]
-   [metabase.models :refer [Database Table User]]
+   [metabase.models :refer [Database User]]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
    [metabase.public-settings :as public-settings]
@@ -27,16 +29,6 @@
 ;; make sure the default test users are created before running these tests, otherwise we're going to run into issues
 ;; if it attempts to delete this user and it is the only admin test user
 (use-fixtures :once (fixtures/initialize :test-users))
-
-(defn- wait-for-result
-  "Call thunk up to 10 times, until it returns a truthy value. Wait 50ms between tries. Useful for waiting for something
-  asynchronous to happen."
-  [thunk]
-  (loop [tries 10]
-    (or (thunk)
-        (when (pos? tries)
-          (Thread/sleep 50)
-          (recur (dec tries))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  POST /setup                                                   |
@@ -55,7 +47,8 @@
 
 (defn- default-setup-input []
   {:token (setup/create-token!)
-   :prefs {:site_name "Metabase Test"}
+   :prefs {:site_name "Metabase Test"
+           :site_locale "en"}
    :user  {:first_name (mt/random-name)
            :last_name  (mt/random-name)
            :email      (mt/random-email)
@@ -152,7 +145,8 @@
     (testing "check that we can set various Settings during setup"
       (doseq [[setting-name {:keys [k vs]}] {:site-name
                                              {:k  "site_name"
-                                              :vs {"Cam's Metabase" "Cam's Metabase"}}
+                                              :vs {"Cam's Metabase" "Cam's Metabase"
+                                                   "Dan's Metabase" "Dan's Metabase"}}
 
                                              :anon-tracking-enabled
                                              {:k  "allow_tracking"
@@ -160,13 +154,13 @@
                                                    "true"  true
                                                    true    true
                                                    nil     true
-                                                   "FALSE" false
-                                                   "false" false
-                                                   false   false}}
+                                                   "FALSE" true
+                                                   "false" true
+                                                   false   true}}
 
                                              :site-locale
                                              {:k  "site_locale"
-                                              :vs {nil     "en" ; `en` is the default
+                                              :vs {nil     "en" ;; `en` is the default
                                                    "es"    "es"
                                                    "ES"    "es"
                                                    "es-mx" "es_MX"
@@ -178,32 +172,6 @@
               (is (= expected
                      (setting/get setting-name))))))))))
 
-(deftest create-database-test
-  (testing "POST /api/setup"
-    (testing "Check that we can Create a Database when we set up MB (#10135)"
-      (doseq [:let                  [details (:details (mt/db))]
-              [k {:keys [default]}] {:is_on_demand     {:default false}
-                                     :is_full_sync     {:default true}
-                                     :auto_run_queries {:default true}}
-              v                     [true false nil]]
-        (let [db-name (mt/random-name)]
-          (snowplow-test/with-fake-snowplow-collector
-            (with-setup! {:database {:engine  "h2"
-                                     :name    db-name
-                                     :details details
-                                     k        v}}
-              (testing "Database should be created"
-                (is (t2/exists? Database :name db-name)))
-              (testing (format "should be able to set %s to %s (default: %s) during creation" k (pr-str v) default)
-                (is (= (if (some? v) v default)
-                       (t2/select-one-fn k Database :name db-name)))))
-            (is (=? {"database"     "h2"
-                     "database_id"  int?
-                     "source"       "setup"
-                     "dbms_version" string?
-                     "event"        "database_connection_successful"}
-                 (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))
-
 (def ^:private create-database-trigger-sync-test-event (atom nil))
 
 (derive :event/database-create ::create-database-trigger-sync-test-events)
@@ -212,60 +180,10 @@
   [topic event]
   (reset! create-database-trigger-sync-test-event {:topic topic, :item event}))
 
-(deftest create-database-trigger-sync-test
-  (testing "POST /api/setup"
-    (testing "Setup should trigger sync right away for the newly created Database (#12826)"
-      (let [db-name (mt/random-name)]
-        (reset! create-database-trigger-sync-test-event nil)
-        (with-setup! {:database {:engine  "h2"
-                                 :name    db-name
-                                 :details (:details (mt/db))}}
-          (testing ":database-create events should have been fired"
-            (is (=? {:topic :event/database-create
-                     :item  {:object {:id   pos-int?
-                                      :name db-name}}}
-                    @create-database-trigger-sync-test-event)))
-          (testing "Database should be synced"
-            (let [db (t2/select-one Database :name db-name)]
-              (assert (some? db))
-              (is (= 8
-                     (wait-for-result (fn []
-                                        (let [cnt (t2/count Table :db_id (u/the-id db))]
-                                          (when (= cnt 8)
-                                            cnt)))))))))))))
-
-(deftest create-database-test-error-conditions-test
-  (testing "POST /api/setup"
-    (testing "error conditions"
-      (testing "should throw Exception if driver is invalid"
-        (is (= {:errors {:database {:engine "Cannot create Database: cannot find driver my-fake-driver."}}}
-               (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
-                             h2/*allow-testing-h2-connections*                       true]
-                 (client/client :post 400 "setup" (assoc (default-setup-input)
-                                                         :database {:engine  "my-fake-driver"
-                                                                    :name    (mt/random-name)
-                                                                    :details {}})))))))))
-
-(deftest disallow-h2-setup-test
-  (testing "POST /api/setup"
-    (mt/with-temporary-setting-values [has-user-setup false]
-      (let [details (:details (mt/db))
-            db-name (mt/random-name)
-            request (merge (default-setup-input)
-                           {:database {:engine  :h2
-                                       :details details
-                                       :name    db-name}})]
-        (do-with-setup!*
-         request
-         (fn []
-           (is (=? {:message "H2 is not supported as a data warehouse"}
-                   (mt/user-http-request :crowberto :post 400 "setup" request)))
-           (is (not (t2/exists? Database :name db-name)))))))))
-
 (s/def ::setup!-args
   (s/cat :expected-status (s/? integer?)
-            :f               any?
-            :args            (s/* any?)))
+         :f               any?
+         :args            (s/* any?)))
 
 (defn- setup!
   {:arglists '([expected-status? f & args])}
@@ -341,9 +259,8 @@
     (testing "Make sure setup completes successfully if Settings cache needs to be restored"
       (setting.cache-test/reset-last-update-check!)
       (setting.cache-test/clear-cache!)
-      (let [db-name (mt/random-name)]
-        (with-setup! {:database {:details (:details (mt/db)), :engine "h2", :name db-name}}
-          (is (t2/exists? Database :name db-name)))))))
+      (with-setup! {:user {:email "setupper@setup.net"}}
+        (is (= "setupper@setup.net" (t2/select-one-fn :email :model/User :email "setupper@setup.net")))))))
 
 (deftest has-user-setup-setting-test
   (testing "has-user-setup is true iff there are 1 or more users"
@@ -421,54 +338,6 @@
            (testing "Setup token should still be set"
              (is (= setup-token
                     (setup/setup-token))))))))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                            POST /api/setup/validate                                            |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- api-validate [expected-status-code request-body]
-  (with-redefs [h2/*allow-testing-h2-connections* true]
-    (client/client :post expected-status-code "setup/validate" request-body)))
-
-(deftest validate-setup-test
-  (testing "POST /api/setup/validate"
-    (testing "Should validate token"
-      (mt/with-temporary-setting-values [has-user-setup false]
-        (is (=? {:errors {:token "Token does not match the setup token."}}
-                (api-validate 400 {})))
-        (is (=? {:errors {:token "Token does not match the setup token."}}
-                (api-validate 400 {:token "foobar"}))))
-      ;; make sure we have a valid setup token
-      (setup/create-token!)
-      (is (=? {:errors {:engine "value must be a valid database engine."}}
-              (api-validate 400 {:token (setup/setup-token)}))))
-
-    (mt/with-temporary-setting-values [has-user-setup false]
-      (testing "should validate that database connection works"
-        (is (= {:errors  {:db "check your connection string"},
-                :message "Database cannot be found."}
-               (api-validate 400 {:token   (setup/setup-token)
-                                  :details {:engine  "h2"
-                                            :details {:db "file:///tmp/fake.db"}}}))))
-
-      (testing "should return 204 no content if everything is valid"
-        (is (= nil
-               (api-validate 204 {:token   (setup/setup-token)
-                                  :details {:engine  "h2"
-                                            :details (:details (mt/db))}})))))))
-
-(deftest disallow-h2-validation-test
-  (testing "POST /api/setup/validate"
-    (mt/with-temporary-setting-values [has-user-setup false]
-      (setup/create-token!)
-      (let [details (:details (mt/db))
-            request {:details {:engine  :h2
-                               :details details}
-                     :token   (setup/setup-token)}]
-        (is (= {:message "H2 is not supported as a data warehouse"}
-               (mt/user-http-request :crowberto :post 400 "setup/validate" request)))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         GET /api/setup/admin_checklist                                         |
@@ -548,6 +417,34 @@
     (testing "require superusers"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "setup/admin_checklist"))))))
+
+(deftest internal-content-setup-test
+  (testing "Internally created state like Metabase Analytics shouldn't affect the checklist"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? true)
+      (mbc/ensure-audit-db-installed!)
+      (testing "Sense check: internal content exists"
+        (is (true? (t2/exists? :model/User)))
+        (is (true? (t2/exists? :model/Database)))
+        (is (true? (t2/exists? :model/Table)))
+        (is (true? (t2/exists? :model/Field)))
+        (is (true? (t2/exists? :model/Collection)))
+        (is (true? (t2/exists? :model/Dashboard)))
+        (is (true? (t2/exists? :model/Card))))
+      (testing "All state should be empty"
+        (is (=? {:db-type    :h2
+                 :configured {:email false
+                              :slack false}
+                 :counts     {:user  0
+                              :card  0
+                              :table 0}
+                 :exists     {:non-sample-db false
+                              :dashboard     false
+                              :pulse         false
+                              :hidden-table  false
+                              :collection    false
+                              :model         false}}
+                (#'api.setup/state-for-checklist)))))))
 
 (deftest annotate-test
   (testing "identifies next step"

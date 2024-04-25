@@ -1,5 +1,5 @@
 import { visitDashboard } from "./e2e-misc-helpers";
-import { menu, popover } from "./e2e-ui-elements-helpers";
+import { menu, popover, sidebar } from "./e2e-ui-elements-helpers";
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(selection, filterName) {
@@ -12,11 +12,15 @@ export function disconnectDashboardFilter(selection) {
 }
 
 export function getDashboardCards() {
-  return cy.get(".DashCard");
+  return cy.findAllByTestId("dashcard-container");
 }
 
 export function getDashboardCard(index = 0) {
   return getDashboardCards().eq(index);
+}
+
+export function ensureDashboardCardHasText(text, index = 0) {
+  cy.findAllByTestId("dashcard").eq(index).should("contain", text);
 }
 
 function getDashboardApiUrl(dashId) {
@@ -69,6 +73,19 @@ export function showDashboardCardActions(index = 0) {
   getDashboardCard(index).realHover({ scrollBehavior: "bottom" });
 }
 
+/**
+ * Given a dashcard HTML element, will return the element for the action icon
+ * with the given label text (e.g. "Click behavior", "Replace", "Duplicate", etc)
+ *
+ * @param {Cypress.Chainable<JQuery<HTMLElement>>} dashcardElement
+ * @param {string} labelText
+ *
+ * @returns {Cypress.Chainable<JQuery<HTMLElement>>}
+ */
+export function findDashCardAction(dashcardElement, labelText) {
+  return dashcardElement.realHover().findByLabelText(labelText);
+}
+
 export function removeDashboardCard(index = 0) {
   getDashboardCard(index)
     .realHover({ scrollBehavior: "bottom" })
@@ -107,18 +124,30 @@ export function checkFilterLabelAndValue(label, value) {
   cy.get("fieldset").contains(value);
 }
 
-export function setFilter(type, subType) {
+export function setFilter(type, subType, name) {
   cy.icon("filter").click();
 
   cy.findByText("What do you want to filter?");
 
-  popover().within(() => {
-    cy.findByText(type).click();
+  popover().findByText(type).click();
 
-    if (subType) {
-      cy.findByText(subType).click();
-    }
-  });
+  if (subType) {
+    sidebar().findByText("Filter operator").next().click();
+    popover().findByText(subType).click();
+  }
+
+  if (name) {
+    sidebar().findByLabelText("Label").clear().type(name);
+  }
+}
+
+export function getRequiredToggle() {
+  return cy.findByLabelText("Always require a value");
+}
+
+export function toggleRequiredParameter() {
+  // We need force: true because the actual input is hidden in Mantine
+  getRequiredToggle().click({ force: true });
 }
 
 export function createEmptyTextBox() {
@@ -130,6 +159,11 @@ export function createEmptyTextBox() {
 export function addTextBox(string, options = {}) {
   cy.findByLabelText("Edit dashboard").click();
   addTextBoxWhileEditing(string, options);
+}
+
+export function addLinkWhileEditing(string, options = {}) {
+  cy.findByLabelText("Add link card").click();
+  cy.findByPlaceholderText("https://example.com").type(string, options);
 }
 
 export function addTextBoxWhileEditing(string, options = {}) {
@@ -169,6 +203,13 @@ export function deleteTab(tabName) {
   cy.findByRole("tab", { name: tabName }).findByRole("button").click();
   popover().within(() => {
     cy.findByText("Delete").click();
+  });
+}
+
+export function duplicateTab(tabName) {
+  cy.findByRole("tab", { name: tabName }).findByRole("button").click();
+  popover().within(() => {
+    cy.findByText("Duplicate").click();
   });
 }
 
@@ -219,8 +260,16 @@ export const dashboardGrid = () => {
   return cy.findByTestId("dashboard-grid");
 };
 
+export function dashboardSaveButton() {
+  return cy.findByTestId("edit-bar").findByRole("button", { name: "Save" });
+}
+
+export function dashboardParametersDoneButton() {
+  return cy.findByTestId("dashboard-parameter-sidebar").button("Done");
+}
+
 /**
- * @param {Object=} option
+ * @param {Object} option
  * @param {number=} option.id
  * @param {number=} option.col
  * @param {number=} option.row
@@ -317,7 +366,9 @@ export function getLinkCardDetails({
 }
 
 /**
- * @param {Object=} option
+ * @param {Object} option
+ * @param {number=} option.col
+ * @param {number=} option.row
  * @param {string=} option.label
  * @param {number=} option.action_id
  * @param {Array=} option.parameter_mappings
@@ -358,3 +409,60 @@ export const getNextUnsavedDashboardCardId = (() => {
   let id = 0;
   return () => --id;
 })();
+
+const MAX_WIDTH = "1048px";
+export function assertDashboardFixedWidth() {
+  cy.findByTestId("fixed-width-dashboard-header").should(
+    "have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-dashboard-tabs").should(
+    "have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-filters").should(
+    "have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("dashboard-grid").should("have.css", "max-width", MAX_WIDTH);
+}
+
+export function assertDashboardFullWidth() {
+  cy.findByTestId("fixed-width-dashboard-header").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-dashboard-tabs").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("fixed-width-filters").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+  cy.findByTestId("dashboard-grid").should(
+    "not.have.css",
+    "max-width",
+    MAX_WIDTH,
+  );
+}
+
+export function createDashboardWithTabs({
+  dashcards,
+  tabs,
+  ...dashboardDetails
+}) {
+  return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+    cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+      ...dashboard,
+      dashcards,
+      tabs,
+    }).then(({ body: dashboard }) => cy.wrap(dashboard));
+  });
+}

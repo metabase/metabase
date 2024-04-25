@@ -54,11 +54,11 @@
   "Given a card ID, renders the card to a png and opens it. Be aware that the png rendered on a dev machine may not
   match what's rendered on another system, like a docker container."
   [card-id]
-  (let [{:keys [dataset_query result_metadata dataset] :as card} (t2/select-one card/Card :id card-id)
+  (let [{:keys [dataset_query result_metadata], card-type :type, :as card} (t2/select-one card/Card :id card-id)
         query-results (qp/process-query
                         (cond-> dataset_query
-                          dataset
-                          (assoc-in [:info :metadata/dataset-metadata] result_metadata)))
+                          (= card-type :model)
+                          (assoc-in [:info :metadata/model-metadata] result_metadata)))
         png-bytes     (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
                                                        card
                                                        query-results

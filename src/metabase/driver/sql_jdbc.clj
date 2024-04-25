@@ -9,11 +9,11 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.query-processor.writeback :as qp.writeback]
-   [metabase.util.honey-sql-2 :as h2x])
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu])
   (:import
    (java.sql Connection)))
 
@@ -74,8 +74,8 @@
     ((get-method driver/db-default-timezone :metabase.driver/driver) driver database)))
 
 (defmethod driver/execute-reducible-query :sql-jdbc
-  [driver query chans respond]
-  (sql-jdbc.execute/execute-reducible-query driver query chans respond))
+  [driver query context respond]
+  (sql-jdbc.execute/execute-reducible-query driver query context respond))
 
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
@@ -93,9 +93,18 @@
   [driver database table]
   (sql-jdbc.sync/describe-table driver database table))
 
+(defmethod driver/describe-fields :sql-jdbc
+  [driver database & {:as args}]
+  (sql-jdbc.sync/describe-fields driver database args))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks :sql-jdbc
   [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table))
+
+(defmethod driver/describe-fks :sql-jdbc
+  [driver database & {:as args}]
+  (sql-jdbc.sync/describe-fks driver database args))
 
 (defmethod driver/describe-table-indexes :sql-jdbc
   [driver database table]
@@ -117,19 +126,20 @@
   [_driver _semantic_type expr]
   (h2x/->timestamp expr))
 
-(defn- create-table-sql
-  [driver table-name col->type]
+(defn- create-table!-sql
+  [driver table-name column-definitions & {:keys [primary-key]}]
   (first (sql/format {:create-table (keyword table-name)
-                      :with-columns (map (fn [[name type-spec]]
-                                           (vec (cons name type-spec)))
-                                         col->type)}
+                      :with-columns (cond-> (mapv (fn [[name type-spec]]
+                                                    (vec (cons name type-spec)))
+                                                  column-definitions)
+                                      primary-key (conj [(into [:primary-key] primary-key)]))}
                      :quoted true
                      :dialect (sql.qp/quote-style driver))))
 
 (defmethod driver/create-table! :sql-jdbc
-  [driver db-id table-name col->type]
-  (let [sql (create-table-sql driver table-name col->type)]
-    (qp.writeback/execute-write-sql! db-id sql)))
+  [driver database-id table-name column-definitions & {:keys [primary-key]}]
+  (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
+    (qp.writeback/execute-write-sql! database-id sql)))
 
 (defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
@@ -137,6 +147,15 @@
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
     (qp.writeback/execute-write-sql! db-id sql)))
+
+(defmethod driver/truncate! :sql-jdbc
+  [driver db-id table-name]
+  (let [table-name (keyword table-name)
+        sql        (sql/format {:truncate table-name}
+                               :quoted true
+                               :dialect (sql.qp/quote-style driver))]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/execute! conn sql))))
 
 (defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]
@@ -162,14 +181,22 @@
         (jdbc/execute! conn sql)))))
 
 (defmethod driver/add-columns! :sql-jdbc
-  [driver db-id table-name col->type]
-  (let [sql (first (sql/format {:alter-table (keyword table-name)
-                                :add-column (map (fn [[name type-spec]]
-                                                   (vec (cons name type-spec)))
-                                                 col->type)}
+  [driver db-id table-name column-definitions & {:keys [primary-key]}]
+  (mu/validate-throw [:maybe [:cat :keyword]] primary-key) ; we only support adding a single primary key column for now
+  (let [primary-key-column (first primary-key)
+        sql (first (sql/format {:alter-table (keyword table-name)
+                                :add-column (map (fn [[column-name type-and-constraints]]
+                                                   (cond-> (vec (cons column-name type-and-constraints))
+                                                     (= primary-key-column column-name)
+                                                     (conj :primary-key)))
+                                                 column-definitions)}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
     (qp.writeback/execute-write-sql! db-id sql)))
+
+(defmethod driver/alter-columns! :sql-jdbc
+  [driver db-id table-name column-definitions]
+  (qp.writeback/execute-write-sql! db-id (sql-jdbc.sync/alter-columns-sql driver table-name column-definitions)))
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
@@ -180,10 +207,17 @@
    (fn [^java.sql.Connection conn]
      (let [[inclusion-patterns
             exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
-       (into #{} (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn (.getMetaData conn) inclusion-patterns exclusion-patterns))))))
+       (into #{} (sql-jdbc.sync/filtered-syncable-schemas driver conn (.getMetaData conn) inclusion-patterns exclusion-patterns))))))
 
 (defmethod driver/set-role! :sql-jdbc
   [driver conn role]
   (let [sql (driver.sql/set-role-statement driver role)]
     (with-open [stmt (.createStatement ^Connection conn)]
       (.execute stmt sql))))
+
+(defmethod driver/current-user-table-privileges :sql-jdbc
+  [driver database & {:as args}]
+  (sql-jdbc.sync/current-user-table-privileges
+    driver
+    (sql-jdbc.conn/db->pooled-connection-spec database)
+    args))

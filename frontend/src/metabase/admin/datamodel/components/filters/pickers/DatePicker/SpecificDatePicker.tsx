@@ -1,21 +1,19 @@
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { useState } from "react";
 import { t } from "ttag";
 
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import type { Moment } from "moment-timezone";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-import { getDateStyleFromSettings } from "metabase/lib/time";
 import type { SelectAll } from "metabase/components/Calendar";
 import Calendar from "metabase/components/Calendar";
-import InputBlurChange from "metabase/components/InputBlurChange";
 import ExpandingContent from "metabase/components/ExpandingContent";
+import InputBlurChange from "metabase/components/InputBlurChange";
+import { getDateStyleFromSettings } from "metabase/lib/time";
 import {
   getTimeComponent,
   setTimeComponent,
-} from "metabase-lib/queries/utils/query-time";
-import HoursMinutesInput from "./HoursMinutesInput";
+} from "metabase-lib/v1/queries/utils/query-time";
 
+import HoursMinutesInput from "./HoursMinutesInput";
 import { DateInputContainer } from "./SpecificDatePicker.styled";
 
 interface SpecificDatePickerProps {

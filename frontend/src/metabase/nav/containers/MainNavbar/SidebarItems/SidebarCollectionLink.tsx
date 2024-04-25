@@ -1,17 +1,14 @@
 import type { KeyboardEvent } from "react";
 import { forwardRef, useEffect, useCallback, useRef } from "react";
-
 import { usePrevious } from "react-use";
-import type { Collection } from "metabase-types/api";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";
 import type { TreeNodeProps } from "metabase/components/tree/types";
-
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getCollectionIcon } from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import type { Collection } from "metabase-types/api";
 
 import {
   CollectionNodeRoot,

@@ -17,34 +17,35 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (java.sql Connection ResultSet Time)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
-(doseq [[feature supported?] {:regex                                  false
-                              :case-sensitivity-string-filter-options false
-                              :now                                    true
-                              :datetime-diff                          true
+(doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :convert-timezone                       true
-                              :test/jvm-timezone-setting              false
-                              :index-info                             true}]
+                              :datetime-diff                          true
+                              :index-info                             true
+                              :now                                    true
+                              :regex                                  false
+                              :test/jvm-timezone-setting              false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
   [_ _ db]
   (let [major-version (get-in db [:dbms_version :semantic-version 0] 0)]
     (when (zero? major-version)
-      (log/warn (trs "Unable to determine sqlserver's dbms major version. Fallback to 0.")))
+      (log/warn "Unable to determine sqlserver's dbms major version. Fallback to 0."))
     (>= major-version 16)))
 
 (defmethod driver/db-start-of-week :sqlserver
@@ -281,7 +282,7 @@
 
 (defonce
   ^{:private true
-    :doc     "A map of all zone-id to the corresponding window-zone.
+    :doc     "A map of all zone-id to the corresponding windows-zone.
              I.e {\"Asia/Tokyo\" \"Tokyo Standard Time\"}"}
   zone-id->windows-zone
   (let [data (-> (io/resource "timezones/windowsZones.xml")
@@ -447,7 +448,9 @@
       ;; For the GROUP BY, we replace the unoptimized fields with the optimized ones, e.g.
       ;;
       ;;    GROUP BY year(field), month(field)
-      (apply sql.helpers/group-by new-hsql (mapv (partial sql.qp/->honeysql driver) optimized)))))
+      (apply sql.helpers/group-by new-hsql (mapv (partial sql.qp/->honeysql driver) optimized))
+      ;; remove duplicate group by clauses (from the optimize breakout clauses stuff)
+      (update new-hsql :group-by distinct))))
 
 (defn- optimize-order-by-subclauses
   "Optimize `:order-by` `subclauses` using [[optimized-temporal-buckets]], if possible."
@@ -467,7 +470,9 @@
   ;; year(), month(), and day() can make use of indexes while DateFromParts() cannot.
   (let [query         (update query :order-by optimize-order-by-subclauses)
         parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])]
-    (parent-method driver :order-by honeysql-form query)))
+    (-> (parent-method driver :order-by honeysql-form query)
+        ;; order bys have to be distinct in SQL Server!!!!!!!1
+        (update :order-by distinct))))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
@@ -527,6 +532,82 @@
 (defmethod sql.qp/->honeysql [:sqlserver :median]
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
+
+(def ^:private ^:dynamic *compared-field-options*
+  "This variable is set to the options of the field we are comparing
+  (presumably in a filter)."
+  nil)
+
+(defn- timezoneless-comparison?
+  "Returns if we are currently comparing a timezoneless data type."
+  []
+  (contains? #{:type/DateTime :type/Time} (:base-type *compared-field-options*)))
+
+;; For some strange reason, comparing a datetime or datetime2 column
+;; against a Java LocaDateTime object sometimes doesn't work (see
+;; [[metabase.driver.sqlserver-test/filter-by-datetime-fields-test]]).
+;; Instead of this, we format a string which SQL Server then parses. Ugly.
+
+(defn- format-without-trailing-zeros
+  "Since there is no pattern for fractional seconds that produces a variable
+  number of digits, we remove any trailing zeros. The resulting string then
+  can be parsed as any data type supporting the required precision. (E.g.,
+  datetime support 3 fractional digits, datetime2 supports 7. If we read a
+  datetime value and then send back as a filter value, it will be formatted
+  with 7 fractional digits and then the zeros get removed so that SQL Server
+  can parse the result as a datetime value.)"
+  [value  ^DateTimeFormatter formatter]
+  (-> (.format formatter value)
+      (str/replace #"\.?0*$" "")))
+
+(def ^:private ^DateTimeFormatter time-format
+  (DateTimeFormatter/ofPattern "HH:mm:ss.SSSSSSS"))
+
+(defmethod sql.qp/->honeysql [:sqlserver OffsetTime]
+  [_driver t]
+  (cond-> t
+    (timezoneless-comparison?) (format-without-trailing-zeros time-format)))
+
+(def ^:private ^DateTimeFormatter datetime-format
+  (DateTimeFormatter/ofPattern "y-MM-dd HH:mm:ss.SSSSSSS"))
+
+(doseq [c [OffsetDateTime ZonedDateTime]]
+  (defmethod sql.qp/->honeysql [:sqlserver c]
+    [_driver t]
+    (cond-> t
+      (timezoneless-comparison?) (format-without-trailing-zeros datetime-format))))
+
+;;; this is a psuedo-MBQL clause to signify that we need to do a cast, see the code below where we add it for an
+;;; explanation.
+(defmethod sql.qp/->honeysql [:sqlserver ::cast]
+  [driver [_tag expr database-type]]
+  (h2x/maybe-cast database-type (sql.qp/->honeysql driver expr)))
+
+(doseq [op [:= :!= :< :<= :> :>= :between]]
+  (defmethod sql.qp/->honeysql [:sqlserver op]
+    [driver [_tag field & args :as _clause]]
+    (binding [*compared-field-options* (when (and (vector? field)
+                                                  (= (get field 0) :field))
+                                         (get field 2))]
+      ;; We read string literals like `2019-11-05T14:23:46.410` as `datetime2`, which is never going to be `=` to a
+      ;; `datetime` (etc.). Wrap all args after the first in temporal filters in a cast() to the same type as the first
+      ;; arg so filters work correctly. Do this before we fully compile to Honey SQL so we can still use the parent
+      ;; method to take care of things like `[:= <string> <expr>]` generating `WHERE <string> = ? AND <string> IS NOT
+      ;; NULL` for us.
+      (let [clause (into [op field]
+                         ;; we're compiling this ahead of time and throwing out the compiled value to make it easier to
+                         ;; get the real database type of the expression... maybe when we convert this to MLv2 we can
+                         ;; just use MLv2 metadata or type calculation functions instead.
+                         (or (when-let [field-database-type (h2x/database-type (sql.qp/->honeysql driver field))]
+                               (when (#{"datetime" "datetime2" "datetimeoffset" "smalldatetime"} field-database-type)
+                                 (map (fn [[_type val :as expr]]
+                                        ;; Do not cast nil arguments to enable transformation to IS NULL.
+                                        (if (some? val)
+                                          [::cast expr field-database-type]
+                                          expr)))))
+                             identity)
+                         args)]
+        ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause)))))
 
 (defmethod driver/db-default-timezone :sqlserver
   [driver database]
@@ -588,7 +669,7 @@
             (and (has-order-by-without-limit? m)
                  (not (in-join-source-query? path))
                  (in-source-query? path)))]
-    (mbql.u/replace inner-query
+    (lib.util.match/replace inner-query
       ;; remove order by and then recurse in case we need to do more tranformations at another level
       (m :guard (partial remove-order-by? &parents))
       (fix-order-bys (dissoc m :order-by))
@@ -636,7 +717,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
+          (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
       stmt
       (catch Throwable e
         (.close stmt)

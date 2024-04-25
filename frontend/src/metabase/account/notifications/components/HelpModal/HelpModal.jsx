@@ -1,10 +1,11 @@
 import PropTypes from "prop-types";
 import { jt, t } from "ttag";
-import Settings from "metabase/lib/settings";
+
+import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import ModalContent from "metabase/components/ModalContent";
 import { useSelector } from "metabase/lib/redux";
+import Settings from "metabase/lib/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 
 import { ModalMessage } from "./HelpModal.styled";

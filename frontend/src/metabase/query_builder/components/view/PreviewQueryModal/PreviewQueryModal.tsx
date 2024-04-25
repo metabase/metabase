@@ -1,14 +1,17 @@
-import { t } from "ttag";
 import { useCallback } from "react";
+import { t } from "ttag";
+
+import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
+import { checkNotNull } from "metabase/lib/types";
 import {
   getNativeQueryFn,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { checkNotNull } from "metabase/lib/types";
-import { useSelector } from "metabase/lib/redux";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
+
+import { NativeQueryPreview, useNativeQuery } from "../NativeQueryPreview";
+
 import { ModalExternalLink } from "./PreviewQueryModal.styled";
 
 interface PreviewQueryModalProps {
@@ -29,7 +32,7 @@ export const PreviewQueryModal = ({
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   return (
-    <NativeQueryModal
+    <NativeQueryPreview
       title={t`Query preview`}
       query={query}
       error={error}
@@ -41,6 +44,6 @@ export const PreviewQueryModal = ({
           {t`Learn how to debug SQL errors`}
         </ModalExternalLink>
       )}
-    </NativeQueryModal>
+    </NativeQueryPreview>
   );
 };

@@ -1,4 +1,5 @@
 import { mockSettings } from "__support__/settings";
+
 import { getParentPath } from "./ModalRoute";
 
 const setup = (routePath, locationPath, siteURL = undefined) => {

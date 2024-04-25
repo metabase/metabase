@@ -235,11 +235,14 @@
                       {:query query, :stage-number stage-number, :x x}
                       e)))))
 
-(mu/defn metadata :- [:map [:lib/type [:and
-                                       :keyword
-                                       [:fn
-                                        {:error/message ":lib/type should be a :metadata/ keyword"}
-                                        #(= (namespace %) "metadata")]]]]
+(def ^:private MetadataMap
+  [:map [:lib/type [:and
+                    :keyword
+                    [:fn
+                     {:error/message ":lib/type should be a :metadata/ keyword"}
+                     #(= (namespace %) "metadata")]]]])
+
+(mu/defn metadata :- MetadataMap
   "Calculate an appropriate `:metadata/*` object for something. What this looks like depends on what we're calculating
   metadata for. If it's a reference or expression of some sort, this should return a single `:metadata/column`
   map (i.e., something satisfying the `::lib.schema.metadata/column` schema."
@@ -265,7 +268,7 @@
     (try
       (describe-query query)
       (catch #?(:clj Throwable :cljs js/Error) e
-        (log/error e (i18n/tru "Error calculating display name for query: {0}" (ex-message e)))
+        (log/errorf e "Error calculating display name for query: %s" (ex-message e))
         nil))))
 
 (defmulti display-info-method
@@ -370,7 +373,7 @@
        (when-let [inner-metadata (cond
                                    (integer? table-id) (lib.metadata/table query table-id)
                                    (string? table-id)  (lib.metadata/card
-                                                         query (lib.util/legacy-string-table-id->card-id table-id)))]
+                                                        query (lib.util/legacy-string-table-id->card-id table-id)))]
          {:table (display-info query stage-number inner-metadata)}))
      (when-let [source (:lib/source x-metadata)]
        {:is-from-previous-stage (= source :source/previous-stage)
@@ -382,7 +385,9 @@
      (when-some [selected (:selected? x-metadata)]
        {:selected selected})
      (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :temporal-unit) x-metadata)]
-       {:is-temporal-extraction (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)})
+       {:is-temporal-extraction
+        (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
+             (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units temporal-unit)))})
      (select-keys x-metadata [:breakout-position :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default
@@ -447,6 +452,11 @@
 (defmethod returned-columns-method :dispatch-type/nil
   [_query _stage-number _x _options]
   [])
+
+;;; if you pass in an integer assume it's a stage number; use the method for the query stage itself.
+(defmethod returned-columns-method :dispatch-type/integer
+  [query _stage-number stage-number options]
+  (returned-columns-method query stage-number (lib.util/query-stage query stage-number) options))
 
 (mu/defn returned-columns :- [:maybe ColumnsWithUniqueAliases]
   "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
@@ -514,6 +524,11 @@
   [query stage-number x options]
   (returned-columns-method query stage-number x options))
 
+;;; if you pass in an integer assume it's a stage number; use the method for the query stage itself.
+(defmethod visible-columns-method :dispatch-type/integer
+  [query _stage-number stage-number options]
+  (visible-columns-method query stage-number (lib.util/query-stage query stage-number) options))
+
 (mu/defn visible-columns :- ColumnsWithUniqueAliases
   "Return a sequence of columns that should be visible *within* a given stage of something, e.g. a query stage or a
   join query. This includes not just the columns that get returned (ones present in [[metadata]], but other columns
@@ -535,7 +550,12 @@
    (visible-columns query -1 x))
 
   ([query stage-number x]
-   (visible-columns query stage-number x nil))
+   (if (and (map? x)
+            (#{:mbql.stage/mbql :mbql.stage/native} (:lib/type x)))
+     (lib.cache/side-channel-cache
+       (keyword (str stage-number "__visible-columns-no-opts")) query
+       (fn [_] (visible-columns query stage-number x nil)))
+     (visible-columns query stage-number x nil)))
 
   ([query          :- ::lib.schema/query
     stage-number   :- :int

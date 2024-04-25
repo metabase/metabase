@@ -1,30 +1,32 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupSearchEndpoints,
+  setupRecentViewsEndpoints,
+  setupCollectionByIdEndpoint,
+  setupUserRecipientsEndpoint,
+} from "__support__/server-mocks";
+import {
   renderWithProviders,
   screen,
   fireEvent,
   getIcon,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import {
-  setupSearchEndpoints,
-  setupRecentViewsEndpoints,
-  setupCollectionByIdEndpoint,
-  setupUserRecipientsEndpoint,
-} from "__support__/server-mocks";
 import * as domUtils from "metabase/lib/dom";
 import registerVisualizations from "metabase/visualizations/register";
-
-import type { DashboardCard, LinkCardSettings } from "metabase-types/api";
+import type {
+  VirtualDashboardCard,
+  LinkCardSettings,
+} from "metabase-types/api";
 import {
-  createMockDashboardCardWithVirtualCard,
   createMockCollectionItem,
   createMockCollection,
   createMockRecentItem,
   createMockTable,
   createMockDashboard,
   createMockUser,
+  createMockLinkDashboardCard,
 } from "metabase-types/api/mocks";
 
 import type { LinkVizProps } from "./LinkViz";
@@ -32,33 +34,17 @@ import { LinkViz } from "./LinkViz";
 
 registerVisualizations();
 
-type LinkCardVizSettings = DashboardCard["visualization_settings"] & {
+type LinkCardVizSettings = VirtualDashboardCard["visualization_settings"] & {
   link: LinkCardSettings;
 };
 
-const linkDashcard = createMockDashboardCardWithVirtualCard({
-  visualization_settings: {
-    link: {
-      url: "https://example23.com",
-    },
-    virtual_card: {
-      display: "link",
-    },
-  },
+const linkDashcard = createMockLinkDashboardCard({
+  url: "https://example23.com",
 });
 
-const emptyLinkDashcard = createMockDashboardCardWithVirtualCard({
-  visualization_settings: {
-    link: {
-      url: "",
-    },
-    virtual_card: {
-      display: "link",
-    },
-  },
-});
+const emptyLinkDashcard = createMockLinkDashboardCard({ url: "" });
 
-const questionLinkDashcard = createMockDashboardCardWithVirtualCard({
+const questionLinkDashcard = createMockLinkDashboardCard({
   visualization_settings: {
     link: {
       entity: {
@@ -68,26 +54,20 @@ const questionLinkDashcard = createMockDashboardCardWithVirtualCard({
         display: "pie",
       },
     },
-    virtual_card: {
-      display: "link",
-    },
   },
 });
 
-const restrictedLinkDashcard = createMockDashboardCardWithVirtualCard({
+const restrictedLinkDashcard = createMockLinkDashboardCard({
   visualization_settings: {
     link: {
       entity: {
         restricted: true,
       },
     },
-    virtual_card: {
-      display: "link",
-    },
   },
 });
 
-const tableLinkDashcard = createMockDashboardCardWithVirtualCard({
+const tableLinkDashcard = createMockLinkDashboardCard({
   visualization_settings: {
     link: {
       entity: {
@@ -97,22 +77,10 @@ const tableLinkDashcard = createMockDashboardCardWithVirtualCard({
         model: "table",
       },
     },
-    virtual_card: {
-      display: "link",
-    },
   },
 });
 
-const searchingDashcard = createMockDashboardCardWithVirtualCard({
-  visualization_settings: {
-    link: {
-      url: "question",
-    },
-    virtual_card: {
-      display: "link",
-    },
-  },
-});
+const searchingDashcard = createMockLinkDashboardCard({ url: "question" });
 
 const searchCardCollection = createMockCollection();
 const searchCardItem = createMockCollectionItem({
@@ -191,6 +159,41 @@ describe("LinkViz", () => {
       expect(screen.getByText("https://example23.com")).toBeInTheDocument();
       expect(screen.getByRole("link")).toHaveAttribute("target", "_blank");
     });
+
+    it("should open absolute links to question in the same tab", () => {
+      const dashcard = createMockLinkDashboardCard({
+        url: "http://localhost/question/1-example",
+      });
+
+      setup({
+        isEditing: false,
+        dashcard,
+        settings: dashcard.visualization_settings as LinkCardVizSettings,
+      });
+
+      expect(window.location.origin).toBe("http://localhost");
+
+      expect(
+        screen.getByText("http://localhost/question/1-example"),
+      ).toBeInTheDocument();
+
+      expect(screen.getByRole("link")).toHaveAttribute("target", "_self");
+    });
+
+    it("should open relative links to question in the same tab", () => {
+      const dashcard = createMockLinkDashboardCard({
+        url: "question/2-example",
+      });
+
+      setup({
+        isEditing: false,
+        dashcard,
+        settings: dashcard.visualization_settings as LinkCardVizSettings,
+      });
+
+      expect(screen.getByText("question/2-example")).toBeInTheDocument();
+      expect(screen.getByRole("link")).toHaveAttribute("target", "_self");
+    });
   });
 
   describe("entity links", () => {
@@ -259,14 +262,14 @@ describe("LinkViz", () => {
 
       const searchInput = screen.getByPlaceholderText("https://example.com");
 
-      userEvent.click(searchInput);
+      await userEvent.click(searchInput);
       // There's a race here: as soon the search input is clicked into the text
       // "Loading..." appears and is then replaced by "Question Uno". On CI,
       // `findByText` was sometimes running while "Loading..." was still
       // visible, so the extra expectation ensures good timing
       await waitForLoaderToBeRemoved();
 
-      userEvent.click(await screen.findByText("Question Uno"));
+      await userEvent.click(await screen.findByText("Question Uno"));
 
       expect(changeSpy).toHaveBeenCalledWith({
         link: {
@@ -316,10 +319,10 @@ describe("LinkViz", () => {
 
       const searchInput = screen.getByPlaceholderText("https://example.com");
 
-      userEvent.click(searchInput);
+      await userEvent.click(searchInput);
 
       await screen.findByText("Dashboard Uno");
-      userEvent.click(await screen.findByText("Table Uno"));
+      await userEvent.click(await screen.findByText("Table Uno"));
 
       expect(changeSpy).toHaveBeenCalledWith({
         link: {

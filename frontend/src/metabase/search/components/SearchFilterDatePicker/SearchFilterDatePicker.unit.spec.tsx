@@ -1,5 +1,7 @@
 import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen, within } from "__support__/ui";
+
 import { SearchFilterDatePicker } from "./SearchFilterDatePicker";
 
 type SetupProps = {
@@ -27,9 +29,9 @@ describe("SearchFilterDatePicker", () => {
     expect(screen.queryByText("Exclude…")).not.toBeInTheDocument();
   });
 
-  it("should call onChange when a date is selected", () => {
+  it("should call onChange when a date is selected", async () => {
     const { onChangeMock } = setup();
-    userEvent.click(screen.getByText("Today"));
+    await userEvent.click(screen.getByText("Today"));
     expect(onChangeMock).toHaveBeenCalled();
   });
 

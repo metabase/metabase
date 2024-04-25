@@ -1,14 +1,20 @@
 import { useState } from "react";
+
 import { useDispatch } from "metabase/lib/redux";
 import {
   exportFormats,
   publicQuestion as getPublicQuestionUrl,
 } from "metabase/lib/urls";
 import {
+  trackPublicLinkCopied,
+  trackPublicLinkRemoved,
+} from "metabase/public/lib/analytics";
+import {
   createPublicLink,
   deletePublicLink,
 } from "metabase/query_builder/actions";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
+
 import { PublicLinkPopover } from "./PublicLinkPopover";
 import type { ExportFormatType } from "./types";
 
@@ -40,7 +46,18 @@ export const QuestionPublicLinkPopover = ({
     await dispatch(createPublicLink(question.card()));
   };
   const deletePublicQuestionLink = async () => {
+    trackPublicLinkRemoved({
+      artifact: "question",
+      source: "public-share",
+    });
     await dispatch(deletePublicLink(question.card()));
+  };
+
+  const onCopyLink = () => {
+    trackPublicLinkCopied({
+      artifact: "question",
+      format: extension ?? "html",
+    });
   };
 
   return (
@@ -54,6 +71,7 @@ export const QuestionPublicLinkPopover = ({
       extensions={exportFormats}
       selectedExtension={extension}
       setSelectedExtension={setExtension}
+      onCopyLink={onCopyLink}
     />
   );
 };

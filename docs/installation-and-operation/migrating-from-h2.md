@@ -7,9 +7,13 @@ redirect_from:
 
 # Migrating to a production application database
 
+This page covers how to convert a Metabase that's been using the built-in application database, H2, to a production-ready instance with either PostgreSQL or MySQL/MariaDB. For more on why you should do this, check out [How to run Metabase in production](https://www.metabase.com/learn/administration/metabase-in-production).
+
+If you'd rather move to Metabase Cloud, check out [Migrate to Metabase Cloud](https://www.metabase.com/docs/latest/cloud/migrate/guide).
+
 ## Metabase's application database
 
-The main difference between a local installation and a production installation of Metabase is the application database. The application database keeps track of all of your Metabase data: your questions, dashboards, collections, and so on.
+The main difference between a local installation and a production installation of Metabase is the application database. This application database keeps track of all of your Metabase data: your questions, dashboards, collections, and so on.
 
 Metabase ships with an embedded H2 application database that you should avoid using in production. The reason Metabase ships with the H2 database is because we want people to spin up Metabase on their local machine and start playing around with asking questions.
 
@@ -25,7 +29,7 @@ You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase
 
 ## Supported databases for storing your Metabase application data
 
-- [PostgreSQL](https://www.postgresql.org/). Minimum version: `9.4`.
+- [PostgreSQL](https://www.postgresql.org/). Minimum version: `9.5`.
 - [MySQL](https://www.mysql.com/). Minimum version: `8.0.17`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
 - [MariaDB](https://mariadb.org/). Minimum version: `10.4.0`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
 

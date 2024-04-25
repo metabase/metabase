@@ -1,6 +1,6 @@
-import { restore, visitQuestion, popover } from "e2e/support/helpers";
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { restore, visitQuestion, popover } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
@@ -32,12 +32,12 @@ describe("issue 22727", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
-    cy.get(".Modal").within(() => {
+    cy.findByTestId("save-question-modal").then(modal => {
       // This part reproduces https://github.com/metabase/metabase/issues/20717
       cy.findByText(/^Replace original qeustion/).should("not.exist");
 
       // This part is an actual repro for https://github.com/metabase/metabase/issues/22727
-      cy.findByTestId("select-button-content")
+      cy.findByLabelText(/Which collection should this go in/)
         .invoke("text")
         .should("not.eq", "Our analytics");
     });

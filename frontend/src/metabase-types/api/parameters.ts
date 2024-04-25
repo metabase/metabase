@@ -1,6 +1,6 @@
 import type { CardId } from "./card";
 import type { RowValue } from "./dataset";
-import type { LocalFieldReference } from "./query";
+import type { ConcreteFieldReference, ExpressionReference } from "./query";
 
 export type StringParameterType =
   | "string/="
@@ -47,6 +47,7 @@ export interface Parameter extends ParameterValuesConfig {
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
+  target?: ParameterTarget;
 }
 
 export interface ParameterValuesConfig {
@@ -74,10 +75,15 @@ export type ParameterTarget =
   | ParameterDimensionTarget
   | ParameterTextTarget;
 
-type DimensionTarget = LocalFieldReference;
-export type ParameterDimensionTarget = [
+export type ParameterDimensionTarget =
+  | NativeParameterDimensionTarget
+  | StructuredParameterDimensionTarget;
+
+export type NativeParameterDimensionTarget = ["dimension", VariableTarget];
+
+export type StructuredParameterDimensionTarget = [
   "dimension",
-  DimensionTarget | VariableTarget,
+  ConcreteFieldReference | ExpressionReference,
 ];
 
 export type ParameterValueOrArray = string | number | Array<any>;
@@ -96,6 +102,7 @@ export type ParameterMappingOptions = {
   name: string;
   sectionId: string;
   combinedName?: string;
+  menuName?: string;
   type: string;
 };
 

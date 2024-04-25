@@ -6,11 +6,21 @@
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.sort :as lib.drill-thru.sort]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(deftest ^:parallel sort-drill-availability-test
+  (testing "sort is available on column headers only"
+    (canned/canned-test
+      :drill-thru/sort
+      (fn [_test-case context {:keys [click]}]
+        (and (= click :header)
+             (not (lib.types.isa/structured? (:column context))))))))
 
 (deftest ^:parallel sort-e2e-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -75,7 +85,7 @@
                   (lib/drill-thru query -1 drill :desc))))))))
 
 (deftest ^:parallel remove-existing-sort-test
-  (testing "Applying sort to already sorted column should REPLACE original sort (#34497)"
+  (testing "Applying sort to already sorted column should REPLACE original sort (#34497, #37633)"
     ;; technically this query doesn't make sense, how are you supposed to have a max aggregation and then also order
     ;; by a different column, but MBQL doesn't enforce that,
     (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -97,8 +107,7 @@
               drill))
       (testing "We should REPLACE the original sort, as opposed to removing it and appending a new one"
         (is (=? {:stages
-                 [{:order-by [[:desc {} [:field {} (meta/id :orders :user-id)]]
-                              [:asc {} [:field {} (meta/id :orders :id)]]]}]}
+                 [{:order-by [[:desc {} [:field {} (meta/id :orders :user-id)]]]}]}
                 (lib/drill-thru query -1 drill :desc)))))))
 
 (deftest ^:parallel returns-sort-test-1

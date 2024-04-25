@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import Input from "metabase/core/components/Input";
+
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Input from "metabase/core/components/Input";
+import { color } from "metabase/lib/colors";
 
 export const QuestionListWrapper = styled(LoadingAndErrorWrapper)`
   flex: 1;
@@ -21,7 +22,7 @@ export const LoadMoreButton = styled.button`
   color: ${color("brand")};
   cursor: pointer;
   display: flex;
-  font-family: var(--default-font-family);
+  font-family: var(--mb-default-font-family);
   font-size: 14px;
   font-weight: 700;
   padding: 0.25rem 1.5rem;

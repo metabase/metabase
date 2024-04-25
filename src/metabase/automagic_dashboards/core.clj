@@ -1,21 +1,83 @@
 (ns metabase.automagic-dashboards.core
-  "Automatically generate questions and dashboards based on predefined heuristics.
+  "# Automagic Dashboards #
+
+  Automatically generate questions and dashboards based on predefined heuristics.
+
+  Note that the primary entry point into this namespace is `automagic-analysis`. This function primarily gathers
+  needed data about the input value and any special options then calls into `automagic-dashboard`, where most of
+  the work occurs.
 
   There are two key inputs to this algorithm:
   - An entity to generate the dashboard for. The primary data needed from this entity is:
     - The entity type itself
     - The field information, especially the metadata about these fields
-  - A set of potential dashboard templates from which a dashboard can be realized based on the entity and field data
+    - This data gathering happens in the `->root` function
+  - A dashboard template from which a dashboard can be realized based on the entity and field data
 
-  The first step in the base `automagic-dashboard` is to select dashboard templates that match the entity type of
-  the entity to be x-rayed. A simple entity might match only to a GenericTable template while a more complicated
-  entity might match to a TransactionTable or EventTable template.
+  ## Template Selection ##
 
-  Once potential templates are selected, the following process is attempted for each template in order of most
-  specialized template to least:
-  - Determine which entity fields map to dimensions and metrics described in the template.
-  - Match these selected dimensions and metrics to required dimensions and metrics for cards specified in the template.
-  - If any cards match, we successfully return a dashboard generated with the created cards.
+  Within the `automagic-dashboard` function, a template is selected based on the entity type being analyzed unless a
+  dashboard template is specified in the argument. This is a critically important fact:
+
+  ** The template selection is based on the entity type of the item being x-rayed.  **
+
+  Example: X-raying the \"ORDERS\" table will result in matching the template
+  `resources/automagic_dashboards/table/TransactionTable.yaml`.
+
+  This is because the `:entity_type` of the table is `:entity/TransactionTable` as can be seen here:
+
+  ```clojure
+  (t2/select-one-fn :entity_type :model/Table :name \"ORDERS\")
+  ;=> :entity/TransactionTable
+  ```
+
+  _Most_ tables and _all_ models (as of this writing) will bottom out at `:entity/GenericTable` and thus, use the
+  `resources/automagic_dashboards/table/GenericTable.yaml` template. `:entity_type` for a given table type is made in
+  the `metabase.sync.analyze.classifiers.name/infer-entity-type` function, where the primary logic is table naming
+  based on the `prefix-or-postfix` var in that ns.
+
+  ProTip: If you want to introduce a new template type, do the following:
+
+  1. Update `prefix-or-postfix` to include the match logic and new entity type
+  2. Add a template file, `resources/automagic_dashboards/table/NewEntityType.yaml`, where NewEntityType is the new
+     entity type (e.g. `:entity/NewEntityType`).
+
+  ## Template Files ##
+
+  Template files define a potential dashboard, potentially including titles, seconds, cards, filters, and more.
+  They are found in `resources/automagic_dashboards`. Once you've read through several, the format should be fairly
+  self-explanatory, but here are a few critical details:
+
+  - Templated strings are matched with `[[double square brackets]]`
+  - `title`, `transient_title`, and `description` should be self-explanatory
+  - The fundamental \"dynamic\" building blocks are:
+    - dimensions - The base building block in the process. Dimensions map to the columns of the entity being x-rayed
+      and are matched by dimension field_type to entity type (semantic, effective, etc.). These form the x-axis in a
+      card and the breakout column of a query.
+    - metrics - Metrics form the y-axis in a card and are the aggregates in a query. They are always defined in terms
+      of 0 or more dimensions. Metrics can be dimensionless quantities (e.g. count), based on a single value (e.g.
+      average of a column), or a more complicated expression (e.g. ratio of average of column 1 and average of column 2).
+    - filters - Filters add a filter clause to a query and are also defined in terms of dimensions.
+    - cards - The final product of the dynamic process. Cards are built from predefined metrics, dimensions, and
+      filters as discussed above along with preferences such as display type and title.
+    - groups - Dashboard sections in which matching cards are added.
+
+  ## The Dynamic Binding and Dashboard Generation Process ##
+
+  Once data has been accreted in `automagic-analysis`, `automagic-dashboard` will first select a template as described
+  above. It then calls `metabase.automagic-dashboards.interesting/identify` which takes the actual column data and
+  dimension, metric, and filter definitions from the template and matches all potential columns to potential dimensions,
+  metrics, and filters. The resulting \"grounded-values\" are now passed into `generate-dashboard`, which matches all
+  of these values to card templates to produce a dashboard. The majority of the card generation work is done in
+  `metabase.automagic-dashboards.combination/grounded-metrics->dashcards`.
+
+  Note that if a card template's dimensions, metrics, and filters are not matched to grounded values the card will not
+  be generated. Conversely, if a card template can be matched by multiple combinations of dimensions, multiple cards
+  may be generated.
+
+  Once a selection of cards have been generated, the top N are selected (default 15), added to the dashboard, and grouped.
+
+  ## Example ##
 
   The following example is provided to better illustrate the template process and how dimensions and metrics work.
 
@@ -61,10 +123,10 @@
    - A field from an unspecified table with semantic type `:type/Income` and score of 90
    - A field from a Sales table with semantic type `:type/Number` and score of 50
 
-   When matched with actual fields from an x-rayed entity, the highest matching field is selected to be \"bound\" to
-   the Income dimensions. Suppose you have an entity of type SalesTable and fields of INCOME (semantic type Income),
-   TAX (type Float), and TOTAL (Float). In this case, the INCOME field would match best (score 100) and be bound to the
-   Income dimension.
+   When matched with actual fields from an x-rayed entity, the highest matching field, by score, is selected to be
+   \"bound\" to the Income dimensions. Suppose you have an entity of type SalesTable and fields of INCOME (semantic
+   type Income), TAX (type Float), and TOTAL (Float). In this case, the INCOME field would match best (score 100)
+   and be bound to the Income dimension.
 
    The other specified dimensions will have similar matching rules. Note that X & Y are, like all other dimensions,
    *named* dimensions. In our above example the Income dimension matched to the INCOME field of type `:type/Income`.
@@ -87,6 +149,7 @@
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
    [medley.core :as m]
+   [metabase.analyze.classifiers.core :as classifiers]
    [metabase.automagic-dashboards.combination :as combination]
    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.automagic-dashboards.filters :as filters]
@@ -95,23 +158,21 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.automagic-dashboards.util :as magic.util]
    [metabase.db.query :as mdb.query]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [Metric]]
+   [metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.query :refer [Query]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
-   [metabase.sync.analyze.classify :as classify]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru trun]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
@@ -124,7 +185,7 @@
     :arglists '([entity])}
   linked-metrics mi/model)
 
-(defmethod linked-metrics :model/Metric [{metric-name :name :keys [definition]}]
+(defmethod linked-metrics :model/LegacyMetric [{metric-name :name :keys [definition]}]
   [{:metric-name       metric-name
     :metric-title      metric-name
     :metric-definition definition
@@ -133,7 +194,7 @@
 (defmethod linked-metrics :model/Table [{table-id :id}]
   (mapcat
    linked-metrics
-   (t2/select :model/Metric :table_id table-id)))
+   (t2/select :model/LegacyMetric :table_id table-id)))
 
 (defmethod linked-metrics :default [_] [])
 
@@ -168,7 +229,7 @@
      :url                        (format "%ssegment/%s" public-endpoint (u/the-id segment))
      :dashboard-templates-prefix ["table"]}))
 
-(defmethod ->root Metric
+(defmethod ->root LegacyMetric
   [metric]
   (let [table (->> metric :table_id (t2/select-one Table :id))]
     {:entity                     metric
@@ -227,25 +288,25 @@
   [card]
   (cond
     ;; This is a model
-    (:dataset card) (assoc card :entity_type :entity/GenericTable)
+    (= (:type card) :model) (assoc card :entity_type :entity/GenericTable)
     ;; This is a query based on a query. Eventually we will want to change this as it suffers from the same sourcing
     ;; problems as other cards -- The x-ray is not done on the card, but on its source.
-    (nested-query? card) (-> card
-                             source-question
-                             (assoc :entity_type :entity/GenericTable))
-    (native-query? card) (-> card (assoc :entity_type :entity/GenericTable))
-    :else                (->> card table-id (t2/select-one Table :id))))
+    (nested-query? card)    (-> card
+                                source-question
+                                (assoc :entity_type :entity/GenericTable))
+    (native-query? card)    (-> card (assoc :entity_type :entity/GenericTable))
+    :else                   (->> card table-id (t2/select-one Table :id))))
 
 (defmethod ->root Card
   [card]
-  (let [{:keys [dataset] :as source} (source card)]
+  (let [source (source card)]
     {:entity                     card
      :source                     source
      :database                   (:database_id card)
      :query-filter               (get-in card [:dataset_query :query :filter])
      :full-name                  (tru "\"{0}\"" (:name card))
      :short-name                 (names/source-name {:source source})
-     :url                        (format "%s%s/%s" public-endpoint (if dataset "model" "question") (u/the-id card))
+     :url                        (format "%s%s/%s" public-endpoint (name (:type source :question)) (u/the-id card))
      :dashboard-templates-prefix [(if (table-like? card)
                                     "table"
                                     "question")]}))
@@ -380,11 +441,11 @@
                                         (update field :base_type keyword)
                                         (update field :semantic_type keyword)
                                         (mi/instance Field field)
-                                        (classify/run-classifiers field {})
+                                        (classifiers/run-classifiers field {})
                                         (assoc field :db db)))))]
         (constantly source-fields)))))
 
-(s/defn ^:private make-base-context
+(defn- make-base-context
   "Create the underlying context to which we will add metrics, dimensions, and filters.
 
   This is applicable to all dashboard templates."
@@ -518,9 +579,9 @@
       (update :fields (partial remove magic.util/key-col?))
       (->> (m/map-vals (comp (partial map ->related-entity) u/one-or-many)))))
 
-(s/defn ^:private indepth
+(mu/defn ^:private indepth
   [{:keys [dashboard-templates-prefix url] :as root}
-   {:keys [dashboard-template-name]} :- (s/maybe dashboard-templates/DashboardTemplate)]
+   {:keys [dashboard-template-name]} :- [:maybe dashboard-templates/DashboardTemplate]]
   (let [base-context (make-base-context root)]
     (->> (dashboard-templates/get-dashboard-templates (concat dashboard-templates-prefix [dashboard-template-name]))
          (keep (fn [{indepth-template-name :dashboard-template-name
@@ -631,7 +692,7 @@
               :zoom-out [up]
               :related  [sideways sideways]
               :compare  [compare compare]})
-   Metric  (let [down     [[:drilldown-fields]]
+   LegacyMetric  (let [down     [[:drilldown-fields]]
                  sideways [[:metrics :segments]]
                  up       [[:table]]
                  compare  [[:compare]]]
@@ -662,12 +723,12 @@
               :related  [sideways sideways sideways]
               :compare  [compare compare]})})
 
-(s/defn ^:private related
+(mu/defn ^:private related
   "Build a balanced list of related X-rays. General composition of the list is determined for each
    root type individually via `related-selectors`. That recipe is then filled round-robin style."
   [root
    available-dimensions
-   dashboard-template :- (s/maybe dashboard-templates/DashboardTemplate)]
+   dashboard-template :- [:maybe dashboard-templates/DashboardTemplate]]
   (->> (merge (indepth root dashboard-template)
               (drilldown-fields root available-dimensions)
               (related-entities root)
@@ -702,7 +763,8 @@
                   (format "%s#show=all" url))
           :transient_filters query-filter
           :param_fields (filter-referenced-fields root query-filter)
-          :auto_apply_filters true))))
+          :auto_apply_filters true
+          :width "fixed"))))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
@@ -724,7 +786,13 @@
     (generate-dashboard base-context template grounded-values)))
 
 (defmulti automagic-analysis
-  "Create a transient dashboard analyzing given entity."
+  "Create a transient dashboard analyzing given entity.
+
+  This function eventually calls out to `automagic-dashboard` with two primary arguments:
+  - The item to be analyzed. This entity is a 'decorated' version of the raw input that has been
+    passed through the `->root` function, which is an aggregate including the original entity, its
+    source, what dashboard template categories to apply, etc.
+  - Additional options such as how many cards to show, a cell query (a drill through), etc."
   {:arglists '([entity opts])}
   (fn [entity _]
     (mi/model entity)))
@@ -737,20 +805,20 @@
   [segment opts]
   (automagic-dashboard (merge (->root segment) opts)))
 
-(defmethod automagic-analysis Metric
+(defmethod automagic-analysis LegacyMetric
   [metric opts]
   (automagic-dashboard (merge (->root metric) opts)))
 
-(mu/defn ^:private collect-metrics :- [:maybe [:sequential (ms/InstanceOf Metric)]]
+(mu/defn ^:private collect-metrics :- [:maybe [:sequential (ms/InstanceOf LegacyMetric)]]
   [root question]
   (map (fn [aggregation-clause]
          (if (-> aggregation-clause
                  first
                  qp.util/normalize-token
                  (= :metric))
-           (->> aggregation-clause second (t2/select-one Metric :id))
+           (->> aggregation-clause second (t2/select-one LegacyMetric :id))
            (let [table-id (table-id question)]
-             (mi/instance Metric {:definition {:aggregation  [aggregation-clause]
+             (mi/instance LegacyMetric {:definition {:aggregation  [aggregation-clause]
                                                :source-table table-id}
                                   :name       (names/metric->description root aggregation-clause)
                                   :table_id   table-id}))))

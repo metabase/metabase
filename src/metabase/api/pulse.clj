@@ -83,11 +83,11 @@
   This may include subscriptions which the current user does not have collection permissions for, in which case
   some sensitive metadata (the list of cards and recipients) is stripped out."
   [archived dashboard_id creator_or_recipient]
-  {archived             [:maybe ms/BooleanString]
+  {archived             [:maybe ms/BooleanValue]
    dashboard_id         [:maybe ms/PositiveInt]
-   creator_or_recipient [:maybe ms/BooleanString]}
-  (let [creator-or-recipient (Boolean/parseBoolean creator_or_recipient)
-        archived?            (Boolean/parseBoolean archived)
+   creator_or_recipient [:maybe ms/BooleanValue]}
+  (let [creator-or-recipient creator_or_recipient
+        archived?            archived
         pulses               (->> (pulse/retrieve-pulses {:archived?    archived?
                                                           :dashboard-id dashboard_id
                                                           :user-id      (when creator-or-recipient api/*current-user-id*)})
@@ -254,14 +254,14 @@
   {:arglists '([card])}
   [{query :dataset_query, card-id :id}]
   (binding [qp.perms/*card-id* card-id]
-    (qp/process-query-and-save-execution!
-     (assoc query
-            :async? false
-            :middleware {:process-viz-settings? true
-                         :js-int-to-string?     false})
-     {:executed-by api/*current-user-id*
-      :context     :pulse
-      :card-id     card-id})))
+    (qp/process-query
+     (qp/userland-query
+      (assoc query
+             :middleware {:process-viz-settings? true
+                          :js-int-to-string?     false})
+      {:executed-by api/*current-user-id*
+       :context     :pulse
+       :card-id     card-id}))))
 
 (api/defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
@@ -338,7 +338,11 @@
    collection_id       [:maybe ms/PositiveInt]
    collection_position [:maybe ms/PositiveInt]
    dashboard_id        [:maybe ms/PositiveInt]}
-  (check-card-read-permissions cards)
+  ;; Check permissions on cards that exist. Placeholders don't matter.
+  (check-card-read-permissions
+    (remove (fn [{:keys [id display]}]
+              (and (nil? id)
+                   (= "placeholder" display))) cards))
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))

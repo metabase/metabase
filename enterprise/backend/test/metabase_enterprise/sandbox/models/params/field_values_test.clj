@@ -1,7 +1,7 @@
 (ns metabase-enterprise.sandbox.models.params.field-values-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase-enterprise.sandbox.models.group-table-access-policy
     :refer [GroupTableAccessPolicy]]
    [metabase-enterprise.sandbox.models.params.field-values
@@ -25,7 +25,7 @@
 (deftest get-or-create-advanced-field-values!-test
   (doseq [fv-type [:sandbox :linked-filter]]
     (testing "create a new field values and fix up the human readable values"
-      (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:and
+      (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:and
                                                                                        [:> $id 3]
                                                                                        [:< $id 6]]})}}}
         ;; the categories-id doesn't have a field values, we fake it with a full fieldvalues to make it easier to test
@@ -67,7 +67,7 @@
                                      {:order-by [:id]})))))))
 
     (testing "make sure the Fieldvalues respect [field-values/*total-max-length*]"
-      (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:and
+      (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:and
                                                                                        [:> $id 3]
                                                                                        [:< $id 6]]})}}}
         (binding [field-values/*total-max-length* 5]
@@ -78,11 +78,11 @@
 
 (deftest advanced-field-values-hash-test
   (mt/with-premium-features #{:sandboxes}
-    ;; copy at top level so that `with-gtaps-for-user` does not have to create a new copy every time it gets called
+    ;; copy at top level so that `with-gtaps-for-user!` does not have to create a new copy every time it gets called
     (mt/with-temp-copy-of-db
       (testing "gtap with remappings"
         (letfn [(hash-for-user-id [user-id login-attributes field-id]
-                  (met/with-gtaps-for-user user-id
+                  (met/with-gtaps-for-user! user-id
                     {:gtaps      {:categories {:remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}}
                      :attributes login-attributes}
                     (ee-params.field-values/hash-key-for-sandbox field-id)))]

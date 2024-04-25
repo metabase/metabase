@@ -1,4 +1,5 @@
 import { measureTextWidth, truncateText } from "metabase/static-viz/lib/text";
+
 import {
   LEGEND_CIRCLE_MARGIN_RIGHT,
   LEGEND_CIRCLE_SIZE,

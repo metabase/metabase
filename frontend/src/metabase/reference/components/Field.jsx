@@ -1,20 +1,22 @@
 /* eslint "react/prop-types": "warn" */
-import { memo } from "react";
+import cx from "classnames";
+import { getIn } from "icepick";
 import PropTypes from "prop-types";
+import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
-import { getIn } from "icepick";
-import cx from "classnames";
-import * as MetabaseCore from "metabase/lib/core";
 
-import S from "metabase/components/List/List.css";
+import S from "metabase/components/List/List.module.css";
 import Select from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
+import * as MetabaseCore from "metabase/lib/core";
 import { Icon } from "metabase/ui";
-import { isTypeFK } from "metabase-lib/types/utils/isa";
-import F from "./Field.css";
+import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
+
+import F from "./Field.module.css";
 
 const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
-  <div className={cx(S.item, "pt1", "border-top")}>
+  <div className={cx(S.item, CS.pt1, CS.borderTop)}>
     <div className={S.itemBody} style={{ maxWidth: "100%", borderTop: "none" }}>
       <div className={F.field}>
         <div className={cx(S.itemTitle, F.fieldName)}>
@@ -29,8 +31,8 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
           ) : (
             <div>
               <Link to={url}>
-                <span className="text-brand">{field.display_name}</span>
-                <span className={cx(F.fieldActualName, "ml2")}>
+                <span className={CS.textBrand}>{field.display_name}</span>
+                <span className={cx(F.fieldActualName, CS.ml2)}>
                   {field.name}
                 </span>
               </Link>
@@ -57,7 +59,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
               optionSectionFn={o => o.section}
             />
           ) : (
-            <div className="flex">
+            <div className={CS.flex}>
               <div className={S.leftIcons}>
                 {icon && <Icon className={S.chartIcon} name={icon} size={20} />}
               </div>
@@ -67,8 +69,8 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                     field.semantic_type,
                     "name",
                   ])
-                    ? "text-medium"
-                    : "text-light"
+                    ? CS.textMedium
+                    : CS.textLight
                 }
               >
                 {getIn(MetabaseCore.field_semantic_types_map, [
@@ -81,7 +83,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         </div>
         <div className={F.fieldDataType}>{field.base_type}</div>
       </div>
-      <div className={cx(S.itemSubtitle, F.fieldSecondary, { mt1: true })}>
+      <div className={cx(S.itemSubtitle, F.fieldSecondary, { [CS.mt1]: true })}>
         <div className={F.fieldForeignKey}>
           {isEditing
             ? (isTypeFK(formField.semantic_type.value) ||
@@ -108,7 +110,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         <div className={F.fieldOther} />
       </div>
       {field.description && (
-        <div className={cx(S.itemSubtitle, "mb2", { mt1: isEditing })}>
+        <div className={cx(S.itemSubtitle, CS.mb2, { [CS.mt1]: isEditing })}>
           {field.description}
         </div>
       )}

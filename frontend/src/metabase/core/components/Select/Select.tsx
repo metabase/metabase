@@ -1,3 +1,5 @@
+import { createSelector } from "@reduxjs/toolkit";
+import cx from "classnames";
 import type {
   CSSProperties,
   Key,
@@ -6,20 +8,18 @@ import type {
   RefObject,
 } from "react";
 import { createRef, Children, Component } from "react";
-
 import _ from "underscore";
-import cx from "classnames";
-import { createSelector } from "@reduxjs/toolkit";
-import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
+
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import type { SelectButtonProps } from "metabase/core/components/SelectButton";
 import SelectButton from "metabase/core/components/SelectButton";
-
-import { color } from "metabase/lib/colors";
-
+import CS from "metabase/css/core/index.css";
 import Uncontrollable from "metabase/hoc/Uncontrollable";
+import { color } from "metabase/lib/colors";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
+
 import { SelectAccordionList } from "./Select.styled";
 
 const MIN_ICON_WIDTH = 20;
@@ -54,6 +54,7 @@ export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
   searchCaseInsensitive?: boolean;
   searchPlaceholder?: string;
   searchFuzzy?: boolean;
+  globalSearch?: boolean;
   hideEmptySectionsInSearch?: boolean;
   width?: number;
 
@@ -167,17 +168,14 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
   }
 
   itemIsSelected = (option: TOption) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const optionValue = this.props.optionValueFn!(option);
     return this._getValuesSet().has(optionValue);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   itemIsClickable = (option: TOption) => !this.props.optionDisabledFn!(option);
 
   handleChange = (option: TOption) => {
     const { name, multiple, onChange } = this.props;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const optionValue = this.props.optionValueFn!(option);
     let value: any;
     if (multiple) {
@@ -201,7 +199,6 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
       return null;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const icon = this.props.optionIconFn!(item);
     if (icon) {
       return (
@@ -272,7 +269,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
           this.props.triggerElement || (
             <SelectButton
               ref={this.selectButtonRef}
-              className="flex-full"
+              className={CS.flexFull}
               hasValue={selectedNames.length > 0}
               disabled={disabled}
               {...buttonProps}
@@ -291,7 +288,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
           )
         }
         onClose={composeEventHandlers(onClose, this.handleClose)}
-        triggerClasses={cx("flex", className)}
+        triggerClasses={cx(CS.flex, className)}
         isInitiallyOpen={isInitiallyOpen}
         disabled={disabled}
         verticalAttachments={["top", "bottom"]}
@@ -319,6 +316,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
           searchCaseInsensitive={searchCaseInsensitive}
           searchFuzzy={searchFuzzy}
           searchPlaceholder={searchPlaceholder}
+          globalSearch={this.props.globalSearch}
           hideEmptySectionsInSearch={hideEmptySectionsInSearch}
           data-testid={testId ? `${testId}-list` : null}
         />

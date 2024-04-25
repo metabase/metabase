@@ -1,4 +1,8 @@
 /* eslint-disable import/no-duplicates */
+import ten_thousand_component from "./10k.svg?component";
+import ten_thousand_source from "./10k.svg?source";
+import one_million_component from "./1m.svg?component";
+import one_million_source from "./1m.svg?source";
 import add_component from "./add.svg?component";
 import add_source from "./add.svg?source";
 import add_column_component from "./add_column.svg?component";
@@ -9,20 +13,18 @@ import add_row_component from "./add_row.svg?component";
 import add_row_source from "./add_row.svg?source";
 import add_to_dash_component from "./add_to_dash.svg?component";
 import add_to_dash_source from "./add_to_dash.svg?source";
+import ai_component from "./ai.svg?component";
+import ai_source from "./ai.svg?source";
 import alert_component from "./alert.svg?component";
 import alert_source from "./alert.svg?source";
-import alert_filled_component from "./alert_filled.svg?component";
-import alert_filled_source from "./alert_filled.svg?source";
 import alert_confirm_component from "./alert_confirm.svg?component";
 import alert_confirm_source from "./alert_confirm.svg?source";
+import alert_filled_component from "./alert_filled.svg?component";
+import alert_filled_source from "./alert_filled.svg?source";
 import archive_component from "./archive.svg?component";
 import archive_source from "./archive.svg?source";
 import area_component from "./area.svg?component";
 import area_source from "./area.svg?source";
-import attachment_component from "./attachment.svg?component";
-import attachment_source from "./attachment.svg?source";
-import arrow_up_component from "./arrow_up.svg?component";
-import arrow_up_source from "./arrow_up.svg?source";
 import arrow_down_component from "./arrow_down.svg?component";
 import arrow_down_source from "./arrow_down.svg?source";
 import arrow_left_component from "./arrow_left.svg?component";
@@ -33,6 +35,10 @@ import arrow_right_component from "./arrow_right.svg?component";
 import arrow_right_source from "./arrow_right.svg?source";
 import arrow_split_component from "./arrow_split.svg?component";
 import arrow_split_source from "./arrow_split.svg?source";
+import arrow_up_component from "./arrow_up.svg?component";
+import arrow_up_source from "./arrow_up.svg?source";
+import attachment_component from "./attachment.svg?component";
+import attachment_source from "./attachment.svg?source";
 import audit_component from "./audit.svg?component";
 import audit_source from "./audit.svg?source";
 import badge_component from "./badge.svg?component";
@@ -43,14 +49,14 @@ import bell_component from "./bell.svg?component";
 import bell_source from "./bell.svg?source";
 import birthday_component from "./birthday.svg?component";
 import birthday_source from "./birthday.svg?source";
-import bookmark_component from "./bookmark.svg?component";
-import bookmark_source from "./bookmark.svg?source";
-import bookmark_filled_component from "./bookmark_filled.svg?component";
-import bookmark_filled_source from "./bookmark_filled.svg?source";
 import bolt_component from "./bolt.svg?component";
 import bolt_source from "./bolt.svg?source";
 import bolt_filled_component from "./bolt_filled.svg?component";
 import bolt_filled_source from "./bolt_filled.svg?source";
+import bookmark_component from "./bookmark.svg?component";
+import bookmark_source from "./bookmark.svg?source";
+import bookmark_filled_component from "./bookmark_filled.svg?component";
+import bookmark_filled_source from "./bookmark_filled.svg?source";
 import breakout_component from "./breakout.svg?component";
 import breakout_source from "./breakout.svg?source";
 import bubble_component from "./bubble.svg?component";
@@ -89,16 +95,16 @@ import contract_component from "./contract.svg?component";
 import contract_source from "./contract.svg?source";
 import copy_component from "./copy.svg?component";
 import copy_source from "./copy.svg?source";
+import curve_component from "./curve.svg?component";
+import curve_source from "./curve.svg?source";
 import curved_component from "./curved.svg?component";
 import curved_source from "./curved.svg?source";
-import database_component from "./database.svg?component";
-import database_source from "./database.svg?source";
 import dash_component from "./dash.svg?component";
 import dash_source from "./dash.svg?source";
 import dashboard_component from "./dashboard.svg?component";
 import dashboard_source from "./dashboard.svg?source";
-import curve_component from "./curve.svg?component";
-import curve_source from "./curve.svg?source";
+import database_component from "./database.svg?component";
+import database_source from "./database.svg?source";
 import document_component from "./document.svg?component";
 import document_source from "./document.svg?source";
 import download_component from "./download.svg?component";
@@ -119,6 +125,8 @@ import expand_component from "./expand.svg?component";
 import expand_source from "./expand.svg?source";
 import expand_arrow_component from "./expand_arrow.svg?component";
 import expand_arrow_source from "./expand_arrow.svg?source";
+import extract_component from "./extract.svg?component";
+import extract_source from "./extract.svg?source";
 import eye_component from "./eye.svg?component";
 import eye_source from "./eye.svg?source";
 import eye_crossed_out_component from "./eye_crossed_out.svg?component";
@@ -131,6 +139,8 @@ import fields_component from "./fields.svg?component";
 import fields_source from "./fields.svg?source";
 import filter_component from "./filter.svg?component";
 import filter_source from "./filter.svg?source";
+import folder_component from "./folder.svg?component";
+import folder_source from "./folder.svg?source";
 import formula_component from "./formula.svg?component";
 import formula_source from "./formula.svg?source";
 import function_component from "./function.svg?component";
@@ -139,20 +149,18 @@ import funnel_component from "./funnel.svg?component";
 import funnel_source from "./funnel.svg?source";
 import funnel_outline_component from "./funnel_outline.svg?component";
 import funnel_outline_source from "./funnel_outline.svg?source";
-import folder_component from "./folder.svg?component";
-import folder_source from "./folder.svg?source";
 import gauge_component from "./gauge.svg?component";
 import gauge_source from "./gauge.svg?source";
 import gear_component from "./gear.svg?component";
 import gear_source from "./gear.svg?source";
+import google_component from "./google.svg?component";
+import google_source from "./google.svg?source";
 import grabber_component from "./grabber.svg?component";
 import grabber_source from "./grabber.svg?source";
 import grid_component from "./grid.svg?component";
 import grid_source from "./grid.svg?source";
 import group_component from "./group.svg?component";
 import group_source from "./group.svg?source";
-import google_component from "./google.svg?component";
-import google_source from "./google.svg?source";
 import history_component from "./history.svg?component";
 import history_source from "./history.svg?source";
 import home_component from "./home.svg?component";
@@ -161,6 +169,8 @@ import horizontal_bar_component from "./horizontal_bar.svg?component";
 import horizontal_bar_source from "./horizontal_bar.svg?source";
 import hourglass_component from "./hourglass.svg?component";
 import hourglass_source from "./hourglass.svg?source";
+import index_component from "./index.svg?component";
+import index_source from "./index.svg?source";
 import info_component from "./info.svg?component";
 import info_source from "./info.svg?source";
 import info_filled_component from "./info_filled.svg?component";
@@ -181,8 +191,6 @@ import join_left_outer_component from "./join_left_outer.svg?component";
 import join_left_outer_source from "./join_left_outer.svg?source";
 import join_right_outer_component from "./join_right_outer.svg?component";
 import join_right_outer_source from "./join_right_outer.svg?source";
-import index_component from "./index.svg?component";
-import index_source from "./index.svg?source";
 import key_component from "./key.svg?component";
 import key_source from "./key.svg?source";
 import label_component from "./label.svg?component";
@@ -191,12 +199,12 @@ import ldap_component from "./ldap.svg?component";
 import ldap_source from "./ldap.svg?source";
 import lightbulb_component from "./lightbulb.svg?component";
 import lightbulb_source from "./lightbulb.svg?source";
-import link_component from "./link.svg?component";
-import link_source from "./link.svg?source";
 import line_component from "./line.svg?component";
 import line_source from "./line.svg?source";
 import lineandbar_component from "./lineandbar.svg?component";
 import lineandbar_source from "./lineandbar.svg?source";
+import link_component from "./link.svg?component";
+import link_source from "./link.svg?source";
 import list_component from "./list.svg?component";
 import list_source from "./list.svg?source";
 import location_component from "./location.svg?component";
@@ -211,6 +219,8 @@ import metric_component from "./metric.svg?component";
 import metric_source from "./metric.svg?source";
 import model_component from "./model.svg?component";
 import model_source from "./model.svg?source";
+import model_with_badge_component from "./model_with_badge.svg?component";
+import model_with_badge_source from "./model_with_badge.svg?source";
 import moon_component from "./moon.svg?component";
 import moon_source from "./moon.svg?source";
 import move_component from "./move.svg?component";
@@ -253,46 +263,32 @@ import progress_component from "./progress.svg?component";
 import progress_source from "./progress.svg?source";
 import pulse_component from "./pulse.svg?component";
 import pulse_source from "./pulse.svg?source";
-import recents_component from "./recents.svg?component";
-import recents_source from "./recents.svg?source";
-import revert_component from "./revert.svg?component";
-import revert_source from "./revert.svg?source";
-import share_component from "./share.svg?component";
-import share_source from "./share.svg?source";
-import sql_component from "./sql.svg?component";
-import sql_source from "./sql.svg?source";
-import subscription_component from "./subscription.svg?component";
-import subscription_source from "./subscription.svg?source";
-import straight_component from "./straight.svg?component";
-import straight_source from "./straight.svg?source";
-import stepped_component from "./stepped.svg?component";
-import stepped_source from "./stepped.svg?source";
-import sort_component from "./sort.svg?component";
-import sort_source from "./sort.svg?source";
-import sort_arrows_component from "./sort_arrows.svg?component";
-import sort_arrows_source from "./sort_arrows.svg?source";
-import sum_component from "./sum.svg?component";
-import sum_source from "./sum.svg?source";
-import sync_component from "./sync.svg?component";
-import sync_source from "./sync.svg?source";
 import question_component from "./question.svg?component";
 import question_source from "./question.svg?source";
-import return_component from "./return.svg?component";
-import return_source from "./return.svg?source";
+import recents_component from "./recents.svg?component";
+import recents_source from "./recents.svg?source";
 import reference_component from "./reference.svg?component";
 import reference_source from "./reference.svg?source";
 import refresh_component from "./refresh.svg?component";
 import refresh_source from "./refresh.svg?source";
 import refresh_downstream_component from "./refresh_downstream.svg?component";
 import refresh_downstream_source from "./refresh_downstream.svg?source";
+import return_component from "./return.svg?component";
+import return_source from "./return.svg?source";
+import revert_component from "./revert.svg?component";
+import revert_source from "./revert.svg?source";
 import rocket_component from "./rocket.svg?component";
 import rocket_source from "./rocket.svg?source";
 import ruler_component from "./ruler.svg?component";
 import ruler_source from "./ruler.svg?source";
 import search_component from "./search.svg?component";
 import search_source from "./search.svg?source";
+import section_component from "./section.svg?component";
+import section_source from "./section.svg?source";
 import segment_component from "./segment.svg?component";
 import segment_source from "./segment.svg?source";
+import share_component from "./share.svg?component";
+import share_source from "./share.svg?source";
 import shield_component from "./shield.svg?component";
 import shield_source from "./shield.svg?source";
 import sidebar_closed_component from "./sidebar_closed.svg?component";
@@ -307,22 +303,40 @@ import smartscalar_component from "./smartscalar.svg?component";
 import smartscalar_source from "./smartscalar.svg?source";
 import snippet_component from "./snippet.svg?component";
 import snippet_source from "./snippet.svg?source";
-import star_filled_component from "./star_filled.svg?component";
-import star_filled_source from "./star_filled.svg?source";
+import sort_component from "./sort.svg?component";
+import sort_source from "./sort.svg?source";
+import sort_arrows_component from "./sort_arrows.svg?component";
+import sort_arrows_source from "./sort_arrows.svg?source";
+import sql_component from "./sql.svg?component";
+import sql_source from "./sql.svg?source";
 import star_component from "./star.svg?component";
 import star_source from "./star.svg?source";
+import star_filled_component from "./star_filled.svg?component";
+import star_filled_source from "./star_filled.svg?source";
+import stepped_component from "./stepped.svg?component";
+import stepped_source from "./stepped.svg?source";
 import store_component from "./store.svg?component";
 import store_source from "./store.svg?source";
+import straight_component from "./straight.svg?component";
+import straight_source from "./straight.svg?source";
 import string_component from "./string.svg?component";
 import string_source from "./string.svg?source";
+import subscription_component from "./subscription.svg?component";
+import subscription_source from "./subscription.svg?source";
+import sum_component from "./sum.svg?component";
+import sum_source from "./sum.svg?source";
 import sun_component from "./sun.svg?component";
 import sun_source from "./sun.svg?source";
+import sync_component from "./sync.svg?component";
+import sync_source from "./sync.svg?source";
 import tab_component from "./tab.svg?component";
 import tab_source from "./tab.svg?source";
 import table_component from "./table.svg?component";
 import table_source from "./table.svg?source";
 import table2_component from "./table2.svg?component";
 import table2_source from "./table2.svg?source";
+import time_history_component from "./time_history.svg?component";
+import time_history_source from "./time_history.svg?source";
 import trash_component from "./trash.svg?component";
 import trash_source from "./trash.svg?source";
 import triangle_left_component from "./triangle_left.svg?component";
@@ -331,10 +345,10 @@ import triangle_right_component from "./triangle_right.svg?component";
 import triangle_right_source from "./triangle_right.svg?source";
 import unarchive_component from "./unarchive.svg?component";
 import unarchive_source from "./unarchive.svg?source";
-import unpin_component from "./unpin.svg?component";
-import unpin_source from "./unpin.svg?source";
 import unknown_component from "./unknown.svg?component";
 import unknown_source from "./unknown.svg?source";
+import unpin_component from "./unpin.svg?component";
+import unpin_source from "./unpin.svg?source";
 import upload_component from "./upload.svg?component";
 import upload_source from "./upload.svg?source";
 import variable_component from "./variable.svg?component";
@@ -349,10 +363,6 @@ import warning_component from "./warning.svg?component";
 import warning_source from "./warning.svg?source";
 import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
-import ten_thousand_component from "./10k.svg?component";
-import ten_thousand_source from "./10k.svg?source";
-import one_million_component from "./1m.svg?component";
-import one_million_source from "./1m.svg?source";
 import zoom_in_component from "./zoom_in.svg?component";
 import zoom_in_source from "./zoom_in.svg?source";
 import zoom_out_component from "./zoom_out.svg?component";
@@ -378,6 +388,10 @@ export const Icons = {
   add_to_dash: {
     component: add_to_dash_component,
     source: add_to_dash_source,
+  },
+  ai: {
+    component: ai_component,
+    source: ai_source,
   },
   alert: {
     component: alert_component,
@@ -599,6 +613,10 @@ export const Icons = {
     component: expand_arrow_component,
     source: expand_arrow_source,
   },
+  extract: {
+    component: extract_component,
+    source: extract_source,
+  },
   eye: {
     component: eye_component,
     source: eye_source,
@@ -783,6 +801,10 @@ export const Icons = {
     component: model_component,
     source: model_source,
   },
+  model_with_badge: {
+    component: model_with_badge_component,
+    source: model_with_badge_source,
+  },
   moon: {
     component: moon_component,
     source: moon_source,
@@ -943,6 +965,10 @@ export const Icons = {
     component: search_component,
     source: search_source,
   },
+  section: {
+    component: section_component,
+    source: section_source,
+  },
   segment: {
     component: segment_component,
     source: segment_source,
@@ -1006,6 +1032,10 @@ export const Icons = {
   table2: {
     component: table2_component,
     source: table2_source,
+  },
+  time_history: {
+    component: time_history_component,
+    source: time_history_source,
   },
   trash: {
     component: trash_component,

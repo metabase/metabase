@@ -1,6 +1,8 @@
 import type { ComponentType } from "react";
 import { connect } from "react-redux";
+
 import type { State } from "metabase-types/store";
+
 import SlackSetup from "../../components/SlackSetup";
 import SlackSetupForm from "../../containers/SlackSetupForm";
 import { hasSlackBotToken, isSlackTokenValid } from "../../selectors";

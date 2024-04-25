@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { SEARCH_KEY } from "../constants";
 import type { GroupItem } from "../types";
 

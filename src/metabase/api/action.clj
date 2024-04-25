@@ -67,7 +67,7 @@
                    [(api/read-check Card model-id)]
                    (t2/select Card {:where
                                     [:and
-                                     [:= :dataset true]
+                                     [:= :type "model"]
                                      [:= :archived false]
                                      ;; action permission keyed off of model permission
                                      (collection/visible-collection-ids->honeysql-filter-clause
@@ -84,6 +84,7 @@
   (t2/select [Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
 
 (api/defendpoint GET "/:action-id"
+  "Fetch an Action."
   [action-id]
   {action-id ms/PositiveInt}
   (-> (action/select-action :id action-id :archived false)
@@ -91,6 +92,7 @@
       api/read-check))
 
 (api/defendpoint DELETE "/:action-id"
+  "Delete an Action."
   [action-id]
   {action-id ms/PositiveInt}
   (let [action (api/write-check Action action-id)]
@@ -142,6 +144,7 @@
       (last (action/select-actions nil :type type)))))
 
 (api/defendpoint PUT "/:id"
+  "Update an Action."
   [id :as {action :body}]
   {id     ms/PositiveInt
    action [:map

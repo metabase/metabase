@@ -1,17 +1,20 @@
-import { useCallback, useMemo, isValidElement } from "react";
 import cx from "classnames";
+import { useCallback, useMemo, isValidElement } from "react";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-
-import type { OptionsType } from "metabase/lib/formatting/types";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { formatValue } from "metabase/lib/formatting";
+import type { OptionsType } from "metabase/lib/formatting/types";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import TableS from "metabase/visualizations/components/TableInteractive/TableInteractive.module.css";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
-
+import type { ClickObject } from "metabase-lib";
+import { isID, isFK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   DatasetData,
@@ -20,10 +23,9 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { ClickObject } from "metabase-lib";
-import { isID, isFK } from "metabase-lib/types/utils/isa";
 
 import MiniBar from "../MiniBar";
+
 import { CellRoot, CellContent } from "./TableCell.styled";
 
 type GetCellDataOpts = {
@@ -150,7 +152,7 @@ export function TableCell({
   const isClickable = !isLink;
 
   const onClick = useCallback(
-    e => {
+    (e: React.MouseEvent) => {
       if (checkIsVisualizationClickable(clicked)) {
         onVisualizationClick?.({
           ...clicked,
@@ -169,11 +171,17 @@ export function TableCell({
 
   const classNames = useMemo(
     () =>
-      cx("fullscreen-normal-text fullscreen-night-text", {
-        "Table-ID": value != null && isID(column),
-        "Table-FK": value != null && isFK(column),
-        link: isClickable && isID(column),
-      }),
+      cx(
+        DashboardS.fullscreenNormalText,
+        DashboardS.fullscreenNightText,
+        EmbedFrameS.fullscreenNightText,
+        {
+          [TableS.TableID]: value != null && isID(column),
+          "test-Table-ID": value != null && isID(column),
+          "test-Table-FK": value != null && isFK(column),
+          link: isClickable && isID(column),
+        },
+      ),
     [value, column, isClickable],
   );
 
@@ -184,7 +192,7 @@ export function TableCell({
       isRightAligned={isColumnRightAligned(column)}
     >
       <CellContent
-        className="cellData"
+        className={TableS.cellData}
         isClickable={isClickable}
         onClick={isClickable ? onClick : undefined}
         data-testid="cell-data"

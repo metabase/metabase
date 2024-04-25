@@ -1,4 +1,5 @@
 import type { MantineTheme } from "@mantine/core";
+
 import { color } from "metabase/lib/colors";
 
 type ColorShades = MantineTheme["colors"]["dark"];
@@ -36,6 +37,7 @@ const CUSTOM_COLORS = [
   "success",
   "error",
   "white",
+  "accent5",
 ];
 
 function getColorShades(color: string): ColorShades {

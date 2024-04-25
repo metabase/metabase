@@ -1,31 +1,31 @@
-import { Fragment, useMemo } from "react";
-import type { MouseEvent } from "react";
 import cx from "classnames";
+import type { MouseEvent } from "react";
+import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
-
-import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import EmptyState from "metabase/components/EmptyState";
-
-import { formatValue, formatColumn } from "metabase/lib/formatting";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
+import ExpandableString from "metabase/query_builder/components/ExpandableString";
+import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   isa,
   isID,
   isImageURL,
   isAvatarURL,
-} from "metabase-lib/types/utils/isa";
-import { TYPE } from "metabase-lib/types/constants";
-import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+} from "metabase-lib/v1/types/utils/isa";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
-import type { OnVisualizationClickType } from "./types";
 import {
   ObjectDetailsTable,
   GridContainer,
   GridCell,
   FitImage,
 } from "./ObjectDetailsTable.styled";
+import type { OnVisualizationClickType } from "./types";
 
 export interface DetailsTableCellProps {
   column: any;
@@ -61,7 +61,7 @@ export function DetailsTableCell({
     isLink = false;
   } else {
     if (value === null || value === undefined || value === "") {
-      cellValue = <span className="text-light">{t`Empty`}</span>;
+      cellValue = <span className={CS.textLight}>{t`Empty`}</span>;
     } else if (isa(column.semantic_type, TYPE.SerializedJSON)) {
       let formattedJson;
       try {
@@ -69,10 +69,14 @@ export function DetailsTableCell({
       } catch (e) {
         formattedJson = value;
       }
-      cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
+      cellValue = (
+        <pre className={QueryBuilderS.ObjectJSON}>{formattedJson}</pre>
+      );
     } else if (typeof value === "object") {
       const formattedJson = JSON.stringify(value, null, 2);
-      cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
+      cellValue = (
+        <pre className={QueryBuilderS.ObjectJSON}>{formattedJson}</pre>
+      );
     } else {
       cellValue = formatValue(value, {
         ...columnSettings,
@@ -107,7 +111,7 @@ export function DetailsTableCell({
       <span
         className={cx(
           {
-            "cursor-pointer": onVisualizationClick,
+            [CS.cursorPointer]: onVisualizationClick,
             link: isClickable && isLink,
           },
           className,
@@ -147,30 +151,25 @@ export function DetailsTable({
     if (!columnSettings) {
       return { cols: columns, row: zoomedRow };
     }
-    const columnIndexes = columnSettings
-      .filter(columnSetting => columnSetting?.enabled)
-      .map(columnSetting =>
-        findColumnIndexForColumnSetting(columns, columnSetting),
-      )
-      .filter(
-        (columnIndex: number) =>
-          columnIndex >= 0 && columnIndex < columns.length,
-      );
+    const columnIndexes = findColumnIndexesForColumnSettings(
+      columns,
+      columnSettings.filter(({ enabled }) => enabled),
+    ).filter((columnIndex: number) => columnIndex >= 0);
 
     return {
-      cols: columnIndexes.map((i: number) => columns[i]) as any[],
+      cols: columnIndexes.map((i: number) => columns[i]),
       row: columnIndexes.map((i: number) => zoomedRow[i]),
     };
-  }, [columns, zoomedRow, columnSettings]);
+  }, [columnSettings, columns, zoomedRow]);
 
   if (!cols?.length) {
     return (
-      <EmptyState message={t`Select at least one column`} className="p3" />
+      <EmptyState message={t`Select at least one column`} className={CS.p3} />
     );
   }
 
   if (!row?.length) {
-    return <EmptyState message={t`No details found`} className="p3" />;
+    return <EmptyState message={t`No details found`} className={CS.p3} />;
   }
 
   return (
@@ -187,7 +186,7 @@ export function DetailsTable({
                   value={row[columnIndex] ?? t`Empty`}
                   isColumnName
                   settings={settings}
-                  className="text-bold text-medium"
+                  className={cx(CS.textBold, CS.textMedium)}
                   onVisualizationClick={onVisualizationClick}
                   visualizationIsClickable={visualizationIsClickable}
                 />
@@ -198,7 +197,12 @@ export function DetailsTable({
                   value={columnValue}
                   isColumnName={false}
                   settings={settings}
-                  className="text-bold text-dark text-spaced text-wrap"
+                  className={cx(
+                    CS.textBold,
+                    CS.textDark,
+                    CS.textSpaced,
+                    CS.textWrap,
+                  )}
                   onVisualizationClick={onVisualizationClick}
                   visualizationIsClickable={visualizationIsClickable}
                 />

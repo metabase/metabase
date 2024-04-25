@@ -8,12 +8,13 @@
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mongo :as mongo]
+   [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -25,8 +26,6 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mongo :as tdm]
    [metabase.util.log :as log]
-   [monger.collection :as mcoll]
-   [monger.core :as mg]
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -73,9 +72,11 @@
                                                              :port   3000
                                                              :dbname "bad-db-name?connectTimeoutMS=50"}
                                                   :expected false}
-                                                 {:details  {:conn-uri "mongodb://metabase:metasample123@localhost:27017/test-data?authSource=admin"}
+                                                 {:details  {:use-conn-uri true
+                                                             :conn-uri "mongodb://metabase:metasample123@localhost:27017/test-data?authSource=admin"}
                                                   :expected (not (tdm/ssl-required?))}
-                                                 {:details  {:conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
+                                                 {:details  {:use-conn-uri true
+                                                             :conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
                                                   :expected false}]
              :let [ssl-details (tdm/conn-details details)]]
        (testing (str "connect with " details)
@@ -130,7 +131,7 @@
                                 :database (mt/id)})
              (m/dissoc-in [:data :results_metadata] [:data :insights]))))))
 
-(deftest nested-native-query-test
+(deftest ^:parallel nested-native-query-test
   (mt/test-driver :mongo
     (testing "Mbql query with nested native source query _returns correct results_ (#30112)"
       (t2.with-temp/with-temp [Card {:keys [id]} {:dataset_query {:type     :native
@@ -146,7 +147,10 @@
                                        :query      (conj (mongo.qp/parse-query-string native-query)
                                                          {"$limit" 1})}
                          :rows        [[1]]}}
-               (qp/process-query query))))))
+               (qp/process-query query))))))))
+
+(deftest ^:parallel nested-native-query-test-2
+  (mt/test-driver :mongo
     (testing "Mbql query with nested native source query _aggregates_ correctly (#30112)"
       (let [query-str (str "[{\"$project\":\n"
                            "   {\"_id\": \"$_id\",\n"
@@ -245,15 +249,15 @@
          (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :not-indexed)))))
 
        (testing "compount index"
-         (mongo.util/with-mongo-connection [conn (mt/db)]
-           (mcoll/create-index conn "compound-index" (array-map "first" 1 "second" 1)))
+         (mongo.connection/with-mongo-database [db (mt/db)]
+           (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map "first" 1 "second" 1)))
          (sync/sync-database! (mt/db))
          (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :first))))
          (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :second)))))
 
        (testing "multi key index"
-         (mongo.util/with-mongo-connection [conn (mt/db)]
-           (mcoll/create-index conn "multi-key-index" (array-map "url.small" 1)))
+         (mongo.connection/with-mongo-database [db (mt/db)]
+           (mongo.util/create-index (mongo.util/collection db "multi-key-index") (array-map "url.small" 1)))
          (sync/sync-database! (mt/db))
          (is (false? (t2/select-one-fn :database_indexed :model/Field :name "url")))
          (is (true? (t2/select-one-fn :database_indexed :model/Field :name "small"))))
@@ -286,38 +290,41 @@
       (try
        (let [describe-indexes (fn [table-name]
                                 (driver/describe-table-indexes :mongo (mt/db) (t2/select-one :model/Table (mt/id table-name))))]
-         (mongo.util/with-mongo-connection [conn (mt/db)]
+         (mongo.connection/with-mongo-database [db (mt/db)]
            (testing "single column index"
-             (mcoll/create-index conn "singly-index" {"a" 1})
+             (mongo.util/create-index (mongo.util/collection db "singly-index") {"a" 1})
              (is (= #{{:type :normal-column-index :value "_id"}
                       {:type :normal-column-index :value "a"}}
                     (describe-indexes :singly-index))))
 
            (testing "compound index column index"
-             (mcoll/create-index conn "compound-index" (array-map "a" 1 "b" 1 "c" 1)) ;; first index column is :a
-             (mcoll/create-index conn "compound-index" (array-map "e" 1 "d" 1 "f" 1)) ;; first index column is :e
+             ;; first index column is :a
+             (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map :a 1 :b 1 :c 1))
+             ;; first index column is :e
+             (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map :e 1 :d 1 :f 1))
              (is (= #{{:type :normal-column-index :value "_id"}
                       {:type :normal-column-index :value "a"}
                       {:type :normal-column-index :value "e"}}
                     (describe-indexes :compound-index))))
 
            (testing "compound index that has many keys can still determine the first key"
-             (mcoll/create-index conn "compound-index-big"
-                                 (array-map "j" 1 "b" 1 "c" 1 "d" 1 "e" 1 "f" 1 "g" 1 "h" 1 "a" 1)) ;; first index column is :j
+              ;; first index column is :j
+             (mongo.util/create-index (mongo.util/collection db "compound-index-big")
+                                 (array-map "j" 1 "b" 1 "c" 1 "d" 1 "e" 1 "f" 1 "g" 1 "h" 1 "a" 1))
              (is (= #{{:type :normal-column-index :value "_id"}
                       {:type :normal-column-index :value "j"}}
                     (describe-indexes :compound-index-big))))
 
            (testing "multi key indexes"
-             (mcoll/create-index conn "multi-key-index" (array-map "a.b" 1))
+             (mongo.util/create-index (mongo.util/collection db "multi-key-index") (array-map "a.b" 1))
              (is (= #{{:type :nested-column-index :value ["a" "b"]}
                       {:type :normal-column-index :value "_id"}}
                     (describe-indexes :multi-key-index))))
 
            (testing "advanced-index: hashed index, text index, geospatial index"
-             (mcoll/create-index conn "advanced-index" (array-map "hashed-field" "hashed"))
-             (mcoll/create-index conn "advanced-index" (array-map "text-field" "text"))
-             (mcoll/create-index conn "advanced-index" (array-map "geospatial-field" "2d"))
+             (mongo.util/create-index (mongo.util/collection db "advanced-index") (array-map "hashed-field" "hashed"))
+             (mongo.util/create-index (mongo.util/collection db "advanced-index") (array-map "text-field" "text"))
+             (mongo.util/create-index (mongo.util/collection db "advanced-index") (array-map "geospatial-field" "2d"))
              (is (= #{{:type :normal-column-index :value "geospatial-field"}
                       {:type :normal-column-index :value "hashed-field"}
                       {:type :normal-column-index :value "_id"}
@@ -375,16 +382,16 @@
     (with-redefs [metadata-queries/nested-field-sample-limit 2]
       (binding [tdm/*remove-nil?* true]
         (mt/with-temp-test-data
-          ["bird_species"
-           [{:field-name "name", :base-type :type/Text}
-            {:field-name "favorite_snack", :base-type :type/Text}
-            {:field-name "max_wingspan", :base-type :type/Integer}]
-           [["Sharp-shinned Hawk" nil 68]
-            ["Tropicbird" nil 112]
-            ["House Finch" nil nil]
-            ["Mourning Dove" nil nil]
-            ["Common Blackbird" "earthworms" nil]
-            ["Silvereye" "cherries" nil]]]
+          [["bird_species"
+            [{:field-name "name", :base-type :type/Text}
+             {:field-name "favorite_snack", :base-type :type/Text}
+             {:field-name "max_wingspan", :base-type :type/Integer}]
+            [["Sharp-shinned Hawk" nil 68]
+             ["Tropicbird" nil 112]
+             ["House Finch" nil nil]
+             ["Mourning Dove" nil nil]
+             ["Common Blackbird" "earthworms" nil]
+             ["Silvereye" "cherries" nil]]]]
           ;; do a full sync on the DB to get the correct semantic type info
           (sync/sync-database! (mt/db))
           (is (= #{{:name "_id", :database_type "java.lang.Long", :base_type :type/Integer, :semantic_type :type/PK}
@@ -550,7 +557,7 @@
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (empty?
-           (mbql.u/match-one (->> (magic/automagic-analysis (t2/select-one Field :id (mt/id :venues :price)) {})
+           (lib.util.match/match-one (->> (magic/automagic-analysis (t2/select-one Field :id (mt/id :venues :price)) {})
                                   :dashcards
                                   (mapcat (comp :breakout :query :dataset_query :card)))
              [:field _ (_ :guard :binning)]))))))
@@ -603,17 +610,18 @@
         (tx/destroy-db! :mongo dbdef)
         (let [details (tx/dbdef->connection-details :mongo :db dbdef)]
           ;; load rows
-          (mongo.util/with-mongo-connection [conn details]
-            (doseq [[i row] (map-indexed vector row-maps)
-                    :let    [row (assoc row :_id (inc i))]]
-              (try
-                (mcoll/insert conn collection-name row)
-                (catch Throwable e
-                  (throw (ex-info (format "Error inserting row: %s" (ex-message e))
-                                  {:database database-name, :collection collection-name, :details details, :row row}
-                                  e)))))
-            (log/infof "Inserted %d rows into %s collection %s."
-                       (count row-maps) (pr-str database-name) (pr-str collection-name)))
+          (mongo.connection/with-mongo-database [db details]
+            (let [coll (mongo.util/collection db collection-name)]
+              (doseq [[i row] (map-indexed vector row-maps)
+                      :let    [row (assoc row :_id (inc i))]]
+                (try
+                  (mongo.util/insert-one coll row)
+                  (catch Throwable e
+                    (throw (ex-info (format "Error inserting row: %s" (ex-message e))
+                                    {:database database-name, :collection collection-name, :details details, :row row}
+                                    e)))))
+              (log/infof "Inserted %d rows into %s collection %s."
+                         (count row-maps) (pr-str database-name) (pr-str collection-name))))
           ;; now sync the Database.
           (let [db (first (t2/insert-returning-instances! Database {:name database-name, :engine "mongo", :details details}))]
             (sync/sync-database! db)
@@ -662,15 +670,15 @@
 (deftest strange-versionArray-test
   (mt/test-driver :mongo
     (testing "Negative values in versionArray are ignored (#29678)"
-      (with-redefs [mg/command (constantly {"version" "4.0.28-23"
-                                            "versionArray" [4 0 29 -100]})]
+      (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
+                                                        "versionArray" [4 0 29 -100]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0 29]}
                (driver/dbms-version :mongo (mt/db))))))
 
     (testing "Any values after rubbish in versionArray are ignored"
-      (with-redefs [mg/command (constantly {"version" "4.0.28-23"
-                                            "versionArray" [4 0 "NaN" 29]})]
+      (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
+                                                        "versionArray" [4 0 "NaN" 29]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0]}
                (driver/dbms-version :mongo (mt/db))))))))

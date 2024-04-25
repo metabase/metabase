@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen, getIcon, queryIcon } from "__support__/ui";
-
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 
 import { createMockNotebookStep } from "../../test-utils";
+
 import SortStep from "./SortStep";
 
 function createQueryWithOrderBy(direction: Lib.OrderByDirection = "asc") {
@@ -72,13 +72,13 @@ describe("SortStep", () => {
     expect(queryIcon("arrow_up")).not.toBeInTheDocument();
   });
 
-  it("should display orderable columns", () => {
+  it("should display orderable columns", async () => {
     setup();
 
-    userEvent.click(getIcon("add"));
+    await userEvent.click(getIcon("add"));
 
     // Tables
-    expect(screen.getByText("Order")).toBeInTheDocument();
+    expect(await screen.findByText("Order")).toBeInTheDocument();
     expect(screen.getByText("Product")).toBeInTheDocument();
     expect(screen.getByText("User")).toBeInTheDocument();
     // Order columns
@@ -90,55 +90,55 @@ describe("SortStep", () => {
     ).toBeInTheDocument();
   });
 
-  it("should add an order by", () => {
+  it("should add an order by", async () => {
     const { gerRecentOrderByClause } = setup();
 
-    userEvent.click(getIcon("add"));
-    userEvent.click(screen.getByText("Created At"));
+    await userEvent.click(getIcon("add"));
+    await userEvent.click(await screen.findByText("Created At"));
 
     const orderBy = gerRecentOrderByClause();
     expect(orderBy.displayName).toBe("Created At");
     expect(orderBy.direction).toBe("asc");
   });
 
-  it("shouldn't show already used columns when adding a new order-by", () => {
+  it("shouldn't show already used columns when adding a new order-by", async () => {
     const { query, columnInfo } = createQueryWithOrderBy();
     setup(createMockNotebookStep({ query }));
 
-    userEvent.click(getIcon("add"));
+    await userEvent.click(getIcon("add"));
 
     expect(
       screen.queryByRole("option", { name: columnInfo.displayName }),
     ).not.toBeInTheDocument();
   });
 
-  it("should toggle an order by direction", () => {
+  it("should toggle an order by direction", async () => {
     const { query, columnInfo } = createQueryWithOrderBy();
     const { gerRecentOrderByClause } = setup(createMockNotebookStep({ query }));
 
-    userEvent.click(screen.getByLabelText("Change direction"));
+    await userEvent.click(screen.getByLabelText("Change direction"));
 
     const orderBy = gerRecentOrderByClause();
     expect(orderBy.direction).toBe("desc");
     expect(orderBy.displayName).toBe(columnInfo.displayName);
   });
 
-  it("should change ordered field", () => {
+  it("should change ordered field", async () => {
     const { query, columnInfo } = createQueryWithOrderBy();
     const { gerRecentOrderByClause } = setup(createMockNotebookStep({ query }));
 
-    userEvent.click(screen.getByText(columnInfo.displayName));
-    userEvent.click(screen.getByText("Created At"));
+    await userEvent.click(screen.getByText(columnInfo.displayName));
+    await userEvent.click(screen.getByText("Created At"));
 
     const orderBy = gerRecentOrderByClause();
     expect(orderBy.displayName).toBe("Created At");
   });
 
-  it("should remove an order by", () => {
+  it("should remove an order by", async () => {
     const { query } = createQueryWithOrderBy();
     const { getNextQuery } = setup(createMockNotebookStep({ query }));
 
-    userEvent.click(getIcon("close"));
+    await userEvent.click(getIcon("close"));
 
     const nextQuery = getNextQuery();
     expect(Lib.orderBys(nextQuery, 0)).toHaveLength(0);

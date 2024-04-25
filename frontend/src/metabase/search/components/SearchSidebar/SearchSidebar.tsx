@@ -1,4 +1,15 @@
 import _ from "underscore";
+
+import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
+import { DropdownSidebarFilter } from "metabase/search/components/DropdownSidebarFilter";
+import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFilter";
+import { CreatedAtFilter } from "metabase/search/components/filters/CreatedAtFilter";
+import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFilter";
+import { LastEditedAtFilter } from "metabase/search/components/filters/LastEditedAtFilter";
+import { LastEditedByFilter } from "metabase/search/components/filters/LastEditedByFilter";
+import { NativeQueryFilter } from "metabase/search/components/filters/NativeQueryFilter";
+import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
+import { SearchFilterKeys } from "metabase/search/constants";
 import type {
   FilterTypeKeys,
   SearchFilterComponent,
@@ -6,16 +17,6 @@ import type {
   URLSearchFilterQueryParams,
 } from "metabase/search/types";
 import { Stack } from "metabase/ui";
-import { SearchFilterKeys } from "metabase/search/constants";
-import { DropdownSidebarFilter } from "metabase/search/components/DropdownSidebarFilter";
-import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
-import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
-import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFilter";
-import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFilter";
-import { NativeQueryFilter } from "metabase/search/components/filters/NativeQueryFilter";
-import { LastEditedByFilter } from "metabase/search/components/filters/LastEditedByFilter";
-import { LastEditedAtFilter } from "metabase/search/components/filters/LastEditedAtFilter";
-import { CreatedAtFilter } from "metabase/search/components/filters/CreatedAtFilter";
 
 type SearchSidebarProps = {
   value: URLSearchFilterQueryParams;

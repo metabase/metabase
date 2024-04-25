@@ -1,9 +1,11 @@
-import { t } from "ttag";
 import { assocIn } from "icepick";
+import { t } from "ttag";
+
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { barRenderer } from "../lib/LineAreaBarRenderer";
 import { GRAPH_GOAL_SETTINGS } from "../lib/settings/goal";

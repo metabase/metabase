@@ -18,6 +18,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -119,6 +120,33 @@
                                                            :redirect default-redirect-uri)
               redirect-url (get-in result [:headers "Location"])]
           (is (str/includes? redirect-url "&return_to=")))))))
+
+(deftest jwt-saml-both-enabled-test
+  (with-jwt-default-setup
+    (saml-test/with-saml-default-setup
+      (testing "with SAML and JWT configured, a GET request with JWT params should sign in correctly"
+        (let [response (saml-test/client-full-response :get 302 "/auth/sso"
+                                                       {:request-options {:redirect-strategy :none}}
+                                                       :return_to default-redirect-uri
+                                                       :jwt (jwt/sign {:email      "rasta@metabase.com"
+                                                                       :first_name "Rasta"
+                                                                       :last_name  "Toucan"
+                                                                       :extra      "keypairs"
+                                                                       :are        "also present"}
+                                                                      default-jwt-secret))]
+          (is (saml-test/successful-login? response))
+          (testing "redirect URI"
+            (is (= default-redirect-uri
+                   (get-in response [:headers "Location"]))))
+          (testing "login attributes"
+            (is (= {"extra" "keypairs", "are" "also present"}
+                   (t2/select-one-fn :login_attributes User :email "rasta@metabase.com"))))))
+
+      (testing "with SAML and JWT configured, a GET request without JWT params should redirect to SAML IdP"
+        (let [response (saml-test/client-full-response :get 302 "/auth/sso"
+                                                       {:request-options {:redirect-strategy :none}}
+                                                       :return_to default-redirect-uri)]
+          (is (not (saml-test/successful-login? response))))))))
 
 (deftest happy-path-test
   (testing (str "Happy path login, valid JWT, checks to ensure the user was logged in successfully and the redirect to "
@@ -307,3 +335,62 @@
           clojure.lang.ExceptionInfo
           #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
           (#'mt.jwt/fetch-or-create-user! "Test" "User" "test1234@metabase.com" nil)))))))
+
+(deftest jwt-token-test
+  (testing "should return a session token when token=true"
+    (with-jwt-default-setup
+      (mt/with-temporary-setting-values [enable-embedding true]
+        (let [jwt-iat-time (buddy-util/now)
+              jwt-exp-time (+ (buddy-util/now) 3600)
+              jwt-payload  (jwt/sign {:email      "rasta@metabase.com"
+                                      :first_name "Rasta"
+                                      :last_name  "Toucan"
+                                      :extra      "keypairs"
+                                      :are        "also present"
+                                      :iat        jwt-iat-time
+                                      :exp        jwt-exp-time}
+                                     default-jwt-secret)
+              result       (saml-test/client-full-response :get 200 "/auth/sso"
+                                                           :token true
+                                                           :jwt jwt-payload)]
+          (is (=? {:id  (mt/malli=? ms/NonBlankString)
+                   :iat jwt-iat-time
+                   :exp jwt-exp-time}
+                  (:body result)))))))
+
+  (testing "should not return a session token when embedding is disabled"
+    (with-jwt-default-setup
+      (mt/with-temporary-setting-values [enable-embedding false]
+        (let [jwt-iat-time (buddy-util/now)
+              jwt-exp-time (+ (buddy-util/now) 3600)
+              jwt-payload  (jwt/sign {:email      "rasta@metabase.com"
+                                      :first_name "Rasta"
+                                      :last_name  "Toucan"
+                                      :extra      "keypairs"
+                                      :are        "also present"
+                                      :iat        jwt-iat-time
+                                      :exp        jwt-exp-time}
+                                     default-jwt-secret)
+              result       (saml-test/client-full-response :get 400 "/auth/sso"
+                                                           :token true
+                                                           :jwt jwt-payload)]
+          (is result nil)))))
+
+  (testing "should not return a session token when token=false"
+    (with-jwt-default-setup
+      (mt/with-temporary-setting-values [enable-embedding true]
+        (let [jwt-iat-time (buddy-util/now)
+              jwt-exp-time (+ (buddy-util/now) 3600)
+              jwt-payload  (jwt/sign {:email      "rasta@metabase.com"
+                                      :first_name "Rasta"
+                                      :last_name  "Toucan"
+                                      :extra      "keypairs"
+                                      :are        "also present"
+                                      :iat        jwt-iat-time
+                                      :exp        jwt-exp-time}
+                                     default-jwt-secret)
+              result       (saml-test/client-full-response :get 302 "/auth/sso"
+                                                           {:request-options {:redirect-strategy :none}}
+                                                           :return_to default-redirect-uri
+                                                           :jwt jwt-payload)]
+          (is result nil))))))

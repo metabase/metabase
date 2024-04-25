@@ -1,6 +1,8 @@
 import type { ComponentType } from "react";
-import type { Member, User } from "metabase-types/api";
+
 import type { ConfirmationState } from "metabase/hooks/use-confirmation";
+import type Question from "metabase-lib/v1/Question";
+import type { Member, User } from "metabase-types/api";
 
 export interface AuthProvider {
   name: string;
@@ -50,4 +52,18 @@ export type PluginGroupManagersType = {
   deleteGroup: any;
   confirmDeleteMembershipAction: any;
   confirmUpdateMembershipAction: any;
+};
+
+export type LLMIndicatorProps = {
+  question: Question;
+  onAccept: (values: { name?: string; description?: string }) => void;
+};
+
+export type LLMSuggestQuestionInfo = (
+  props: LLMIndicatorProps,
+) => JSX.Element | null;
+
+export type PluginLLMAutoDescription = {
+  isEnabled: () => boolean;
+  LLMSuggestQuestionInfo: LLMSuggestQuestionInfo;
 };

@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openOrdersTable,
@@ -7,10 +9,10 @@ import {
   isOSS,
   isEE,
   setTokenFeatures,
+  undoToast,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > settings", () => {
   beforeEach(() => {
@@ -60,7 +62,7 @@ describe("scenarios > admin > settings", () => {
     //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
     cy.log("Making sure we display an error message in UI");
     // Same reasoning for regex as above
-    cy.get(".SaveStatus").contains(/^Error: Invalid site URL/);
+    undoToast().contains(/^Error: Invalid site URL/);
   });
 
   it("should save a setting", () => {
@@ -169,7 +171,7 @@ describe("scenarios > admin > settings", () => {
     openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
-    cy.get(".cellData")
+    cy.get("[data-testid=cell-data]")
       .should("contain", "Created At")
       .and("contain", "2025/2/11, 21:40");
 
@@ -186,7 +188,33 @@ describe("scenarios > admin > settings", () => {
     openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
-    cy.get(".cellData").and("contain", "2025/2/11, 9:40 PM");
+    cy.get("[data-testid=cell-data]").and("contain", "2025/2/11, 9:40 PM");
+  });
+
+  it("should show where to display the unit of currency (metabase#table-metadata-missing-38021 and update the formatting", () => {
+    // Set the semantic type of total to currency
+    cy.request("PUT", `/api/field/${ORDERS.TOTAL}`, {
+      semantic_type: "type/Currency",
+    });
+
+    cy.visit(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.TOTAL}/formatting`,
+    );
+
+    cy.findByTestId("admin-layout-content").within(() => {
+      // Assert that this option now exists
+      cy.findByText("Where to display the unit of currency");
+      cy.findByText("In every table cell").click();
+    });
+
+    // Open the orders table
+    openOrdersTable({ limit: 2 });
+
+    cy.get("#main-data-grid").within(() => {
+      // Items in the total column should have a leading dollar sign
+      cy.findByText("$39.72");
+      cy.findByText("$117.03");
+    });
   });
 
   it("should search for and select a new timezone", () => {
@@ -249,11 +277,11 @@ describe("scenarios > admin > settings", () => {
       const lastItem = isOSS ? "Caching" : "Appearance";
 
       cy.visit("/admin/settings/setup");
-      cy.get(".AdminList .AdminList-item")
-        .as("settingsOptions")
-        .first()
-        .contains("Setup");
-      cy.get("@settingsOptions").last().contains(lastItem);
+      cy.findByTestId("admin-list-settings-items").within(() => {
+        cy.findAllByTestId("settings-sidebar-link").as("settingsOptions");
+        cy.get("@settingsOptions").first().contains("Setup");
+        cy.get("@settingsOptions").last().contains(lastItem);
+      });
     },
   );
 

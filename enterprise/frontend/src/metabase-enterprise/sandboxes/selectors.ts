@@ -1,4 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
+
 import type { GroupTableAccessPolicyParams, SandboxesState } from "./types";
 import { getPolicyKeyFromParams } from "./utils";
 
@@ -29,5 +30,5 @@ export const getDraftPolicies = (state: SandboxesState) => {
 
 export const hasPolicyChanges = createSelector(
   getDraftPolicies,
-  policies => policies != null && Object.values(policies).length > 0,
+  policies => policies != null && policies.length > 0,
 );

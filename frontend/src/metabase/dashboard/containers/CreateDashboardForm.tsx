@@ -1,28 +1,24 @@
 import { useCallback, useMemo } from "react";
+import { connect } from "react-redux";
+import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
-import { connect } from "react-redux";
-import { withRouter } from "react-router";
-
-import Button from "metabase/core/components/Button";
-import FormFooter from "metabase/core/components/FormFooter";
-import { Form, FormProvider } from "metabase/forms";
-import FormInput from "metabase/core/components/FormInput";
-import FormTextArea from "metabase/core/components/FormTextArea";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-
-import * as Errors from "metabase/lib/errors";
-
-import Collections from "metabase/entities/collections";
-import Dashboards from "metabase/entities/dashboards";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-
+import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
+import Button from "metabase/core/components/Button";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import FormFooter from "metabase/core/components/FormFooter";
+import FormInput from "metabase/core/components/FormInput";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import FormTextArea from "metabase/core/components/FormTextArea";
+import Collections from "metabase/entities/collections";
+import Dashboards from "metabase/entities/dashboards";
+import { Form, FormProvider } from "metabase/forms";
+import * as Errors from "metabase/lib/errors";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 
 const DASHBOARD_SCHEMA = Yup.object({
   name: Yup.string()

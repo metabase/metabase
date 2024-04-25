@@ -1,10 +1,9 @@
-import { useCallback, useState } from "react";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import type { Moment } from "moment-timezone";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { useCallback, useState } from "react";
+
 import type { DateInputProps } from "./DateInput";
 import DateInput from "./DateInput";
 
@@ -23,42 +22,42 @@ const DateInputTest = ({ onChange, ...props }: DateInputProps) => {
 };
 
 describe("DateInput", () => {
-  it("should set date", () => {
+  it("should set date", async () => {
     const onChange = jest.fn();
 
     render(<DateInputTest onChange={onChange} />);
-    userEvent.type(screen.getByRole("textbox"), "10/20/21");
+    await userEvent.type(screen.getByRole("textbox"), "10/20/21");
 
     const expected = moment("10/20/21", ["MM/DD/YYYY"]);
     expect(onChange).toHaveBeenLastCalledWith(expected);
   });
 
-  it("should set date with time with 12-hour clock", () => {
+  it("should set date with time with 12-hour clock", async () => {
     const onChange = jest.fn();
 
     render(<DateInputTest hasTime onChange={onChange} />);
-    userEvent.type(screen.getByRole("textbox"), "10/20/21 9:15 PM");
+    await userEvent.type(screen.getByRole("textbox"), "10/20/21 9:15 PM");
 
     const expected = moment("10/20/21 9:15 PM", ["MM/DD/YYYY, h:mm A"]);
     expect(onChange).toHaveBeenLastCalledWith(expected);
   });
 
-  it("should set date with time with 24-hour clock", () => {
+  it("should set date with time with 24-hour clock", async () => {
     const onChange = jest.fn();
 
     render(<DateInputTest hasTime onChange={onChange} />);
-    userEvent.type(screen.getByRole("textbox"), "10/20/21 9:15");
+    await userEvent.type(screen.getByRole("textbox"), "10/20/21 9:15");
 
     const expected = moment("10/20/21 9:15", ["MM/DD/YYYY, HH:mm"]);
     expect(onChange).toHaveBeenLastCalledWith(expected);
   });
 
-  it("should clear date", () => {
+  it("should clear date", async () => {
     const onChange = jest.fn();
 
     render(<DateInputTest onChange={onChange} />);
-    userEvent.type(screen.getByRole("textbox"), "10/20/21");
-    userEvent.clear(screen.getByRole("textbox"));
+    await userEvent.type(screen.getByRole("textbox"), "10/20/21");
+    await userEvent.clear(screen.getByRole("textbox"));
 
     expect(onChange).toHaveBeenLastCalledWith(undefined);
   });

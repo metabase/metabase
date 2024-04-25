@@ -1,7 +1,7 @@
 import type { CollectionId, DashboardId } from "metabase-types/api";
-import type { ItemPickerProps } from "./ItemPicker/ItemPicker";
 
 import ItemPicker from "./ItemPicker";
+import type { ItemPickerProps } from "./ItemPicker/ItemPicker";
 
 export interface DashboardPickerProps
   extends Pick<

@@ -1,5 +1,5 @@
-import type { Query } from "metabase-lib/types";
-import type Question from "metabase-lib/Question";
+import type { Query } from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 export type NotebookStepType =
   | "data"
@@ -27,9 +27,9 @@ export interface NotebookStep {
   testID: string;
   revert: RevertFn | null;
   actions: NotebookStepAction[];
-  previewQuery: Query | null;
   next: NotebookStep | null;
   previous: NotebookStep | null;
+  getPreviewQuery?: (() => Query) | undefined;
 }
 
 export interface NotebookStepAction {

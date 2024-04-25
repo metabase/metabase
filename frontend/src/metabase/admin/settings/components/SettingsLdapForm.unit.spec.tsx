@@ -1,11 +1,11 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockGroup } from "metabase-types/api/mocks";
 
-import { SettingsLdapFormView } from "./SettingsLdapForm";
 import type { SettingValues } from "./SettingsLdapForm";
+import { SettingsLdapFormView } from "./SettingsLdapForm";
 
 const GROUPS = [
   createMockGroup(),
@@ -232,13 +232,12 @@ describe("SettingsLdapForm", () => {
   it("should submit the correct payload", async () => {
     const { onSubmit } = setup({
       "ldap-enabled": true,
-      "ldap-group-membership-filter": null,
-      "ldap-sync-admin-group": null,
+      "ldap-group-membership-filter": "",
     });
 
     const ATTRS = {
       "ldap-host": "example.com",
-      "ldap-port": "123",
+      "ldap-port": 123,
       "ldap-security": "ssl",
       "ldap-user-base": "user-base",
       "ldap-user-filter": "(filter1)",
@@ -251,70 +250,67 @@ describe("SettingsLdapForm", () => {
       "ldap-group-sync": true,
       "ldap-group-base": "group-base",
       "ldap-group-membership-filter": "(filter2)",
-      "ldap-sync-admin-group": true,
+      "ldap-sync-admin-group": undefined,
     };
 
-    userEvent.type(
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /LDAP Host/ }),
       ATTRS["ldap-host"],
     );
-    userEvent.type(
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /LDAP Port/ }),
-      ATTRS["ldap-port"],
+      ATTRS["ldap-port"].toString(),
     );
-    userEvent.click(screen.getByRole("radio", { name: /SSL/ }));
-    userEvent.type(
+    await userEvent.click(screen.getByRole("radio", { name: /SSL/ }));
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /Username or DN/ }),
       ATTRS["ldap-bind-dn"],
     );
-    userEvent.type(screen.getByLabelText(/Password/), ATTRS["ldap-password"]);
-    userEvent.type(
+    await userEvent.type(
+      screen.getByLabelText(/Password/),
+      ATTRS["ldap-password"],
+    );
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /User search base/ }),
       ATTRS["ldap-user-base"],
     );
-    userEvent.type(
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /User filter/ }),
       ATTRS["ldap-user-filter"],
     );
-    userEvent.type(
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /Email attribute/ }),
       ATTRS["ldap-attribute-email"],
     );
-    userEvent.type(
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /First name attribute/ }),
       ATTRS["ldap-attribute-firstname"],
     );
-    userEvent.type(
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /Last name attribute/ }),
       ATTRS["ldap-attribute-lastname"],
     );
-    userEvent.click(screen.getByTestId("group-sync-switch")); // checkbox for "ldap-group-sync"
-    userEvent.type(
+    await userEvent.click(screen.getByTestId("group-sync-switch")); // checkbox for "ldap-group-sync"
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /Group search base/ }),
       ATTRS["ldap-group-base"],
     );
-    userEvent.type(
+    await userEvent.type(
       await screen.findByRole("textbox", { name: /Group membership filter/ }),
       ATTRS["ldap-group-membership-filter"],
     );
-    userEvent.click(
-      screen.getByRole("checkbox", { name: /Sync Administrator group/ }),
-    );
 
-    userEvent.click(await screen.findByRole("button", { name: /Save/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Save/ }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(ATTRS);
     });
   });
 
-  it("should hide group membership and sync admin group fields when appropriate", async () => {
+  it("should hide group membership fields when appropriate", async () => {
     setup({ "ldap-enabled": true });
     expect(
       screen.queryByRole("textbox", { name: /Group membership filter/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("checkbox", { name: /Sync Administrator group/ }),
     ).not.toBeInTheDocument();
   });
 });

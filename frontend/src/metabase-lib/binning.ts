@@ -1,4 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
+
 import { displayInfo } from "./metadata";
 import type { Bucket, ColumnMetadata, Clause, Query } from "./types";
 

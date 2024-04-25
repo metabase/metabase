@@ -1,11 +1,10 @@
+import { color } from "metabase/lib/colors";
 import {
   PLUGIN_MODERATION,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
-import { color } from "metabase/lib/colors";
-
+import type Question from "metabase-lib/v1/Question";
 import type { Collection } from "metabase-types/api";
-import type Question from "metabase-lib/Question";
 
 // sometimes we want to show an icon on the question
 // based on the collection it's in
@@ -24,7 +23,7 @@ export const CollectionIcon = ({
     <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
       color={color("brand")}
       collection={collection}
-      entity={question.isDataset() ? "model" : "question"}
+      entity={question.type()}
     />
   );
 };

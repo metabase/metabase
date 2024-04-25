@@ -2,22 +2,17 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { IconName, IconProps } from "metabase/ui";
-import { Tree } from "metabase/components/tree";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-
+import { Tree } from "metabase/components/tree";
 import {
   getCollectionIcon,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
 import { isSmallScreen } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
-
-import type { Bookmark, Collection, User } from "metabase-types/api";
-
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import type { SelectedItem } from "../types";
-import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
+import type { IconName, IconProps } from "metabase/ui";
+import type { Bookmark, Collection, User } from "metabase-types/api";
 
 import {
   AddYourOwnDataLink,
@@ -30,6 +25,8 @@ import {
   SidebarHeadingWrapper,
   SidebarSection,
 } from "../MainNavbar.styled";
+import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
+import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
 
@@ -102,6 +99,30 @@ function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
+            {hasDataAccess && (
+              <>
+                <PaddedSidebarLink
+                  icon="database"
+                  url={BROWSE_URL}
+                  isSelected={nonEntityItem?.url?.startsWith(BROWSE_URL)}
+                  onClick={onItemSelect}
+                >
+                  {t`Browse data`}
+                </PaddedSidebarLink>
+                {!hasOwnDatabase && isAdmin && (
+                  <AddYourOwnDataLink
+                    icon="add"
+                    url={ADD_YOUR_OWN_DATA_URL}
+                    isSelected={nonEntityItem?.url?.startsWith(
+                      ADD_YOUR_OWN_DATA_URL,
+                    )}
+                    onClick={onItemSelect}
+                  >
+                    {t`Add your own data`}
+                  </AddYourOwnDataLink>
+                )}
+              </>
+            )}
           </ul>
         </SidebarSection>
 
@@ -130,36 +151,6 @@ function MainNavbarView({
             aria-label="collection-tree"
           />
         </SidebarSection>
-
-        {hasDataAccess && (
-          <SidebarSection>
-            <SidebarHeadingWrapper>
-              <SidebarHeading>{t`Data`}</SidebarHeading>
-            </SidebarHeadingWrapper>
-            <ul>
-              <PaddedSidebarLink
-                icon="database"
-                url={BROWSE_URL}
-                isSelected={nonEntityItem?.url?.startsWith(BROWSE_URL)}
-                onClick={onItemSelect}
-              >
-                {t`Browse data`}
-              </PaddedSidebarLink>
-              {!hasOwnDatabase && isAdmin && (
-                <AddYourOwnDataLink
-                  icon="add"
-                  url={ADD_YOUR_OWN_DATA_URL}
-                  isSelected={nonEntityItem?.url?.startsWith(
-                    ADD_YOUR_OWN_DATA_URL,
-                  )}
-                  onClick={onItemSelect}
-                >
-                  {t`Add your own data`}
-                </AddYourOwnDataLink>
-              )}
-            </ul>
-          </SidebarSection>
-        )}
       </div>
       <WhatsNewNotification />
     </SidebarContentRoot>

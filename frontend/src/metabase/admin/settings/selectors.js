@@ -1,58 +1,53 @@
-import _ from "underscore";
 import { createSelector } from "@reduxjs/toolkit";
-import { t, jt } from "ttag";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { jt, t } from "ttag";
+import _ from "underscore";
 
+import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
+import { isPersonalCollectionOrChild } from "metabase/collections/utils";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import { DashboardSelector } from "metabase/components/DashboardSelector";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
-import { PersistedModelsApi, UtilApi } from "metabase/services";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_EMBEDDING,
+  PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { DashboardSelector } from "metabase/components/DashboardSelector";
 import { refreshCurrentUser } from "metabase/redux/user";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { PersistedModelsApi } from "metabase/services";
 
-import { isPersonalCollectionOrChild } from "metabase/collections/utils";
-
-import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
-
-import { updateSetting } from "./settings";
-
-import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
-import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
-import { UploadSettings } from "./components/UploadSettings";
-import SettingsLicense from "./components/SettingsLicense";
-import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
-import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
 import {
-  PublicLinksDashboardListing,
-  PublicLinksQuestionListing,
-  PublicLinksActionListing,
-  EmbeddedResources,
-} from "./components/widgets/PublicLinksListing";
-import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
-import { EmbeddingSwitchWidget } from "./components/widgets/EmbeddingSwitchWidget";
-import FormattingWidget from "./components/widgets/FormattingWidget";
-import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
-import SectionDivider from "./components/widgets/SectionDivider";
-
-import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
-import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
-import { BccToggleWidget } from "./components/Email/BccToggleWidget";
-import SetupCheckList from "./setup/components/SetupCheckList";
-import SlackSettings from "./slack/containers/SlackSettings";
-import {
-  trackTrackingPermissionChanged,
   trackCustomHomepageDashboardEnabled,
+  trackTrackingPermissionChanged,
 } from "./analytics";
-
-import RedirectWidget from "./components/widgets/RedirectWidget";
+import { BccToggleWidget } from "./components/Email/BccToggleWidget";
+import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
+import SettingsLicense from "./components/SettingsLicense";
+import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
+import { UploadSettings } from "./components/UploadSettings";
+import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import {
   InteractiveEmbeddingOptionCard,
   StaticEmbeddingOptionCard,
 } from "./components/widgets/EmbeddingOption";
+import { EmbeddingSwitchWidget } from "./components/widgets/EmbeddingSwitchWidget";
+import FormattingWidget from "./components/widgets/FormattingWidget";
+import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
+import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
+import {
+  EmbeddedResources,
+  PublicLinksActionListing,
+  PublicLinksDashboardListing,
+  PublicLinksQuestionListing,
+} from "./components/widgets/PublicLinksListing";
+import RedirectWidget from "./components/widgets/RedirectWidget";
+import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
+import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
+import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
+import { updateSetting } from "./settings";
+import SetupCheckList from "./setup/components/SetupCheckList";
+import SlackSettings from "./slack/containers/SlackSettings";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
@@ -119,7 +114,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         postUpdateActions: [
           () =>
             updateSetting({
-              key: "dismissed_custom_dashboard_toast",
+              key: "dismissed-custom-dashboard-toast",
               value: true,
             }),
           refreshCurrentUser,
@@ -342,7 +337,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         type: "select",
         options: [
           { name: t`Database Default`, value: "" },
-          ...MetabaseSettings.get("available-timezones"),
+          ...(MetabaseSettings.get("available-timezones") || []),
         ],
         note: t`Not all databases support timezones, in which case this setting won't take effect.`,
         allowValueCollection: true,
@@ -423,19 +418,22 @@ export const ADMIN_SETTINGS_SECTIONS = {
         key: "-public-sharing-dashboards",
         display_name: t`Shared Dashboards`,
         widget: PublicLinksDashboardListing,
-        getHidden: settings => !settings["enable-public-sharing"],
+        getHidden: (_, derivedSettings) =>
+          !derivedSettings["enable-public-sharing"],
       },
       {
         key: "-public-sharing-questions",
         display_name: t`Shared Questions`,
         widget: PublicLinksQuestionListing,
-        getHidden: settings => !settings["enable-public-sharing"],
+        getHidden: (_, derivedSettings) =>
+          !derivedSettings["enable-public-sharing"],
       },
       {
         key: "-public-sharing-actions",
         display_name: t`Shared Action Forms`,
         widget: PublicLinksActionListing,
-        getHidden: settings => !settings["enable-public-sharing"],
+        getHidden: (_, derivedSettings) =>
+          !derivedSettings["enable-public-sharing"],
       },
     ],
   },
@@ -449,22 +447,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`Embedding`,
         description: null,
         widget: EmbeddingSwitchWidget,
-        onChanged: async (
-          oldValue,
-          newValue,
-          settingsValues,
-          onChangeSetting,
-        ) => {
-          // Generate a secret key if none already exists
-          if (
-            !oldValue &&
-            newValue &&
-            !settingsValues["embedding-secret-key"]
-          ) {
-            const result = await UtilApi.random_token();
-            await onChangeSetting("embedding-secret-key", result.token);
-          }
-        },
       },
       {
         key: "-static-embedding",
@@ -565,38 +547,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
     order: 120,
     settings: [
       {
-        key: "enable-query-caching",
-        display_name: t`Saved questions`,
-        type: "boolean",
-      },
-      {
-        key: "query-caching-min-ttl",
-        display_name: t`Minimum Query Duration`,
-        type: "number",
-        getHidden: settings => !settings["enable-query-caching"],
-        allowValueCollection: true,
-      },
-      {
-        key: "query-caching-ttl-ratio",
-        display_name: t`Cache Time-To-Live (TTL) multiplier`,
-        type: "number",
-        getHidden: settings => !settings["enable-query-caching"],
-        allowValueCollection: true,
-      },
-      {
-        key: "query-caching-max-kb",
-        display_name: t`Max Cache Entry Size`,
-        type: "number",
-        getHidden: settings => !settings["enable-query-caching"],
-        allowValueCollection: true,
-      },
-      {
-        widget: SectionDivider,
-      },
-      {
         key: "persisted-models-enabled",
         display_name: t`Models`,
-        description: jt`Enabling cache will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. ${(
+        description: jt`Enabling caching will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. ${(
           <ExternalLink
             key="model-caching-link"
             href={MetabaseSettings.docsUrl("data-modeling/models")}
@@ -690,9 +643,28 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
     ],
   },
+  llm: {
+    name: t`AI Features`,
+    getHidden: () => !PLUGIN_LLM_AUTODESCRIPTION.isEnabled(),
+    order: 131,
+    settings: [
+      {
+        key: "ee-ai-features-enabled",
+        display_name: t`AI features enabled`,
+        note: t`You must supply an API key before AI features can be enabled.`,
+        type: "boolean",
+      },
+      {
+        key: "ee-openai-api-key",
+        display_name: t`EE OpenAI API Key`,
+        description: t`API key used for Enterprise AI features`,
+        type: "string",
+      },
+    ],
+  },
 };
 
-const getSectionsWithPlugins = _.once(() =>
+export const getSectionsWithPlugins = _.once(() =>
   updateSectionsWithPlugins(ADMIN_SETTINGS_SECTIONS),
 );
 

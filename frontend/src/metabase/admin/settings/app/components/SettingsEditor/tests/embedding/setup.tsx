@@ -1,12 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+
+import { screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import type { Settings } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { checkNotNull } from "metabase/lib/types";
-import { screen } from "__support__/ui";
+
 import { setup } from "../setup";
 
 export type SetupOpts = {
@@ -31,17 +33,17 @@ export const setupEmbedding = async ({
   fetchMock.get("path:/api/dashboard/embeddable", []);
   fetchMock.get("path:/api/card/embeddable", []);
 
-  userEvent.click(screen.getByText("Embedding"));
+  await userEvent.click(screen.getByText("Embedding"));
 
   return { ...returnedValue, history: checkNotNull(returnedValue.history) };
 };
 
-export const goToStaticEmbeddingSettings = () => {
-  userEvent.click(screen.getByText("Manage"));
+export const goToStaticEmbeddingSettings = async () => {
+  await userEvent.click(screen.getByText("Manage"));
 };
 
-export const goToInteractiveEmbeddingSettings = () => {
-  userEvent.click(screen.getByText("Configure"));
+export const goToInteractiveEmbeddingSettings = async () => {
+  await userEvent.click(screen.getByText("Configure"));
 };
 
 export const getQuickStartLink = () => {

@@ -1,9 +1,7 @@
+import type { CardId } from "./card";
+import type { DatabaseId } from "./database";
 import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
 import type { NativeDatasetQuery } from "./query";
-import type { ClickBehavior } from "./click-behavior";
-import type { BaseDashboardCard, DashboardParameterMapping } from "./dashboard";
-import type { Card, CardId } from "./card";
-import type { DatabaseId } from "./database";
 import type { UserId, UserInfo } from "./user";
 
 export interface WritebackParameter extends Parameter {
@@ -162,26 +160,6 @@ export type ActionFormOption = {
   name: string | number;
   value: string | number;
 };
-
-export type ActionParametersMapping = Pick<
-  DashboardParameterMapping,
-  "parameter_id" | "target"
->;
-
-export interface ActionDashboardCard
-  extends Omit<BaseDashboardCard, "parameter_mappings"> {
-  action?: WritebackAction;
-  card_id?: CardId | null; // model card id for the associated action
-  card?: Card;
-
-  parameter_mappings?: ActionParametersMapping[] | null;
-  visualization_settings: {
-    [key: string]: unknown;
-    "button.label"?: string;
-    click_behavior?: ClickBehavior;
-    actionDisplayType?: ActionDisplayType;
-  };
-}
 
 export interface WritebackActionListQuery {
   "model-id"?: CardId;

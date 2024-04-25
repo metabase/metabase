@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   editDashboard,
   popover,
@@ -14,8 +15,10 @@ import {
   describeEE,
   setSearchBoxFilterType,
   setTokenFeatures,
+  setDropdownFilterType,
+  getDashboardCard,
+  filterWidget,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -109,6 +112,27 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       );
 
       filterDashboard();
+    });
+
+    it("should be able to use a structured question source with string/contains parameter", () => {
+      cy.createQuestion(structuredSourceQuestion, { wrapId: true });
+      cy.createQuestionAndDashboard({
+        questionDetails: targetQuestion,
+      }).then(({ body: { dashboard_id } }) => {
+        visitDashboard(dashboard_id);
+      });
+
+      editDashboard();
+      setFilter("Text or Category", "Contains");
+      mapFilterToQuestion();
+      setDropdownFilterType();
+      setFilterQuestionSource({ question: "GUI source", field: "Category" });
+      saveDashboard();
+      getDashboardCard().findByText("200").should("be.visible");
+      filterWidget().click();
+      popover().findByText("Gizmo").click();
+      popover().button("Add filter").click();
+      getDashboardCard().findByText("51").should("be.visible");
     });
   });
 
@@ -226,7 +250,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
 describeEE("scenarios > dashboard > filters", () => {
   beforeEach(() => {
-    restore();
+    restore("default-ee");
     cy.signInAsAdmin();
     setTokenFeatures("all");
   });

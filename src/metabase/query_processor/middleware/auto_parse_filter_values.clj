@@ -6,17 +6,17 @@
   historic reasons. When time permits it should be moved into this middleware since it's really a separate
   transformation from wrapping the value literals themselves."
   (:require
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
 (mu/defn ^:private parse-value-for-base-type
   [v         :- :string
-   base-type :- ms/FieldType]
+   base-type :- ::lib.schema.common/base-type]
   {:pre [(string? v)]}
   (try
     (condp #(isa? %2 %1) base-type
@@ -37,7 +37,7 @@
 (defn auto-parse-filter-values
   "Automatically parse String filter clause values to the appropriate type."
   [query]
-  (mbql.u/replace-in query [:query]
+  (lib.util.match/replace-in query [:query]
     [:value (v :guard string?) (info :guard (fn [{base-type :base_type}]
                                               (and base-type
                                                    (not (isa? base-type :type/Text)))))]

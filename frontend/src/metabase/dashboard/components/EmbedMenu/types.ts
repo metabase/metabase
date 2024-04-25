@@ -1,5 +1,5 @@
+import type Question from "metabase-lib/v1/Question";
 import type { Dashboard } from "metabase-types/api";
-import type Question from "metabase-lib/Question";
 
 export type EmbedMenuModes =
   | "embed-menu"

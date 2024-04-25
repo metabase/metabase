@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
@@ -16,6 +17,24 @@
               [metabase.util.malli.fn :as mu.fn]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(deftest ^:parallel underlying-records-availability-test
+  (testing "underlying-records is available for non-header clicks with at least one breakout"
+    (canned/canned-test
+      :drill-thru/underlying-records
+      (fn [_test-case context {:keys [click column-kind]}]
+        ;; TODO: The docs claim that underlying-records works on pivot cells, and so it does, but the so-called pivot case
+        ;; never occurs in actual pivot tables!
+        ;; - Clicks on row/column "headers", (that is, breakout values like a month or product category) look like regular
+        ;;   cell clicks (column and value set per the breakout, no :dimensions).
+        ;; - Clicks on cells (that is, aggregation values) have column, column-ref and value all nil, and :dimensions
+        ;;   contains all the breakouts (not exactly 2 as claimed in the spec).
+        ;; That all makes sense to me (Braden) and I think this is a bug in the docs, but it also might be a bug in the FE
+        ;; code that should be setting the aggregation :value for cell clicks?
+        ;; Tech debt issue: #39380
+        (and (#{:cell #_:pivot :legend} click)
+             (or (seq (:dimensions context))
+                 (= column-kind :aggregation)))))))
 
 (deftest ^:parallel returns-underlying-records-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -156,7 +175,7 @@
     (let [metric   {:description "Orders with a subtotal of $100 or more."
                     :archived false
                     :updated-at "2023-10-04T20:11:34.029582"
-                    :lib/type :metadata/metric
+                    :lib/type :metadata/legacy-metric
                     :definition
                     {"source-table" (meta/id :orders)
                      "aggregation" [["count"]]

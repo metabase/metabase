@@ -4,15 +4,17 @@
  * This allows us to use search results to show a particular record in the model.
  */
 
-import type { IndexedEntity } from "metabase-types/api/modelIndexes";
-
 import { createEntity } from "metabase/lib/entities";
-import { ModelIndexApi } from "metabase/services";
 import { ModelIndexSchema } from "metabase/schema";
+import { ModelIndexApi } from "metabase/services";
+import type { IndexedEntity } from "metabase-types/api/modelIndexes";
 
 import * as actions from "./actions";
 import * as utils from "./utils";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const ModelIndexes = createEntity({
   name: "modelIndexes",
   nameOne: "modelIndex",

@@ -1,10 +1,10 @@
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   restore,
   popover,
   describeEE,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
@@ -16,7 +16,10 @@ describeEE("issue 17763", () => {
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        1: { data: { schemas: "block", native: "none" } },
+        1: {
+          "view-data": "blocked",
+          "create-queries": "no",
+        },
       },
     });
   });
@@ -25,7 +28,7 @@ describeEE("issue 17763", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Block").click();
+    cy.findByText("Blocked").click();
 
     popover().contains("Granular").click();
 
@@ -35,11 +38,10 @@ describeEE("issue 17763", () => {
     );
 
     cy.findByTestId("permission-table").within(() => {
-      cy.findAllByText("No self-service").first().click();
+      cy.findAllByText("Can view").first().click();
     });
 
     popover().within(() => {
-      cy.findByText("Unrestricted");
       cy.findByText("Sandboxed");
     });
   });

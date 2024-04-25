@@ -1,3 +1,5 @@
+import { color, colors } from "metabase/lib/colors";
+import { formatValue } from "metabase/lib/formatting/value";
 import {
   CHANGE_ARROW_ICONS,
   computeChange,
@@ -6,12 +8,11 @@ import {
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
 import {
   createMockColumn,
+  createMockNativeDatasetQuery,
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { color, colors } from "metabase/lib/colors";
-import { formatValue } from "metabase/lib/formatting/value";
 import { COMPARISON_TYPES } from "./constants";
 import { formatChange } from "./utils";
 
@@ -198,9 +199,18 @@ describe("SmartScalar > compute", () => {
   });
 
   describe("computeTrend", () => {
-    const series = ({ rows, cols }) => [
-      createMockSingleSeries({}, { data: { rows, cols } }),
-    ];
+    const series = ({ rows, cols, queryType }) => {
+      if (queryType === "native") {
+        return [
+          createMockSingleSeries(
+            { dataset_query: createMockNativeDatasetQuery() },
+            { data: { rows, cols } },
+          ),
+        ];
+      }
+
+      return [createMockSingleSeries({}, { data: { rows, cols } })];
+    };
 
     describe("change types", () => {
       const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
@@ -1072,7 +1082,7 @@ describe("SmartScalar > compute", () => {
               comparisonValue: value,
               metricValue: 300,
             }),
-            comparisonDescStr: `vs. ${label.toLowerCase()}`,
+            comparisonDescStr: `vs. ${label}`,
           },
           ...getMetricProperties({
             dateStr: "2019",
@@ -2108,6 +2118,55 @@ describe("SmartScalar > compute", () => {
         expect(display.value).toBe("210.0k");
         expect(comparisonDisplay.comparisonValue).toBe("105.0k");
       });
+    });
+
+    it("should display full dates for native queries (issue #38122)", () => {
+      const QUERY_TYPE = "native";
+      const COMPARISON_TYPE = COMPARISON_TYPES.PERIODS_AGO;
+      const getComparisonProperties =
+        createGetComparisonProperties(COMPARISON_TYPE);
+
+      const COUNT_FIELD = "Count";
+      const createSettings = value =>
+        createMockVisualizationSettings({
+          "scalar.field": COUNT_FIELD,
+          "scalar.comparisons": [{ id: "1", type: COMPARISON_TYPE, value }],
+        });
+
+      const cols = [
+        createMockDateTimeColumn({ name: "date-field" }),
+        createMockNumberColumn({ name: COUNT_FIELD }),
+      ];
+
+      const rows = [
+        ["2023-12-31T02:12", 100],
+        ["2023-12-31T04:15", 200],
+      ];
+      const dateUnit = "hour";
+      const periodsAgo = 2;
+      const expected = {
+        ...getMetricProperties({
+          dateStr: "December 31, 2023, 4:15 AM",
+          metricValue: 200,
+        }),
+        comparison: {
+          ...getComparisonProperties({
+            changeType: "increase",
+            comparisonValue: 100,
+            dateStr: "December 31, 2023, 2:12 AM",
+            metricValue: 200,
+          }),
+        },
+      };
+
+      const insights = [{ unit: dateUnit, col: COUNT_FIELD }];
+      const trend = computeTrend(
+        series({ rows, cols, queryType: QUERY_TYPE }),
+        insights,
+        createSettings(periodsAgo),
+      );
+
+      expect(getTrend(trend)).toEqual(expected);
     });
   });
 });

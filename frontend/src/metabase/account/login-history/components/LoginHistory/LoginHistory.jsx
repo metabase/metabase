@@ -1,14 +1,15 @@
 /* eslint-disable react/prop-types */
-import _ from "underscore";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import cx from "classnames";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
+import _ from "underscore";
 
+import NoResults from "assets/img/no_results.svg";
 import Card from "metabase/components/Card";
+import EmptyState from "metabase/components/EmptyState";
 import Label from "metabase/components/type/Label";
 import Text from "metabase/components/type/Text";
-import EmptyState from "metabase/components/EmptyState";
-import NoResults from "assets/img/no_results.svg";
+import CS from "metabase/css/core/index.css";
 
 import {
   LoginActiveLabel,
@@ -18,18 +19,21 @@ import {
 } from "./LoginHistory.styled";
 
 const LoginHistoryItem = ({ item }) => (
-  <Card className="my2 py1" style={{ paddingLeft: 20, paddingRight: 20 }}>
+  <Card
+    className={cx(CS.my2, CS.py1)}
+    style={{ paddingLeft: 20, paddingRight: 20 }}
+  >
     <LoginItemContent>
       <div>
         <Label mb="0">
           {item.location} -{" "}
-          <span className="text-medium">{item.ip_address}</span>
+          <span className={CS.textMedium}>{item.ip_address}</span>
         </Label>
         <Text style={{ marginTop: -8 }}>{item.device_description}</Text>
       </div>
       <LoginItemInfo>
         {item.active && (
-          <LoginActiveLabel className="pr2">{t`Active`}</LoginActiveLabel>
+          <LoginActiveLabel className={CS.pr2}>{t`Active`}</LoginActiveLabel>
         )}
         <Label>{item.time}</Label>
       </LoginItemInfo>

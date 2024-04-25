@@ -1,10 +1,10 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   createAction,
   restore,
   setActionsEnabledForDB,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const ACTION_DETAILS = {
   name: "Update orders quantity",
@@ -33,7 +33,7 @@ describe("issue 29378", () => {
   });
 
   it("should not crash the model detail page after searching for an action (metabase#29378)", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
     createAction(ACTION_DETAILS);
 
     cy.visit(`/model/${ORDERS_QUESTION_ID}/detail`);

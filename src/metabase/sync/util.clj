@@ -9,7 +9,6 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
-   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.task-history :refer [TaskHistory]]
    [metabase.query-processor.interface :as qp.i]
@@ -62,7 +61,6 @@
 ;; new function that will execute the original in whatever context or with whatever side effects appropriate for that
 ;; step.
 
-
 ;; This looks something like {:sync #{1 2}, :cache #{2 3}} when populated.
 ;; Key is a type of sync operation, e.g. `:sync` or `:cache`; vals are sets of DB IDs undergoing that operation.
 ;;
@@ -101,10 +99,10 @@
              (keyword (or (namespace event-name-prefix) "event")
                       (str (name prefix) suffix)))]
      (with-sync-events
-      (event-keyword event-name-prefix "-begin")
-      (event-keyword event-name-prefix "-end")
-      database-or-id
-      f)))
+       (event-keyword event-name-prefix "-begin")
+       (event-keyword event-name-prefix "-end")
+       database-or-id
+       f)))
 
   ([begin-event-name :- Topic
     end-event-name   :- Topic
@@ -130,8 +128,8 @@
         _          (log-fn (u/format-color 'magenta "STARTING: %s" message))
         result     (f)]
     (log-fn (u/format-color 'magenta "FINISHED: %s (%s)"
-              message
-              (u/format-nanoseconds (- (System/nanoTime) start-time))))
+                            message
+                            (u/format-nanoseconds (- (System/nanoTime) start-time))))
     result))
 
 (defn- with-start-and-finish-logging
@@ -193,7 +191,7 @@
          (do
            (log/warn e message)
            e)
-         (throw (ex-info (format "%s: %s" message (ex-message e)) {} e)))))))
+         (throw e))))))
 
 (defmacro with-error-handling
   "Execute `body` in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so. Pass a
@@ -226,7 +224,6 @@
   {:style/indent 3}
   [operation database message & body]
   `(do-sync-operation ~operation ~database ~message (fn [] ~@body)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              EMOJI PROGRESS METER                                              |
@@ -303,6 +300,17 @@
   (when (not= (:initial_sync_status table) "complete")
     (t2/update! :model/Table (u/the-id table) {:initial_sync_status "complete"})))
 
+(def ^:private sync-tables-kv-args
+  {:active          true
+   :visibility_type nil})
+
+(defn set-initial-table-sync-complete-for-db!
+  "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already
+  set."
+  [database-or-id]
+  (t2/update! :model/Table (merge sync-tables-kv-args {:db_id (u/the-id database-or-id)})
+              {:initial_sync_status "complete"}))
+
 (defn set-initial-database-sync-complete!
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
   [database]
@@ -319,10 +327,32 @@
 ;;; |                                          OTHER SYNC UTILITY FUNCTIONS                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def sync-tables-clause
+  "Returns a clause that can be used inside a HoneySQL :where clause to select all the Tables that should be synced"
+  (into [:and] (for [[k v] sync-tables-kv-args]
+                 [:= k v])))
+
 (defn db->sync-tables
-  "Return all the Tables that should go through the sync processes for `database-or-id`."
+  "Returns all the Tables that have their metadata sync'd for `database-or-id`."
   [database-or-id]
-  (t2/select :model/Table, :db_id (u/the-id database-or-id), :active true, :visibility_type nil))
+  (t2/select :model/Table, :db_id (u/the-id database-or-id), {:where sync-tables-clause}))
+
+(defn db->reducible-sync-tables
+  "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`."
+  [database-or-id & {:keys [schema-names table-names]}]
+  (t2/reducible-select :model/Table
+                       :db_id (u/the-id database-or-id)
+                       {:where [:and sync-tables-clause
+                                (when (seq schema-names) [:in :schema schema-names])
+                                (when (seq table-names) [:in :name table-names])]}))
+
+(defn db->sync-schemas
+  "Returns all the Schemas that have their metadata sync'd for `database-or-id`.
+  Assumes the database supports schemas."
+  [database-or-id]
+  (vec (map :schema (t2/query {:select-distinct [:schema]
+                               :from            [:metabase_table]
+                               :where           [:and sync-tables-clause [:= :db_id (u/the-id database-or-id)]]}))))
 
 (defmulti name-for-logging
   "Return an appropriate string for logging an object in sync logging messages. Should be something like
@@ -335,14 +365,24 @@
   mi/model)
 
 (defmethod name-for-logging :model/Database
-  [{database-name :name, id :id, engine :engine,}]
+  [{database-name :name, id :id, engine :engine}]
   (format "%s Database %s ''%s''" (name engine) (str (or id "")) database-name))
 
-(defmethod name-for-logging :model/Table [{schema :schema, id :id, table-name :name}]
-  (format "Table %s ''%s''" (or (str id) "") (str (when (seq schema) (str schema ".")) table-name)))
+(defn table-name-for-logging
+  "Return an appropriate string for logging a table in sync logging messages."
+  [& {:keys [id schema name]}]
+  (format "Table %s ''%s''" (or (str id) "") (str (when (seq schema) (str schema ".")) name)))
 
-(defmethod name-for-logging Field [{field-name :name, id :id}]
-  (format "Field %s ''%s''" (or (str id) "") field-name))
+(defmethod name-for-logging :model/Table [table]
+  (table-name-for-logging table))
+
+(defn field-name-for-logging
+  "Return an appropriate string for logging a field in sync logging messages."
+  [& {:keys [id name]}]
+  (format "Field %s ''%s''" (or (str id) "") name))
+
+(defmethod name-for-logging :model/Field [field]
+  (field-name-for-logging field))
 
 ;;; this is used for result metadata stuff.
 (defmethod name-for-logging :default [{field-name :name}]
@@ -427,7 +467,7 @@
                              (do
                                (log/warn e (format "Error running step ''%s'' for %s" step-name (name-for-logging database)))
                                {:throwable e})
-                             (throw (ex-info (format "Error in sync step %s: %s" step-name (ex-message e)) {} e)))))))
+                             (throw e))))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results
                       :start-time start-time
@@ -458,7 +498,7 @@
                                    "# %s\n"
                                    "# %s\n"
                                    (when log-summary-fn
-                                       (format "# %s\n" (log-summary-fn step-info))))
+                                     (format "# %s\n" (log-summary-fn step-info))))
                        [(format "Completed step ''%s''" step-name)
                         (format "Start: %s" (u.date/format start-time))
                         (format "End: %s" (u.date/format end-time))

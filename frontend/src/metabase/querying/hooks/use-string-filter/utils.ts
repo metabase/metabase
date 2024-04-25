@@ -1,5 +1,6 @@
-import * as Lib from "metabase-lib";
 import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
+import * as Lib from "metabase-lib";
+
 import { OPERATOR_OPTIONS } from "./constants";
 
 function isNotEmpty(value: string) {
@@ -21,6 +22,20 @@ export function getAvailableOptions(
 
 export function getOptionByOperator(operator: Lib.StringFilterOperatorName) {
   return OPERATOR_OPTIONS[operator];
+}
+
+export function getDefaultOperator(
+  column: Lib.ColumnMetadata,
+): Lib.StringFilterOperatorName {
+  if (
+    Lib.isPrimaryKey(column) ||
+    Lib.isForeignKey(column) ||
+    Lib.isCategory(column)
+  ) {
+    return "=";
+  } else {
+    return "contains";
+  }
 }
 
 export function getDefaultValues(

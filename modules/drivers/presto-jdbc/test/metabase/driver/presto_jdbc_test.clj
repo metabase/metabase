@@ -15,6 +15,7 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.table :as table :refer [Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
@@ -155,7 +156,7 @@
         (is (= (str "SELECT COUNT(*) AS \"count\" "
                     "FROM \"default\".\"test_data_venues\" "
                     "WHERE \"default\".\"test_data_venues\".\"name\" = 'wow'")
-               (:query (qp/compile-and-splice-parameters query))
+               (:query (qp.compile/compile-and-splice-parameters query))
                (-> (qp/process-query query) :data :native_form :query)))))))
 
 (deftest ^:parallel connection-tests

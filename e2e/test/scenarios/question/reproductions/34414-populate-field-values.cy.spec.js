@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   filter,
   openNotebook,
@@ -5,15 +7,13 @@ import {
   restore,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { INVOICES_ID } = SAMPLE_DATABASE;
 
 const INVOICE_MODEL_DETAILS = {
   name: "Invoices Model",
   query: { "source-table": INVOICES_ID },
-  dataset: true,
+  type: "model",
 };
 
 describe("issue 34414", () => {

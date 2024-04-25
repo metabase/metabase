@@ -1,3 +1,4 @@
+import { USERS } from "e2e/support/cypress_data";
 import {
   describeWithSnowplow,
   enableTracking,
@@ -7,9 +8,8 @@ import {
   restore,
   getFullName,
   popover,
+  modal,
 } from "e2e/support/helpers";
-
-import { USERS } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
 
@@ -114,7 +114,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.findByLabelText("Event name").type("RC1");
 
-      getModal().within(() => {
+      modal().within(() => {
         cy.findByRole("button", { name: "calendar icon" }).click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -166,7 +166,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.findByLabelText("Event name").type("RC1");
 
-      getModal().within(() => {
+      modal().within(() => {
         cy.findByRole("button", { name: "calendar icon" }).click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -198,7 +198,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.findByLabelText("Event name").type("RC1");
 
-      getModal().within(() => {
+      modal().within(() => {
         cy.findByRole("button", { name: "calendar icon" }).click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -252,7 +252,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Move event").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").click();
-      getModal().button("Move").click();
+      modal().button("Move").click();
       cy.wait("@updateEvent");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC2").should("not.exist");
@@ -284,7 +284,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Move event").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").click();
-      getModal().button("Move").click();
+      modal().button("Move").click();
       cy.wait("@updateEvent");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC2").should("not.exist");
@@ -394,7 +394,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.createTimeline({ name: "Releases" });
       cy.createTimeline({ name: "Metrics" });
 
-      cy.visit(`/collection/root/timelines/1`);
+      cy.visit("/collection/root/timelines/1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
 
@@ -408,7 +408,7 @@ describe("scenarios > organization > timelines > collection", () => {
     it("should not allow navigating back when there is only one timeline in a collection", () => {
       cy.createTimeline({ name: "Releases" });
 
-      cy.visit(`/collection/root/timelines/1`);
+      cy.visit("/collection/root/timelines/1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
       cy.icon("chevronleft").should("not.exist");
@@ -465,7 +465,7 @@ describe("scenarios > organization > timelines > collection", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Move timeline").click();
 
-      getModal().within(() => {
+      modal().within(() => {
         cy.findByText("My personal collection").click();
         cy.button("Move").click();
         cy.wait("@updateTimeline");
@@ -568,7 +568,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.wait("@updateTimeline");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No timelines found");
-      getModal().icon("chevronleft").click();
+      modal().icon("chevronleft").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
     });
@@ -599,7 +599,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.wait("@deleteTimeline");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No timelines found");
-      getModal().icon("chevronleft").click();
+      modal().icon("chevronleft").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics events");
     });
@@ -670,7 +670,7 @@ describe("scenarios > organization > timelines > collection", () => {
       openMenu("RC1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit event").click();
-      getModal().within(() => {
+      modal().within(() => {
         cy.findByRole("button", { name: "calendar icon" }).click();
       });
       popover().within(() => {
@@ -743,10 +743,6 @@ describeWithSnowplow("scenarios > collections > timelines", () => {
     expectGoodSnowplowEvents(5);
   });
 });
-
-const getModal = () => {
-  return cy.get(".Modal");
-};
 
 const openMenu = name => {
   return cy.findByText(name).parent().parent().icon("ellipsis").click();

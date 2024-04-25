@@ -1,16 +1,13 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-
-import { Icon } from "metabase/ui";
-
-import { APP_BAR_HEIGHT } from "metabase/nav/constants";
+import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
-
+import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
+import { Icon } from "metabase/ui";
 
 const activeInputCSS = css`
   border-radius: 6px;
@@ -90,7 +87,8 @@ export const SearchInput = styled.input<{
   font-weight: 700;
   font-size: 0.875rem;
 
-  width: 100%;
+  flex-basis: 0;
+  flex-grow: 1;
 
   &:focus {
     outline: none;
@@ -106,12 +104,13 @@ export const SearchInput = styled.input<{
 
   ${breakpointMaxSmall} {
     width: 0;
+    flex-grow: 0;
     padding: 0;
 
     ${props =>
       props.isActive &&
       css`
-        width: 100%;
+        flex-grow: 1;
         padding-top: 10px;
         padding-bottom: 10px;
       `}
@@ -123,6 +122,7 @@ const ICON_MARGIN = "10px";
 export const SearchIcon = styled(Icon)<{
   isActive: boolean;
 }>`
+  flex-basis: 1rem;
   ${breakpointMaxSmall} {
     transition: margin 0.3s;
 

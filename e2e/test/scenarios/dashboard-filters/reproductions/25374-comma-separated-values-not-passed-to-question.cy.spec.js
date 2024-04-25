@@ -41,7 +41,7 @@ const dashboardDetails = {
 
 describe("issue 25374", () => {
   beforeEach(() => {
-    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     restore();
     cy.signInAsAdmin();
@@ -90,7 +90,9 @@ describe("issue 25374", () => {
     cy.findByText(questionDetails.name).click();
     cy.wait("@cardQuery");
 
-    cy.get(".cellData").should("contain", "COUNT(*)").and("contain", "3");
+    cy.get("[data-testid=cell-data]")
+      .should("contain", "COUNT(*)")
+      .and("contain", "3");
 
     cy.location("search").should("eq", "?num=1%2C2%2C3");
   });

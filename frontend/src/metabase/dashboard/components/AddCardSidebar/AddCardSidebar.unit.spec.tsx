@@ -1,10 +1,15 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import fetchMock from "fetch-mock";
+
 import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase-types/store/mocks";
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { getNextId } from "__support__/utils";
+import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
+import { checkNotNull } from "metabase/lib/types";
+import type { Collection, CollectionItem, Dashboard } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -13,13 +18,10 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
-} from "__support__/server-mocks";
-import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
-import type { Collection, CollectionItem, Dashboard } from "metabase-types/api";
-import { getNextId } from "__support__/utils";
-import { checkNotNull } from "metabase/lib/types";
+  createMockDashboardState,
+  createMockState,
+} from "metabase-types/store/mocks";
+
 import { AddCardSidebar } from "./AddCardSidebar";
 
 const CURRENT_USER = createMockUser({
@@ -54,7 +56,7 @@ const PERSONAL_COLLECTION = createMockCollection({
 });
 
 const PERSONAL_SUBCOLLECTION = createMockCollection({
-  id: CURRENT_USER.personal_collection_id + 1,
+  id: (CURRENT_USER.personal_collection_id as number) + 1,
   name: "Nested personal collection",
   can_write: true,
   is_personal: true,
@@ -184,7 +186,7 @@ describe("AddCardSideBar", () => {
       });
 
       const typedText = "dashboard";
-      userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
+      await userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
       const baseQuery = {
         models: ["card", "dataset"],
         offset: 0,
@@ -256,7 +258,7 @@ describe("AddCardSideBar", () => {
       });
 
       const typedText = "dashboard";
-      userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
+      await userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
       const baseQuery = {
         models: ["card", "dataset"],
         offset: 0,
@@ -347,7 +349,7 @@ describe("AddCardSideBar", () => {
       });
 
       const typedText = "dashboard";
-      userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
+      await userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
       const baseQuery = {
         models: ["card", "dataset"],
         offset: 0,

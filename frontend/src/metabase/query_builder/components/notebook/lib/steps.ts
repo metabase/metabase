@@ -1,10 +1,10 @@
 import _ from "underscore";
 
-import * as Lib from "metabase-lib";
 import { checkNotNull } from "metabase/lib/types";
-import type { Query } from "metabase-lib/types";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type Question from "metabase-lib/Question";
+import type { Query } from "metabase-lib";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import type { NotebookStep, OpenSteps } from "../types";
 
@@ -235,10 +235,10 @@ function getStageSteps(
     const id = getId(STEP, itemIndex);
     const active = STEP.active(query, stageIndex, itemIndex ?? undefined);
     const step: NotebookStep = {
-      id: id,
+      id,
       type: STEP.type,
-      stageIndex: stageIndex,
-      itemIndex: itemIndex,
+      stageIndex,
+      itemIndex,
       question,
       query,
       valid: STEP.valid(query, stageIndex, metadata),
@@ -253,9 +253,8 @@ function getStageSteps(
             return revert(query, stageIndex, itemIndex ?? undefined);
           }
         : null,
-      // `actions`, `previewQuery`, `next` and `previous` will be set later
+      // `actions`, `next` and `previous` will be set later
       actions: [],
-      previewQuery: null,
       next: null,
       previous: null,
     };
@@ -263,19 +262,17 @@ function getStageSteps(
   }
 
   // get the currently visible steps, flattening "items"
-  const steps = _.flatten(
-    STEPS.map(STEP => {
-      if (STEP.subSteps) {
-        // add 1 for the initial or next action button
-        const itemIndexes = _.range(0, STEP.subSteps(query, stageIndex) + 1);
-        return itemIndexes.map(itemIndex => getStep(STEP, itemIndex));
-      } else {
-        return [getStep(STEP)];
-      }
-    }),
-  );
+  const steps = STEPS.flatMap(STEP => {
+    if (STEP.subSteps) {
+      // add 1 for the initial or next action button
+      const itemIndexes = _.range(0, STEP.subSteps(query, stageIndex) + 1);
+      return itemIndexes.map(itemIndex => getStep(STEP, itemIndex));
+    }
 
-  let previewQuery: Lib.Query | null = query;
+    return [getStep(STEP)];
+  });
+  // keep original steps to be able to get a step by index to preview query
+  const originalSteps = [...steps];
 
   let actions = [];
   // iterate over steps in reverse so we can revert query for previewing and accumulate valid actions
@@ -283,7 +280,11 @@ function getStageSteps(
     const step = steps[i];
     if (step.visible) {
       // only include previewQuery if the section would be visible (i.e. excluding "openSteps")
-      step.previewQuery = step.active ? previewQuery : null;
+      if (step.active) {
+        step.getPreviewQuery = () =>
+          getPreviewQuery(query, stageIndex, originalSteps, i);
+      }
+
       // add any accumulated actions and reset
       step.actions = actions;
       actions = [];
@@ -301,15 +302,31 @@ function getStageSteps(
       }
       steps.splice(i, 1);
     }
-    // revert the previewQuery for this step
-    if (step.revert && previewQuery) {
-      previewQuery = step.revert(
-        previewQuery,
-        step.stageIndex,
-        step.itemIndex ?? undefined,
-      );
-    }
   }
 
   return { steps, actions };
+}
+function getPreviewQuery(
+  query: Lib.Query,
+  stageIndex: number,
+  steps: NotebookStep[],
+  activeStepIndex: number,
+): Lib.Query {
+  const queryWithoutNextStages = _.range(
+    Lib.stageCount(query) - 1,
+    stageIndex,
+    -1,
+  ).reduce(Lib.dropStage, query);
+
+  const queryWithoutNextStagesAndSteps = steps
+    .slice(activeStepIndex + 1, steps.length)
+    .reduceRight((query: Lib.Query, step: NotebookStep) => {
+      if (step.revert) {
+        return step.revert(query, step.stageIndex, step.itemIndex ?? undefined);
+      }
+
+      return query;
+    }, queryWithoutNextStages);
+
+  return queryWithoutNextStagesAndSteps;
 }

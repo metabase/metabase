@@ -1,22 +1,21 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import S from "metabase/components/List/List.css";
-import R from "metabase/reference/Reference.css";
-
-import List from "metabase/components/List";
-import ListItem from "metabase/components/ListItem";
 import EmptyState from "metabase/components/EmptyState";
-
+import List from "metabase/components/List";
+import S from "metabase/components/List/List.module.css";
+import ListItem from "metabase/components/ListItem";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
-import ReferenceHeader from "../components/ReferenceHeader";
+import R from "metabase/reference/Reference.module.css";
 
+import ReferenceHeader from "../components/ReferenceHeader";
 import {
   getDatabase,
   getTablesByDatabase,
@@ -104,7 +103,7 @@ class TableList extends Component {
     const tables = Object.values(entities);
 
     return (
-      <div style={style} className="full" data-testid="table-list">
+      <div style={style} className={CS.full} data-testid="table-list">
         <ReferenceHeader
           name={t`Tables in ${database.name}`}
           type="tables"
@@ -116,7 +115,7 @@ class TableList extends Component {
         >
           {() =>
             tables.length > 0 ? (
-              <div className="wrapper wrapper--trim">
+              <div className={cx(CS.wrapper, CS.wrapperTrim)}>
                 <List>
                   {!hasSingleSchema
                     ? separateTablesBySchema(

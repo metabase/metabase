@@ -2,13 +2,14 @@
   "Various helper functions for testing email functionality."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.email :as email]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
-   [metabase.util :refer [prog1]]
+   [metabase.util :as u :refer [prog1]]
    [metabase.util.retry :as retry]
    [metabase.util.retry-test :as rt]
    [postal.message :as message])
@@ -45,7 +46,7 @@
     ;; sending the message. It will block that thread, counting the number of messages. If it has reached it's goal,
     ;; it will deliver the promise
     (add-watch inbox ::inbox-watcher
-               (fn [_ _ _ new-value]
+               (fn [_key _ref _old-value new-value]
                  (let [num-msgs (count (apply concat (vals new-value)))]
                    (when (<= n num-msgs)
                      (deliver p num-msgs)))))
@@ -171,11 +172,23 @@
       MimeType.
       .getBaseType))
 
+(defn- strip-timestamp
+  "Remove the timestamp portion of attachment filenames.
+  This is useful for creating stable filename keys in tests.
+  For example, see `summarize-attachment` below.
+
+  Eg. test_card_2024-03-05T22:30:24.077306Z.csv -> test_card.csv"
+  [fname]
+  (let [ext (last (str/split fname #"\."))
+        name-parts (butlast (str/split fname #"_"))]
+    (format "%s.%s" (str/join "_" name-parts) ext)))
+
 (defn- summarize-attachment [email-attachment]
   (-> email-attachment
       (update :content-type mime-type)
       (update :content class)
-      (update :content-id boolean)))
+      (update :content-id boolean)
+      (u/update-if-exists :file-name strip-timestamp)))
 
 (defn summarize-multipart-email
   "For text/html portions of an email, this is similar to `regex-email-bodies`, but for images in the attachments will

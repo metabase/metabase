@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import MetabotLogo from "metabase/core/components/MetabotLogo";
+import { color } from "metabase/lib/colors";
 
 export const MetabotMessageRoot = styled.div`
   display: flex;

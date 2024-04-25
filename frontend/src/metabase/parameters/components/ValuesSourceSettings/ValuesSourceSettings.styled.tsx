@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import { color } from "metabase/lib/colors";
 
 export const RadioLabelRoot = styled.span`
   display: flex;
@@ -18,4 +19,9 @@ export const RadioLabelButton = styled(IconButtonWrapper)`
   &:hover {
     color: ${color("brand")};
   }
+`;
+
+export const ClickAreaExpander = styled.span`
+  display: inline-block;
+  padding: 0 5px;
 `;

@@ -1,12 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
+
 import { screen, renderWithProviders } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import { createMockTokenStatus } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { checkNotNull } from "metabase/lib/types";
+
 import { InteractiveEmbeddingCTA } from "./InteractiveEmbeddingCTA";
 
 const setup = ({ isPaidPlan }: { isPaidPlan: boolean }) => {
@@ -27,7 +29,7 @@ const setup = ({ isPaidPlan }: { isPaidPlan: boolean }) => {
   };
 };
 describe("InteractiveEmbeddingCTA", () => {
-  it("renders correctly for paid plan", () => {
+  it("renders correctly for paid plan", async () => {
     const { history } = setup({ isPaidPlan: true });
 
     expect(screen.getByText("Interactive Embedding")).toBeInTheDocument();
@@ -38,7 +40,7 @@ describe("InteractiveEmbeddingCTA", () => {
       ),
     ).toBeInTheDocument();
 
-    userEvent.click(screen.getByTestId("interactive-embedding-cta"));
+    await userEvent.click(screen.getByTestId("interactive-embedding-cta"));
 
     expect(history.getCurrentLocation().pathname).toEqual(
       "/admin/settings/embedding-in-other-applications/full-app",

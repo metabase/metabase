@@ -1,13 +1,14 @@
-import * as Yup from "yup";
-import type { AnySchema } from "yup";
 import userEvent from "@testing-library/user-event";
+import type { AnySchema } from "yup";
+import * as Yup from "yup";
+
+import { render, screen, waitFor } from "__support__/ui";
 import {
   Form,
   FormCheckbox,
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { render, screen, waitFor } from "__support__/ui";
 
 interface FormValues {
   remember: boolean;
@@ -53,8 +54,8 @@ describe("FormCheckbox", () => {
   it("should submit values when the checkbox is checked", async () => {
     const { onSubmit } = setup();
 
-    userEvent.click(screen.getByLabelText("Remember me"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByLabelText("Remember me"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -68,8 +69,8 @@ describe("FormCheckbox", () => {
     const { onSubmit } = setup({
       initialValues: { remember: true },
     });
-    userEvent.click(screen.getByLabelText("Remember me"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByLabelText("Remember me"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -86,8 +87,8 @@ describe("FormCheckbox", () => {
     setup({ initialValues: validationSchema.getDefault(), validationSchema });
     expect(screen.queryByText("Must be checked")).not.toBeInTheDocument();
 
-    userEvent.click(screen.getByLabelText("Remember me"));
-    userEvent.tab();
+    await userEvent.click(screen.getByLabelText("Remember me"));
+    await userEvent.tab();
     await waitFor(() => {
       expect(screen.getByText("Must be checked")).toBeInTheDocument();
     });

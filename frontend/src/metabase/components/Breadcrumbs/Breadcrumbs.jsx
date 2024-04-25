@@ -1,11 +1,12 @@
-import { Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { Link } from "react-router";
 
-import cx from "classnames";
-import { Icon } from "metabase/ui";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import S from "./Breadcrumbs.css";
+import { Icon } from "metabase/ui";
+
+import S from "./Breadcrumbs.module.css";
 
 // TODO: merge with BrowserCrumbs
 

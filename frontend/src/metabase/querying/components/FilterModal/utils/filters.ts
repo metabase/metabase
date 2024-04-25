@@ -1,9 +1,11 @@
 import { t } from "ttag";
-import * as Lib from "metabase-lib";
+
 import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
+import * as Lib from "metabase-lib";
+
 import type { GroupItem, SegmentItem } from "../types";
 
 export function appendStageIfAggregated(query: Lib.Query) {
@@ -13,10 +15,6 @@ export function appendStageIfAggregated(query: Lib.Query) {
   return aggregations.length > 0 && breakouts.length > 0
     ? Lib.appendStage(query)
     : query;
-}
-
-export function dropStageIfEmpty(query: Lib.Query) {
-  return Lib.dropStageIfEmpty(query, -1);
 }
 
 function getStageIndexes(query: Lib.Query) {

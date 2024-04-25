@@ -1,13 +1,31 @@
 (ns metabase-enterprise.audit-app.api.user
   "`/api/ee/audit-app/user` endpoints. These only work if you have a premium token with the `:audit-app` feature."
   (:require
-   [compojure.core :refer [DELETE]]
+   [compojure.core :refer [DELETE GET]]
+   [metabase-enterprise.audit-db :as audit-db]
    [metabase.api.common :as api]
    [metabase.api.user :as api.user]
+   [metabase.models.interface :as mi]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(api/defendpoint GET "/audit-info"
+  "Gets audit info for the current user if he has permissions to access the audit collection.
+  Otherwise return an empty map."
+  []
+  (let [custom-reports     (audit-db/default-custom-reports-collection)
+        question-overview  (audit-db/memoized-select-audit-entity :model/Dashboard audit-db/default-question-overview-entity-id)
+        dashboard-overview (audit-db/memoized-select-audit-entity :model/Dashboard audit-db/default-dashboard-overview-entity-id)]
+    (merge
+     {}
+     (when (mi/can-read? (audit-db/default-custom-reports-collection))
+       {(:slug custom-reports) (:id custom-reports)})
+     (when (mi/can-read? (audit-db/default-audit-collection))
+       {(u/slugify (:name question-overview)) (:id question-overview)
+        (u/slugify (:name dashboard-overview)) (:id dashboard-overview)}))))
 
 (api/defendpoint DELETE "/:id/subscriptions"
   "Delete all Alert and DashboardSubscription subscriptions for a User (i.e., so they will no longer receive them).

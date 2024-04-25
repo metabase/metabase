@@ -1,10 +1,12 @@
-import { useState } from "react";
 import type { ComponentStory } from "@storybook/react";
+import { useState } from "react";
+
+import type { Timeline } from "metabase-types/api";
 import {
   createMockCollection,
   createMockTimeline,
 } from "metabase-types/api/mocks";
-import type { Timeline } from "metabase-types/api";
+
 import TimelinePicker from "./TimelinePicker";
 
 export default {

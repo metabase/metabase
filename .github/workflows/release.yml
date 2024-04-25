@@ -53,7 +53,7 @@ jobs:
     - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && yarn && yarn build
     - name: Get Release Version
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       id: canonical_version
       with:
         script: | # js
@@ -100,7 +100,7 @@ jobs:
     steps:
     - name: find_release_artifact
       id: find_release_artifact
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       with:
         result-encoding: string
         script: | # js
@@ -150,7 +150,7 @@ jobs:
         # ensure the build is not a snapshot build
         grep -q "SNAPSHOT" version.properties && (echo "jar is a snapshot" && exit 1) || echo "jar is not a snapshot build"
     - name: Upload Uberjar as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: metabase-${{ matrix.edition }}-uberjar
         path: |
@@ -169,7 +169,7 @@ jobs:
         edition: [oss, ee]
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v3
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
@@ -179,12 +179,12 @@ jobs:
         sparse-checkout: release
     - name: prepare release scripts
       run: cd release && yarn && yarn build
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
     - name: Determine the upload path ## EE is always v1.x.y, OSS is always v0.x.y
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       id: version_path
       with:
         result-encoding: string
@@ -199,7 +199,7 @@ jobs:
           console.log("The download path for this", edition, "edition is", version_path);
           return version_path;
     - name: Determine if this is a latest version
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       id: latest_path
       with:
         result-encoding: string
@@ -246,12 +246,12 @@ jobs:
       matrix:
         edition: [oss, ee]
     steps:
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
     - name: Determine the download path ## EE is always v1.x.y, OSS is always v0.x.y
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       id: version_path
       with:
         result-encoding: string
@@ -291,7 +291,7 @@ jobs:
     - name: prepare release scripts
       run: cd release && yarn && yarn build
     - name: Determine the docker version tag
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       id: canonical_version
       with:
         result-encoding: string
@@ -307,7 +307,7 @@ jobs:
 
           return canonical_version;
     - name: Check if the container image should be tagged as latest
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       id: latest_version_check
       with:
         result-encoding: string
@@ -323,7 +323,7 @@ jobs:
           console.log("Latest version?", isLatest);
 
           return isLatest ? "latest" : "not-latest";
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       name: Retrieve previously downloaded Uberjar
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -403,7 +403,7 @@ jobs:
           echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase" >> $GITHUB_ENV
         fi
     - name: Determine the docker version tag
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       id: canonical_version
       with:
         result-encoding: string
@@ -443,7 +443,7 @@ jobs:
     - name: prepare release scripts
       run: cd release && yarn && yarn build
     - name: Tag Release
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       with:
         result-encoding: string
         script: | # js
@@ -487,7 +487,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
-      - uses: actions/github-script@v6
+      - uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.DOCS_UPDATE_TOKEN }}
           script: |
@@ -519,7 +519,7 @@ jobs:
           sparse-checkout: release
       - name: prepare release scripts
         run: cd release && yarn && yarn build
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         name: Retrieve uberjar artifact
         with:
           name: metabase-${{ matrix.edition }}-uberjar
@@ -528,7 +528,7 @@ jobs:
           CHECKSUM=$(cat SHA256.sum)
           echo "CHECKSUM=$CHECKSUM" >> $GITHUB_ENV
       - name: Publish draft release notes
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           result-encoding: string
           script: |
@@ -565,7 +565,7 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v3
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
@@ -576,7 +576,7 @@ jobs:
     - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && yarn && yarn build
     - name: Publish release notes
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       id: new_version_info
       with:
         result-encoding: string
@@ -623,7 +623,7 @@ jobs:
     - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && yarn && yarn build
     - name: Update milestones
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       with:
         script: | # js
           const { closeMilestone, openNextMilestones, isRCVersion } = require('${{ github.workspace }}/release/dist/index.cjs');

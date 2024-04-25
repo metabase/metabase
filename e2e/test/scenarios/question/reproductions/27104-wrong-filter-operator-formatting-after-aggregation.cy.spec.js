@@ -1,11 +1,12 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
   visitQuestionAdhoc,
   visualize,
+  selectFilterOperator,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PEOPLE } = SAMPLE_DATABASE;
 
@@ -33,13 +34,10 @@ describe("issue 27104", () => {
   it("should correctly format the filter operator after the aggregation (metabase#27104)", () => {
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
     popover().findByText("Count").click();
-    popover().within(() => {
-      // The following line is the main assertion.
-      cy.button("Back").should("have.text", "Count");
-      // The rest of the test is not really needed for this reproduction.
-      cy.findByDisplayValue("Equal to").click();
-    });
-    cy.findByRole("listbox").findByText("Greater than").click();
+    // The following line is the main assertion.
+    popover().button("Back").should("have.text", "Count");
+    // The rest of the test is not really needed for this reproduction.
+    selectFilterOperator("Greater than");
     popover().within(() => {
       cy.findByPlaceholderText("Enter a number").type("0").blur();
       cy.button("Add filter").click();

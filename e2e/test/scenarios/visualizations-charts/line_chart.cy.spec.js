@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitQuestionAdhoc,
@@ -6,10 +8,8 @@ import {
   openSeriesSettings,
   queryBuilderMain,
   addOrUpdateDashboardCard,
+  modal,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -129,7 +129,8 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.get(".Visualization .enable-dots")
+    cy.findByTestId("query-visualization-root")
+      .findAllByTestId("chart-series")
       .last()
       .find(".dot")
       .eq(3)
@@ -202,7 +203,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.get(`.sub._0`).find("circle").should("have.length", 2);
+    cy.get(".sub._0").find("circle").should("have.length", 2);
   });
 
   it("should show the trend line", () => {
@@ -232,7 +233,9 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.get(".LineAreaBarChart").get(".trend").should("be.visible");
+    cy.get("[data-element-id=line-area-bar-chart]")
+      .get(".trend")
+      .should("be.visible");
   });
 
   it("should show label for empty value series breakout (metabase#32107)", () => {
@@ -511,7 +514,7 @@ describe("scenarios > visualizations > line chart", () => {
 
     function renameSeries(series) {
       cy.icon("pencil").click();
-      cy.get(".Card").realHover();
+      cy.findByTestId("dashcard").realHover();
       cy.icon("palette").click();
       series.forEach(serie => {
         const [old_name, new_name] = serie;
@@ -519,7 +522,7 @@ describe("scenarios > visualizations > line chart", () => {
         cy.findByDisplayValue(old_name).clear().type(new_name);
       });
 
-      cy.get(".Modal")
+      modal()
         .as("modal")
         .within(() => {
           cy.button("Done").click();
@@ -596,7 +599,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.get(".Visualization")
+    cy.findByTestId("query-visualization-root")
       .trigger("mousedown", 180, 200)
       .trigger("mousemove", 180, 200)
       .trigger("mouseup", 220, 200);

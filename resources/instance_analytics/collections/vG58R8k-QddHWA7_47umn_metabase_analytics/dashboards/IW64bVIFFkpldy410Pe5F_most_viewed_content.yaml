@@ -86,6 +86,7 @@ dashcards:
         - v_users
         - is_active
       - join-alias: People - Creator
+  series: []
   visualization_settings:
     column_settings:
       '["name","count"]':
@@ -170,6 +171,7 @@ dashcards:
         - v_users
         - is_active
       - join-alias: People - Creator
+  series: []
   visualization_settings:
     column_settings:
       '["name","count"]':
@@ -255,6 +257,7 @@ dashcards:
         - v_users
         - is_active
       - join-alias: People - User
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: q2TAw8RtBJbvTfeZYGKyw
@@ -297,6 +300,7 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
+  series: []
   visualization_settings:
     column_settings:
       '["name","count"]':
@@ -355,4 +359,6 @@ dashcards:
       - 0
       name: count
     table.pivot_column: name_2
+initially_published_at: null
 tabs: []
+width: full

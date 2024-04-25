@@ -1,8 +1,9 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { getSetting } from "metabase/selectors/settings";
-import { getUserIsAdmin } from "metabase/selectors/user";
+
 import { ACTIVE_USERS_NUDGE_THRESHOLD } from "metabase/admin/people/constants";
 import { hasAnySsoFeature } from "metabase/common/utils/plan";
+import { getSetting } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 export const getMemberships = state => state.admin.people.memberships;
 

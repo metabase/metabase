@@ -1,5 +1,4 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import {
   parseFieldBucketing,
@@ -7,7 +6,7 @@ import {
   computeFilterTimeRange,
   absolute,
   generateTimeFilterValuesDescriptions,
-} from "metabase-lib/queries/utils/query-time";
+} from "metabase-lib/v1/queries/utils/query-time";
 
 describe("query_time", () => {
   describe("parseFieldBucketing()", () => {

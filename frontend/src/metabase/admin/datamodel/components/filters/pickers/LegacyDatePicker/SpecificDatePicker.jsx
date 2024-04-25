@@ -1,16 +1,17 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
+import cx from "classnames";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { t } from "ttag";
 
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-import cx from "classnames";
-import { getDateStyleFromSettings } from "metabase/lib/time";
 import Calendar from "metabase/components/Calendar";
-import InputBlurChange from "metabase/components/InputBlurChange";
-import { Icon } from "metabase/ui";
 import ExpandingContent from "metabase/components/ExpandingContent";
+import InputBlurChange from "metabase/components/InputBlurChange";
+import CS from "metabase/css/core/index.css";
+import { getDateStyleFromSettings } from "metabase/lib/time";
+import { Icon } from "metabase/ui";
+
 import HoursMinutesInput from "../DatePicker/HoursMinutesInput";
 
 import { TimeLabel } from "./SpecificDatePicker.styled";
@@ -76,10 +77,19 @@ export default class SpecificDatePicker extends Component {
 
     return (
       <div className={className}>
-        <div className="mb2 full bordered rounded flex align-center">
+        <div
+          className={cx(
+            CS.mb2,
+            CS.full,
+            CS.bordered,
+            CS.rounded,
+            CS.flex,
+            CS.alignCenter,
+          )}
+        >
           <InputBlurChange
             placeholder={moment().format(dateFormat)}
-            className="borderless full p1 h3"
+            className={cx(CS.borderless, CS.full, CS.p1, CS.h3)}
             style={{
               outline: "none",
             }}
@@ -114,7 +124,7 @@ export default class SpecificDatePicker extends Component {
         )}
 
         {!hideTimeSelectors && (
-          <div className={cx({ py2: calendar }, { mb3: !calendar })}>
+          <div className={cx({ [CS.py2]: calendar }, { [CS.mb3]: !calendar })}>
             {hours == null || minutes == null ? (
               <TimeLabel
                 onClick={() =>
@@ -125,7 +135,7 @@ export default class SpecificDatePicker extends Component {
                   )
                 }
               >
-                <Icon className="mr1" name="clock" />
+                <Icon className={CS.mr1} name="clock" />
                 {t`Add a time`}
               </TimeLabel>
             ) : (

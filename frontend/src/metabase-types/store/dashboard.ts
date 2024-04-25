@@ -1,13 +1,13 @@
 import type {
   Dashboard,
   DashboardId,
-  DashboardCard,
   DashCardId,
   DashCardDataMap,
   ParameterId,
   ParameterValueOrArray,
   DashboardTab,
   DashboardTabId,
+  DashboardCard,
 } from "metabase-types/api";
 
 export type DashboardSidebarName =
@@ -97,7 +97,7 @@ export interface DashboardState {
     showLoadCompleteFavicon?: boolean;
   };
 
-  isEditing: Dashboard | null;
+  editingDashboard: Dashboard | null;
   isAddParameterPopoverOpen: boolean;
   isNavigatingBackToDashboard: boolean;
 

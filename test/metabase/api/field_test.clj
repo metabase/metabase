@@ -26,12 +26,12 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :timezone :initial_sync_status])
    (dissoc (mt/object-defaults Database) :details :initial_sync_status :dbms_version)
    {:engine        "h2"
     :name          "test-data"
     :features      (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
-    :timezone      "UTC"}))
+    :timezone      "UTC"}
+   (select-keys (mt/db) [:id :timezone :initial_sync_status :cache_field_values_schedule :metadata_sync_schedule])))
 
 (deftest get-field-test
   (testing "GET /api/field/:id"
@@ -85,7 +85,7 @@
     ;; TODO -- why doesn't this come back as a dictionary ?
     (is (= [["count" 75]
             ["distincts" 75]]
-           (mt/user-http-request :rasta :get 200 (format "field/%d/summary" (mt/id :categories :name)))))))
+           (mt/user-http-request :crowberto :get 200 (format "field/%d/summary" (mt/id :categories :name)))))))
 
 (defn simple-field-details [field]
   (select-keys field [:name
@@ -254,15 +254,15 @@
         (t2/update! Field (mt/id :venues :price) {:has_field_values "list"})
         ;; now update the values via the API
         (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price), :has_more_values false}
-               (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
+               (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
 
     (testing "Should return nothing for a field whose `has_field_values` is not `list`"
-      (is (= {:values [], :field_id (mt/id :venues :id), :has_more_values false}
-             (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :id))))))
+        (is (= {:values [], :field_id (mt/id :venues :id), :has_more_values false}
+               (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :id))))))
 
     (testing "Sensitive fields do not have field values and should return empty"
       (is (= {:values [], :field_id (mt/id :users :password), :has_more_values false}
-             (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :users :password))))))
+             (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :users :password))))))
 
     (testing "External remapping"
       (mt/with-column-remappings [venues.category_id categories.name]
@@ -271,7 +271,7 @@
                          :values   [[1 "African"]
                                     [2 "American"]
                                     [3 "Artisan"]]}
-                 (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :category_id))))))))))
+                 (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :category_id))))))))))
 
 (def ^:private list-field {:name "Field Test", :base_type :type/Integer, :has_field_values "list"})
 

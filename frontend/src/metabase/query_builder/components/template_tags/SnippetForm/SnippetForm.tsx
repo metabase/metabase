@@ -1,23 +1,19 @@
 import { useCallback, useMemo } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
-import { connect } from "react-redux";
-
-import Button from "metabase/core/components/Button";
-import { Form, FormProvider } from "metabase/forms";
-import FormInput from "metabase/core/components/FormInput";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-
-import * as Errors from "metabase/lib/errors";
-
-import Snippets from "metabase/entities/snippets";
-import SnippetCollections from "metabase/entities/snippet-collections";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { canonicalCollectionId } from "metabase/collections/utils";
-
+import Button from "metabase/core/components/Button";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import FormInput from "metabase/core/components/FormInput";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import SnippetCollections from "metabase/entities/snippet-collections";
+import Snippets from "metabase/entities/snippets";
+import { Form, FormProvider } from "metabase/forms";
+import * as Errors from "metabase/lib/errors";
 import type {
   Collection,
   NativeQuerySnippet,
@@ -131,8 +127,8 @@ function SnippetForm({
   );
 
   const handleSubmit = useCallback(
-    async values => {
-      if (isEditing) {
+    async (values: SnippetFormValues) => {
+      if (isEditing && snippet.id) {
         await handleUpdate({ ...values, id: snippet.id });
       } else {
         await handleCreate(values);

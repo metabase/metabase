@@ -1,18 +1,17 @@
+import type { LocationDescriptor } from "history";
 import { useEffect } from "react";
 import { connect } from "react-redux";
 import type { Route } from "react-router";
 import { replace } from "react-router-redux";
 import _ from "underscore";
-import type { LocationDescriptor } from "history";
 
-import * as Urls from "metabase/lib/urls";
 import Actions from "metabase/entities/actions";
 import Models from "metabase/entities/questions";
+import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
-
+import type Question from "metabase-lib/v1/Question";
 import type { WritebackAction } from "metabase-types/api";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
-import type Question from "metabase-lib/Question";
 
 import ActionCreator from "../ActionCreator";
 

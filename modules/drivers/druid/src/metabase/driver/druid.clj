@@ -1,19 +1,21 @@
 (ns metabase.driver.druid
   "Druid driver."
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [metabase.driver :as driver]
-            [metabase.driver.druid.client :as druid.client]
-            [metabase.driver.druid.execute :as druid.execute]
-            [metabase.driver.druid.query-processor :as druid.qp]
-            [metabase.driver.druid.sync :as druid.sync]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.util.ssh :as ssh]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [metabase.driver :as driver]
+   [metabase.driver.druid.client :as druid.client]
+   [metabase.driver.druid.execute :as druid.execute]
+   [metabase.driver.druid.query-processor :as druid.qp]
+   [metabase.driver.druid.sync :as druid.sync]
+   [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.util.ssh :as ssh]))
 
 (driver/register! :druid)
 
-(doseq [[feature supported?] {:set-timezone            true
-                              :expression-aggregations true}]
+(doseq [[feature supported?] {:expression-aggregations true
+                              :schemas                 false
+                              :set-timezone            true}]
   (defmethod driver/database-supports? [:druid feature] [_driver _feature _db] supported?))
 
 (defmethod driver/can-connect? :druid
@@ -48,10 +50,10 @@
     (assoc-in parsed [:context :timeout] timeout)))
 
 (defmethod driver/execute-reducible-query :druid
-  [_ query context respond]
+  [_driver query _context respond]
   (druid.execute/execute-reducible-query
-    (partial druid.client/do-query-with-cancellation (qp.context/canceled-chan context))
-    (update-in query [:native :query] add-timeout-to-query (qp.context/timeout context))
+    (partial druid.client/do-query-with-cancellation qp.pipeline/*canceled-chan*)
+    (update-in query [:native :query] add-timeout-to-query qp.pipeline/*query-timeout-ms*)
     respond))
 
 (defmethod driver/db-start-of-week :druid

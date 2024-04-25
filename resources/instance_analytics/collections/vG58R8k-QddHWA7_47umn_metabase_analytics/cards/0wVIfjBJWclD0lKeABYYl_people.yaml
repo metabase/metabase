@@ -56,6 +56,50 @@ result_metadata:
 - base_type: type/Text
   coercion_strategy: null
   description: null
+  display_name: Entity Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - entity_qualified_id
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - entity_qualified_id
+  name: entity_qualified_id
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: ''
+  display_name: Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - type
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - type
+  name: type
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
   display_name: Email
   effective_type: type/Text
   field_ref:
@@ -306,4 +350,6 @@ serdes/meta:
 - id: 0wVIfjBJWclD0lKeABYYl
   label: people
   model: Card
+initially_published_at: null
 metabase_version: null
+type: model

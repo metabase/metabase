@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-
 import * as Lib from "metabase-lib";
 
 import { AddAggregationButton } from "./AddAggregationButton";

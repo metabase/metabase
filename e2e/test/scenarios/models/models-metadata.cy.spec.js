@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   modal,
   restore,
@@ -19,7 +20,6 @@ import {
   main,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
 
 const { PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS, ORDERS_ID, ORDERS } =
@@ -41,7 +41,7 @@ describe("scenarios > models metadata", () => {
           "source-table": ORDERS_ID,
           limit: 5,
         },
-        dataset: true,
+        type: "model",
       };
 
       cy.createQuestion(modelDetails).then(({ body: { id } }) => {
@@ -126,7 +126,7 @@ describe("scenarios > models metadata", () => {
     cy.createNativeQuestion(
       {
         name: "Native Model",
-        dataset: true,
+        type: "model",
         native: {
           query: "SELECT * FROM ORDERS LIMIT 5",
         },
@@ -176,7 +176,7 @@ describe("scenarios > models metadata", () => {
     cy.createNativeQuestion(
       {
         name: "Native Model",
-        dataset: true,
+        type: "model",
         native: {
           query: "SELECT * FROM ORDERS LIMIT 5",
         },
@@ -198,7 +198,7 @@ describe("scenarios > models metadata", () => {
     cy.createNativeQuestion(
       {
         name: "Native Model",
-        dataset: true,
+        type: "model",
         native: {
           query: "SELECT * FROM ORDERS LIMIT 5",
         },
@@ -234,7 +234,7 @@ describe("scenarios > models metadata", () => {
 
       cy.createNativeQuestion({
         name: "Native Model",
-        dataset: true,
+        type: "model",
         native: {
           query: "SELECT * FROM ORDERS LIMIT 5",
         },
@@ -289,7 +289,7 @@ describe("scenarios > models metadata", () => {
       cy.createNativeQuestion(
         {
           name: "Native Model",
-          dataset: true,
+          type: "model",
           native: {
             query: "select * from orders limit 100",
           },
@@ -427,7 +427,7 @@ describe("scenarios > models metadata", () => {
 
       const questionDetails = {
         name: "22521",
-        dataset: true,
+        type: "model",
         query: {
           "source-table": PRODUCTS_ID,
           limit: 5,
@@ -448,10 +448,10 @@ describe("scenarios > models metadata", () => {
 });
 
 function drillFK({ id }) {
-  cy.get(".Table-FK").contains(id).first().click();
+  cy.get(".test-Table-FK").contains(id).first().click();
   popover().findByTextEnsureVisible("View details").click();
 }
 
 function drillDashboardFK({ id }) {
-  cy.get(".Table-FK").contains(id).first().click();
+  cy.get(".test-Table-FK").contains(id).first().click();
 }

@@ -4,7 +4,6 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [colorize.core :as colorize]
    [malli.core :as mc]
    [malli.error :as me]
    [malli.transform :as mtx]
@@ -28,6 +27,27 @@
 ;;; |                                              DOCSTRING GENERATION                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn handle-nonstandard-namespaces
+  "HACK to make sure some enterprise endpoints are consistent with the code.
+  The right way to fix this is to move them -- see #22687"
+  [name]
+  (-> name
+      (str/replace #"^metabase\.api\." "/api/")
+      ;; HACK to make sure some enterprise endpoints are consistent with the code.
+      ;; The right way to fix this is to move them -- see #22687
+      ;; /api/ee/sandbox/table -> /api/table, this is an override route for /api/table if sandbox is available
+      (str/replace #"^metabase-enterprise\.sandbox\.api\.table" "/api/table")
+      ;; /api/ee/sandbox -> /api/mt
+      (str/replace #"^metabase-enterprise\.sandbox\.api\." "/api/mt/")
+      ;; /api/ee/content-verification -> /api/moderation-review
+      (str/replace #"^metabase-enterprise\.content-verification\.api\." "/api/moderation-review/")
+      ;; /api/ee/sso/sso/ -> /auth/sso
+      (str/replace #"^metabase-enterprise\.sso\.api\." "/auth/")
+      ;; this should be only the replace for enterprise once we resolved #22687
+      (str/replace #"^metabase-enterprise\.serialization\.api" "/api/ee/serialization")
+      (str/replace #"^metabase-enterprise\.advanced-config\.api\.logs" "/api/ee/logs")
+      (str/replace #"^metabase-enterprise\.([^\.]+)\.api\." "/api/ee/$1/")))
+
 (defn- endpoint-name
   "Generate a string like `GET /api/meta/db/:id` for a defendpoint route."
   ([method route]
@@ -37,19 +57,7 @@
    (format "%s %s%s"
            (name method)
            (-> (.getName (the-ns endpoint-namespace))
-               (str/replace #"^metabase\.api\." "/api/")
-               ;; HACK to make sure some enterprise endpoints are consistent with the code.
-               ;; The right way to fix this is to move them -- see #22687
-               ;; /api/ee/sandbox/table -> /api/table, this is an override route for /api/table if sandbox is available
-               (str/replace #"^metabase-enterprise\.sandbox\.api\.table" "/api/table")
-               ;; /api/ee/sandbox -> /api/mt
-               (str/replace #"^metabase-enterprise\.sandbox\.api\." "/api/mt/")
-               ;; /api/ee/content-verification -> /api/moderation-review
-               (str/replace #"^metabase-enterprise\.content-verification\.api\." "/api/moderation-review/")
-               ;; /api/ee/sso/sso/ -> /auth/sso
-               (str/replace #"^metabase-enterprise\.sso\.api\." "/auth/")
-               ;; this should be only the replace for enterprise once we resolved #22687
-               (str/replace #"^metabase-enterprise\.([^\.]+)\.api\." "/api/ee/$1/"))
+               handle-nonstandard-namespaces)
            (if (vector? route)
              (first route)
              route))))
@@ -108,9 +116,13 @@
     (str "\n\n### PARAMS:\n\n"
          (str/join "\n\n"
                    (for [[param-symb schema] param-symb->schema]
-                     (format "*  **`%s`** %s"
-                             (param-name param-symb schema)
-                             (dox-for-schema schema route-str)))))))
+                     (let [p-name (param-name param-symb schema)
+                           p-desc (dox-for-schema schema route-str)]
+                       (format "-  **`%s`** %s"
+                               p-name
+                               (if (str/blank? p-desc) ; some params lack descriptions
+                                 p-desc
+                                 (u/add-period p-desc)))))))))
 
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
@@ -244,8 +256,8 @@
                            fix      (str "Either add `" (pr-str schema-type) "` to "
                                          "metabase.api.common.internal/->matching-regex or "
                                          "metabase.api.common.internal/no-regex-schemas.")]
-                       (log/warn (colorize/red overview))
-                       (log/warn (colorize/green fix))))))
+                       (log/warn (u/colorize :red overview))
+                       (log/warn (u/colorize :green fix))))))
                (remove nil?))]
       (cond
         ;; multiple hits -> tack them onto the original route shape.
@@ -284,7 +296,8 @@
   "Transformer used on values coming over the API via defendpoint."
   (mtx/transformer
    (mtx/string-transformer)
-   (mtx/json-transformer)))
+   (mtx/json-transformer)
+   (mtx/default-value-transformer)))
 
 (defn- extract-symbols [in]
   (let [*symbols (atom [])]

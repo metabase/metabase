@@ -141,3 +141,25 @@
                                            {{::mb.viz/column-id 1}
                                             {::mb.viz/number-style "percent"}}})
               "bob"))))))
+
+(deftest coords-formatting-test
+  (testing "Test the correctness of formatting longitude and latitude values"
+    (is (= "12.34560000° E"
+           (formatter/format-geographic-coordinates :type/Longitude 12.3456)))
+    (is (= "12.34560000° W"
+           (formatter/format-geographic-coordinates :type/Longitude -12.3456)))
+    (is (= "12.34560000° N"
+           (formatter/format-geographic-coordinates :type/Latitude 12.3456)))
+    (is (= "12.34560000° S"
+           (formatter/format-geographic-coordinates :type/Latitude -12.3456)))
+    (testing "0 corresponds to the non-negative direction"
+      (is (= "0.00000000° E"
+             (formatter/format-geographic-coordinates :type/Longitude 0)))
+      (is (= "0.00000000° N"
+             (formatter/format-geographic-coordinates :type/Latitude 0))))
+    (testing "A non-coordinate type just stringifies the value"
+      (is (= "0.0"
+             (formatter/format-geographic-coordinates :type/Froobitude 0))))
+    (testing "We handle missing values"
+      (is (= ""
+             (formatter/format-geographic-coordinates :type/Longitude nil))))))

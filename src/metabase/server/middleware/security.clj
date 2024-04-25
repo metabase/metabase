@@ -7,10 +7,8 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.config :as config]
    [metabase.embed.settings :as embed.settings]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
-   [metabase.server.request.util :as request.u]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.server.request.util :as req.util]
    [ring.util.codec :refer [base64-encode]])
   (:import
    (java.security MessageDigest SecureRandom)))
@@ -82,7 +80,6 @@
                                  (when-not config/is-dev?
                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
-                                 ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
                                  ;; See [[generate-nonce]]
@@ -132,14 +129,11 @@
               "Content-Security-Policy"
               #(format "%s frame-ancestors %s;" % (or (embedding-app-origin) "'none'"))))))
 
-(defsetting ssl-certificate-public-key
-  (deferred-tru
-    (str "Base-64 encoded public key for this site''s SSL certificate. "
-         "Specify this to enable HTTP Public Key Pinning. "
-         "See {0} for more information.")
-    "http://mzl.la/1EnfqBf")
-  :audit :getter)
-;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
+(defn- access-control-headers
+  []
+  {"Access-Control-Allow-Origin"    (embedding-app-origin)
+   "Access-Control-Allow-Headers"   "*"
+   "Access-Control-Expose-Headers"  "X-Metabase-Anti-CSRF-Token"})
 
 (defn- first-embedding-app-origin
   "Return only the first embedding app origin."
@@ -158,6 +152,7 @@
      (cache-prevention-headers))
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
+   (when (embedding-app-origin) (access-control-headers))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 (if (embedding-app-origin)
@@ -174,8 +169,8 @@
   ;; merge is other way around so that handler can override headers
   (update response :headers #(merge %2 %1) (security-headers
                                             :nonce          (:nonce request)
-                                            :allow-iframes? ((some-fn request.u/public? request.u/embed?) request)
-                                            :allow-cache?   (request.u/cacheable? request))))
+                                            :allow-iframes? ((some-fn req.util/public? req.util/embed?) request)
+                                            :allow-cache?   (req.util/cacheable? request))))
 
 (defn add-security-headers
   "Middleware that adds HTTP security and cache-busting headers."

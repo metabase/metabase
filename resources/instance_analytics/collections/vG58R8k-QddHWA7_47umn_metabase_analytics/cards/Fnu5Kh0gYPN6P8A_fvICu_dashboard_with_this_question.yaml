@@ -112,4 +112,6 @@ serdes/meta:
 - id: Fnu5Kh0gYPN6P8A_fvICu
   label: dashboard_with_this_question
   model: Card
+initially_published_at: null
 metabase_version: null
+type: question

@@ -1,10 +1,9 @@
 import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Button, Flex, Grid, Popover, Icon } from "metabase/ui";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { getColumnIcon } from "metabase/common/utils/columns";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
@@ -13,11 +12,14 @@ import type {
 } from "metabase/querying/components/DatePicker";
 import { DatePicker } from "metabase/querying/components/DatePicker";
 import { useDateFilter } from "metabase/querying/hooks/use-date-filter";
-import { FilterColumnName } from "../FilterColumnName";
+import { Button, Flex, Grid, Popover, Icon } from "metabase/ui";
+
+import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
+
+import { ClearIcon } from "./DateFilterEditor.styled";
 import { SECONDARY_SHORTCUTS } from "./constants";
 import { getFilterName, getSelectedOption, getVisibleOptions } from "./utils";
-import { ClearIcon } from "./DateFilterEditor.styled";
 
 export function DateFilterEditor({
   query,
@@ -56,44 +58,44 @@ export function DateFilterEditor({
   };
 
   return (
-    <Grid grow>
-      <Grid.Col span="auto">
-        <Flex h="100%" align="center" gap="sm">
-          <Icon name={columnIcon} />
-          <FilterColumnName
+    <HoverParent>
+      <Grid grow>
+        <Grid.Col span="auto">
+          <FilterTitle
             query={query}
             stageIndex={stageIndex}
             column={column}
+            columnIcon={columnIcon}
             isSearching={isSearching}
           />
-        </Flex>
-      </Grid.Col>
-      <Grid.Col span={4}>
-        <Flex gap="0.5rem">
-          {visibleOptions.map(option => {
-            const isSelected = option.shortcut === selectedOption?.shortcut;
-            return (
-              <Button
-                key={option.shortcut}
-                variant={isSelected ? "outline" : "default"}
-                aria-selected={isSelected}
-                onClick={() => handleOptionToggle(option)}
-              >
-                {option.label}
-              </Button>
-            );
-          })}
-          <DateFilterPopover
-            title={filterName}
-            value={value}
-            availableOperators={availableOperators}
-            availableUnits={availableUnits}
-            isExpanded={visibleOptions.length === 0}
-            onChange={handleChange}
-          />
-        </Flex>
-      </Grid.Col>
-    </Grid>
+        </Grid.Col>
+        <Grid.Col span={4}>
+          <Flex gap="0.5rem">
+            {visibleOptions.map(option => {
+              const isSelected = option.shortcut === selectedOption?.shortcut;
+              return (
+                <Button
+                  key={option.shortcut}
+                  variant={isSelected ? "outline" : "default"}
+                  aria-selected={isSelected}
+                  onClick={() => handleOptionToggle(option)}
+                >
+                  {option.label}
+                </Button>
+              );
+            })}
+            <DateFilterPopover
+              title={filterName}
+              value={value}
+              availableOperators={availableOperators}
+              availableUnits={availableUnits}
+              isExpanded={visibleOptions.length === 0}
+              onChange={handleChange}
+            />
+          </Flex>
+        </Grid.Col>
+      </Grid>
+    </HoverParent>
   );
 }
 

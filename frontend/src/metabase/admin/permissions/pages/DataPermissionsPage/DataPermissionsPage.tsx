@@ -1,29 +1,27 @@
 import type { ReactNode } from "react";
+import type { Route } from "react-router";
 import { useAsync } from "react-use";
 import _ from "underscore";
-import type { Route } from "react-router";
-
-import Groups from "metabase/entities/groups";
-import Databases from "metabase/entities/databases";
 
 import { useTableListQuery } from "metabase/common/hooks";
-
+import Databases from "metabase/entities/databases";
+import Groups from "metabase/entities/groups";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PermissionsApi } from "metabase/services";
 import { Loader, Center } from "metabase/ui";
-
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, Group } from "metabase-types/api";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import type Database from "metabase-lib/metadata/Database";
-import { getIsDirty, getDiff } from "../../selectors/data-permissions/diff";
+
+import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
+import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
+import ToolbarUpsell from "../../components/ToolbarUpsell";
 import {
   saveDataPermissions,
   restoreLoadedPermissions,
   LOAD_DATA_PERMISSIONS_FOR_GROUP,
 } from "../../permissions";
-import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
-import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
-import ToolbarUpsell from "../../components/ToolbarUpsell";
+import { getIsDirty, getDiff } from "../../selectors/data-permissions/diff";
 
 type DataPermissionsPageProps = {
   children: ReactNode;

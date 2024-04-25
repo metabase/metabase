@@ -283,4 +283,6 @@ serdes/meta:
 - id: x7GwgNdjfzrpQkKTraaqo
   label: tables
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (0e09ac7)
+type: model

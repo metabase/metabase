@@ -1,0 +1,131 @@
+(ns metabase.api.cache
+  (:require
+   [clojure.walk :as walk]
+   [compojure.core :refer [GET]]
+   [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
+   [metabase.models.cache-config :as cache-config]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.util.i18n :refer [tru trun]]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
+
+;; Data shape
+
+(defn- drop-internal-fields
+  "See `metabase-enterprise.cache.strategies/CacheStrategy`"
+  [schema]
+  (walk/prewalk
+   (fn [x]
+     (if (and (vector? x) (= (first x) :map))
+       (into [] (remove #(:internal (meta %))) x)
+       x))
+   schema))
+
+;; TODO: figure out how to combine `defenterprise` and `defendpoint` - right now OpenAPI only "sees" OSS version of
+;; the schema, so docs for enterprise version won't be correct until we figure out the way to support this
+(defenterprise CacheStrategy
+  "Schema for a caching strategy"
+  metabase-enterprise.cache.strategies
+  []
+  [:and
+   [:map
+    [:type [:enum :nocache :ttl]]]
+   [:multi {:dispatch :type}
+    [:nocache  [:map ;; not closed due to a way it's used in tests for clarity
+                [:type keyword?]]]
+    [:ttl      [:map {:closed true}
+                [:type [:= :ttl]]
+                [:multiplier ms/PositiveInt]
+                [:min_duration_ms ms/IntGreaterThanOrEqualToZero]]]]])
+
+(defn CacheStrategyAPI
+  "Schema for a caching strategy for the API"
+  []
+  (drop-internal-fields (CacheStrategy)))
+
+
+(defn- assert-valid-models [model ids premium?]
+  (cond
+    (= model "root")
+    (when-not (some zero? ids)
+      (throw (ex-info (tru "Root configuration is only valid with model_id = 0") {:status-code 404
+                                                                                  :model_id    (first ids)})))
+
+    (not premium?)
+    (throw (premium-features/ee-feature-error (tru "Granular Caching")))
+
+    :else
+    (api/check-404 (t2/select-one (case model
+                                    "database"  :model/Database
+                                    "dashboard" :model/Dashboard
+                                    "question"  :model/Card)
+                                  :id [:in ids]))))
+
+(api/defendpoint GET "/"
+  "Return cache configuration."
+  [:as {{:strs [model collection]
+         :or   {model "root"}}
+        :query-params}]
+  {model      (ms/QueryVectorOf cache-config/CachingModel)
+   ;; note that `nil` in `collection` means all configurations not scoped to any particular collection
+   collection [:maybe ms/PositiveInt]}
+  (validation/check-has-application-permission :setting)
+  (when (and (not (premium-features/enable-cache-granular-controls?))
+             (not= model ["root"]))
+    (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
+  {:data (cache-config/get-list model collection)})
+
+(api/defendpoint PUT "/"
+  "Store cache configuration."
+  [:as {{:keys [model model_id strategy] :as config} :body}]
+  {model    cache-config/CachingModel
+   model_id ms/IntGreaterThanOrEqualToZero
+   strategy (CacheStrategyAPI)}
+  (validation/check-has-application-permission :setting)
+  (assert-valid-models model [model_id] (premium-features/enable-cache-granular-controls?))
+  {:id (cache-config/store! api/*current-user-id* config)})
+
+(api/defendpoint DELETE "/"
+  "Delete cache configurations."
+  [:as {{:keys [model model_id]} :body}]
+  {model    cache-config/CachingModel
+   model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)}
+  (validation/check-has-application-permission :setting)
+  (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
+  (cache-config/delete! api/*current-user-id* model model_id)
+  nil)
+
+
+(api/defendpoint POST "/invalidate"
+  "Invalidate cache entries.
+
+  Use it like `/api/cache/invalidate?database=1&dashboard=15` (any number of database/dashboard/question can be
+  supplied).
+
+  `&include=overrides` controls whenever you want to invalidate cache for a specific cache configuration without
+  touching all nested configurations, or you want your invalidation to trickle down to every card."
+  [include database dashboard question]
+  {include   [:maybe {:description "All cache configuration overrides should invalidate cache too"} [:= :overrides]]
+   database  [:maybe {:description "A database id"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
+   dashboard [:maybe {:description "A dashboard id"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
+   question  [:maybe {:description "A question id"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]}
+
+  (when-not (premium-features/enable-cache-granular-controls?)
+    (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
+
+  (let [cnt (cache-config/invalidate! {:databases       database
+                                       :dashboards      dashboard
+                                       :questions       question
+                                       :with-overrides? (= include :overrides)})]
+    {:status (if (= cnt -1) 404 200)
+     :body   {:count   cnt
+              :message (case [(= include :overrides) (if (pos? cnt) 1 cnt)]
+                         [true -1]  (tru "Could not find a question for the criteria you've specified.")
+                         [true 0]   (tru "No cached results to invalidate.")
+                         [true 1]   (trun "Invalidated a cached result." "Invalidated {0} cached results." cnt)
+                         [false -1] (tru "Nothing to invalidate.")
+                         [false 0]  (tru "No cache configuration to invalidate.")
+                         [false 1]  (trun "Invalidated cache configuration." "Invalidated {0} cache configurations." cnt))}}))
+
+(api/define-routes)

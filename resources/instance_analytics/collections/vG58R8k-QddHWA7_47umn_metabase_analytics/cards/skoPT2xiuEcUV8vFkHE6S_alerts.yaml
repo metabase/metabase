@@ -371,4 +371,6 @@ serdes/meta:
 - id: skoPT2xiuEcUV8vFkHE6S
   label: alerts
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (13e6090)
+type: model

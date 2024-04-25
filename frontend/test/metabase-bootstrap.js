@@ -1,6 +1,7 @@
 import "regenerator-runtime/runtime";
 import "number-to-locale-string";
-import "metabase/css/index.css";
+import "metabase/css/vendor.css";
+import "metabase/css/index.module.css";
 
 window.MetabaseBootstrap = {
   "enable-xrays": true,

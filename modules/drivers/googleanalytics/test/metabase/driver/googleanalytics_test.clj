@@ -12,8 +12,10 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Card Database Field Table]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -45,6 +47,14 @@
                                                :schema nil
                                                :id     1}]})
     (driver/mbql->native :googleanalytics (update query :query (partial merge {:source-table 1})))))
+
+(deftest test-fingerprint-skipped-for-ga
+  (testing "Google Analytics doesn't support fingerprinting fields"
+    (let [fake-db (-> (mt/db)
+                      (assoc :engine :googleanalytics))]
+      (with-redefs [sync.fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
+        (is (= (sync.fingerprint/empty-stats-map 0)
+               (sync.fingerprint/fingerprint-fields-for-db! fake-db [(t2/select-one Table :id (mt/id :venues))] (fn [_ _]))))))))
 
 (deftest ^:parallel basic-compilation-test
   (testing "just check that a basic almost-empty MBQL query can be compiled"
@@ -97,7 +107,7 @@
   (mt/with-database-timezone-id nil
     (testing "\nsystem timezone should not affect the queries that get generated"
       (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-        (mt/with-system-timezone-id system-timezone-id
+        (mt/with-system-timezone-id! system-timezone-id
           (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                    (t/local-date "2019-11-18")
                                                    (t/local-time 0)
@@ -228,17 +238,16 @@
 (deftest almost-e2e-test-1
   ;; system timezone ID shouldn't affect generated query
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (mt/with-system-timezone-id system-timezone-id
+    (mt/with-system-timezone-id! system-timezone-id
       (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                (t/local-date "2019-11-18")
                                                (t/local-time 0)
                                                (t/zone-id system-timezone-id)))
-                                  (t/zone-id system-timezone-id))
+                                   (t/zone-id system-timezone-id))
         (is (= expected-ga-query
                (do-with-some-fields
-                (fn [{:keys [db event-action-field event-label-field date-field], :as objects}]
+                (fn [{:keys [db], :as objects}]
                   (qp.store/with-metadata-provider (u/the-id db)
-                    (qp.store/bulk-metadata :metadata/column (map u/the-id [event-action-field event-label-field date-field]))
                     (ga.qp/mbql->native (preprocessed-query-with-some-fields objects)))))))))))
 
 ;; this was the above query before it was preprocessed. Make sure we actually handle everything correctly end-to-end
@@ -257,7 +266,7 @@
 
 (deftest almost-e2e-test-2
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (mt/with-system-timezone-id system-timezone-id
+    (mt/with-system-timezone-id! system-timezone-id
       (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                (t/local-date "2019-11-18")
                                                (t/local-time 0)
@@ -265,14 +274,14 @@
                                   (t/zone-id system-timezone-id))
         (is (= expected-ga-query
                (do-with-some-fields
-                (comp qp/compile query-with-some-fields))))))))
+                (comp qp.compile/compile query-with-some-fields))))))))
 
 ;; ok, now do the same query again, but run the entire QP pipeline, swapping out a few things so nothing is actually
 ;; run externally.
 (deftest almost-e2e-test-3
   (testing "system timezone ID shouldn't affect generated query"
     (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-      (mt/with-system-timezone-id system-timezone-id
+      (mt/with-system-timezone-id! system-timezone-id
         (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                  (t/local-date "2019-11-18")
                                                  (t/local-time 0)
@@ -284,17 +293,17 @@
                                                                :base_type    :type/Text})]
             (do-with-some-fields
              (fn [objects]
-               (let [query   (query-with-some-fields objects)
-                     cols    (for [col [{:name "ga:eventLabel"}
-                                        {:name "ga:totalEvents", :base_type :type/Text}]]
-                               (#'ga.execute/add-col-metadata query col))
-                     rows    [["Toucan Sighting" 1000]]
-                     context {:timeout (u/seconds->ms 2)
-                              :runf    (fn [_query rff context]
-                                         (let [metadata {:cols cols}]
-                                           (qp.context/reducef rff context metadata rows)))}
-                     qp      (fn [query]
-                               (qp/process-query query context))]
+               (let [query (query-with-some-fields objects)
+                     cols  (for [col [{:name "ga:eventLabel"}
+                                      {:name "ga:totalEvents", :base_type :type/Text}]]
+                             (#'ga.execute/add-col-metadata query col))
+                     rows  [["Toucan Sighting" 1000]]
+                     qp    (fn [query]
+                             (binding [qp.pipeline/*query-timeout-ms* (u/seconds->ms 2)
+                                       qp.pipeline/*run*              (fn [_query rff]
+                                                                        (let [metadata {:cols cols}]
+                                                                          (qp.pipeline/*reduce* rff metadata rows)))]
+                               (qp/process-query query)))]
                  (is (partial=
                       {:row_count 1
                        :status    :completed
@@ -313,12 +322,12 @@
                                                        :base_type         :type/Text
                                                        :effective_type    :type/Text
                                                        :coercion_strategy nil}
-                                                      {:name         "metric"
-                                                       :display_name "ga:totalEvents"
-                                                       :source       :aggregation
-                                                       :description  "This is ga:totalEvents"
-                                                       :base_type    :type/Text
-                                                       :effective_type    :type/Text}]
+                                                      {:name           "metric"
+                                                       :display_name   "ga:totalEvents"
+                                                       :source         :aggregation
+                                                       :description    "This is ga:totalEvents"
+                                                       :base_type      :type/Text
+                                                       :effective_type :type/Text}]
                                    :results_timezone system-timezone-id}}
                       (-> (tu/doall-recursive (qp query))
                           (update-in [:data :cols] #(for [col %]
@@ -329,7 +338,7 @@
 (deftest almost-e2e-time-interval-test
   (testing "Make sure filtering by the previous 4 months actually filters against the right months (#10701)"
     (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-      (mt/with-system-timezone-id system-timezone-id
+      (mt/with-system-timezone-id! system-timezone-id
         (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                  (t/local-date "2019-11-18")
                                                  (t/local-time 0)
@@ -348,7 +357,7 @@
                                     :breakout     [[:field (:id date-field) {:temporal-unit :day}]]}
                          :type     :query
                          :database (:id db)}
-                        qp/compile
+                        qp.compile/compile
                         :query
                         (select-keys [:start-date :end-date :dimensions :metrics :sort])))
                  "Last 4 months should includy July, August, September, and October (July 1st - October 31st)"))))))))

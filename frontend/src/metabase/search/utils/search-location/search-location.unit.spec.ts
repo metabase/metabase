@@ -1,11 +1,10 @@
+import { SearchFilterKeys } from "metabase/search/constants";
+import type { SearchAwareLocation } from "metabase/search/types";
 import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
   isSearchPageLocation,
 } from "metabase/search/utils";
-
-import type { SearchAwareLocation } from "metabase/search/types";
-import { SearchFilterKeys } from "metabase/search/constants";
 
 describe("isSearchPageLocation", () => {
   it("should return true for a search page location", () => {

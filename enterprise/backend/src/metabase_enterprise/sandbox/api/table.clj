@@ -1,20 +1,19 @@
 (ns metabase-enterprise.sandbox.api.table
   (:require
-   [clojure.set :as set]
    [compojure.core :refer [GET]]
+   [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
-   [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.table :as table :refer [Table]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn ^:private find-gtap-question :- [:maybe (mi/InstanceOf Card)]
+(mu/defn ^:private find-gtap-question :- [:maybe (ms/InstanceOf Card)]
   "Find the associated GTAP question (if there is one) for the given `table-or-table-id` and
   `user-or-user-id`. Returns nil if no question was found."
   [table-or-table-id user-or-user-id]
@@ -28,18 +27,17 @@
                            [:= :pgm.user_id (u/the-id user-or-user-id)]]}))
 
 (mu/defn only-sandboxed-perms? :- :boolean
-  "Returns true if the user has only segemented and not full table permissions. If the user has full table permissions
-  we wouldn't want to apply this segment filtering."
-  [table :- (mi/InstanceOf Table)]
-  (and
-   (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                         (perms/table-query-path table)))
-   (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                    (perms/table-sandboxed-query-path table))))
+  "Returns true if the user has sandboxed permissions. If a sandbox policy exists, it overrides existing permission on
+  the table."
+  [table :- (ms/InstanceOf Table)]
+  (contains? (->> (sandbox.api.util/enforced-sandboxes-for api/*current-user-id*)
+                  (map :table_id)
+                  set)
+             (u/the-id table)))
 
 (mu/defn ^:private query->fields-ids :- [:maybe [:sequential :int]]
   [{{{:keys [fields]} :query} :dataset_query} :- [:maybe :map]]
-  (mbql.u/match fields [:field (id :guard integer?) _] id))
+  (lib.util.match/match fields [:field (id :guard integer?) _] id))
 
 (defn- maybe-filter-fields [table query-metadata-response]
   ;; If we have sandboxed permissions and the associated GTAP limits the fields returned, we need make sure the
@@ -63,21 +61,19 @@
   (let [table            (api/check-404 (t2/select-one Table :id id))
         sandboxed-perms? (only-sandboxed-perms? table)
         thunk            (fn []
-                           (maybe-filter-fields
+                           (api.table/fetch-query-metadata
                             table
-                            (api.table/fetch-query-metadata
-                             table
-                             {:include-sensitive-fields?    include_sensitive_fields
-                              :include-hidden-fields?       include_hidden_fields
-                              :include-editable-data-model? include_editable_data_model})))]
+                            {:include-sensitive-fields?    include_sensitive_fields
+                             :include-hidden-fields?       include_hidden_fields
+                             :include-editable-data-model? include_editable_data_model}))]
     ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can see the
     ;; metadata
     (if sandboxed-perms?
-      (binding [api/*current-user-permissions-set* (atom
-                                                    (set/union
-                                                     @api/*current-user-permissions-set*
-                                                     (mi/perms-objects-set table :read)))]
-        (thunk))
+      (maybe-filter-fields
+       table
+       (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
+         (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
+           (thunk))))
       (thunk))))
 
 (api/define-routes)

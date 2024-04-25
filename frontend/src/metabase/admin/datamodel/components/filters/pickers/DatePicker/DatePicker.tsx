@@ -1,9 +1,10 @@
+import cx from "classnames";
 import * as React from "react";
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
 
-import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
+import CS from "metabase/css/core/index.css";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   getAfterDateFilter,
   getBeforeDateFilter,
@@ -21,17 +22,17 @@ import {
   isNextDateFilter,
   isOnDateFilter,
   isPreviousDateFilter,
-} from "metabase-lib/queries/utils/date-filters";
-import type Filter from "metabase-lib/queries/structured/Filter";
+} from "metabase-lib/v1/queries/utils/date-filters";
+import { isStartingFrom } from "metabase-lib/v1/queries/utils/query-time";
 
+import CurrentPicker from "./CurrentPicker";
 import DatePickerFooter from "./DatePickerFooter";
 import DatePickerHeader from "./DatePickerHeader";
-import ExcludeDatePicker from "./ExcludeDatePicker";
-import DatePickerShortcuts from "./DatePickerShortcuts";
 import type { DateShortcutOptions } from "./DatePickerShortcutOptions";
-import CurrentPicker from "./CurrentPicker";
-import { NextPicker, PastPicker } from "./RelativeDatePicker";
+import DatePickerShortcuts from "./DatePickerShortcuts";
+import ExcludeDatePicker from "./ExcludeDatePicker";
 import { AfterPicker, BeforePicker, BetweenPicker } from "./RangeDatePicker";
+import { NextPicker, PastPicker } from "./RelativeDatePicker";
 import SingleDatePicker from "./SingleDatePicker";
 
 export type DatePickerGroup = "relative" | "specific";
@@ -180,7 +181,7 @@ const DatePicker: React.FC<Props> = props => {
     <div className={cx(className)} data-testid="date-picker">
       {!operator || showShortcuts ? (
         <DatePickerShortcuts
-          className="p2"
+          className={CS.p2}
           primaryColor={primaryColor}
           dateShortcutOptions={dateShortcutOptions}
           onFilterChange={filter => {
@@ -205,7 +206,7 @@ const DatePicker: React.FC<Props> = props => {
           {Widget && (
             <Widget
               {...props}
-              className="flex-full p2"
+              className={cx(CS.flexFull, CS.p2)}
               filter={filter}
               onCommit={onCommit}
               primaryColor={primaryColor}

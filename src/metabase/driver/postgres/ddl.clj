@@ -7,8 +7,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.ddl :as sql.ddl]
    [metabase.public-settings :as public-settings]
-   [metabase.query-processor :as qp]
-   [metabase.util.i18n :refer [trs]]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -38,7 +37,7 @@
 
 (defmethod ddl.i/refresh! :postgres
   [driver database definition dataset-query]
-  (let [{:keys [query params]} (qp/compile dataset-query)]
+  (let [{:keys [query params]} (qp.compile/compile dataset-query)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
      database
@@ -112,12 +111,10 @@
          (set-statement-timeout! tx)
          (loop [[[step stepfn] & remaining] steps]
            (let [result (try (stepfn tx)
-                             (log/info (trs "Step {0} was successful for db {1}"
-                                            step (:name database)))
+                             (log/infof "Step %s was successful for db %s" step (:name database))
                              ::valid
                              (catch Exception e
-                               (log/warn (trs "Error in `{0}` while checking for model persistence permissions." step))
-                               (log/warn e)
+                               (log/warnf e "Error in `%s` while checking for model persistence permissions." step)
                                step))]
              (cond (and (= result ::valid) remaining)
                    (recur remaining)

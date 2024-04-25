@@ -346,3 +346,14 @@
              [:value {:semantic-type :type/Country, :base-type :type/Text, :lib/uuid (str (random-uuid))}
               "United States"]
              "Country")))))
+
+(deftest ^:parallel fresh-uuids-test
+  (is (=? [:=
+           {:lib/uuid (partial not= "8044c5a1-10ab-4122-8663-aa544074c082")}
+           [:field {:lib/uuid (partial not= "36a2abff-e4ae-4752-b232-4885e08f52ea")} 5]
+           "abc"]
+          (lib.util/fresh-uuids
+           [:=
+            {:lib/uuid "8044c5a1-10ab-4122-8663-aa544074c082"}
+            [:field {:lib/uuid "36a2abff-e4ae-4752-b232-4885e08f52ea"} 5]
+            "abc"]))))

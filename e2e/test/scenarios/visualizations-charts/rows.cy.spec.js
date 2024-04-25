@@ -35,7 +35,7 @@ describe("scenarios > visualizations > rows", () => {
           { visitQuestion: true },
         );
 
-        cy.get(".Visualization").within(() => {
+        cy.findByTestId("query-visualization-root").within(() => {
           ["a", "b", "c", "d", "e", "f"].forEach(letter => {
             cy.findByText(letter);
           });
@@ -44,7 +44,7 @@ describe("scenarios > visualizations > rows", () => {
     );
   });
 
-  it(`should display a row chart`, () => {
+  it("should display a row chart", () => {
     cy.createNativeQuestion(
       {
         name: "14285",
@@ -70,7 +70,7 @@ describe("scenarios > visualizations > rows", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("query-visualization-root").within(() => {
       ["a", "b", "c", "d", "e", "f"].forEach(letter => {
         cy.findByText(letter);
       });

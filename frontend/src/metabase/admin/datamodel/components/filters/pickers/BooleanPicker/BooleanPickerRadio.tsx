@@ -1,10 +1,9 @@
 import _ from "underscore";
 
 import { useToggle } from "metabase/hooks/use-toggle";
-import type Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 
 import { RadioContainer, Toggle, FilterRadio } from "./BooleanPicker.styled";
-
 import { OPTIONS, EXPANDED_OPTIONS } from "./constants";
 import { getValue } from "./utils";
 

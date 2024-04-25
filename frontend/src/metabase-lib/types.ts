@@ -6,6 +6,7 @@ import type {
   RowValue,
   TableId,
 } from "metabase-types/api";
+
 import type {
   BOOLEAN_FILTER_OPERATORS,
   COORDINATE_FILTER_OPERATORS,
@@ -37,13 +38,18 @@ export type CardMetadata = unknown & { _opaque: typeof CardMetadata };
 declare const SegmentMetadata: unique symbol;
 export type SegmentMetadata = unknown & { _opaque: typeof SegmentMetadata };
 
-declare const MetricMetadata: unique symbol;
-export type MetricMetadata = unknown & { _opaque: typeof MetricMetadata };
+declare const LegacyMetricMetadata: unique symbol;
+export type LegacyMetricMetadata = unknown & {
+  _opaque: typeof LegacyMetricMetadata;
+};
 
 declare const AggregationClause: unique symbol;
 export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
 
-export type Aggregable = AggregationClause | MetricMetadata | ExpressionClause;
+export type Aggregable =
+  | AggregationClause
+  | LegacyMetricMetadata
+  | ExpressionClause;
 
 declare const AggregationOperator: unique symbol;
 export type AggregationOperator = unknown & {
@@ -63,6 +69,8 @@ export type OrderByDirection = "asc" | "desc";
 
 declare const FilterClause: unique symbol;
 export type FilterClause = unknown & { _opaque: typeof FilterClause };
+
+export type Filterable = FilterClause | ExpressionClause | SegmentMetadata;
 
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
@@ -135,8 +143,11 @@ type TableInlineDisplayInfo = Pick<
 
 export type ColumnDisplayInfo = {
   name: string;
+  description?: string;
   displayName: string;
   longDisplayName: string;
+  semanticType: string | null;
+  effectiveType: string;
 
   isCalculated: boolean;
   isFromJoin: boolean;
@@ -144,11 +155,50 @@ export type ColumnDisplayInfo = {
   isAggregation: boolean;
   isBreakout: boolean;
   table?: TableInlineDisplayInfo;
+  fingerprint?: FingerprintDisplayInfo;
 
   breakoutPosition?: number;
   filterPositions?: number[];
   orderByPosition?: number;
   selected?: boolean; // used in aggregation and field clauses
+};
+
+export type FingerprintDisplayInfo = {
+  global?: FingerprintGlobalDisplayInfo;
+  type?: FingerprintTypeDisplayInfo;
+};
+
+export type FingerprintGlobalDisplayInfo = {
+  distinctCount?: number;
+  "nil%"?: number;
+};
+
+export type FingerprintTypeDisplayInfo = {
+  "type/Text"?: TextFingerprintDisplayInfo;
+  "type/Number"?: NumberFingerprintDisplayInfo;
+  "type/DateTime"?: DateTimeFingerprintDisplayInfo;
+};
+
+export type TextFingerprintDisplayInfo = {
+  averageLength: number;
+  percentEmail: number;
+  percentJson: number;
+  percentState: number;
+  percentUrl: number;
+};
+
+export type NumberFingerprintDisplayInfo = {
+  avg: number;
+  max: number;
+  min: number;
+  q1: number;
+  q3: number;
+  sd: number;
+};
+
+export type DateTimeFingerprintDisplayInfo = {
+  earliest: string;
+  latest: string;
 };
 
 export type ColumnGroupDisplayInfo = TableDisplayInfo & {
@@ -174,7 +224,7 @@ export type AggregationOperatorDisplayInfo = {
   selected?: boolean;
 };
 
-export type MetricDisplayInfo = {
+export type LegacyMetricDisplayInfo = {
   name: string;
   displayName: string;
   longDisplayName: string;
@@ -377,6 +427,7 @@ export type DrillThru = unknown & { _opaque: typeof DrillThru };
 
 export type DrillThruType =
   | "drill-thru/automatic-insights"
+  | "drill-thru/column-extract"
   | "drill-thru/column-filter"
   | "drill-thru/distribution"
   | "drill-thru/fk-details"
@@ -394,6 +445,22 @@ export type DrillThruType =
   | "drill-thru/zoom-in.timeseries";
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
+
+export type ColumnExtraction = {
+  key: ColumnExtractionKey;
+  displayName: string;
+};
+
+declare const ColumnExtractionKey: unique symbol;
+export type ColumnExtractionKey = unknown & {
+  _opaque: typeof ColumnExtractionKey;
+};
+
+export type ColumnExtractDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/column-extract"> & {
+    displayName: string;
+    extractions: ColumnExtraction[];
+  };
 
 export type QuickFilterDrillThruOperator =
   | "="
@@ -459,6 +526,7 @@ export type ZoomTimeseriesDrillThruInfo =
   };
 
 export type DrillThruDisplayInfo =
+  | ColumnExtractDrillThruInfo
   | QuickFilterDrillThruInfo
   | PKDrillThruInfo
   | ZoomDrillThruInfo

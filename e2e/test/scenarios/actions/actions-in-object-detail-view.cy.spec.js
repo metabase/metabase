@@ -1,7 +1,6 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   popover,
   resetTestTable,
@@ -19,6 +18,8 @@ const FIRST_SCORE_ROW_ID = 11;
 const SECOND_SCORE_ROW_ID = 12;
 const UPDATED_SCORE = 987654321;
 const UPDATED_SCORE_FORMATTED = "987,654,321";
+
+const { ALL_USERS_GROUP } = USER_GROUPS;
 
 const DASHBOARD = {
   name: "Test dashboard",
@@ -39,6 +40,15 @@ describe(
       resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
       restore("postgres-writable");
       asAdmin(() => {
+        cy.updatePermissionsGraph({
+          [ALL_USERS_GROUP]: {
+            [WRITABLE_DB_ID]: {
+              "view-data": "unrestricted",
+              "create-queries": "query-builder-and-native",
+            },
+          },
+        });
+
         resyncDatabase({
           dbId: WRITABLE_DB_ID,
           tableName: WRITABLE_TEST_TABLE,
@@ -76,9 +86,7 @@ describe(
 
       it("does not show model actions in model visualization on a dashboard", () => {
         asAdmin(() => {
-          cy.get("@dashboardId").then(dashboardId => {
-            visitDashboard(dashboardId);
-          });
+          visitDashboard("@dashboardId");
 
           cy.findByTestId("dashcard").within(() => {
             assertActionsDropdownNotExists();

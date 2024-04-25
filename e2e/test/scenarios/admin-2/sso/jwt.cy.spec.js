@@ -11,6 +11,7 @@ import {
   crudGroupMappingsWidget,
   checkGroupConsistencyAfterDeletingMappings,
 } from "./shared/group-mappings-widget";
+import { getUserProvisioningInput, getSuccessUi } from "./shared/helpers";
 
 describeEE("scenarios > admin > settings > SSO > JWT", () => {
   beforeEach(() => {
@@ -45,6 +46,17 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     popover().findByText("Resume").click();
     cy.wait("@updateSetting");
     getJwtCard().findByText("Active").should("exist");
+  });
+
+  it("should allow the user to enable/disable user provisioning", () => {
+    setupJwt();
+    cy.visit("/admin/settings/authentication/jwt");
+
+    getUserProvisioningInput().label.click();
+    cy.button("Save changes").click();
+    cy.wait("@updateSettings");
+
+    getSuccessUi().should("exist");
   });
 
   it("should allow to reset jwt settings", () => {

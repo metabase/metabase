@@ -1,11 +1,11 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-import mockDate from "mockdate";
 import userEvent from "@testing-library/user-event";
-import { render, screen } from "__support__/ui";
+import mockDate from "mockdate";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
-import MetabaseSettings from "metabase/lib/settings";
+import { render, screen } from "__support__/ui";
 import { updateMomentStartOfWeek } from "metabase/lib/i18n";
+import MetabaseSettings from "metabase/lib/settings";
+
 import type { CalendarProps } from "./Calendar";
 import Calendar from "./Calendar";
 
@@ -14,7 +14,7 @@ describe("Calendar", () => {
     mockDate.reset();
   });
 
-  it("should switch months correctly", () => {
+  it("should switch months correctly", async () => {
     mockDate.set("2018-01-12T12:00:00Z", 0);
     setup({ selected: moment("2018-01-01") });
 
@@ -23,11 +23,11 @@ describe("Calendar", () => {
 
     expect(screen.getByText("January 2018")).toBeInTheDocument();
 
-    userEvent.click(PREVIOUS);
+    await userEvent.click(PREVIOUS);
     expect(screen.getByText("December 2017")).toBeInTheDocument();
 
-    userEvent.click(NEXT);
-    userEvent.click(NEXT);
+    await userEvent.click(NEXT);
+    await userEvent.click(NEXT);
     expect(screen.getByText("February 2018")).toBeInTheDocument();
   });
 

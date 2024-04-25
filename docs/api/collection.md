@@ -25,6 +25,8 @@ Fetch a list of all Collections that the current user has read permissions for (
   By default, admin users will see all collections. To hide other user's collections pass in
   `?exclude-other-user-collections=true`.
 
+  If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`.
+
 ### PARAMS:
 
 *  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
@@ -32,6 +34,8 @@ Fetch a list of all Collections that the current user has read permissions for (
 *  **`exclude-other-user-collections`** nullable value must be a valid boolean string ('true' or 'false').
 
 *  **`namespace`** nullable value must be a non-blank string.
+
+*  **`personal-only`** nullable value must be a valid boolean string ('true' or 'false').
 
 ## `GET /api/collection/:id`
 

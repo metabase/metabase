@@ -1,4 +1,4 @@
-import { restore, popover, modal } from "e2e/support/helpers";
+import { restore, popover } from "e2e/support/helpers";
 
 describe("metabase > scenarios > navbar > new menu", () => {
   beforeEach(() => {
@@ -32,10 +32,12 @@ describe("metabase > scenarios > navbar > new menu", () => {
       cy.findByText("Collection").click();
     });
 
-    modal().within(() => {
-      cy.findByText("Our analytics");
+    cy.findByTestId("new-collection-modal").then(modal => {
+      cy.findByTestId("collection-picker-button").findByText("Our analytics");
 
-      cy.findByLabelText("Name").type("Test collection");
+      cy.findByPlaceholderText("My new fantastic collection").type(
+        "Test collection",
+      );
       cy.findByLabelText("Description").type("Test collection description");
 
       cy.findByText("Create").click();

@@ -1,7 +1,8 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
-import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
+
 import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
+import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Popover, Text, Title } from "metabase/ui";
@@ -16,6 +17,7 @@ export type PublicLinkPopoverProps = {
   extensions?: ExportFormatType[];
   selectedExtension?: ExportFormatType | null;
   setSelectedExtension?: (extension: ExportFormatType) => void;
+  onCopyLink?: () => void;
 };
 
 export const PublicLinkPopover = ({
@@ -28,6 +30,7 @@ export const PublicLinkPopover = ({
   extensions = [],
   selectedExtension,
   setSelectedExtension,
+  onCopyLink,
 }: PublicLinkPopoverProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
 
@@ -52,7 +55,7 @@ export const PublicLinkPopover = ({
   };
 
   return (
-    <Popover opened={isOpen} onClose={onClose} withinPortal>
+    <Popover opened={isOpen} onClose={isOpen ? onClose : undefined}>
       <Popover.Target>
         <Box onClick={isOpen ? onClose : undefined}>{target}</Box>
       </Popover.Target>
@@ -78,6 +81,7 @@ export const PublicLinkPopover = ({
             onChangeExtension={setSelectedExtension}
             removeButtonLabel={t`Remove public link`}
             removeTooltipLabel={t`Affects both public link and embed URL for this dashboard`}
+            onCopy={onCopyLink}
           />
         </Box>
       </Popover.Dropdown>

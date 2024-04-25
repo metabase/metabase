@@ -31,8 +31,8 @@
                              first)]
         (testing "check a card bookmark has `:display` key"
           (is (contains? card-result :display)))
-        (testing "check a card bookmark has `:dataset` key"
-          (is (contains? card-result :dataset))))
+        (testing "check a card bookmark has `:type` key"
+          (is (contains? card-result :type))))
       (testing "check that we can bookmark a Dashboard"
         (is (= (u/the-id dashboard)
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/dashboard/" (u/the-id dashboard)))

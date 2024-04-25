@@ -1,16 +1,20 @@
 (ns metabase.query-processor.util.nest-query-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;; TODO -- this is duplicated with [[metabase.query-processor.util.add-alias-info-test/remove-source-metadata]]
@@ -25,7 +29,7 @@
 (defn- nest-expressions [query]
   (driver/with-driver (or driver/*driver* :h2)
     (-> query
-        qp/preprocess
+        qp.preprocess/preprocess
         :query
         nest-query/nest-expressions
         remove-source-metadata)))
@@ -67,7 +71,7 @@
                            :breakout    [$price]
                            :aggregation [[:count]]
                            :fields      [[:expression "double_price"]]})
-                        qp/preprocess
+                        qp.preprocess/preprocess
                         add/add-alias-info
                         nest-expressions))))))
 
@@ -118,7 +122,7 @@
                                            !day.date
                                            !month.date]
                              :limit       1})
-                          qp/preprocess
+                          qp.preprocess/preprocess
                           add/add-alias-info
                           nest-expressions)))))))
 
@@ -244,7 +248,7 @@
   (testing "Ignores source-query from joins (#20809)"
     (let [query {:source-table 2
                  :expressions  {"CC" [:+ 1 1]}
-                 :fields       [[:field 33 {:join-alias "Question 4918",}]
+                 :fields       [[:field 33 {:join-alias "Question 4918"}]
                                 [:field "count" {:join-alias "Question 4918"}]]
                  :joins        [{:alias           "Question 4918"
                                  :strategy        :left-join
@@ -254,7 +258,7 @@
                                                     {:join-alias "Question 4918"}]]
                                  :condition       [:=
                                                    [:field 5 nil]
-                                                   [:field 33 {:join-alias "Question 4918",}]]
+                                                   [:field 33 {:join-alias "Question 4918"}]]
                                  :source-card-id  4918
                                  :source-query    {:source-table 4
                                                    ;; nested query has filter values with join-alias that should not
@@ -521,7 +525,7 @@
                                             :alias        "CategoriesStats"
                                             :fields       :all}]
                              :limit       3})
-                          qp/preprocess
+                          qp.preprocess/preprocess
                           add/add-alias-info
                           nest-expressions)))))))
 
@@ -639,7 +643,7 @@
                                               :alias        "PRODUCTS__via__PRODUCT_ID"
                                               :fk-field-id  %product-id
                                               :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]})
-                            qp/preprocess
+                            qp.preprocess/preprocess
                             add/add-alias-info
                             nest-expressions))))))))
 
@@ -664,7 +668,7 @@
                          :breakout           [[:field "CATEGORY_2" {:base-type          :type/Text
                                                                     ::add/source-table  ::add/source
                                                                     ::add/source-alias  "CATEGORY_2"
-                                                                    ::add/desired-alias "CATEGORY_2"
+                                                                    ::add/desired-alias "CATEGORY"
                                                                     ::add/position      0}]]
                          :aggregation        [[:aggregation-options [:count] {:name               "count"
                                                                               ::add/desired-alias "count"
@@ -672,7 +676,7 @@
                          :order-by           [[:asc [:field "CATEGORY_2" {:base-type          :type/Text
                                                                           ::add/source-table  ::add/source
                                                                           ::add/source-alias  "CATEGORY_2"
-                                                                          ::add/desired-alias "CATEGORY_2"
+                                                                          ::add/desired-alias "CATEGORY"
                                                                           ::add/position      0}]]]
                          :limit              1})
                       (-> (lib.tu.macros/mbql-query products
@@ -681,7 +685,142 @@
                              :aggregation [[:count]]
                              :order-by    [[:asc [:expression"CATEGORY"]]]
                              :limit       1})
-                          qp/preprocess
+                          qp.preprocess/preprocess
                           add/add-alias-info
                           :query
                           nest-query/nest-expressions)))))))
+
+(deftest ^:parallel uniquify-aliases-test-2
+  (driver/with-driver :h2
+    (mt/dataset test-data
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (testing "multi-stage query with an expression name that matches a table column (#39059)"
+          (is (=? (lib.tu.macros/$ids orders
+                    {:source-query {:fields       [[:field %id          {}]
+                                                   [:field %subtotal    {}]
+                                                   ;; Then exported as DISCOUNT from the middle layer.
+                                                   [:field "DISCOUNT_2" {:base-type          :type/Float
+                                                                         ::add/source-alias  "DISCOUNT_2"
+                                                                         ::add/desired-alias "DISCOUNT"}]]
+                                    :source-query {:expressions  {"DISCOUNT" [:coalesce [:field %discount {}] 0]}
+                                                   :fields       [[:field %id {::add/desired-alias "ID"}]
+                                                                  [:field %subtotal {::add/desired-alias "SUBTOTAL"}]
+                                                                  [:field %discount {::add/desired-alias "DISCOUNT"}]
+                                                                  ;; Exported as DISCOUNT_2 from this inner query.
+                                                                  [:expression "DISCOUNT"
+                                                                   {::add/desired-alias "DISCOUNT_2"}]]
+                                                   :source-table $$orders}}
+                     :source-query/model? true
+                     :fields              [[:field "ID"       {}]
+                                           [:field "SUBTOTAL" {}]
+                                           [:field "DISCOUNT" {:base-type          :type/Float
+                                                               ::add/source-alias  "DISCOUNT"
+                                                               ::add/desired-alias "DISCOUNT"}]]})
+                  (-> (lib.tu.macros/$ids orders
+                        {:type     :query
+                         :database (meta/id)
+                         :query    {:source-query {:expressions  {"DISCOUNT" [:coalesce $discount 0]}
+                                                   :fields       [$id
+                                                                  $subtotal
+                                                                  [:expression "DISCOUNT"]]
+                                                   :source-table $$orders}
+                                    :source-query/model? true
+                                    :fields              [[:field "ID"       {:base-type :type/Integer}]
+                                                          [:field "SUBTOTAL" {:base-type :type/Float}]
+                                                          [:field "DISCOUNT" {:base-type :type/Float}]]}})
+                      qp.preprocess/preprocess
+                      add/add-alias-info
+                      :query
+                      nest-query/nest-expressions))))))))
+
+(defn- readable-query
+  "Attempt to make the results of [[add/add-alias-info]] and [[nest-query/nest-expressions]] a little less noisy so
+  they're actually readable/debuggable."
+  [query]
+  (letfn [(inner-query? [form]
+            (and (map? form)
+                 ((some-fn :source-query :source-table) form)))
+          (inner-query [form]
+            (select-keys form [:source-query
+                               :expressions
+                               :breakout
+                               :aggregation
+                               :fields]))
+          (ref-options-map? [form]
+            (and (map? form)
+                 (::add/desired-alias form)))
+          (table-symbol [table-id]
+            (let [table-name (:name (lib.metadata/table
+                                     (qp.store/metadata-provider)
+                                     table-id))]
+              (symbol (str "$$" (u/lower-case-en table-name)))))
+          (ref-options-map [form]
+            (-> (select-keys form [::add/source-table ::add/source-alias ::add/desired-alias :temporal-unit :bucketing :join-alias])
+                (set/rename-keys {::add/source-table :table, ::add/source-alias :source, ::add/desired-alias :desired})
+                (update :table (fn [table]
+                                 (if (integer? table)
+                                   (table-symbol table)
+                                   (if (= table ::add/source)
+                                     :source
+                                     table))))))
+          (field-ref? [form]
+            (and (vector? form)
+                 (= (first form) :field)))
+          (field-symbol [field-id]
+            (let [field-name (:name (lib.metadata/field (qp.store/metadata-provider) field-id))]
+              (symbol (str \% (u/->kebab-case-en field-name)))))
+          (field-ref [form]
+            (let [[_tag id-or-name opts] form]
+              [:field
+               (cond-> id-or-name (pos-int? id-or-name) field-symbol)
+               opts]))]
+    (walk/postwalk
+     (fn [form]
+       (cond-> form
+         (inner-query? form)     inner-query
+         (field-ref? form)       field-ref
+         (ref-options-map? form) ref-options-map))
+     query)))
+
+(deftest ^:parallel do-not-remove-fields-when-referred-to-with-nominal-refs-test
+  (testing "Don't remove fields if they are used in the next stage with a nominal field literal ref"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (driver/with-driver :h2
+        (let [query (lib.tu.macros/$ids products
+                      {:source-query {:source-table $$products
+                                      :fields       [[:field %id nil]
+                                                     [:field %ean nil]
+                                                     [:field %title nil]
+                                                     [:field %category nil]
+                                                     [:field %vendor nil]
+                                                     [:field %price nil]
+                                                     [:field %rating nil]
+                                                     [:field %created-at {:temporal-unit :default}]]},
+                       :expressions {"pivot-grouping" [:abs 0]}
+                       :breakout    [[:field "CATEGORY" {:base-type :type/Text}]
+                                     [:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]
+                                     [:expression "pivot-grouping"]]
+                       :aggregation [[:aggregation-options [:count] {:name "count"}]]})
+              query' (add/add-alias-info query)]
+          (testing (str "with alias info:\n" (u/pprint-to-str (readable-query query')))
+            (is (=? '{:source-query {:source-query {:fields [[:field %id {}]
+                                                             [:field %ean {}]
+                                                             [:field %title {}]
+                                                             [:field %category {}]
+                                                             [:field %vendor {}]
+                                                             [:field %price {}]
+                                                             [:field %rating {}]
+                                                             [:field %created-at {}]]}
+                                     :expressions {"pivot-grouping" [:abs 0]}
+                                   ;; TODO -- these should PROBABLY be nominal field literal refs (string name, not
+                                   ;; integer ID), but we can fix that later.
+                                     :fields [[:field %category {}]
+                                              [:field %created-at {}]
+                                              [:expression "pivot-grouping" {}]]}
+                      :breakout    [[:field "CATEGORY" {}]
+                                    [:field "CREATED_AT" {}]
+                                    [:field "pivot-grouping" {}]]
+                      :aggregation [[:aggregation-options [:count] {}]]}
+                    (-> query'
+                        nest-query/nest-expressions
+                        readable-query)))))))))

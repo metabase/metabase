@@ -8,7 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -16,23 +16,26 @@
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [Card]]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database
     :as database
     :refer [Database protected-password]]
    [metabase.models.field :refer [Field readable-fields-only]]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.secret :as secret]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.sample-data :as sample-data]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.schedules :as sync.schedules]
@@ -88,10 +91,15 @@
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
   [dbs :- [:maybe [:sequential :map]]]
   (for [db dbs]
-    (assoc db :native_permissions (if (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                        (perms/adhoc-native-query-path (u/the-id db)))
-                                    :write
-                                    :none))))
+    (assoc db
+           :native_permissions
+           (if (= :query-builder-and-native
+                  (data-perms/full-db-permission-for-user
+                   api/*current-user-id*
+                   :perms/create-queries
+                   (u/the-id db)))
+             :write
+             :none))))
 
 (defn- card-database-supports-nested-queries? [{{database-id :database, :as database} :dataset_query, :as _card}]
   (when database-id
@@ -123,7 +131,7 @@
   with those aggregations as source queries. This function determines whether `card` is using one of those queries so
   we can filter it out in Clojure-land."
   [{{{aggregations :aggregation} :query} :dataset_query}]
-  (mbql.u/match aggregations #{:cum-count :cum-sum}))
+  (lib.util.match/match aggregations #{:cum-count :cum-sum}))
 
 (defn card-can-be-used-as-source-query?
   "Does `card`'s query meet the conditions required for it to be used as a source query for another query?"
@@ -138,14 +146,13 @@
                    (when-let [db (t2/select-one Database :id db-id)]
                      (driver/database-supports? (:engine db) :nested-queries db))
                    (catch Throwable e
-                     (log/error e (tru "Error determining whether Database supports nested queries")))))
+                     (log/error e "Error determining whether Database supports nested queries"))))
                (t2/select-pks-set Database))))
 
-(defn- source-query-cards
-  "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables). Since Cards can be either
-  `dataset` or `card`, pass in the `question-type` of `:dataset` or `:card`"
-  [question-type & {:keys [additional-constraints xform], :or {xform identity}}]
-  {:pre [(#{:card :dataset} question-type)]}
+(mu/defn ^:private source-query-cards
+  "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
+  [card-type :- ::card/type
+   & {:keys [additional-constraints xform], :or {xform identity}}]
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
      (comp (map (partial mi/do-after-select Card))
@@ -167,7 +174,7 @@
                                  :where    (into [:and
                                                   [:not= :result_metadata nil]
                                                   [:= :archived false]
-                                                  [:= :dataset (= question-type :dataset)]
+                                                  [:= :type (u/qualified-name card-type)]
                                                   [:in :database_id ids-of-dbs-that-support-source-queries]
                                                   (collection/visible-collection-ids->honeysql-filter-clause
                                                    (collection/permissions-set->visible-collection-ids
@@ -175,34 +182,37 @@
                                                  additional-constraints)
                                  :order-by [[:%lower.name :asc]]}))))
 
-(defn- source-query-cards-exist?
+(mu/defn ^:private source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
-  [question-type]
-  (seq (source-query-cards question-type :xform (take 1))))
+  [card-type :- ::card/type]
+  (seq (source-query-cards card-type :xform (take 1))))
 
-(defn- cards-virtual-tables
+(mu/defn ^:private cards-virtual-tables
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
    Builder.)"
-  [question-type & {:keys [include-fields?]}]
-  (for [card (source-query-cards question-type)]
+  [card-type :- ::card/type
+   & {:keys [include-fields?]}]
+  (for [card (source-query-cards card-type)]
     (api.table/card->virtual-table card :include-fields? include-fields?)))
 
-(defn- saved-cards-virtual-db-metadata [question-type & {:keys [include-tables? include-fields?]}]
+(mu/defn ^:private saved-cards-virtual-db-metadata
+  [card-type :- ::card/type
+   & {:keys [include-tables? include-fields?]}]
   (when (public-settings/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
              :id                 lib.schema.id/saved-questions-virtual-database-id
              :features           #{:basic-aggregations}
              :is_saved_questions true}
-      include-tables? (assoc :tables (cards-virtual-tables question-type
+      include-tables? (assoc :tables (cards-virtual-tables card-type
                                                            :include-fields? include-fields?)))))
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
 (defn- add-saved-questions-virtual-database [dbs & options]
-  (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata :card options)]
+  (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata :question options)]
     ;; only add the 'Saved Questions' DB if there are Cards that can be used
     (cond-> dbs
-      (and (source-query-cards-exist? :card) virtual-db-metadata) (concat [virtual-db-metadata]))))
+      (and (source-query-cards-exist? :question) virtual-db-metadata) (concat [virtual-db-metadata]))))
 
 (defn- filter-databases-by-data-model-perms
   "Filters the provided list of databases by data model perms, returning only the databases for which the current user
@@ -303,9 +313,9 @@
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
-(mu/defn ^:private expanded-schedules [db :- (mi/InstanceOf Database)]
-  {:cache_field_values (u.cron/cron-string->schedule-map (:cache_field_values_schedule db))
-   :metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))})
+(mu/defn ^:private expanded-schedules [db :- (ms/InstanceOf Database)]
+  {:metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))
+   :cache_field_values (some-> (:cache_field_values_schedule db) u.cron/cron-string->schedule-map)})
 
 (defn- add-expanded-schedules
   "Add 'expanded' versions of the cron schedules strings for DB in a format that is appropriate for frontend
@@ -329,6 +339,7 @@
                           (cond->> tables
                             ; filter hidden tables
                             true                        (filter (every-pred (complement :visibility_type) mi/can-read?))
+                            true                        (map (fn [table] (update table :schema str)))
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
@@ -368,7 +379,7 @@
 
 (def ^:private database-usage-models
   "List of models that are used to report usage on a database."
-  [:question :dataset :metric :segment])
+  [:question :dataset :metric :segment]) ; TODO -- rename `:dataset` to `:model`?
 
 (def ^:private always-false-hsql-expr
   "A Honey SQL expression that is never true.
@@ -388,15 +399,15 @@
    :from   [:report_card]
    :where  [:and
             [:= :database_id db-id]
-            [:= :dataset false]]})
+            [:= :type "question"]]})
 
 (defmethod database-usage-query :dataset
-  [_ db-id _table-ids]
+  [_model db-id _table-ids]
   {:select [[:%count.* :dataset]]
    :from   [:report_card]
    :where  [:and
             [:= :database_id db-id]
-            [:= :dataset true]]})
+            [:= :type "model"]]})
 
 (defmethod database-usage-query :metric
   [_ _db-id table-ids]
@@ -440,13 +451,17 @@
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
-  (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
+  (saved-cards-virtual-db-metadata :question :include-tables? true, :include-fields? true))
 
 (defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive?]
   (let [db (-> (if include-editable-data-model?
                  (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
-               (t2/hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
+               (t2/hydrate [:tables [:fields
+                                     :has_field_values
+                                     [:target :has_field_values]]
+                            :segments
+                            :metrics]))
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -485,13 +500,13 @@
   and tables, with no additional metadata."
   [id include_hidden include_editable_data_model remove_inactive]
   {id                          ms/PositiveInt
-   include_hidden              [:maybe ms/BooleanString]
-   include_editable_data_model [:maybe ms/BooleanString]
-   remove_inactive             [:maybe ms/BooleanString]}
+   include_hidden              [:maybe ms/BooleanValue]
+   include_editable_data_model [:maybe ms/BooleanValue]
+   remove_inactive             [:maybe ms/BooleanValue]}
   (db-metadata id
-               (Boolean/parseBoolean include_hidden)
-               (Boolean/parseBoolean include_editable_data_model)
-               (Boolean/parseBoolean remove_inactive)))
+               include_hidden
+               include_editable_data_model
+               remove_inactive))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
@@ -519,7 +534,7 @@
                         second
                         (str/replace #"-" " ")
                         u/lower-case-en)]
-    (t2/select [Card :id :dataset :database_id :name :collection_id [:collection.name :collection_name]]
+    (t2/select [Card :id :type :database_id :name :collection_id [:collection.name :collection_name]]
                {:where    [:and
                            [:= :report_card.database_id database-id]
                            [:= :report_card.archived false]
@@ -527,7 +542,7 @@
                              ;; e.g. search-string = "123"
                              (and (not-empty search-id) (empty? search-name))
                              [:like
-                              (h2x/cast (if (= (mdb.connection/db-type) :mysql) :char :text) :report_card.id)
+                              (h2x/cast (if (= (mdb/db-type) :mysql) :char :text) :report_card.id)
                               (str search-id "%")]
 
                              ;; e.g. search-string = "123-foo"
@@ -541,8 +556,11 @@
                              (and (empty? search-id) (not-empty search-name))
                              [:like [:lower :report_card.name] (str "%" search-name "%")])]
                 :left-join [[:collection :collection] [:= :collection.id :report_card.collection_id]]
-                :order-by [[:dataset :desc]         ; prioritize models
-                           [:report_card.id :desc]] ; then most recently created
+                ;; prioritize models. This relies of `model` coming before `question` alphabetically, and Tamas pointed
+                ;; out this is a little brittle. He's right -- once we put v2 Metrics in then we can replace this with a
+                ;; fancy `CASE` expression or something so we can sort things exactly how we like.
+                :order-by [[:type :asc]
+                           [:report_card.id :desc]] ; sort by most recently created after sorting by type
                 :limit    50})))
 
 (defn- autocomplete-fields [db-id search-string limit]
@@ -637,7 +655,7 @@
                 substring (autocomplete-suggestions id (str "%" substring "%"))
                 prefix    (autocomplete-suggestions id (str prefix "%")))}
     (catch Throwable e
-      (log/warn e (trs "Error with autocomplete: {0}" (ex-message e))))))
+      (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
 
 (api/defendpoint GET "/:id/card_autocomplete_suggestions"
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
@@ -650,9 +668,9 @@
   (try
     (->> (autocomplete-cards id query)
          (filter mi/can-read?)
-         (map #(select-keys % [:id :name :dataset :collection_name])))
+         (map #(select-keys % [:id :name :type :collection_name])))
     (catch Throwable e
-      (log/warn e (trs "Error with autocomplete: {0}" (ex-message e))))))
+      (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
 
 
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
@@ -673,7 +691,7 @@
        :base_type     base_type
        :semantic_type semantic_type
        :table_name    (:name table)
-       :schema        (:schema table)})))
+       :schema        (:schema table "")})))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
@@ -723,7 +741,7 @@
         {:message (tru "Unable to connect to database.")})
       (catch Throwable e
         (when (and log-exception (not (some->> e ex-cause ex-data ::driver/can-connect-message?)))
-          (log/error e (trs "Cannot connect to Database")))
+          (log/error e "Cannot connect to Database"))
         (if (-> e ex-data :message)
           (ex-data e)
           {:message (.getMessage e)})))))
@@ -763,23 +781,22 @@
 
 (api/defendpoint POST "/"
   "Add a new `Database`."
-  [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl]} :body}]
-  {name             ms/NonBlankString
-   engine           DBEngineString
-   details          ms/Map
-   is_full_sync     [:maybe :boolean]
-   is_on_demand     [:maybe :boolean]
-   schedules        [:maybe sync.schedules/ExpandedSchedulesMap]
-   auto_run_queries [:maybe :boolean]
-   cache_ttl        [:maybe ms/PositiveInt]}
+  [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]} :body}]
+  {name              ms/NonBlankString
+   engine            DBEngineString
+   details           ms/Map
+   is_full_sync      [:maybe {:default true} ms/BooleanValue]
+   is_on_demand      [:maybe {:default false} ms/BooleanValue]
+   schedules         [:maybe sync.schedules/ExpandedSchedulesMap]
+   auto_run_queries  [:maybe :boolean]
+   cache_ttl         [:maybe ms/PositiveInt]
+   connection_source [:maybe {:default :admin} [:enum :admin :setup]]}
   (api/check-superuser)
   (when cache_ttl
     (api/check (premium-features/enable-cache-granular-controls?)
                [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
                               "cache granular controls feature."))]))
-  (let [is-full-sync?    (or (nil? is_full_sync)
-                             (boolean is_full_sync))
-        details-or-error (test-connection-details engine details)
+  (let [details-or-error (test-connection-details engine details)
         valid?           (not= (:valid details-or-error) false)]
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
@@ -790,14 +807,12 @@
                                        {:name         name
                                         :engine       engine
                                         :details      details-or-error
-                                        :is_full_sync is-full-sync?
-                                        :is_on_demand (boolean is_on_demand)
+                                        :is_full_sync is_full_sync
+                                        :is_on_demand is_on_demand
                                         :cache_ttl    cache_ttl
                                         :creator_id   api/*current-user-id*}
-                                       (sync.schedules/schedule-map->cron-strings
-                                        (if (:let-user-control-scheduling details)
-                                          (sync.schedules/scheduling schedules)
-                                          (sync.schedules/default-randomized-schedule)))
+                                       (when schedules
+                                         (sync.schedules/schedule-map->cron-strings schedules))
                                        (when (some? auto_run_queries)
                                          {:auto_run_queries auto_run_queries})))))
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
@@ -805,13 +820,13 @@
                                api/*current-user-id*
                                {:database     engine
                                 :database-id  (u/the-id <>)
-                                :source       :admin
+                                :source       connection_source
                                 :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
       ;; failed to connect, return error
       (do
         (snowplow/track-event! ::snowplow/database-connection-failed
                                api/*current-user-id*
-                               {:database engine :source :setup})
+                               {:database engine :source connection_source})
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 
@@ -823,8 +838,8 @@
    details :map}
   (api/check-superuser)
   (let [details-or-error (test-connection-details engine details)]
-    {:valid (not (false? (:valid details-or-error)))}))
-
+    ;; details that come back without a `:valid` key at all are... valid!
+    (update details-or-error :valid (comp not false?))))
 
 ;;; --------------------------------------- POST /api/database/sample_database ----------------------------------------
 
@@ -832,7 +847,7 @@
   "Add the sample database as a new `Database`."
   []
   (api/check-superuser)
-  (sample-data/add-sample-database!)
+  (sample-data/extract-and-sync-sample-database!)
   (t2/select-one Database :is_sample true))
 
 
@@ -917,60 +932,51 @@
         conn-error        (when (or details-changed? engine-changed?)
                             (test-database-connection (or engine (:engine existing-database))
                                                       (or details (:details existing-database))))
-        full-sync?        (some-> is_full_sync boolean)]
+        full-sync?        (some-> is_full_sync boolean)
+        on-demand?        (boolean is_on_demand)]
     (if conn-error
       ;; failed to connect, return error
       {:status 400
        :body   conn-error}
       ;; no error, proceed with update
       (do
-        ;; TODO - is there really a reason to let someone change the engine on an existing database?
-        ;;       that seems like the kind of thing that will almost never work in any practical way
-        ;; TODO - this means one cannot unset the description. Does that matter?
-        (t2/update! Database id
+       ;; TODO - is there really a reason to let someone change the engine on an existing database?
+       ;;       that seems like the kind of thing that will almost never work in any practical way
+       ;; TODO - this means one cannot unset the description. Does that matter?
+       (t2/update! Database id
+                   (merge
                     (m/remove-vals
-                      nil?
-                      (merge
-                        {:name               name
-                         :engine             engine
-                         :details            details
-                         :refingerprint      refingerprint
-                         :is_full_sync       full-sync?
-                         :is_on_demand       (boolean is_on_demand)
-                         :description        description
-                         :caveats            caveats
-                         :points_of_interest points_of_interest
-                         :auto_run_queries   auto_run_queries}
-                        ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
-                        (when (seq settings)
-                          {:settings (into {}
-                                           (remove (fn [[_k v]] (nil? v)))
-                                           (merge (:settings existing-database) settings))})
-                        (cond
-                          ;; transition back to metabase managed schedules. the schedule
-                          ;; details, even if provided, are ignored. database is the
-                          ;; current stored value and check against the incoming details
-                          (and (get-in existing-database [:details :let-user-control-scheduling])
-                               (not (:let-user-control-scheduling details)))
-                          (sync.schedules/schedule-map->cron-strings (sync.schedules/default-randomized-schedule))
+                     nil?
+                     (merge
+                      {:name               name
+                       :engine             engine
+                       :details            details
+                       :refingerprint      refingerprint
+                       :is_full_sync       full-sync?
+                       :is_on_demand       on-demand?
+                       :description        description
+                       :caveats            caveats
+                       :points_of_interest points_of_interest
+                       :auto_run_queries   auto_run_queries}
+                      ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
+                      (when (seq settings)
+                        {:settings (into {}
+                                         (remove (fn [[_k v]] (nil? v)))
+                                         (merge (:settings existing-database) settings))})))
+                    ;; cache_field_values_schedule can be nil
+                    (when schedules
+                      (sync.schedules/schedule-map->cron-strings schedules))))
+       ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
+       ;; with the advanced-config feature enabled.
+       (when (premium-features/enable-cache-granular-controls?)
+         (t2/update! Database id {:cache_ttl cache_ttl}))
 
-                          ;; if user is controlling schedules
-                          (:let-user-control-scheduling details)
-                          (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))))))
-        ;; do nothing in the case that user is not in control of
-        ;; scheduling. leave them as they are in the db
-
-        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
-        ;; with the advanced-config feature enabled.
-        (when (premium-features/enable-cache-granular-controls?)
-          (t2/update! Database id {:cache_ttl cache_ttl}))
-
-        (let [db (t2/select-one Database :id id)]
-          (events/publish-event! :event/database-update {:object db
-                                                         :user-id api/*current-user-id*
-                                                         :previous-object existing-database})
-          ;; return the DB with the expanded schedules back in place
-          (add-expanded-schedules db))))))
+       (let [db (t2/select-one Database :id id)]
+         (events/publish-event! :event/database-update {:object db
+                                                        :user-id api/*current-user-id*
+                                                        :previous-object existing-database})
+         ;; return the DB with the expanded schedules back in place
+         (add-expanded-schedules db))))))
 
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
@@ -1042,10 +1048,10 @@
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (t2/select-one Database :id id))]
     (events/publish-event! :event/database-manual-scan {:object db :user-id api/*current-user-id*})
-    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+    (mw.session/as-admin
       (if *rescan-values-async*
         (future (field-values/update-field-values! db))
         (field-values/update-field-values! db))))
@@ -1078,15 +1084,26 @@
 
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
 
+(defenterprise current-user-can-read-schema?
+  "OSS implementation. Returns a boolean whether the current user can write the given field."
+  metabase-enterprise.advanced-permissions.common
+  [_db-id _schema-name]
+  (mi/superuser?))
+
 (defn- can-read-schema?
   "Does the current user have permissions to know the schema with `schema-name` exists? (Do they have permissions to see
   at least some of its tables?)"
   [database-id schema-name]
   (or
-   (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
-                                       (perms/data-perms-path database-id schema-name))
-   (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                    (perms/data-model-write-perms-path database-id schema-name))))
+   (and (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id*
+                                                                 :perms/view-data
+                                                                 database-id))
+        (contains? #{:query-builder :query-builder-and-native}
+                   (data-perms/schema-permission-for-user api/*current-user-id*
+                                                          :perms/create-queries
+                                                          database-id
+                                                          schema-name)))
+   (current-user-can-read-schema? database-id schema-name)))
 
 (api/defendpoint GET "/:id/syncable_schemas"
   "Returns a list of all syncable schemas found for the database `id`."
@@ -1134,7 +1151,7 @@
   "Returns a list of all the schemas found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
-    (->> (cards-virtual-tables :card)
+    (->> (cards-virtual-tables :question)
          (map :schema)
          distinct
          (sort-by u/lower-case-en))))
@@ -1144,7 +1161,7 @@
   "Returns a list of all the datasets found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
-    (->> (cards-virtual-tables :dataset)
+    (->> (cards-virtual-tables :model)
          (map :schema)
          distinct
          (sort-by u/lower-case-en))))
@@ -1206,7 +1223,7 @@
   [schema]
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
-          :card
+          :question
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set Collection :name schema)))])])
@@ -1218,7 +1235,7 @@
   [schema]
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
-          :dataset
+          :model
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set Collection :name schema)))])])

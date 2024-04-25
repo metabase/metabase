@@ -1,0 +1,11 @@
+.cursorPointer {
+  cursor: pointer;
+}
+
+.cursorGrab {
+  cursor: grab;
+}
+
+.cursorDefault {
+  cursor: default;
+}

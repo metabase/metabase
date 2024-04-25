@@ -12,10 +12,12 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util.match :as mbql.match]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- stage-paths
   [query stage-number]
@@ -77,7 +79,7 @@
                                             remove-replace-fn location target-clause)
         target-uuid (lib.options/uuid target-clause)]
     (if (not= query result)
-      (mbql.match/match-one location
+      (lib.util.match/match-one location
         [:expressions]
         (-> result
             (remove-local-references
@@ -116,7 +118,7 @@
                      (when-let [clauses (get-in stage location)]
                        (->> clauses
                             (keep (fn [clause]
-                                    (mbql.match/match-one clause
+                                    (lib.util.match/match-one clause
                                       [target-op
                                        (_ :guard #(or (empty? target-opts)
                                                       (set/subset? (set target-opts) (set %))))
@@ -216,7 +218,7 @@
 
 (defn- local-replace-expression-references [stage target-ref-id replacement-ref]
   (let [replace-embedded-refs (fn replace-refs [stage]
-                                (mbql.match/replace stage
+                                (lib.util.match/replace stage
                                   [:expression _ target-ref-id] (fresh-ref replacement-ref)))]
     (replace-embedded-refs stage)))
 
@@ -257,7 +259,7 @@
   (let [target-ref-id (:lib/desired-column-alias col)
         replaced-ref (lib.ref/ref (assoc replaced-col :lib/source :source/previous-stage))]
     (map (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
-         (mbql.match/match (lib.util/query-stage query next-stage-number)
+         (lib.util.match/match (lib.util/query-stage query next-stage-number)
            [:field _ target-ref-id] &match))))
 
 (defn- typed-expression
@@ -339,7 +341,7 @@
    replacement      :- :metabase.lib.schema.expression/expression]
   (mu/disable-enforcement
     (loop [query (tweak-expression unmodified-query stage-number target replacement)]
-      (let [explanation (mc/explain :metabase.lib.schema/query query)
+      (let [explanation (mr/explain ::lib.schema/query query)
             error-paths (->> (:errors explanation)
                              (keep #(on-stage-path query %))
                              distinct)]
@@ -391,7 +393,7 @@
 
 (defn- replace-join-alias
   [a-join old-name new-name]
-  (mbql.match/replace a-join
+  (lib.util.match/replace a-join
     (field :guard #(field-clause-with-join-alias? % old-name))
     (lib.join/with-join-alias field new-name)))
 
@@ -497,7 +499,7 @@
      query)))
 
 (defn- has-field-from-join? [form join-alias]
-  (some? (mbql.match/match-one form
+  (some? (lib.util.match/match-one form
            (field :guard #(field-clause-with-join-alias? % join-alias)))))
 
 (defn- dependent-join? [join join-alias]

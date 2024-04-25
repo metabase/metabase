@@ -1,3 +1,5 @@
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { TableId, Table } from "metabase-types/api";
 import {
@@ -6,8 +8,7 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import { TableInfo } from "./TableInfo";
 
 const TABLE_ID = 1;

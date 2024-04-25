@@ -1,10 +1,10 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   getNotebookStep,
   restore,
   saveMetadataChanges,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -18,7 +18,7 @@ const questionDetails = {
     },
     limit: 2,
   },
-  dataset: true,
+  type: "model",
 };
 
 describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
@@ -48,7 +48,7 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
     dragColumn(0, 100);
     cy.findByTestId("qb-header").button("Refresh").click();
     cy.wait("@dataset");
-    cy.get(".cellData").should("contain", "37.65");
+    cy.get("[data-testid=cell-data]").should("contain", "37.65");
     cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
   });
 });

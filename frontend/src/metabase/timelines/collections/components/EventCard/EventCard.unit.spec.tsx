@@ -1,11 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
 import {
   createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
   createMockUser,
 } from "metabase-types/api/mocks";
+
 import type { EventCardProps } from "./EventCard";
 import EventCard from "./EventCard";
 
@@ -77,7 +79,7 @@ describe("EventCard", () => {
     });
 
     render(<EventCard {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await userEvent.click(screen.getByLabelText("ellipsis icon"));
     await screen.findByRole("dialog");
 
     expect(screen.getByText("Edit event")).toBeInTheDocument();
@@ -97,7 +99,7 @@ describe("EventCard", () => {
     });
 
     render(<EventCard {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await userEvent.click(screen.getByLabelText("ellipsis icon"));
     await screen.findByRole("dialog");
 
     expect(screen.getByText("Unarchive event")).toBeInTheDocument();

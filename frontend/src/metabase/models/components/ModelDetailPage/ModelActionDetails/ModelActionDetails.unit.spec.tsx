@@ -1,24 +1,15 @@
 import userEvent from "@testing-library/user-event";
-import {
-  createMockDatabase,
-  createMockQueryAction,
-} from "metabase-types/api/mocks";
-import {
-  createOrdersTable,
-  createStructuredModelCard,
-} from "metabase-types/api/mocks/presets";
+
 import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
   setupModelActionsEndpoints,
-  setupTableEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import type {
   Card,
@@ -26,16 +17,19 @@ import type {
   StructuredDatasetQuery,
   WritebackQueryAction,
 } from "metabase-types/api";
+import { createMockQueryAction } from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  createStructuredModelCard,
+} from "metabase-types/api/mocks/presets";
 
-const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
+const TEST_DATABASE_WITH_ACTIONS = createSampleDatabase({
   settings: { "database-enable-actions": true },
 });
 
 const TEST_MODEL = createStructuredModelCard();
 
 const TEST_ACTION = createMockQueryAction({ model_id: TEST_MODEL.id });
-
-const TEST_TABLE = createOrdersTable();
 
 async function setup({
   model = TEST_MODEL,
@@ -51,7 +45,6 @@ async function setup({
   setupDatabasesEndpoints(databases);
   setupCardsEndpoints([model]);
   setupModelActionsEndpoints(actions, model.id);
-  setupTableEndpoints(TEST_TABLE);
 
   renderWithProviders(getModelRoutes(), {
     withRouter: true,
@@ -65,7 +58,7 @@ describe("ModelActionDetails", () => {
   it("should not leave ActionCreatorModal when clicking outside modal", async () => {
     await setup({});
 
-    userEvent.click(document.body);
+    await userEvent.click(document.body);
 
     const mockQueryEditor = await screen.findByTestId(
       "mock-native-query-editor",

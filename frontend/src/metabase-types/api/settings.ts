@@ -150,6 +150,7 @@ export const tokenFeatures = [
   "content_verification",
   "embedding",
   "hosting",
+  "llm_autodescription",
   "official_collections",
   "sandboxes",
   "sso_google",
@@ -189,100 +190,139 @@ export interface OpenAiModel {
 
 export type HelpLinkSetting = "metabase" | "hidden" | "custom";
 
-export interface Settings {
-  "active-users-count"?: number;
+interface InstanceSettings {
   "admin-email": string;
+  "email-smtp-host": string | null;
+  "email-smtp-port": number | null;
+  "email-smtp-security": "None" | "SSL" | "TLS" | "STARTTLS";
+  "email-smtp-username": string | null;
+  "email-smtp-password": string | null;
+  "enable-embedding": boolean;
+  "enable-nested-queries": boolean;
+  "enable-query-caching"?: boolean;
+  "enable-public-sharing": boolean;
+  "enable-xrays": boolean;
+  "example-dashboard-id": number | null;
+  "search-typeahead-enabled": boolean;
+  "show-homepage-data": boolean;
+  "show-homepage-pin-message": boolean;
+  "show-homepage-xrays": boolean;
+  "site-uuid": string;
+  "subscription-allowed-domains": string | null;
+  "uploads-enabled": boolean;
+  "uploads-database-id": number | null;
+  "uploads-schema-name": string | null;
+  "uploads-table-prefix": string | null;
+  "user-visibility": string | null;
+}
+
+interface AdminSettings {
+  "active-users-count"?: number;
+  "deprecation-notice-version"?: string;
+  "embedding-secret-key"?: string;
+  "query-caching-min-ttl": number;
+  "query-caching-ttl-ratio": number;
+  "google-auth-auto-create-accounts-domain": string | null;
+  "google-auth-configured": boolean;
+  "jwt-configured"?: boolean;
+  "jwt-enabled"?: boolean;
+  "premium-embedding-token": string | null;
+  "saml-configured"?: boolean;
+  "saml-enabled"?: boolean;
+  "show-database-syncing-modal": boolean;
+  "token-status": TokenStatus | null;
+  "version-info": VersionInfo | null;
+  "last-acknowledged-version": string | null;
+  "show-static-embed-terms": boolean | null;
+  "embedding-homepage":
+    | "visible"
+    | "hidden"
+    | "dismissed-done"
+    | "dismissed-run-into-issues"
+    | "dismissed-not-interested-now";
+  "setup-embedding-autoenabled": boolean;
+  "setup-license-active-at-setup": boolean;
+}
+
+interface SettingsManagerSettings {
+  "bcc-enabled?": boolean;
+  "ee-openai-api-key"?: string;
+  "openai-api-key": string | null;
+  "openai-available-models"?: OpenAiModel[];
+  "openai-model": string | null;
+  "openai-organization": string | null;
+  "session-cookie-samesite": SessionCookieSameSite;
+  "slack-app-token": string | null;
+  "slack-files-channel": string | null;
+  "slack-token": string | null;
+  "slack-token-valid?": boolean;
+}
+
+type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
+
+interface PublicSettings {
   "anon-tracking-enabled": boolean;
   "application-font": string;
   "application-font-files": FontFile[] | null;
   "application-name": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
-  "bcc-enabled?": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-homepage": boolean;
   "custom-homepage-dashboard": number | null;
-  "deprecation-notice-version"?: string;
-  "dismissed-custom-dashboard-toast"?: boolean;
+  "ee-ai-features-enabled"?: boolean;
   "email-configured?": boolean;
   "embedding-app-origin": string;
-  "embedding-secret-key"?: string;
-  "enable-embedding": boolean;
   "enable-enhancements?": boolean;
-  "enable-nested-queries": boolean;
-  "enable-query-caching"?: boolean;
-  "query-caching-ttl-ratio": number;
-  "query-caching-min-ttl": number;
   "enable-password-login": boolean;
-  "enable-public-sharing": boolean;
-  "enable-xrays": boolean;
   engines: Record<string, Engine>;
   "ga-enabled": boolean;
-  "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-client-id": string | null;
-  "google-auth-configured": boolean;
   "google-auth-enabled": boolean;
   "has-user-setup": boolean;
-  "hide-embed-branding?": boolean;
   "help-link": HelpLinkSetting;
   "help-link-custom-destination": string;
+  "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
   "is-metabot-enabled": boolean;
-  "jwt-enabled"?: boolean;
-  "jwt-configured"?: boolean;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
+  "ldap-port": number;
+  "ldap-group-membership-filter": string;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
-  "openai-api-key": string | null;
-  "openai-organization": string | null;
-  "openai-model": string | null;
-  "openai-available-models"?: OpenAiModel[];
-  "other-sso-enabled?": boolean | null;
+  "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
-  "premium-embedding-token": string | null;
-  "report-timezone-short": string;
   "report-timezone-long": string;
-  "saml-configured"?: boolean;
-  "saml-enabled"?: boolean;
-  "search-typeahead-enabled": boolean;
-  "setup-token": string | null;
+  "report-timezone-short": string;
   "session-cookies": boolean | null;
-  "session-cookie-samesite": SessionCookieSameSite;
-  "snowplow-enabled": boolean;
-  "snowplow-url": string;
-  "show-database-syncing-modal": boolean;
-  "show-homepage-data": boolean;
-  "show-homepage-pin-message": boolean;
-  "show-homepage-xrays": boolean;
-  "show-lighthouse-illustration": boolean;
+  "setup-token": string | null;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
   "site-locale": string;
-  "site-uuid": string;
   "site-url": string;
-  "slack-app-token": string | null;
-  "slack-files-channel": string | null;
-  "slack-token": string | null;
-  "slack-token-valid?": boolean;
-  "start-of-week"?: DayOfWeekId;
-  "subscription-allowed-domains": string | null;
+  "snowplow-enabled": boolean;
+  "snowplow-url": string;
+  "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
-  "token-status": TokenStatus | null;
-  "user-locale": string | null;
   version: Version;
-  "version-info": VersionInfo | null;
   "version-info-last-checked": string | null;
-  "uploads-enabled": boolean;
-  "uploads-database-id": number | null;
-  "uploads-schema-name": string | null;
-  "uploads-table-prefix": string | null;
-  "user-visibility": string | null;
-  "last-acknowledged-version": string | null;
-  "show-static-embed-terms": boolean | null;
 }
+
+export interface UserSettings {
+  "dismissed-browse-models-banner"?: boolean;
+  "dismissed-custom-dashboard-toast"?: boolean;
+  "last-used-native-database-id"?: number | null;
+  "notebook-native-preview-shown"?: boolean;
+  "notebook-native-preview-sidebar-width"?: number | null;
+}
+
+export type Settings = InstanceSettings &
+  PublicSettings &
+  UserSettings &
+  PrivilegedSettings;
 
 export type SettingKey = keyof Settings;
 

@@ -1,9 +1,7 @@
-import * as Urls from "metabase/lib/urls";
-
 import { coerceCollectionId } from "metabase/collections/utils";
-
+import * as Urls from "metabase/lib/urls";
+import type Question from "metabase-lib/v1/Question";
 import type { Dashboard } from "metabase-types/api";
-import type Question from "metabase-lib/Question";
 
 import type { SelectedItem } from "./types";
 

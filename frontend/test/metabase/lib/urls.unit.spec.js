@@ -148,11 +148,11 @@ describe("urls", () => {
 
   describe("model", () => {
     it("should return correct URL", () => {
-      expect(model({ id: 1, dataset: true, name: "Foo" })).toBe("/model/1-foo");
+      expect(model({ id: 1, type: "model", name: "Foo" })).toBe("/model/1-foo");
     });
 
     it("should prefer card_id when building a URL", () => {
-      expect(model({ id: 1, card_id: 42, dataset: true, name: "Foo" })).toBe(
+      expect(model({ id: 1, card_id: 42, type: "model", name: "Foo" })).toBe(
         "/model/42-foo",
       );
     });
@@ -165,13 +165,13 @@ describe("urls", () => {
 
     it("should handle object ID", () => {
       expect(
-        model({ id: 1, dataset: true, name: "Foo" }, { objectId: 4 }),
+        model({ id: 1, type: "model", name: "Foo" }, { objectId: 4 }),
       ).toBe("/model/1-foo/4");
     });
 
     describe("detail page", () => {
       it("should return correct URL", () => {
-        expect(modelDetail({ id: 1, dataset: true, name: "Foo" })).toBe(
+        expect(modelDetail({ id: 1, type: "model", name: "Foo" })).toBe(
           "/model/1-foo/detail",
         );
       });
@@ -271,7 +271,7 @@ describe("urls", () => {
       expect(
         bookmark({
           id: "card-5",
-          dataset: false,
+          card_type: "question",
           name: "Orders",
           type: "card",
         }),
@@ -282,7 +282,7 @@ describe("urls", () => {
       expect(
         bookmark({
           id: "card-1",
-          dataset: true,
+          card_type: "model",
           name: "Product",
           type: "card",
         }),

@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
+
 import { renderWithProviders, screen } from "__support__/ui";
+import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
+
 import type { PublicLinkPopoverProps } from "./PublicLinkPopover";
 import { PublicLinkPopover } from "./PublicLinkPopover";
 
@@ -121,7 +123,7 @@ describe("PublicLinkPopover", () => {
         isAdmin: true,
       });
 
-      userEvent.hover(screen.getByText("Remove public link"));
+      await userEvent.hover(screen.getByText("Remove public link"));
 
       expect(
         await screen.findByText(
@@ -153,7 +155,7 @@ describe("PublicLinkPopover", () => {
     it("should call createPublicLink when uuid is null and the popover is opened", async () => {
       const { createPublicLink } = setup({ hasUUID: false, isOpen: false });
 
-      userEvent.click(screen.getByTestId("target"));
+      await userEvent.click(screen.getByTestId("target"));
 
       expect(
         await screen.findByTestId("public-link-popover-content"),
@@ -165,7 +167,7 @@ describe("PublicLinkPopover", () => {
     it("should not call createPublicLink when uuid is not null and the popover is opened", async () => {
       const { createPublicLink } = setup({ hasUUID: true, isOpen: false });
 
-      userEvent.click(screen.getByTestId("target"));
+      await userEvent.click(screen.getByTestId("target"));
 
       expect(createPublicLink).not.toHaveBeenCalled();
       expect(
@@ -175,14 +177,14 @@ describe("PublicLinkPopover", () => {
   });
 
   describe("when deleting public links", () => {
-    it("should call deletePublicLink and onClose when `Remove public link` is clicked", () => {
+    it("should call deletePublicLink and onClose when `Remove public link` is clicked", async () => {
       const { deletePublicLink, onClose } = setup({
         hasUUID: true,
         isOpen: true,
         isAdmin: true,
       });
 
-      userEvent.click(screen.getByText("Remove public link"));
+      await userEvent.click(screen.getByText("Remove public link"));
 
       expect(deletePublicLink).toHaveBeenCalledTimes(1);
       expect(onClose).toHaveBeenCalledTimes(1);
@@ -197,7 +199,7 @@ describe("PublicLinkPopover", () => {
         await screen.findByDisplayValue("sample-public-link"),
       ).toBeInTheDocument();
 
-      userEvent.click(screen.getByLabelText("copy icon"));
+      await userEvent.click(screen.getByLabelText("copy icon"));
 
       expect(await screen.findByText("Copied!")).toBeInTheDocument();
     });
@@ -209,7 +211,7 @@ describe("PublicLinkPopover", () => {
         await screen.findByDisplayValue("sample-public-link"),
       ).toBeInTheDocument();
 
-      userEvent.click(screen.getByLabelText("copy icon"));
+      await userEvent.click(screen.getByLabelText("copy icon"));
 
       expect(await screen.findByText("Copied!")).toBeInTheDocument();
     });
@@ -227,7 +229,7 @@ describe("PublicLinkPopover", () => {
         await screen.findByDisplayValue("sample-public-link"),
       ).toBeInTheDocument();
 
-      userEvent.click(screen.getByText("csv"));
+      await userEvent.click(screen.getByText("csv"));
       expect(
         screen.getByDisplayValue("sample-public-link.csv"),
       ).toBeInTheDocument();
@@ -244,12 +246,12 @@ describe("PublicLinkPopover", () => {
         await screen.findByDisplayValue("sample-public-link"),
       ).toBeInTheDocument();
 
-      userEvent.click(screen.getByText("csv"));
+      await userEvent.click(screen.getByText("csv"));
       expect(
         screen.getByDisplayValue("sample-public-link.csv"),
       ).toBeInTheDocument();
 
-      userEvent.click(screen.getByText("csv"));
+      await userEvent.click(screen.getByText("csv"));
 
       expect(
         await screen.findByDisplayValue("sample-public-link"),

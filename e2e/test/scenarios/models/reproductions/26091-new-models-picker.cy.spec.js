@@ -1,5 +1,6 @@
-import { modal, popover, restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { popover, restore } from "e2e/support/helpers";
+
 import { turnIntoModel } from "../helpers/e2e-models-helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -7,7 +8,7 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 const modelDetails = {
   name: "Old model",
   query: { "source-table": PRODUCTS_ID },
-  dataset: true,
+  type: "model",
 };
 
 describe("issue 26091", () => {
@@ -35,12 +36,12 @@ describe("issue 26091", () => {
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").clear().type("New model");
-      cy.button("Save").click();
+      cy.findByText("Save").click();
       cy.wait("@saveQuestion");
     });
-    modal().within(() => {
+    cy.get("#QuestionSavedModal").within(() => {
       cy.button("Not now").click();
     });
     turnIntoModel();

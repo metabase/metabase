@@ -1,23 +1,22 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
+import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { useFormik } from "formik";
 import { push } from "react-router-redux";
 import { t } from "ttag";
-import S from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import CS from "metabase/css/core/index.css";
+import * as metadataActions from "metabase/redux/metadata";
+import S from "metabase/reference/Reference.module.css";
+import Detail from "metabase/reference/components/Detail";
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
-import Detail from "metabase/reference/components/Detail";
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
-
-import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
-import { getQuestionUrl } from "../utils";
 
 import {
   getDatabase,
@@ -30,6 +29,7 @@ import {
   getTable,
   getUser,
 } from "../selectors";
+import { getQuestionUrl } from "../utils";
 
 const interestingQuestions = (database, table, field, metadata) => {
   return [
@@ -149,7 +149,7 @@ const FieldDetail = props => {
   });
 
   return (
-    <form style={style} className="full" onSubmit={handleSubmit}>
+    <form style={style} className={CS.full} onSubmit={handleSubmit}>
       {isEditing && (
         <EditHeader
           hasRevisionHistory={false}
@@ -179,10 +179,21 @@ const FieldDetail = props => {
         error={loadingError}
       >
         {() => (
-          <div className="wrapper">
-            <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
+          <div className={CS.wrapper}>
+            <div
+              className={cx(
+                CS.pl4,
+                CS.pr3,
+                CS.pt4,
+                CS.mb4,
+                CS.mb1,
+                CS.bgWhite,
+                CS.rounded,
+                CS.bordered,
+              )}
+            >
               <List>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="description"
                     name={t`Description`}
@@ -193,7 +204,7 @@ const FieldDetail = props => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <Detail
                       id="name"
                       name={t`Actual name in database`}
@@ -202,7 +213,7 @@ const FieldDetail = props => {
                     />
                   </li>
                 )}
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="points_of_interest"
                     name={t`Why this field is interesting`}
@@ -212,7 +223,7 @@ const FieldDetail = props => {
                     field={getFormField("points_of_interest")}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="caveats"
                     name={t`Things to be aware of about this field`}
@@ -224,7 +235,7 @@ const FieldDetail = props => {
                 </li>
 
                 {!isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <Detail
                       id="base_type"
                       name={t`Data type`}
@@ -232,7 +243,7 @@ const FieldDetail = props => {
                     />
                   </li>
                 )}
-                <li className="relative">
+                <li className={CS.relative}>
                   <FieldTypeDetail
                     field={entity}
                     foreignKeys={foreignKeys}
@@ -242,7 +253,7 @@ const FieldDetail = props => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <UsefulQuestions
                       questions={interestingQuestions(
                         props.database,

@@ -10,16 +10,21 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.match :refer [match]]
+   [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.pprint :as pprint]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -30,7 +35,8 @@
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
    (liquibase.exception ValidationErrors)
-   (liquibase.util BooleanUtil)))
+   (liquibase.util BooleanUtil)
+   (org.mindrot.jbcrypt BCrypt)))
 
 (set! *warn-on-reflection* true)
 
@@ -89,8 +95,15 @@
 
 ;; metabase.util/upper-case-en
 (defn- upper-case-en
-  [s]
-  (.toUpperCase (str s) (Locale/US)))
+  ^String [s]
+  (when s
+    (.toUpperCase (str s) Locale/US)))
+
+;; metabase.util/lower-case-en
+(defn- lower-case-en
+  ^String [s]
+  (when s
+    (.toLowerCase (str s) Locale/US)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |
@@ -277,9 +290,9 @@
                             (t2/reducible-query {:select [:id :result_metadata]
                                                  :from   [:report_card]
                                                  :where  [:or
-                                                           [:like :result_metadata "%field-id%"]
-                                                           [:like :result_metadata "%field-literal%"]
-                                                           [:like :result_metadata "%fk->%"]]})))))
+                                                          [:like :result_metadata "%field-id%"]
+                                                          [:like :result_metadata "%field-literal%"]
+                                                          [:like :result_metadata "%fk->%"]]})))))
 
 (defn- remove-opts
   "Removes options from the `field_ref` options map. If the resulting map is empty, it's replaced it with nil."
@@ -410,7 +423,7 @@
     ;; need to wrap it a try catch in case anything weird could go wrong, for example
     ;; sizes are string
     (try
-     (merge
+      (merge
        (dissoc card :sizeX :sizeY) ;; remove those legacy keys if exists
        {:size_x (- (+ size_x
                       (quot (+ col size_x 1) 3))
@@ -418,8 +431,8 @@
         :col    (+ col (quot (+ col 1) 3))
         :size_y size_y
         :row    row})
-     (catch Throwable _
-       card))))
+      (catch Throwable _
+        card))))
 
 (defn- migrate-dashboard-grid-from-24-to-18
   "Mirror of the rollback algorithm we have in sql."
@@ -428,7 +441,7 @@
     ;; new_size_x = size_x - ((size_x + col + 1) // 4 - (col + 1) // 4)
     ;; new_col = col - (col + 1) // 4
     (try
-     (merge
+      (merge
        card
        {:size_x (if (= size_x 1)
                   1
@@ -439,8 +452,8 @@
         :col    (- col (quot (+ col 1) 4))
         :size_y size_y
         :row    row})
-     (catch Throwable _
-       card))))
+      (catch Throwable _
+        card))))
 
 (define-reversible-migration RevisionDashboardMigrateGridFrom18To24
   (let [migrate! (fn [revision]
@@ -456,8 +469,8 @@
                      (let [object (json/parse-string (:object revision) keyword)]
                        (when (seq (:cards object))
                          (t2/query {:update :revision
-                                     :set {:object (json/generate-string (update object :cards #(map migrate-dashboard-grid-from-24-to-18 %)))}
-                                     :where [:= :id (:id revision)]}))))]
+                                    :set {:object (json/generate-string (update object :cards #(map migrate-dashboard-grid-from-24-to-18 %)))}
+                                    :where [:= :id (:id revision)]}))))]
     (run! roll-back! (t2/reducible-query {:select [:*]
                                           :from   [:revision]
                                           :where  [:= :model "Dashboard"]}))))
@@ -751,64 +764,64 @@
   (let [remove-nil-keys (fn [m]
                           (into {} (remove #(nil? (val %)) m)))
         existing-fixed  (fn [settings]
-                         (-> settings
-                             (m/update-existing "column_settings"
-                                                (fn [column_settings]
-                                                  (m/map-vals
-                                                   #(select-keys % ["click_behavior"])
-                                                   column_settings)))
+                          (-> settings
+                              (m/update-existing "column_settings"
+                                                 (fn [column_settings]
+                                                   (m/map-vals
+                                                    #(select-keys % ["click_behavior"])
+                                                    column_settings)))
                              ;; select click behavior top level and in column settings
-                             (select-keys ["column_settings" "click_behavior"])
-                             (remove-nil-keys)))
+                              (select-keys ["column_settings" "click_behavior"])
+                              (remove-nil-keys)))
         fix-top-level   (fn [toplevel]
-                         (if (= (get toplevel "click") "link")
-                           (assoc toplevel
+                          (if (= (get toplevel "click") "link")
+                            (assoc toplevel
                                   ;; add new shape top level
-                                  "click_behavior"
-                                  {"type"         (get toplevel "click")
-                                   "linkType"     "url"
-                                   "linkTemplate" (get toplevel "click_link_template")})
-                           toplevel))
+                                   "click_behavior"
+                                   {"type"         (get toplevel "click")
+                                    "linkType"     "url"
+                                    "linkTemplate" (get toplevel "click_link_template")})
+                            toplevel))
         fix-cols        (fn [column-settings]
-                         (reduce-kv
-                          (fn [m col field-settings]
-                            (assoc m col
+                          (reduce-kv
+                           (fn [m col field-settings]
+                             (assoc m col
                                    ;; add the click stuff under the new click_behavior entry or keep the
                                    ;; field settings as is
-                                   (if (and (= (get field-settings "view_as") "link")
-                                            (contains? field-settings "link_template"))
+                                    (if (and (= (get field-settings "view_as") "link")
+                                             (contains? field-settings "link_template"))
                                      ;; remove old shape and add new shape under click_behavior
-                                     (assoc field-settings
-                                            "click_behavior"
-                                            {"type"             (get field-settings "view_as")
-                                             "linkType"         "url"
-                                             "linkTemplate"     (get field-settings "link_template")
-                                             "linkTextTemplate" (get field-settings "link_text")})
-                                     field-settings)))
-                          {}
-                          column-settings))
+                                      (assoc field-settings
+                                             "click_behavior"
+                                             {"type"             (get field-settings "view_as")
+                                              "linkType"         "url"
+                                              "linkTemplate"     (get field-settings "link_template")
+                                              "linkTextTemplate" (get field-settings "link_text")})
+                                      field-settings)))
+                           {}
+                           column-settings))
         fixed-card      (-> (if (contains? dashcard "click")
-                             (dissoc card "click_behavior") ;; throw away click behavior if dashcard has click
+                              (dissoc card "click_behavior") ;; throw away click behavior if dashcard has click
                              ;; behavior added
-                             (fix-top-level card))
-                           (update "column_settings" fix-cols) ;; fix columns and then select only the new shape from
+                              (fix-top-level card))
+                            (update "column_settings" fix-cols) ;; fix columns and then select only the new shape from
                            ;; the settings tree
-                           existing-fixed)
+                            existing-fixed)
         fixed-dashcard  (update (fix-top-level dashcard) "column_settings" fix-cols)
         final-settings  (->> (m/deep-merge fixed-card fixed-dashcard (existing-fixed dashcard))
                             ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
                             ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
                             ;; doesn't have link text
-                            (walk/postwalk (fn [form]
-                                             (if (map? form)
-                                               (into {} (for [[k v] form
-                                                              :when (if (seqable? v)
+                             (walk/postwalk (fn [form]
+                                              (if (map? form)
+                                                (into {} (for [[k v] form
+                                                               :when (if (seqable? v)
                                                                       ;; remove keys with empty maps. must be postwalk
-                                                                      (seq v)
+                                                                       (seq v)
                                                                       ;; remove nils
-                                                                      (some? v))]
-                                                          [k v]))
-                                               form))))]
+                                                                       (some? v))]
+                                                           [k v]))
+                                                form))))]
     (when (not= final-settings dashcard)
       {:id                     id
        :visualization_settings final-settings})))
@@ -867,9 +880,9 @@
   [mapping-setting-key]
   (let [admin-group-id (t2/select-one-pk :permissions_group :name "Administrators")
         mapping        (try
-                        (json/parse-string (raw-setting mapping-setting-key))
-                        (catch Exception _e
-                          {}))]
+                         (json/parse-string (raw-setting mapping-setting-key))
+                         (catch Exception _e
+                           {}))]
     (when-not (empty? mapping)
       (t2/update! :setting {:key (name mapping-setting-key)}
                   {:value
@@ -903,89 +916,39 @@
 (defn- db-type->to-unified-columns
   "Each unified column is 3 items sequence [table-name, column-name, is-nullable?]"
   [db-type]
-  (case db-type
-    :h2      [[:activity :timestamp false]
-              [:application_permissions_revision :created_at false]
-              [:collection_permission_graph_revision :created_at false]
-              [:core_session :created_at false]
-              [:core_user :date_joined false]
-              [:core_user :last_login true]
-              [:core_user :updated_at true]
-              [:dependency :created_at false]
-              [:dimension :created_at false]
-              [:dimension :updated_at false]
-              [:metabase_database :created_at false]
-              [:metabase_database :updated_at false]
-              [:metabase_field :created_at false]
-              [:metabase_field :updated_at false]
-              [:metabase_field :last_analyzed true]
-              [:metabase_fieldvalues :created_at false]
-              [:metabase_table :created_at false]
-              [:metabase_table :updated_at false]
-              [:metric :created_at false]
-              [:metric :updated_at false]
-              [:permissions_revision :created_at false]
-              [:pulse :created_at false]
-              [:pulse :updated_at false]
-              [:pulse_channel :created_at false]
-              [:pulse_channel :updated_at false]
-              [:recent_views :timestamp false]
-              [:report_card :created_at false]
-              [:report_cardfavorite :created_at false]
-              [:report_cardfavorite :updated_at false]
-              [:report_dashboard :created_at false]
-              [:report_dashboard :updated_at false]
-              [:report_dashboardcard :created_at false]
-              [:report_dashboardcard :updated_at false]
-              [:segment :created_at false]
-              [:segment :updated_at false]]
-    :mysql   [[:activity :timestamp false]
-              [:application_permissions_revision :created_at false]
-              [:collection_permission_graph_revision :created_at false]
-              [:core_session :created_at false]
-              [:core_user :date_joined false]
-              [:core_user :last_login true]
-              [:core_user :updated_at true]
-              [:dependency :created_at false]
-              [:dimension :created_at false]
-              [:dimension :updated_at false]
-              [:metabase_field :created_at false]
-              [:metabase_field :last_analyzed true]
-              [:metabase_field :updated_at false]
-              [:metabase_fieldvalues :created_at false]
-              [:metabase_table :created_at false]
-              [:metabase_table :updated_at false]
-              [:metric :created_at false]
-              [:metric :updated_at false]
-              [:permissions_revision :created_at false]
-              [:pulse :created_at false]
-              [:pulse :updated_at false]
-              [:pulse_channel :created_at false]
-              [:pulse_channel :updated_at false]
-              [:recent_views :timestamp false]
-              [:report_card :created_at false]
-              [:report_cardfavorite :created_at false]
-              [:report_cardfavorite :updated_at false]
-              [:report_dashboard :created_at false]
-              [:report_dashboard :updated_at false]
-              [:segment :created_at false]
-              [:segment :updated_at false]]
-   :postgres [[:application_permissions_revision :created_at false]
-              [:collection_permission_graph_revision :created_at false]
-              [:core_user :updated_at true]
-              [:dimension :updated_at false]
-              [:dimension :created_at false]
-              [:permissions_revision :created_at false]
-              [:recent_views :timestamp false]]))
+  (let [query (case db-type
+                :postgres {:select [:table_name :column_name :is_nullable]
+                           :from   [:information_schema.columns]
+                           :where  [:and
+                                    [:= :data_type "timestamp without time zone"]
+                                    [:= :table_schema :%current_schema]
+                                    [:= :table_catalog :%current_database]]}
+
+                :mysql    {:select [:table_name :column_name :is_nullable]
+                           :from   [:information_schema.columns]
+                           :where  [:and
+                                    [:= :data_type "datetime"]
+                                    [:= :table_schema :%database]]}
+                :h2      {:select [:table_name :column_name :is_nullable]
+                          :from   [:information_schema.columns]
+                          :where  [:= :data_type "TIMESTAMP"]})]
+    (->> (t2/query query)
+         (map #(update-vals % (comp keyword lower-case-en)))
+         (remove (fn [{:keys [table_name]}]
+                   (or (#{:databasechangelog :databasechangeloglock} table_name)
+                       ;; excludes views
+                       (str/starts-with? (name table_name) "v_"))))
+         (map #(update % :is_nullable (fn [x] (= :yes x))))
+         (map (juxt :table_name :column_name :is_nullable)))))
 
 (defn- alter-table-column-type-sql
   [db-type table column ttype nullable?]
   (let [ttype (name ttype)
         db-type (if (and (= db-type :mysql)
-                     (with-open [conn (.getConnection (mdb.connection/data-source))]
-                       (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
-                 :mariadb
-                 db-type)]
+                         (with-open [conn (.getConnection (mdb.connection/data-source))]
+                           (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+                  :mariadb
+                  db-type)]
     (case db-type
       :postgres
       (format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" TYPE %s USING (\"%s\"::%s), ALTER COLUMN %s %s"
@@ -1033,3 +996,276 @@
 (define-reversible-migration UnifyTimeColumnsType
   (unify-time-column-type! :up)
   (unify-time-column-type! :down))
+
+(define-reversible-migration CardRevisionAddType
+  (case (mdb.connection/db-type)
+    :postgres
+    ;; postgres doesn't allow `\u0000` in text when converting to jsonb, so we need to remove them before we can
+    ;; parse the json. We use negative look behind to avoid matching `\\u0000` (metabase#40835)
+    (t2/query ["UPDATE revision
+               SET object = replace(jsonb_set(
+                  (regexp_replace(object, '(?<!\\\\)\\\\u0000', '286b707c-e895-4cd3-acfc-569147f54371', 'g'))::jsonb, '{type}',
+                  to_jsonb(CASE
+                              WHEN ((regexp_replace(object, '(?<!\\\\)\\\\u0000', '286b707c-e895-4cd3-acfc-569147f54371', 'g'))::jsonb->>'dataset')::boolean THEN 'model'
+                              ELSE 'question'
+                           END)::jsonb, true)::text, '286b707c-e895-4cd3-acfc-569147f54371', '\\u0000')
+               WHERE model = 'Card' AND ((regexp_replace(object, '(?<!\\\\)\\\\u0000', '286b707c-e895-4cd3-acfc-569147f54371', 'g'))::jsonb->>'dataset') IS NOT NULL;"])
+
+    :mysql
+    (t2/query ["UPDATE revision
+               SET object = JSON_SET(
+                   object,
+                   '$.type',
+                   CASE
+                       WHEN JSON_UNQUOTE(JSON_EXTRACT(object, '$.dataset')) = 'true' THEN 'model'
+                       ELSE 'question'
+                   END)
+               WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.dataset')) IS NOT NULL;;"])
+    :h2
+    (let [migrate! (fn [revision]
+                     (let [object     (json/parse-string (:object revision) keyword)
+                           new-object (assoc object :type (if (:dataset object)
+                                                            "model"
+                                                            "question"))]
+                       (t2/query {:update :revision
+                                  :set    {:object (json/generate-string new-object)}
+                                  :where  [:= :id (:id revision)]})))]
+      (run! migrate! (t2/reducible-query {:select [:*]
+                                          :from   [:revision]
+                                          :where  [:= :model "Card"]}))))
+  (case (mdb.connection/db-type)
+    :postgres
+    (t2/query ["UPDATE revision
+                SET object = jsonb_set(
+                    object::jsonb - 'type',
+                    '{dataset}',
+                    to_jsonb(CASE
+                                 WHEN (object::jsonb->>'type') = 'model'
+                                 THEN true ELSE false
+                             END)
+                )
+                WHERE model = 'Card' AND (object::jsonb->>'type') IS NOT NULL;"])
+
+    :mysql
+    (do
+      (t2/query ["UPDATE revision
+                 SET object = JSON_SET(
+                     object,
+                     '$.dataset',
+                     CASE
+                         WHEN JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) = 'model'
+                         THEN true ELSE false
+                     END)
+                 WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"])
+      (t2/query ["UPDATE revision
+                 SET object = JSON_REMOVE(object, '$.type')
+                 WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"]))
+
+    :h2
+    (let [rollback! (fn [revision]
+                      (let [object     (json/parse-string (:object revision) keyword)
+                            new-object (-> object
+                                           (assoc :dataset (= (:type object) "model"))
+                                           (dissoc :type))]
+                        (t2/query {:update :revision
+                                   :set    {:object (json/generate-string new-object)}
+                                   :where  [:= :id (:id revision)]})))]
+      (run! rollback! (t2/reducible-query {:select [:*]
+                                           :from   [:revision]
+                                           :where  [:= :model "Card"]})))))
+
+(define-migration DeleteScanFieldValuesTriggerForDBThatTurnItOff
+  ;; If you config scan field values for a DB to either "Only when adding a new filter widget" or "Never, I’ll do this manually if I need to"
+  ;; then we shouldn't schedule a trigger for scan field values. Turns out it wasn't like that since forever, so we need
+  ;; this migraiton to remove triggers for any existing DB that have this option on.
+  ;; See #40715
+  (when-let [;; find all dbs which are configured not to scan field values
+             dbs (seq (filter #(and (-> % :details :let-user-control-scheduling)
+                                    (false? (:is_full_sync %)))
+                              (t2/select :model/Database)))]
+    (classloader/the-classloader)
+    (set-jdbc-backend-properties!)
+    (let [scheduler (qs/initialize)]
+      (qs/start scheduler)
+      (doseq [db dbs]
+        (qs/delete-trigger scheduler (triggers/key (format "metabase.task.update-field-values.trigger.%d" (:id db)))))
+      ;; use the table, not model/Database because we don't want to trigger the hooks
+      (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil})
+      (qs/shutdown scheduler))))
+
+(defn- hash-bcrypt
+  "Hashes a given plaintext password using bcrypt.  Should be used to hash
+   passwords included in stored user credentials that are to be later verified
+   using `bcrypt-credential-fn`."
+  [password]
+  (BCrypt/hashpw password (BCrypt/gensalt)))
+
+(defn- internal-user-exists? []
+  (pos? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:= :id config/internal-mb-user-id]})))))
+
+(define-migration CreateInternalUser
+  ;; the internal user may have been created in a previous version for Metabase Analytics, so don't add it again if it
+  ;; exists already.
+  (when (not (internal-user-exists?))
+    (let [salt     (str (random-uuid))
+          password (hash-bcrypt (str salt (random-uuid)))
+          user     {;; we insert the internal user ID directly because it's
+                    ;; deliberately high enough to not conflict with any other
+                    :id               config/internal-mb-user-id
+                    :password_salt    salt
+                    :password         password
+                    :email            "internal@metabase.com"
+                    :first_name       "Metabase"
+                    :locale           nil
+                    :last_login       nil
+                    :is_active        false
+                    :settings         nil
+                    :type             "internal"
+                    :is_qbnewb        true
+                    :updated_at       nil
+                    :reset_triggered  nil
+                    :is_superuser     false
+                    :login_attributes nil
+                    :reset_token      nil
+                    :last_name        "Internal"
+                    :date_joined      :%now
+                    :sso_source       nil
+                    :is_datasetnewb   true}]
+      (t2/query {:insert-into :core_user :values [user]}))
+    (let [all-users-id (first (vals (t2/query-one {:select [:id] :from :permissions_group :where [:= :name "All Users"]})))
+          perms-group  {:user_id config/internal-mb-user-id :group_id all-users-id}]
+      (t2/query {:insert-into :permissions_group_membership :values [perms-group]}))))
+
+(defn- load-edn
+  "Loads edn from an EDN file. Parses values tagged with #t into the appropriate `java.time` class"
+  [file-name]
+  (with-open [r (io/reader (io/resource file-name))]
+    (edn/read {:readers {'t u.date/parse}} (java.io.PushbackReader. r))))
+
+(defn- no-user?
+  "If there is a user that is not the internal user, we know it's not a fresh install."
+  []
+  (zero? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:not= :id config/internal-mb-user-id]})))))
+
+(defn- no-db?
+  "We check there is no database is not present, because the sample database could have been installed from a previous version and be out of
+  date. In that (rare) case we will be conservative and not add the sample content."
+  []
+  (nil? (t2/query-one {:select [:*] :from :metabase_database})))
+
+(def ^:dynamic *create-sample-content*
+  "If true, we create sample content in the `CreateSampleContent` migration. This is bound to false sometimes in
+   load-from-h2, during serialization load, and in some tests because the sample content makes tests slow enough to
+   cause timeouts."
+  true)
+
+(define-migration CreateSampleContent
+  ;; Adds sample content to a fresh install. Adds curate permissions to the collection for the 'All Users' group.
+  (when *create-sample-content*
+    (when (and (config/load-sample-content?)
+               (not (config/config-bool :mb-enable-test-endpoints)) ; skip sample content for e2e tests to avoid coupling the tests to the contents
+               (no-user?)
+               (no-db?))
+      (let [table-name->raw-rows  (load-edn "sample-content.edn")
+            example-dashboard-id  1
+            example-collection-id 1
+            expected-sample-db-id 1
+            replace-temporals     (fn [v]
+                                    (if (isa? (type v) java.time.temporal.Temporal)
+                                      :%now
+                                      v))
+            table-name->rows      (fn [table-name]
+                                    (->> (table-name->raw-rows table-name)
+                                         ;; We sort the rows by id and remove them so that auto-incrementing ids are
+                                         ;; generated in the same order. We can't insert the ids directly in H2 without
+                                         ;; creating sequences for all the generated id columns.
+                                         (sort-by :id)
+                                         (map (fn [row]
+                                                (dissoc (update-vals row replace-temporals) :id)))))
+            dbs                   (table-name->rows :metabase_database)
+            _                     (t2/query {:insert-into :metabase_database :values dbs})
+            db-ids                (set (map :id (t2/query {:select :id :from :metabase_database})))]
+        ;; If that did not succeed in creating the metabase_database rows we could be reusing a database that
+        ;; previously had rows in it even if there are no users. in this rare care we delete the metabase_database rows
+        ;; and do nothing else, to be safe.
+        (if (not= db-ids #{expected-sample-db-id})
+          (when (seq db-ids)
+            (t2/query {:delete-from :metabase_database :where [:in :id db-ids]}))
+          (do (doseq [table-name [:collection
+                                  :metabase_table
+                                  :metabase_field
+                                  :report_card
+                                  :parameter_card
+                                  :report_dashboard
+                                  :dashboard_tab
+                                  :report_dashboardcard
+                                  :dashboardcard_series
+                                  :permissions_group
+                                  :data_permissions]]
+                (when-let [values (seq (table-name->rows table-name))]
+                  (t2/query {:insert-into table-name :values values})))
+              (let [group-id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))]
+                (t2/query {:insert-into :permissions
+                           :values      [{:object   (format "/collection/%s/" example-collection-id)
+                                          :group_id group-id}]}))
+              (t2/query {:insert-into :setting
+                         :values      [{:key   "example-dashboard-id"
+                                        :value (str example-dashboard-id)}]})))))))
+
+(comment
+  ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
+  ;; -----------------------------------------------------------------------------
+  ;; Start a fresh metabase instance without the :ee alias so instance analytics stuff is not created.
+  ;; 1. create a collection with dashboards, or import one with (metabase.cmd/import "<path>")
+  ;; 2. execute the following to spit out the collection to an EDN file:
+  (let [pretty-spit (fn [file-name data]
+                      (with-open [writer (io/writer file-name)]
+                        (binding [*out* writer]
+                          #_{:clj-kondo/ignore [:discouraged-var]}
+                          (pprint/pprint data))))
+        data (into {}
+                   (for [table-name [:collection
+                                     :metabase_database
+                                     :metabase_table
+                                     :metabase_field
+                                     :report_dashboard
+                                     :report_dashboardcard
+                                     :report_card
+                                     :parameter_card
+                                     :dashboard_tab
+                                     :dashboardcard_series
+                                     :data_permissions]
+                         :let [query (cond-> {:select [:*] :from table-name}
+                                       (= table-name :collection) (assoc :where [:and
+                                                                                 [:= :namespace nil] ; excludes the analytics namespace
+                                                                                 [:= :personal_owner_id nil]]))]]
+                     [table-name (sort-by :id (map #(into {} %) (t2/query query)))]))]
+    (pretty-spit "resources/sample-content.edn" data))
+  ;; (make sure there's no other content in the file)
+  ;; 3. update the EDN file:
+  ;; - replace the database details and dbms_version with placeholders e.g. "{}" to make sure they are replaced
+  ;; - find-replace :creator_id 1, 2, etc with :creator_id 13371338 (the internal user ID)
+  ;; - replace metabase_version "<version>" with metabase_version nil
+  )
+
+;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
+(define-migration DeleteTruncateAuditLogTask
+  (classloader/the-classloader)
+  (set-jdbc-backend-properties!)
+  (let [scheduler (qs/initialize)]
+    (qs/start scheduler)
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.truncate-audit-log.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.truncate-audit-log.job"))
+    (qs/shutdown scheduler)))
+
+(define-migration BackfillQueryField
+  (let [update-query-fields! (requiring-resolve 'metabase.native-query-analyzer/update-query-fields-for-card!)
+        cards                (t2/select :model/Card :id [:in {:from      [[:report_card :c]]
+                                                              :left-join [[:query_field :f] [:= :f.card_id :c.id]]
+                                                              :select    [:c.id]
+                                                              :where     [:and
+                                                                          [:not :c.archived]
+                                                                          [:= :c.query_type "native"]
+                                                                          [:= :f.id nil]]}])]
+    (doseq [card cards]
+      (update-query-fields! card))))

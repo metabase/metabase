@@ -1,39 +1,48 @@
-import type * as React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import type { Store, Reducer } from "@reduxjs/toolkit";
+import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher } from "@testing-library/react";
-import _ from "underscore";
+import { render, screen, waitFor } from "@testing-library/react";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
-import { Router, useRouterHistory } from "react-router";
-import { routerReducer, routerMiddleware } from "react-router-redux";
-import type { Store, Reducer } from "@reduxjs/toolkit";
-import { Provider } from "react-redux";
+import type * as React from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import type { MatcherFunction } from "@testing-library/dom";
-import { ThemeProvider } from "metabase/ui";
+import { Provider } from "react-redux";
+import { Router, useRouterHistory } from "react-router";
+import { routerReducer, routerMiddleware } from "react-router-redux";
+import _ from "underscore";
 
-import type { State } from "metabase-types/store";
-
-import { createMockState } from "metabase-types/store/mocks";
-
+import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
+import { sdkReducers } from "embedding-sdk/store";
+import type { SDKConfigType } from "embedding-sdk/types";
+import { Api } from "metabase/api";
+import { UndoListing } from "metabase/containers/UndoListing";
 import mainReducers from "metabase/reducers-main";
 import publicReducers from "metabase/reducers-public";
+import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import { ThemeProvider } from "metabase/ui";
+import type { State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { getStore } from "./entities-store";
 
 type ReducerValue = ReducerObject | Reducer;
+
 interface ReducerObject {
   [slice: string]: ReducerValue;
 }
 
 export interface RenderWithProvidersOptions {
-  mode?: "default" | "public";
+  // the mode changes the reducers and initial state to be used for
+  // public or sdk-specific tests
+  mode?: "default" | "public" | "sdk";
   initialRoute?: string;
   storeInitialState?: Partial<State>;
   withRouter?: boolean;
   withDND?: boolean;
+  withUndos?: boolean;
   customReducers?: ReducerObject;
+  sdkConfig?: SDKConfigType | null;
 }
 
 /**
@@ -49,15 +58,21 @@ export function renderWithProviders(
     storeInitialState = {},
     withRouter = false,
     withDND = false,
+    withUndos = false,
     customReducers,
+    sdkConfig = null,
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  let initialState = createMockState(storeInitialState);
+  let { routing, ...initialState }: Partial<State> =
+    createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
     initialState = _.pick(initialState, ...publicReducerNames) as State;
+  } else if (mode === "sdk") {
+    const sdkReducerNames = Object.keys(sdkReducers);
+    initialState = _.pick(initialState, ...sdkReducerNames) as State;
   }
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,
@@ -68,30 +83,51 @@ export function renderWithProviders(
   });
   const history = withRouter ? browserHistory : undefined;
 
-  let reducers = mode === "default" ? mainReducers : publicReducers;
+  let reducers;
+
+  if (mode === "sdk") {
+    reducers = sdkReducers;
+  } else if (mode === "public") {
+    reducers = publicReducers;
+  } else {
+    reducers = mainReducers;
+  }
 
   if (withRouter) {
     Object.assign(reducers, { routing: routerReducer });
+    Object.assign(initialState, { routing });
   }
   if (customReducers) {
     reducers = { ...reducers, ...customReducers };
   }
 
+  const storeMiddleware = _.compact([
+    Api.middleware,
+    history && routerMiddleware(history),
+  ]);
+
   const store = getStore(
     reducers,
     initialState,
-    history ? [routerMiddleware(history)] : [],
+    storeMiddleware,
   ) as unknown as Store<State>;
 
-  const wrapper = (props: any) => (
-    <Wrapper
-      {...props}
-      store={store}
-      history={history}
-      withRouter={withRouter}
-      withDND={withDND}
-    />
-  );
+  const wrapper = (props: any) => {
+    if (mode === "sdk") {
+      return <SdkWrapper {...props} config={sdkConfig} store={store} />;
+    }
+
+    return (
+      <Wrapper
+        {...props}
+        store={store}
+        history={history}
+        withRouter={withRouter}
+        withDND={withDND}
+        withUndos={withUndos}
+      />
+    );
+  };
 
   const utils = render(ui, {
     wrapper,
@@ -111,12 +147,14 @@ function Wrapper({
   history,
   withRouter,
   withDND,
+  withUndos,
 }: {
   children: React.ReactElement;
   store: any;
   history?: History;
   withRouter: boolean;
   withDND: boolean;
+  withUndos?: boolean;
 }): JSX.Element {
   return (
     <Provider store={store}>
@@ -125,8 +163,34 @@ function Wrapper({
           <MaybeRouter hasRouter={withRouter} history={history}>
             {children}
           </MaybeRouter>
+          {withUndos && <UndoListing />}
         </ThemeProvider>
       </MaybeDNDProvider>
+    </Provider>
+  );
+}
+
+function SdkWrapper({
+  config,
+  children,
+  store,
+}: {
+  config: SDKConfigType;
+  children: React.ReactElement;
+  store: any;
+  history?: History;
+  withRouter: boolean;
+  withDND: boolean;
+}) {
+  return (
+    <Provider store={store}>
+      <EmotionCacheProvider>
+        <ThemeProvider>
+          <AppInitializeController config={config}>
+            {children}
+          </AppInitializeController>
+        </ThemeProvider>
+      </EmotionCacheProvider>
     </Provider>
   );
 }
@@ -208,5 +272,44 @@ export const waitForLoaderToBeRemoved = async () => {
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
   });
 };
+
+/**
+ * jsdom doesn't have getBoundingClientRect, so we need to mock it
+ */
+export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
+  jest
+    .spyOn(window.Element.prototype, "getBoundingClientRect")
+    .mockImplementation(() => {
+      return {
+        height: 200,
+        width: 200,
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+        ...options,
+      };
+    });
+};
+
+/**
+ * jsdom doesn't have scrollBy, so we need to mock it
+ */
+export const mockScrollBy = () => {
+  window.Element.prototype.scrollBy = jest.fn();
+};
+
+/**
+ * jsdom doesn't have DataTransfer
+ */
+export function createMockClipboardData(
+  opts?: Partial<DataTransfer>,
+): DataTransfer {
+  const clipboardData = { ...opts };
+  return clipboardData as unknown as DataTransfer;
+}
 
 export * from "@testing-library/react";

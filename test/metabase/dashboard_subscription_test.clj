@@ -15,7 +15,7 @@
             PulseChannelRecipient
             Table
             User]]
-   [metabase.models.permissions :as perms]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
    [metabase.public-settings :as public-settings]
@@ -173,7 +173,7 @@
                                          :description   "Linked card desc"
                                          :display       "bar"
                                          :collection_id coll-id}
-       Card          {model-id :id}     {:dataset       true
+       Card          {model-id :id}     {:type          :model
                                          :name          "Linked model name"
                                          :description   "Linked model desc"
                                          :display       "table"
@@ -226,8 +226,8 @@
 
 (deftest ^:parallel execute-dashboard-test
   (testing "it runs for each non-virtual card"
-    (mt/with-temp [Card          {card-id-1 :id} {}
-                   Card          {card-id-2 :id} {}
+    (mt/with-temp [Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}
+                   Card          {card-id-2 :id} {:dataset_query (mt/mbql-query venues)}
                    Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2}
@@ -243,21 +243,25 @@
                     result))))))
 
 (deftest ^:parallel execute-dashboard-test-2
-  (testing "hides empty card when card.hide_empty is true"
-    (mt/with-temp [Card          {card-id-1 :id} {}
-                   Card          {card-id-2 :id} {}
+  (testing "hides empty card when card.hide_empty is true and there are no results."
+    (mt/with-temp [Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}
+                   Card          {card-id-2 :id} {:dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   Card          {card-id-3 :id} {:dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   Card          {card-id-4 :id} {:dataset_query (mt/mbql-query venues)}
                    Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :visualization_settings {:card.hide_empty true}}
+                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3}
+                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-4}
                    User {user-id :id} {}]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
-        (is (= (count result) 1))))))
+        (is (= 3 (count result)))))))
 
 (deftest ^:parallel execute-dashboard-test-3
   (testing "dashboard cards are ordered correctly -- by rows, and then by columns (#17419)"
-    (mt/with-temp [Card          {card-id-1 :id} {}
-                   Card          {card-id-2 :id} {}
-                   Card          {card-id-3 :id} {}
+    (mt/with-temp [Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}
+                   Card          {card-id-2 :id} {:dataset_query (mt/mbql-query venues)}
+                   Card          {card-id-3 :id} {:dataset_query (mt/mbql-query venues)}
                    Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1 :row 1 :col 0}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}
@@ -269,8 +273,8 @@
 
 (deftest ^:parallel execute-dashboard-test-4
   (testing "virtual (text) cards are returned as a viz settings map"
-    (mt/with-temp [Card          _ {}
-                   Card          _ {}
+    (mt/with-temp [Card          _ {:dataset_query (mt/mbql-query venues)}
+                   Card          _ {:dataset_query (mt/mbql-query venues)}
                    Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
                    DashboardCard _ {:dashboard_id dashboard-id
                                     :visualization_settings {:virtual_card {}, :text "test"}}
@@ -702,21 +706,17 @@
 (deftest no-native-perms-test
   (testing "A native query on a dashboard executes succesfully even if the subscription creator does not have native
            query permissions (#28947)"
-    (let [native-perm-path     [:groups (u/the-id (perms-group/all-users)) (mt/id) :data :native]
-          original-native-perm (get-in (perms/data-perms-graph) native-perm-path)]
-      (try
-        (mt/with-temp [Dashboard {dashboard-id :id, :as dashboard} {:name "Dashboard"}
-                       Card      {card-id :id} {:name          "Products (SQL)"
-                                                :dataset_query (mt/native-query
-                                                                {:query "SELECT * FROM venues LIMIT 1"})}
-                       DashboardCard _ {:dashboard_id dashboard-id
-                                        :card_id      card-id}]
-          (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) native-perm-path :none))
-          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
-                 (-> (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)
-                     first :result :data :rows))))
-        (finally
-          (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) native-perm-path original-native-perm)))))))
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-temp [Dashboard {dashboard-id :id, :as dashboard} {:name "Dashboard"}
+                     Card      {card-id :id} {:name          "Products (SQL)"
+                                              :dataset_query (mt/native-query
+                                                              {:query "SELECT * FROM venues LIMIT 1"})}
+                     DashboardCard _ {:dashboard_id dashboard-id
+                                      :card_id      card-id}]
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+        (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
+               (-> (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)
+                   first :result :data :rows)))))))
 
 (deftest actions-are-skipped-test
   (testing "Actions should be filtered out"
@@ -895,7 +895,7 @@
   (when (seq rows)
     [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
        (with-open [os baos]
-         (#'messages/stream-api-results-to-export-format :csv os result)
+         (#'messages/stream-api-results-to-export-format :csv true os result)
          (let [output-string (.toString baos "UTF-8")]
            {:type         :attachment
             :content-type :csv

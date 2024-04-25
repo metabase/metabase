@@ -14,7 +14,6 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.database :refer [Database]]
@@ -23,8 +22,9 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.string-extracts-test
     :as string-extracts-test]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.sync :as sync]
-   [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -33,9 +33,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.sql SQLException)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -173,7 +171,7 @@
                  (metadata-queries/table-rows-sample table fields (constantly conj)))))
         (testing "We can fingerprint this table"
           (is (= 1
-                 (:updated-fingerprints (#'fingerprint/fingerprint-table! table fields)))))))))
+                 (:updated-fingerprints (#'sync.fingerprint/fingerprint-table! table fields)))))))))
 
 (deftest db-default-timezone-test
   (mt/test-driver :mysql
@@ -218,7 +216,7 @@
     ;; 08:00:00+00:00, which when truncated is still 2018-08-17. That same scenario in Hong Kong is 2018-08-17
     ;; 00:00:00+08:00, which then becomes 2018-08-16 16:00:00+00:00 when converted to UTC, which will truncate to
     ;; 2018-08-16, instead of 2018-08-17
-    (mt/with-system-timezone-id "Asia/Hong_Kong"
+    (mt/with-system-timezone-id! "Asia/Hong_Kong"
       (letfn [(run-query-with-report-timezone [report-timezone]
                 (mt/with-temporary-setting-values [report-timezone report-timezone]
                   (mt/first-row
@@ -233,15 +231,20 @@
           (is (= ["2018-04-18T00:00:00+08:00"]
                  (run-query-with-report-timezone "Asia/Hong_Kong"))))
 
+        ;; [August, 2018]
         ;; This tests a similar scenario, but one in which the JVM timezone is in Hong Kong, but the report timezone
         ;; is in Los Angeles. The Joda Time date parsing functions for the most part default to UTC. Our tests all run
         ;; with a UTC JVM timezone. This test catches a bug where we are incorrectly assuming a date is in UTC when
         ;; the JVM timezone is different.
         ;;
         ;; The original bug can be found here: https://github.com/metabase/metabase/issues/8262. The MySQL driver code
-        ;; was parsing the date using JodateTime's date parser, which is in UTC. The MySQL driver code was assuming
+        ;; was parsing the date using Joda Time's date parser, which is in UTC. The MySQL driver code was assuming
         ;; that date was in the system timezone rather than UTC which caused an incorrect conversion and with the
-        ;; trucation, let to it being off by a day
+        ;; trucation, let to it being off by a day.
+        ;;
+        ;; [April, 2024]
+        ;; We no longer use Joda Time at all (this logic has been pulled out to qp.timezone, and uses java-time), but
+        ;; are keeping the test in place since it's still a legitimate case.
         (testing "date formatting when system-timezone != report-timezone"
           (is (= ["2018-04-18T00:00:00-07:00"]
                  (run-query-with-report-timezone "America/Los_Angeles"))))))))
@@ -396,7 +399,7 @@
                       "FROM attempts "
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
-                 (some-> (qp/compile query) :query pretty-sql))))))
+                 (some-> (qp.compile/compile query) :query pretty-sql))))))
 
     (testing "trunc-with-format should not cast a field if it is already a DATETIME"
       (is (= ["SELECT STR_TO_DATE(DATE_FORMAT(CAST(`field` AS datetime), '%Y'), '%Y')"]
@@ -479,7 +482,7 @@
           (let [table  (t2/select-one Table :db_id (u/id (mt/db)) :name "json")]
             (sync/sync-table! table)
             (let [field (t2/select-one Field :table_id (u/id table) :name "json_bit → 1234")
-                  compile-res (qp/compile
+                  compile-res (qp.compile/compile
                                {:database (u/the-id (mt/db))
                                 :type     :query
                                 :query    {:source-table (u/the-id table)
@@ -524,7 +527,7 @@
         (testing "When the query takes longer that the timeout, it is killed."
           (is (thrown-with-msg?
                 Exception
-                #"Killed mysql process id [\d,]+ due to timeout."
+                #"Killed MySQL process id [\d,]+ due to timeout."
                 (#'mysql.ddl/execute-with-timeout! :mysql db-spec db-spec 10 ["select sleep(5)"]))))
         (testing "When the query takes less time than the timeout, it is successful."
           (is (some? (#'mysql.ddl/execute-with-timeout! :mysql db-spec db-spec 5000 ["select sleep(0.1) as val"]))))))))
@@ -613,9 +616,9 @@
                         :errors      {"column1" "This Column1 value already exists." "column2" "This Column2 value already exists."}
                         :status-code 400}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/create (mt/$ids {:create-row {:id      3
-                                                           :column1 "A"
-                                                           :column2 "A"}
+                        :row/create (mt/$ids {:create-row {"id"      3
+                                                           "column1" "A"
+                                                           "column2" "A"}
                                               :database   (:id database)
                                               :query      {:source-table $$mytable}
                                               :type       :query})))))
@@ -626,14 +629,14 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/update (mt/$ids {:update-row {:column1 "A"
-                                                           :column2 "A"}
+                        :row/update (mt/$ids {:update-row {"column1" "A"
+                                                           "column2" "A"}
                                               :database   (:id database)
                                               :query      {:source-table $$mytable
                                                            :filter       [:= $mytable.id 2]}
                                               :type       :query}))))))))))))
 
-(deftest parse-grant-test
+(deftest ^:parallel parse-grant-test
   (testing "`parse-grant` should work correctly"
     (is (= {:type            :privileges
             :privilege-types #{:select :insert :update :delete}
@@ -660,7 +663,7 @@
            (#'mysql/parse-grant "GRANT `example_role`@`%`,`example_role_2`@`%` TO 'metabase'@'localhost'")))
     (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))))
 
-(deftest table-name->privileges-test
+(deftest ^:parallel table-name->privileges-test
   (testing "table-names->privileges should work correctly"
     (is (= {"foo" #{:select}, "bar" #{:select}}
            (#'mysql/table-names->privileges [{:type            :privileges
@@ -684,14 +687,6 @@
                                             "test-data"
                                             ["foo" "bar"])))))
 
-(defn- get-db-version [conn-spec]
-  (sql-jdbc.execute/do-with-connection-with-options
-   :mysql
-   conn-spec
-   nil
-   (fn [^java.sql.Connection conn]
-     (#'mysql/db-version (.getMetaData conn)))))
-
 (deftest table-privileges-test
   (mt/test-driver :mysql
     (when-not (mysql/mariadb? (mt/db))
@@ -699,20 +694,16 @@
         (drop-if-exists-and-create-db! "table_privileges_test")
         (let [details          (tx/dbdef->connection-details :mysql :db {:database-name "table_privileges_test"})
               spec             (sql-jdbc.conn/connection-details->spec :mysql details)
-              mysql8-or-above? (<= 8 (get-db-version spec))
               get-privileges   (fn []
                                  (let [new-connection-details (cond-> (assoc details
                                                                              :user "table_privileges_test_user",
-                                                                             :password "password")
-                                                                mysql8-or-above?
-                                                                (assoc :ssl true
-                                                                       :additional-options "trustServerCertificate=true"))]
+                                                                             :password "password"
+                                                                             :ssl true
+                                                                             :additional-options "trustServerCertificate=true"))]
                                    (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                      [spec [:mysql new-connection-details]]
                                      (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                       (driver/current-user-table-privileges driver/*driver*
-                                                                             (assoc (mt/db) :name "test table privileges db"
-                                                                                    :details new-connection-details))))))]
+                                       (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec {})))))]
           (try
             (doseq [stmt ["CREATE TABLE `bar` (id INTEGER);"
                           "CREATE TABLE `baz` (id INTEGER);"
@@ -733,40 +724,17 @@
               (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert false, :delete false}
                       {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
                      (get-privileges))))
-            (when mysql8-or-above?
-              (testing "should return privileges on roles that the user has been granted"
-                (doseq [stmt ["CREATE ROLE 'table_privileges_test_role'"
-                              (str "GRANT INSERT ON `bar` TO 'table_privileges_test_role'")
-                              "GRANT 'table_privileges_test_role' TO 'table_privileges_test_user'"]]
-                  (jdbc/execute! spec stmt))
-                (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete false}
-                        {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
-                       (get-privileges))))
-              (testing "should return privileges for multiple roles that the user has been granted"
-                (doseq [stmt ["CREATE ROLE 'table_privileges_test_role_2'"
-                              (str "GRANT INSERT ON `baz` TO 'table_privileges_test_role_2'")
-                              "GRANT 'table_privileges_test_role_2' TO 'table_privileges_test_user'"]]
-                  (jdbc/execute! spec stmt))
-                (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete false}
-                        {:role nil, :schema nil, :table "baz", :select false, :update true, :insert true, :delete false}]
-                       (get-privileges))))
-              (testing "should return privileges from recursively granted roles"
-                (doseq [stmt ["CREATE ROLE 'table_privileges_test_role_3'"
-                              (str "GRANT DELETE ON `bar` TO 'table_privileges_test_role_3'")
-                              "GRANT 'table_privileges_test_role_3' TO 'table_privileges_test_role'"]]
-                  (try (jdbc/execute! spec stmt)
-                    (catch SQLException e
-                           (log/error "Error executing SQL:")
-                           (log/errorf "Caught SQLException:\n%s\n"
-                                       (with-out-str (jdbc/print-sql-exception-chain e)))
-                           (throw e))))
-                (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete true}
-                        {:role nil, :schema nil, :table "baz", :select false, :update true, :insert true, :delete false}]
-                       (get-privileges)))))
+            (testing "should return privileges on roles that the user has been granted"
+              (doseq [stmt ["CREATE ROLE 'table_privileges_test_role'"
+                            (str "GRANT INSERT ON `bar` TO 'table_privileges_test_role'")
+                            "GRANT 'table_privileges_test_role' TO 'table_privileges_test_user'"]]
+                (jdbc/execute! spec stmt))
+              (is (= [{:role nil, :schema nil, :table "bar", :select true, :update true, :insert true, :delete false}
+                      {:role nil, :schema nil, :table "baz", :select false, :update true, :insert false, :delete false}]
+                     (get-privileges))))
             (finally
               (jdbc/execute! spec "DROP USER IF EXISTS 'table_privileges_test_user';")
-              (when mysql8-or-above?
-                (doseq [stmt ["DROP ROLE IF EXISTS 'table_privileges_test_role';"
-                              "DROP ROLE IF EXISTS 'table_privileges_test_role_2';"
-                              "DROP ROLE IF EXISTS 'table_privileges_test_role_3';"]]
-                  (jdbc/execute! spec stmt))))))))))
+              (doseq [stmt ["DROP ROLE IF EXISTS 'table_privileges_test_role';"
+                            "DROP ROLE IF EXISTS 'table_privileges_test_role_2';"
+                            "DROP ROLE IF EXISTS 'table_privileges_test_role_3';"]]
+                (jdbc/execute! spec stmt)))))))))

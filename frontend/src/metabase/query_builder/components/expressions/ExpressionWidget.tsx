@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
-import { isNotNull } from "metabase/lib/types";
-import Button from "metabase/core/components/Button";
+
 import Input from "metabase/core/components/Input/Input";
-import type { Expression } from "metabase-types/api";
+import { isNotNull } from "metabase/lib/types";
+import { Button } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import { isExpression } from "metabase-lib/expressions";
+import { isExpression } from "metabase-lib/v1/expressions";
+import type { Expression } from "metabase-types/api";
 
 import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
 import {
@@ -77,8 +78,6 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   );
   const [error, setError] = useState<string | null>(null);
 
-  const helpTextTargetRef = useRef(null);
-
   const isValidName = withName ? name.trim().length > 0 : true;
   const isValidExpression = isNotNull(expression) && isExpression(expression);
   const isValidExpressionClause = isNotNull(clause);
@@ -119,30 +118,27 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   };
 
   return (
-    <Container>
+    <Container data-testid="expression-editor">
       {header}
       <ExpressionFieldWrapper>
         <FieldLabel htmlFor="expression-content">
           {t`Expression`}
           <ExpressionWidgetInfo />
         </FieldLabel>
-        <div ref={helpTextTargetRef}>
-          <ExpressionEditorTextfield
-            helpTextTarget={helpTextTargetRef.current}
-            expression={expression}
-            expressionPosition={expressionPosition}
-            clause={clause}
-            startRule={startRule}
-            name={name}
-            query={query}
-            stageIndex={stageIndex}
-            reportTimezone={reportTimezone}
-            textAreaId="expression-content"
-            onChange={handleExpressionChange}
-            onCommit={handleCommit}
-            onError={(errorMessage: string) => setError(errorMessage)}
-          />
-        </div>
+        <ExpressionEditorTextfield
+          expression={expression}
+          expressionPosition={expressionPosition}
+          clause={clause}
+          startRule={startRule}
+          name={name}
+          query={query}
+          stageIndex={stageIndex}
+          reportTimezone={reportTimezone}
+          textAreaId="expression-content"
+          onChange={handleExpressionChange}
+          onCommit={handleCommit}
+          onError={(errorMessage: string) => setError(errorMessage)}
+        />
       </ExpressionFieldWrapper>
       {withName && (
         <FieldWrapper>
@@ -167,7 +163,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
         <ActionButtonsWrapper>
           {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
           <Button
-            primary={isValid}
+            variant={isValid ? "filled" : "default"}
             disabled={!isValid}
             onClick={() => handleCommit(expression, clause)}
           >

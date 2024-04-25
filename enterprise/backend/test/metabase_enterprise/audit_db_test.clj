@@ -5,10 +5,13 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.audit-db :as audit-db]
+   [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.core :as mbc]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.plugins :as plugins]
    [metabase.task :as task]
@@ -35,6 +38,8 @@
   (mt/test-drivers #{:postgres :h2 :mysql}
     (testing "Audit DB content is not installed when it is not found"
       (t2/delete! :model/Database :is_audit true)
+      ;; reset checksum
+      (audit-db/last-analytics-checksum! 0)
       (with-redefs [audit-db/analytics-dir-resource nil]
         (is (nil? @#'audit-db/analytics-dir-resource))
         (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
@@ -42,7 +47,8 @@
             "Audit DB is installed.")
         (is (= 0 (t2/count :model/Card {:where [:= :database_id perms/audit-db-id]}))
             "No cards created for Audit DB."))
-      (t2/delete! :model/Database :is_audit true))
+      (t2/delete! :model/Database :is_audit true)
+      (audit-db/last-analytics-checksum! 0))
 
     (testing "Audit DB content is installed when it is found"
       (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
@@ -52,8 +58,14 @@
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id perms/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
 
-    (testing "Only admins have data perms for the audit DB after it is installed"
-      (is (not (t2/exists? :model/Permissions {:where [:like :object (str "%" perms/audit-db-id "%")]}))))
+    (testing "Audit DB starts with no permissions for all users"
+      (is (= {:perms/manage-database       :no
+              :perms/download-results      :one-million-rows
+              :perms/manage-table-metadata :no
+              :perms/view-data             :unrestricted
+              :perms/create-queries        :no}
+             (-> (data-perms/data-permissions-graph :db-id perms/audit-db-id :audit? true)
+                 (get-in [(u/the-id (perms-group/all-users)) perms/audit-db-id])))))
 
     (testing "Audit DB does not have scheduled syncs"
       (let [db-has-sync-job-trigger? (fn [db-id]
@@ -129,3 +141,26 @@
         (testing "No exception is thrown when db has 'duplicate' entries."
           (is (= :metabase-enterprise.audit-db/no-op
                  (audit-db/ensure-audit-db-installed!))))))))
+
+(deftest checksum-not-recorded-when-load-fails-test
+  (mt/test-drivers #{:postgres :h2 :mysql}
+    (t2/delete! :model/Database :is_audit true)
+    (testing "If audit content loading throws an exception, the checksum should not be stored"
+      (audit-db/last-analytics-checksum! 0)
+      (with-redefs [serialization.cmd/v2-load-internal! (fn [& _] (throw (Exception. "Audit loading failed")))]
+        (is (thrown-with-msg? Exception
+                              #"Audit loading failed"
+                              (audit-db/ensure-audit-db-installed!)))
+        (is (= 0 (audit-db/last-analytics-checksum)))))))
+
+(deftest should-load-audit?-test
+  (testing "load-analytics-content + checksums dont match => load"
+    (is (= (#'audit-db/should-load-audit? true 1 3) true)))
+  (testing "load-analytics-content + last-checksum is -1 => load (even if current-checksum is also -1)"
+    (is (= (#'audit-db/should-load-audit? true -1 -1) true)))
+  (testing "checksums are the same => do not load"
+    (is (= (#'audit-db/should-load-audit? true 3 3) false)))
+  (testing "load-analytics-content false => do not load"
+    (is (= (#'audit-db/should-load-audit? false 3 5) false)))
+  (testing "load-analytics-content is false + checksums do not match  => do not load"
+    (is (= (#'audit-db/should-load-audit? false 1 3) false))))

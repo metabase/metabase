@@ -1,19 +1,18 @@
+import cx from "classnames";
 import type { CSSProperties } from "react";
 import { t } from "ttag";
 
-import S from "metabase/components/List/List.css";
-
-import List from "metabase/components/List";
-import ListItem from "metabase/components/ListItem";
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
-
+import List from "metabase/components/List";
+import S from "metabase/components/List/List.module.css";
+import ListItem from "metabase/components/ListItem";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { getDocsUrl } from "metabase/selectors/settings";
-import ReferenceHeader from "../../components/ReferenceHeader";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
+import ReferenceHeader from "../../components/ReferenceHeader";
 import { getSegments, getError, getLoading } from "../../selectors";
 
 const emptyStateData = {
@@ -40,7 +39,7 @@ export function SegmentList({ style }: SegmentListProps) {
   );
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   return (
-    <div style={style} className="full">
+    <div style={style} className={CS.full}>
       <ReferenceHeader name={t`Segments`} />
       <LoadingAndErrorWrapper
         loading={!loadingError && loading}
@@ -48,7 +47,7 @@ export function SegmentList({ style }: SegmentListProps) {
       >
         {() =>
           Object.keys(entities).length > 0 ? (
-            <div className="wrapper wrapper--trim">
+            <div className={cx(CS.wrapper, CS.wrapperTrim)}>
               <List>
                 {Object.values(entities).map(
                   entity =>

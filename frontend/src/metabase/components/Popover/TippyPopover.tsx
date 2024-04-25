@@ -1,18 +1,19 @@
-import { useState, useMemo, useCallback } from "react";
-import PropTypes from "prop-types";
 import * as TippyReact from "@tippyjs/react";
-import type * as tippy from "tippy.js";
 import cx from "classnames";
 import { merge } from "icepick";
+import PropTypes from "prop-types";
+import { useState, useMemo, useCallback } from "react";
+import type * as tippy from "tippy.js";
 
-import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import EventSandbox from "metabase/components/EventSandbox";
 import { isCypressActive } from "metabase/env";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
+import { isReducedMotionPreferred } from "metabase/lib/dom";
 
-import { DEFAULT_Z_INDEX } from "./constants";
 import type { SizeToFitOptions } from "./SizeToFitModifier";
 import { sizeToFitModifierFn } from "./SizeToFitModifier";
+import { DEFAULT_Z_INDEX } from "./constants";
 
 const TippyComponent = TippyReact.default;
 type TippyProps = TippyReact.TippyProps;
@@ -35,7 +36,9 @@ const propTypes = {
 };
 
 function appendTo() {
-  return document.body;
+  return (
+    document.getElementById(EMBEDDING_SDK_ROOT_ELEMENT_ID) || document.body
+  );
 }
 
 function getPopperOptions({

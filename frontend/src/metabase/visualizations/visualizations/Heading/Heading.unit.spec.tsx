@@ -1,13 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { color } from "metabase/lib/colors";
 
-import {
-  createMockDashboard,
-  createMockDashboardCard,
-} from "metabase-types/api/mocks";
+import { color } from "metabase/lib/colors";
+import { buildTextTagTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
-  DashboardCard,
+  QuestionDashboardCard,
   Dashboard,
   ParameterId,
   Parameter,
@@ -15,7 +12,10 @@ import type {
   VisualizationSettings,
   DashboardParameterMapping,
 } from "metabase-types/api";
-import { buildTextTagTarget } from "metabase-lib/parameters/utils/targets";
+import {
+  createMockDashboard,
+  createMockDashboardCard,
+} from "metabase-types/api/mocks";
 
 import { Heading } from "../Heading";
 
@@ -24,7 +24,7 @@ interface Settings {
 }
 
 interface Options {
-  dashcard?: DashboardCard;
+  dashcard?: QuestionDashboardCard;
   isEditing?: boolean;
   isEditingParameter?: boolean;
   onUpdateVisualizationSettings?: ({ text }: { text: string }) => void;
@@ -139,14 +139,14 @@ describe("Text", () => {
     });
 
     describe("Edit/Focused", () => {
-      it("should display and focus input when clicked", () => {
+      it("should display and focus input when clicked", async () => {
         const options = {
           settings: getSettingsWithText(""),
           isEditing: true,
         };
         setup(options);
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByTestId("editing-dashboard-heading-preview"),
         );
         expect(
@@ -154,33 +154,33 @@ describe("Text", () => {
         ).toHaveFocus();
       });
 
-      it("should have input placeholder when it has no content", () => {
+      it("should have input placeholder when it has no content", async () => {
         const options = {
           settings: getSettingsWithText(""),
           isEditing: true,
         };
         setup(options);
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByTestId("editing-dashboard-heading-preview"),
         );
         expect(screen.getByPlaceholderText("Heading")).toBeInTheDocument();
       });
 
-      it("should render input text when it has content", () => {
+      it("should render input text when it has content", async () => {
         const options = {
           settings: getSettingsWithText("Example Heading"),
           isEditing: true,
         };
         setup(options);
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByTestId("editing-dashboard-heading-preview"),
         );
         expect(screen.getByDisplayValue("Example Heading")).toBeInTheDocument();
       });
 
-      it("should show input without replacing mapped variables with parameter values", () => {
+      it("should show input without replacing mapped variables with parameter values", async () => {
         const variableName = "variable";
         const text = `Variable: {{${variableName}}}`;
 
@@ -199,12 +199,33 @@ describe("Text", () => {
         setup(options);
 
         // show input by focusing the card
-        userEvent.click(
+        await userEvent.click(
           screen.getByTestId("editing-dashboard-heading-preview"),
         );
         expect(
           screen.getByDisplayValue("Variable: {{variable}}"),
         ).toBeInTheDocument();
+      });
+
+      it("should call onUpdateVisualizationSettings on blur", async () => {
+        const mockOnUpdateVisualizationSettings = jest.fn();
+        const options = {
+          settings: getSettingsWithText("text"),
+          isEditing: true,
+          onUpdateVisualizationSettings: mockOnUpdateVisualizationSettings,
+        };
+        setup(options);
+
+        await userEvent.click(
+          screen.getByTestId("editing-dashboard-heading-preview"),
+        );
+        await userEvent.type(screen.getByRole("textbox"), "foo");
+        await userEvent.tab();
+
+        expect(mockOnUpdateVisualizationSettings).toHaveBeenCalledTimes(1);
+        expect(mockOnUpdateVisualizationSettings).toHaveBeenCalledWith({
+          text: "textfoo",
+        });
       });
     });
   });

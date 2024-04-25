@@ -2,6 +2,8 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
+
+import { useUpdatePasswordMutation } from "metabase/api";
 import {
   Form,
   FormProvider,
@@ -12,6 +14,7 @@ import {
 } from "metabase/forms";
 import { Group, Stack } from "metabase/ui";
 import type { User } from "metabase-types/api";
+
 import type { UserPasswordData } from "../../types";
 
 const USER_PASSWORD_SCHEMA = Yup.object({
@@ -32,13 +35,11 @@ const USER_PASSWORD_SCHEMA = Yup.object({
 export interface UserPasswordFormProps {
   user: User;
   onValidatePassword: (password: string) => Promise<string | undefined>;
-  onSubmit: (user: User, data: UserPasswordData) => void;
 }
 
 export const UserPasswordForm = ({
   user,
   onValidatePassword,
-  onSubmit,
 }: UserPasswordFormProps): JSX.Element => {
   const initialValues = useMemo(() => {
     return USER_PASSWORD_SCHEMA.getDefault();
@@ -49,11 +50,18 @@ export const UserPasswordForm = ({
     [onValidatePassword],
   );
 
+  const [updatePassword] = useUpdatePasswordMutation();
+
   const handleSubmit = useCallback(
-    (data: UserPasswordData) => {
-      return onSubmit(user, data);
+    async (data: UserPasswordData) => {
+      const { old_password, password } = data;
+      return await updatePassword({
+        id: user.id,
+        old_password,
+        password,
+      }).unwrap();
     },
-    [user, onSubmit],
+    [user, updatePassword],
   );
 
   return (

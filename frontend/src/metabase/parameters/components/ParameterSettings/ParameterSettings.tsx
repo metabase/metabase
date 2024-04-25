@@ -1,51 +1,87 @@
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import Radio from "metabase/core/components/Radio";
+
+import { resetParameterMapping } from "metabase/dashboard/actions";
+import { useDispatch } from "metabase/lib/redux";
+import {
+  getDashboardParameterSections,
+  getDefaultOptionForParameterSection,
+} from "metabase/parameters/utils/dashboard-options";
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import {
+  Radio,
+  Stack,
+  Text,
+  TextInput,
+  Box,
+  Select,
+  Button,
+} from "metabase/ui";
+import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
+import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
+  ParameterMappingOptions,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { TextInput } from "metabase/ui";
-import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
+
 import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
-import ValuesSourceSettings from "../ValuesSourceSettings";
+import { RequiredParamToggle } from "../RequiredParamToggle";
+import { ValuesSourceSettings } from "../ValuesSourceSettings";
+
 import {
   SettingLabel,
-  SettingSection,
-  SettingsRoot,
+  SettingLabelError,
   SettingValueWidget,
 } from "./ParameterSettings.styled";
 
-const MULTI_SELECT_OPTIONS = [
-  { name: t`Multiple values`, value: true },
-  { name: t`A single value`, value: false },
-];
-
 export interface ParameterSettingsProps {
   parameter: Parameter;
+  hasMapping: boolean;
   isParameterSlugUsed: (value: string) => boolean;
   onChangeName: (name: string) => void;
+  onChangeType: (type: string, sectionId: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
   onChangeQueryType: (queryType: ValuesQueryType) => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
+  onChangeRequired: (value: boolean) => void;
+  embeddedParameterVisibility: EmbeddingParameterVisibility | null;
 }
 
-const ParameterSettings = ({
+const parameterSections = getDashboardParameterSections();
+const dataTypeSectionsData = parameterSections.map(section => ({
+  label: section.name,
+  value: section.id,
+}));
+const defaultOptionForSection = getDefaultOptionForParameterSection() as Record<
+  string,
+  ParameterMappingOptions
+>;
+
+export const ParameterSettings = ({
   parameter,
   isParameterSlugUsed,
   onChangeName,
+  onChangeType,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
   onChangeQueryType,
   onChangeSourceType,
   onChangeSourceConfig,
+  onChangeRequired,
+  embeddedParameterVisibility,
+  hasMapping,
 }: ParameterSettingsProps): JSX.Element => {
+  const dispatch = useDispatch();
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
+  // TODO: sectionId should always be present, but current type definition presumes it's optional in the parameter.
+  // so we might want to remove all checks related to absence of it
+  const sectionId = parameter.sectionId;
 
   useLayoutEffect(() => {
     setTempLabelValue(parameter.name);
@@ -77,9 +113,47 @@ const ParameterSettings = ({
     [onChangeSourceType, onChangeSourceConfig],
   );
 
+  const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
+  const isMultiValue = getIsMultiSelect(parameter) ? "multi" : "single";
+
+  const handleTypeChange = (sectionId: string) => {
+    const defaultOptionOfNextType = defaultOptionForSection[sectionId];
+
+    onChangeType(defaultOptionOfNextType.type, sectionId);
+  };
+
+  const handleOperatorChange = (operatorType: string) => {
+    if (!sectionId) {
+      return;
+    }
+
+    onChangeType(operatorType, sectionId);
+  };
+
+  const filterOperatorData = useMemo(() => {
+    if (!sectionId) {
+      return [];
+    }
+
+    const currentSection = parameterSections.find(
+      section => section.id === sectionId,
+    );
+
+    if (!currentSection) {
+      return [];
+    }
+
+    const options = currentSection.options;
+
+    return options.map(option => ({
+      label: option.menuName ?? option.name,
+      value: option.type,
+    }));
+  }, [sectionId]);
+
   return (
-    <SettingsRoot>
-      <SettingSection>
+    <Box p="1.5rem 1rem 0.5rem">
+      <Box mb="xl">
         <SettingLabel>{t`Label`}</SettingLabel>
         <TextInput
           onChange={handleLabelChange}
@@ -88,39 +162,123 @@ const ParameterSettings = ({
           error={labelError}
           aria-label={t`Label`}
         />
-      </SettingSection>
+      </Box>
+      {sectionId && (
+        <>
+          <Box mb="xl">
+            <SettingLabel>{t`Filter type`}</SettingLabel>
+            <Select
+              data={dataTypeSectionsData}
+              value={sectionId}
+              onChange={handleTypeChange}
+            />
+          </Box>
+          {filterOperatorData.length > 1 && (
+            <Box mb="xl">
+              <SettingLabel>{t`Filter operator`}</SettingLabel>
+              <Select
+                data={filterOperatorData}
+                value={parameter.type}
+                onChange={handleOperatorChange}
+              />
+            </Box>
+          )}
+        </>
+      )}
+
       {canUseCustomSource(parameter) && (
-        <SettingSection>
+        <Box mb="xl">
           <SettingLabel>{t`How should people filter on this column?`}</SettingLabel>
           <ValuesSourceSettings
             parameter={parameter}
             onChangeQueryType={onChangeQueryType}
             onChangeSourceSettings={handleSourceSettingsChange}
           />
-        </SettingSection>
+        </Box>
       )}
-      <SettingSection>
-        <SettingLabel>{t`Default value`}</SettingLabel>
+
+      {isSingleOrMultiSelectable(parameter) && (
+        <Box mb="xl">
+          <SettingLabel>{t`People can pick`}</SettingLabel>
+          <Radio.Group
+            value={isMultiValue}
+            onChange={val => onChangeIsMultiSelect(val === "multi")}
+          >
+            <Stack spacing="xs">
+              <Radio
+                checked={isMultiValue === "multi"}
+                label={t`Multiple values`}
+                value="multi"
+              />
+              <Radio
+                checked={isMultiValue === "single"}
+                label={t`A single value`}
+                value="single"
+              />
+            </Stack>
+          </Radio.Group>
+        </Box>
+      )}
+
+      <Box mb="lg">
+        <SettingLabel>
+          {t`Default value`}
+          {parameter.required &&
+            parameterHasNoDisplayValue(parameter.default) && (
+              <SettingLabelError>({t`required`})</SettingLabelError>
+            )}
+        </SettingLabel>
+
         <SettingValueWidget
           parameter={parameter}
           name={parameter.name}
           value={parameter.default}
           placeholder={t`No default`}
           setValue={onChangeDefaultValue}
+          mimicMantine
         />
-      </SettingSection>
-      {isSingleOrMultiSelectable(parameter) && (
-        <SettingSection>
-          <SettingLabel>{t`People can pick`}</SettingLabel>
-          <Radio
-            value={getIsMultiSelect(parameter)}
-            options={MULTI_SELECT_OPTIONS}
-            vertical
-            onChange={onChangeIsMultiSelect}
-          />
-        </SettingSection>
+
+        <RequiredParamToggle
+          // This forces the toggle to be a new instance when the parameter changes,
+          // so that toggles don't slide, which is confusing.
+          key={`required_param_toggle_${parameter.id}`}
+          uniqueId={parameter.id}
+          disabled={isEmbeddedDisabled}
+          value={parameter.required ?? false}
+          onChange={onChangeRequired}
+          disabledTooltip={
+            <>
+              <Text lh={1.4}>
+                {t`This filter is set to disabled in an embedded dashboard.`}
+              </Text>
+              <Text lh={1.4}>
+                {t`To always require a value, first visit embedding settings,
+                    make this filter editable or locked, re-publish the
+                    dashboard, then return to this page.`}
+              </Text>
+              <Text size="sm">
+                {t`Note`}:{" "}
+                {t`making it locked, will require updating the
+                    embedding code before proceeding, otherwise the embed will
+                    break.`}
+              </Text>
+            </>
+          }
+        ></RequiredParamToggle>
+      </Box>
+
+      {hasMapping && (
+        <Box>
+          <Button
+            variant="subtle"
+            pl={0}
+            onClick={() => {
+              dispatch(resetParameterMapping(parameter.id));
+            }}
+          >{t`Disconnect from cards`}</Button>
+        </Box>
       )}
-    </SettingsRoot>
+    </Box>
   );
 };
 
@@ -142,5 +300,3 @@ function getLabelError({
   }
   return null;
 }
-
-export { ParameterSettings };

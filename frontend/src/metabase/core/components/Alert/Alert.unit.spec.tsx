@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+
 import Alert from "./Alert";
 
 const ALERT_TEXT = "alert text";

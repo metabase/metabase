@@ -1,5 +1,7 @@
 import { t } from "ttag";
+
 import * as Lib from "metabase-lib";
+
 import type { BucketItem } from "./types";
 
 export function getBucketItem(

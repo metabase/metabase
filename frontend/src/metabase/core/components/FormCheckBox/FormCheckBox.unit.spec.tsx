@@ -1,7 +1,8 @@
-import { Form, Formik } from "formik";
-import * as Yup from "yup";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Form, Formik } from "formik";
+import * as Yup from "yup";
+
 import FormCheckBox from "./FormCheckBox";
 
 const TEST_SCHEMA = Yup.object({
@@ -44,8 +45,8 @@ describe("FormCheckBox", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormCheckBox onSubmit={onSubmit} />);
-    userEvent.click(screen.getByRole("checkbox"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByRole("checkbox"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       const values = { value: true };
@@ -65,8 +66,8 @@ describe("FormCheckBox", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormCheckBox initialValue={true} onSubmit={onSubmit} />);
-    userEvent.click(screen.getByRole("checkbox"));
-    userEvent.tab();
+    await userEvent.click(screen.getByRole("checkbox"));
+    await userEvent.tab();
 
     expect(await screen.findByText(": error")).toBeInTheDocument();
   });

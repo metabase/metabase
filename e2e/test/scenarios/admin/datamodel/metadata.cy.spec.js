@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   getNotebookStep,
   restore,
@@ -7,8 +9,6 @@ import {
   summarize,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -127,8 +127,10 @@ describe("scenarios > admin > datamodel > metadata", () => {
     cy.findByText("Count of rows").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
-    cy.get(".List-section-header").contains("Created At").click();
-    cy.get(".List-section--expanded .List-item-title")
+    cy.get("[data-element-id=list-section-header]")
+      .contains("Created At")
+      .click();
+    cy.get("[data-element-id=list-section] [data-element-id=list-item-title]")
       .contains("Created At")
       .should("have.length", 1);
   });
@@ -149,10 +151,16 @@ describe("scenarios > admin > datamodel > metadata", () => {
       cy.findAllByTestId("dimension-list-item")
         .eq(3)
         .should("have.text", "Rating");
-      cy.get(".List-section-header").should("have.length", 3);
-      cy.get(".List-section-header").eq(0).should("have.text", "Review");
-      cy.get(".List-section-header").eq(1).should("have.text", "Product");
-      cy.get(".List-section-header").eq(2).should("have.text", "Rating");
+      cy.get("[data-element-id=list-section-header]").should("have.length", 3);
+      cy.get("[data-element-id=list-section-header]")
+        .eq(0)
+        .should("have.text", "Review");
+      cy.get("[data-element-id=list-section-header]")
+        .eq(1)
+        .should("have.text", "Product");
+      cy.get("[data-element-id=list-section-header]")
+        .eq(2)
+        .should("have.text", "Rating");
     });
   });
 

@@ -5,8 +5,7 @@
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.util :as u]))
 
 (defn- run-query
   [query-type & {:as additional-query-params}]
@@ -53,16 +52,6 @@
             (testing "rows"
               (is (= expected-rows
                      (mt/rows @results))))))))))
-
-(deftest ^:parallel add-45-days-clause-test
-  (testing "add 45 days clause"
-    (is (= {:where
-            [:>
-             (h2x/with-database-type-info
-               [:cast :bob.dobbs [:raw "date"]]
-               "date")
-             nil]}
-           (assoc-in (#'common/add-45-days-clause {} :bob.dobbs) [:where 2] nil)))))
 
 (deftest ^:parallel add-search-clause-test
   (testing "add search clause"

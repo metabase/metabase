@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import Label from "metabase/components/type/Label";
+
 import { TextButton } from "metabase/components/Button.styled";
+import Label from "metabase/components/type/Label";
+import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const NotificationHeader = styled.div`

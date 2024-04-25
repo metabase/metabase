@@ -1,4 +1,5 @@
 import type { TimelineEvent } from "metabase-types/api";
+
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { ComputedVisualizationSettings } from "./visualization";
 

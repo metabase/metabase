@@ -1,20 +1,24 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { Icon, Stack, Text } from "metabase/ui";
-import { getSetting } from "metabase/selectors/settings";
-import Link from "metabase/core/components/Link";
-import ExternalLink from "metabase/core/components/ExternalLink";
+
 import Confirm from "metabase/components/Confirm";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { ActionsApi, CardApi, DashboardApi } from "metabase/services";
-import * as Urls from "metabase/lib/urls";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import Link from "metabase/core/components/Link";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import * as Urls from "metabase/lib/urls";
+import { getSetting } from "metabase/selectors/settings";
+import { ActionsApi, CardApi, DashboardApi } from "metabase/services";
+import { Icon, Stack, Text } from "metabase/ui";
 
 import { RevokeIconWrapper } from "./PublicLinksListing.styled";
 
-export default class PublicLinksListing extends Component {
+class PublicLinksListing extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -64,8 +68,8 @@ export default class PublicLinksListing extends Component {
       <LoadingAndErrorWrapper loading={!list} error={error}>
         {() => (
           <table
-            className="ContentTable"
             data-testId={this.props["data-testId"]}
+            className={AdminS.ContentTable}
           >
             <thead>
               <tr>
@@ -83,7 +87,7 @@ export default class PublicLinksListing extends Component {
                         <Link
                           to={getUrl(link)}
                           onClick={() => this.trackEvent("Entity Link Clicked")}
-                          className="text-wrap"
+                          className={CS.textWrap}
                         >
                           {link.name}
                         </Link>
@@ -96,14 +100,14 @@ export default class PublicLinksListing extends Component {
                         <ExternalLink
                           href={getPublicUrl(link)}
                           onClick={() => this.trackEvent("Public Link Clicked")}
-                          className="link text-wrap"
+                          className={cx(CS.link, CS.textWrap)}
                         >
                           {getPublicUrl(link)}
                         </ExternalLink>
                       </td>
                     )}
                     {revoke && (
-                      <td className="flex layout-centered">
+                      <td className={cx(CS.flex, CS.layoutCentered)}>
                         <Confirm
                           title={t`Disable this link?`}
                           content={t`They won't work anymore, and can't be restored, but you can create new links.`}
@@ -177,10 +181,13 @@ export const PublicLinksActionListing = connect(mapStateToProps)(
 );
 
 export const EmbeddedResources = () => (
-  <Stack spacing="md" className="flex-full">
+  <Stack spacing="md" className={CS.flexFull}>
     <div>
       <Text mb="sm">{t`Embedded Dashboards`}</Text>
-      <div className="bordered rounded full" style={{ maxWidth: 820 }}>
+      <div
+        className={cx(CS.bordered, CS.rounded, CS.full)}
+        style={{ maxWidth: 820 }}
+      >
         <PublicLinksListing
           data-testId="-embedded-dashboards-setting"
           load={DashboardApi.listEmbeddable}
@@ -193,7 +200,10 @@ export const EmbeddedResources = () => (
 
     <div>
       <Text mb="sm">{t`Embedded Questions`}</Text>
-      <div className="bordered rounded full" style={{ maxWidth: 820 }}>
+      <div
+        className={cx(CS.bordered, CS.rounded, CS.full)}
+        style={{ maxWidth: 820 }}
+      >
         <PublicLinksListing
           data-testId="-embedded-questions-setting"
           load={CardApi.listEmbeddable}

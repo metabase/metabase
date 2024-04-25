@@ -1,11 +1,10 @@
 import { Route } from "metabase/hoc/Title";
-
-import PublicNotFound from "metabase/public/components/PublicNotFound";
-
-import PublicApp from "metabase/public/containers/PublicApp";
+import { PublicNotFound } from "metabase/public/components/PublicNotFound";
 import PublicAction from "metabase/public/containers/PublicAction";
+import PublicApp from "metabase/public/containers/PublicApp";
+import { PublicDashboard } from "metabase/public/containers/PublicDashboard";
 import { PublicQuestion } from "metabase/public/containers/PublicQuestion";
-import PublicDashboard from "metabase/public/containers/PublicDashboard";
+
 import { getApplicationName } from "./selectors/whitelabel";
 
 export const getRoutes = store => {

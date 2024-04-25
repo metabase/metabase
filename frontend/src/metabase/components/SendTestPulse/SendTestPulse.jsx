@@ -1,9 +1,9 @@
-import { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { t } from "ttag";
 
-import { cleanPulse } from "metabase/lib/pulse";
 import ActionButton from "metabase/components/ActionButton";
+import { cleanPulse } from "metabase/lib/pulse";
 
 export default class SendTestPulse extends Component {
   static propTypes = {

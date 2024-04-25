@@ -10,6 +10,7 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.database :as lib.database]
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
@@ -20,10 +21,10 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.update :as lib.filter.update]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.legacy-metric :as lib.legacy-metric]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
-   [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
@@ -32,8 +33,10 @@
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.stage :as lib.stage]
+   [metabase.lib.swap :as lib.swap]
    [metabase.lib.table :as lib.table]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.util :as lib.util]
    [metabase.shared.util.namespaces :as shared.ns]))
 
 (comment lib.aggregation/keep-me
@@ -42,6 +45,7 @@
          lib.card/keep-me
          lib.column-group/keep-me
          lib.common/keep-me
+         lib.convert/keep-me
          lib.database/keep-me
          lib.drill-thru/keep-me
          lib.drill-thru.pivot/keep-me
@@ -51,10 +55,10 @@
          lib.filter/keep-me
          lib.filter.update/keep-me
          lib.join/keep-me
+         lib.legacy-metric/keep-me
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
-         lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
          lib.order-by/keep-me
@@ -63,7 +67,8 @@
          lib.segment/keep-me
          lib.stage/keep-me
          lib.table/keep-me
-         lib.temporal-bucket/keep-me)
+         lib.temporal-bucket/keep-me
+         lib.util/keep-me)
 
 (shared.ns/import-fns
  [lib.aggregation
@@ -100,12 +105,15 @@
   breakout-column
   breakoutable-columns
   breakouts
-  breakouts-metadata]
+  breakouts-metadata
+  remove-all-breakouts]
  [lib.column-group
   columns-group-columns
   group-columns]
  [lib.common
   external-op]
+ [lib.convert
+  ->pMBQL]
  [lib.database
   database-id]
  [lib.drill-thru
@@ -183,6 +191,7 @@
   filterable-column-operators
   filter-clause
   filter-operator
+  filter-parts
   find-filter-for-legacy-filter
   find-filterable-column-for-legacy-ref
   and
@@ -223,6 +232,8 @@
   with-join-fields
   with-join-strategy
   with-join-conditions]
+ [lib.legacy-metric
+  available-legacy-metrics]
  [lib.limit
   current-limit
   limit]
@@ -239,21 +250,21 @@
   visible-columns]
  [lib.metadata.composed-provider
   composed-metadata-provider]
- [lib.metric
-  available-metrics]
  [lib.native
+  engine
+  extract-template-tags
+  has-write-permission
+  native-extras
   native-query
   raw-native-query
-  with-native-query
-  template-tags
-  engine
-  with-template-tags
   required-native-extras
-  native-extras
-  with-native-extras
+  template-tag-card-ids
+  template-tags-referenced-cards
+  template-tags
   with-different-database
-  has-write-permission
-  extract-template-tags]
+  with-native-extras
+  with-native-query
+  with-template-tags]
  [lib.order-by
   change-direction
   order-by
@@ -264,8 +275,11 @@
   normalize]
  [lib.query
   can-run
+  can-save
   query
   stage-count
+  uses-legacy-metric?
+  uses-segment?
   with-different-table]
  [lib.ref
   ref]
@@ -280,12 +294,18 @@
  [lib.stage
   append-stage
   drop-stage
-  drop-stage-if-empty
+  drop-empty-stages
   has-clauses?]
+ [lib.swap
+  swap-clauses]
  [lib.temporal-bucket
   describe-temporal-unit
   describe-temporal-interval
   describe-relative-datetime
   available-temporal-buckets
+  raw-temporal-bucket
   temporal-bucket
-  with-temporal-bucket])
+  with-temporal-bucket]
+ [lib.util
+  normalized-query-type
+  source-table-id])

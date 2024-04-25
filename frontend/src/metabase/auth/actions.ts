@@ -1,17 +1,19 @@
-import { push } from "react-router-redux";
 import { getIn } from "icepick";
-import { SessionApi, UtilApi } from "metabase/services";
-import { getSetting } from "metabase/selectors/settings";
+import { push } from "react-router-redux";
+
+import { deleteSession, initiateSLO } from "metabase/lib/auth";
+import { isSmallScreen, reload } from "metabase/lib/dom";
+import { loadLocalization } from "metabase/lib/i18n";
 import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { loadLocalization } from "metabase/lib/i18n";
-import { deleteSession } from "metabase/lib/auth";
 import * as Urls from "metabase/lib/urls";
-import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
-import { refreshSiteSettings } from "metabase/redux/settings";
-import { getUser } from "metabase/selectors/user";
-import { reload, isSmallScreen } from "metabase/lib/dom";
 import { openNavbar } from "metabase/redux/app";
+import { refreshSiteSettings } from "metabase/redux/settings";
+import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
+import { getSetting } from "metabase/selectors/settings";
+import { getUser } from "metabase/selectors/user";
+import { SessionApi, UtilApi } from "metabase/services";
+
 import {
   trackLogin,
   trackLoginGoogle,
@@ -97,14 +99,32 @@ export const loginGoogle = createAsyncThunk(
 export const LOGOUT = "metabase/auth/LOGOUT";
 export const logout = createAsyncThunk(
   LOGOUT,
-  async (redirectUrl: string | undefined, { dispatch, rejectWithValue }) => {
+  async (
+    redirectUrl: string | undefined,
+    { dispatch, rejectWithValue, getState },
+  ) => {
     try {
-      await deleteSession();
-      dispatch(clearCurrentUser());
-      await dispatch(refreshLocale()).unwrap();
-      trackLogout();
-      dispatch(push(Urls.login(redirectUrl)));
-      reload(); // clears redux state and browser caches
+      const state = getState();
+      const user = getUser(state);
+
+      if (user?.sso_source === "saml") {
+        const { "saml-logout-url": samlLogoutUrl } = await initiateSLO();
+
+        dispatch(clearCurrentUser());
+        await dispatch(refreshLocale()).unwrap();
+        trackLogout();
+
+        if (samlLogoutUrl) {
+          window.location.href = samlLogoutUrl;
+        }
+      } else {
+        await deleteSession();
+        dispatch(clearCurrentUser());
+        await dispatch(refreshLocale()).unwrap();
+        trackLogout();
+        dispatch(push(Urls.login()));
+        reload(); // clears redux state and browser caches
+      }
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -155,14 +175,5 @@ export const validatePassword = async (password: string) => {
     await UtilApi.password_check({ password });
   } catch (error) {
     return getIn(error, ["data", "errors", "password"]);
-  }
-};
-
-export const validatePasswordToken = async (token: string) => {
-  const result = await SessionApi.password_reset_token_valid({ token });
-  const valid = getIn(result, ["valid"]);
-
-  if (!valid) {
-    throw result;
   }
 };

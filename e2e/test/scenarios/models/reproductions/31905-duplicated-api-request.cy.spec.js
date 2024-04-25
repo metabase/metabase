@@ -1,5 +1,5 @@
-import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -13,7 +13,7 @@ describe("issue 31905", () => {
     cy.createQuestion(
       {
         name: "Orders Model",
-        dataset: true,
+        type: "model",
         query: { "source-table": ORDERS_ID, limit: 2 },
       },
       { visitQuestion: true },

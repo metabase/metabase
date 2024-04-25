@@ -1,8 +1,16 @@
-import { createAction, createReducer } from "@reduxjs/toolkit";
-import type { Draft } from "@reduxjs/toolkit";
-import { t } from "ttag";
 import { arrayMove } from "@dnd-kit/sortable";
+import type { Draft } from "@reduxjs/toolkit";
+import { createAction, createReducer } from "@reduxjs/toolkit";
+import { t } from "ttag";
 
+import {
+  CANCEL_EDITING_DASHBOARD,
+  INITIALIZE,
+} from "metabase/dashboard/actions/core";
+import Dashboards from "metabase/entities/dashboards";
+import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+import { checkNotNull } from "metabase/lib/types";
+import { addUndo } from "metabase/redux/undo";
 import type {
   DashCardId,
   DashboardId,
@@ -16,17 +24,17 @@ import type {
   StoreDashboard,
   TabDeletionId,
 } from "metabase-types/store";
-import { INITIALIZE } from "metabase/dashboard/actions/core";
-import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
-import { checkNotNull } from "metabase/lib/types";
-import Dashboards from "metabase/entities/dashboards";
-import { addUndo } from "metabase/redux/undo";
+
+import { trackCardMoved } from "../analytics";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import { getDashCardById } from "../selectors";
-import { trackCardMoved } from "../analytics";
-import { calculateDashCardRowAfterUndo, isVirtualDashCard } from "../utils";
+import {
+  calculateDashCardRowAfterUndo,
+  generateTemporaryDashcardId,
+  isVirtualDashCard,
+} from "../utils";
+
 import { getDashCardMoveToTabUndoMessage, getExistingDashCards } from "./utils";
-import { generateTemporaryDashcardId } from "./cards";
 
 type CreateNewTabPayload = { tabId: DashboardTabId };
 type DuplicateTabPayload = {
@@ -89,7 +97,7 @@ function _createInitialTabs({
 }: {
   dashId: DashboardId;
   newTabId: DashboardTabId;
-  state: Draft<DashboardState> | DashboardState; // union type needed to fix `possibly infinite` type error https://metaboat.slack.com/archives/C505ZNNH4/p1699541570878059?thread_ts=1699520485.702539&cid=C505ZNNH4
+  state: Draft<DashboardState> | DashboardState; // union type needed to fix `possibly infinite` type error
   prevDash: StoreDashboard;
   firstTabName?: string;
   secondTabName?: string;
@@ -339,11 +347,11 @@ export const tabsReducer = createReducer<DashboardState>(
           };
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
-          // @ts-expect-error - possibly infinite type error https://metaboat.slack.com/archives/C505ZNNH4/p1699541570878059?thread_ts=1699520485.702539&cid=C505ZNNH4
+          // @ts-expect-error - possibly infinite type error
           if (isVirtualDashCard(sourceDashCard)) {
             return;
           }
-          if (sourceDashCard.card_id === null) {
+          if (sourceDashCard.card_id == null) {
             throw Error("sourceDashCard is non-virtual yet has null card_id");
           }
           state.dashcardData[newDashCardId] = {
@@ -537,6 +545,15 @@ export const tabsReducer = createReducer<DashboardState>(
         tab => tab.id === state.selectedTabId,
       );
       state.selectedTabId = (newTabs && newTabs[selectedTabIndex]?.id) ?? null;
+    });
+
+    builder.addCase(CANCEL_EDITING_DASHBOARD, state => {
+      const { editingDashboard, selectedTabId } = state;
+      const tabs = editingDashboard?.tabs ?? [];
+      const hasTab = tabs.some(tab => tab.id === selectedTabId);
+      if (!hasTab) {
+        state.selectedTabId = tabs[0]?.id ?? null;
+      }
     });
 
     builder.addCase<

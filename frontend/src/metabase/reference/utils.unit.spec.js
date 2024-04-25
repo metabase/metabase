@@ -1,3 +1,7 @@
+import { createMockMetadata } from "__support__/metadata";
+import { separateTablesBySchema } from "metabase/reference/databases/TableList";
+import { databaseToForeignKeys, getQuestion } from "metabase/reference/utils";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   createMockDatabase,
   createMockField,
@@ -5,10 +9,6 @@ import {
   createMockSegment,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { createMockMetadata } from "__support__/metadata";
-import { separateTablesBySchema } from "metabase/reference/databases/TableList";
-import { databaseToForeignKeys, getQuestion } from "metabase/reference/utils";
-import { TYPE } from "metabase-lib/types/constants";
 
 describe("Reference utils.js", () => {
   describe("databaseToForeignKeys()", () => {
@@ -123,7 +123,6 @@ describe("Reference utils.js", () => {
       const card = {
         name: undefined,
         collection_id: undefined,
-        dataset: undefined,
         display,
         visualization_settings: {},
         dataset_query: {
@@ -156,9 +155,7 @@ describe("Reference utils.js", () => {
       expect(question).toEqual(getNewQuestion());
     });
 
-    // Unskip when this is fixed: https://github.com/metabase/metabase/issues/37782
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should generate correct question for table counts", () => {
+    it("should generate correct question for table counts", () => {
       const question = getQuestion({
         dbId,
         tableId,
@@ -188,9 +185,7 @@ describe("Reference utils.js", () => {
       );
     });
 
-    // Unskip when this is fixed: https://github.com/metabase/metabase/issues/37782
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should generate correct question for field group by bar chart", () => {
+    it("should generate correct question for field group by bar chart", () => {
       const question = getQuestion({
         dbId,
         tableId,
@@ -209,9 +204,7 @@ describe("Reference utils.js", () => {
       );
     });
 
-    // Unskip when this is fixed: https://github.com/metabase/metabase/issues/37782
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should generate correct question for field group by pie chart", () => {
+    it("should generate correct question for field group by pie chart", () => {
       const question = getQuestion({
         dbId,
         tableId,
@@ -277,9 +270,7 @@ describe("Reference utils.js", () => {
       );
     });
 
-    // Unskip when this is fixed: https://github.com/metabase/metabase/issues/37782
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should generate correct question for segment counts", () => {
+    it("should generate correct question for segment counts", () => {
       const question = getQuestion({
         dbId,
         tableId,

@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
+
+import { setupParameterValuesEndpoints } from "__support__/server-mocks";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { Parameter, ValuesQueryType } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import { setupParameterValuesEndpoints } from "__support__/server-mocks";
-import ValuesSourceSettings from "./ValuesSourceSettings";
+
+import { ValuesSourceSettings } from "./ValuesSourceSettings";
 
 interface SetupOpts {
   parameter: Parameter;
@@ -31,38 +33,43 @@ describe("ValuesSourceSettings", () => {
     ["string/=", "search"],
     ["category", "list"],
     ["category", "search"],
-  ])("should allow changing values settings for %s, %s", (type, queryType) => {
-    const { onChangeSourceSettings } = setup({
-      parameter: createMockParameter({
-        type,
-        values_query_type: queryType,
-      }),
-    });
+  ])(
+    "should allow changing values settings for %s, %s",
+    async (type, queryType) => {
+      const { onChangeSourceSettings } = setup({
+        parameter: createMockParameter({
+          type,
+          values_query_type: queryType,
+        }),
+      });
 
-    userEvent.click(screen.getByRole("button", { name: "Edit" }));
-    userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
-    userEvent.type(screen.getByRole("textbox"), "A");
-    userEvent.click(screen.getByRole("button", { name: "Done" }));
+      await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      await userEvent.type(screen.getByRole("textbox"), "A");
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
-    expect(onChangeSourceSettings).toHaveBeenCalledWith("static-list", {
-      values: ["A"],
-    });
-  });
+      expect(onChangeSourceSettings).toHaveBeenCalledWith("static-list", {
+        values: ["A"],
+      });
+    },
+  );
 
-  it("editing the values source should be disabled when the filter has linked filters", () => {
+  it("editing the values source should be disabled when the filter has linked filters", async () => {
     setup({
       parameter: createMockParameter({
         filteringParameters: ["2"],
       }),
     });
 
-    userEvent.click(screen.getByRole("radio", { name: "Dropdown list Edit" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Dropdown list" }));
     expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
-    userEvent.click(screen.getByRole("radio", { name: "Search box" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Search box" }));
     expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
 
     // hovering over the button shows the tooltip"
-    userEvent.hover(screen.getByTestId("values-source-settings-edit-btn"));
+    await userEvent.hover(
+      screen.getByTestId("values-source-settings-edit-btn"),
+    );
     expect(
       screen.getByText(
         "You can’t customize selectable values for this filter because it is linked to another one.",
@@ -70,20 +77,22 @@ describe("ValuesSourceSettings", () => {
     ).toBeInTheDocument();
   });
 
-  it("Editing the values source should be enabled when the filter has no linked filters", () => {
+  it("Editing the values source should be enabled when the filter has no linked filters", async () => {
     setup({
       parameter: createMockParameter({
         filteringParameters: [],
       }),
     });
 
-    userEvent.click(screen.getByRole("radio", { name: "Dropdown list Edit" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Dropdown list" }));
     expect(screen.getByRole("button", { name: "Edit" })).toBeEnabled();
-    userEvent.click(screen.getByRole("radio", { name: "Search box" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Search box" }));
     expect(screen.getByRole("button", { name: "Edit" })).toBeEnabled();
 
     // hovering over the button doesn't show the tooltip
-    userEvent.hover(screen.getByTestId("values-source-settings-edit-btn"));
+    await userEvent.hover(
+      screen.getByTestId("values-source-settings-edit-btn"),
+    );
     expect(
       screen.queryByText(
         "You can’t customize selectable values for this filter because it is linked to another one.",

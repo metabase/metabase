@@ -1,5 +1,12 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
+
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import {
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+  convertSavedQuestionToVirtualTable,
+  getCollectionVirtualSchemaName,
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   Card,
   Collection,
@@ -7,12 +14,7 @@ import type {
   Dashboard,
 } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import {
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
-  convertSavedQuestionToVirtualTable,
-  getCollectionVirtualSchemaName,
-} from "metabase-lib/metadata/utils/saved-questions";
+
 import { PERMISSION_ERROR } from "./constants";
 
 export interface CollectionEndpoints {
@@ -64,7 +66,7 @@ export function setupCollectionVirtualSchemaEndpoints(
 ) {
   const urls = getCollectionVirtualSchemaURLs(collection);
 
-  const [models, questions] = _.partition(cards, card => card.dataset);
+  const [models, questions] = _.partition(cards, card => card.type === "model");
   const modelVirtualTables = models.map(convertSavedQuestionToVirtualTable);
   const questionVirtualTables = questions.map(
     convertSavedQuestionToVirtualTable,
@@ -141,7 +143,7 @@ export function setupCollectionByIdEndpoint({
     return;
   }
 
-  fetchMock.get(/api\/collection\/\d+/, url => {
+  fetchMock.get(/api\/collection\/\d+$/, url => {
     const collectionIdParam = url.split("/")[5];
     const collectionId = Number(collectionIdParam);
 

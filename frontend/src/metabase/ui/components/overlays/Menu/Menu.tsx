@@ -1,5 +1,6 @@
-import { Menu as MantineMenu } from "@mantine/core";
 import type { MenuProps } from "@mantine/core";
+import { Menu as MantineMenu } from "@mantine/core";
+
 import { MenuDropdown } from "./MenuDropdown";
 import { MenuItem } from "./MenuItem";
 

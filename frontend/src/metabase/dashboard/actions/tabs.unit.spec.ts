@@ -1,4 +1,5 @@
 import { TEST_DASHBOARD_STATE } from "../components/DashboardTabs/test-utils";
+
 import { getIdFromSlug, moveTab, tabsReducer } from "./tabs";
 
 /**

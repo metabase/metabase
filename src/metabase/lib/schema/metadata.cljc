@@ -209,6 +209,17 @@
    [:definition {:optional true} [:maybe [:ref ::persisted-info.definition]]]
    [:query-hash {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
+(mr/def ::card.type
+  [:enum
+   :question
+   :model
+   :metric])
+
+;;; Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
+;;; a [[metabase.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily converted
+;;; to pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably not quite
+;;; massaged into a sequence of [[::column]] metadata just yet. See [[metabase.lib.card/card-metadata-columns]] that
+;;; converts these as needed.
 (mr/def ::card
   [:map
    {:error/message "Valid Card metadata"}
@@ -222,8 +233,8 @@
    ;; vector of column metadata maps; these are ALMOST the correct shape to be [[ColumnMetadata]], but they're
    ;; probably missing `:lib/type` and probably using `:snake_case` keys.
    [:result-metadata {:optional true} [:maybe [:sequential :map]]]
-   ;; whether this Card is a Model or not.
-   [:dataset         {:optional true} :boolean]
+   ;; what sort of saved query this is, e.g. a normal Saved Question or a Model or a V2 Metric.
+   [:type            {:optional true} [:maybe [:ref ::card.type]]]
    ;; Table ID is nullable in the application database, because native queries are not necessarily associated with a
    ;; particular Table (unless they are against MongoDB)... for MBQL queries it should be populated however.
    [:table-id        {:optional true} [:maybe ::lib.schema.id/table]]
@@ -244,15 +255,15 @@
    [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
-(mr/def ::metric
+(mr/def ::legacy-metric
   [:map
-   {:error/message "Valid Metric metadata"}
-   [:lib/type   [:= :metadata/metric]]
-   [:id         ::lib.schema.id/metric]
+   {:error/message "Valid legacy (v1) Metric metadata"}
+   [:lib/type   [:= :metadata/legacy-metric]]
+   [:id         ::lib.schema.id/legacy-metric]
    [:name       ::lib.schema.common/non-blank-string]
    [:table-id   ::lib.schema.id/table]
    ;; the MBQL snippet defining this Metric; this may still be in legacy
-   ;; format. [[metabase.lib.metric/metric-definition]] handles conversion to pMBQL if needed.
+   ;; format. [[metabase.lib.legacy-metric/metric-definition]] handles conversion to pMBQL if needed.
    [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
@@ -270,7 +281,7 @@
    {:error/message "Valid Database metadata"}
    [:lib/type [:= :metadata/database]]
    [:id ::lib.schema.id/database]
-   ;; TODO -- this should validate against the driver features list in [[metabase.driver/driver-features]] if we're in
+   ;; TODO -- this should validate against the driver features list in [[metabase.driver/features]] if we're in
    ;; Clj mode
    [:dbms-version {:optional true} [:maybe :map]]
    [:details      {:optional true} :map]
@@ -285,8 +296,39 @@
    #'lib.metadata.protocols/metadata-provider?])
 
 (mr/def ::metadata-providerable
-  [:or
-   [:ref ::metadata-provider]
-   [:map
-    {:error/message "map with a MetadataProvider in the key :lib/metadata (i.e. a query)"}
-    [:lib/metadata [:ref ::metadata-provider]]]])
+  [:fn
+   {:error/message "Valid MetadataProvider, or a map with a MetadataProvider in the key :lib/metadata (i.e. a query)"}
+   #'lib.metadata.protocols/metadata-providerable?])
+
+;;; Metadata about the columns returned by a particular stage of a pMBQL query. For example a single-stage native
+;;; query like
+;;;
+;;;    {:database 1
+;;;     :lib/type :mbql/query
+;;;     :stages   [{:lib/type :mbql.stage/mbql
+;;;                 :native   "SELECT id, name FROM VENUES;"}]}
+;;;
+;;; might have stage metadata like
+;;;
+;;;    {:columns [{:name "id", :base-type :type/Integer}
+;;;               {:name "name", :base-type :type/Text}]}
+;;;
+;;; associated with the query's lone stage.
+;;;
+;;; At some point in the near future we will hopefully attach this metadata directly to each stage in a query, so a
+;;; multi-stage query will have `:lib/stage-metadata` for each stage. The main goal is to facilitate things like
+;;; returning lists of visible or filterable columns for a given stage of a query. This is TBD, see #28717 for a WIP
+;;; implementation of this idea.
+;;;
+;;; This is the same format as the results metadata returned with QP results in `data.results_metadata`. The
+;;; `:columns` portion of this (`data.results_metadata.columns`) is also saved as `Card.result_metadata` for Saved
+;;; Questions.
+;;;
+;;; Note that queries currently actually come back with both `data.results_metadata` AND `data.cols`; it looks like
+;;; the Frontend actually *merges* these together -- see `applyMetadataDiff` in
+;;; `frontend/src/metabase/query_builder/selectors.js` -- but this is ridiculous. Let's try to merge anything missing
+;;; in `results_metadata` into `cols` going forward so things don't need to be manually merged in the future.
+(mr/def ::stage
+  [:map
+   [:lib/type [:= :metadata/results]]
+   [:columns [:sequential ::column]]])

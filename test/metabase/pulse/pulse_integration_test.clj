@@ -5,13 +5,15 @@
   the distributed content for correctness."
   (:require
    [clojure.data.csv :as csv]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [hickory.core :as hik]
    [hickory.select :as hik.s]
    [metabase.email :as email]
-   [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.pulse]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (defmacro with-metadata-data-cards
   "Provide a fixture that includes:
@@ -32,7 +34,7 @@
                                                                                         [:expression "Tax Rate"]]
                                                                          :limit        10}}}
                     Card {~model-card-id :id} {:name            "Model with percent semantic type"
-                                               :dataset         true
+                                               :type            :model
                                                :dataset_query   {:type     :query
                                                                  :database (mt/id)
                                                                  :query    {:source-table (format "card__%s" ~base-card-id)}}
@@ -164,6 +166,17 @@
                                                 :user_id          (mt/user->id :rasta)}]
           (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns pulse)))))))))
 
+(defn- strip-timestamp
+  "Remove the timestamp portion of attachment filenames.
+  This is useful for creating stable filename keys in tests.
+  For example, see `run-pulse-and-return-attached-csv-data` below.
+
+  Eg. test_card_2024-03-05T22:30:24.077306Z.csv -> test_card.csv"
+  [fname]
+  (let [ext (last (str/split fname #"\."))
+        name-parts (butlast (str/split fname #"_"))]
+    (format "%s.%s" (str/join "_" name-parts) ext)))
+
 (defn- run-pulse-and-return-attached-csv-data
   "Simulate sending the pulse email, get the attached text/csv content, and parse into a map of
   attachment name -> column name -> column data"
@@ -173,16 +186,26 @@
       (mt/with-test-user nil
         (metabase.pulse/send-pulse! pulse)))
     (->>
-      (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
-      (keep
-        (fn [{:keys [type content-type file-name content]}]
-          (when (and
-                  (= :attachment type)
-                  (= "text/csv" content-type))
-            [file-name
-             (let [[h & r] (csv/read-csv (slurp content))]
-               (zipmap h (apply mapv vector r)))])))
-      (into {}))))
+     (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
+     (keep
+      (fn [{:keys [type content-type file-name content]}]
+        (when (and
+               (= :attachment type)
+               (= "text/csv" content-type))
+          [(strip-timestamp file-name)
+           (let [[h & r] (csv/read-csv (slurp content))]
+             (zipmap h (apply mapv vector r)))])))
+     (into {}))))
+
+(defn- slugify-fname
+  "Slugify a filename while preserving the extension.
+  Useful for writing tests that require a stable filename as a key.
+
+  Eg. Some File Name.csv -> some_file_name.csv"
+  [s]
+  (let [parts (str/split s #"\.")
+        ext (last parts)]
+    (str (u/slugify (str/join "." (butlast parts))) "." ext)))
 
 (deftest apply-formatting-in-csv-dashboard-test
   (testing "An exported dashboard should preserve the formatting specified in the column metadata (#36320)"
@@ -196,7 +219,7 @@
                                                                 :card_id      question-card-id}
                      Pulse {pulse-id :id
                             :as      pulse} {:name         "Test Pulse"
-                                             :dashboard_id dash-id}
+                            :dashboard_id dash-id}
                      PulseCard _ {:pulse_id          pulse-id
                                   :card_id           base-card-id
                                   :dashboard_card_id base-dash-card-id}
@@ -213,11 +236,11 @@
                                               :user_id          (mt/user->id :rasta)}]
         (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
           (testing "The base model has no special formatting"
-            (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))
+            (is (all-float? (get-in parsed-data [(slugify-fname "Base question - no special metadata.csv") "Tax Rate"]))))
           (testing "The model with metadata formats the Tax Rate column with the user-defined semantic type"
-            (is (all-pct-2d? (get-in parsed-data ["Model with percent semantic type.csv" "Tax Rate"]))))
+            (is (all-pct-2d? (get-in parsed-data [(slugify-fname "Model with percent semantic type.csv") "Tax Rate"]))))
           (testing "The query based on the model uses the model's semantic typ information for formatting"
-            (is (all-pct-2d? (get-in parsed-data ["Query based on model.csv" "Tax Rate"])))))))))
+            (is (all-pct-2d? (get-in parsed-data [(slugify-fname "Query based on model.csv") "Tax Rate"])))))))))
 
 (deftest apply-formatting-in-csv-no-dashboard-test
   (testing "Exported cards should preserve the formatting specified in their column metadata (#36320)"
@@ -233,7 +256,7 @@
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
           (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
-            (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))))
+            (is (all-float? (get-in parsed-data [(slugify-fname "Base question - no special metadata.csv") "Tax Rate"]))))))
       (testing "The attached data from the second question (a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
                               :as      pulse} {:name "Test Pulse"}
@@ -245,7 +268,7 @@
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
           (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
-            (is (all-pct-2d? (get-in parsed-data ["Model with percent semantic type.csv" "Tax Rate"]))))))
+            (is (all-pct-2d? (get-in parsed-data [(slugify-fname "Model with percent semantic type.csv") "Tax Rate"]))))))
       (testing "The attached data from the last question (based on a a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
                               :as      pulse} {:name "Test Pulse"}
@@ -257,7 +280,7 @@
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
           (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
-            (is (all-pct-2d? (get-in parsed-data ["Query based on model.csv" "Tax Rate"])))))))))
+            (is (all-pct-2d? (get-in parsed-data [(slugify-fname "Query based on model.csv") "Tax Rate"])))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Consistent Date Formatting ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -278,6 +301,8 @@
                             EXTRACT(YEAR FROM T.example_timestamp)                AS example_year,
                             EXTRACT(MONTH FROM T.example_timestamp)               AS example_month,
                             EXTRACT(DAY FROM T.example_timestamp)                 AS example_day,
+                            EXTRACT(WEEK FROM T.example_timestamp)                AS example_week_number,
+                            T.example_timestamp                                   AS example_week,
                             EXTRACT(HOUR FROM T.example_timestamp)                AS example_hour,
                             EXTRACT(MINUTE FROM T.example_timestamp)              AS example_minute,
                             EXTRACT(SECOND FROM T.example_timestamp)              AS example_second
@@ -298,6 +323,8 @@
                   [:field "EXAMPLE_YEAR" {:base-type :type/Integer}]
                   [:field "EXAMPLE_MONTH" {:base-type :type/Integer}]
                   [:field "EXAMPLE_DAY" {:base-type :type/Integer}]
+                  [:field "EXAMPLE_WEEK_NUMBER" {:base-type :type/Integer}]
+                  [:field "EXAMPLE_WEEK" {:base-type :type/DateTime, :temporal-unit :week}]
                   [:field "EXAMPLE_HOUR" {:base-type :type/Integer}]
                   [:field "EXAMPLE_MINUTE" {:base-type :type/Integer}]
                   [:field "EXAMPLE_SECOND" {:base-type :type/Integer}]]
@@ -312,26 +339,26 @@
                                                                 :native   {:query q}}}
                      Card {model-card-id  :id
                            model-metadata :result_metadata} {:name          "MODEL"
-                                                             :dataset       true
+                                                             :type          :model
                                                              :dataset_query {:database (mt/id)
                                                                              :type     :query
                                                                              :query    (model-query native-card-id)}}
                      Card {meta-model-card-id :id} {:name                   "METAMODEL"
-                                                    :dataset                true
+                                                    :type                   :model
                                                     :dataset_query          {:database (mt/id)
                                                                              :type     :query
                                                                              :query    {:source-table
                                                                                         (format "card__%s" model-card-id)}}
                                                     :result_metadata        (mapv
-                                                                              (fn [{column-name :name :as col}]
-                                                                                (cond-> col
-                                                                                  (= "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" column-name)
-                                                                                  (assoc :settings {:date_separator "-"
-                                                                                                    :date_style     "YYYY/M/D"
-                                                                                                    :time_style     "HH:mm"})
-                                                                                  (= "EXAMPLE_TIMESTAMP" column-name)
-                                                                                  (assoc :settings {:time_enabled "seconds"})))
-                                                                              model-metadata)
+                                                                             (fn [{column-name :name :as col}]
+                                                                               (cond-> col
+                                                                                 (= "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" column-name)
+                                                                                 (assoc :settings {:date_separator "-"
+                                                                                                   :date_style     "YYYY/M/D"
+                                                                                                   :time_style     "HH:mm"})
+                                                                                 (= "EXAMPLE_TIMESTAMP" column-name)
+                                                                                 (assoc :settings {:time_enabled "seconds"})))
+                                                                             model-metadata)
                                                     :visualization_settings {:column_settings {"[\"name\",\"FULL_DATETIME_UTC\"]"
                                                                                                {:date_abbreviate true
                                                                                                 :time_enabled    "milliseconds"
@@ -369,7 +396,7 @@
                      PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                               :user_id          (mt/user->id :rasta)}]
         (let [attached-data     (run-pulse-and-return-attached-csv-data pulse)
-              get-res           #(-> attached-data (get %)
+              get-res           #(-> attached-data (get (slugify-fname %))
                                      (update-vals first)
                                      (dissoc "X"))
               native-results    (get-res "NATIVE.csv")
@@ -388,10 +415,14 @@
                     "EXAMPLE_YEAR"                     "2,023"
                     "EXAMPLE_MONTH"                    "12"
                     "EXAMPLE_DAY"                      "11"
+                    "EXAMPLE_WEEK_NUMBER"              "50"
                     "EXAMPLE_HOUR"                     "15"
                     "EXAMPLE_MINUTE"                   "30"
                     "EXAMPLE_SECOND"                   "45"}
-                   native-results)))
+                   ;; the EXAMPLE_WEEK is a normal timestamp.
+                   ;; We care about it in the context of the Model, not the native results
+                   ;; so dissoc it here.
+                   (dissoc native-results "EXAMPLE_WEEK"))))
           (testing "An exported model retains the base format, but does use display names for column names."
             (is (= {"Full Datetime Utc"                "December 11, 2023, 3:30 PM"
                     "Full Datetime Pacific"            "December 11, 2023, 3:30 PM"
@@ -402,6 +433,8 @@
                     "Example Year"                     "2,023"
                     "Example Month"                    "12"
                     "Example Day"                      "11"
+                    "Example Week Number"              "50"
+                    "Example Week"                     "December 10, 2023 - December 16, 2023"
                     "Example Hour"                     "15"
                     "Example Minute"                   "30"
                     "Example Second"                   "45"}
@@ -420,7 +453,10 @@
                    (metamodel-results "Full Datetime Pacific"))))
           (testing "Setting time-enabled to nil for a time column just returns an empty string"
             (is (= ""
-                   (metamodel-results "Example Time")))))))))
+                   (metamodel-results "Example Time"))))
+          (testing "Week Units Are Displayed as a Date Range"
+            (is (= "December 10, 2023 - December 16, 2023"
+                   (metamodel-results "Example Week")))))))))
 
 (deftest renamed-column-names-are-applied-test
   (testing "CSV attachments should have the same columns as displayed in Metabase (#18572)"
@@ -462,14 +498,14 @@
                        Card {model-card-name :name
                              model-card-id   :id
                              model-metadata  :result_metadata} {:name          "MODEL"
-                                                                :dataset       true
+                                                                :type          :model
                                                                 :dataset_query {:database (mt/id)
                                                                                 :type     :query
                                                                                 :query    {:source-table
                                                                                            (format "card__%s" base-card-id)}}}
                        Card {meta-model-card-name :name
                              meta-model-card-id   :id} {:name            "MODEL_WITH_META"
-                                                        :dataset         true
+                                                        :type            :model
                                                         :dataset_query   {:database (mt/id)
                                                                           :type     :query
                                                                           :query    {:source-table
@@ -543,21 +579,21 @@
                                               (when (and
                                                       (= :attachment type)
                                                       (= "text/csv" content-type))
-                                                [file-name
+                                                [(strip-timestamp file-name)
                                                  (first (csv/read-csv (slurp content)))])))
                                           (into {})))]
             (testing "Renaming columns via viz settings is correctly applied to the CSV export"
               (is (= ["THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"]
-                     (attachment-name->cols (format "%s.csv" base-card-name)))))
+                     (attachment-name->cols (slugify-fname (format "%s.csv" base-card-name))))))
             (testing "A question derived from another question does not bring forward any renames"
               (is (= ["ID" "Tax" "Total" "Discount ($)" "Quantity" "Tax Rate"]
-                     (attachment-name->cols (format "%s.csv" model-card-name)))))
+                     (attachment-name->cols (slugify-fname (format "%s.csv" model-card-name))))))
             (testing "A model with custom metadata shows the renamed metadata columns"
               (is (= ["ID" "Tax" "Grand Total" "Amount of Discount ($)" "N" "Tax Rate"]
-                     (attachment-name->cols (format "%s.csv" meta-model-card-name)))))
+                     (attachment-name->cols (slugify-fname (format "%s.csv" meta-model-card-name))))))
             (testing "A question based on a model retains the curated metadata column names but overrides these with any existing visualization_settings"
               (is (= ["IDENTIFIER" "Tax" "Grand Total" "Amount of Discount ($)" "Count" "Tax Rate"]
-                     (attachment-name->cols (format "%s.csv" question-card-name)))))))))))
+                     (attachment-name->cols (slugify-fname (format "%s.csv" question-card-name))))))))))))
 
 (defn- run-pulse-and-return-scalars
   "Simulate sending the pulse email, get the html body of the response and return the scalar value of the card."
@@ -727,3 +763,163 @@
               (with-skip-if-empty-pulse-result [result skip-if-empty? empty-query empty-query]
                 (testing "Don't send a pulse if no results at all"
                   (is (nil? result)))))))))))
+
+(deftest text-cards-are-not-skipped-when-empty-data-is-skipped-test
+  (testing "Do not skip text cards when filtering out pulse cards with empty results (#39190)"
+    (let [card-text "THIS IS TEXT THAT SHOULD NOT GO AWAY"]
+      (mt/dataset test-data
+        ;; If we don't skip empty cards, we expect 2 cards.
+        ;; If we do skip empty cards, we expect 1 card.
+        (doseq [[skip? expected-count] [[false 2] [true 1]]]
+          (mt/with-temp
+            [Card {base-card-id :id} {:name          "Card1"
+                                      :dataset_query {:database (mt/id)
+                                                      :type     :query
+                                                      :query    {:source-table (mt/id :orders)
+                                                                 :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
+                                                                                [:field (mt/id :orders :tax) {:base-type :type/Float}]]
+                                                                 :limit        2}}}
+             Card {empty-card-id :id} {:name          "Card1"
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :query
+                                                       :query    {:source-table (format "card__%s" base-card-id)
+                                                                  :filter       [:= [:field "TAX" {:base-type :type/Float}] -1]}}}
+             Dashboard {dash-id :id} {:name "The Dashboard"}
+             DashboardCard _ {:dashboard_id dash-id
+                              :visualization_settings
+                              {:virtual_card {:display :text}
+                               :text         card-text}}
+             DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
+                                                    :card_id      base-card-id}
+             DashboardCard {empty-dash-card-id :id} {:dashboard_id dash-id
+                                                     :card_id      empty-card-id}
+             Pulse {pulse-id :id :as pulse} {:name          "Only populated pulse"
+                                             :dashboard_id  dash-id
+                                             :skip_if_empty skip?}
+             PulseCard _ {:pulse_id          pulse-id
+                          :card_id           base-card-id
+                          :dashboard_card_id base-dash-card-id
+                          :include_csv       true}
+             PulseCard _ {:pulse_id          pulse-id
+                          :card_id           empty-card-id
+                          :dashboard_card_id empty-dash-card-id
+                          :include_csv       true}
+             PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                  :pulse_id     pulse-id
+                                                  :enabled      true}
+             PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                      :user_id          (mt/user->id :rasta)}]
+            (mt/with-fake-inbox
+              (with-redefs [email/bcc-enabled? (constantly false)]
+                (mt/with-test-user nil
+                  (metabase.pulse/send-pulse! pulse)))
+              (let [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
+                (let [data-tables (hik.s/select
+                                    (hik.s/class "pulse-body")
+                                    (-> html-body hik/parse hik/as-hickory))]
+                  (testing "The expected count will change if empty tables are skipped."
+                    (is (= expected-count (count data-tables))))
+                  (testing "The text card should always be present"
+                    (is (true? (str/includes? html-body card-text)))))))))))))
+
+(deftest xray-dashboards-work-test
+  (testing "Dashboards produced by generated by X-Rays should not produce bad results (#38350)"
+    (mt/dataset test-data
+      (mt/with-model-cleanup [Collection Card Dashboard]
+        (let [generated-dashboard (mt/user-http-request :crowberto :get 200 (format "automagic-dashboards/table/%d" (mt/id :orders)))
+              saved-dashboard     (mt/user-http-request :crowberto :post 200 "dashboard/save" generated-dashboard)
+              {dash-id   :id
+               title     :name
+               dashcards :dashcards} (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id saved-dashboard)))]
+          (testing "Make sure our content was generated and saved"
+            (is (= 11 (count dashcards)))
+            (is (= "A look at Orders" title)))
+          (mt/with-temp [Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
+                                                         :dashboard_id dash-id}
+                         PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                              :pulse_id     pulse-id
+                                                              :enabled      true}
+                         PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                  :user_id          (mt/user->id :rasta)}]
+            (mt/with-fake-inbox
+              (with-redefs [email/bcc-enabled? (constantly false)]
+                (mt/with-test-user nil
+                  (metabase.pulse/send-pulse! pulse)))
+              (let [html-body   (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
+                (is (false? (str/includes? html-body "An error occurred while displaying this card.")))))))))))
+
+(deftest geographic-coordinates-formatting-test
+  (testing "Longitude and latitude columns should format correctly on export (#38419)"
+    (mt/dataset airports
+      (let [base-card {:dataset_query {:database (mt/id)
+                                       :type     :query
+                                       :query    {:source-table (mt/id :airport)
+                                                  :fields       [[:field (mt/id :airport :id) {:base-type :type/Integer}]
+                                                                 [:field (mt/id :airport :longitude) {:base-type :type/Float}]
+                                                                 [:field (mt/id :airport :latitude) {:base-type :type/Float}]]
+                                                  :order-by     [[:asc (mt/id :airport :id)]]
+                                                  :limit        5}}}
+            model     {:dataset_query   {:database (mt/id)
+                                         :type     :query
+                                         :query    {:source-table (mt/id :airport)
+                                                    :fields       [[:field (mt/id :airport :id) {:base-type :type/Integer}]
+                                                                   [:field (mt/id :airport :longitude) {:base-type :type/Float}]
+                                                                   [:field (mt/id :airport :latitude) {:base-type :type/Float}]]
+                                                    :order-by     [[:asc (mt/id :airport :id)]]
+                                                    :limit        5}}
+                       :type            :model
+                       :result_metadata [{:name "ID"
+                                          :id   (mt/id :airport :id)}
+                                         {:semantic_type :type/Longitude
+                                          :field_ref     [:field (mt/id :airport :longitude) {:base-type :type/Float}]}
+                                         {:semantic_type :type/Latitude
+                                          :field_ref     [:field (mt/id :airport :latitude) {:base-type :type/Float}]}]}]
+        (mt/with-temp [Card {card-id :id} base-card
+                       Card {model-id :id} model
+                       Dashboard {dash-id :id} {}
+                       DashboardCard {dash-card-id :id} {:dashboard_id dash-id
+                                                         :card_id      card-id}
+                       DashboardCard {model-card-id :id} {:dashboard_id dash-id
+                                                          :card_id      model-id}
+                       Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
+                                                       :dashboard_id dash-id}
+                       PulseCard _ {:pulse_id          pulse-id
+                                    :card_id           card-id
+                                    :dashboard_card_id dash-card-id}
+                       PulseCard _ {:pulse_id          pulse-id
+                                    :card_id           model-id
+                                    :dashboard_card_id model-card-id}
+                       PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                            :pulse_id     pulse-id
+                                                            :enabled      true}
+                       PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                :user_id          (mt/user->id :rasta)}]
+          (testing "The html output renders the table cells as geographic coordinates"
+            (is (= [[["1" "9.85" "57.09"]
+                     ["2" "39.22" "-6.2"]
+                     ["3" "-2.2" "57.2"]
+                     ["4" "-89.68" "39.84"]
+                     ["5" "54.65" "24.43"]]
+                    [["1" "9.84924316° E" "57.09275891° N"]
+                     ["2" "39.22489900° E" "6.22202000° S"]
+                     ["3" "2.19777989° W" "57.20190048° N"]
+                     ["4" "89.67790222° W" "39.84410095° N"]
+                     ["5" "54.65110016° E" "24.43300056° N"]]]
+                   (run-pulse-and-return-data-tables pulse)))))))))
+
+(deftest empty-dashboard-test
+  (testing "A completely empty dashboard should still send an email"
+    (mt/dataset test-data
+      (mt/with-temp [Dashboard {dash-id :id} {:name "Completely empty dashboard"}
+                     Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
+                                                     :dashboard_id dash-id}
+                     PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                          :pulse_id     pulse-id
+                                                          :enabled      true}
+                     PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                              :user_id          (mt/user->id :rasta)}]
+        (mt/with-fake-inbox
+          (with-redefs [email/bcc-enabled? (constantly false)]
+            (mt/with-test-user nil
+              (metabase.pulse/send-pulse! pulse)))
+          (is (string? (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content]))))))))

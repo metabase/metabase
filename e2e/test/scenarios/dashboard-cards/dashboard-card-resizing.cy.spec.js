@@ -1,4 +1,7 @@
 import _ from "underscore";
+
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   editDashboard,
   getDashboardCard,
@@ -8,9 +11,6 @@ import {
   saveDashboard,
   visitDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 
 const VISUALIZATION_SIZES = {
@@ -48,23 +48,23 @@ const VISUALIZATION_SIZES = {
   },
   pie: {
     min: { width: 4, height: 3 },
-    default: { width: 8, height: 6 },
+    default: { width: 12, height: 8 },
   },
   funnel: {
     min: { width: 4, height: 3 },
-    default: { width: 8, height: 6 },
+    default: { width: 12, height: 6 },
   },
   gauge: {
     min: { width: 4, height: 3 },
-    default: { width: 8, height: 6 },
+    default: { width: 12, height: 6 },
   },
   progress: {
     min: { width: 4, height: 3 },
-    default: { width: 8, height: 6 },
+    default: { width: 12, height: 6 },
   },
   map: {
     min: { width: 4, height: 3 },
-    default: { width: 8, height: 6 },
+    default: { width: 12, height: 6 },
   },
   table: {
     min: { width: 4, height: 3 },
@@ -80,15 +80,15 @@ const VISUALIZATION_SIZES = {
   },
   scalar: {
     min: { width: 2, height: 2 },
-    default: { width: 4, height: 3 },
+    default: { width: 6, height: 3 },
   },
   smartscalar: {
     min: { width: 2, height: 2 },
-    default: { width: 4, height: 3 },
+    default: { width: 6, height: 3 },
   },
   link: {
     min: { width: 1, height: 1 },
-    default: { width: 4, height: 1 },
+    default: { width: 8, height: 1 },
   },
   action: {
     min: { width: 1, height: 1 },
@@ -100,7 +100,7 @@ const VISUALIZATION_SIZES = {
   },
   text: {
     min: { width: 1, height: 1 },
-    default: { width: 6, height: 3 },
+    default: { width: 12, height: 3 },
   },
 };
 
@@ -254,7 +254,7 @@ describe("scenarios > dashboard card resizing", () => {
   );
 
   it(
-    `should not allow cards to be resized smaller than min height`,
+    "should not allow cards to be resized smaller than min height",
     { requestTimeout: 15000, tags: "@slow" },
     () => {
       const cardIds = [];
@@ -280,7 +280,10 @@ describe("scenarios > dashboard card resizing", () => {
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
           const dashcards = body.dashcards;
           dashcards.forEach(({ card }) => {
-            const dashcard = cy.contains(".DashCard", card.name);
+            const dashcard = cy.contains(
+              "[data-testid=dashcard-container]",
+              card.name,
+            );
             resizeDashboardCard({
               card: dashcard,
               x: getDefaultSize(card.display).width * 100,
@@ -292,7 +295,10 @@ describe("scenarios > dashboard card resizing", () => {
           editDashboard();
 
           dashcards.forEach(({ card }) => {
-            const dashcard = cy.contains(".DashCard", card.name);
+            const dashcard = cy.contains(
+              "[data-testid=dashcard-container]",
+              card.name,
+            );
             dashcard.within(() => {
               resizeDashboardCard({
                 card: dashcard,

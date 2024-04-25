@@ -1,16 +1,18 @@
 /* eslint-disable react/prop-types */
-import { createRef, Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { createRef, Component } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import cx from "classnames";
-import { isSyncCompleted } from "metabase/lib/syncing";
-
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import FormMessage from "metabase/components/form/FormMessage";
 import Modal from "metabase/components/Modal";
-import DatabaseSyncModal from "metabase/databases/containers/DatabaseSyncModal";
+import FormMessage from "metabase/components/form/FormMessage";
+import AdminS from "metabase/css/admin.module.css";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
+import { DatabaseSyncModal } from "metabase/databases/components/DatabaseSyncModal";
+import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 import {
@@ -73,15 +75,19 @@ export default class DatabaseList extends Component {
     const error = deletionError || addSampleDatabaseError;
 
     return (
-      <div className="wrapper" data-testid="database-list">
-        <section className="PageHeader px2 clearfix">
+      <div className={CS.wrapper} data-testid="database-list">
+        <section className={cx(AdminS.PageHeader, CS.px2, CS.clearfix)}>
           {isAdmin && (
             <Link
               to="/admin/databases/create"
-              className="Button Button--primary float-right"
+              className={cx(
+                ButtonsS.Button,
+                ButtonsS.ButtonPrimary,
+                CS.floatRight,
+              )}
             >{t`Add database`}</Link>
           )}
-          <h2 className="PageTitle">{t`Databases`}</h2>
+          <h2 className={CS.m0}>{t`Databases`}</h2>
         </section>
         {error && (
           <section>
@@ -89,7 +95,7 @@ export default class DatabaseList extends Component {
           </section>
         )}
         <section>
-          <table className="ContentTable">
+          <table className={AdminS.ContentTable}>
             <thead>
               <tr>
                 <th>{t`Name`}</th>
@@ -114,7 +120,7 @@ export default class DatabaseList extends Component {
                             )}
                             <Link
                               to={"/admin/databases/" + database.id}
-                              className="text-bold link"
+                              className={cx(CS.textBold, CS.link)}
                             >
                               {database.name}
                             </Link>
@@ -140,14 +146,14 @@ export default class DatabaseList extends Component {
             </tbody>
           </table>
           {!hasSampleDatabase && isAdmin ? (
-            <div className="pt4">
+            <div className={CS.pt4}>
               <span
-                className={cx("p2 text-italic", {
-                  "border-top": databases && databases.length > 0,
+                className={cx(CS.p2, CS.textItalic, {
+                  [CS.borderTop]: databases && databases.length > 0,
                 })}
               >
                 {isAddingSampleDatabase ? (
-                  <span className="text-light no-decoration">
+                  <span className={cx(CS.textLight, CS.noDecoration)}>
                     {t`Restoring the sample database...`}
                   </span>
                 ) : (

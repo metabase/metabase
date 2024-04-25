@@ -1,4 +1,5 @@
-import { createEntity } from "metabase/lib/entities";
+import { activityApi } from "metabase/api";
+import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { entityTypeForObject } from "metabase/lib/schema";
 import { RecentItemSchema } from "metabase/schema";
 
@@ -17,11 +18,23 @@ export const getIcon = item => {
   return entity.objectSelectors.getIcon(item.model_object, options);
 };
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const RecentItems = createEntity({
   name: "recentItems",
   nameOne: "recentItem",
   path: "/api/activity/recent_views",
   schema: RecentItemSchema,
+
+  api: {
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        activityApi.endpoints.listRecentItems,
+      ),
+  },
 
   wrapEntity(item, dispatch = null) {
     const entity = getEntity(item);

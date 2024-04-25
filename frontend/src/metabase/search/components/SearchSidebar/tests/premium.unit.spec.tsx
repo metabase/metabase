@@ -1,7 +1,7 @@
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { screen } from "__support__/ui";
 import type { SearchSidebarSetupOptions } from "metabase/search/components/SearchSidebar/tests/setup";
 import { setup } from "metabase/search/components/SearchSidebar/tests/setup";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 const setupPremium = async (opts?: SearchSidebarSetupOptions) => {
   setup({

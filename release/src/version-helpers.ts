@@ -36,6 +36,11 @@ export const getCanonicalVersion = (
     : getOSSVersion(versionString);
 };
 
+export const getGenericVersion = (versionString: string) => {
+  // turn v0.88.0 into 88.0
+  return getOSSVersion(versionString).replace(/v0\./, "");
+};
+
 export const getVersionType = (versionString: string) => {
   if (!isValidVersionString(versionString)) {
     throw new Error(`Invalid version string: ${versionString}`);
@@ -115,6 +120,7 @@ export const versionRequirements: Record<
   46: { java: 11, node: 16 },
   47: { java: 11, node: 18 },
   48: { java: 11, node: 18 },
+  49: { java: 11, node: 18 },
 };
 
 export const getBuildRequirements = (version: string) => {
@@ -153,7 +159,6 @@ export const getNextVersions = (versionString: string): string[] => {
   // minor releases -> next minor release
   const [major, minor] = versionString
     .replace(/(v1|v0)\./, "")
-    .replace(/.0$/, "")
     .split(".")
     .map(Number);
 
@@ -170,4 +175,12 @@ export const getNextVersions = (versionString: string): string[] => {
   }
 
   return [];
+};
+
+// our milestones don't have the v prefix or a .0 suffix
+export const getMilestoneName = (version: string) => {
+  return getOSSVersion(version)
+    .replace(/^v/, "")
+    .replace(/-rc\d+$/i, "") // RC versions use the major version milestone
+    .replace(/\.0$/, "");
 };

@@ -1,5 +1,5 @@
-import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -60,7 +60,7 @@ describe("issue 18630", () => {
     // The query runs and we assert the page is not blank,
     // which was caused by an infinite loop and a stack overflow.
     cy.findByDisplayValue(questionDetails.name);
-    cy.get(".cellData").contains("29494 Anderson Drive");
+    cy.get("[data-testid=cell-data]").contains("29494 Anderson Drive");
     cy.findByTestId("question-row-count").should("have.text", "Showing 3 rows");
   });
 });

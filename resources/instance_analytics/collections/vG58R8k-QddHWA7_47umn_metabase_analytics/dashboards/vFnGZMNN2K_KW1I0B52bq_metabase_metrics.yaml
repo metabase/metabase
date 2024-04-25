@@ -56,6 +56,7 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: 8KV2R5mzQZ5ZqcSBAZhpi
@@ -78,6 +79,7 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: eMu8T8shqP6OiB_orPQb8
@@ -111,6 +113,7 @@ dashcards:
         - timestamp
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: default
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: vIa5qU52qmci1wnR4rYWm
@@ -144,6 +147,7 @@ dashcards:
         - timestamp
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: default
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: cbYziqfyj3Vo_-TDwjB_y
@@ -166,6 +170,7 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - Creator
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: ttTLsz8CSqwKhpabUPhX4
@@ -188,6 +193,7 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - Creator
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: KOytsZjicYh1zDDRGbzeM
@@ -210,6 +216,7 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - Creator
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: GlI9CJywLBzdGgNkmhVWn
@@ -243,6 +250,7 @@ dashcards:
         - timestamp
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: default
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: 9QohNXoERBN4aKd--9LS7
@@ -276,6 +284,7 @@ dashcards:
         - timestamp
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: default
+  series: []
   visualization_settings:
     column_settings: null
 - entity_id: Z4dzLFWHFKEEymbqcM2PA
@@ -309,6 +318,7 @@ dashcards:
         - timestamp
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: default
+  series: []
   visualization_settings:
     column_settings:
       '["name","count"]':
@@ -392,6 +402,7 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
+  series: []
   visualization_settings:
     column_settings:
       '["name","count"]':
@@ -459,4 +470,6 @@ dashcards:
       - 0
       name: count
     table.pivot_column: end_timestamp
+initially_published_at: null
 tabs: []
+width: full

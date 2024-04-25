@@ -1,16 +1,47 @@
-import { createEntity } from "metabase/lib/entities";
-
-import { MetricSchema } from "metabase/schema";
+import { metricApi } from "metabase/api";
 import { color } from "metabase/lib/colors";
+import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
-
+import { MetricSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Metrics = createEntity({
   name: "metrics",
   nameOne: "metric",
-  path: "/api/metric",
+  path: "/api/legacy-metric",
   schema: MetricSchema,
+
+  api: {
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        metricApi.endpoints.listMetrics,
+      ),
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery.id,
+        dispatch,
+        metricApi.endpoints.getMetric,
+      ),
+    create: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        metricApi.endpoints.createMetric,
+      ),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        metricApi.endpoints.updateMetric,
+      ),
+    delete: ({ id }, dispatch) =>
+      entityCompatibleQuery(id, dispatch, metricApi.endpoints.deleteMetric),
+  },
 
   objectActions: {
     setArchived: (

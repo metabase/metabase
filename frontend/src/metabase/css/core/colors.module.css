@@ -1,0 +1,103 @@
+/* NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
+ * NOTE: KEEP SYNCRONIZED WITH COLORS.JS
+ */
+:root {
+  --color-white: #fff;
+  --color-success: #84bb4c;
+  --color-error: #ed6e6e;
+  --color-text-dark: #4c5773;
+  --color-text-medium: #696e7b;
+  --color-text-light: #949aab;
+  --color-text-white: #fff;
+  --color-bg-black: #2e353b;
+  --color-bg-dark: #93a1ab;
+  --color-bg-medium: #edf2f5;
+  --color-bg-light: #f9fbfc;
+  --color-bg-white: #fff;
+  --color-shadow: rgba(0, 0, 0, 0.13);
+  --color-border: #eeecec;
+}
+
+.textDefault {
+  color: var(--color-text-dark);
+}
+
+.textBrand {
+  color: var(--mb-color-brand);
+}
+
+.textSuccess {
+  color: var(--color-success);
+}
+
+/* error */
+
+.textError,
+.textErrorHover {
+  color: var(--color-error);
+}
+
+.bgErrorHover:hover {
+  background-color: var(--color-error);
+}
+
+.bgErrorInput {
+  background-color: var(--color-bg-white);
+}
+
+.textSlate {
+  color: var(--color-text-medium);
+}
+
+.textSlateLight {
+  color: var(--color-text-light);
+}
+
+.textLight {
+  color: var(--color-text-light);
+}
+
+.textMedium,
+.textMediumHover:hover {
+  color: var(--color-text-medium);
+}
+
+.textDark,
+.textDarkHover:hover {
+  color: var(--color-text-dark);
+}
+
+.bgLight,
+.bgLightHover:hover {
+  background-color: var(--color-bg-light);
+}
+
+.bgMedium {
+  background-color: var(--color-bg-medium);
+}
+
+/* white  - move to bottom for specificity since its often used on hovers, etc */
+.textWhite,
+.textWhiteHover:hover {
+  color: var(--color-text-white);
+}
+
+.bgWhite {
+  background-color: var(--color-bg-white);
+}
+
+.bgLightBlue {
+  background-color: var(--color-bg-light);
+}
+
+.DashboardNight .bgLight {
+  background-color: var(--color-bg-black);
+}
+
+.DashboardNight .bgMedium {
+  background-color: #596269;
+}
+
+.DashboardNight .textDark {
+  color: var(--color-bg-light);
+}

@@ -1,6 +1,8 @@
 /* istanbul ignore file */
 
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   DatabaseId,
   DatasetQuery,
@@ -11,8 +13,6 @@ import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/metadata/Metadata";
 
 const SAMPLE_DATABASE = createSampleDatabase();
 

@@ -1,7 +1,11 @@
 import _ from "underscore";
+
 import MetabaseSettings from "metabase/lib/settings";
 import { getEmailDomain } from "metabase/lib/utils";
-
+import {
+  getDefaultValuePopulatedParameters,
+  normalizeParameterValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Channel,
   ChannelSpec,
@@ -9,10 +13,6 @@ import type {
   Pulse,
   PulseParameter,
 } from "metabase-types/api";
-import {
-  getDefaultValuePopulatedParameters,
-  normalizeParameterValue,
-} from "metabase-lib/parameters/utils/parameter-values";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,

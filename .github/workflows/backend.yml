@@ -6,7 +6,7 @@ on:
       - "master"
       - "release-**"
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
-        uses: dorny/paths-filter@v2.11.1
+        uses: dorny/paths-filter@v3.0.0
         id: changes
         with:
           token: ${{ github.token }}
@@ -51,13 +51,13 @@ jobs:
       - name: Build static-viz frontend
         run: yarn build-static-viz
       - name: Upload Static Viz Bundle Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
 
       - name: Check for static viz changes
-        uses: dorny/paths-filter@v2.11.1
+        uses: dorny/paths-filter@v3.0.0
         id: static_viz
         with:
           token: ${{ github.token }}
@@ -65,7 +65,8 @@ jobs:
 
   be-linter-cloverage:
     needs: files-changed
-    if: github.ref_name == 'master' && needs.files-changed.outputs.backend_all == 'true'
+    if: (github.ref_name == 'master' && needs.files-changed.outputs.backend_all == 'true')
+        || contains(github.event.pull_request.labels.*.name, 'run-cloverage')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     steps:
@@ -196,7 +197,7 @@ jobs:
         run: yarn build-static-viz
       - name: Download Static Viz Bundle Artifact
         if: needs.static-viz-files-changed.outputs.static_viz == 'true'
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
@@ -206,7 +207,7 @@ jobs:
         if: matrix.java-version != 21
         run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
 
-      - name: Run tests using Java 21 on `master` only
+      - name: If using Java 21, only run tests on `master`
         id: run-java-tests-21
         if: matrix.java-version == 21 && github.ref_name == 'master'
         run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev

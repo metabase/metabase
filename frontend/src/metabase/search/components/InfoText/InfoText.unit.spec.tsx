@@ -1,6 +1,6 @@
 import { waitFor } from "@testing-library/react";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment";
+import moment from "moment"; // eslint-disable-line no-restricted-imports -- deprecated usage
+
 import {
   setupCollectionByIdEndpoint,
   setupDatabaseEndpoints,
@@ -9,7 +9,9 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { SearchModelType, SearchResult } from "metabase-types/api";
+import type { WrappedResult } from "metabase/search/types";
+import type { IconName } from "metabase/ui";
+import type { SearchModel, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
@@ -17,8 +19,7 @@ import {
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { IconName } from "metabase/ui";
-import type { WrappedResult } from "metabase/search/types";
+
 import { InfoText } from "./InfoText";
 
 const MOCK_COLLECTION = createMockCollection({
@@ -46,7 +47,7 @@ const createSearchResult = ({
   model,
   ...resultProps
 }: {
-  model: SearchModelType;
+  model: SearchModel;
 } & Partial<SearchResult>) =>
   createMockSearchResult({
     collection: MOCK_COLLECTION,
@@ -66,7 +67,7 @@ async function setup({
   isCompact = false,
   resultProps = {},
 }: {
-  model?: SearchModelType;
+  model?: SearchModel;
   isCompact?: boolean;
   resultProps?: Partial<SearchResult>;
 } = {}) {
@@ -199,23 +200,6 @@ describe("InfoText", () => {
       expect(databaseLink).toHaveAttribute(
         "href",
         `/browse/databases/${MOCK_DATABASE.id}-database-name`,
-      );
-
-      expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
-        `Updated ${LAST_EDITED_DURATION}`,
-      );
-    });
-
-    it("shows pulse's collection", async () => {
-      await setup({
-        model: "pulse",
-      });
-
-      const collectionLink = screen.getByText("Collection Name");
-      expect(collectionLink).toBeInTheDocument();
-      expect(collectionLink).toHaveAttribute(
-        "href",
-        `/collection/${MOCK_COLLECTION.id}-collection-name`,
       );
 
       expect(screen.getByTestId("revision-history-button")).toHaveTextContent(

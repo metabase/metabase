@@ -1,8 +1,9 @@
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+
 import { PasswordButton } from "./PasswordButton";
 
 interface SetupOpts {

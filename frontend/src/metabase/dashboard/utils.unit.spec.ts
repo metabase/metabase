@@ -7,15 +7,15 @@ import {
   isDashcardLoading,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
+import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import {
   createMockDashboard,
-  createMockDashboardCardWithVirtualCard,
+  createMockVirtualDashCard,
   createMockDashboardCard,
   createMockDatabase,
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 
 const ENABLED_ACTIONS_DATABASE = createMockDatabase({
   id: 1,
@@ -135,9 +135,7 @@ describe("Dashboard utils", () => {
 
   describe("isDashcardLoading", () => {
     it("should return false for virtual cards", () => {
-      expect(
-        isDashcardLoading(createMockDashboardCardWithVirtualCard(), {}),
-      ).toBe(false);
+      expect(isDashcardLoading(createMockVirtualDashCard(), {})).toBe(false);
     });
 
     it("should return false for cards with loaded data", () => {
@@ -212,7 +210,7 @@ describe("Dashboard utils", () => {
 
   describe("getVisibleCardIds", () => {
     const virtualCardId = 1;
-    const virtualCard = createMockDashboardCardWithVirtualCard({
+    const virtualCard = createMockVirtualDashCard({
       id: virtualCardId,
     });
 

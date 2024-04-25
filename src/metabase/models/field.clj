@@ -1,20 +1,24 @@
 (ns metabase.models.field
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.api.common :as api]
+   [metabase.db :as mdb]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.models.data-permissions :as data-perms]
+   [metabase.models.database :as database]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -23,8 +27,6 @@
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
-
-(comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
 ;;; ------------------------------------------------- Type Mappings --------------------------------------------------
 
@@ -40,7 +42,7 @@
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (def Field
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]]; now it's a reference to the toucan2 model name.
   We'll keep this till we replace all the Field symbol in our codebase."
   :model/Field)
 
@@ -75,7 +77,7 @@
              ancestor-types)
           k
           (do
-            (log/warn (trs "Invalid Field {0} {1}: falling back to {2}" column-name k fallback-type))
+            (log/warnf "Invalid Field %s %s: falling back to %s" column-name k fallback-type)
             fallback-type))))))
 
 (def ^:private transform-field-base-type
@@ -123,8 +125,6 @@
 
 (doto :model/Field
   (derive :metabase/model)
-  (derive ::mi/read-policy.partial-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?))
 
 (t2/define-before-insert :model/Field
@@ -139,49 +139,38 @@
       (t2/update! :model/Field {:fk_target_field_id (:id field)} {:semantic_type      nil
                                                                   :fk_target_field_id nil}))))
 
-;;; Field permissions
-;; There are several API endpoints where large instances can return many thousands of Fields. Normally Fields require
-;; a DB call to fetch information about their Table, because a Field's permissions set is the same as its parent
-;; Table's. To make API endpoints perform well, we have use two strategies:
-;; 1)  If a Field's Table is already hydrated, there is no need to manually fetch the information a second time
-;; 2)  Failing that, we cache the corresponding permissions sets for each *Table ID* for a few seconds to minimize the
-;;     number of DB calls that are made. See discussion below for more details.
+(defn- field->db-id
+  [{table-id :table_id, {db-id :db_id} :table}]
+  (or db-id (database/table-id->database-id table-id)))
 
-(defn- perms-objects-set*
-  [db-id schema table-id read-or-write]
-  #{(case read-or-write
-      :read  (perms/data-perms-path db-id schema table-id)
-      :write (perms/data-model-write-perms-path db-id schema table-id))})
+(defmethod mi/can-read? :model/Field
+  ([instance]
+   (and (data-perms/user-has-permission-for-table?
+         api/*current-user-id*
+         :perms/view-data
+         :unrestricted
+         (field->db-id instance)
+         (:table_id instance))
+        (data-perms/user-has-permission-for-table?
+         api/*current-user-id*
+         :perms/create-queries
+         :query-builder
+         (field->db-id instance)
+         (:table_id instance))))
+  ([model pk]
+   (mi/can-read? (t2/select-one model pk))))
 
-(def ^:private ^{:arglists '([table-id read-or-write])} cached-perms-object-set
-  "Cached lookup for the permissions set for a table with `table-id`. This is done so a single API call or other unit of
-  computation doesn't accidentally end up in a situation where thousands of DB calls end up being made to calculate
-  permissions for a large number of Fields. Thus, the cache only persists for 5 seconds.
+(defenterprise current-user-can-write-field?
+  "OSS implementation. Returns a boolean whether the current user can write the given field."
+  metabase-enterprise.advanced-permissions.common
+  [_instance]
+  (mi/superuser?))
 
-  Of course, no DB lookups are needed at all if the Field already has a hydrated Table. However, mistakes are
-  possible, and I did not extensively audit every single code pathway that uses sequences of Fields and permissions,
-  so this caching is added as a failsafe in case Table hydration wasn't done.
-
-  Please note this only caches one entry PER TABLE ID. Thus, even a million Tables (which is more than I hope we ever
-  see), would require only a few megs of RAM, and again only if every single Table was looked up in a span of 5
-  seconds."
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[table-id read-or-write]]
-                         [(mdb.connection/unique-identifier) table-id read-or-write])}
-   (fn [table-id read-or-write]
-     (let [{schema :schema, db-id :db_id} (t2/select-one ['Table :schema :db_id] :id table-id)]
-       (perms-objects-set* db-id schema table-id read-or-write)))
-   :ttl/threshold 5000))
-
-;;; Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
-;;; same as permissions to access its parent Table.
-(defmethod mi/perms-objects-set :model/Field
-  [{table-id :table_id, {db-id :db_id, schema :schema} :table} read-or-write]
-  (if db-id
-    ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
-    (perms-objects-set* db-id schema table-id read-or-write)
-    ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
-    (cached-perms-object-set table-id read-or-write)))
+(defmethod mi/can-write? :model/Field
+  ([instance]
+   (current-user-can-write-field? instance))
+  ([model pk]
+   (mi/can-write? (t2/select-one model pk))))
 
 (defmethod serdes/hash-fields :model/Field
   [_field]
@@ -193,7 +182,7 @@
 (defn values
   "Return the `FieldValues` associated with this `field`."
   [{:keys [id]}]
-  (t2/select [FieldValues :field_id :values], :field_id id))
+  (t2/select [FieldValues :field_id :values], :field_id id :type :full))
 
 (mu/defn nested-field-names->field-id :- [:maybe ms/PositiveInt]
   "Recusively find the field id for a nested field name, return nil if not found.
@@ -232,8 +221,8 @@
   [fields]
   ;; In 44 we added a new concept of Advanced FieldValues, so FieldValues are no longer have an one-to-one relationship
   ;; with Field. See the doc in [[metabase.models.field-values]] for more.
-  ;; Adding an explicity filter by :type =:full for FieldValues here bc I believe this hydration does not concern
-  ;; the new Advanced FieldValues.
+  ;; We filter down to only :type =:full values, as they contain configured labels which must be preserved. The Advanced
+  ;; FieldValues can then be regenerated without loss given these Full entities.
   (let [id->field-values (select-field-id->instance fields FieldValues :type :full)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
@@ -333,7 +322,7 @@
 
 (def ^{:arglists '([field-id])} field-id->table-id
   "Return the ID of the Table this Field belongs to."
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn [field-id]
      {:pre [(integer? field-id)]}
      (t2/select-one-fn :table_id Field, :id field-id))))
@@ -343,7 +332,7 @@
   [field-id]
   {:pre [(integer? field-id)]}
   (let [table-id (field-id->table-id field-id)]
-    ((requiring-resolve 'metabase.models.table/table-id->database-id) table-id)))
+    (database/table-id->database-id table-id)))
 
 (defn table
   "Return the `Table` associated with this `Field`."

@@ -14,6 +14,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.models :refer [Card Collection NativeQuerySnippet]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings :as public-settings]
@@ -365,8 +366,7 @@
                                 "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", "
                                 "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
                                 "FROM \"PUBLIC\".\"VENUES\" "
-                                "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3 "
-                                "LIMIT 1048575")]
+                                "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3")]
           (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                                             meta/metadata-provider
                                             [mbql-query])
@@ -386,7 +386,7 @@
           (mt/with-persistence-enabled [persist-models!]
             (let [mbql-query (mt/mbql-query categories)]
               (mt/with-temp [Card model {:name "model"
-                                         :dataset true
+                                         :type :model
                                          :dataset_query mbql-query
                                          :database_id (mt/id)}]
                 (persist-models!)
@@ -477,25 +477,27 @@
   (testing "We should be able to run a query referenced via a template tag if we have perms for the Card in question (#12354)"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
-        (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-        (mt/with-temp [Collection collection {}
-                       Card       {card-1-id :id} {:collection_id (u/the-id collection)
-                                                   :dataset_query (mt/mbql-query venues
-                                                                                 {:order-by [[:asc $id]] :limit 2})}
-                       Card       card-2 {:collection_id (u/the-id collection)
-                                          :dataset_query (mt/native-query
-                                                          {:query         "SELECT * FROM {{card}}"
-                                                           :template-tags {"card" {:name         "card"
-                                                                                   :display-name "card"
-                                                                                   :type         :card
-                                                                                   :card-id      card-1-id}}})}]
-          (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-          (mt/with-test-user :rasta
-            (binding [qp.perms/*card-id* (u/the-id card-2)]
-              (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
-                      [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
-                     (mt/rows
-                      (qp/process-query (:dataset_query card-2))))))))))))
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [Collection collection {}
+                         Card       {card-1-id :id} {:collection_id (u/the-id collection)
+                                                     :dataset_query (mt/mbql-query venues
+                                                                      {:order-by [[:asc $id]] :limit 2})}
+                         Card       card-2 {:collection_id (u/the-id collection)
+                                            :dataset_query (mt/native-query
+                                                             {:query         "SELECT * FROM {{card}}"
+                                                              :template-tags {"card" {:name         "card"
+                                                                                      :display-name "card"
+                                                                                      :type         :card
+                                                                                      :card-id      card-1-id}}})}]
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (mt/with-test-user :rasta
+              (binding [qp.perms/*card-id* (u/the-id card-2)]
+                (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
+                        [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
+                       (mt/rows
+                        (qp/process-query (:dataset_query card-2)))))))))))))
 
 (deftest ^:parallel card-query-errors-test
   (testing "error conditions for :card parameters"

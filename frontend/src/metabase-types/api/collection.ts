@@ -1,18 +1,29 @@
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/lib/colors/types";
-import type { UserId } from "./user";
+import type { IconName, IconProps } from "metabase/ui";
+import type { PaginationRequest, PaginationResponse } from "metabase-types/api";
+
 import type { CardDisplayType } from "./card";
 import type { DatabaseId } from "./database";
+import type { TableId } from "./table";
+import type { UserId } from "./user";
 
 export type RegularCollectionId = number;
 
-export type CollectionId = RegularCollectionId | "root" | "personal";
+export type CollectionId = RegularCollectionId | "root" | "personal" | "users";
 
 export type CollectionContentModel = "card" | "dataset";
 
 export type CollectionAuthorityLevel = "official" | null;
 
 export type CollectionType = "instance-analytics" | null;
+
+export type LastEditInfo = {
+  email: string;
+  first_name: string;
+  last_name: string;
+  id: UserId;
+  timestamp: string;
+};
 
 export type CollectionAuthorityLevelConfig = {
   type: CollectionAuthorityLevel;
@@ -42,11 +53,12 @@ export interface Collection {
   authority_level?: "official" | null;
   type?: "instance-analytics" | null;
 
-  parent_id?: CollectionId;
+  parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
   is_personal?: boolean;
 
-  location?: string;
+  location: string | null;
+  effective_location?: string; // location path containing only those collections that the user has permission to access
   effective_ancestors?: Collection[];
 
   here?: CollectionContentModel[];
@@ -57,14 +69,15 @@ export interface Collection {
   path?: CollectionId[];
 }
 
-export type CollectionItemModel =
-  | "card"
-  | "dataset"
-  | "dashboard"
-  | "pulse"
-  | "snippet"
-  | "collection"
-  | "indexed-entity";
+export const COLLECTION_ITEM_MODELS = [
+  "card",
+  "dataset",
+  "dashboard",
+  "snippet",
+  "collection",
+  "indexed-entity",
+] as const;
+export type CollectionItemModel = typeof COLLECTION_ITEM_MODELS[number];
 
 export type CollectionItemId = number;
 
@@ -77,23 +90,66 @@ export interface CollectionItem {
   collection_position?: number | null;
   collection_preview?: boolean | null;
   fully_parameterized?: boolean | null;
+  based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;
+  collection_id: CollectionId | null; // parent collection id
   display?: CardDisplayType;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
   moderated_status?: string;
   type?: string;
+  here?: CollectionItemModel[];
+  below?: CollectionItemModel[];
   can_write?: boolean;
-  getIcon: () => { name: IconName };
+  "last-edit-info"?: LastEditInfo;
+  location?: string;
+  effective_location?: string;
+  getIcon: () => IconProps;
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;
   setPinned?: (isPinned: boolean) => void;
-  setCollection?: (collection: Collection) => void;
+  setCollection?: (collection: Pick<Collection, "id">) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
 }
 
 export interface CollectionListQuery {
   archived?: boolean;
   "exclude-other-user-collections"?: boolean;
+  "exclude-archived"?: boolean;
+  "personal-only"?: boolean;
   namespace?: string;
+  tree?: boolean;
 }
+
+export type ListCollectionItemsRequest = {
+  id: CollectionId;
+  models?: CollectionItemModel[];
+  archived?: boolean;
+  pinned_state?: "all" | "is_pinned" | "is_not_pinned";
+  sort_column?: "name" | "last_edited_at" | "last_edited_by" | "model";
+  sort_direction?: "asc" | "desc";
+  namespace?: "snippets";
+} & PaginationRequest;
+
+export type ListCollectionItemsResponse = {
+  data: CollectionItem[];
+  models: CollectionItemModel[] | null;
+} & PaginationResponse;
+
+export type CollectionRequest = {
+  id: CollectionId;
+};
+
+export type ListCollectionsRequest = {
+  "personal-only"?: boolean;
+};
+
+export type ListCollectionsResponse = Collection[];
+
+export type CreateCollectionRequest = {
+  name: string;
+  description?: string;
+  color?: string; // deprecated
+  parent_id?: CollectionId | null;
+  authority_level?: CollectionAuthorityLevel;
+};

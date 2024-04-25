@@ -22,7 +22,7 @@
                                                                 [:dimension "CategoriesStats.FK"]]}]
                                      :limit       3}}}
       (#'tf.specs/add-metadata-to-steps)
-      (#'tf.specs/transform-spec-parser)))
+      (#'tf.specs/coerce-to-transform-spec)))
 
 (defmacro with-test-transform-specs
   "Evaluate `body` in a context where `transforms.specs/transform-specs` have been swapped for `test-transform-specs`"

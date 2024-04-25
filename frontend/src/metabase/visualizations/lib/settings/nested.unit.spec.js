@@ -1,5 +1,5 @@
-import { nestedSettings } from "metabase/visualizations/lib/settings/nested";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
+import { nestedSettings } from "metabase/visualizations/lib/settings/nested";
 
 describe("nestedSettings", () => {
   it("should add a nested setting function to settings", () => {

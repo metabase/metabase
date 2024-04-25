@@ -1,9 +1,9 @@
-import { t } from "ttag";
 import { isValidCronExpression } from "cron-expression-validator";
 import cronstrue from "cronstrue";
+import { t } from "ttag";
 
-import { has24HourModeSetting } from "metabase/lib/time";
 import MetabaseSettings from "metabase/lib/settings";
+import { has24HourModeSetting } from "metabase/lib/time";
 
 function translateErrorMessage(message: string) {
   const errorMessageMap: Record<string, string> = {
@@ -60,9 +60,7 @@ export function validateCronExpression(
 export function explainCronExpression(cronExpression: string) {
   return cronstrue.toString(cronExpression, {
     verbose: false,
-    locale:
-      MetabaseSettings.get("user-locale") ||
-      MetabaseSettings.get("site-locale"),
+    locale: MetabaseSettings.get("site-locale"),
     use24HourTimeFormat: has24HourModeSetting(),
   });
 }

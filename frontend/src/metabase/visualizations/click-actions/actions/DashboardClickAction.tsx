@@ -1,4 +1,5 @@
 import {
+  selectTab,
   setOrUnsetParameterValues,
   setParameterValue,
 } from "metabase/dashboard/actions";
@@ -8,14 +9,15 @@ import type {
   AlwaysDefaultClickAction,
   AlwaysDefaultClickActionSubAction,
 } from "metabase/visualizations/types";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import {
   getDashboardDrillLinkUrl,
   getDashboardDrillParameters,
   getDashboardDrillQuestionUrl,
+  getDashboardDrillTab,
   getDashboardDrillType,
   getDashboardDrillUrl,
-} from "metabase-lib/queries/drills/dashboard-click-drill";
+} from "metabase-lib/v1/queries/drills/dashboard-click-drill";
 
 type DashboardDrillType =
   | "link-url"
@@ -40,7 +42,9 @@ function getAction(
         url: () => getDashboardDrillQuestionUrl(question, clicked),
       };
     case "dashboard-url":
-      return { url: () => getDashboardDrillUrl(clicked) };
+      return {
+        url: () => getDashboardDrillUrl(clicked),
+      };
     case "dashboard-filter":
       return {
         action: () => {
@@ -51,6 +55,12 @@ function getAction(
     case "dashboard-reset":
       return {
         action: () => dispatch => {
+          const tabId = getDashboardDrillTab(clicked);
+
+          if (tabId) {
+            dispatch(selectTab({ tabId }));
+          }
+
           const parameterIdValuePairs = getDashboardDrillParameters(clicked);
           parameterIdValuePairs
             .map(([id, value]) => setParameterValue(id, value))

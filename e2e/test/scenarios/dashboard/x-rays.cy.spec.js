@@ -1,3 +1,6 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visitQuestionAdhoc,
@@ -8,10 +11,6 @@ import {
   getDashboardCards,
   saveDashboard,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -139,7 +138,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
           cy.findByText("A look at the number of 15655").should("exist");
         });
 
-        cy.get(".DashCard");
+        cy.findAllByTestId("dashcard-container");
       });
     });
 
@@ -188,7 +187,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.url().should("contain", "a-look-at-orders");
 
-    cy.get(".Card").contains("18,760");
+    cy.findAllByTestId("dashcard").contains("18,760");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("How these transactions are distributed");
   });
@@ -329,6 +328,25 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
         // Ensure charts actually got rendered
         cy.get("text.x-axis-label").contains("Created At");
       });
+  });
+
+  it("should default x-ray dashboard width to 'fixed'", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
+    cy.wait("@dataset", { timeout: 60000 });
+
+    // x-ray dashboards should default to 'fixed' width
+    cy.findByTestId("fixed-width-dashboard-header").should(
+      "have.css",
+      "max-width",
+      "1048px",
+    );
+    cy.findByTestId("fixed-width-filters").should(
+      "have.css",
+      "max-width",
+      "1048px",
+    );
+    cy.findByTestId("dashboard-grid").should("have.css", "max-width", "1048px");
   });
 });
 

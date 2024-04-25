@@ -2,7 +2,7 @@
  :show-docs-arity-on-same-line? true
  :project-specs                 [{:project-path "deps.edn"
                                   :classpath-cmd ["clojure"
-                                                  "-A:dev:ee:ee-dev:drivers:drivers-dev:build:build/release:build/all"
+                                                  "-A:dev:ee:ee-dev:drivers:drivers-dev:build:build/all"
                                                   "-Spath"]}]
  :clean {:ns-inner-blocks-indentation :keep}
  :linters {:clojure-lsp/unused-public-var {:level :warning

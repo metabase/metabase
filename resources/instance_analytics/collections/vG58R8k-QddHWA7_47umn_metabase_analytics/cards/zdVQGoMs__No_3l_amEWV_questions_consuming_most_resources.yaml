@@ -134,4 +134,6 @@ serdes/meta:
 - id: zdVQGoMs__No_3l_amEWV
   label: questions_consuming_most_resources
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (901f705)
+type: question

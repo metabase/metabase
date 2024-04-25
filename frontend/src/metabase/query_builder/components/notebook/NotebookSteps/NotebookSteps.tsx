@@ -2,15 +2,13 @@ import { useCallback, useMemo, useState } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-
+import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import type { Query } from "metabase-lib/types";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
-import type { NotebookStep as INotebookStep, OpenSteps } from "../types";
-import { getQuestionSteps } from "../lib/steps";
 import NotebookStep from "../NotebookStep";
-import { Container } from "./NotebookSteps.styled";
+import { getQuestionSteps } from "../lib/steps";
+import type { NotebookStep as INotebookStep, OpenSteps } from "../types";
 
 interface NotebookStepsProps {
   className?: string;
@@ -22,7 +20,8 @@ interface NotebookStepsProps {
 }
 
 function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
-  const isNew = !readOnly && !question.table();
+  const query = question.query();
+  const isNew = !readOnly && !Lib.sourceTableOrCardId(query);
 
   if (isNew) {
     return {
@@ -34,8 +33,7 @@ function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
   return {};
 }
 
-function NotebookSteps({
-  className,
+export function NotebookSteps({
   question,
   sourceQuestion,
   reportTimezone,
@@ -62,18 +60,21 @@ function NotebookSteps({
     setLastOpenedStep(id);
   }, []);
 
-  const handleStepClose = useCallback((id: INotebookStep["id"]) => {
-    setOpenSteps(openSteps => ({ ...openSteps, [id]: false }));
-    setLastOpenedStep(lastOpenedStep =>
-      lastOpenedStep === id ? null : lastOpenedStep,
-    );
-  }, []);
+  const handleStepClose = useCallback(
+    (id: INotebookStep["id"]) => {
+      if (openSteps[id]) {
+        setOpenSteps(openSteps => ({ ...openSteps, [id]: false }));
+      }
+      setLastOpenedStep(lastOpenedStep =>
+        lastOpenedStep === id ? null : lastOpenedStep,
+      );
+    },
+    [openSteps],
+  );
 
   const handleQueryChange = useCallback(
     async (query: Query, step: INotebookStep) => {
-      const updatedQuestion = question.setQuery(
-        Lib.dropStageIfEmpty(query, step.stageIndex),
-      );
+      const updatedQuestion = question.setQuery(Lib.dropEmptyStages(query));
       await updateQuestion(updatedQuestion);
 
       // mark the step as "closed" since we can assume
@@ -88,7 +89,7 @@ function NotebookSteps({
   }
 
   return (
-    <Container className={className}>
+    <>
       {steps.map((step, index) => {
         const isLast = index === steps.length - 1;
         const isLastOpened = lastOpenedStep === step.id;
@@ -110,9 +111,6 @@ function NotebookSteps({
           />
         );
       })}
-    </Container>
+    </>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NotebookSteps;

@@ -20,9 +20,9 @@ json_unfolding: false
 parent_id: null
 coercion_strategy: null
 preview_display: true
-position: 6
+position: 7
 custom_position: 0
-database_position: 6
+database_position: 7
 has_field_values: null
 settings: null
 caveats: null
@@ -38,3 +38,4 @@ serdes/meta:
 - id: date_joined
   model: Field
 database_indexed: null
+database_partitioned: null

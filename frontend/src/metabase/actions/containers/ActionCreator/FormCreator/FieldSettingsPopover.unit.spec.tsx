@@ -1,8 +1,11 @@
-import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+
 import type { FieldSettings } from "metabase-types/api";
+
 import { getDefaultFieldSettings } from "../../../utils";
+
 import type { FieldSettingsPopoverProps } from "./FieldSettingsPopover";
 import { FieldSettingsPopover } from "./FieldSettingsPopover";
 
@@ -37,8 +40,8 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
   it("should allow to change the input type", async () => {
     const { settings, onChange } = setup();
 
-    userEvent.click(screen.getByLabelText("Field settings"));
-    userEvent.click(await screen.findByText("Dropdown"));
+    await userEvent.click(screen.getByLabelText("Field settings"));
+    await userEvent.click(await screen.findByText("Dropdown"));
 
     expect(onChange).toHaveBeenCalledWith({
       ...settings,
@@ -49,8 +52,8 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
   it("should allow to change the placeholder", async () => {
     const { settings, onChange } = setup();
 
-    userEvent.click(screen.getByLabelText("Field settings"));
-    userEvent.type(await screen.findByLabelText("Placeholder text"), "$");
+    await userEvent.click(screen.getByLabelText("Field settings"));
+    await userEvent.type(await screen.findByLabelText("Placeholder text"), "$");
 
     expect(onChange).toHaveBeenLastCalledWith({
       ...settings,
@@ -65,7 +68,7 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
       });
       setup({ settings });
 
-      userEvent.click(screen.getByLabelText("Field settings"));
+      await userEvent.click(screen.getByLabelText("Field settings"));
       await screen.findByLabelText("Default value");
 
       expect(screen.getAllByTestId("divider").length).toBe(2);
@@ -79,7 +82,7 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
       });
       setup({ settings });
 
-      userEvent.click(screen.getByLabelText("Field settings"));
+      await userEvent.click(screen.getByLabelText("Field settings"));
       await screen.findByLabelText("Default value");
 
       expect(screen.getAllByTestId("divider").length).toBe(1);
@@ -93,15 +96,15 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
     });
     const { onChange } = setup({ settings });
 
-    userEvent.click(screen.getByLabelText("Field settings"));
-    userEvent.click(await screen.findByLabelText("Required"));
+    await userEvent.click(screen.getByLabelText("Field settings"));
+    await userEvent.click(await screen.findByLabelText("Required"));
     expect(onChange).toHaveBeenLastCalledWith({
       ...settings,
       required: false,
     });
     expect(screen.queryByLabelText("Default value")).not.toBeInTheDocument();
 
-    userEvent.click(screen.getByLabelText("Required"));
+    await userEvent.click(screen.getByLabelText("Required"));
     expect(onChange).toHaveBeenLastCalledWith({
       ...settings,
       required: true,
@@ -115,11 +118,11 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
       required: true,
     });
     const { onChange } = setup({ settings });
-    userEvent.click(screen.getByLabelText("Field settings"));
+    await userEvent.click(screen.getByLabelText("Field settings"));
 
     const input = await screen.findByLabelText("Default value");
-    userEvent.clear(input);
-    userEvent.type(input, "10");
+    await userEvent.clear(input);
+    await userEvent.type(input, "10");
 
     expect(onChange).toHaveBeenLastCalledWith({
       ...settings,

@@ -139,4 +139,6 @@ serdes/meta:
 - id: YiHMsA2dv3iQob11DLTIz
   label: alerts_on_this_question
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (13e6090)
+type: question

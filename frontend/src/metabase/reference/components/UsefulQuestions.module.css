@@ -1,0 +1,5 @@
+.usefulQuestions {
+  composes: mt1 from "style";
+  color: var(--mb-color-brand);
+  font-size: 16px;
+}

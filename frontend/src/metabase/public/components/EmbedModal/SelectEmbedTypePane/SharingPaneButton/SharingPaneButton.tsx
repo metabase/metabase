@@ -1,4 +1,5 @@
 import type { MouseEvent, MouseEventHandler, ReactNode } from "react";
+
 import { Box, Center, Stack, Text } from "metabase/ui";
 
 import {
@@ -13,6 +14,7 @@ type SharingOptionProps = {
   description: ReactNode | string;
   disabled?: boolean;
   onClick?: MouseEventHandler;
+  "data-testid"?: string;
 };
 
 export const SharingPaneButton = ({
@@ -22,8 +24,13 @@ export const SharingPaneButton = ({
   description,
   disabled,
   onClick,
+  "data-testid": dataTestId,
 }: SharingOptionProps) => (
-  <SharingPaneButtonContent withBorder disabled={disabled}>
+  <SharingPaneButtonContent
+    withBorder
+    disabled={disabled}
+    data-testid={dataTestId}
+  >
     <Center
       h="22.5rem"
       p="8rem"

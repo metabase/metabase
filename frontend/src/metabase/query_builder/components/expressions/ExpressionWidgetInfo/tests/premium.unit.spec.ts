@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
+
 import { screen } from "__support__/ui";
-import { setup as baseSetup } from "./setup";
+
 import type { SetupOpts } from "./setup";
+import { setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts) {
   baseSetup({
@@ -12,7 +14,7 @@ function setup(opts: SetupOpts) {
 }
 
 describe("ExpressionWidgetInfo (EE with token)", () => {
-  it("should show a help link when `show-metabase-links: true`", () => {
+  it("should show a help link when `show-metabase-links: true`", async () => {
     setup({ showMetabaseLinks: true });
 
     expect(
@@ -21,7 +23,7 @@ describe("ExpressionWidgetInfo (EE with token)", () => {
       "href",
       "https://www.metabase.com/docs/latest/questions/query-builder/expressions.html",
     );
-    userEvent.hover(screen.getByLabelText("info icon"));
+    await userEvent.hover(screen.getByLabelText("info icon"));
     expect(
       screen.getByText(
         "You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.",
@@ -29,13 +31,13 @@ describe("ExpressionWidgetInfo (EE with token)", () => {
     ).toBeInTheDocument();
   });
 
-  it("should not show a help link when `show-metabase-links: false`", () => {
+  it("should not show a help link when `show-metabase-links: false`", async () => {
     setup({ showMetabaseLinks: false });
 
     expect(
       screen.queryByRole("link", { name: "Open expressions documentation" }),
     ).not.toBeInTheDocument();
-    userEvent.hover(screen.getByLabelText("info icon"));
+    await userEvent.hover(screen.getByLabelText("info icon"));
     expect(
       screen.getByText(
         "You can reference columns here in functions or equations, like: floor([Price] - [Discount]).",

@@ -1,8 +1,9 @@
-import { forwardRef, useCallback } from "react";
-import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { useField } from "formik";
-import { Textarea } from "metabase/ui";
+import type { ChangeEvent, FocusEvent, Ref } from "react";
+import { forwardRef, useCallback } from "react";
+
 import type { TextareaProps } from "metabase/ui";
+import { Textarea } from "metabase/ui";
 
 export interface FormTextareaProps
   extends Omit<TextareaProps, "value" | "error"> {
@@ -47,6 +48,11 @@ export const FormTextarea = forwardRef(function FormTextarea(
       error={touched ? error : null}
       onChange={handleChange}
       onBlur={handleBlur}
+      styles={{
+        input: {
+          fontWeight: "bold",
+        },
+      }}
     />
   );
 });

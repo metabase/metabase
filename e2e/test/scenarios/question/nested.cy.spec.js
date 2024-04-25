@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
@@ -10,9 +12,6 @@ import {
   filter,
   filterField,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -185,7 +184,7 @@ describe("scenarios > question > nested", () => {
       createNestedQuestion({ baseQuestionDetails, nestedQuestionDetails });
 
       cy.log("Reported failing since v0.35.2");
-      cy.get(".cellData").contains(metric.name);
+      cy.get("[data-testid=cell-data]").contains(metric.name);
     });
   });
 
@@ -295,7 +294,7 @@ describe("scenarios > question > nested", () => {
 
   it("should be able to use aggregation functions on saved native question (metabase#15397)", () => {
     cy.createNativeQuestion({
-      name: `15397`,
+      name: "15397",
       native: {
         query:
           "select count(*), orders.product_id from orders group by orders.product_id;",
@@ -369,10 +368,10 @@ describe("scenarios > question > nested", () => {
         display: "scalar",
       }).then(({ body: { id } }) => {
         visitQuestion(id);
-        cy.get(".ScalarValue").findByText(value);
+        cy.findByTestId("scalar-value").findByText(value);
 
         visitNestedQueryAdHoc(id);
-        cy.get(".ScalarValue").findByText(value);
+        cy.findByTestId("scalar-value").findByText(value);
       });
     }
   });
@@ -466,7 +465,7 @@ describe("scenarios > question > nested", () => {
     cy.wait("@dataset");
 
     // should allow to browse object details when exploring native query results (metabase#16938)
-    cy.get(".Table-ID")
+    cy.get(".test-Table-ID")
       .as("primaryKeys")
       .should("have.length", 5)
       .first()
@@ -478,7 +477,7 @@ describe("scenarios > question > nested", () => {
 
     // Close the modal (until we implement the "X" button in the modal itself)
     cy.get("body").click("bottomRight");
-    cy.get(".Modal").should("not.exist");
+    cy.findByTestId("save-question-modal").should("not.exist");
 
     // should be able to save a nested question (metabase#18364)
     saveQuestion();
@@ -500,7 +499,9 @@ describe("scenarios > question > nested", () => {
       cy.intercept("POST", "/api/card").as("cardCreated");
 
       cy.findByText("Save").click({ force: true });
-      cy.get(".Modal").button("Save").click();
+      cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByText("Save").click();
+      });
 
       cy.wait("@cardCreated").then(({ response: { body } }) => {
         expect(body.error).not.to.exist;
@@ -554,9 +555,9 @@ describe("scenarios > question > nested", () => {
 
       cy.findByText("Save").click();
 
-      cy.get(".Modal").within(() => {
+      cy.findByTestId("save-question-modal").then(modal => {
         cy.findByLabelText("Name").type("Q").blur();
-        cy.button("Save").click();
+        cy.findByTestId("save-question-button").click();
       });
 
       cy.wait("@cardCreated");

@@ -12,7 +12,6 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -33,23 +32,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(defn- normalize-binning-options [opts]
-  (lib.normalize/normalize-map
-   opts
-   keyword
-   {:strategy keyword}))
-
-(defn- normalize-field-options [opts]
-  (lib.normalize/normalize-map
-   opts
-   keyword
-   {:temporal-unit keyword
-    :binning       normalize-binning-options}))
-
-(defmethod lib.normalize/normalize :field
-  [[tag opts id-or-name]]
-  [(keyword tag) (normalize-field-options opts) id-or-name])
-
 (mu/defn resolve-column-name-in-metadata :- [:maybe ::lib.schema.metadata/column]
   "Find the column with `column-name` in a sequence of `column-metadatas`."
   [column-name      :- ::lib.schema.common/non-blank-string
@@ -59,9 +41,9 @@
                             column-metadatas))
             [:lib/desired-column-alias :name])
       (do
-        (log/warn (i18n/tru "Invalid :field clause: column {0} does not exist. Found: {1}"
-                            (pr-str column-name)
-                            (pr-str (mapv :lib/desired-column-alias column-metadatas))))
+        (log/warnf "Invalid :field clause: column %s does not exist. Found: %s"
+                   (pr-str column-name)
+                   (pr-str (mapv :lib/desired-column-alias column-metadatas)))
         nil)))
 
 (def ^:private ^:dynamic *recursive-column-resolution-by-name*
@@ -89,8 +71,8 @@
                                                 (:expressions  stage)
                                                 (:fields       stage))
                                         (lib.metadata.calculation/visible-columns query stage-number stage))
-                                      (log/warn (i18n/tru "Cannot resolve column {0}: stage has no metadata"
-                                                          (pr-str column-name))))]
+                                      (log/warnf "Cannot resolve column %s: stage has no metadata"
+                                                 (pr-str column-name)))]
         (when-let [column (and (seq stage-columns)
                                (resolve-column-name-in-metadata column-name stage-columns))]
           (cond-> column
@@ -131,11 +113,19 @@
   "If this is a nested column, add metadata about the parent column."
   [query    :- ::lib.schema/query
    metadata :- ::lib.schema.metadata/column]
-  (let [parent-metadata     (lib.metadata/field query (:parent-id metadata))
-        {parent-name :name} (cond->> parent-metadata
-                              (:parent-id parent-metadata) (add-parent-column-metadata query))]
-    (update metadata :name (fn [field-name]
-                             (str parent-name \. field-name)))))
+  (let [parent-metadata
+        (lib.metadata/field query (:parent-id metadata))
+
+        {parent-name :name, parent-display-name :display-name}
+        (cond->> parent-metadata
+          (:parent-id parent-metadata) (add-parent-column-metadata query))]
+    (-> metadata
+        (assoc :lib/simple-name (:name metadata))
+        (update :name (fn [field-name]
+                        (str parent-name \. field-name)))
+        (assoc ::simple-display-name (:display-name metadata))
+        (update :display-name (fn [display-name]
+                                (str parent-display-name ": " display-name))))))
 
 (defn- column-metadata-effective-type
   "Effective type of a column when taking the `::temporal-unit` into account. If we have a temporal extraction like
@@ -190,20 +180,44 @@
     (cond->> metadata
       (:parent-id metadata) (add-parent-column-metadata query))))
 
+(defn- field-nesting-path
+  [metadata-providerable {:keys [display-name parent-id] :as _field-metadata}]
+  (loop [field-id parent-id, path (list display-name)]
+    (if field-id
+      (let [{:keys [display-name parent-id]} (lib.metadata/field metadata-providerable field-id)]
+        (recur parent-id (conj path display-name)))
+      path)))
+
+(defn- nest-display-name
+  [metadata-providerable field-metadata]
+  (let [path (field-nesting-path metadata-providerable field-metadata)]
+    (when (every? some? path)
+      (str/join ": " path))))
+
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.
 (defmethod lib.metadata.calculation/display-name-method :metadata/column
-  [query stage-number {field-display-name :display-name
-                       field-name         :name
-                       temporal-unit      :unit
-                       binning            ::binning
-                       join-alias         :source-alias
-                       fk-field-id        :fk-field-id
-                       table-id           :table-id
-                       :as                field-metadata} style]
-  (let [field-display-name (or field-display-name
+  [query stage-number {field-display-name  :display-name
+                       field-name          :name
+                       temporal-unit       :unit
+                       binning             ::binning
+                       join-alias          :source-alias
+                       fk-field-id         :fk-field-id
+                       table-id            :table-id
+                       parent-id           :parent-id
+                       simple-display-name ::simple-display-name
+                       hide-bin-bucket?    :lib/hide-bin-bucket?
+                       :as                 field-metadata} style]
+  (let [humanized-name (u.humanization/name->human-readable-name :simple field-name)
+        field-display-name (or simple-display-name
+                               (when (and parent-id
+                                          ;; check that we haven't nested yet
+                                          (or (nil? field-display-name)
+                                              (= field-display-name humanized-name)))
+                                 (nest-display-name query field-metadata))
+                               field-display-name
                                (if (string? field-name)
-                                 (u.humanization/name->human-readable-name :simple field-name)
+                                 humanized-name
                                  (str field-name)))
         join-display-name  (when (and (= style :long)
                                       ;; don't prepend a join display name if `:display-name` already contains one!
@@ -214,11 +228,11 @@
                                       (not (str/includes? field-display-name " → ")))
                              (or
                               (when fk-field-id
-                                 ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
-                                 ;; "ID" dropped instead.
-                                 ;; This is very intentional: one table might have several FKs to one foreign table, each with different
-                                 ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
-                                 ;; See #30109 for more details.
+                                ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
+                                ;; "ID" dropped instead.
+                                ;; This is very intentional: one table might have several FKs to one foreign table, each with different
+                                ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
+                                ;; See #30109 for more details.
                                 (if-let [field (lib.metadata/field query fk-field-id)]
                                   (-> (lib.metadata.calculation/display-info query stage-number field)
                                       :display-name
@@ -228,13 +242,19 @@
                               (or join-alias (lib.join.util/current-join-alias field-metadata))))
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
-                             field-display-name)]
+                             field-display-name)
+        temporal-format    (fn [display-name]
+                             (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
+                                                                        (str/replace \- \space)
+                                                                        u/capitalize-en)))
+        bin-format         (fn [display-name]
+                             (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata)))]
+    ;; temporal unit and binning formatting are only applied if they haven't been applied yet
     (cond
-      temporal-unit (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
-                                                               (str/replace \- \space)
-                                                               u/capitalize-en))
-      binning       (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata))
-      :else         display-name)))
+      (and (not= style :long) hide-bin-bucket?) display-name
+      (and temporal-unit (not= display-name (temporal-format humanized-name))) (temporal-format display-name)
+      (and binning       (not= display-name (bin-format humanized-name)))      (bin-format display-name)
+      :else                                                                    display-name)))
 
 (defmethod lib.metadata.calculation/display-name-method :field
   [query
@@ -265,6 +285,16 @@
   [query stage-number field-metadata]
   (merge
    ((get-method lib.metadata.calculation/display-info-method :default) query stage-number field-metadata)
+   ;; These have to be calculated even if the metadata has display-name to support nested fields
+   ;; because the query processor doesn't produce nested display-names.
+   {:display-name (lib.metadata.calculation/display-name query stage-number field-metadata)
+    :long-display-name (lib.metadata.calculation/display-name query stage-number field-metadata :long)}
+   ;; Include description and fingerprint if they're present on the column. Only proper fields or columns from a model
+   ;; have these, not aggregations or expressions.
+   (when-let [description (:description field-metadata)]
+     {:description description})
+   (when-let [fingerprint (:fingerprint field-metadata)]
+     {:fingerprint fingerprint})
    ;; if this column comes from a source Card (Saved Question/Model/etc.) use the name of the Card as the 'table' name
    ;; rather than the ACTUAL table name.
    (when (= (:lib/source field-metadata) :source/card)
@@ -585,6 +615,11 @@
 (defn- native-query-fields-edit-error []
   (i18n/tru "Fields cannot be adjusted on native queries. Either edit the native query, or save this question and edit the fields in a GUI question based on this one."))
 
+(defn- source-clauses-only-fields-edit-error []
+  (i18n/tru (str "Only source columns (those from a table, model, or saved question) can be adjusted on a query. "
+                 "Aggregations, breakouts and expressions are always returned, and must be removed from the query or "
+                 "hidden in the UI.")))
+
 (mu/defn add-field :- ::lib.schema/query
   "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
   Exactly what this means depends on the source of the field:
@@ -613,7 +648,7 @@
           ;; Default case - do nothing if we don't know about the incoming value.
           ;; Generates a warning, as we should aim to capture all the :source/* values here.
           (do
-            (log/warn (i18n/tru "Cannot add-field with unknown source {0}" (pr-str source)))
+            (log/warnf "Cannot add-field with unknown source %s" (pr-str source))
             query))
         ;; Then drop any redundant :fields clauses.
         lib.remove-replace/normalize-fields-clauses)))
@@ -666,20 +701,24 @@
   (let [source (:lib/source column)]
     (-> (case source
           (:source/table-defaults
-            :source/fields
-            :source/breakouts
-            :source/aggregations
-            :source/expressions
-            :source/card
-            :source/previous-stage
-            :source/implicitly-joinable) (exclude-field query stage-number column)
+           :source/fields
+           :source/card
+           :source/previous-stage
+           :source/expressions
+           :source/implicitly-joinable) (exclude-field query stage-number column)
           :source/joins                 (remove-field-from-join query stage-number column)
           :source/native                (throw (ex-info (native-query-fields-edit-error)
-                                                        {:query query :stage stage-number}))
+                                                         {:query query :stage stage-number}))
+
+          (:source/breakouts
+           :source/aggregations)        (throw (ex-info (source-clauses-only-fields-edit-error)
+                                                        {:query  query
+                                                         :stage  stage-number
+                                                         :source source}))
           ;; Default case: do nothing and return the query unchaged.
           ;; Generate a warning - we should aim to capture every `:source/*` value above.
           (do
-            (log/warn (i18n/tru "Cannot remove-field with unknown source {0}" (pr-str source)))
+            (log/warnf "Cannot remove-field with unknown source %s" (pr-str source))
             query))
         ;; Then drop any redundant :fields clauses.
         lib.remove-replace/normalize-fields-clauses)))

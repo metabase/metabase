@@ -1,9 +1,11 @@
 import { t } from "ttag";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
+
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_EMBEDDING,
 } from "metabase/plugins";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+
 import { EmbeddingAppOriginDescription } from "./components/EmbeddingAppOriginDescription";
 import {
   EmbeddingAppSameSiteCookieDescription,
@@ -45,6 +47,7 @@ if (hasPremiumFeature("embedding")) {
               {
                 value: "strict",
                 name: t`Strict (not recommended)`,
+                // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
                 description: t`Never allows cookies to be sent on a cross-site request. Warning: this will prevent users from following external links to Metabase.`,
               },
               {

@@ -1,12 +1,14 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
-import { Form, FormProvider } from "metabase/forms";
+
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import type { SlackSettings } from "metabase-types/api";
+
 import { SlackFormMessage } from "./SlackForm.styled";
 
 const SLACK_SCHEMA = Yup.object({

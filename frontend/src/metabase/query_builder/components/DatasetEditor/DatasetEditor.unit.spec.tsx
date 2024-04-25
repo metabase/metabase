@@ -1,11 +1,13 @@
 import fetchMock from "fetch-mock";
-import DatasetEditor from "metabase/query_builder/components/DatasetEditor";
+
 import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
+import DatasetEditor from "metabase/query_builder/components/DatasetEditor";
+import Question from "metabase-lib/v1/Question";
 import type { Card, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
@@ -14,7 +16,6 @@ import {
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import Question from "metabase-lib/Question";
 
 const TEST_DB = createSampleDatabase();
 const ROOT_COLLECTION = createMockCollection({ id: "root" });

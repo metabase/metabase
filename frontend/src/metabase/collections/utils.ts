@@ -1,11 +1,11 @@
 import { t } from "ttag";
-import { isNotNull } from "metabase/lib/types";
+
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
   Collection,
   CollectionId,
   CollectionItem,
 } from "metabase-types/api";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,
@@ -33,10 +33,10 @@ export function isPublicCollection(
 }
 
 export function isInstanceAnalyticsCollection(
-  collection: Partial<Collection>,
+  collection?: Partial<Collection>,
 ): boolean {
   return (
-    collection &&
+    !!collection &&
     PLUGIN_COLLECTIONS.getCollectionType(collection).type ===
       "instance-analytics"
   );
@@ -133,26 +133,26 @@ export function isReadOnlyCollection(collection: CollectionItem) {
   return isItemCollection(collection) && !collection.can_write;
 }
 
-export function canPinItem(item: CollectionItem, collection: Collection) {
-  return collection.can_write && item.setPinned != null;
+export function canPinItem(item: CollectionItem, collection?: Collection) {
+  return collection?.can_write && item.setPinned != null;
 }
 
-export function canPreviewItem(item: CollectionItem, collection: Collection) {
-  return collection.can_write && isItemPinned(item) && isItemQuestion(item);
+export function canPreviewItem(item: CollectionItem, collection?: Collection) {
+  return collection?.can_write && isItemPinned(item) && isItemQuestion(item);
 }
 
-export function canMoveItem(item: CollectionItem, collection: Collection) {
+export function canMoveItem(item: CollectionItem, collection?: Collection) {
   return (
-    collection.can_write &&
+    collection?.can_write &&
     !isReadOnlyCollection(item) &&
     item.setCollection != null &&
     !(isItemCollection(item) && isRootPersonalCollection(item))
   );
 }
 
-export function canArchiveItem(item: CollectionItem, collection: Collection) {
+export function canArchiveItem(item: CollectionItem, collection?: Collection) {
   return (
-    collection.can_write &&
+    collection?.can_write &&
     !isReadOnlyCollection(item) &&
     !(isItemCollection(item) && isRootPersonalCollection(item))
   );
@@ -195,37 +195,16 @@ export function canonicalCollectionId(
 }
 
 export function isValidCollectionId(
-  collectionId: string | number | null | undefined,
-): boolean {
+  collectionId: unknown,
+): collectionId is CollectionId {
+  if (
+    typeof collectionId !== "string" &&
+    typeof collectionId !== "number" &&
+    collectionId !== null &&
+    collectionId !== undefined
+  ) {
+    return false;
+  }
   const id = canonicalCollectionId(collectionId);
   return id === null || typeof id === "number";
-}
-
-function isPersonalOrPersonalChild(
-  collection: Collection,
-  collections: Collection[],
-) {
-  if (!collection) {
-    return false;
-  }
-  return (
-    isRootPersonalCollection(collection) ||
-    isPersonalCollectionChild(collection, collections)
-  );
-}
-
-export function canManageCollectionAuthorityLevel(
-  collection: Partial<Collection>,
-  collectionMap: Partial<Record<CollectionId, Collection>>,
-) {
-  if (isRootPersonalCollection(collection)) {
-    return false;
-  }
-  const parentId = coerceCollectionId(collection.parent_id);
-  const parentCollection = collectionMap[parentId];
-  const collections = Object.values(collectionMap).filter(isNotNull);
-  return (
-    parentCollection &&
-    !isPersonalOrPersonalChild(parentCollection, collections)
-  );
 }

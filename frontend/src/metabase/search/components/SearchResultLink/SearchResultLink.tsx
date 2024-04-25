@@ -1,7 +1,9 @@
 import type { MouseEvent } from "react";
+
 import Tooltip from "metabase/core/components/Tooltip";
-import { Anchor, Text } from "metabase/ui";
 import { useIsTruncated } from "metabase/hooks/use-is-truncated";
+import { Anchor, Text } from "metabase/ui";
+
 import { ResultLink, ResultLinkWrapper } from "./SearchResultLink.styled";
 
 export const SearchResultLink = ({

@@ -1,10 +1,11 @@
 import { Component } from "react";
-import _ from "underscore";
 import { connect } from "react-redux";
+import _ from "underscore";
 
-import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import Group from "metabase/entities/groups";
+import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
+
 import GroupsListing from "../components/GroupsListing";
 
 const mapStateToProps = (state, props) => ({

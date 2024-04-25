@@ -1,11 +1,12 @@
 import userEvent from "@testing-library/user-event";
+
+import { render, screen, waitFor } from "__support__/ui";
 import {
   Form,
   FormProvider,
   FormSubmitButton,
   FormSwitch,
 } from "metabase/forms";
-import { render, screen, waitFor } from "__support__/ui";
 
 interface FormValues {
   agree?: boolean;
@@ -49,8 +50,8 @@ describe("FormSwitch", () => {
   it("should submit a true value", async () => {
     const { onSubmit } = setup({ initialValues: {} });
 
-    userEvent.click(screen.getByLabelText("Agree?"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByLabelText("Agree?"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({ agree: true }, expect.anything());
@@ -60,9 +61,9 @@ describe("FormSwitch", () => {
   it("should submit a false value", async () => {
     const { onSubmit } = setup({ initialValues: {} });
 
-    userEvent.click(screen.getByLabelText("Agree?"));
-    userEvent.click(screen.getByLabelText("Agree?"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByLabelText("Agree?"));
+    await userEvent.click(screen.getByLabelText("Agree?"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -75,7 +76,7 @@ describe("FormSwitch", () => {
   it("should submit an empty value", async () => {
     const { onSubmit } = setup({ initialValues: {} });
 
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({}, expect.anything());

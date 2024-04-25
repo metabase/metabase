@@ -122,6 +122,10 @@ If you're an administrator, you can edit field types using the [Table Metadata p
 
 While data types themselves can't be edited in Metabase, admins can manually [cast data types](./metadata-editing.md#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
 
+### JSON unfolding
+
+See [Working with JSON](./json-unfolding.md).
+
 ## Further Reading
 
 - [Exploring data with Metabase's data browser](https://www.metabase.com/learn/getting-started/data-browser.html).

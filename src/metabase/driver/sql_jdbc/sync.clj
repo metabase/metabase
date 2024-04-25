@@ -15,7 +15,9 @@
 (p/import-vars
  [sql-jdbc.sync.interface
   active-tables
+  alter-columns-sql
   column->semantic-type
+  current-user-table-privileges
   database-type->base-type
   db-default-timezone
   describe-nested-field-columns
@@ -26,6 +28,10 @@
 
  [sql-jdbc.describe-table
   add-table-pks
+  describe-fields
+  describe-fields-sql
+  describe-fks
+  describe-fks-sql
   describe-table
   describe-table-fields
   describe-table-fks

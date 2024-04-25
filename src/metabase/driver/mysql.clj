@@ -10,7 +10,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
-   [metabase.db.spec :as mdb.spec]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql.actions :as mysql.actions]
@@ -31,7 +31,7 @@
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log])
   (:import
    (java.io File)
@@ -53,20 +53,20 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(doseq [[feature supported?] {:persist-models                         true
+(doseq [[feature supported?] {;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the
+                              ;; server and the columns themselves. Since this isn't something we can really change in
+                              ;; the query itself don't present the option to the users in the UI
+                              :case-sensitivity-string-filter-options false
                               :convert-timezone                       true
                               :datetime-diff                          true
-                              :now                                    true
-                              :regex                                  false
-                              :percentile-aggregations                false
                               :full-join                              false
-                              :uploads                                true
+                              :index-info                             true
+                              :now                                    true
+                              :percentile-aggregations                false
+                              :persist-models                         true
+                              :regex                                  false
                               :schemas                                false
-                              ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
-                              ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
-                              ;; users in the UI
-                              :case-sensitivity-string-filter-options false
-                              :index-info                             true}]
+                              :uploads                                true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -86,9 +86,16 @@
   [database]
   (-> database :dbms_version :flavor (= "MariaDB")))
 
+(defn mariadb-connection?
+  "Returns true if the database is MariaDB."
+  [driver conn]
+  (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MariaDB")))
+
 (defmethod driver/database-supports? [:mysql :table-privileges]
-  [driver _feat db]
-  (and (= driver :mysql) (not (mariadb? db))))
+  [_driver _feat _db]
+  ;; Disabled completely due to errors when dealing with partial revokes (metabase#38499)
+  false
+  #_(and (= driver :mysql) (not (mariadb? db))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -114,15 +121,15 @@
      (fn [^java.sql.Connection conn]
        (when (unsupported-version? (.getMetaData conn))
          (log/warn
-          (u/format-color 'red
-                          (str
-                           "\n\n********************************************************************************\n"
-                           (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
+          (u/format-color :red
+                          (str "\n\n********************************************************************************\n"
+                               (format
+                                "WARNING: Metabase only officially supports MySQL %s/MariaDB %s and above."
                                 min-supported-mysql-version
                                 min-supported-mariadb-version)
-                           "\n"
-                           (trs "All Metabase features may not work properly when using an unsupported version.")
-                           "\n********************************************************************************\n"))))))))
+                               "\n"
+                               "All Metabase features may not work properly when using an unsupported version."
+                               "\n********************************************************************************\n"))))))))
 
 (defmethod driver/can-connect? :mysql
   [driver details]
@@ -131,6 +138,28 @@
   (when ((get-method driver/can-connect? :sql-jdbc) driver details)
     (warn-on-unsupported-versions driver details)
     true))
+
+(declare table-names->privileges)
+(declare privilege-grants-for-user)
+
+(defmethod sql-jdbc.sync/current-user-table-privileges :mysql
+  [driver conn & {:as _options}]
+  ;; MariaDB doesn't allow users to query the privileges of roles a user might have (unless they have select privileges
+  ;; for the mysql database), so we can't query the full privileges of the current user.
+  (when-not (mariadb-connection? driver conn)
+    (let [sql->tuples (fn [sql] (drop 1 (jdbc/query conn sql {:as-arrays? true})))
+          db-name     (ffirst (sql->tuples "SELECT DATABASE()"))
+          table-names (map first (sql->tuples "SHOW TABLES"))]
+      (for [[table-name privileges] (table-names->privileges (privilege-grants-for-user conn "CURRENT_USER()")
+                                                             db-name
+                                                             table-names)]
+        {:role   nil
+         :schema nil
+         :table  table-name
+         :select (contains? privileges :select)
+         :update (contains? privileges :update)
+         :insert (contains? privileges :insert)
+         :delete (contains? privileges :delete)}))))
 
 (def default-ssl-cert-details
   "Server SSL certificate chain, in PEM format."
@@ -514,7 +543,7 @@
         ssl?          (or ssl? (= "true" (get addl-opts-map "useSSL")))
         ssl-cert?     (and ssl? (some? ssl-cert))]
     (when (and ssl? (not (contains? addl-opts-map "trustServerCertificate")))
-      (log/info (trs "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL.")))
+      (log/info "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL."))
     (merge
      default-connection-args
      ;; newer versions of MySQL will complain if you don't specify this when not using SSL
@@ -522,7 +551,7 @@
      (let [details (-> (if ssl-cert? (set/rename-keys details {:ssl-cert :serverSslCert}) details)
                        (set/rename-keys {:dbname :db})
                        (dissoc :ssl))]
-       (-> (mdb.spec/spec :mysql details)
+       (-> (mdb/spec :mysql details)
            (maybe-add-program-name-option addl-opts-map)
            (sql-jdbc.common/handle-additional-options details))))))
 
@@ -644,12 +673,14 @@
     ::upload/varchar-255              [[:varchar 255]]
     ::upload/text                     [:text]
     ::upload/int                      [:bigint]
-    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment :primary-key]
+    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
     ::upload/float                    [:double]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
     ::upload/datetime                 [:datetime]
     ::upload/offset-datetime          [:timestamp]))
+
+(defmethod driver/create-auto-pk-with-append-csv? :mysql [_driver] true)
 
 (defmethod driver/table-name-length-limit :mysql
   [_driver]
@@ -869,26 +900,3 @@
                   (when-let [privileges (not-empty (set/union all-table-privileges (get table-privileges table-name)))]
                     [table-name privileges])))
           table-names)))
-
-(defmethod driver/current-user-table-privileges :mysql
-  [_driver database]
-  ;; MariaDB doesn't allow users to query the privileges of roles a user might have (unless they have select privileges
-  ;; for the mysql database), so we can't query the full privileges of the current user.
-  (when-not (mariadb? database)
-    (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec database)
-          db-name     (or (get-in database [:details :db])
-                          ;; some tests are stil using dbname
-                          (get-in database [:details :dbname]))
-          table-names (->> (jdbc/query conn-spec "SHOW TABLES" {:as-arrays? true})
-                           (drop 1)
-                           (map first))]
-      (for [[table-name privileges] (table-names->privileges (privilege-grants-for-user conn-spec "CURRENT_USER()")
-                                                             db-name
-                                                             table-names)]
-        {:role   nil
-         :schema nil
-         :table  table-name
-         :select (contains? privileges :select)
-         :update (contains? privileges :update)
-         :insert (contains? privileges :insert)
-         :delete (contains? privileges :delete)}))))

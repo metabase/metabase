@@ -52,6 +52,7 @@ export const createMockDataset = ({
   data = {},
   ...opts
 }: MockDatasetOpts = {}) => ({
+  type: "model",
   data: createMockDatasetData(data),
   database_id: 1,
   row_count: 0,

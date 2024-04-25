@@ -4,11 +4,11 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import User from "metabase/entities/users";
-
-import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import Text from "metabase/components/type/Text";
+import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
+import Users from "metabase/entities/users";
 
 // NOTE: we have to load the list of users because /api/user/:id doesn't return deactivated users
 // but that's ok because it's probably already loaded through the people PeopleListingApp
@@ -27,7 +27,7 @@ class UserActivationModalInner extends Component {
         >
           <Text>{t`${user.common_name} won't be able to log in anymore.`}</Text>
           <Button
-            className="ml-auto"
+            className={CS.mlAuto}
             danger
             onClick={() => user.deactivate() && onClose()}
           >
@@ -45,7 +45,7 @@ class UserActivationModalInner extends Component {
             {t`They'll be able to log in again, and they'll be placed back into the groups they were in before their account was deactivated.`}
           </Text>
           <Button
-            className="ml-auto"
+            className={CS.mlAuto}
             danger
             onClick={() => user.reactivate() && onClose()}
           >
@@ -58,7 +58,7 @@ class UserActivationModalInner extends Component {
 }
 
 const UserActivationModal = _.compose(
-  User.loadList({
+  Users.loadList({
     query: { include_deactivated: true },
     wrapped: true,
   }),

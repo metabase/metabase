@@ -1,17 +1,19 @@
 import type { FormEvent, MouseEventHandler } from "react";
 import { useState } from "react";
-import { jt, t } from "ttag";
 import { useAsync } from "react-use";
+import { jt, t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import ModalContent from "metabase/components/ModalContent";
-import type { DatabaseUsageInfo } from "metabase-types/api";
-import Alert from "metabase/core/components/Alert";
-import Input from "metabase/core/components/Input";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import ModalContent from "metabase/components/ModalContent";
+import Alert from "metabase/core/components/Alert";
+import Button from "metabase/core/components/Button";
+import Input from "metabase/core/components/Input";
 import { MetabaseApi } from "metabase/services";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { DatabaseUsageInfo } from "metabase-types/api";
+
 import ContentRemovalConfirmation from "../ContentRemovalConfirmation";
+
 import {
   DatabaseNameInputContainer,
   DeleteDatabaseModalFooter,

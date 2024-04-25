@@ -1,21 +1,22 @@
-import { Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
-import { registerVisualization } from "metabase/visualizations/index";
-
+import NoResults from "assets/img/no_results.svg";
+import EmptyState from "metabase/components/EmptyState";
+import CheckBox from "metabase/core/components/CheckBox";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import { formatColumn, formatValue } from "metabase/lib/formatting";
+import { Icon } from "metabase/ui";
+import { registerVisualization } from "metabase/visualizations/index";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
-
 import Table from "metabase/visualizations/visualizations/Table";
 
-import EmptyState from "metabase/components/EmptyState";
-import { Icon } from "metabase/ui";
-import CheckBox from "metabase/core/components/CheckBox";
-import NoResults from "assets/img/no_results.svg";
 import { getRowValuesByColumns, getColumnName } from "../../lib/mode";
+
 import {
   HeaderCell,
   RemoveRowButton,
@@ -122,7 +123,7 @@ export class AuditTableVisualization extends Component {
       );
     }
     return (
-      <table className="ContentTable">
+      <table className={AdminS.ContentTable}>
         <thead>
           <tr>
             {isSelectable && (
@@ -149,7 +150,7 @@ export class AuditTableVisualization extends Component {
                   {formatColumn(cols[colIndex])}
                   {isSortedByColumn && (
                     <Icon
-                      className="ml1"
+                      className={CS.ml1}
                       name={sorting.isAscending ? "chevronup" : "chevrondown"}
                       size={10}
                     />
@@ -205,8 +206,14 @@ export class AuditTableVisualization extends Component {
                   >
                     <div
                       className={cx({
-                        "rounded p1 text-dark text-monospace text-small bg-light":
-                          column["code"],
+                        [cx(
+                          CS.rounded,
+                          CS.p1,
+                          CS.textDark,
+                          CS.textMonospace,
+                          CS.textSmall,
+                          CS.bgLight,
+                        )]: column["code"],
                       })}
                     >
                       {formatValue(value, {

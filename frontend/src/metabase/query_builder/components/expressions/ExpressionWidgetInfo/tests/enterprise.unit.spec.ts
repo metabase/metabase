@@ -1,14 +1,16 @@
 import userEvent from "@testing-library/user-event";
+
 import { screen } from "__support__/ui";
-import { setup as baseSetup } from "./setup";
+
 import type { SetupOpts } from "./setup";
+import { setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts) {
   baseSetup({ hasEnterprisePlugins: true, ...opts });
 }
 
 describe("ExpressionWidgetInfo (EE without token)", () => {
-  it("should show a help link when `show-metabase-links: true`", () => {
+  it("should show a help link when `show-metabase-links: true`", async () => {
     setup({ showMetabaseLinks: true });
 
     expect(
@@ -17,7 +19,7 @@ describe("ExpressionWidgetInfo (EE without token)", () => {
       "href",
       "https://www.metabase.com/docs/latest/questions/query-builder/expressions.html",
     );
-    userEvent.hover(screen.getByLabelText("info icon"));
+    await userEvent.hover(screen.getByLabelText("info icon"));
     expect(
       screen.getByText(
         "You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.",
@@ -25,7 +27,7 @@ describe("ExpressionWidgetInfo (EE without token)", () => {
     ).toBeInTheDocument();
   });
 
-  it("should show a help link when `show-metabase-links: false`", () => {
+  it("should show a help link when `show-metabase-links: false`", async () => {
     setup({ showMetabaseLinks: false });
 
     expect(
@@ -34,7 +36,7 @@ describe("ExpressionWidgetInfo (EE without token)", () => {
       "href",
       "https://www.metabase.com/docs/latest/questions/query-builder/expressions.html",
     );
-    userEvent.hover(screen.getByLabelText("info icon"));
+    await userEvent.hover(screen.getByLabelText("info icon"));
     expect(
       screen.getByText(
         "You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.",

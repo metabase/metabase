@@ -1,4 +1,6 @@
 import { CardApi, DashboardApi, ParameterApi } from "metabase/services";
+import { getNonVirtualFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   CardId,
   DashboardId,
@@ -8,8 +10,7 @@ import type {
   ParameterValues,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
-import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
-import { normalizeParameter } from "metabase-lib/parameters/utils/parameter-values";
+
 import { getParameterValuesCache } from "./selectors";
 import { getFilteringParameterValuesMap } from "./utils/dashboards";
 

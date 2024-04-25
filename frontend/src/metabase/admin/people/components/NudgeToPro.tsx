@@ -1,8 +1,10 @@
 import { t } from "ttag";
-import { getUpgradeUrl } from "metabase/selectors/settings";
-import { useSelector } from "metabase/lib/redux";
-import { Icon } from "metabase/ui";
+
 import { color } from "metabase/lib/colors";
+import { useSelector } from "metabase/lib/redux";
+import { getUpgradeUrl } from "metabase/selectors/settings";
+import { Icon } from "metabase/ui";
+
 import { NudgeCard, Description, Subtitle, ProLink } from "./NudgeToPro.styled";
 
 export const NudgeToPro = () => {

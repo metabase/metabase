@@ -1,18 +1,21 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
-import { t } from "ttag";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 
 import { fetchJobInfo } from "../jobInfo";
 
 const renderTriggersTable = triggers => {
   return (
-    <table className="ContentTable mt2">
+    <table className={cx(AdminS.ContentTable, CS.mt2)}>
       <thead>
         <tr>
           <th>{t`Key`}</th>
@@ -32,7 +35,7 @@ const renderTriggersTable = triggers => {
         {triggers &&
           triggers.map(trigger => (
             <tr key={trigger.key}>
-              <td className="text-bold">{trigger.key}</td>
+              <td className={CS.textBold}>{trigger.key}</td>
               <td>{trigger.description}</td>
               <td>{trigger.state}</td>
               <td>{trigger.priority}</td>

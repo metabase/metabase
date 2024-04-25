@@ -10,7 +10,7 @@
    [metabase.api.common
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
@@ -32,7 +32,6 @@
 (set! *warn-on-reflection* true)
 
 (comment collection.root/keep-me)
-(comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
 (p/import-vars [collection.root root-collection root-collection-with-ui-details])
 
@@ -67,13 +66,16 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
+(defn- default-audit-collection?
+  [{:keys [id] :as _col}]
+  (= id (:id (perms/default-audit-collection))))
+
 (defmethod mi/can-write? Collection
   ([instance]
-   (mi/can-write? :model/Collection (:id instance)))
-  ([model pk]
-   (if (= pk (:id (perms/default-audit-collection)))
-     false
-     (mi/current-user-has-full-permissions? :write model pk))))
+   (and (not (default-audit-collection? instance))
+        (mi/current-user-has-full-permissions? :write instance)))
+  ([_model pk]
+   (mi/can-write? (t2/select-one :model/Collection pk))))
 
 (defmethod mi/can-read? Collection
   ([instance]
@@ -373,7 +375,7 @@
 ;;; |                          Nested Collections: Ancestors, Childrens, Child Collections                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private ancestors* :- [:maybe [:sequential (mi/InstanceOf Collection)]]
+(mu/defn ^:private ancestors* :- [:maybe [:sequential (ms/InstanceOf Collection)]]
   [{:keys [location]}]
   (when-let [ancestor-ids (seq (location-path->ids location))]
     (t2/select [Collection :name :id :personal_owner_id]
@@ -387,7 +389,7 @@
   [collection]
   (ancestors* collection))
 
-(mu/defn ^:private effective-ancestors* :- [:sequential [:or RootCollection (mi/InstanceOf Collection)]]
+(mu/defn ^:private effective-ancestors* :- [:sequential [:or RootCollection (ms/InstanceOf Collection)]]
   [collection :- CollectionWithLocationAndIDOrRoot]
   (if (collection.root/is-root-collection? collection)
     []
@@ -418,11 +420,10 @@
   [{:keys [location]} :- CollectionWithLocationOrRoot]
   (some-> location location-path->parent-id))
 
-(mi/define-simple-hydration-method parent-id
-  :parent_id
+(methodical/defmethod t2/simple-hydrate [:default :parent_id]
   "Get the immediate parent `collection` id, if set."
-  [collection]
-  (parent-id* collection))
+  [_model k collection]
+  (assoc collection k (parent-id* collection)))
 
 (mu/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
@@ -440,12 +441,32 @@
 (def ^:private Children
   [:schema
    {:registry {::children [:and
-                           (mi/InstanceOf Collection)
+                           (ms/InstanceOf Collection)
                            [:map
                             [:children [:set [:ref ::children]]]]]}}
    [:ref ::children]])
 
-(mu/defn ^:private descendants :- [:set Children]
+(mu/defn descendants-flat :- [:sequential CollectionWithLocationAndIDOrRoot]
+  "Return all descendant collections of a `collection`, including children, grandchildren, and so forth."
+  [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
+  (or
+   (t2/select [:model/Collection :name :id :location :description]
+              {:where (apply
+                       vector
+                       :and
+                       [:like :location (str (children-location collection) "%")]
+                       ;; Only return the Personal Collection belonging to the Current
+                       ;; User, regardless of whether we should actually be allowed to see
+                       ;; it (e.g., admins have perms for all Collections). This is done
+                       ;; to keep the Root Collection View for admins from getting crazily
+                       ;; cluttered with Personal Collections belonging to other users
+                       [:or
+                        [:= :personal_owner_id nil]
+                        [:= :personal_owner_id *current-user-id*]]
+                       additional-honeysql-where-clauses)})
+   []))
+
+(mu/defn descendants :- [:set Children]
   "Return all descendant Collections of a `collection`, including children, grandchildren, and so forth. This is done
   primarily to power the `effective-children` feature below, and thus the descendants are returned in a hierarchy,
   rather than as a flat set. e.g. results will be something like:
@@ -461,21 +482,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
   ;; first, fetch all the descendants of the `collection`, and build a map of location -> children. This will be used
   ;; so we can fetch the immediate children of each Collection
-  (let [location->children (group-by :location (t2/select [Collection :name :id :location :description]
-                                                 {:where
-                                                  (apply
-                                                   vector
-                                                   :and
-                                                   [:like :location (str (children-location collection) "%")]
-                                                   ;; Only return the Personal Collection belonging to the Current
-                                                   ;; User, regardless of whether we should actually be allowed to see
-                                                   ;; it (e.g., admins have perms for all Collections). This is done
-                                                   ;; to keep the Root Collection View for admins from getting crazily
-                                                   ;; cluttered with Personal Collections belonging to randos
-                                                   [:or
-                                                    [:= :personal_owner_id nil]
-                                                    [:= :personal_owner_id *current-user-id*]]
-                                                   additional-honeysql-where-clauses)}))
+  (let [location->children (group-by :location (apply descendants-flat collection additional-honeysql-where-clauses))
         ;; Next, build a function to add children to a given `coll`. This function will recursively call itself to add
         ;; children to each child
         add-children       (fn add-children [coll]
@@ -541,7 +548,7 @@
    :from   [[:collection :col]]
    :where  (apply effective-children-where-clause collection additional-honeysql-where-clauses)})
 
-(mu/defn ^:private effective-children* :- [:set (mi/InstanceOf Collection)]
+(mu/defn ^:private effective-children* :- [:set (ms/InstanceOf Collection)]
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
   (set (t2/select [Collection :id :name :description]
                   {:where (apply effective-children-where-clause collection additional-honeysql-where-clauses)})))
@@ -628,8 +635,8 @@
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))]
     ;; first move this Collection
-    (log/info (trs "Moving Collection {0} and its descendants from {1} to {2}"
-                   (u/the-id collection) (:location collection) new-location))
+    (log/infof "Moving Collection %s and its descendants from %s to %s"
+               (u/the-id collection) (:location collection) new-location)
     (t2/with-transaction [_conn]
       (t2/update! Collection (u/the-id collection) {:location new-location})
       ;; we need to update all the descendant collections as well...
@@ -815,7 +822,7 @@
   would immediately become invisible to all save admins, because no Group would have perms for it. This is obviously a
   bad experience -- we do not want a User to move a Collection that they have read/write perms for (by definition) to
   somewhere else and lose all access for it."
-  [collection :- (mi/InstanceOf Collection) new-location :- LocationPath]
+  [collection :- (ms/InstanceOf Collection) new-location :- LocationPath]
   (copy-collection-permissions! (parent {:location new-location}) (cons collection (descendants collection))))
 
 (mu/defn ^:private revoke-perms-when-moving-into-personal-collection!
@@ -824,7 +831,7 @@
   need to be deleted, so other users cannot access this newly-Personal Collection.
 
   This needs to be done recursively for all descendants as well."
-  [collection :- (mi/InstanceOf Collection)]
+  [collection :- (ms/InstanceOf Collection)]
   (t2/query-one {:delete-from :permissions
                  :where       [:in :object (for [collection (cons collection (descendants collection))
                                                  path-fn    [perms/collection-read-path
@@ -928,11 +935,8 @@
   (let [collection (if (integer? collection-or-id)
                      (t2/select-one [Collection :id :namespace] :id (collection-or-id))
                      collection-or-id)]
-    ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
-    ;;
-    ;; TODO -- Pretty sure snippet perms should be feature flagged by `advanced-permissions` instead
     (if (and (= (u/qualified-name (:namespace collection)) "snippets")
-             (not (premium-features/enable-enhancements?)))
+             (not (premium-features/enable-snippet-collections?)))
       #{}
       ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
       ;; name) but if you have write perms you can add/remove cards
@@ -940,13 +944,26 @@
           :read  (perms/collection-read-path collection-or-id)
           :write (perms/collection-readwrite-path collection-or-id))})))
 
+(def ^:private instance-analytics-collection-type
+  "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-db]]"
+  "instance-analytics")
+
+(defmethod mi/exclude-internal-content-hsql :model/Collection
+  [_model & {:keys [table-alias]}]
+  (let [maybe-alias #(h2x/identifier :field (some-> table-alias name) %)]
+    [:and
+     [:not= (maybe-alias :type) [:inline instance-analytics-collection-type]]
+     [:not (maybe-alias :is_sample)]]))
+
 (defn- parent-identity-hash [coll]
   (let [parent-id (-> coll
                       (t2/hydrate :parent_id)
-                      :parent_id)]
-    (if parent-id
-      (serdes/identity-hash (t2/select-one Collection :id parent-id))
-      "ROOT")))
+                      :parent_id)
+        parent    (when parent-id (t2/select-one Collection :id parent-id))]
+    (cond
+      (not parent-id) "ROOT"
+      (not parent)    (throw (ex-info (format "Collection %s is an orphan" (:id coll)) {:parent-id parent-id}))
+      :else           (serdes/identity-hash parent))))
 
 (defmethod serdes/hash-fields Collection
   [_collection]
@@ -1101,14 +1118,14 @@
              :name collection-name
              :slug (u/slugify collection-name)))))
 
-(mu/defn user->existing-personal-collection :- [:maybe (mi/InstanceOf Collection)]
+(mu/defn user->existing-personal-collection :- [:maybe (ms/InstanceOf Collection)]
   "For a `user-or-id`, return their personal Collection, if it already exists.
   Use [[metabase.models.collection/user->personal-collection]] to fetch their personal Collection *and* create it if
   needed."
   [user-or-id]
   (t2/select-one Collection :personal_owner_id (u/the-id user-or-id)))
 
-(mu/defn user->personal-collection :- (mi/InstanceOf Collection)
+(mu/defn user->personal-collection :- (ms/InstanceOf Collection)
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
   [user-or-id]
   (or (user->existing-personal-collection user-or-id)
@@ -1129,7 +1146,7 @@
   save a DB call for *every* API call."
   (memoize/ttl
    ^{::memoize/args-fn (fn [[user-id]]
-                         [(mdb.connection/unique-identifier) user-id])}
+                         [(mdb/unique-identifier) user-id])}
    (fn user->personal-collection-id*
      [user-id]
      (u/the-id (user->personal-collection user-id)))
@@ -1177,7 +1194,7 @@
         [(assoc collection :is_personal (is-personal-collection-or-descendant-of-one? collection))]
         ;; root collection is nil
         [collection]))
-    (let [personal-collection-ids (t2/select-pks-set :model/collection :personal_owner_id [:not= nil])
+    (let [personal-collection-ids (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])
           location-is-personal    (fn [location]
                                     (boolean
                                      (and (string? location)
@@ -1223,29 +1240,37 @@
                                :allowed-namespaces   allowed-namespaces
                                :collection-namespace collection-namespace})))))))
 
-(defn- annotate-collections
+(defn annotate-collections
   "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are
-  in the collection at that level."
-  [{:keys [dataset card] :as _coll-type-ids} collections]
-  (let [parent-info (reduce (fn [m {:keys [location id] :as _collection}]
-                              (let [parent-ids (set (location-path->ids location))]
-                                (cond-> m
-                                  (contains? dataset id)
-                                  (update :dataset set/union parent-ids)
-                                  (contains? card id)
-                                  (update :card set/union parent-ids))))
-                            {:dataset #{} :card #{}}
-                            collections)]
+  in the collection at that level.
+
+  The second argument is the list of collections to annotate.
+
+  The first argument to this function could use a bit of explanation: `child-type->parent-ids` is a map. Keys are
+  object types (e.g. `:collection`), values are sets of collection IDs that are the (direct) parents of one or more
+  objects of that type."
+  [child-type->parent-ids collections]
+  (let [child-type->ancestor-ids
+        (reduce (fn [m {:keys [location id] :as _collection}]
+                  (let [parent-ids (set (location-path->ids location))]
+                    (reduce (fn [m [t id-set]]
+                              (cond-> m
+                                (contains? id-set id) (update t set/union parent-ids)))
+                            m
+                            child-type->parent-ids)))
+                (zipmap (keys child-type->parent-ids) (repeat #{}))
+                collections)]
     (map (fn [{:keys [id] :as collection}]
-           (let [types (cond-> #{}
-                         (contains? (:dataset parent-info) id)
-                         (conj :dataset)
-                         (contains? (:card parent-info) id)
-                         (conj :card))]
+           (let [below (apply set/union
+                              (for [[child-type coll-id-set] child-type->ancestor-ids]
+                                (when (contains? coll-id-set id)
+                                  #{child-type})))
+                 here (into #{} (for [[child-type coll-id-set] child-type->parent-ids
+                                      :when (contains? coll-id-set id)]
+                                  child-type))]
              (cond-> collection
-               (seq types) (assoc :below types)
-               (contains? dataset id) (update :here (fnil conj #{}) :dataset)
-               (contains? card id) (update :here (fnil conj #{}) :card))))
+               (seq below) (assoc :below below)
+               (seq here) (assoc :here here))))
          collections)))
 
 (defn collections->tree
@@ -1266,8 +1291,12 @@
                               :here     #{:card}
                               :children [{:name \"G\"}]}]}]}
      {:name \"H\"}]"
-  [coll-type-ids collections]
-  (let [all-visible-ids (set (map :id collections))]
+  [child-type->parent-ids collections]
+  (let [;; instead of attempting to re-sort like the database does, keep things consistent by just keeping things in
+        ;; the same order they're already in.
+        original-position (into {} (map-indexed (fn [i {id :id}]
+                                                  [id i]) collections))
+        all-visible-ids (set (map :id collections))]
     (transduce
      identity
      (fn ->tree
@@ -1300,8 +1329,8 @@
        ([m]
         (->> (vals m)
              (map #(update % :children ->tree))
-             (sort-by (fn [{coll-type :type, coll-name :name, coll-id :id}]
+             (sort-by (fn [{coll-id :id}]
                         ;; coll-type is `nil` or "instance-analytics"
                         ;; nil sorts first, so we get instance-analytics at the end, which is what we want
-                        [coll-type ((fnil u/lower-case-en "") coll-name) coll-id])))))
-     (annotate-collections coll-type-ids collections))))
+                        (original-position coll-id))))))
+     (annotate-collections child-type->parent-ids collections))))

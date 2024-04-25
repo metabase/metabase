@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
+
 import * as Lib from "metabase-lib";
+
+import type { TimeValue } from "./types";
 import {
   getAvailableOptions,
   getDefaultValues,
@@ -7,7 +10,6 @@ import {
   getOptionByOperator,
   isValidFilter,
 } from "./utils";
-import type { TimeValue } from "./types";
 
 interface UseTimeFilterProps {
   query: Lib.Query;

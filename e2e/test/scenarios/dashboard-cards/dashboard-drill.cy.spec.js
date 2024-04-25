@@ -1,3 +1,10 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
   assertQueryBuilderRowCount,
@@ -13,14 +20,6 @@ import {
   queryBuilderHeader,
   queryBuilderMain,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_DASHBOARD_DASHCARD_ID,
-  ORDERS_DASHBOARD_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
 const {
   ORDERS,
@@ -489,7 +488,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findAllByTestId("column-header").contains("ID").click().click();
 
-    cy.get(".Table-ID").contains(PK_VALUE).first().click();
+    cy.get(".test-Table-ID").contains(PK_VALUE).first().click();
 
     cy.wait("@dataset");
 
@@ -645,6 +644,42 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
   });
 
+  it("should keep card's display when doing zoom drill-through from dashboard (metabase#38307)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+
+    const questionDetails = {
+      name: "38307",
+      query: {
+        "source-table": REVIEWS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", REVIEWS.CREATED_AT, { "temporal-unit": "month" }]],
+      },
+      display: "bar",
+    };
+
+    const dashboardDetails = {
+      name: "38307",
+    };
+
+    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { dashboard_id } }) => {
+        visitDashboard(dashboard_id);
+
+        // click the first bar on the card's graph and do a zoom drill-through
+        cy.get(".bar").eq(0).click({ force: true });
+        cy.findByText("See this month by week").click();
+
+        cy.wait("@dataset");
+
+        // check that the display is still a bar chart by checking that a .bar element exists
+        cy.get(".bar").should("exist");
+      },
+    );
+  });
+
   it("should not hide custom formatting when click behavior is enabled (metabase#14597)", () => {
     const columnKey = JSON.stringify(["name", "MY_NUMBER"]);
     const questionSettings = {
@@ -715,7 +750,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         // Edit "Visualization options"
         showDashboardCardActions();
         cy.icon("palette").click();
-        cy.get(".Modal").within(() => {
+        modal().within(() => {
           cy.findByText("Reset to defaults").click();
           cy.button("Done").click();
         });
@@ -723,7 +758,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.button("Save").click();
         cy.findByText("You're editing this dashboard.").should("not.exist");
         cy.log("Reported failing on v0.38.0 - link gets dropped");
-        cy.get(".DashCard").findAllByText(LINK_NAME);
+        cy.findByTestId("dashcard-container").findAllByText(LINK_NAME);
       });
     });
   });
@@ -791,7 +826,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       });
     });
     cy.findByTextEnsureVisible("Quantity");
-    cy.get(".Table-ID")
+    cy.get(".test-Table-ID")
       .first()
       // Mid-point check that this cell actually contains ID = 1
       .contains("1")

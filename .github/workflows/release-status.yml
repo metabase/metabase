@@ -3,7 +3,7 @@ name: Release Status Check
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 13 * * *' # every day at 8am US eastern time
+    - cron: '0 11 * * 1-5' # every weekday at 6am US eastern time
 
 jobs:
   check-release-status:
@@ -16,7 +16,7 @@ jobs:
     - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && yarn --frozen-lockfile && yarn build
     - name: Check release status and post to Slack
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       env:
         SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}

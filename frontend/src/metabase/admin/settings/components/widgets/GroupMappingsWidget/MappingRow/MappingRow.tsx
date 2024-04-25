@@ -1,20 +1,23 @@
-import { useState } from "react";
+import cx from "classnames";
 import type * as React from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-
-import { isAdminGroup } from "metabase/lib/groups";
-import Tooltip from "metabase/core/components/Tooltip";
-import { Icon } from "metabase/ui";
-import Confirm from "metabase/components/Confirm";
 
 import type {
   DeleteMappingModalValueType,
   GroupIds,
   UserGroupsType,
 } from "metabase/admin/types";
-import Selectbox from "../GroupSelect";
+import Confirm from "metabase/components/Confirm";
+import Tooltip from "metabase/core/components/Tooltip";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
+import { isAdminGroup } from "metabase/lib/groups";
+import { Icon } from "metabase/ui";
+
 import DeleteGroupMappingModal from "../DeleteGroupMappingModal";
+import Selectbox from "../GroupSelect";
 
 import { DeleteMappingButton } from "./MappingRow.styled";
 
@@ -139,8 +142,8 @@ const MappingRow = ({
             onGroupChange={onChange}
           />
         </td>
-        <td className="Table-actions">
-          <div className="float-right mr1">
+        <td className={AdminS.TableActions}>
+          <div className={cx(CS.floatRight, CS.mr1)}>
             {shouldUseDeleteMappingModal ? (
               <DeleteButton onDelete={onDelete} />
             ) : (

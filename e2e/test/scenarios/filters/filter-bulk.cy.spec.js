@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertQueryBuilderRowCount,
   popover,
@@ -9,9 +11,8 @@ import {
   filterField,
   filterFieldPopover,
   filterSelectField,
+  hovercard,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -115,6 +116,20 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.findByText("Showing 4 rows").should("be.visible");
   });
 
+  it("should have an info icon on the filter modal filters", () => {
+    visitQuestionAdhoc(rawQuestionDetails);
+    filter();
+
+    modal().within(() => {
+      cy.get("li").findByLabelText("More info").realHover();
+    });
+
+    hovercard().within(() => {
+      cy.contains("The date and time an order was submitted");
+      cy.contains("Creation timestamp");
+    });
+  });
+
   it("should add a filter for an aggregated query", () => {
     visitQuestionAdhoc(aggregatedQuestionDetails);
     filter();
@@ -141,7 +156,7 @@ describe("scenarios > filters > bulk filtering", () => {
     filter();
 
     modal().within(() => {
-      cy.findByText("Product").click();
+      cy.findByText("Product").click({ force: true });
       filterField("Category").findByText("Gadget").click();
     });
 
@@ -350,7 +365,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("can add a date shortcut filter from the popover", () => {
       filterField("Created At").findByLabelText("More options").click();
-      popover().findByText("Last 3 months").click();
+      popover().contains("Last 3 months").findByText("Last 3 months").click();
       modal().findByText("Previous 3 Months").should("be.visible");
       applyFilters();
 
@@ -395,8 +410,7 @@ describe("scenarios > filters > bulk filtering", () => {
     it("Can cancel adding date filter", () => {
       filterField("Created At").findByLabelText("More options").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Discount").click();
+      filterField("Created At").click({ position: "topRight", force: true });
 
       filterField("Created At").within(() => {
         // there should be no filter so the X should not populate
@@ -573,7 +587,6 @@ describe("scenarios > filters > bulk filtering", () => {
     beforeEach(() => {
       visitQuestionAdhoc(productsQuestion);
       filter();
-      cy.get("body").type(`{ctrl}k`);
     });
 
     it("can search for a column", () => {

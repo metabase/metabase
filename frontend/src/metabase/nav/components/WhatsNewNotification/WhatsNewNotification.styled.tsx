@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export const DismissIconButtonWrapper = styled(IconButtonWrapper)`

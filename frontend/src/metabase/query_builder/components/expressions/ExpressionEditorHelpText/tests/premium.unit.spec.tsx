@@ -1,13 +1,15 @@
 import { screen } from "@testing-library/react";
-import { checkNotNull } from "metabase/lib/types";
+
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
+import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import {
   createSampleDatabase,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
-import { setup as baseSetup } from "./setup";
+
 import type { SetupOpts } from "./setup";
+import { setup as baseSetup } from "./setup";
 
 async function setup(opts: SetupOpts) {
   await baseSetup({

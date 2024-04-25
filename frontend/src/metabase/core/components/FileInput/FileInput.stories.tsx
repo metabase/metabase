@@ -1,4 +1,5 @@
 import type { ComponentStory } from "@storybook/react";
+
 import FileInput from "./FileInput";
 
 export default {

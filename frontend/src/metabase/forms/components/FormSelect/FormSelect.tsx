@@ -1,8 +1,9 @@
-import { forwardRef, useCallback } from "react";
-import type { FocusEvent, Ref } from "react";
 import { useField } from "formik";
-import { Select } from "metabase/ui";
+import type { FocusEvent, Ref } from "react";
+import { forwardRef, useCallback } from "react";
+
 import type { SelectProps } from "metabase/ui";
+import { Select } from "metabase/ui";
 
 export interface FormSelectProps extends Omit<SelectProps, "value" | "error"> {
   name: string;

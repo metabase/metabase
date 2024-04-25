@@ -1,8 +1,9 @@
-import _ from "underscore";
 import { screen, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import _ from "underscore";
 
 import { getIcon } from "__support__/ui";
+
 import SelectList from "./index";
 
 describe("Components > SelectList", () => {
@@ -38,7 +39,7 @@ describe("Components > SelectList", () => {
     );
   });
 
-  it("allows the user to select an item on click", () => {
+  it("allows the user to select an item on click", async () => {
     const selectSpy = jest.fn();
 
     render(
@@ -53,9 +54,9 @@ describe("Components > SelectList", () => {
       </SelectList>,
     );
 
-    userEvent.click(screen.getByText("Item 2"));
+    await userEvent.click(screen.getByText("Item 2"));
 
-    expect(selectSpy).toHaveBeenCalledWith("2");
+    expect(selectSpy).toHaveBeenCalledWith("2", expect.anything());
   });
 
   describe("SelectList.Item", () => {

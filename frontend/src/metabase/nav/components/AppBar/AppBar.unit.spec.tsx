@@ -1,5 +1,7 @@
 import { render, screen } from "@testing-library/react";
+
 import { createMockUser } from "metabase-types/api/mocks";
+
 import type { AppBarProps } from "./AppBar";
 import AppBar from "./AppBar";
 

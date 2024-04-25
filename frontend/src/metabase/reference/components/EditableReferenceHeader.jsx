@@ -1,15 +1,17 @@
-import { memo } from "react";
-import PropTypes from "prop-types";
-import { Link } from "react-router";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { memo } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
-import L from "metabase/components/List/List.css";
 
-import { Icon } from "metabase/ui";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import L from "metabase/components/List/List.module.css";
 import Button from "metabase/core/components/Button";
-import S from "./ReferenceHeader.css";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import CS from "metabase/css/core/index.css";
+import { Icon } from "metabase/ui";
+
+import S from "./ReferenceHeader.module.css";
 
 const EditableReferenceHeader = ({
   entity = {},
@@ -26,11 +28,11 @@ const EditableReferenceHeader = ({
   displayNameFormField,
   nameFormField,
 }) => (
-  <div className="wrapper">
-    <div className={cx("relative", L.header)}>
-      <div className="flex align-center mr1">
+  <div className={CS.wrapper}>
+    <div className={cx(CS.relative, L.header)}>
+      <div className={cx(CS.flex, CS.alignCenter, CS.mr1)}>
         {headerIcon && (
-          <Icon className="text-light" name={headerIcon} size={21} />
+          <Icon className={CS.textLight} name={headerIcon} size={21} />
         )}
       </div>
       {type === "table" && !hasSingleSchema && !isEditing && (
@@ -61,7 +63,7 @@ const EditableReferenceHeader = ({
           [
             <Ellipsified
               key="1"
-              className={!headerLink && "flex-full"}
+              className={!headerLink && CS.flexFull}
               tooltipMaxWidth="100%"
             >
               {name === "Details"
@@ -73,7 +75,7 @@ const EditableReferenceHeader = ({
             headerLink && (
               <Button
                 primary
-                className="flex flex-align-right mr2"
+                className={cx(CS.flex, CS.flexAlignRight, CS.mr2)}
                 style={{ fontSize: 14 }}
               >
                 <Link to={headerLink}>{t`See this ${type}`}</Link>

@@ -2,10 +2,11 @@
 import { Component } from "react";
 import { t } from "ttag";
 
-import ChartSettings from "metabase/visualizations/components/ChartSettings";
-import visualizations from "metabase/visualizations";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import ErrorBoundary from "metabase/ErrorBoundary";
+import CS from "metabase/css/core/index.css";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import visualizations from "metabase/visualizations";
+import ChartSettings from "metabase/visualizations/components/ChartSettings";
 
 export default class ChartSettingsSidebar extends Component {
   state = { sidebarPropsOverride: null };
@@ -35,7 +36,7 @@ export default class ChartSettingsSidebar extends Component {
     return (
       result && (
         <SidebarContent
-          className="full-height"
+          className={CS.fullHeight}
           onDone={() => onClose()}
           {...sidebarContentProps}
           {...sidebarPropsOverride}

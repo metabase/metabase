@@ -1,4 +1,14 @@
 import { Route } from "react-router";
+
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupCardEndpoints,
+  setupRevisionsEndpoints,
+  setupUsersEndpoints,
+} from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card, Settings } from "metabase-types/api";
@@ -9,15 +19,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import { setupEnterprisePlugins } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import {
-  setupCardEndpoints,
-  setupRevisionsEndpoints,
-  setupUsersEndpoints,
-} from "__support__/server-mocks";
+
 import { QuestionInfoSidebar } from "../QuestionInfoSidebar";
 
 export interface SetupOpts {

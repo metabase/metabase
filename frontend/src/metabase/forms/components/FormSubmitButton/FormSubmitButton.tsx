@@ -1,16 +1,18 @@
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
-import { Button } from "metabase/ui";
+
 import type { ButtonProps } from "metabase/ui";
+import { Button } from "metabase/ui";
+
 import type { FormStatus } from "../../contexts";
 import { useFormSubmitButton } from "../../hooks";
 
 export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
-  label?: string;
-  activeLabel?: string;
-  successLabel?: string;
-  failedLabel?: string;
+  label?: ReactNode;
+  activeLabel?: ReactNode;
+  successLabel?: ReactNode;
+  failedLabel?: ReactNode;
 }
 
 export const FormSubmitButton = forwardRef(function FormSubmitButton(
@@ -26,6 +28,7 @@ export const FormSubmitButton = forwardRef(function FormSubmitButton(
   ref: Ref<HTMLButtonElement>,
 ) {
   const { status, isDisabled } = useFormSubmitButton({ isDisabled: disabled });
+
   const submitLabel = getSubmitButtonLabel(status, {
     label,
     activeLabel,

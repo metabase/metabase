@@ -1,7 +1,11 @@
 import { useCallback } from "react";
 
-import { createAction, useDispatch, useSelector } from "metabase/lib/redux";
-import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+import {
+  FETCH_CARD_DATA,
+  addDashCardToDashboard,
+} from "metabase/dashboard/actions";
+import { getExistingDashCards } from "metabase/dashboard/actions/utils";
+import { trackDashcardDuplicated } from "metabase/dashboard/analytics";
 import {
   getCardData,
   getDashboards,
@@ -9,12 +13,11 @@ import {
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
 import {
-  FETCH_CARD_DATA,
-  addDashCardToDashboard,
   generateTemporaryDashcardId,
-} from "metabase/dashboard/actions";
-import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import { isVirtualDashCard } from "metabase/dashboard/utils";
+  isVirtualDashCard,
+} from "metabase/dashboard/utils";
+import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+import { createAction, useDispatch, useSelector } from "metabase/lib/redux";
 import type { Dashboard, DashboardCard } from "metabase-types/api";
 
 export function useDuplicateDashCard({
@@ -22,7 +25,7 @@ export function useDuplicateDashCard({
   dashcard,
 }: {
   dashboard: Dashboard;
-  dashcard: DashboardCard | undefined;
+  dashcard?: DashboardCard;
 }) {
   const dispatch = useDispatch();
   const dashboards = useSelector(getDashboards);
@@ -57,7 +60,7 @@ export function useDuplicateDashCard({
     );
 
     // We don't have card (question) data for virtual dashcards (text, heading, link, action)
-    if (!isVirtualDashCard(dashcard) && dashcard.card_id !== null) {
+    if (!isVirtualDashCard(dashcard) && dashcard.card_id != null) {
       dispatch(
         // Manually copying the card data by dispatching the `FETCH_CARD_DATA` action directly,
         // as opposed to using the `fetchCardData` thunk, will send a request to re-fetch the data
@@ -68,6 +71,8 @@ export function useDuplicateDashCard({
         }),
       );
     }
+
+    trackDashcardDuplicated(dashboard.id);
   }, [
     dispatch,
     dashboard.id,

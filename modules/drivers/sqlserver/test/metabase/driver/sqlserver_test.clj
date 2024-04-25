@@ -15,9 +15,16 @@
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.models :refer [Database]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
+   [metabase.test.util.timezone :as test.tz]
+   [metabase.util.date-2 :as u.date]
+   [next.jdbc]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
@@ -129,7 +136,7 @@
                    {:source-query {:source-table $$venues
                                    :fields       [$name]
                                    :order-by     [[:asc $id]]}})
-                 qp/compile
+                 qp.compile/compile
                  (update :query #(str/split-lines (driver/prettify-native-form :sqlserver %)))))))))
 
 (deftest ^:parallel preserve-existing-top-clauses
@@ -148,7 +155,7 @@
                        "      \"dbo\".\"venues\".\"id\" ASC"
                        "  ) AS \"source\""]
               :params nil}
-             (-> (qp/compile
+             (-> (qp.compile/compile
                   (mt/mbql-query venues
                     {:source-query {:source-table $$venues
                                     :fields       [$name]
@@ -168,7 +175,7 @@
                                              :fields       [$name]
                                              :order-by     [[:asc $id]]}
                               :order-by     [[:asc $id]]})
-                           qp/preprocess
+                           qp.preprocess/preprocess
                            (m/dissoc-in [:query :limit]))]
       (mt/with-metadata-provider (mt/id)
         (is (= {:query  ["SELECT"
@@ -354,7 +361,7 @@
           (testing (format "\nUnit = %s\n" unit)
             (testing "Should generate the correct SQL query"
               (is (= expected-sql
-                     (pretty-sql (:query (qp/compile (query-with-bucketing unit)))))))
+                     (pretty-sql (:query (qp.compile/compile (query-with-bucketing unit)))))))
             (testing "Should still return correct results"
               (is (= expected-rows
                      (take 5 (mt/rows
@@ -400,6 +407,65 @@
                                        "\n"
                                        "SELECT COUNT(1) FROM @TEMP\n")}
                           mt/native-query
-                          qp/process-userland-query
+                          qp/userland-query
+                          qp/process-query
                           mt/rows
                           ffirst))))))))
+
+(deftest filter-by-datetime-fields-test
+  (mt/test-driver :sqlserver
+    (testing "Should match datetime fields even in non-default timezone (#30454)"
+      (mt/dataset attempted-murders
+        (let [limit 10
+              get-query (mt/mbql-query attempts
+                          {:fields [$id $datetime]
+                           :order-by [[:asc $id]]
+                           :limit limit})
+              filter-query (mt/mbql-query attempts
+                             {:fields [$id $datetime]
+                              :filter [:= [:field %attempts.datetime {:base-type :type/DateTime}]]
+                              :order-by [[:asc $id]]
+                              :limit limit})]
+          (doseq [with-tz-setter [#'qp.test-util/do-with-report-timezone-id!
+                                  #'test.tz/do-with-system-timezone-id!
+                                  #'qp.test-util/do-with-database-timezone-id
+                                  #'qp.test-util/do-with-results-timezone-id]
+                  timezone ["UTC" "Pacific/Auckland"]]
+            (testing (str with-tz-setter " " timezone)
+              (with-tz-setter timezone
+                (fn []
+                  (let [expected-result (-> get-query qp/process-query mt/rows)
+                        filter-query (update-in filter-query [:query :filter] into (map second) expected-result)]
+                    (mt/with-native-query-testing-context filter-query
+                      (is (= expected-result
+                             (-> filter-query qp/process-query mt/rows))))))))))))))
+
+(deftest ^:parallel filter-by-datetime-against-localdate-time-test
+  (mt/test-driver :sqlserver
+    (testing "Filtering datetime fields by localdatetime objects should work"
+      (mt/dataset attempted-murders
+        (let [tricky-datetime        "2019-11-02T00:14:14.247"
+              datetime-string        (-> tricky-datetime
+                                         (str/replace #"T" " "))
+              datetime-localdatetime (t/local-date-time (u.date/parse tricky-datetime))
+              base-query             (qp.store/with-metadata-provider (mt/id)
+                                       (first
+                                        (sql.qp/format-honeysql
+                                         :sqlserver
+                                         {:select [:id]
+                                          :from   [:attempts]
+                                          :where  (sql.qp/->honeysql
+                                                   :sqlserver
+                                                   [:=
+                                                    [:field (mt/id :attempts :datetime) nil]
+                                                    (sql.qp/compiled [:raw "?"])])})))]
+          (doseq [param [datetime-string datetime-localdatetime]
+                  :let  [query [base-query param]]]
+            (testing (pr-str query)
+              (is (= [{:id 2}]
+                     (sql-jdbc.execute/do-with-connection-with-options
+                      :sqlserver
+                      (mt/id)
+                      {}
+                      (fn [^java.sql.Connection conn]
+                        (next.jdbc/execute! conn query))))))))))))

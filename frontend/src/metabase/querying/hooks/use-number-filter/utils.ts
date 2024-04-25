@@ -1,5 +1,6 @@
-import * as Lib from "metabase-lib";
 import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
+import * as Lib from "metabase-lib";
+
 import { OPERATOR_OPTIONS } from "./constants";
 import type { NumberValue } from "./types";
 
@@ -22,6 +23,20 @@ export function getAvailableOptions(
 
 export function getOptionByOperator(operator: Lib.NumberFilterOperatorName) {
   return OPERATOR_OPTIONS[operator];
+}
+
+export function getDefaultOperator(
+  column: Lib.ColumnMetadata,
+): Lib.NumberFilterOperatorName {
+  if (
+    Lib.isPrimaryKey(column) ||
+    Lib.isForeignKey(column) ||
+    Lib.isCategory(column)
+  ) {
+    return "=";
+  } else {
+    return "between";
+  }
 }
 
 export function getDefaultValues(

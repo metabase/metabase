@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitDashboard,
@@ -7,7 +8,6 @@ import {
   sidebar,
   getDashboardCard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 

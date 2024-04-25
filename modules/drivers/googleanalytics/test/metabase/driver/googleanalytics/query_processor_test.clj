@@ -20,7 +20,7 @@
            (#'ga.qp/built-in-segment {:filter [:and [:segment 100] [:segment "ga::B"]]})))))
 
 (deftest filter-test
-  (mt/with-report-timezone-id nil
+  (mt/with-report-timezone-id! nil
     (testing "\nabsolute datetimes"
       (doseq [[filter-type expected] {:=  {:start-date "2019-11-18", :end-date "2019-11-18"}
                                       :<  {:end-date "2019-11-17"}
@@ -74,7 +74,7 @@
                         (#'ga.qp/parse-filter:interval [:= [:field 'field {:temporal-unit :week}] [:relative-datetime 0 :week]])))))
           (testing (str "\nthis week at Saturday 6PM local time (Saturday 11PM UTC) should be the same as this week "
                         "Saturday 8PM local time (Sunday 1 AM UTC)")
-            (mt/with-report-timezone-id "US/Eastern"
+            (mt/with-report-timezone-id! "US/Eastern"
               (doseq [system-timezone ["US/Eastern" "UTC"]]
                 (testing "\nGoogle Analytics should prefer report timezone (if set) to system timezone"
                   (testing (format "\nSystem timezone = %s" system-timezone)

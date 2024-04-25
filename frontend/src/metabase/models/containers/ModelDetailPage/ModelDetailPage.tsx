@@ -1,34 +1,28 @@
-import { useEffect, useCallback, useMemo, useState } from "react";
+import type { Location, LocationDescriptor } from "history";
 import type * as React from "react";
-import _ from "underscore";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
 import { useMount } from "react-use";
-import type { Location, LocationDescriptor } from "history";
+import _ from "underscore";
 
-import { NotFound } from "metabase/containers/ErrorPages";
-
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-
+import { NotFound } from "metabase/components/ErrorPages";
 import Actions from "metabase/entities/actions";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import title from "metabase/hoc/Title";
-import { getSetting } from "metabase/selectors/settings";
-
-import { loadMetadataForCard } from "metabase/questions/actions";
-
+import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import ModelDetailPageView from "metabase/models/components/ModelDetailPage";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
-
-import type { Card, Collection, WritebackAction } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-
+import { getSetting } from "metabase/selectors/settings";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import type Table from "metabase-lib/metadata/Table";
+import type Question from "metabase-lib/v1/Question";
+import type Table from "metabase-lib/v1/metadata/Table";
+import type { Card, CollectionId, WritebackAction } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 type OwnProps = {
   location: Location;
@@ -57,7 +51,7 @@ type DispatchProps = {
   onChangeModel: (card: Card) => void;
   onChangeCollection: (
     card: Card,
-    collection: Collection,
+    collection: { id: CollectionId },
     opts: ToastOpts,
   ) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
@@ -126,7 +120,7 @@ function ModelDetailPage({
 
   useMount(() => {
     const card = model.card();
-    const isModel = model.isDataset();
+    const isModel = model.type() === "model";
     if (isModel) {
       if (model.database()) {
         loadMetadataForCard(card);
@@ -151,7 +145,7 @@ function ModelDetailPage({
   }, [model, tab, hasActionsTab, onChangeLocation]);
 
   const handleNameChange = useCallback(
-    name => {
+    (name: string | undefined) => {
       if (name && name !== model.displayName()) {
         const nextCard = model.setDisplayName(name).card();
         onChangeModel(nextCard as Card);
@@ -171,10 +165,12 @@ function ModelDetailPage({
   );
 
   const handleCollectionChange = useCallback(
-    (collection: Collection) => {
+    (collection: { id: CollectionId }) => {
       onChangeCollection(model.card() as Card, collection, {
         notify: {
-          message: <QuestionMoveToast collectionId={collection.id} isModel />,
+          message: (
+            <QuestionMoveToast collectionId={collection.id} question={model} />
+          ),
           undo: false,
         },
       });

@@ -1,4 +1,5 @@
 import type { ScaleContinuousNumeric } from "d3-scale";
+
 import type { BarData } from "../../RowChart/types";
 
 export const getDataLabel = <TDatum>(

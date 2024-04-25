@@ -1,8 +1,8 @@
 import _ from "underscore";
 
+import { isImplicitDeleteAction } from "metabase/actions/utils";
 import { isNotNull } from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
-
 import type {
   ActionDashboardCard,
   ActionParametersMapping,
@@ -13,7 +13,6 @@ import type {
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
-import { isImplicitDeleteAction } from "metabase/actions/utils";
 
 type ActionParameterTuple = [ParameterId, ActionParameterValue];
 

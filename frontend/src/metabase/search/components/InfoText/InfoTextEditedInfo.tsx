@@ -1,13 +1,15 @@
 import dayjs from "dayjs";
 import { t } from "ttag";
 import { isNull } from "underscore";
-import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
-import type { UserListResult } from "metabase-types/api";
+
+import { useUserListQuery } from "metabase/common/hooks";
 import Tooltip from "metabase/core/components/Tooltip";
-import { isNotNull } from "metabase/lib/types";
 import { getRelativeTime } from "metabase/lib/time";
+import { isNotNull } from "metabase/lib/types";
 import type { WrappedResult } from "metabase/search/types";
 import { Text } from "metabase/ui";
+import type { UserListResult } from "metabase-types/api";
+
 import {
   LastEditedInfoText,
   LastEditedInfoTooltip,

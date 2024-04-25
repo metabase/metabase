@@ -12,7 +12,7 @@ import {
  **            QA DATABASES             **
  ******************************************/
 
-export function addMongoDatabase(name = "QA Mongo4") {
+export function addMongoDatabase(name = "QA Mongo") {
   // https://hub.docker.com/layers/metabase/qa-databases/mongo-sample-4.4/images/sha256-8cdeaacf28c6f0a6f9fde42ce004fcc90200d706ac6afa996bdd40db78ec0305
   addQADatabase("mongo", name, QA_MONGO_PORT);
 }
@@ -82,7 +82,7 @@ function addQADatabase(engine, db_display_name, port, enable_actions = false) {
 
       // it's important that we don't enable actions until sync is complete
       if (dbId && enable_actions) {
-        cy.log(`**-- Enabling actions --**`);
+        cy.log("**-- Enabling actions --**");
         cy.request("PUT", `/api/database/${dbId}`, {
           settings: { "database-enable-actions": true },
         }).then(({ status }) => {
@@ -220,7 +220,7 @@ export const createModelFromTableName = ({
         query: {
           "source-table": tableId,
         },
-        dataset: true,
+        type: "model",
       },
       {
         wrapId: true,
@@ -275,7 +275,11 @@ export function waitForSyncToFinish({
   });
 }
 
-export function resyncDatabase({ dbId = 2, tableName = "", tableAlias }) {
+export function resyncDatabase({
+  dbId = 2,
+  tableName = "",
+  tableAlias = undefined, // TS was complaining that this was a required param
+}) {
   // must be signed in as admin to sync
   cy.request("POST", `/api/database/${dbId}/sync_schema`);
   cy.request("POST", `/api/database/${dbId}/rescan_values`);

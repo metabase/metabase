@@ -1,9 +1,9 @@
-import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
   READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { archiveQuestion, restore } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -47,7 +47,7 @@ describe("scenarios > collections > archive", () => {
         ],
       },
     }).then(({ body: { id } }) => {
-      cy.archiveQuestion(id);
+      archiveQuestion(id);
     });
 
     cy.visit("/archive");
@@ -198,7 +198,7 @@ describe("scenarios > collections > archive", () => {
 
     cy.visit("/archive");
 
-    cy.get("main").scrollTo("bottom");
+    cy.findByTestId("scroll-container").scrollTo("bottom");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Item 40");
   });

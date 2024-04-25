@@ -1,11 +1,8 @@
-import { createEntity } from "metabase/lib/entities";
-
-import { GET } from "metabase/lib/api";
-import { entityForObject } from "metabase/lib/schema";
-
-import { ObjectUnionSchema } from "metabase/schema";
-
+import { collectionApi, searchApi } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
+import { entityForObject } from "metabase/lib/schema";
+import { ObjectUnionSchema } from "metabase/schema";
 
 import Actions from "./actions";
 import Bookmarks from "./bookmarks";
@@ -15,18 +12,18 @@ import Metrics from "./metrics";
 import Pulses from "./pulses";
 import Questions from "./questions";
 import Segments from "./segments";
-import Snippets from "./snippets";
 import SnippetCollections from "./snippet-collections";
+import Snippets from "./snippets";
 
-const searchList = GET("/api/search");
-const collectionList = GET("/api/collection/:collection/items");
-
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export default createEntity({
   name: "search",
   path: "/api/search",
 
   api: {
-    list: async (query = {}) => {
+    list: async (query = {}, dispatch) => {
       if (query.collection) {
         const {
           collection,
@@ -47,17 +44,21 @@ export default createEntity({
           );
         }
 
-        const { data, ...rest } = await collectionList({
-          collection,
-          archived,
-          models,
-          namespace,
-          pinned_state,
-          limit,
-          offset,
-          sort_column,
-          sort_direction,
-        });
+        const { data, ...rest } = await entityCompatibleQuery(
+          {
+            id: collection,
+            archived,
+            models,
+            namespace,
+            pinned_state,
+            limit,
+            offset,
+            sort_column,
+            sort_direction,
+          },
+          dispatch,
+          collectionApi.endpoints.listCollectionItems,
+        );
 
         return {
           ...rest,
@@ -70,7 +71,11 @@ export default createEntity({
             : [],
         };
       } else {
-        const { data, ...rest } = await searchList(query);
+        const { data, ...rest } = await entityCompatibleQuery(
+          query,
+          dispatch,
+          searchApi.endpoints.search,
+        );
 
         return {
           ...rest,

@@ -1,5 +1,5 @@
-import { modal, restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { modal, restore } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -11,7 +11,7 @@ describe("scenarios > reference > metrics", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.request("POST", "/api/metric", {
+    cy.request("POST", "/api/legacy-metric", {
       definition: {
         aggregation: ["count"],
         filter: ["<", ["field", ORDERS.TOTAL, null], 100],

@@ -1,5 +1,5 @@
-import { normalize } from "normalizr";
 import type { Schema as NormalizrSchema } from "normalizr";
+import { normalize } from "normalizr";
 
 import {
   ActionSchema,

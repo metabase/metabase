@@ -1,5 +1,5 @@
+import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
-import type ForeignKey from "metabase-lib/metadata/ForeignKey";
 
 import { ObjectDetailBodyWrapper } from "./ObjectDetailBody.styled";
 import { DetailsTable } from "./ObjectDetailsTable";

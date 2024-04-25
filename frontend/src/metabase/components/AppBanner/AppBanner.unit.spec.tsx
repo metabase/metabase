@@ -1,46 +1,36 @@
 import { Route } from "react-router";
 
+import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-
-import { createMockState } from "metabase-types/store/mocks";
+import type { TokenStatusStatus } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import type { TokenStatusStatus } from "metabase-types/api";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { AppBanner } from "./AppBanner";
 
 interface SetupOpts {
   isAdmin: boolean;
   tokenStatusStatus: TokenStatusStatus;
-  shouldShowDatabasePromptBanner: boolean;
 }
 const TEST_DB = createSampleDatabase();
 
 const DATA_WAREHOUSE_DB = createMockDatabase({ id: 2 });
 
-function setup({
-  isAdmin,
-  tokenStatusStatus,
-  shouldShowDatabasePromptBanner,
-}: SetupOpts) {
-  if (shouldShowDatabasePromptBanner) {
-    setupDatabasesEndpoints([TEST_DB]);
-  } else {
-    setupDatabasesEndpoints([TEST_DB, DATA_WAREHOUSE_DB]);
-  }
+function setup({ isAdmin, tokenStatusStatus }: SetupOpts) {
+  setupDatabasesEndpoints([TEST_DB, DATA_WAREHOUSE_DB]);
 
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({
       "token-status": createMockTokenStatus({
         status: tokenStatusStatus,
-        valid: shouldShowDatabasePromptBanner,
+        valid: false,
       }),
     }),
   });
@@ -53,97 +43,42 @@ function setup({
 }
 
 describe("AppBanner", () => {
-  it.each([
-    {
-      shouldShowDatabasePromptBanner: true,
-    },
-    {
-      shouldShowDatabasePromptBanner: false,
-    },
-  ])(
-    "should render past-due banner for admin user with tokenStatusStatus: past-due, shouldShowDatabasePromptBanner: $shouldShowDatabasePromptBanner",
-    ({ shouldShowDatabasePromptBanner }) => {
-      setup({
-        isAdmin: true,
-        tokenStatusStatus: "past-due",
-        shouldShowDatabasePromptBanner,
-      });
-
-      expect(
-        screen.getByText(/We couldn't process payment for your account\./),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          /Pro features won’t work right now due to lack of payment\./,
-        ),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          "Connect to your database to get the most from Metabase.",
-        ),
-      ).not.toBeInTheDocument();
-    },
-  );
-
-  it.each([
-    {
-      shouldShowDatabasePromptBanner: true,
-    },
-    {
-      shouldShowDatabasePromptBanner: false,
-    },
-  ])(
-    "should render unpaid banner for admin user with tokenStatusStatus: unpaid, shouldShowDatabasePromptBanner: $shouldShowDatabasePromptBanner",
-    ({ shouldShowDatabasePromptBanner }) => {
-      setup({
-        isAdmin: true,
-        tokenStatusStatus: "unpaid",
-        shouldShowDatabasePromptBanner,
-      });
-
-      expect(
-        screen.queryByText(/We couldn't process payment for your account\./),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.getByText(
-          /Pro features won’t work right now due to lack of payment\./,
-        ),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          "Connect to your database to get the most from Metabase.",
-        ),
-      ).not.toBeInTheDocument();
-    },
-  );
-
-  it("should render database prompt banner for admin user with tokenStatusStatus: something-else, shouldShowDatabasePromptBanner: true", async () => {
+  it("should render past-due banner for admin user with tokenStatusStatus: past-due", () => {
     setup({
       isAdmin: true,
-      tokenStatusStatus: "something-else",
-      shouldShowDatabasePromptBanner: true,
+      tokenStatusStatus: "past-due",
+    });
+
+    expect(
+      screen.getByText(/We couldn't process payment for your account\./),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        /Pro features won’t work right now due to lack of payment\./,
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should render unpaid banner for admin user with tokenStatusStatus: unpaid", () => {
+    setup({
+      isAdmin: true,
+      tokenStatusStatus: "unpaid",
     });
 
     expect(
       screen.queryByText(/We couldn't process payment for your account\./),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByText(
+      screen.getByText(
         /Pro features won’t work right now due to lack of payment\./,
-      ),
-    ).not.toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        "Connect to your database to get the most from Metabase.",
       ),
     ).toBeInTheDocument();
   });
 
-  it("should not render for admin user with tokenStatusStatus: something-else, shouldShowDatabasePromptBanner: false", () => {
+  it("should not render for admin user with tokenStatusStatus: something-else", () => {
     setup({
       isAdmin: true,
       tokenStatusStatus: "something-else",
-      shouldShowDatabasePromptBanner: false,
     });
 
     expect(
@@ -154,46 +89,27 @@ describe("AppBanner", () => {
         /Pro features won’t work right now due to lack of payment\./,
       ),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "Connect to your database to get the most from Metabase.",
-      ),
-    ).not.toBeInTheDocument();
   });
 
   it.each([
-    { tokenStatusStatus: "past-due", shouldShowDatabasePromptBanner: true },
-    { tokenStatusStatus: "past-due", shouldShowDatabasePromptBanner: false },
-    { tokenStatusStatus: "unpaid", shouldShowDatabasePromptBanner: true },
-    { tokenStatusStatus: "unpaid", shouldShowDatabasePromptBanner: false },
+    { tokenStatusStatus: "past-due" },
+    { tokenStatusStatus: "unpaid" },
     {
       tokenStatusStatus: "something-else",
-      shouldShowDatabasePromptBanner: true,
-    },
-    {
-      tokenStatusStatus: "something-else",
-      shouldShowDatabasePromptBanner: false,
     },
   ] as const)(
-    "should not render for non admin user with tokenStatusStatus: $tokenStatusStatus, shouldShowDatabasePromptBanner: $shouldShowDatabasePromptBanner",
-    ({ tokenStatusStatus, shouldShowDatabasePromptBanner }) => {
+    "should not render for non admin user with tokenStatusStatus: $tokenStatusStatus",
+    ({ tokenStatusStatus }) => {
       setup({
         isAdmin: false,
         tokenStatusStatus,
-        shouldShowDatabasePromptBanner,
       });
-
       expect(
         screen.queryByText(/We couldn't process payment for your account\./),
       ).not.toBeInTheDocument();
       expect(
         screen.queryByText(
           /Pro features won’t work right now due to lack of payment\./,
-        ),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          "Connect to your database to get the most from Metabase.",
         ),
       ).not.toBeInTheDocument();
     },

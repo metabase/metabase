@@ -1,22 +1,27 @@
-import { useCallback } from "react";
+import { useState } from "react";
+import { t } from "ttag";
+
+import { FieldPanel } from "metabase/querying";
+import { Button } from "metabase/ui";
+import type * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
-import * as Lib from "metabase-lib";
-import type { EditWidgetConfig } from "metabase/visualizations/components/settings/ChartSettingTableColumns/types";
-import type Question from "metabase-lib/Question";
-import { DatasetColumnSelector } from "./DatasetColumnSelector";
-import { QueryColumnSelector } from "./QueryColumnSelector";
+
+import { TableColumnPanel } from "./TableColumnPanel";
+import type { EditWidgetData } from "./types";
+import { canEditQuery } from "./utils";
 
 interface ChartSettingTableColumnsProps {
   value: TableColumnOrderSetting[];
   columns: DatasetColumn[];
   question?: Question;
+  isDashboard?: boolean;
   getColumnName: (column: DatasetColumn) => string;
   onChange: (value: TableColumnOrderSetting[], question?: Question) => void;
-  onShowWidget: (config: EditWidgetConfig, targetElement: HTMLElement) => void;
-  onWidgetOverride: (key: string) => void;
+  onShowWidget: (config: EditWidgetData, targetElement: HTMLElement) => void;
 }
 
 export const ChartSettingTableColumns = ({
@@ -26,44 +31,42 @@ export const ChartSettingTableColumns = ({
   getColumnName,
   onChange,
   onShowWidget,
-  onWidgetOverride,
 }: ChartSettingTableColumnsProps) => {
-  const handleChange = useCallback(
-    (newValue: TableColumnOrderSetting[], newQuery?: Lib.Query) => {
-      if (newQuery) {
-        onChange(newValue, question?.setQuery(newQuery));
-      } else {
-        onChange(newValue);
-      }
-    },
-    [question, onChange],
+  const query = question?.query();
+  const stageIndex = -1;
+  const hasEditButton = canEditQuery(query);
+  const [isEditingQuery, setIsEditingQuery] = useState(false);
+
+  const handleQueryChange = (query: Lib.Query) => {
+    onChange(value, question?.setQuery(query));
+  };
+
+  return (
+    <div>
+      {hasEditButton && (
+        <Button
+          pl="0"
+          variant="subtle"
+          onClick={() => setIsEditingQuery(!isEditingQuery)}
+        >
+          {isEditingQuery ? t`Done picking columns` : t`Add or remove columns`}
+        </Button>
+      )}
+      {query != null && isEditingQuery ? (
+        <FieldPanel
+          query={query}
+          stageIndex={stageIndex}
+          onChange={handleQueryChange}
+        />
+      ) : (
+        <TableColumnPanel
+          columns={columns}
+          columnSettings={value}
+          getColumnName={getColumnName}
+          onChange={onChange}
+          onShowWidget={onShowWidget}
+        />
+      )}
+    </div>
   );
-
-  const isNative = question && Lib.queryDisplayInfo(question.query()).isNative;
-
-  if (question && !isNative) {
-    const query = question.query();
-
-    return (
-      <QueryColumnSelector
-        handleWidgetOverride={onWidgetOverride}
-        value={value}
-        query={query}
-        columns={columns}
-        getColumnName={getColumnName}
-        onChange={handleChange}
-        onShowWidget={onShowWidget}
-      />
-    );
-  } else {
-    return (
-      <DatasetColumnSelector
-        value={value}
-        columns={columns}
-        getColumnName={getColumnName}
-        onChange={onChange}
-        onShowWidget={onShowWidget}
-      />
-    );
-  }
 };

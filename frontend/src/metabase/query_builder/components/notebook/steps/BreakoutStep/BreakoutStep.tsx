@@ -1,21 +1,11 @@
 import { useMemo } from "react";
 import { t } from "ttag";
+
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import * as Lib from "metabase-lib";
+
 import type { NotebookStepUiComponentProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
-
-const breakoutTetherOptions = {
-  attachment: "top left",
-  targetAttachment: "bottom left",
-  offset: "10px 0",
-  constraints: [
-    {
-      to: "scrollParent",
-      attachment: "together",
-    },
-  ],
-};
 
 function BreakoutStep({
   query,
@@ -47,6 +37,19 @@ function BreakoutStep({
     updateQuery(nextQuery);
   };
 
+  const handleReorderBreakout = (
+    sourceClause: Lib.BreakoutClause,
+    targetClause: Lib.BreakoutClause,
+  ) => {
+    const nextQuery = Lib.swapClauses(
+      query,
+      stageIndex,
+      sourceClause,
+      targetClause,
+    );
+    updateQuery(nextQuery);
+  };
+
   const handleRemoveBreakout = (clause: Lib.BreakoutClause) => {
     const nextQuery = Lib.removeClause(query, stageIndex, clause);
     updateQuery(nextQuery);
@@ -59,9 +62,8 @@ function BreakoutStep({
       readOnly={readOnly}
       color={color}
       isLastOpened={isLastOpened}
-      tetherOptions={breakoutTetherOptions}
       renderName={renderBreakoutName}
-      renderPopover={({ item: breakout, index }) => (
+      renderPopover={({ item: breakout, index, onClose }) => (
         <BreakoutPopover
           query={query}
           stageIndex={stageIndex}
@@ -69,11 +71,12 @@ function BreakoutStep({
           breakoutIndex={index}
           onAddBreakout={handleAddBreakout}
           onUpdateBreakoutColumn={handleUpdateBreakoutColumn}
+          onClose={onClose}
         />
       )}
+      onReorder={handleReorderBreakout}
       onRemove={handleRemoveBreakout}
       data-testid="breakout-step"
-      withLegacyPopover
     />
   );
 }
@@ -88,7 +91,7 @@ interface BreakoutPopoverProps {
     breakout: Lib.BreakoutClause,
     column: Lib.ColumnMetadata,
   ) => void;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 const BreakoutPopover = ({
@@ -120,6 +123,7 @@ const BreakoutPopover = ({
       columnGroups={columnGroups}
       hasBinning
       hasTemporalBucketing
+      withInfoIcons
       color="summarize"
       checkIsColumnSelected={item => checkColumnSelected(item, breakoutIndex)}
       onSelect={(column: Lib.ColumnMetadata) => {

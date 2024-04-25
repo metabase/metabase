@@ -1,5 +1,5 @@
-import { restore, sidebar } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, sidebar } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -34,6 +34,9 @@ describe("issue 15353", () => {
 
     cy.wait("@pivotDataset");
 
-    cy.get(".Visualization").should("contain", "Count renamed");
+    cy.findByTestId("query-visualization-root").should(
+      "contain",
+      "Count renamed",
+    );
   });
 });

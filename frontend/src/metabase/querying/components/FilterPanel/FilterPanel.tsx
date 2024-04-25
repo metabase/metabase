@@ -1,8 +1,10 @@
 import { useMemo } from "react";
-import type * as Lib from "metabase-lib";
-import { FilterPanelPopover } from "./FilterPanelPopover";
-import { dropStageIfEmpty, getFilterItems } from "./utils";
+
+import * as Lib from "metabase-lib";
+
 import { FilterPanelRoot } from "./FilterPanel.styled";
+import { FilterPanelPopover } from "./FilterPanelPopover";
+import { getFilterItems } from "./utils";
 
 interface FilterPanelProps {
   query: Lib.Query;
@@ -13,7 +15,7 @@ export function FilterPanel({ query, onChange }: FilterPanelProps) {
   const items = useMemo(() => getFilterItems(query), [query]);
 
   const handleChange = (query: Lib.Query) => {
-    onChange(dropStageIfEmpty(query));
+    onChange(Lib.dropEmptyStages(query));
   };
 
   if (items.length === 0) {

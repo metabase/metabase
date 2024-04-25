@@ -1,15 +1,17 @@
-import { useState } from "react";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase-types/store/mocks";
-import { createMockCard, createMockUser } from "metabase-types/api/mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/selectors/metadata";
-import { checkNotNull } from "metabase/lib/types";
+import fetchMock from "fetch-mock";
+import { useState } from "react";
+
 import { setupCardPublicLinkEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import type Question from "metabase-lib/Question";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import type Question from "metabase-lib/v1/Question";
+import { createMockCard, createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
+
 import { QuestionPublicLinkPopover } from "./QuestionPublicLinkPopover";
 
 const SITE_URL = "http://metabase.test";
@@ -104,7 +106,7 @@ describe("QuestionPublicLinkPopover", () => {
 
   it("should call the Card public link API when deleting link", async () => {
     setup({ hasPublicLink: true });
-    userEvent.click(screen.getByText("Remove public link"));
+    await userEvent.click(screen.getByText("Remove public link"));
     expect(
       fetchMock.calls(`path:/api/card/${TEST_CARD_ID}/public_link`, {
         method: "DELETE",

@@ -1,11 +1,11 @@
-import _ from "underscore";
-import { c, t } from "ttag";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import updateLocale from "dayjs/plugin/updateLocale";
+import { c, t } from "ttag";
+import _ from "underscore";
 
-import { Text, Tooltip } from "metabase/ui";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import { Text, Tooltip } from "metabase/ui";
 
 dayjs.extend(updateLocale);
 dayjs.extend(relativeTime);
@@ -65,7 +65,7 @@ export const LastEdited = ({
   ).jt`Last edited by ${editorFullName}${(<br key="br" />)}${time}`;
 
   return (
-    <Tooltip label={tooltipLabel} withArrow disabled={!timeLabel}>
+    <Tooltip label={tooltipLabel} disabled={!timeLabel}>
       <Text role="note" size="small">
         {editorFullName}
         {editorFullName && timePassed && (

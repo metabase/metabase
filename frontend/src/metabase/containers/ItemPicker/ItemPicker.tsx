@@ -1,25 +1,23 @@
-import { useCallback, useMemo, useState } from "react";
 import type * as React from "react";
-import _ from "underscore";
+import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
+import _ from "underscore";
 
-import type { IconProps } from "metabase/ui";
-
-import { getCrumbs } from "metabase/lib/collections";
-
-import Collections from "metabase/entities/collections";
-
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
-import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 import {
   isPersonalCollection,
   isPublicCollection,
   isRootCollection,
 } from "metabase/collections/utils";
-
+import Collections from "metabase/entities/collections";
+import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
+import { getCrumbs } from "metabase/lib/collections";
+import type { IconProps } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { ScrollAwareLoadingAndErrorWrapper } from "./ItemPicker.styled";
+import ItemPickerView from "./ItemPickerView";
 import type {
   CollectionPickerItem,
   FilterItemsInPersonalCollection,
@@ -28,9 +26,6 @@ import type {
   PickerValue,
   SearchQuery,
 } from "./types";
-
-import ItemPickerView from "./ItemPickerView";
-import { ScrollAwareLoadingAndErrorWrapper } from "./ItemPicker.styled";
 
 interface OwnProps<TId> {
   value?: PickerValue<TId>;
@@ -230,7 +225,7 @@ function ItemPicker<TId>({
   );
 
   const handleCollectionOpen = useCallback(
-    collectionId => {
+    (collectionId: CollectionId) => {
       setOpenCollectionId(collectionId);
       onOpenCollectionChange?.(collectionId);
     },

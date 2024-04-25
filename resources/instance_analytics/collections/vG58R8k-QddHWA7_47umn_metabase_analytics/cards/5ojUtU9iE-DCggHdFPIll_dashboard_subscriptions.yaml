@@ -355,4 +355,6 @@ serdes/meta:
 - id: 5ojUtU9iE-DCggHdFPIll
   label: dashboard_subscriptions
   model: Card
+initially_published_at: null
 metabase_version: null
+type: model

@@ -1,18 +1,22 @@
-import { useState } from "react";
-import { thaw } from "icepick";
 import userEvent from "@testing-library/user-event";
+import { thaw } from "icepick";
+import { useState } from "react";
+
 import { createMockMetadata } from "__support__/metadata";
 import { render, screen } from "__support__/ui";
-import {
-  createSampleDatabase,
-  ORDERS,
-  ORDERS_ID,
-  PEOPLE,
-  SAMPLE_DB_ID,
-} from "metabase-types/api/mocks/presets";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
+import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  SAMPLE_DB_ID,
+  createOrdersCreatedAtDatasetColumn,
+  createProductsCategoryDatasetColumn,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 registerVisualizations();
 
@@ -33,7 +37,11 @@ const setup = () => {
               breakout: [
                 ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
 
-                ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
+                [
+                  "field",
+                  PRODUCTS.CREATED_AT,
+                  { "source-field": ORDERS.PRODUCT_ID },
+                ],
               ],
             },
             database: SAMPLE_DB_ID,
@@ -60,21 +68,26 @@ const setup = () => {
             card: question.card(),
             data: {
               rows: [],
-              // Need to add missing sources so that the setting displays
               cols: [
-                ...question
-                  .legacyQuery({ useStructuredQuery: true })
-                  .columns()
-                  .map(c => ({ ...c, source: c.source || "breakout" })),
-                {
+                createOrdersCreatedAtDatasetColumn({ source: "breakout" }),
+                createProductsCategoryDatasetColumn({ source: "breakout" }),
+                createMockColumn({
+                  name: "count",
+                  display_name: "Count",
+                  field_ref: ["aggregation", "0"],
+                  source: "aggregation",
                   base_type: "type/Integer",
+                  effective_type: "type/Integer",
+                }),
+                createMockColumn({
                   name: "pivot-grouping",
                   display_name: "pivot-grouping",
                   expression_name: "pivot-grouping",
                   field_ref: ["expression", "pivot-grouping"],
                   source: "breakout",
+                  base_type: "type/Integer",
                   effective_type: "type/Integer",
-                },
+                }),
               ],
             },
           },
@@ -92,9 +105,14 @@ const setup = () => {
 describe("table settings", () => {
   it("should allow you to update a column name", async () => {
     setup();
-    userEvent.click(await screen.findByTestId("Source-settings-button"));
-    userEvent.type(await screen.findByDisplayValue("Source"), " Updated");
-    userEvent.click(await screen.findByText("Count"));
-    expect(await screen.findByText("Source Updated")).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByTestId("Category-settings-button"),
+    );
+    await userEvent.type(
+      await screen.findByDisplayValue("Category"),
+      " Updated",
+    );
+    await userEvent.click(await screen.findByText("Count"));
+    expect(await screen.findByText("Category Updated")).toBeInTheDocument();
   });
 });

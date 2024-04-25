@@ -87,4 +87,6 @@ serdes/meta:
 - id: t-4MnpU-Nn7Ph9GQT6zYb
   label: question_views_last_week
   model: Card
+initially_published_at: null
 metabase_version: null
+type: question

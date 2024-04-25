@@ -1,9 +1,8 @@
-import { without } from "underscore";
 import { useState } from "react";
 import { t } from "ttag";
-import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
-import type { UserId, UserListResult } from "metabase-types/api";
-import { Center, Text, Icon } from "metabase/ui";
+import { without } from "underscore";
+
+import { useUserListQuery } from "metabase/common/hooks";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
 import {
   SearchUserItemContainer,
@@ -14,6 +13,8 @@ import {
   UserPickerInput,
 } from "metabase/search/components/SearchUserPicker/SearchUserPicker.styled";
 import { UserListElement } from "metabase/search/components/UserListElement";
+import { Center, Text, Icon } from "metabase/ui";
+import type { UserId, UserListResult } from "metabase-types/api";
 
 export const SearchUserPicker = ({
   value,

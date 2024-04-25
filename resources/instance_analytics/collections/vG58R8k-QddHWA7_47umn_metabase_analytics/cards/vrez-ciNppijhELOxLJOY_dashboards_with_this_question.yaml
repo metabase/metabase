@@ -154,4 +154,6 @@ serdes/meta:
 - id: vrez-ciNppijhELOxLJOY
   label: dashboards_with_this_question
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (13e6090)
+type: question

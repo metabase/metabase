@@ -1,6 +1,6 @@
-import { restore } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore } from "e2e/support/helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 const { COLLECTION_GROUP } = USER_GROUPS;
@@ -76,7 +76,10 @@ const dashboardDetails = {
         if (test === "nosql") {
           cy.updatePermissionsGraph({
             [COLLECTION_GROUP]: {
-              1: { data: { schemas: "all", native: "none" } },
+              1: {
+                "view-data": "unrestricted",
+                "create-queries": "query-builder",
+              },
             },
           });
         }
@@ -97,7 +100,7 @@ const dashboardDetails = {
       });
 
       cy.get(".ace_content").should("not.be.visible");
-      cy.get(".cellData").should("contain", "51");
+      cy.get("[data-testid=cell-data]").should("contain", "51");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row");
     });

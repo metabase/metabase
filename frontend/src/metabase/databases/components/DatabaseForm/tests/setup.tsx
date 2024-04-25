@@ -1,8 +1,9 @@
-import type { Engine, Settings } from "metabase-types/api";
-import { createMockState } from "metabase-types/store/mocks";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import type { Engine, Settings } from "metabase-types/api";
+import { createMockState } from "metabase-types/store/mocks";
+
 import { DatabaseForm } from "../DatabaseForm";
 
 const TEST_ENGINES: Record<string, Engine> = {

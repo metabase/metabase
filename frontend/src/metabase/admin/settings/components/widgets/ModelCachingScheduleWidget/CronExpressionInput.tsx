@@ -1,11 +1,12 @@
-import { useCallback, useState } from "react";
-import type * as React from "react";
 import cx from "classnames";
+import type * as React from "react";
+import { useCallback, useState } from "react";
 import { t, jt } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-
+import ExternalLink from "metabase/core/components/ExternalLink";
+import FormS from "metabase/css/components/form.module.css";
+import CS from "metabase/css/core/index.css";
 import { validateCronExpression } from "metabase/lib/cron";
 
 import {
@@ -60,12 +61,14 @@ function Input({
   ...props
 }: InputProps) {
   const handleChange = useCallback(
-    event => onChange(event.target.value),
+    (event: React.ChangeEvent<HTMLInputElement>) =>
+      onChange(event.target.value),
     [onChange],
   );
 
   const handleBlur = useCallback(
-    event => onBlurChange(event.target.value),
+    (event: React.FocusEvent<HTMLInputElement>) =>
+      onBlurChange(event.target.value),
     [onBlurChange],
   );
 
@@ -73,9 +76,9 @@ function Input({
     <StyledInput
       {...props}
       className={cx(
-        "Form-input",
+        FormS.FormInput,
         {
-          "border-error bg-error-input": hasError,
+          [cx(CS.borderError, CS.bgErrorInput)]: hasError,
         },
         className,
       )}

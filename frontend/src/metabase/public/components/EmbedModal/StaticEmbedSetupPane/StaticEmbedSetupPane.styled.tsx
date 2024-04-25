@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import type { ReactNode } from "react";
+
 import { Text } from "metabase/ui";
 
 const ContentWrapper = styled.div`

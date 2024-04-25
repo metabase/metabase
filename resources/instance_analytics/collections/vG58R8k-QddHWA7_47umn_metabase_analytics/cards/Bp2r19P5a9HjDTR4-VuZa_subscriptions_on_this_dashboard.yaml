@@ -192,4 +192,6 @@ serdes/meta:
 - id: Bp2r19P5a9HjDTR4-VuZa
   label: subscriptions_on_this_dashboard
   model: Card
+initially_published_at: null
 metabase_version: null
+type: question

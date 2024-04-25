@@ -1,13 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
+import Filter from "metabase-lib/v1/queries/structured/Filter";
 import { createMockSegment } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
-  PEOPLE,
-  PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
-import Filter from "metabase-lib/queries/structured/Filter";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -185,22 +183,6 @@ describe("Filter", () => {
       expect(
         filter(["segment", 1]).setDimension(["field", ORDERS.TOTAL, null]),
       ).toEqual([null, ["field", ORDERS.TOTAL, null]]);
-    });
-    it("should set joined-field for new filter clause", () => {
-      const q = ordersTable.legacyQuery({ useStructuredQuery: true }).join({
-        alias: "foo",
-        "source-table": PEOPLE_ID,
-      });
-      const f = new Filter([], 0, q);
-      expect(
-        f.setDimension(["field", PEOPLE.EMAIL, { "join-alias": "foo" }], {
-          useDefaultOperator: true,
-        }),
-      ).toEqual([
-        "=",
-        ["field", PEOPLE.EMAIL, { "join-alias": "foo" }],
-        undefined,
-      ]);
     });
   });
 

@@ -7,13 +7,20 @@ import {
   setupCardQueryEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-
+import { Api } from "metabase/api";
 import { checkNotNull } from "metabase/lib/types";
-
-import type { CardId, DashCardId, DashboardCard } from "metabase-types/api";
+import mainReducers from "metabase/reducers-main";
+import { CardApi } from "metabase/services";
+import type {
+  CardId,
+  DashCardId,
+  Dashboard,
+  DashboardTabId,
+} from "metabase-types/api";
 import {
   createMockDashboard,
   createMockDashboardCard,
+  createMockDashboardTab,
   createMockDataset,
   createMockCard,
   createMockHeadingDashboardCard,
@@ -21,23 +28,24 @@ import {
   createMockTextDashboardCard,
   createMockParameter,
   createMockStructuredDatasetQuery,
+  createMockPlaceholderDashboardCard,
 } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import type { State } from "metabase-types/store";
+import type { State, StoreDashcard } from "metabase-types/store";
 import {
   createMockDashboardState,
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { CardApi } from "metabase/services";
-import mainReducers from "metabase/reducers-main";
+import type { SectionLayout } from "../sections";
+import { layoutOptions } from "../sections";
+import { getDashCardById, getDashcards } from "../selectors";
 
-import { getDashCardById } from "../selectors";
-import { replaceCard } from "./cards";
+import { addSectionToDashboard, replaceCard } from "./cards-typed";
 
 const DATE_PARAMETER = createMockParameter({
   id: "1",
@@ -106,12 +114,14 @@ const PIE_CHART_DASHCARD = createMockDashboardCard({
 const HEADING_DASHCARD = createMockHeadingDashboardCard({ id: 3 });
 const TEXT_DASHCARD = createMockTextDashboardCard({ id: 4 });
 const LINK_DASHCARD = createMockLinkDashboardCard({ id: 5 });
+const PLACEHOLDER_DASHCARD = createMockPlaceholderDashboardCard({ id: 6 });
 
 const DASHCARDS = [
   TABLE_DASHCARD,
   HEADING_DASHCARD,
   TEXT_DASHCARD,
   LINK_DASHCARD,
+  PLACEHOLDER_DASHCARD,
 ];
 
 const DASHBOARD = createMockDashboard({
@@ -120,54 +130,95 @@ const DASHBOARD = createMockDashboard({
   parameters: [DATE_PARAMETER, NUMERIC_PARAMETER, UNUSED_PARAMETER],
 });
 
-type RunActionOpts = {
-  dashcardId: DashCardId;
-  nextCardId: CardId;
-  dashcards?: DashboardCard[];
+const DASHBOARD_WITH_TABS = createMockDashboard({
+  id: 1,
+  parameters: [DATE_PARAMETER, NUMERIC_PARAMETER, UNUSED_PARAMETER],
+  dashcards: DASHCARDS.map(dc => ({ ...dc, dashboard_tab_id: 1 })),
+  tabs: [
+    createMockDashboardTab({ id: 1, name: "Tab 1" }),
+    createMockDashboardTab({ id: 2, name: "Tab 2" }),
+  ],
+});
+
+type SetupOpts = {
+  dashboard?: Dashboard;
+  dashcards?: StoreDashcard[];
 };
 
-async function runAction({
-  dashcardId,
-  nextCardId,
+function setup({
+  dashboard = DASHBOARD,
   dashcards = DASHCARDS,
-}: RunActionOpts) {
-  const dashboardState = createMockDashboardState({
-    dashboardId: DASHBOARD.id,
-    dashboards: {
-      [DASHBOARD.id]: { ...DASHBOARD, dashcards: dashcards.map(dc => dc.id) },
-    },
-    isEditing: DASHBOARD,
-    dashcards: _.indexBy(dashcards, "id"),
-  });
-
-  // @ts-expect-error we need better redux test tooling
-  const store = getStore(
-    mainReducers,
-    createMockState({ dashboard: dashboardState }),
-  ) as Store<State>;
-
+}: SetupOpts = {}) {
   setupCardsEndpoints([ORDERS_TABLE_CARD, ORDERS_LINE_CHART_CARD]);
   setupCardQueryEndpoints(ORDERS_TABLE_CARD, createMockDataset());
   setupCardQueryEndpoints(ORDERS_LINE_CHART_CARD, createMockDataset());
   setupDatabasesEndpoints([createSampleDatabase()]);
 
-  await replaceCard({ dashcardId, nextCardId })(store.dispatch, store.getState);
-  const nextState = store.getState();
+  const dashboardState = createMockDashboardState({
+    dashboardId: dashboard.id,
+    dashboards: {
+      [dashboard.id]: { ...dashboard, dashcards: dashcards.map(dc => dc.id) },
+    },
+    editingDashboard: DASHBOARD,
+    dashcards: _.indexBy(dashcards, "id"),
+  });
 
-  const dispatchSpy = jest.spyOn(store, "dispatch");
-  const cardQueryEndpointSpy = jest.spyOn(CardApi, "query");
+  const store = getStore(
+    { ...mainReducers, [Api.reducerPath]: Api.reducer },
+    createMockState({ dashboard: dashboardState }),
+    [Api.middleware],
+  ) as Store<State>;
 
-  return {
-    nextDashCard: getDashCardById(nextState, dashcardId),
-    dispatchSpy,
-    cardQueryEndpointSpy,
-  };
+  return { store };
 }
 
 describe("dashboard/actions/cards", () => {
+  describe("addSectionToDashboard", () => {
+    layoutOptions.forEach(sectionLayout => {
+      describe(sectionLayout.label, () => {
+        const layoutItems = sectionLayout.getLayout({ col: 0, row: 0 });
+
+        it("should add a section", () => {
+          const { nextDashcards } = runAddSectionAction({
+            dashcards: [],
+            sectionLayout,
+          });
+
+          expect(nextDashcards).toHaveLength(layoutItems.length);
+        });
+
+        it("should add a section to existing dashcards", async () => {
+          const { nextDashcards } = runAddSectionAction({
+            dashcards: DASHCARDS,
+            sectionLayout,
+          });
+
+          expect(nextDashcards).toHaveLength(
+            DASHCARDS.length + layoutItems.length,
+          );
+        });
+
+        it("should add a section to specified tab", async () => {
+          const tabId = 2;
+          const { nextDashcards } = runAddSectionAction({
+            dashboard: DASHBOARD_WITH_TABS,
+            dashcards: DASHBOARD_WITH_TABS.dashcards,
+            tabId,
+            sectionLayout,
+          });
+
+          const tabDashcards = nextDashcards.filter(
+            dc => dc.dashboard_tab_id === tabId,
+          );
+          expect(tabDashcards).toHaveLength(layoutItems.length);
+        });
+      });
+    });
+  });
+
   describe("replaceCard", () => {
     it("should correctly update the dashcard", async () => {
-      const { nextDashCard } = await runAction({
+      const { nextDashCard } = await runReplaceCardAction({
         dashcardId: TABLE_DASHCARD.id,
         nextCardId: ORDERS_LINE_CHART_CARD.id,
       });
@@ -189,7 +240,7 @@ describe("dashboard/actions/cards", () => {
     });
 
     it("should run a new card query", async () => {
-      const { cardQueryEndpointSpy } = await runAction({
+      const { cardQueryEndpointSpy } = await runReplaceCardAction({
         dashcardId: TABLE_DASHCARD.id,
         nextCardId: ORDERS_LINE_CHART_CARD.id,
       });
@@ -197,12 +248,7 @@ describe("dashboard/actions/cards", () => {
       // It's important to ensure the `/card/:id/query` endpoint is called
       // Regular dashcard query endpoint won't work with a new `card_id`
       expect(cardQueryEndpointSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          dashboardId: DASHBOARD.id,
-          dashcardId: TABLE_DASHCARD.id,
-          cardId: ORDERS_LINE_CHART_CARD.id,
-          parameters: [],
-        }),
+        { cardId: ORDERS_LINE_CHART_CARD.id },
         expect.anything(), // abort signal
       );
     });
@@ -219,7 +265,7 @@ describe("dashboard/actions/cards", () => {
         }),
       );
 
-      const { nextDashCard } = await runAction({
+      const { nextDashCard } = await runReplaceCardAction({
         dashcardId: TABLE_DASHCARD.id,
         nextCardId: nextCardId,
         dashcards: [...DASHCARDS, PIE_CHART_DASHCARD],
@@ -229,19 +275,55 @@ describe("dashboard/actions/cards", () => {
         expectedParameterMappings,
       );
     });
-
-    it.each([
-      ["heading", HEADING_DASHCARD],
-      ["text", TEXT_DASHCARD],
-      ["link", LINK_DASHCARD],
-    ])("should ignore %s dashboard cards", async (_, dashcard) => {
-      const { nextDashCard, dispatchSpy } = await runAction({
-        dashcardId: dashcard.id,
-        nextCardId: ORDERS_LINE_CHART_CARD.id,
-      });
-
-      expect(nextDashCard).toEqual(dashcard);
-      expect(dispatchSpy).not.toHaveBeenCalled();
-    });
   });
 });
+
+type RunAddSectionOpts = SetupOpts & {
+  tabId?: DashboardTabId | null;
+  sectionLayout: SectionLayout;
+};
+
+function runAddSectionAction({
+  dashboard = DASHBOARD,
+  tabId = null,
+  sectionLayout,
+  ...opts
+}: RunAddSectionOpts) {
+  const { store } = setup({ dashboard, ...opts });
+
+  addSectionToDashboard({
+    dashId: dashboard.id,
+    tabId,
+    sectionLayout,
+  })(store.dispatch, store.getState);
+
+  const nextState = store.getState();
+  const nextDashcards = Object.values(getDashcards(nextState));
+
+  return { nextDashcards };
+}
+
+type RunReplaceCardOpts = SetupOpts & {
+  dashcardId: DashCardId;
+  nextCardId: CardId;
+};
+
+async function runReplaceCardAction({
+  dashcardId,
+  nextCardId,
+  ...opts
+}: RunReplaceCardOpts) {
+  const { store } = setup(opts);
+
+  await replaceCard({ dashcardId, nextCardId })(store.dispatch, store.getState);
+  const nextState = store.getState();
+
+  const dispatchSpy = jest.spyOn(store, "dispatch");
+  const cardQueryEndpointSpy = jest.spyOn(CardApi, "query");
+
+  return {
+    nextDashCard: getDashCardById(nextState, dashcardId),
+    dispatchSpy,
+    cardQueryEndpointSpy,
+  };
+}

@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
-
 import screenfull from "screenfull";
+
+import HideS from "metabase/css/core/hide.module.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 
@@ -42,8 +42,12 @@ export const DashboardControls = ComposedComponent =>
         this.loadDashboardParams();
       }
 
-      componentDidUpdate() {
-        this.updateDashboardParams();
+      componentDidUpdate(prevProps) {
+        if (prevProps.location !== this.props.location) {
+          this.syncUrlHashToState();
+        } else {
+          this.syncStateToUrlHash();
+        }
         this._showNav(!this.state.isFullscreen);
       }
 
@@ -72,7 +76,16 @@ export const DashboardControls = ComposedComponent =>
         this.setHideParameters(options.hide_parameters);
       };
 
-      updateDashboardParams = () => {
+      syncUrlHashToState() {
+        const { location } = this.props;
+
+        const { refresh, fullscreen, theme } = parseHashOptions(location.hash);
+        this.setRefreshPeriod(refresh);
+        this.setFullscreen(fullscreen);
+        this.setTheme(theme);
+      }
+
+      syncStateToUrlHash = () => {
         const { location, replace } = this.props;
 
         const options = parseHashOptions(location.hash);
@@ -192,11 +205,14 @@ export const DashboardControls = ComposedComponent =>
         // NOTE Atte Keinänen 8/10/17: For some reason `document` object isn't present in Jest tests
         // when _showNav is called for the first time
         if (window.document) {
-          const nav = window.document.querySelector(".Nav");
+          const nav = document.body.querySelector(
+            "[data-element-id='navbar-root']",
+          );
+
           if (show && nav) {
-            nav.classList.remove("hide");
+            nav.classList.remove(HideS.hide);
           } else if (!show && nav) {
-            nav.classList.add("hide");
+            nav.classList.add(HideS.hide);
           }
         }
       }
@@ -224,7 +240,6 @@ export const DashboardControls = ComposedComponent =>
             hasNightModeToggle={this.state.theme !== "transparent"}
             setRefreshElapsedHook={this.setRefreshElapsedHook}
             loadDashboardParams={this.loadDashboardParams}
-            updateDashboardParams={this.updateDashboardParams}
             onNightModeChange={this.setNightMode}
             onFullscreenChange={this.setFullscreen}
             onRefreshPeriodChange={this.setRefreshPeriod}

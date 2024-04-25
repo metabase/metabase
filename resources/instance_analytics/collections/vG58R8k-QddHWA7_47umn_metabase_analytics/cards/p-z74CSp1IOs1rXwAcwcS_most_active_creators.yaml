@@ -105,11 +105,6 @@ visualization_settings:
   table.columns:
   - enabled: true
     fieldRef:
-    - aggregation
-    - 0
-    name: count
-  - enabled: true
-    fieldRef:
     - field
     - - Internal Metabase Database
       - public
@@ -127,9 +122,16 @@ visualization_settings:
       - user_id
     - base-type: type/Integer
     name: user_id
+  - enabled: true
+    fieldRef:
+    - aggregation
+    - 0
+    name: count
   table.pivot_column: end_timestamp
 serdes/meta:
 - id: p-z74CSp1IOs1rXwAcwcS
   label: most_active_creators
   model: Card
+initially_published_at: null
 metabase_version: null
+type: question

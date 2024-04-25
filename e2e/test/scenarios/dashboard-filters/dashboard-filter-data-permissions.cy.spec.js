@@ -1,10 +1,11 @@
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
-  popover,
   selectDashboardFilter,
   visitDashboard,
+  editDashboard,
+  setFilter,
 } from "e2e/support/helpers";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 function filterDashboard(suggests = true) {
   visitDashboard(ORDERS_DASHBOARD_ID);
@@ -40,16 +41,16 @@ describe("support > permissions (metabase#8472)", () => {
 
     // Setup a dashboard with a text filter
     visitDashboard(ORDERS_DASHBOARD_ID);
-    // click pencil icon to edit
-    cy.icon("pencil").click();
 
-    cy.icon("filter").click();
-    popover().contains("Text or Category").click();
+    editDashboard();
 
-    popover().contains("Is").click();
+    setFilter("Text or Category", "Is");
 
     // Filter the first card by User Address
-    selectDashboardFilter(cy.get(".DashCard").first(), "Address");
+    selectDashboardFilter(
+      cy.findByTestId("dashcard-container").first(),
+      "Address",
+    );
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Done").click();

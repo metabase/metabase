@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-const fs = require("fs");
 const { spawn } = require("child_process");
-const os = require("os");
-const path = require("path");
+const fs = require("fs");
 
 const http = require("http");
+const os = require("os");
+const path = require("path");
 
 const CypressBackend = {
   createServer(port = 4000) {
@@ -39,6 +39,7 @@ const CypressBackend = {
         MB_JETTY_PORT: server.port,
         MB_ENABLE_TEST_ENDPOINTS: "true",
         MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE: "true",
+        MB_LAST_ANALYTICS_CHECKSUM: "-1",
       };
 
       /**

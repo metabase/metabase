@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
+import CS from "metabase/css/core/index.css";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import { ACE_ELEMENT_ID } from "metabase/query_builder/components/NativeQueryEditor/constants";
 import DataSourceSelectors from "metabase/query_builder/components/NativeQueryEditor/DataSourceSelectors";
+import { ACE_ELEMENT_ID } from "metabase/query_builder/components/NativeQueryEditor/constants";
 
 const MockNativeQueryEditor = ({
   canChangeDatabase = true,
@@ -47,7 +48,7 @@ const MockNativeQueryEditor = ({
         <textarea value={query.queryText()} onChange={onChange} />
       )}
       <SyncedParametersList
-        className="mt1"
+        className={CS.mt1}
         parameters={query.question().parameters()}
         setParameterValue={setParameterValue}
         commitImmediately

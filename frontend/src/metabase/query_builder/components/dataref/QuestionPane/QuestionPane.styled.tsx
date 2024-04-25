@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { space } from "metabase/styled-components/theme";
+
 import { color } from "metabase/lib/colors";
+import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
 export const QuestionPaneDetail = styled.div`

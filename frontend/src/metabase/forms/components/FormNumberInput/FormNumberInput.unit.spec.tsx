@@ -1,6 +1,8 @@
-import * as Yup from "yup";
-import type { AnySchema } from "yup";
 import userEvent from "@testing-library/user-event";
+import type { AnySchema } from "yup";
+import * as Yup from "yup";
+
+import { render, screen, waitFor } from "__support__/ui";
 import {
   Form,
   FormProvider,
@@ -8,7 +10,6 @@ import {
   FormNumberInput,
   requiredErrorMessage,
 } from "metabase/forms";
-import { render, screen, waitFor } from "__support__/ui";
 
 interface FormValues {
   goal: number | null | undefined;
@@ -55,8 +56,8 @@ describe("FormNumberInput", () => {
   it("should submit a non-empty value", async () => {
     const { onSubmit } = setup();
 
-    userEvent.type(screen.getByLabelText("Goal"), "20");
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.type(screen.getByLabelText("Goal"), "20");
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({ goal: 20 }, expect.anything());
@@ -68,8 +69,8 @@ describe("FormNumberInput", () => {
       initialValues: { goal: 20 },
     });
 
-    userEvent.clear(screen.getByLabelText("Goal"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.clear(screen.getByLabelText("Goal"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -85,8 +86,8 @@ describe("FormNumberInput", () => {
       nullable: true,
     });
 
-    userEvent.clear(screen.getByLabelText("Goal"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.clear(screen.getByLabelText("Goal"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({ goal: null }, expect.anything());
@@ -100,9 +101,9 @@ describe("FormNumberInput", () => {
     setup({ initialValues: validationSchema.getDefault(), validationSchema });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
 
-    userEvent.type(screen.getByLabelText("Goal"), "20");
-    userEvent.clear(screen.getByLabelText("Goal"));
-    userEvent.tab();
+    await userEvent.type(screen.getByLabelText("Goal"), "20");
+    await userEvent.clear(screen.getByLabelText("Goal"));
+    await userEvent.tab();
 
     await waitFor(() => {
       expect(screen.getByText("Required")).toBeInTheDocument();
@@ -123,9 +124,9 @@ describe("FormNumberInput", () => {
     });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
 
-    userEvent.type(screen.getByLabelText("Goal"), "20");
-    userEvent.clear(screen.getByLabelText("Goal"));
-    userEvent.tab();
+    await userEvent.type(screen.getByLabelText("Goal"), "20");
+    await userEvent.clear(screen.getByLabelText("Goal"));
+    await userEvent.tab();
     await waitFor(() => {
       expect(screen.getByText("Required")).toBeInTheDocument();
     });

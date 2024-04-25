@@ -1,5 +1,5 @@
-import { getSize, rem } from "@mantine/core";
 import type { InputStylesParams, MantineThemeOverride } from "@mantine/core";
+import { getSize, rem } from "@mantine/core";
 
 const SIZES = {
   xs: rem(32),
@@ -35,6 +35,11 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
             color: theme.fn.themeColor("error"),
           },
         },
+      },
+      label: {
+        color: theme.fn.themeColor("text-medium"),
+        fontSize: getSize({ size, sizes: theme.fontSizes }),
+        marginBottom: theme.spacing.xs,
       },
       icon: {
         color: theme.fn.themeColor("text-dark"),

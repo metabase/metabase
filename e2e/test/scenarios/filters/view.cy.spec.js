@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
@@ -5,7 +6,6 @@ import {
   visitDashboard,
   addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -68,9 +68,7 @@ describe("scenarios > question > view", () => {
     });
 
     it("should show filters by search for Vendor", () => {
-      cy.get("@questionId").then(questionId => {
-        visitQuestion(questionId);
-      });
+      visitQuestion("@questionId");
 
       cy.findAllByText("VENDOR").first().click();
       popover().within(() => {
@@ -81,9 +79,7 @@ describe("scenarios > question > view", () => {
 
     it("should be able to filter Q by Category as no data user (from Q link) (metabase#12654)", () => {
       cy.signIn("nodata");
-      cy.get("@questionId").then(questionId => {
-        visitQuestion(questionId);
-      });
+      visitQuestion("@questionId");
 
       // Filter by category and vendor
       // TODO: this should show values and allow searching
@@ -100,7 +96,7 @@ describe("scenarios > question > view", () => {
         cy.findByText("Add filter").click();
       });
 
-      cy.get(".RunButton").last().click();
+      cy.findAllByTestId("run-button").last().click();
 
       cy.findAllByText("Widget");
       cy.findAllByText("Gizmo").should("not.exist");
@@ -109,9 +105,8 @@ describe("scenarios > question > view", () => {
     it("should be able to filter Q by Vendor as user (from Dashboard) (metabase#12654)", () => {
       // Navigate to Q from Dashboard
       cy.signIn("nodata");
-      cy.get("@dashboardId").then(dashboardId => {
-        visitDashboard(dashboardId);
-      });
+      visitDashboard("@dashboardId");
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").click();
 
@@ -127,7 +122,7 @@ describe("scenarios > question > view", () => {
           .type("Balistreri-Muller");
         cy.findByText("Add filter").click();
       });
-      cy.get(".RunButton").first().click();
+      cy.findAllByTestId("run-button").first().click();
       cy.findAllByText("CATEGORY").first().click();
       popover().within(() => {
         cy.findByPlaceholderText("Enter some text")
@@ -136,9 +131,9 @@ describe("scenarios > question > view", () => {
           .type("Widget");
         cy.findByText("Add filter").click();
       });
-      cy.get(".RunButton").last().click();
+      cy.findAllByTestId("run-button").last().click();
 
-      cy.get(".TableInteractive-cellWrapper--firstColumn").should(
+      cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
         "have.length",
         2,
       );

@@ -136,7 +136,7 @@
 
 ;; Semantic types deriving from `:type/Category` should be marked as 'category' Fields during sync, i.e. they
 ;; should have their FieldValues cached and synced. See
-;; `metabase.sync.analyze.classifiers.category/field-should-be-category?`
+;; `metabase.analyze.classifiers.category/field-should-be-category?`
 (derive :type/Category :Semantic/*)
 (derive :type/Enum :Semantic/*)
 
@@ -356,16 +356,20 @@
 
 (declare-assignable :type/Integer :type/Decimal)
 
-(defn assignable?
+(declare assignable?)
+
+(defn- assignable?* [x y]
+  (or (isa? assignable-hierarchy x y)
+      (boolean (some #(assignable? x %) (descendants y)))
+      (boolean (some #(assignable? % y) (parents x)))))
+
+(def assignable?
   "Is a value of type `x` assignable to a variable of type `y`?
 
   When deciding assignability, We also consider the type hierarchy.
   If x is assignable to z and z is a y, then x is also assignable to y.
   Also, if z is assignable to y and x is an z, then x is assignable to y."
-  [x y]
-  (or (isa? assignable-hierarchy x y)
-      (boolean (some #(assignable? x %) (descendants y)))
-      (boolean (some #(assignable? % y) (parents x)))))
+  (memoize assignable?*))
 
 (defn- most-specific-common-ancestor*
   "Impl for [[most-specific-common-ancestor]]."

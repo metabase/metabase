@@ -88,7 +88,7 @@
          (mapv #(let [[pos a-breakout] (matching %)
                       binning (lib.binning/binning a-breakout)
                       {:keys [unit]} (lib.temporal-bucket/temporal-bucket a-breakout)]
-                  (cond-> %
+                  (cond-> (assoc % :lib/hide-bin-bucket? true)
                     binning (lib.binning/with-binning binning)
                     unit (lib.temporal-bucket/with-temporal-bucket unit)
                     pos (assoc :breakout-position pos)))
@@ -144,3 +144,16 @@
   (->> (lib.util/query-stage query stage-number)
        (lib.metadata.calculation/visible-columns query stage-number)
        (lib.equality/find-matching-column breakout-ref)))
+
+(mu/defn remove-all-breakouts :- ::lib.schema/query
+  "Remove all breakouts from a query stage."
+  ([query]
+   (remove-all-breakouts query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (reduce
+    (fn [query a-breakout]
+      (lib.remove-replace/remove-clause query stage-number a-breakout))
+    query
+    (breakouts query stage-number))))

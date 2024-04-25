@@ -3,6 +3,7 @@ import {
   getDefaultFormSettings,
   getDefaultFieldSettings,
 } from "metabase/actions/utils";
+import Question from "metabase-lib/v1/Question";
 import type {
   NativeDatasetQuery,
   Parameter,
@@ -13,7 +14,6 @@ import {
   createSampleDatabase,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import Question from "metabase-lib/Question";
 
 import {
   setParameterTypesFromFieldSettings,

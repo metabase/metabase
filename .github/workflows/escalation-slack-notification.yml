@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Format issue title (escape quotes)
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         id: vars
         with:
           script: |

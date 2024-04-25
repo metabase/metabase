@@ -1,22 +1,23 @@
 import type { ChangeEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
-import _ from "underscore";
 import { t } from "ttag";
-import * as Urls from "metabase/lib/urls";
-import { isSyncCompleted } from "metabase/lib/syncing";
-import Select from "metabase/core/components/Select";
+import _ from "underscore";
+
+import { skipToken, useListDatabaseCandidatesQuery } from "metabase/api";
+import { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import {
-  useDatabaseCandidateListQuery,
-  useDatabaseListQuery,
-} from "metabase/common/hooks";
-import type { DatabaseCandidate } from "metabase-types/api";
+import Select from "metabase/core/components/Select";
 import { useSelector } from "metabase/lib/redux";
+import { isSyncCompleted } from "metabase/lib/syncing";
+import * as Urls from "metabase/lib/urls";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { DatabaseCandidate } from "metabase-types/api";
+
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeXrayCard } from "../HomeXrayCard";
+
 import {
   DatabaseLinkIcon,
   DatabaseLink,
@@ -30,10 +31,9 @@ import {
 export const HomeXraySection = () => {
   const databaseListState = useDatabaseListQuery();
   const database = getXrayDatabase(databaseListState.data);
-  const candidateListState = useDatabaseCandidateListQuery({
-    query: database ? { id: database.id } : undefined,
-    enabled: database != null,
-  });
+  const candidateListState = useListDatabaseCandidatesQuery(
+    database?.id ?? skipToken,
+  );
   const isLoading = databaseListState.isLoading || candidateListState.isLoading;
   const error = databaseListState.error ?? candidateListState.error;
 

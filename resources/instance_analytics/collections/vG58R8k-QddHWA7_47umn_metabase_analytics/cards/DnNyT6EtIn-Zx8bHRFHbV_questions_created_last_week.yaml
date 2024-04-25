@@ -88,4 +88,6 @@ serdes/meta:
 - id: DnNyT6EtIn-Zx8bHRFHbV
   label: questions_created_last_week
   model: Card
+initially_published_at: null
 metabase_version: null
+type: question

@@ -1,9 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
+
 import { renderWithProviders, screen } from "__support__/ui";
-import type { SearchFilterComponent } from "metabase/search/types";
 import type { ToggleSidebarFilterProps } from "metabase/search/components/ToggleSidebarFilter";
 import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFilter";
+import type { SearchFilterComponent } from "metabase/search/types";
 
 const mockFilter: SearchFilterComponent = {
   label: () => "Mock Filter",
@@ -66,7 +67,7 @@ describe("ToggleSidebarFilter", () => {
     expect(switchElement).toBeInTheDocument();
   });
 
-  it("should call the onChange function when the switch is toggled", () => {
+  it("should call the onChange function when the switch is toggled", async () => {
     const onChangeMock = jest.fn();
     setup({
       value: undefined,
@@ -74,7 +75,7 @@ describe("ToggleSidebarFilter", () => {
     });
 
     const switchElement = screen.getByRole("checkbox");
-    userEvent.click(switchElement);
+    await userEvent.click(switchElement);
 
     expect(onChangeMock).toHaveBeenCalledTimes(1);
     expect(onChangeMock).toHaveBeenCalledWith(true);

@@ -1,8 +1,8 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-import * as ML from "cljs/metabase.lib.js";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
+import * as ML from "cljs/metabase.lib.js";
 import type { DatasetColumn } from "metabase-types/api";
+
 import {
   isBoolean,
   isTime,
@@ -679,7 +679,7 @@ function isExcludeDateBucket(
   return buckets.includes(bucketName);
 }
 
-const DATE_FORMAT = "yyyy-MM-DD";
+const DATE_FORMAT = "YYYY-MM-DD";
 const TIME_FORMAT = "HH:mm:ss";
 const TIME_FORMATS = ["HH:mm:ss.SSS[Z]", "HH:mm:ss.SSS", "HH:mm:ss", "HH:mm"];
 const TIME_FORMAT_MS = "HH:mm:ss.SSS";

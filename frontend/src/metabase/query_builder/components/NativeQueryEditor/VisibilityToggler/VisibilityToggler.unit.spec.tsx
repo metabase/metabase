@@ -1,6 +1,6 @@
 import { render, fireEvent, screen } from "@testing-library/react";
-import { getIcon } from "__support__/ui";
 
+import { getIcon } from "__support__/ui";
 import { VisibilityToggler } from "metabase/query_builder/components/NativeQueryEditor/VisibilityToggler";
 
 describe("VisibilityToggler", () => {

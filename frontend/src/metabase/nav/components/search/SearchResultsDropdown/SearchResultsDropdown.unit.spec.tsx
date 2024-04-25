@@ -1,22 +1,24 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
-import {
-  createMockCollection,
-  createMockSearchResult,
-  createMockUser,
-} from "metabase-types/api/mocks";
+
 import {
   setupCollectionByIdEndpoint,
   setupSearchEndpoints,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
-import type { SearchResult } from "metabase-types/api";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
+import type { SearchResult } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockSearchResult,
+  createMockUser,
+} from "metabase-types/api/mocks";
+
 import { SearchResultsDropdown } from "./SearchResultsDropdown";
 
 // Mock MIN_RESULTS_FOR_FOOTER_TEXT so we don't have to generate a ton of elements for the footer test
@@ -88,7 +90,7 @@ describe("SearchResultsDropdown", () => {
 
     expect(searchItem).toHaveTextContent("Test 1");
 
-    userEvent.click(searchItem);
+    await userEvent.click(searchItem);
 
     expect(history.getCurrentLocation().pathname).toEqual("/question/1-test-1");
   });
@@ -96,7 +98,7 @@ describe("SearchResultsDropdown", () => {
   it("should call goToSearchApp when the footer is clicked", async () => {
     const { goToSearchApp } = await setup();
     const footer = await screen.findByTestId("search-dropdown-footer");
-    userEvent.click(footer);
+    await userEvent.click(footer);
     expect(goToSearchApp).toHaveBeenCalled();
   });
 
@@ -105,7 +107,7 @@ describe("SearchResultsDropdown", () => {
       searchText: "Indexed record",
     });
     const searchItem = screen.getByText("Indexed record");
-    userEvent.click(searchItem);
+    await userEvent.click(searchItem);
     expect(onSearchItemSelect).toHaveBeenCalled();
   });
 

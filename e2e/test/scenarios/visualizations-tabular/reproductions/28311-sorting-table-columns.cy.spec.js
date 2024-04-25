@@ -1,10 +1,11 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitQuestionAdhoc,
   getDraggableElements,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -61,15 +62,9 @@ describe("issue 25250", () => {
     cy.findByText("Product ID").should("be.visible");
 
     cy.findByTestId("viz-settings-button").click();
-    moveColumnUp(getDraggableElements().contains("Product ID"), 2);
+    moveDnDKitElement(getDraggableElements().contains("Product ID"), {
+      vertical: -100,
+    });
     getDraggableElements().eq(0).should("contain", "Product ID");
   });
 });
-
-function moveColumnUp(column, distance) {
-  column
-    .trigger("mousedown", 0, 0, { force: true })
-    .trigger("mousemove", 5, -5, { force: true })
-    .trigger("mousemove", 0, distance * -50, { force: true })
-    .trigger("mouseup", 0, distance * -50, { force: true });
-}

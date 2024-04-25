@@ -1,4 +1,8 @@
 import { act, renderHook } from "@testing-library/react-hooks";
+
+import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { createMockField } from "metabase-types/api/mocks";
 import {
   createOrdersIdField,
@@ -6,21 +10,19 @@ import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockMetadata } from "__support__/metadata";
-import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
-import { useBooleanOptionFilter } from "./use-boolean-option-filter";
+
 import type { OptionType } from "./types";
+import { useBooleanOptionFilter } from "./use-boolean-option-filter";
 
 interface CreateFilterCase {
   optionType: OptionType;
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
   expression: Lib.ExpressionClause;
   optionType: OptionType;
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 const BOOLEAN_FIELD = createMockField({
@@ -55,13 +57,13 @@ describe("useBooleanOptionFilter", () => {
   );
 
   it.each<CreateFilterCase>([
-    { optionType: "true", displayName: "Is trial is true" },
-    { optionType: "false", displayName: "Is trial is false" },
-    { optionType: "is-null", displayName: "Is trial is empty" },
-    { optionType: "not-null", displayName: "Is trial is not empty" },
+    { optionType: "true", expectedDisplayName: "Is trial is true" },
+    { optionType: "false", expectedDisplayName: "Is trial is false" },
+    { optionType: "is-null", expectedDisplayName: "Is trial is empty" },
+    { optionType: "not-null", expectedDisplayName: "Is trial is not empty" },
   ])(
     'should allow to create a filter for "$optionType"',
-    ({ optionType, displayName }) => {
+    ({ optionType, expectedDisplayName }) => {
       const { result } = renderHook(() =>
         useBooleanOptionFilter({
           query: defaultQuery,
@@ -80,7 +82,7 @@ describe("useBooleanOptionFilter", () => {
       expect(
         Lib.displayInfo(defaultQuery, stageIndex, newFilter),
       ).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );
@@ -93,7 +95,7 @@ describe("useBooleanOptionFilter", () => {
         values: [true],
       }),
       optionType: "false",
-      displayName: "Is trial is false",
+      expectedDisplayName: "Is trial is false",
     },
     {
       expression: Lib.booleanFilterClause({
@@ -102,11 +104,11 @@ describe("useBooleanOptionFilter", () => {
         values: [true],
       }),
       optionType: "is-null",
-      displayName: "Is trial is empty",
+      expectedDisplayName: "Is trial is empty",
     },
   ])(
     'should allow to update a filter for "$optionType"',
-    ({ expression, optionType, displayName }) => {
+    ({ expression, optionType, expectedDisplayName }) => {
       const query = Lib.filter(defaultQuery, stageIndex, expression);
       const [filter] = Lib.filters(query, stageIndex);
 
@@ -129,7 +131,7 @@ describe("useBooleanOptionFilter", () => {
       expect(
         Lib.displayInfo(defaultQuery, stageIndex, newFilter),
       ).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );

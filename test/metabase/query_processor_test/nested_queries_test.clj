@@ -16,12 +16,15 @@
    [metabase.models :refer [Field Table]]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.query.permissions :as query-perms]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -52,7 +55,7 @@
   (isa? driver/hierarchy driver/*driver* :sql))
 
 (defn- compile-to-native [mbql-query]
-  (cond-> (qp/compile mbql-query)
+  (cond-> (qp.compile/compile mbql-query)
     (sql-driver?) :query))
 
 (deftest ^:parallel basic-sql-source-query-test
@@ -211,7 +214,7 @@
                                                                                  [:count]
                                                                                  {:name "count"}]]}}
                                                      (when dataset?
-                                                       {:info {:metadata/dataset-metadata
+                                                       {:info {:metadata/model-metadata
                                                                (:result-metadata (lib.metadata/card (qp.store/metadata-provider) 1))}}))))))))))))
 
 (deftest ^:parallel sql-source-query-breakout-aggregation-test
@@ -254,10 +257,8 @@
                                                         :alias        "RP"
                                                         :fields       [&RP.reviews.id &RP.products.id &RP.products.ean]
                                                         :condition    [:= $product_id &RP.products.id]}]})])
-          (is (= :completed
-                 (-> (query-with-source-card 2 :limit 1)
-                     qp/process-query
-                     :status))))))))
+          (is (=? {:status :completed}
+                 (qp/process-query (query-with-source-card 2 :limit 1)))))))))
 
 (deftest ^:parallel source-card-id-test
   (testing "Make sure we can run queries using source table `card__id` format."
@@ -294,7 +295,7 @@
 (deftest ^:parallel card-id-native-source-queries-test
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries)
                                      (descendants driver/hierarchy :sql))
-    (let [native-sub-query (-> (mt/mbql-query venues {:source-table $$venues}) qp/compile :query)
+    (let [native-sub-query (-> (mt/mbql-query venues {:source-table $$venues}) qp.compile/compile :query)
           run-native-query
           (fn [sql]
             (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
@@ -357,7 +358,7 @@
            :from   [[venues-source-honeysql :source]]
            :where  [:= [:raw "\"source\".\"BIRD.ID\""] [:inline 1]]
            :limit  [:inline 10]})
-         (qp/compile
+         (qp.compile/compile
           {:database (mt/id)
            :type     :query
            :query    {:source-query {:source-table (mt/id :venues)}
@@ -377,10 +378,10 @@
                       [:source.PRICE :PRICE]]
              :from   [[venues-source-honeysql :source]]
              :where  [:and
-                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
-                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
+                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/local-date-time "2017-01-01T00:00")]
+                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/local-date-time "2017-01-08T00:00")]]
              :limit  [:inline 10]})
-           (qp/compile
+           (qp.compile/compile
             (mt/mbql-query venues
               {:source-query {:source-table $$venues}
                :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
@@ -412,7 +413,7 @@
                                  :breakout     [$price]
                                  :order-by     [[[:aggregation 0] :descending]]}
                   :aggregation  [[:avg *stddev/Integer]]})
-               qp/compile
+               qp.compile/compile
                (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))
 
 (deftest ^:parallel handle-incorrect-field-forms-gracefully-test
@@ -440,9 +441,9 @@
             :params nil}
            (-> (mt/mbql-query venues
                  {:source-query {:source-table $$venues}
-                  :breakout     [[:field [:field "category_id" {:base-type :type/Integer}] nil]]
+                  :breakout     [[:field [:field "CATEGORY_ID" {:base-type :type/Integer}] nil]]
                   :limit        10})
-               qp/compile
+               qp.compile/compile
                (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))
 
 (deftest ^:parallel filter-by-string-fields-test
@@ -458,7 +459,7 @@
              :where  [:or [:not= :source.text "Coo"]
                       [:= :source.text nil]]
              :limit  [:inline 10]})
-           (qp/compile
+           (qp.compile/compile
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}
                :limit        10
@@ -476,7 +477,7 @@
              :from   [[venues-source-honeysql :source]]
              :where  [:> :source.sender_id [:inline 3]]
              :limit  [:inline 10]})
-           (qp/compile
+           (qp.compile/compile
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}
                :limit        10
@@ -496,7 +497,7 @@
                                                                                :default      "Widget"}}}}])
       (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) AS \"source\" LIMIT 1048575"
               :params ["Widget"]}
-             (qp/compile
+             (qp.compile/compile
               {:database (meta/id)
                :type     :query
                :query    {:source-table "card__1"}}))))))
@@ -638,8 +639,8 @@
       (qp.store/with-metadata-provider (-> meta/metadata-provider
                                            (lib.tu/metadata-provider-with-cards-for-queries [{}])
                                            (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :collection-id 1000}]}))
-        (is (= #{(perms/collection-read-path (t2/instance :model/Collection {:id 1000}))}
-               (query-perms/perms-set (query-with-source-card 1 :aggregation [:count]))))))))
+        (is (= {:paths #{(perms/collection-read-path (t2/instance :model/Collection {:id 1000}))}}
+               (query-perms/required-perms (query-with-source-card 1 :aggregation [:count]))))))))
 
 (deftest ^:parallel card-perms-test-2
   (testing "perms for a Card with a SQL source query\n"
@@ -647,51 +648,53 @@
     (testing "should be able to save even if you don't have SQL write perms (#6845)"
       (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                         [(mt/native-query {:query "SELECT * FROM VENUES"})])
-        (is (= #{(perms/collection-read-path collection/root-collection)}
-               (query-perms/perms-set (query-with-source-card 1 :aggregation [:count]))))))))
+        (is (= {:paths #{(perms/collection-read-path collection/root-collection)}}
+               (query-perms/required-perms (query-with-source-card 1 :aggregation [:count]))))))))
 
 (deftest card-perms-test-3
   (testing "perms for Card -> Card -> MBQL Source query\n"
     (testing "You should be able to read a Card with a source Card if you can read that Card and their Collections (#12354)\n"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp-copy-of-db
-          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-          (mt/with-temp [Collection collection {}
-                         Card       card-1 {:collection_id (u/the-id collection)
-                                            :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
-                         Card       card-2 {:collection_id (u/the-id collection)
-                                            :dataset_query (mt/mbql-query nil
-                                                             {:source-table (format "card__%d" (u/the-id card-1))})}]
-            (testing "read perms for both Cards should be the same as reading the parent collection")
-            (is (= (mi/perms-objects-set collection :read)
-                   (mi/perms-objects-set card-1 :read)
-                   (mi/perms-objects-set card-2 :read)))
+          (mt/with-no-data-perms-for-all-users!
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+            (mt/with-temp [Collection collection {}
+                           Card       card-1 {:collection_id (u/the-id collection)
+                                              :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
+                           Card       card-2 {:collection_id (u/the-id collection)
+                                              :dataset_query (mt/mbql-query nil
+                                                               {:source-table (format "card__%d" (u/the-id card-1))})}]
+              (testing "read perms for both Cards should be the same as reading the parent collection")
+              (is (= (mi/perms-objects-set collection :read)
+                     (mi/perms-objects-set card-1 :read)
+                     (mi/perms-objects-set card-2 :read)))
 
-            (testing "\nSanity check: shouldn't be able to read before we grant permissions\n"
-              (doseq [[object-name object] {"Collection" collection
-                                            "Card 1"     card-1
-                                            "Card 2"     card-2}]
-                (mt/with-test-user :rasta
-                  (testing object-name
-                    (is (= false
-                           (mi/can-read? object)))))))
-
-            (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
-              (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-              (mt/with-test-user :rasta
+              (testing "\nSanity check: shouldn't be able to read before we grant permissions\n"
                 (doseq [[object-name object] {"Collection" collection
                                               "Card 1"     card-1
                                               "Card 2"     card-2}]
-                  (testing object-name
-                    (is (= true
-                           (mi/can-read? object)))))
+                  (mt/with-test-user :rasta
+                    (testing object-name
+                      (is (= false
+                             (mi/can-read? object)))))))
 
-                (testing "\nshould be able to run the query"
-                  (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
-                          [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
-                         (mt/rows
-                          (binding [qp.perms/*card-id* (u/the-id card-2)]
-                            (qp/process-query (:dataset_query card-2)))))))))))))))
+              (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
+                (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+                (mt/with-test-user :rasta
+                  (doseq [[object-name object] {"Collection" collection
+                                                "Card 1"     card-1
+                                                "Card 2"     card-2}]
+                    (testing object-name
+                      (is (= true
+                             (mi/can-read? object)))))
+
+                  (testing "\nshould be able to run the query"
+                    (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
+                            [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
+                           (mt/rows
+                            (binding [qp.perms/*card-id* (u/the-id card-2)]
+                              (qp/process-query (:dataset_query card-2))))))))))))))))
 
 ;; try this in an end-to-end fashion using the API and make sure we can save a Card if we have appropriate read
 ;; permissions for the source query
@@ -910,7 +913,7 @@
                                                 result)))
                                       (get-in result [:data :results_metadata :columns])))
             expected-cols         (qp.store/with-metadata-provider provider
-                                    (qp/query->expected-cols (mt/mbql-query orders)))]
+                                    (qp.preprocess/query->expected-cols (mt/mbql-query orders)))]
         (is (not (some (some-fn :lib/external_remap :lib/internal_remap)
                        expected-cols))
             "Sanity check: query->expected-cols should not include MLv2 dimension remapping keys")
@@ -1115,7 +1118,7 @@
                                     :condition    [:= $product_id &ℙ.products.id]}]
                         :order-by [[:asc $id]]
                         :limit    2})
-            metadata (qp/query->expected-cols query)]
+            metadata (qp.preprocess/query->expected-cols query)]
         (testing "x.38.0+: metadata should include `:field_ref`"
           (is (= (mt/$ids orders
                    [$id
@@ -1286,11 +1289,12 @@
                                       "FROM \"PUBLIC\".\"ORDERS\" "
                                       "WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?)"
                                       " AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?)")
-                         :params [#t "2020-02-01T00:00Z[UTC]" #t "2020-03-01T00:00Z[UTC]"]}]
+                         :params [(t/offset-date-time #t "2020-02-01T00:00Z")
+                                  (t/offset-date-time #t "2020-03-01T00:00Z")]}]
           (testing "original query"
             (when (= driver/*driver* :h2)
               (is (= q1-native
-                     (qp/compile q1))))
+                     (qp.compile/compile q1))))
             (is (= [[543]]
                    (mt/formatted-rows [int] (qp/process-query q1)))))
           (testing "nested query"
@@ -1302,7 +1306,7 @@
                                                                "FROM (%s) AS \"source\" "
                                                                "LIMIT 1048575")
                                                           s)))
-                       (qp/compile q2))))
+                       (qp.compile/compile q2))))
               (is (= [[543]]
                      (mt/formatted-rows [int] (qp/process-query q2)))))))))))
 
@@ -1402,9 +1406,12 @@
                         {:source-query {:source-table $$orders
                                         :breakout     [!month.product_id->products.created_at]
                                         :aggregation  [[:count]]}
-                         :filter       [:time-interval *created_at/DateTimeWithLocalTZ -30 :year]
+                         :filter       [:time-interval
+                                        [:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]
+                                        -32
+                                        :year]
                          :aggregation  [[:sum *count/Integer]]
-                         :breakout     [*created_at/DateTimeWithLocalTZ]
+                         :breakout     [[:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]]
                          :limit        1})]
             (mt/with-native-query-testing-context query
               (is (= [["2016-04-01T00:00:00Z" 175]]

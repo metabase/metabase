@@ -1,4 +1,10 @@
 import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  USER_GROUPS,
+} from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
   describeEE,
   openOrdersTable,
   openProductsTable,
@@ -8,13 +14,8 @@ import {
   startNewQuestion,
   setTokenFeatures,
   openTable,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
-import {
-  SAMPLE_DB_ID,
-  SAMPLE_DB_SCHEMA_ID,
-  USER_GROUPS,
-} from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS_ID, REVIEWS, REVIEWS_ID, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -283,7 +284,10 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow sorting fields in the custom order", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
-      moveField(0, 200);
+      //moveField(0, 200);
+      moveDnDKitElement(cy.findAllByTestId("grabber").first(), {
+        vertical: 200,
+      });
       cy.wait("@updateFieldOrder");
       openProductsTable();
       assertTableHeader([
@@ -656,13 +660,6 @@ const searchAndSelectValue = (newValue, searchText = newValue) => {
 
 const getFieldSection = fieldName => {
   return cy.findByLabelText(fieldName);
-};
-
-const moveField = (fieldIndex, deltaY) => {
-  cy.get(".Grabber").eq(fieldIndex).trigger("mousedown", 0, 0, { force: true });
-  cy.get("#ColumnsList")
-    .trigger("mousemove", 10, deltaY)
-    .trigger("mouseup", 10, deltaY);
 };
 
 const setTableOrder = order => {

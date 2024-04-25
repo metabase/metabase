@@ -38,7 +38,7 @@ body:
     validations:
       required: true
 
-  - type: input
+  - type: textarea
     id: expected-behavior
     attributes:
       label: Expected behavior
@@ -82,7 +82,6 @@ body:
       label: Severity
       description: |
         How severe an issue is this bug to you? Is this annoying, blocking some users, blocking an upgrade or blocking your usage of Metabase entirely?
-        _Note: the more honest and specific you are here the more we will take you seriously._
     validations:
       required: true
 

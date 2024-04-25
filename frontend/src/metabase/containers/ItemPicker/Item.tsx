@@ -4,9 +4,8 @@ import _ from "underscore";
 import type { IconName, IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
-import type { PickerItem } from "./types";
-
 import { ItemRoot, ItemContent, ItemTitle, ExpandButton } from "./Item.styled";
+import type { PickerItem } from "./types";
 
 interface Props<TId> {
   item: PickerItem<TId>;
@@ -40,7 +39,7 @@ function Item<TId>({
   }, [item, canSelect, hasChildren, onChange, onChangeOpenCollectionId]);
 
   const handleExpand = useCallback(
-    event => {
+    (event: React.MouseEvent) => {
       event.stopPropagation();
       onChangeOpenCollectionId?.(item.id);
     },

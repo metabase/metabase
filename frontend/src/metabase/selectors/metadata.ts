@@ -1,5 +1,19 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import Question from "metabase-lib/v1/Question";
+import Database from "metabase-lib/v1/metadata/Database";
+import Field from "metabase-lib/v1/metadata/Field";
+import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
+import Metadata from "metabase-lib/v1/metadata/Metadata";
+import Metric from "metabase-lib/v1/metadata/Metric";
+import Schema from "metabase-lib/v1/metadata/Schema";
+import Segment from "metabase-lib/v1/metadata/Segment";
+import Table from "metabase-lib/v1/metadata/Table";
+import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import {
+  getFieldValues,
+  getRemappings,
+} from "metabase-lib/v1/queries/utils/field";
 import type {
   Card,
   NormalizedDatabase,
@@ -12,20 +26,6 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import Question from "metabase-lib/Question";
-import Metadata from "metabase-lib/metadata/Metadata";
-import Database from "metabase-lib/metadata/Database";
-import Schema from "metabase-lib/metadata/Schema";
-import Table from "metabase-lib/metadata/Table";
-import Field from "metabase-lib/metadata/Field";
-import ForeignKey from "metabase-lib/metadata/ForeignKey";
-import Metric from "metabase-lib/metadata/Metric";
-import Segment from "metabase-lib/metadata/Segment";
-import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
-import {
-  getFieldValues,
-  getRemappings,
-} from "metabase-lib/queries/utils/field";
 import { getSettings } from "./settings";
 
 type TableSelectorOpts = {
@@ -131,7 +131,9 @@ export const getMetadata: (
       Object.values(tables).map(t => [t.id, createTable(t, metadata)]),
     );
     metadata.fields = Object.fromEntries(
-      Object.values(fields).map(f => [f.uniqueId, createField(f, metadata)]),
+      Object.values(fields)
+        .filter(f => f.uniqueId != null) // remove stub field instances created for field values without field properties
+        .map(f => [f.uniqueId, createField(f, metadata)]),
     );
     metadata.segments = Object.fromEntries(
       Object.values(segments).map(s => [s.id, createSegment(s, metadata)]),
@@ -337,10 +339,8 @@ function hydrateTableFields(table: Table, metadata: Metadata): Field[] {
 function hydrateTableForeignKeys(
   table: Table,
   metadata: Metadata,
-): ForeignKey[] {
-  const fks = table.getPlainObject().fks ?? [];
-
-  return fks.map(fk => {
+): ForeignKey[] | undefined {
+  return table.getPlainObject().fks?.map(fk => {
     const instance = createForeignKey(fk, metadata);
     instance.origin = metadata.field(fk.origin_id) ?? undefined;
     instance.destination = metadata.field(fk.destination_id) ?? undefined;

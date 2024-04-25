@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { useMemo } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getNativeQueryLanguage } from "metabase/lib/engine";
-
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
@@ -66,7 +68,8 @@ const DataSourceSelectors = ({
   const databases = useMemo(() => {
     const allDatabases = query
       .metadata()
-      .databasesList({ savedQuestions: false });
+      .databasesList({ savedQuestions: false })
+      .filter(db => db.canWrite());
 
     if (editorContext === "action") {
       return allDatabases.filter(database => database.hasActionsEnabled());
@@ -151,7 +154,16 @@ const checkIfThereAreMultipleDatabases = (database, databases) =>
   (databases.length > 1 && databases.some(db => db.id === database.id));
 
 const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
-  <div className="GuiBuilder-section GuiBuilder-data flex align-center ml2">
+  <div
+    className={cx(
+      QueryBuilderS.GuiBuilderSection,
+      QueryBuilderS.GuiBuilderData,
+      CS.flex,
+      CS.alignCenter,
+      CS.ml2,
+    )}
+    data-testid="gui-builder-data"
+  >
     <DatabaseDataSelector
       databases={databases}
       selectedDatabaseId={database?.id}
@@ -165,13 +177,24 @@ const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
 DatabaseSelector.propTypes = DatabaseSelectorPropTypes;
 
 const SingleDatabaseName = ({ database }) => (
-  <div className="p2 text-bold text-grey">{database.name}</div>
+  <div className={cx(CS.p2, CS.textBold)} data-testid="selected-database">
+    {database.name}
+  </div>
 );
 
 SingleDatabaseName.propTypes = SingleDatabaseNamePropTypes;
 
 const TableSelector = ({ database, readOnly, selectedTable, setTableId }) => (
-  <div className="GuiBuilder-section GuiBuilder-data flex align-center ml2">
+  <div
+    className={cx(
+      QueryBuilderS.GuiBuilderSection,
+      QueryBuilderS.GuiBuilderData,
+      CS.flex,
+      CS.alignCenter,
+      CS.ml2,
+    )}
+    data-testid="gui-builder-data"
+  >
     <SchemaAndTableDataSelector
       selectedTableId={selectedTable?.id || null}
       selectedDatabaseId={database?.id}
@@ -192,7 +215,7 @@ const Placeholder = ({ query, editorContext }) => {
 
   const language = getNativeQueryLanguage(query.engine());
   return (
-    <div className="ml2 p2 text-medium">
+    <div className={cx(CS.ml2, CS.p2, CS.textMedium)}>
       {t`This question is written in ${language}.`}
     </div>
   );

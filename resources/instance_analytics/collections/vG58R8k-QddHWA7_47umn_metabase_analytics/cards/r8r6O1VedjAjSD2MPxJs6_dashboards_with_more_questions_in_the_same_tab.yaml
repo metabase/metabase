@@ -99,4 +99,6 @@ serdes/meta:
 - id: r8r6O1VedjAjSD2MPxJs6
   label: dashboards_with_more_questions_in_the_same_tab
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (901f705)
+type: question

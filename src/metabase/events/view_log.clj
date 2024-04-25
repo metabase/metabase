@@ -5,6 +5,7 @@
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.query.permissions :as query-perms]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as m]
@@ -16,7 +17,8 @@
   [view-or-views]
   (span/with-span!
     {:name "record-view!"}
-    (t2/insert! :model/ViewLog view-or-views)))
+    (when (premium-features/log-enabled?)
+      (t2/insert! :model/ViewLog view-or-views))))
 
 (defn- generate-view
   "Generates a view, given an event map."
@@ -44,6 +46,19 @@
           record-views!)
       (catch Throwable e
         (log/warnf e "Failed to process view_log event. %s" topic)))))
+
+(derive ::collection-read-event :metabase/event)
+(derive :event/collection-read ::collection-read-event)
+
+(m/defmethod events/publish-event! ::collection-read-event
+  "Handle processing for a generic read event notification"
+  [topic event]
+  (try
+    (-> event
+        generate-view
+        record-views!)
+    (catch Throwable e
+      (log/warnf e "Failed to process view_log event. %s" topic))))
 
 (derive ::read-permission-failure :metabase/event)
 (derive :event/read-permission-failure ::read-permission-failure)

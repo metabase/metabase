@@ -1,24 +1,27 @@
+import type { FieldInputProps } from "formik";
+import { useFormikContext } from "formik";
 import { useEffect } from "react";
 import { Link } from "react-router";
-import { useFormikContext } from "formik";
-import type { FieldInputProps } from "formik";
 import { t } from "ttag";
+
+import { FieldSet } from "metabase/components/FieldSet";
+import Button from "metabase/core/components/Button";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { Group, Stack } from "metabase/ui";
 import { formatValue } from "metabase/lib/formatting";
-import Button from "metabase/core/components/Button";
-import { FieldSet } from "metabase/components/FieldSet";
+import { Group, Stack } from "metabase/ui";
+import * as Q from "metabase-lib/v1/queries/utils/query";
 import type { Metric, StructuredQuery } from "metabase-types/api";
-import * as Q from "metabase-lib/queries/utils/query";
+
 import FormInput from "../FormInput";
 import FormLabel from "../FormLabel";
 import FormTextArea from "../FormTextArea";
 import PartialQueryBuilder from "../PartialQueryBuilder";
+
 import {
   FormSection,
   FormBody,

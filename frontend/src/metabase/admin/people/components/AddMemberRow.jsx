@@ -1,15 +1,17 @@
-import { useMemo, useRef, useState } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
+import PropTypes from "prop-types";
+import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import UserAvatar from "metabase/components/UserAvatar";
-import { color } from "metabase/lib/colors";
+import CS from "metabase/css/core/index.css";
 import Typeahead from "metabase/hoc/Typeahead";
-import { AddRow } from "./AddRow";
+import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
+
 import { AddMemberAutocompleteSuggestionRoot } from "./AddMemberRow.styled";
+import { AddRow } from "./AddRow";
 
 AddMemberRow.propTypes = {
   users: PropTypes.array.isRequired,
@@ -63,11 +65,24 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
           {Array.from(selectedUsersById.values()).map(user => (
             <div
               key={user.id}
-              className="bg-medium p1 px2 mr1 rounded flex align-center"
+              className={cx(
+                CS.bgMedium,
+                CS.p1,
+                CS.px2,
+                CS.mr1,
+                CS.rounded,
+                CS.flex,
+                CS.alignCenter,
+              )}
             >
               {user.common_name}
               <Icon
-                className="pl1 cursor-pointer text-slate text-medium-hover"
+                className={cx(
+                  CS.pl1,
+                  CS.cursorPointer,
+                  CS.textSlate,
+                  CS.textMediumHover,
+                )}
                 name="close"
                 onClick={() => handleRemoveUser(user)}
               />
@@ -116,7 +131,7 @@ const AddMemberTypeaheadPopover = Typeahead({
 
   return (
     <TippyPopover
-      className="bordered"
+      className={CS.bordered}
       offset={0}
       placement="bottom-start"
       visible={suggestions.length > 0}
@@ -152,10 +167,10 @@ function AddMemberAutocompleteSuggestion({ user, color, selected, onClick }) {
       isSelected={selected}
       onClick={onClick}
     >
-      <span className="inline-block mr2">
+      <span className={cx(CS.inlineBlock, CS.mr2)}>
         <UserAvatar bg={color} user={user} />
       </span>
-      <span className={cx("h3", { "text-white": selected })}>
+      <span className={cx(CS.h3, { [CS.textWhite]: selected })}>
         {user.common_name}
       </span>
     </AddMemberAutocompleteSuggestionRoot>

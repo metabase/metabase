@@ -1,7 +1,6 @@
-import { restore, visitQuestionAdhoc, popover } from "e2e/support/helpers";
-
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, visitQuestionAdhoc, popover } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -56,7 +55,7 @@ describe("scenarios > visualizations > pie chart", () => {
 });
 
 function ensurePieChartRendered(rows, totalValue) {
-  cy.get(".Visualization").within(() => {
+  cy.findByTestId("query-visualization-root").within(() => {
     // detail
     cy.findByText("Total").should("be.visible");
     cy.findByTestId("detail-value").should("have.text", totalValue);
@@ -66,7 +65,7 @@ function ensurePieChartRendered(rows, totalValue) {
 
     // legend
     rows.forEach((name, i) => {
-      cy.get(".LegendItem").contains(name).should("be.visible");
+      cy.findAllByTestId("legend-item").contains(name).should("be.visible");
     });
   });
 }

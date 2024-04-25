@@ -1,9 +1,10 @@
 import { useCallback, useState, useMemo } from "react";
 import { msgid, ngettext } from "ttag";
-import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
+
 import Button from "metabase/core/components/Button";
+import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
+import type Question from "metabase-lib/v1/Question";
 import type { Parameter, ParameterId } from "metabase-types/api";
-import type Question from "metabase-lib/Question";
 
 import {
   FilterButton,

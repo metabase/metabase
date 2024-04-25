@@ -1,12 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-  within,
-} from "__support__/ui";
-import SearchApp from "metabase/search/containers/SearchApp";
-import { Route } from "metabase/hoc/Title";
+
 import {
   setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
@@ -15,23 +8,30 @@ import {
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
+import { Route } from "metabase/hoc/Title";
+import { checkNotNull } from "metabase/lib/types";
+import SearchApp from "metabase/search/containers/SearchApp";
+import type { SearchFilters } from "metabase/search/types";
+import type { EnabledSearchModel, SearchResult } from "metabase-types/api";
+import {
   createMockCollection,
   createMockDatabase,
   createMockSearchResult,
   createMockTable,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
-import type { EnabledSearchModelType, SearchResult } from "metabase-types/api";
-
-import type { SearchFilters } from "metabase/search/types";
-import { checkNotNull } from "metabase/lib/types";
 
 // Mock PAGE_SIZE so we don't have to generate a ton of elements for the pagination test
 jest.mock("metabase/search/containers/constants", () => ({
   PAGE_SIZE: 4,
 }));
 
-const TYPE_FILTER_LABELS: Record<EnabledSearchModelType, string> = {
+const TYPE_FILTER_LABELS: Record<EnabledSearchModel, string> = {
   collection: "Collection",
   dashboard: "Dashboard",
   database: "Database",
@@ -143,7 +143,7 @@ describe("SearchApp", () => {
       expect(getPagination()).toHaveTextContent("1 - 4");
 
       // test next page button
-      userEvent.click(getNextPageButton());
+      await userEvent.click(getNextPageButton());
       await waitForLoaderToBeRemoved();
       expect(getPaginationTotal()).toHaveTextContent(String(TEST_ITEMS.length));
       expect(getPreviousPageButton()).toBeEnabled();
@@ -152,7 +152,7 @@ describe("SearchApp", () => {
       expect(getPagination()).toHaveTextContent("5 - 7");
 
       // test previous page button
-      userEvent.click(getPreviousPageButton());
+      await userEvent.click(getPreviousPageButton());
       await waitForLoaderToBeRemoved();
       expect(getPaginationTotal()).toHaveTextContent(String(TEST_ITEMS.length));
       expect(getPreviousPageButton()).toBeDisabled();
@@ -169,7 +169,7 @@ describe("SearchApp", () => {
           searchText: "Test",
         });
 
-        userEvent.click(
+        await userEvent.click(
           within(screen.getByTestId("type-search-filter")).getByTestId(
             "sidebar-filter-dropdown-button",
           ),
@@ -178,14 +178,14 @@ describe("SearchApp", () => {
         await waitForLoaderToBeRemoved();
 
         const popover = within(screen.getByTestId("popover"));
-        userEvent.click(
+        await userEvent.click(
           popover.getByRole("checkbox", {
             name: TYPE_FILTER_LABELS[
-              model as EnabledSearchModelType
-            ] as EnabledSearchModelType,
+              model as EnabledSearchModel
+            ] as EnabledSearchModel,
           }),
         );
-        userEvent.click(popover.getByRole("button", { name: "Apply" }));
+        await userEvent.click(popover.getByRole("button", { name: "Apply" }));
 
         const url = history.getCurrentLocation();
         expect(url.query.type).toEqual(model);
@@ -201,7 +201,7 @@ describe("SearchApp", () => {
       async ({ name, model }) => {
         await setup({
           searchText: name,
-          searchFilters: { type: [model as EnabledSearchModelType] },
+          searchFilters: { type: [model as EnabledSearchModel] },
         });
 
         expect(screen.getByText(`Results for "${name}"`)).toBeInTheDocument();
@@ -214,7 +214,7 @@ describe("SearchApp", () => {
         const fieldSetContent = typeFilter.getByTestId("field-set-content");
 
         expect(fieldSetContent).toHaveTextContent(
-          TYPE_FILTER_LABELS[model as EnabledSearchModelType],
+          TYPE_FILTER_LABELS[model as EnabledSearchModel],
         );
       },
     );

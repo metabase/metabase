@@ -1,39 +1,36 @@
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
+import { isPublicCollection } from "metabase/collections/utils";
 import { useDashboardQuery } from "metabase/common/hooks";
-import { Icon, Select } from "metabase/ui";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-
-import Dashboards from "metabase/entities/dashboards";
-import Questions from "metabase/entities/questions";
-
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import QuestionPicker from "metabase/containers/QuestionPicker";
-
+import CS from "metabase/css/core/index.css";
 import {
   ClickMappingsConnected,
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
-
+import { getDashboard } from "metabase/dashboard/selectors";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
+import { useSelector } from "metabase/lib/redux";
+import { Icon, Select } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
   DashboardId,
-  DashboardCard,
+  QuestionDashboardCard,
   CardId,
   ClickBehavior,
   EntityCustomDestinationClickBehavior,
   DashboardTab,
 } from "metabase-types/api";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { getDashboard } from "metabase/dashboard/selectors";
-import { useSelector } from "metabase/lib/redux";
-import { isPublicCollection } from "metabase/collections/utils";
-import type Question from "metabase-lib/Question";
 
-import { SidebarItem } from "../../SidebarItem";
 import { Heading } from "../../ClickBehaviorSidebar.styled";
+import { SidebarItem } from "../../SidebarItem";
 import {
   LinkTargetEntityPickerContent,
   SelectedEntityPickerIcon,
@@ -83,7 +80,7 @@ function PickerControl({
         <SelectedEntityPickerIcon name={pickerIcon} />
         <SelectedEntityPickerContent>
           {renderLabel()}
-          <Icon name="chevrondown" size={12} className="ml-auto" />
+          <Icon name="chevrondown" size={12} className={CS.mlAuto} />
         </SelectedEntityPickerContent>
       </LinkTargetEntityPickerContent>
       <SidebarItem.CloseIcon onClick={onCancel} />
@@ -107,14 +104,14 @@ function TargetClickMappings({
 }: {
   isDashboard: boolean;
   clickBehavior: EntityCustomDestinationClickBehavior;
-  dashcard: DashboardCard;
+  dashcard: QuestionDashboardCard;
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
   const Entity = isDashboard ? Dashboards : Questions;
   return (
     <Entity.Loader id={clickBehavior.targetId}>
       {({ object }: { object: Question | Dashboard }) => (
-        <div className="pt1">
+        <div className={CS.pt1}>
           <Heading>{getTargetClickMappingsHeading(object)}</Heading>
           <ClickMappingsConnected
             object={object}
@@ -134,7 +131,7 @@ export function LinkedEntityPicker({
   clickBehavior,
   updateSettings,
 }: {
-  dashcard: DashboardCard;
+  dashcard: QuestionDashboardCard;
   clickBehavior: EntityCustomDestinationClickBehavior;
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
@@ -144,7 +141,7 @@ export function LinkedEntityPicker({
   const { PickerComponent, getModalTitle } = LINK_TARGETS[linkType];
 
   const handleSelectLinkTargetEntityId = useCallback(
-    targetId => {
+    (targetId: CardId | DashboardId) => {
       const isNewTargetEntity = targetId !== clickBehavior.targetId;
 
       if (!isNewTargetEntity) {
@@ -166,7 +163,7 @@ export function LinkedEntityPicker({
           ...clickBehavior,
           targetId,
           parameterMapping: {},
-        });
+        } as EntityCustomDestinationClickBehavior);
       }
     },
     [clickBehavior, updateSettings],
@@ -251,7 +248,7 @@ export function LinkedEntityPicker({
 
   return (
     <div>
-      <div className="pb1">
+      <div className={CS.pb1}>
         <ModalWithTrigger
           triggerElement={
             <PickerControl

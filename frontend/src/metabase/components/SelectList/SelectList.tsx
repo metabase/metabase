@@ -1,5 +1,5 @@
-import { forwardRef } from "react";
 import type * as React from "react";
+import { forwardRef } from "react";
 
 import { BaseSelectListItem } from "./BaseSelectListItem";
 import { SelectListItem } from "./SelectListItem";

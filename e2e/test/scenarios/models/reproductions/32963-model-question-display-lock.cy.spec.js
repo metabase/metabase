@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   getNotebookStep,
   leftSidebar,
@@ -7,7 +8,6 @@ import {
   rightSidebar,
   visualize,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -18,7 +18,7 @@ describe("issue 32963", () => {
     cy.createQuestion(
       {
         name: "Orders Model",
-        dataset: true,
+        type: "model",
         query: { "source-table": ORDERS_ID },
       },
       { visitQuestion: true },
@@ -29,7 +29,7 @@ describe("issue 32963", () => {
     cy.findByTestId("qb-header").button("Summarize").click();
 
     rightSidebar().within(() => {
-      cy.findByText("Created At").click();
+      cy.findAllByText("Created At").eq(0).click();
       cy.button("Done").click();
     });
     cy.wait("@dataset");

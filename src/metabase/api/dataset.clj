@@ -9,9 +9,9 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.params.custom-values :as custom-values]
@@ -19,6 +19,7 @@
    [metabase.models.query :as query]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -26,7 +27,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -42,16 +43,15 @@
   well."
   [outer-query]
   (when-let [source-card-id (qp.util/query->source-card-id outer-query)]
-    (log/info (trs "Source query for this query is Card {0}" (pr-str source-card-id)))
+    (log/infof "Source query for this query is Card %s" (pr-str source-card-id))
     (api/read-check Card source-card-id)
     source-card-id))
 
-(defn- run-query-async
+(mu/defn ^:private run-streaming-query :- (ms/InstanceOfClass metabase.async.streaming_response.StreamingResponse)
   [{:keys [database], :as query}
-   & {:keys [context export-format qp-runner]
+   & {:keys [context export-format]
       :or   {context       :ad-hoc
-             export-format :api
-             qp-runner     qp/process-query-and-save-with-max-results-constraints!}}]
+             export-format :api}}]
   (span/with-span!
     {:name "run-query-async"}
     (when (and (not= (:type query) "internal")
@@ -68,21 +68,24 @@
     ;; add sensible constraints for results limits on our query
     (let [source-card-id (query->source-card-id query)
           source-card    (when source-card-id
-                           (t2/select-one [Card :result_metadata :dataset] :id source-card-id))
+                           (t2/select-one [Card :result_metadata :type] :id source-card-id))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}
-                           (:dataset source-card)
-                           (assoc :metadata/dataset-metadata (:result_metadata source-card)))]
+                           (= (:type source-card) :model)
+                           (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (binding [qp.perms/*card-id* source-card-id]
-        (qp.streaming/streaming-response [{:keys [rff context]} export-format]
-                                         (qp-runner query info rff context))))))
+        (qp.streaming/streaming-response [rff export-format]
+          (qp/process-query (update query :info merge info) rff))))))
 
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
   {database [:maybe :int]}
-  (run-query-async (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
+  (run-streaming-query
+   (-> query
+       (update-in [:middleware :js-int-to-string?] (fnil identity true))
+       qp/userland-query-with-default-constraints)))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
@@ -95,7 +98,7 @@
   "Schema for valid export formats for downloading query results."
   (into [:enum] export-formats))
 
-(mu/defn export-format->context :- mbql.s/Context
+(mu/defn export-format->context :- ::lib.schema.info/context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
   in `export-format`.
 
@@ -122,28 +125,28 @@
 
 (api/defendpoint POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
-  [export-format :as {{:keys [query visualization_settings] :or {visualization_settings "{}"}} :params}]
+  [export-format :as {{:keys [query visualization_settings format_rows]
+                       :or   {visualization_settings "{}"}} :params}]
   {query                  ms/JSONString
    visualization_settings ms/JSONString
+   format_rows            [:maybe :boolean]
    export-format          (into [:enum] export-formats)}
   (let [query        (json/parse-string query keyword)
         viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)
                          (update :table.columns mbql.normalize/normalize)
                          mb.viz/db->norm)
-        query        (-> (assoc query
-                                :async? true
-                                :viz-settings viz-settings)
+        query        (-> query
+                         (assoc :viz-settings viz-settings)
                          (dissoc :constraints)
                          (update :middleware #(-> %
                                                   (dissoc :add-default-userland-constraints? :js-int-to-string?)
                                                   (assoc :process-viz-settings? true
                                                          :skip-results-metadata? true
-                                                         :format-rows? false))))]
-    (run-query-async
-     query
+                                                         :format-rows? format_rows))))]
+    (run-streaming-query
+     (qp/userland-query query)
      :export-format export-format
-     :context       (export-format->context export-format)
-     :qp-runner     qp/process-query-and-save-execution!)))
+     :context       (export-format->context export-format))))
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
@@ -170,7 +173,7 @@
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [driver (driver.u/database->driver database)
           prettify (partial driver/prettify-native-form driver)
-          compiled (qp/compile-and-splice-parameters query)]
+          compiled (qp.compile/compile-and-splice-parameters query)]
       (cond-> compiled
         (not (false? pretty)) (update :query prettify)))))
 
@@ -183,13 +186,11 @@
   (api/read-check Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
-    (qp.streaming/streaming-response [{:keys [rff context]} :api]
+    (qp.streaming/streaming-response [rff :api]
       (qp.pivot/run-pivot-query (assoc query
-                                       :async? true
-                                       :constraints (qp.constraints/default-query-constraints))
-                                info
-                                rff
-                                context))))
+                                       :constraints (qp.constraints/default-query-constraints)
+                                       :info        info)
+                                rff))))
 
 (defn- parameter-field-values
   [field-ids query]

@@ -1,16 +1,18 @@
+import { useState } from "react";
 import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
-import { useState } from "react";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import Tooltip from "metabase/core/components/Tooltip";
+
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
 import { downloadQueryResults } from "metabase/query_builder/actions";
+import { Flex, Popover, Tooltip } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 import type { Dataset, VisualizationSettings } from "metabase-types/api";
-import { Flex, Popover } from "metabase/ui";
-import type Question from "metabase-lib/Question";
+
 import QueryDownloadPopover from "../QueryDownloadPopover";
+
 import { DownloadIcon } from "./QueryDownloadWidget.styled";
 
 interface OwnProps {
@@ -48,9 +50,9 @@ const QueryDownloadWidget = ({
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const [{ loading }, handleDownload] = useAsyncFn(
-    async (type: string) => {
+    async (opts: { type: string; enableFormatting: boolean }) => {
       await onDownload({
-        type,
+        ...opts,
         question,
         result,
         dashboardId,
@@ -68,11 +70,11 @@ const QueryDownloadWidget = ({
       <Popover.Target>
         <Flex className={className}>
           {loading ? (
-            <Tooltip tooltip={t`Downloading…`}>
+            <Tooltip label={t`Downloading…`}>
               <LoadingSpinner size={18} />
             </Tooltip>
           ) : (
-            <Tooltip tooltip={t`Download full results`}>
+            <Tooltip label={t`Download full results`}>
               <DownloadIcon
                 onClick={() => setIsPopoverOpen(!isPopoverOpen)}
                 name="download"
@@ -87,9 +89,9 @@ const QueryDownloadWidget = ({
         <QueryDownloadPopover
           question={question}
           result={result}
-          onDownload={type => {
+          onDownload={opts => {
             setIsPopoverOpen(false);
-            handleDownload(type);
+            handleDownload(opts);
           }}
         />
       </Popover.Dropdown>

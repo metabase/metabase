@@ -17,7 +17,7 @@
             Dimension
             Field
             FieldValues
-            Metric
+            LegacyMetric
             NativeQuerySnippet
             Pulse
             PulseCard
@@ -54,7 +54,7 @@
 
 (defn- world-snapshot
   []
-  (into {} (for [model [Database Table Field Metric Segment Collection Dashboard DashboardCard Pulse
+  (into {} (for [model [Database Table Field LegacyMetric Segment Collection Dashboard DashboardCard Pulse
                         Card DashboardCardSeries FieldValues Dimension PulseCard PulseChannel User
                         NativeQuerySnippet]]
              [model (t2/select-fn-set :id model)])))
@@ -74,7 +74,7 @@
 (defn- card-query-results [card]
   (let [query (:dataset_query card)]
     (binding [qp.perms/*card-id* nil]
-      (qp/process-query (assoc query :async? false) {:card-id (:id card)}))))
+      (qp/process-query (assoc-in query [:info :card-id] (:id card))))))
 
 (defn- query-res-match
   "Checks that the queries for a card match between original (pre-dump) and new (after load). For now, just checks the
@@ -378,7 +378,7 @@
                                              [Collection         (t2/select-one Collection :id personal-collection-id)]
                                              [Collection         (t2/select-one Collection :id pc-nested-id)]
                                              [Collection         (t2/select-one Collection :id pc-deeply-nested-id)]
-                                             [Metric             (t2/select-one Metric :id metric-id)]
+                                             [LegacyMetric       (t2/select-one LegacyMetric :id metric-id)]
                                              [Segment            (t2/select-one Segment :id segment-id)]
                                              [Dashboard          (t2/select-one Dashboard :id dashboard-id)]
                                              [Dashboard          (t2/select-one Dashboard :id root-dashboard-id)]

@@ -1,17 +1,21 @@
+import cx from "classnames";
 import { Fragment } from "react";
 import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
+import CS from "metabase/css/core/index.css";
 import {
   isDefaultGroup,
   isAdminGroup,
   getGroupNameLocalized,
 } from "metabase/lib/groups";
-import type { Group, GroupListQuery, Member } from "metabase-types/api";
 import { isNotNull } from "metabase/lib/types";
+import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
+import { Icon } from "metabase/ui";
+import type { Group, GroupListQuery, Member } from "metabase-types/api";
+
 import GroupSummary from "../GroupSummary";
+
 import {
   MembershipActionsContainer,
   MembershipSelectContainer,
@@ -64,18 +68,18 @@ export const MembershipSelect = ({
 }: MembershipSelectProps) => {
   const selectedGroupIds = Array.from(memberships.keys());
   const triggerElement = (
-    <div className="flex align-center" aria-label="group-summary">
-      <span className="mr1 text-medium">
+    <div className={cx(CS.flex, CS.alignCenter)} aria-label="group-summary">
+      <span className={cx(CS.mr1, CS.textMedium)}>
         <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
       </span>
-      <Icon className="text-light" name="chevrondown" size={10} />
+      <Icon className={CS.textLight} name="chevrondown" size={10} />
     </div>
   );
 
   if (groups.length === 0) {
     return (
       <PopoverWithTrigger triggerElement={triggerElement}>
-        <span className="p1">{emptyListMessage}</span>
+        <span className={CS.p1}>{emptyListMessage}</span>
       </PopoverWithTrigger>
     );
   }

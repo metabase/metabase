@@ -2,16 +2,34 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
-
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import ArchiveModal from "metabase/components/ArchiveModal";
-
-import * as Urls from "metabase/lib/urls";
 import Questions from "metabase/entities/questions";
+import * as Urls from "metabase/lib/urls";
 
 const mapDispatchToProps = {
   archive: card => Questions.actions.setArchived(card, true),
+};
+
+const getLabels = question => {
+  const type = question.type();
+
+  if (type === "question") {
+    return {
+      title: t`Archive this question?`,
+      message: t`This question will be removed from any dashboards or pulses using it.`,
+    };
+  }
+
+  if (type === "model") {
+    return {
+      title: t`Archive this model?`,
+      message: t`This model will be removed from any dashboards or pulses using it.`,
+    };
+  }
+
+  throw new Error(`Unknown question.type(): ${type}`);
 };
 
 class ArchiveQuestionModal extends Component {
@@ -26,14 +44,7 @@ class ArchiveQuestionModal extends Component {
   render() {
     const { onClose, question } = this.props;
 
-    const isModel = question.isDataset();
-
-    const title = isModel ? t`Archive this model?` : t`Archive this question?`;
-
-    const message = isModel
-      ? t`This model will be removed from any dashboards or pulses using it.`
-      : t`This question will be removed from any dashboards or pulses using it.`;
-
+    const { title, message } = getLabels(question);
     const widgetCount = question.getParameterUsageCount();
 
     const additionalWarning =

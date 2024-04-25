@@ -1,23 +1,25 @@
 /* eslint "react/prop-types": "warn" */
-import { memo } from "react";
-import PropTypes from "prop-types";
-import { t } from "ttag";
 import cx from "classnames";
-import S from "metabase/components/Sidebar.css";
+import PropTypes from "prop-types";
+import { memo } from "react";
+import { t } from "ttag";
+
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import S from "metabase/components/Sidebar.module.css";
 import SidebarItem from "metabase/components/SidebarItem";
+import CS from "metabase/css/core/index.css";
 
 const BaseSidebar = ({ style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
-    <div className={S.breadcrumbs}>
+    <div>
       <Breadcrumbs
-        className="py4 ml3"
+        className={cx(CS.py4, CS.ml3)}
         crumbs={[[t`Data Reference`]]}
         inSidebar={true}
         placeholder={t`Data Reference`}
       />
     </div>
-    <ol className="mx3">
+    <ol className={CS.mx3}>
       <SidebarItem
         key="/reference/metrics"
         href="/reference/metrics"

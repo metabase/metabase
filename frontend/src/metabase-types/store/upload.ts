@@ -1,12 +1,20 @@
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, TableId } from "metabase-types/api";
+
+export enum UploadMode {
+  append = "append",
+  create = "create",
+  replace = "replace",
+}
 
 export type FileUpload = {
   status: "complete" | "in-progress" | "error";
   name: string;
-  collectionId: CollectionId;
+  collectionId?: CollectionId;
   modelId?: string;
+  tableId?: TableId;
   message?: string;
   error?: string;
+  uploadMode?: UploadMode;
   id: number;
 };
 

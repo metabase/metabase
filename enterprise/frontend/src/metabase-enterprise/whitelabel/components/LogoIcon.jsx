@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
-
+import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
-import { removeAllChildren, parseDataUri } from "metabase/lib/dom";
 
+import CS from "metabase/css/core/index.css";
+import { removeAllChildren, parseDataUri } from "metabase/lib/dom";
 import { getLogoUrl } from "metabase-enterprise/settings/selectors";
 
 const mapStateToProps = state => ({
@@ -113,17 +113,23 @@ class LogoIcon extends Component {
     } else {
       element.removeAttribute("height");
     }
+    element.style.maxWidth = "100%";
+    element.style.maxHeight = "32px";
+    element.style.minHeight = "100%";
+    element.style.height = "auto";
   }
 
   render() {
-    const { dark, style, className } = this.props;
+    const { dark, style = {}, className } = this.props;
+    style.height ||= "32px";
     return (
       <span
         ref={c => (this._container = c)}
         className={cx(
-          "Icon text-centered",
-          { "text-brand": !dark },
-          { "text-white": dark },
+          "Icon",
+          CS.textCentered,
+          { [CS.textBrand]: !dark },
+          { [CS.textWhite]: dark },
           className,
         )}
         style={style}

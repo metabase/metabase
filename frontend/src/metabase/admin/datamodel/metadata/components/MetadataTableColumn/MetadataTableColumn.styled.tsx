@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
 import { Link } from "react-router";
-import { color } from "metabase/lib/colors";
+
 import InputBlurChange from "metabase/components/InputBlurChange";
+import { color } from "metabase/lib/colors";
 
 export const ColumnContainer = styled.section`
   padding: 1rem 0.5rem 1rem 1rem;
@@ -14,6 +15,7 @@ export const ColumnContainer = styled.section`
   &:last-child {
     margin-bottom: 0;
   }
+  background: ${color("white")};
 `;
 
 export const ColumnInput = styled(InputBlurChange)`

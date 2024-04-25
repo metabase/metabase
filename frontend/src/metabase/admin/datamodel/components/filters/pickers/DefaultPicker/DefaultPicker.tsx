@@ -1,23 +1,24 @@
-import PropTypes from "prop-types";
 import cx from "classnames";
-import { t } from "ttag";
+import PropTypes from "prop-types";
 import type { ReactElement } from "react";
+import { t } from "ttag";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
-import type { DatasetColumn, FieldId, RowValue } from "metabase-types/api";
-
+import PopoverS from "metabase/components/Popover/Popover.module.css";
+import CS from "metabase/css/core/index.css";
 import { getCurrencySymbol } from "metabase/lib/formatting";
-import type Filter from "metabase-lib/queries/structured/Filter";
-
 import {
   getFilterArgumentFormatOptions,
   isFuzzyOperator,
-} from "metabase-lib/operators/utils";
-import { isCurrency } from "metabase-lib/types/utils/isa";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import TextPicker from "../TextPicker";
-import SelectPicker from "../SelectPicker";
+} from "metabase-lib/v1/operators/utils";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { isCurrency } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetColumn, FieldId, RowValue } from "metabase-types/api";
+
 import NumberPicker from "../NumberPicker";
+import SelectPicker from "../SelectPicker";
+import TextPicker from "../TextPicker";
 
 import {
   BetweenLayoutContainer,
@@ -136,7 +137,7 @@ export function DefaultPicker({
         return (
           <FieldValuesWidget
             key={index}
-            className="input"
+            className={CS.input}
             value={values}
             onChange={onValuesChange}
             multi={operator.multi}
@@ -194,7 +195,7 @@ export function DefaultPicker({
   return (
     <DefaultPickerContainer
       data-testid="default-picker-container"
-      className={cx(className, "PopoverBody--marginBottom")}
+      className={cx(className, PopoverS.PopoverBodyMarginBottom)}
     >
       {layout}
     </DefaultPickerContainer>
@@ -210,7 +211,10 @@ const DefaultLayout = ({
 }) => (
   <div>
     {fieldWidgets.map((fieldWidget, index) => (
-      <div key={index} className={index < fieldWidgets.length - 1 ? "mb1" : ""}>
+      <div
+        key={index}
+        className={index < fieldWidgets.length - 1 ? CS.mb1 : ""}
+      >
         {fieldWidget}
       </div>
     ))}

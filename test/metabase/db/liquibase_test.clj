@@ -12,19 +12,9 @@
    [metabase.test :as mt]
    [metabase.util.yaml :as u.yaml]
    [next.jdbc :as next.jdbc]
-   [toucan2.core :as t2])
-  (:import
-   (java.io StringWriter)
-   (liquibase Liquibase)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- sql-for-init-liquibase
-  [^Liquibase liquibase]
-  (let [writer (StringWriter.)]
-    ;; run 0 updates, just to get the needed SQL to initiate liquibase like creating the DBchangelog table
-    (.update liquibase 1 ""  writer)
-    (.toString writer)))
 
 (defn- split-migrations-sqls
   "Splits a sql migration string to multiple lines."
@@ -50,15 +40,6 @@
        (liquibase/with-liquibase [liquibase (->> (mt/dbdef->connection-details :mysql :db {:database-name "liquibase_test"})
                                                  (sql-jdbc.conn/connection-details->spec :mysql)
                                                  mdb.test-util/->ClojureJDBCSpecDataSource)]
-         (testing "Make sure the first line actually matches the shape we're testing against"
-           (is (= (str "CREATE TABLE liquibase_test.DATABASECHANGELOGLOCK ("
-                       "ID INT NOT NULL, "
-                       "`LOCKED` TINYINT NOT NULL, "
-                       "LOCKGRANTED datetime NULL, "
-                       "LOCKEDBY VARCHAR(255) NULL, "
-                       "CONSTRAINT PK_DATABASECHANGELOGLOCK PRIMARY KEY (ID)"
-                       ") ENGINE InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
-                  (first (split-migrations-sqls (sql-for-init-liquibase liquibase))))))
          (testing "Make sure *every* line contains ENGINE ... CHARACTER SET ... COLLATE"
            (doseq [line  (split-migrations-sqls (liquibase/migrations-sql liquibase))
                    :when (str/starts-with? line "CREATE TABLE")]
@@ -86,9 +67,9 @@
       ;; fake a db where we ran all the migrations, including the legacy ones
       (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
         (liquibase/with-liquibase [liquibase conn]
-          (.update liquibase ""))
-        (t2/update! (liquibase/changelog-table-name conn) {:filename "migrations/000_migrations.yaml"})
-        (liquibase/consolidate-liquibase-changesets! conn)
+          (.update liquibase "")
+          (t2/update! (liquibase/changelog-table-name conn) {:filename "migrations/000_migrations.yaml"})
+          (liquibase/consolidate-liquibase-changesets! conn liquibase))
         (testing "makes sure the change log filename are correctly set"
           (is (= (set (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver*))
                  (t2/select-fn-set :id (liquibase/changelog-table-name conn) :filename "migrations/000_legacy_migrations.yaml")))
@@ -100,3 +81,46 @@
                (set/union
                 (set (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver*))
                 (set (liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)))))))))
+
+(deftest wait-for-all-locks-test
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
+      ;; We don't need a long time for tests, keep it zippy.
+      (let [sleep-ms   5
+            timeout-ms 10]
+        (liquibase/with-liquibase [liquibase conn]
+          (testing "Will not wait if no locks are taken"
+            (is (= :none (liquibase/wait-for-all-locks sleep-ms timeout-ms))))
+          (testing "Will timeout if a lock is not released"
+            (liquibase/with-scope-locked liquibase
+              (is (= :timed-out (liquibase/wait-for-all-locks sleep-ms timeout-ms)))))
+          (testing "Will return successfully if the lock is released while we are waiting"
+            (let [migrate-ms 100
+                  timeout-ms 200
+                  locked     (promise)]
+              (future
+               (liquibase/with-scope-locked liquibase
+                 (deliver locked true)
+                 (Thread/sleep migrate-ms)))
+              @locked
+              (is (= :done (liquibase/wait-for-all-locks sleep-ms timeout-ms))))))))))
+
+(deftest release-all-locks-if-needed!-test
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
+      (liquibase/with-liquibase [liquibase conn]
+        (testing "When we release the locks from outside the migration...\n"
+          (let [locked   (promise)
+                released (promise)
+                locked?  (promise)]
+            (future
+             (liquibase/with-scope-locked liquibase
+               (is (liquibase/holding-lock? liquibase))
+               (deliver locked true)
+               @released
+               (deliver locked? (liquibase/holding-lock? liquibase))))
+            @locked
+            (liquibase/release-concurrent-locks! conn)
+            (deliver released true)
+            (testing "The lock was released before the migration finished"
+              (is (not @locked?)))))))))

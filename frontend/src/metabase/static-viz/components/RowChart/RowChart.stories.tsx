@@ -1,6 +1,8 @@
 import type { ComponentStory } from "@storybook/react";
-import { MULTIPLE_SERIES } from "metabase/static-viz/components/RowChart/stories-data";
+
 import { color } from "metabase/lib/colors";
+import { MULTIPLE_SERIES } from "metabase/static-viz/components/RowChart/stories-data";
+
 import RowChart from "./RowChart";
 
 export default {

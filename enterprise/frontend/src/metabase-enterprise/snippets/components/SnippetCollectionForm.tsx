@@ -1,26 +1,21 @@
 import { useCallback, useMemo } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
-import { connect } from "react-redux";
-
-import Button from "metabase/core/components/Button";
-import FormFooter from "metabase/core/components/FormFooter";
-import { Form, FormProvider } from "metabase/forms";
-import FormInput from "metabase/core/components/FormInput";
-import FormTextArea from "metabase/core/components/FormTextArea";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-
-import * as Errors from "metabase/lib/errors";
-
-import { color } from "metabase/lib/colors";
-
-import SnippetCollections from "metabase/entities/snippet-collections";
-import { DEFAULT_COLLECTION_COLOR_ALIAS } from "metabase/entities/collections";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
-
+import Button from "metabase/core/components/Button";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import FormFooter from "metabase/core/components/FormFooter";
+import FormInput from "metabase/core/components/FormInput";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import FormTextArea from "metabase/core/components/FormTextArea";
+import { DEFAULT_COLLECTION_COLOR_ALIAS } from "metabase/entities/collections";
+import SnippetCollections from "metabase/entities/snippet-collections";
+import { Form, FormProvider } from "metabase/forms";
+import { color } from "metabase/lib/colors";
+import * as Errors from "metabase/lib/errors";
 import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -108,7 +103,7 @@ function SnippetCollectionForm({
   );
 
   const handleSubmit = useCallback(
-    async values => {
+    async (values: SnippetCollectionFormValues) => {
       const nextCollection = isEditing
         ? await handleUpdate({ id: collection.id as CollectionId, ...values })
         : await handleCreate(values);

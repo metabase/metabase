@@ -1,3 +1,9 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   popover,
   restore,
@@ -6,14 +12,8 @@ import {
   openPinnedItemMenu,
   openUnpinnedItemMenu,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
 const DASHBOARD_NAME = "Orders in a dashboard";
 const QUESTION_NAME = "Orders, Count";
@@ -38,7 +38,7 @@ const PIVOT_QUESTION_DETAILS = {
   },
 };
 
-const SQL_QUESTION_DETAILS = {
+const SQL_QUESTION_DETAILS_REQUIRED_PARAMETER = {
   name: "SQL with parameters",
   display: "scalar",
   native: {
@@ -55,12 +55,31 @@ const SQL_QUESTION_DETAILS = {
   },
 };
 
+const SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE = {
+  name: "SQL with parameters",
+  display: "scalar",
+  native: {
+    "template-tags": {
+      filter: {
+        type: "dimension",
+        name: "filter",
+        id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
+        "display-name": "date",
+        default: "1999-02-26~2024-02-26",
+        dimension: ["field", PEOPLE.BIRTH_DATE, null],
+        "widget-type": "date/range",
+      },
+    },
+    query: "select count(*) from people where {{filter}}",
+  },
+};
+
 describe("scenarios > collection pinned items overview", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
-    cy.intercept("POST", `/api/card/**/query`).as("getCardQuery");
+    cy.intercept("POST", "/api/card/**/query").as("getCardQuery");
     cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
   });
 
@@ -107,7 +126,7 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to pin a model", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
 
     openRootCollection();
     openUnpinnedItemMenu(MODEL_NAME);
@@ -213,15 +232,37 @@ describe("scenarios > collection pinned items overview", () => {
     });
   });
 
-  it("should automatically hide the visualization for pinned native questions with missing required parameters", () => {
-    cy.createNativeQuestion(SQL_QUESTION_DETAILS).then(({ body: { id } }) => {
-      cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+  describe("native questions", () => {
+    it("should automatically hide the visualization for pinned native questions with missing required parameters", () => {
+      cy.createNativeQuestion(SQL_QUESTION_DETAILS_REQUIRED_PARAMETER).then(
+        ({ body: { id } }) => {
+          cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+        },
+      );
+
+      openRootCollection();
+      getPinnedSection().within(() => {
+        cy.findByText(SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE.name).should(
+          "be.visible",
+        );
+        cy.findByText("A question").should("be.visible");
+      });
     });
 
-    openRootCollection();
-    getPinnedSection().within(() => {
-      cy.findByText(SQL_QUESTION_DETAILS.name).should("be.visible");
-      cy.findByText("A question").should("be.visible");
+    it("should apply default value of variable for pinned native questions (metabase#37831)", () => {
+      cy.createNativeQuestion(SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE).then(
+        ({ body: { id } }) => {
+          cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+        },
+      );
+
+      openRootCollection();
+      getPinnedSection().within(() => {
+        cy.findByText(SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE.name).should(
+          "be.visible",
+        );
+        cy.findByTestId("scalar-value").should("have.text", "68");
+      });
     });
   });
 

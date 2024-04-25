@@ -1,9 +1,12 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
+
 import { Box, Button, Divider, Group } from "metabase/ui";
+
 import { TimeToggle } from "../TimeToggle";
 import { clearTimePart, hasTimeParts } from "../utils";
+
 import { DateRangePickerBody } from "./DateRangePickerBody";
 
 interface DateRangePickerProps {

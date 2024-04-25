@@ -1,8 +1,10 @@
 import { t } from "ttag";
+
+import type { ConfirmationState } from "metabase/hooks/use-confirmation";
 import type { Member } from "metabase-types/api";
 import type { User } from "metabase-types/api/user";
-import type { ConfirmationState } from "metabase/hooks/use-confirmation";
 import type { AdminPath, AdminPathKey } from "metabase-types/store";
+
 import type { UserWithGroupManagerPermission } from "./types/user";
 
 const REVOKE_MANAGING_CONFIRMATION = {

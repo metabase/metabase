@@ -1,13 +1,13 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment";
-import _ from "underscore";
+import moment from "moment"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
-import * as Lib from "metabase-lib";
+import _ from "underscore";
+
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
+import { isEmpty } from "metabase/lib/validate";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
-import { isEmpty } from "metabase/lib/validate";
-import { isDate } from "metabase-lib/types/utils/isa";
+import * as Lib from "metabase-lib";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
 
 export function computeTrend(
   series,
@@ -21,10 +21,6 @@ export function computeTrend(
     insights,
     settings,
   });
-
-  if (isEmpty(currentMetricData)) {
-    return null;
-  }
 
   const { clicked, date, dateUnitSettings, formatOptions, value } =
     currentMetricData;
@@ -155,6 +151,9 @@ function computeComparison({
 function getCurrentMetricData({ series, insights, settings }) {
   const [
     {
+      card: {
+        dataset_query: { type: queryType },
+      },
       data: { rows, cols },
     },
   ] = series;
@@ -165,8 +164,14 @@ function getCurrentMetricData({ series, insights, settings }) {
     col => col.name === settings["scalar.field"],
   );
 
-  if (dimensionColIndex === -1 || metricColIndex === -1) {
-    return null;
+  if (dimensionColIndex === -1) {
+    throw Error("No date column was found");
+  }
+
+  if (metricColIndex === -1) {
+    throw Error(
+      "There was a problem with the primary number you chose. Check the viz settings and select a valid column for the primary number field",
+    );
   }
 
   // get latest value and date
@@ -174,7 +179,7 @@ function getCurrentMetricData({ series, insights, settings }) {
   const date = rows[latestRowIndex][dimensionColIndex];
   const value = rows[latestRowIndex][metricColIndex];
   if (isEmpty(value) || isEmpty(date)) {
-    return null;
+    throw Error("The latest data point contains a null value");
   }
 
   // get metric column metadata
@@ -190,6 +195,7 @@ function getCurrentMetricData({ series, insights, settings }) {
     dateColumn,
     dateColumnSettings,
     dateUnit,
+    queryType,
   };
 
   const formatOptions = {
@@ -258,7 +264,7 @@ function computeTrendAnotherColumn({ comparison, currentMetricData, series }) {
 function computeTrendStaticValue({ comparison }) {
   const { value, label } = comparison;
   return {
-    comparisonDescStr: t`vs. ${label.toLowerCase()}`,
+    comparisonDescStr: t`vs. ${label}`,
     comparisonValue: value,
   };
 }
@@ -379,11 +385,24 @@ function computeComparisonPeriodsAgo({
     dateUnitSettings.dateUnit,
   ).toLowerCase();
 
-  const prevDate = moment
+  const computedPrevDate = moment
     .parseZone(nextDate)
     .subtract(dateUnitsAgo, dateUnitSettings.dateUnit)
     .format();
 
+  const rowPeriodsAgo = getRowOfPeriodsAgo({
+    prevDate: computedPrevDate,
+    dateUnit: dateUnitSettings.dateUnit,
+    dateUnitsAgo,
+    dimensionColIndex,
+    metricColIndex,
+    nextValueRowIndex,
+    rows,
+  });
+
+  const prevDate = !isEmpty(rowPeriodsAgo)
+    ? rowPeriodsAgo[dimensionColIndex]
+    : computedPrevDate;
   const comparisonDescStr =
     dateUnitsAgo === 1
       ? t`vs. previous ${dateUnitDisplay}`
@@ -394,15 +413,6 @@ function computeComparisonPeriodsAgo({
           formatValue,
         });
 
-  const rowPeriodsAgo = getRowOfPeriodsAgo({
-    prevDate,
-    dateUnit: dateUnitSettings.dateUnit,
-    dateUnitsAgo,
-    dimensionColIndex,
-    metricColIndex,
-    nextValueRowIndex,
-    rows,
-  });
   // if no row exists with date "X periods ago"
   if (isEmpty(rowPeriodsAgo)) {
     return {
@@ -431,14 +441,14 @@ function getRowOfPeriodsAgo({
   // skip the latest element since that is our current value
   const searchIndexStart = nextValueRowIndex - 1;
   if (searchIndexStart < 0) {
-    return -1;
+    return undefined;
   }
 
   // only look dateUnitsAgo elements (dates) into the past,
   // since looking any further would automatically result in a date before
   // X periods ago and any prior dates would be further beyond our desired
   // comparison date
-  const lastCandidateIndex = nextValueRowIndex - 1 - (dateUnitsAgo - 1);
+  const lastCandidateIndex = searchIndexStart - (dateUnitsAgo - 1);
   const searchIndexEnd = lastCandidateIndex >= 0 ? lastCandidateIndex : 0;
 
   for (let i = searchIndexStart; i >= searchIndexEnd; i--) {
@@ -510,9 +520,10 @@ function computeComparisonStrPreviousValue({
 }
 
 function formatDateStr({ date, dateUnitSettings, options, formatValue }) {
-  const { dateColumn, dateColumnSettings, dateUnit } = dateUnitSettings;
+  const { dateColumn, dateColumnSettings, dateUnit, queryType } =
+    dateUnitSettings;
 
-  if (isEmpty(dateUnit)) {
+  if (isEmpty(dateUnit) || queryType === "native") {
     return formatValue(date, {
       ...dateColumnSettings,
       column: dateColumn,

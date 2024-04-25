@@ -31,7 +31,7 @@
                               {:database (mt/id)
                                :type     :query
                                :query    {:source-table (mt/id :orders)}}
-                              :dataset true}]
+                              :type :model}]
           (let [bot-message (format
                              "You should do ```SELECT COUNT(*) FROM %s``` to do that."
                              (metabot-util/normalize-name (:name orders-model)))
@@ -43,7 +43,7 @@
                                                                                {:choices [{:message {:content "{}"}}]}))
                           metabot-client/*create-embedding-endpoint*       metabot-test/throw-on-embedding
                           metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [response (mt/user-http-request :rasta :post 200
+              (let [response (mt/user-http-request :crowberto :post 200
                                                    (format "/metabot/model/%s" (:id orders-model))
                                                    {:question q})
                     {:keys [query template-tags]} (get-in response [:card :dataset_query :native])]
@@ -60,13 +60,13 @@
                               {:database (mt/id)
                                :type     :query
                                :query    {:source-table (mt/id :orders)}}
-                              :dataset true}]
+                              :type :model}]
           (let [bot-message "IDK what to do here"
                 q           "How many orders do I have?"]
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)
                           metabot-client/*create-embedding-endpoint*       metabot-test/throw-on-embedding
                           metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [response (mt/user-http-request :rasta :post 400
+              (let [response (mt/user-http-request :crowberto :post 400
                                                    (format "/metabot/model/%s" (:id orders-model))
                                                    {:question q})]
                 (is (true? (str/includes? response "didn't produce any SQL")))))))))))
@@ -81,7 +81,7 @@
                               {:database (mt/id)
                                :type     :query
                                :query    {:source-table (mt/id :orders)}}
-                              :dataset true}]
+                              :type :model}]
           (let [bot-model-selection (format "The best model is %s" (:id orders-model))
                 bot-sql-response    (format "you should do ```SELECT COUNT(*) FROM %s``` to do that."
                                             (metabot-util/normalize-name (:name orders-model)))
@@ -94,7 +94,7 @@
                                                                                {:choices [{:message {:content "{}"}}]}))
                           metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
                           metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [response (mt/user-http-request :rasta :post 200
+              (let [response (mt/user-http-request :crowberto :post 200
                                                    (format "/metabot/database/%s" (mt/id))
                                                    {:question q})
                     {:keys [query template-tags]} (get-in response [:card :dataset_query :native])]
@@ -111,13 +111,13 @@
                                {:database (mt/id)
                                 :type     :query
                                 :query    {:source-table (mt/id :orders)}}
-                               :dataset false}]
+                               :type :question}]
           (let [bot-message "Your prompt needs more details..."
                 q           "A not useful prompt"]
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)
                           metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
                           metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [{:keys [message]} (mt/user-http-request :rasta :post 400
+              (let [{:keys [message]} (mt/user-http-request :crowberto :post 400
                                                             (format "/metabot/database/%s" (mt/id))
                                                             {:question q})]
                 (is (true? (str/includes? message (format "Query '%s' didn't find a good match to your data." q))))))))))))
@@ -132,7 +132,7 @@
                               {:database (mt/id)
                                :type     :query
                                :query    {:source-table (mt/id :orders)}}
-                              :dataset true}]
+                              :type :model}]
           (let [bot-message (format
                              "Part 1 is %s but part 2 doesn't return SQL."
                              (:id orders-model))
@@ -140,7 +140,7 @@
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)
                           metabot-client/*create-embedding-endpoint*       metabot-test/throw-on-embedding
                           metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [response (mt/user-http-request :rasta :post 400
+              (let [response (mt/user-http-request :crowberto :post 400
                                                    (format "/metabot/database/%s" (mt/id))
                                                    {:question q})]
                 (is (true? (str/includes? response "didn't produce any SQL")))))))))))
@@ -156,7 +156,7 @@
                    {:database (mt/id)
                     :type     :query
                     :query    {:source-table (mt/id :orders)}}
-                   :dataset true}]
+                   :type :model}]
           (with-redefs [metabot-client/*create-chat-completion-endpoint* (fn [_ _]
                                                                            (throw (ex-info
                                                                                    "Too many requests"
@@ -164,7 +164,7 @@
                                                                                     :status  429})))
                         metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
                         metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-            (let [{:keys [message]} (mt/user-http-request :rasta :post 429
+            (let [{:keys [message]} (mt/user-http-request :crowberto :post 429
                                                           (format "/metabot/database/%s" (mt/id))
                                                           {:question "Doesn't matter"})]
               (is (true? (str/includes? message "The bot server is under heavy load"))))))))
@@ -176,7 +176,7 @@
                    {:database (mt/id)
                     :type     :query
                     :query    {:source-table (mt/id :orders)}}
-                   :dataset true}]
+                   :type :model}]
           (with-redefs [metabot-client/*create-chat-completion-endpoint* (fn [_ _]
                                                                            (throw (ex-info
                                                                                    "Unauthorized"
@@ -184,7 +184,7 @@
                                                                                     :status  401})))
                         metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
                         metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-            (let [{:keys [message]} (mt/user-http-request :rasta :post 400
+            (let [{:keys [message]} (mt/user-http-request :crowberto :post 400
                                                           (format "/metabot/database/%s" (mt/id))
                                                           {:question "Doesn't matter"})]
               (is (true? (str/includes? message "Bot credentials are incorrect or not set"))))))))
@@ -195,7 +195,7 @@
                                {:database (mt/id)
                                 :type     :query
                                 :query    {:source-table (mt/id :orders)}}
-                               :dataset true}]
+                               :type :model}]
           (let [error-code    "context_length_exceeded"
                 error-message (str/join " "
                                         ["This model's maximum context length is 8192 tokens."
@@ -210,7 +210,7 @@
                                                                                       :status 400})))
                           metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
                           metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [{:keys [message]} (mt/user-http-request :rasta :post 400
+              (let [{:keys [message]} (mt/user-http-request :crowberto :post 400
                                                             (format "/metabot/database/%s" (mt/id))
                                                             {:question "Doesn't matter"})]
                 (is (= error-message message))))))))))
@@ -224,13 +224,13 @@
                                            {:database (mt/id)
                                             :type     :query
                                             :query    {:source-table (mt/id :orders)}}
-                                           :dataset true}]
+                                           :type :model}]
           (let [bot-message "SELECT COUNT(*) FROM ORDERS;"
                 q           "How many orders do I have?"]
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)
                           metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
                           metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-              (let [response (mt/user-http-request :rasta :post 200
+              (let [response (mt/user-http-request :crowberto :post 200
                                                    (format "/metabot/database/%s/query" (mt/id))
                                                    {:question q})
                     {:keys [sql]} response]

@@ -1,14 +1,15 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
-  editDashboard,
   visitQuestionAdhoc,
   popover,
   visitDashboard,
+  editDashboard,
+  setFilter,
   addOrUpdateDashboardCard,
+  modal,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -47,14 +48,10 @@ describe.skip("issue 19744", () => {
 
   it("custom column after aggregation shouldn't limit or change the behavior of dashboard filters (metabase#19744)", () => {
     editDashboard();
-    cy.icon("filter").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Time").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("All Options").click();
+    setFilter("Time", "All Options");
 
-    cy.get(".DashCard").contains("Select…").click();
+    cy.findByTestId("dashcard-container").contains("Select…").click();
     popover().contains("Created At");
   });
 });
@@ -65,7 +62,7 @@ function saveQuestion(name) {
   cy.findByText("Save").click();
   cy.findByLabelText("Name").type(name);
 
-  cy.get(".Modal").button("Save").click();
+  modal().button("Save").click();
 
   cy.findByText("Not now").click();
 

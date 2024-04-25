@@ -63,8 +63,26 @@
   [query stage-number {:keys [column object-id]} & _]
   ;; generate a NEW query against the FK target table and column, e.g. if the original query was
   ;; ORDERS/ORDERS.USER_ID, the new query should by PEOPLE/PEOPLE.ID.
-  (let [fk-column-id    (:fk-target-field-id column)
-        fk-column       (some->> fk-column-id (lib.metadata/field query))
-        fk-column-table (some->> (:table-id fk-column) (lib.metadata/table query))]
-    (-> (lib.query/query query fk-column-table)
-        (lib.filter/filter stage-number (lib.filter/= fk-column object-id)))))
+  ;; If there are filters on the original query which are:
+  ;; - := filters, and
+  ;; - Not for this same column, but
+  ;; - Relevant to OTHER FKs which point to PKs on the target table;
+  ;; then preserve those filters.
+  (let [fk-column-id     (:fk-target-field-id column)
+        fk-column        (some->> fk-column-id (lib.metadata/field query))
+        fk-column-table  (some->> (:table-id fk-column) (lib.metadata/table query))
+        other-fk-filters (for [filter-clause (lib.filter/filters query stage-number)
+                               :let [parts (lib.filter/filter-parts query stage-number filter-clause)]
+                               :when (= (:short (:operator parts)) :=)
+                               :let [other-fk-target (some->> parts
+                                                              :column
+                                                              :fk-target-field-id
+                                                              (lib.metadata/field query))]
+                               :when (and other-fk-target
+                                          (= (:table-id other-fk-target) (:id fk-column-table)) ; FK to this table
+                                          (not= (:id other-fk-target) fk-column-id))]           ; But not this column
+                           (lib.filter/= other-fk-target (first (:args parts))))]
+    (reduce #(lib.filter/filter %1 stage-number %2)
+            (lib.query/query query fk-column-table)
+            (concat other-fk-filters
+                    [(lib.filter/= fk-column object-id)]))))

@@ -1,8 +1,9 @@
 import type { HTMLAttributes, ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
+
 import Tooltip from "metabase/core/components/Tooltip";
-import type { FieldAlignment, FieldOrientation } from "./types";
+
 import {
   FieldCaption,
   FieldDescription,
@@ -15,6 +16,7 @@ import {
   OptionalTag,
   FieldTitleActions,
 } from "./FormField.styled";
+import type { FieldAlignment, FieldOrientation } from "./types";
 
 export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
   title?: string;

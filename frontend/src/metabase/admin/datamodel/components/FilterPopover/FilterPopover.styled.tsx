@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
-import { color, alpha } from "metabase/lib/colors";
 
 import BaseButton from "metabase/core/components/Button";
+import { color, alpha } from "metabase/lib/colors";
 
 type Props = {
   primaryColor?: string;
@@ -27,7 +27,7 @@ export const FilterPopoverSeparator = styled.hr`
   border-top: 1px solid ${color("border")};
 `;
 
-// Mimics the .PopoverBody--marginBottom class in Popover.css that the other
+// Mimics the PopoverS.PopoverBodyMarginBottom class in Popover.css that the other
 // filter pickers use to keep the PopoverFooter from overlapping with the
 // content of the picker.
 export const EmptyFilterPickerPlaceholder = styled.div`

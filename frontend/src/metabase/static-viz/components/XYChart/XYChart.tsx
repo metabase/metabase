@@ -1,19 +1,25 @@
-import type { TextProps } from "@visx/text";
-import { Text } from "@visx/text";
 import { AxisBottom, AxisLeft, AxisRight } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { Group } from "@visx/group";
+import type { TextProps } from "@visx/text";
+import { Text } from "@visx/text";
 import { assoc } from "icepick";
 
-import { formatNumber } from "metabase/static-viz/lib/numbers";
-import { LineSeries } from "metabase/static-viz/components/XYChart/shapes/LineSeries";
-import { BarSeries } from "metabase/static-viz/components/XYChart/shapes/BarSeries";
-import { AreaSeries } from "metabase/static-viz/components/XYChart/shapes/AreaSeries";
 import { Legend } from "metabase/static-viz/components/Legend";
+import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
 import {
   CHART_PADDING,
   LABEL_PADDING,
 } from "metabase/static-viz/components/XYChart/constants";
+import { AreaSeries } from "metabase/static-viz/components/XYChart/shapes/AreaSeries";
+import { BarSeries } from "metabase/static-viz/components/XYChart/shapes/BarSeries";
+import { LineSeries } from "metabase/static-viz/components/XYChart/shapes/LineSeries";
+import type {
+  Series,
+  ChartSettings,
+  ChartStyle,
+  HydratedSeries,
+} from "metabase/static-viz/components/XYChart/types";
 import {
   createXScale,
   createYScales,
@@ -29,17 +35,11 @@ import {
   calculateStackedItems,
   fixTimeseriesTicksExceedXTickCount,
 } from "metabase/static-viz/components/XYChart/utils";
-import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
+import { formatNumber } from "metabase/static-viz/lib/numbers";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
 
-import type {
-  Series,
-  ChartSettings,
-  ChartStyle,
-  HydratedSeries,
-} from "metabase/static-viz/components/XYChart/types";
-import Values from "../Values";
 import { calculateLegendRows } from "../Legend/utils";
+import Values from "../Values";
 
 export interface XYChartProps {
   width: number;
@@ -309,7 +309,6 @@ export const XYChart = ({
                 label={settings.goal.label}
                 x1={0}
                 x2={calculatedInnerWidth}
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 y={defaultYScale!(settings.goal.value)}
                 color={style.goalColor}
               />

@@ -1,5 +1,7 @@
 import userEvent from "@testing-library/user-event";
+
 import { screen } from "__support__/ui";
+
 import { setup } from "./setup";
 
 describe("CreateCollectionForm", () => {
@@ -24,9 +26,9 @@ describe("CreateCollectionForm", () => {
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
   });
 
-  it("calls onCancel when cancel button is clicked", () => {
+  it("calls onCancel when cancel button is clicked", async () => {
     const { onCancel } = setup();
-    userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 

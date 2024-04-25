@@ -1,6 +1,6 @@
 import { t } from "ttag";
+
 import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
-import { Icon, Box, Text } from "metabase/ui";
 import {
   browseDatabase,
   browseSchema,
@@ -8,10 +8,11 @@ import {
 } from "metabase/lib/urls";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import type { WrappedResult } from "metabase/search/types";
+import { Icon, Box, Text } from "metabase/ui";
+import type Database from "metabase-lib/v1/metadata/Database";
 
-import type Database from "metabase-lib/metadata/Database";
-import { getInfoText } from "./get-info-text";
 import type { InfoTextData } from "./get-info-text";
+import { getInfoText } from "./get-info-text";
 
 type InfoTextAssetLinkProps = {
   result: WrappedResult;

@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   editDashboard,
   restore,
@@ -5,8 +7,6 @@ import {
   setActionsEnabledForDB,
   visitDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const viewports = [
   [768, 800],
@@ -31,7 +31,10 @@ describe("metabase#31587", () => {
           const actionButtonContainer = cy.findByTestId(
             "action-button-full-container",
           );
-          const dashCard = cy.contains(".DashCard", "Click Me");
+          const dashCard = cy
+            .findAllByTestId("dashcard-container")
+            .last()
+            .should("have.text", "Click Me");
 
           actionButtonContainer.then(actionButtonElem => {
             dashCard.then(dashCardElem => {
@@ -55,7 +58,10 @@ describe("metabase#31587", () => {
           const actionButtonContainer = cy.findByTestId(
             "action-button-full-container",
           );
-          const dashCard = cy.contains(".DashCard", "Click Me");
+          const dashCard = cy
+            .findAllByTestId("dashcard-container")
+            .last()
+            .should("have.text", "Click Me");
 
           actionButtonContainer.then(actionButtonElem => {
             dashCard.then(dashCardElem => {

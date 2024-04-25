@@ -1,11 +1,11 @@
-import registerCypressGrep from "@cypress/grep";
+import registerCypressGrep from "@cypress/grep"; // eslint-disable-line import/order
 registerCypressGrep();
 
-import addContext from "mochawesome/addContext";
-import "@testing-library/cypress/add-commands";
-import "cypress-real-events/support";
 import "@cypress/skip-test/support";
 import "@percy/cypress";
+import "@testing-library/cypress/add-commands";
+import "cypress-real-events/support";
+import addContext from "mochawesome/addContext";
 import "./commands";
 
 const runWithReplay = Cypress.env("REPLAYIO_ENABLED");
@@ -13,8 +13,6 @@ const runWithReplay = Cypress.env("REPLAYIO_ENABLED");
 if (runWithReplay) {
   require("@replayio/cypress/support");
 }
-
-require("cy-verify-downloads").addCustomCommand();
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
 

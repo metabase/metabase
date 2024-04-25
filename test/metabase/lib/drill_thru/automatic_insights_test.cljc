@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
+   [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.util :as u]
@@ -40,6 +41,26 @@
     :expected    {:type :drill-thru/automatic-insights
                   :column-ref [:aggregation {} u/uuid-regex]
                   :dimensions [{} {}]}}))
+
+(def ^:private metadata-no-xrays
+  (meta/updated-metadata-provider assoc-in [:settings :enable-xrays] false))
+
+(deftest ^:parallel automatic-insights-availability-test
+  (testing "automatic-insights is"
+    (testing "available for cell clicks subject to at least one breakout; and any pivot or legend click"
+      (canned/canned-test
+        :drill-thru/automatic-insights
+        (fn [_test-case context {:keys [click]}]
+          (or ;; Any pivot or legend click is good.
+              (#{:pivot :legend} click)
+              ;; As are cell clicks with at least 1 breakout.
+              (and (= click :cell)
+                   (seq (:dimensions context)))))))
+    (testing "not available at all with xrays disabled"
+      (canned/canned-test
+        :drill-thru/automatic-insights
+        (constantly false)
+        (canned/canned-clicks metadata-no-xrays)))))
 
 (defn- auto-insights [query exp-filters]
   (let [[created-at sum] (lib/returned-columns query)
@@ -94,7 +115,7 @@
     (let [metric   {:description "Orders with a subtotal of $100 or more."
                     :archived false
                     :updated-at "2023-10-04T20:11:34.029582"
-                    :lib/type :metadata/metric
+                    :lib/type :metadata/legacy-metric
                     :definition
                     {"source-table" (meta/id :orders)
                      "aggregation" [["count"]]

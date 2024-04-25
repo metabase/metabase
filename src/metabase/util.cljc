@@ -76,7 +76,6 @@
                          :clj  'Throwable)
                       ~'_)))
 
-;; TODO -- maybe renaming this to `adoto` or `doto<>` or something would be a little clearer.
 (defmacro prog1
   "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
   `first-form`.
@@ -158,7 +157,7 @@
   conversions, turning `ID` into `ıd`, in the Turkish locale. This function always uses the `en-US` locale."
   ^String [s]
   (when s
-    #?(:clj  (.toLowerCase (str s) (Locale/US))
+    #?(:clj  (.toLowerCase (str s) Locale/US)
        :cljs (.toLowerCase (str s)))))
 
 (defn upper-case-en
@@ -168,7 +167,7 @@
   `en-US` locale."
   ^String [s]
   (when s
-    #?(:clj  (.toUpperCase (str s) (Locale/US))
+    #?(:clj  (.toUpperCase (str s) Locale/US)
        :cljs (.toUpperCase (str s)))))
 
 (defn capitalize-en
@@ -179,6 +178,15 @@
       (upper-case-en s)
       (str (upper-case-en (subs s 0 1))
            (lower-case-en (subs s 1))))))
+
+(defn regex->str
+  "Returns the contents of a regex as a string.
+
+  This is simply [[str]] in Clojure but needs to remove slashes (`\"/regex contents/\"`) in CLJS."
+  [regex]
+  #?(:clj  (str regex)
+     :cljs (let [s (str regex)]
+             (subs s 1 (dec (count s))))))
 
 ;;; define custom CSK conversion functions so we don't run into problems if the system locale is Turkish
 
@@ -258,7 +266,7 @@
 ;; Log the maximum memory available to the JVM at launch time as well since it is very handy for debugging things
 #?(:clj
    (when-not *compile-files*
-     (log/info (i18n/trs "Maximum memory available to JVM: {0}" (u.format/format-bytes (.maxMemory (Runtime/getRuntime)))))))
+     (log/infof "Maximum memory available to JVM: %s" (u.format/format-bytes (.maxMemory (Runtime/getRuntime))))))
 
 ;; Set the default width for pprinting to 120 instead of 72. The default width is too narrow and wastes a lot of space
 #?(:clj  (alter-var-root #'pprint/*print-right-margin* (constantly 120))
@@ -430,9 +438,8 @@
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
   Otherwise, throws an Exception.
 
-  Provided as a convenience to allow model-layer functions to easily accept either an object or raw ID, and to assert
+  Provided to allow model-layer functions to easily accept either an object or raw ID, and to assert
   that you have a valid ID."
-  ;; TODO - lots of functions can be rewritten to use this, which would make them more flexible
   ^Integer [object-or-id]
   (or (id object-or-id)
       (throw (error (tru "Not something with an ID: {0}" (pr-str object-or-id))))))
@@ -874,3 +881,39 @@
       (if (empty? to-traverse)
         traversed
         (recur to-traverse traversed)))))
+
+(defn reverse-compare
+  "A reversed java.util.Comparator, useful for sorting elements in descending in order"
+  [x y]
+  (compare y x))
+
+(defn conflicting-keys
+  "Given two maps, return a seq of the keys on which they disagree. We only consider keys that are present in both."
+  [m1 m2]
+  (keep (fn [[k v]] (when (not= v (get m1 k v)) k)) m2))
+
+(defn conflicting-keys?
+  "Given two maps, are any keys on which they disagree? We only consider keys that are present in both."
+  [m1 m2]
+  (boolean (some identity (conflicting-keys m1 m2))))
+
+(defn- map-all*
+  [f colls]
+  (lazy-seq
+   (if (some seq colls)
+     (cons (apply f (map first colls))
+           (map-all* f (map rest colls)))
+     ())))
+
+(defn map-all
+  "Similar to [[clojure.core/map]], but instead of short-circuiting it continues until the end of the longest
+  collection, using nil for collection(s) that have already been exhausted."
+  ([f coll] (map f coll))
+  ([f c1 c2]
+   (lazy-seq
+    (let [s1 (seq c1) s2 (seq c2)]
+      (when (or s1 s2)
+        (cons (f (first s1) (first s2))
+              (map-all f (rest s1) (rest s2)))))))
+  ([f c1 c2 & colls]
+   (map-all* f (list* c1 c2 colls))))

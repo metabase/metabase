@@ -1,8 +1,10 @@
 import { useState } from "react";
+
 import { Box, Stack } from "metabase/ui";
+
+import { TimeToggle } from "../../TimeToggle";
 import { clearTimePart, hasTimeParts } from "../../utils";
 import { SingleDatePickerBody } from "../SingleDatePickerBody";
-import { TimeToggle } from "../../TimeToggle";
 
 interface SimpleSingleDatePickerProps {
   value: Date;

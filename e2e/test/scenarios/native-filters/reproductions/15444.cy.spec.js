@@ -1,7 +1,7 @@
 import { restore, openNativeEditor, popover } from "e2e/support/helpers";
 
-import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "../helpers/e2e-field-filter-helpers";
+import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
 describe("issue 15444", () => {
   beforeEach(() => {
@@ -37,7 +37,7 @@ describe("issue 15444", () => {
 
     SQLFilter.runQuery();
 
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("query-visualization-root").within(() => {
       cy.findAllByText("Doohickey");
       cy.findAllByText("Gizmo").should("not.exist");
     });

@@ -1,13 +1,14 @@
 /* eslint "react/prop-types": "warn" */
-import { Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 
-import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
-import DatabaseList from "metabase/reference/databases/DatabaseList";
-
+import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
+import DatabaseList from "metabase/reference/databases/DatabaseList";
+import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import * as actions from "metabase/reference/reference";
 
 import { getDatabaseId, getIsEditing } from "../selectors";
@@ -51,7 +52,7 @@ class DatabaseListContainer extends Component {
 
     return (
       <SidebarLayout
-        className="flex-full relative"
+        className={cx(CS.flexFull, CS.relative)}
         style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<BaseSidebar />}
       >

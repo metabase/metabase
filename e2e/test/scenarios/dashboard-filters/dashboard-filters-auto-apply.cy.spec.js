@@ -1,5 +1,5 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  dashboardHeader,
   dashboardParametersContainer,
   describeWithSnowplow,
   editDashboard,
@@ -19,8 +19,8 @@ import {
   visitDashboard,
   visitEmbeddedPage,
   visitPublicDashboard,
+  setFilter,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -88,7 +88,7 @@ describe(
           cy.button("Add filter").click();
           cy.wait("@cardQuery");
         });
-        getDashboardCard().findByText("Rows 1-5 of 53").should("be.visible");
+        getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
 
         cy.log(
           "parameter values should be preserved when disabling auto applying filters",
@@ -168,11 +168,9 @@ describe(
         dashboardParametersContainer().button("Apply").should("be.visible");
 
         editDashboard();
-        dashboardHeader().icon("filter").click();
-        popover().within(() => {
-          cy.findByText("Text or Category").click();
-          cy.findByText("Is").click();
-        });
+
+        setFilter("Text or Category", "Is");
+
         sidebar().findByDisplayValue("Text").clear().type("Vendor");
         getDashboardCard().findByText("Select…").click();
         popover().findByText("Vendor").click();
@@ -284,7 +282,7 @@ describe(
         cy.tick(TOAST_TIMEOUT);
         cy.wait("@cardQuery");
         undoToast().should("not.exist");
-        getDashboardCard().findByText("Rows 1-5 of 200").should("be.visible");
+        getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
       });
     });
 
@@ -335,7 +333,7 @@ describe(
         cy.wait("@cardQuery");
         undoToast().should("not.exist");
         filterWidget().findByText("Gadget").should("be.visible");
-        getDashboardCard().findByText("Rows 1-5 of 53").should("be.visible");
+        getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
       });
 
       it("should not display the toast if there are no parameter values", () => {
@@ -413,12 +411,12 @@ describe(
             cy.findByText("Widget").click();
             cy.button("Add filter").click();
           });
-          getDashboardCard().findByText("Rows 1-5 of 200").should("be.visible");
+          getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
           dashboardParametersContainer()
             .button("Apply")
             .should("be.visible")
             .click();
-          getDashboardCard().findByText("Rows 1-5 of 54").should("be.visible");
+          getDashboardCard().findByText("Rows 1-4 of 54").should("be.visible");
         });
 
         it("should not show toast", () => {
@@ -458,12 +456,12 @@ describe(
             cy.findByText("Widget").click();
             cy.button("Add filter").click();
           });
-          getDashboardCard().findByText("Rows 1-5 of 200").should("be.visible");
+          getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
           dashboardParametersContainer()
             .button("Apply")
             .should("be.visible")
             .click();
-          getDashboardCard().findByText("Rows 1-5 of 54").should("be.visible");
+          getDashboardCard().findByText("Rows 1-4 of 54").should("be.visible");
         });
 
         it("should not show toast", () => {
@@ -516,12 +514,12 @@ describe(
             cy.findByText("Widget").click();
             cy.button("Add filter").click();
           });
-          getDashboardCard().findByText("Rows 1-5 of 200").should("be.visible");
+          getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
           dashboardParametersContainer()
             .button("Apply")
             .should("be.visible")
             .click();
-          getDashboardCard().findByText("Rows 1-5 of 54").should("be.visible");
+          getDashboardCard().findByText("Rows 1-4 of 54").should("be.visible");
         });
 
         it("should display a toast when a dashboard takes longer than 15s to load", () => {
@@ -548,7 +546,7 @@ describe(
             .should("not.be.checked");
           filterWidget().findByText("Gadget").should("be.visible");
 
-          getDashboardCard().findByText("Rows 1-5 of 53").should("be.visible");
+          getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
 
           // Card result should be updated after manually updating the filter
           filterWidget().icon("close").click();
@@ -557,7 +555,7 @@ describe(
             .should("be.visible")
             .click();
 
-          getDashboardCard().findByText("Rows 1-5 of 200").should("be.visible");
+          getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
         });
 
         it("should not display a toast when a dashboard takes longer than 15s to load if users have no write access to a dashboard", () => {
@@ -575,7 +573,7 @@ describe(
           // so to make sure callback in `setTimeout` is called, we need to advance the clock using cy.tick().
           cy.tick();
 
-          getDashboardCard().findByText("Rows 1-5 of 53").should("be.visible");
+          getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
         });
       });
     });
@@ -667,9 +665,7 @@ const openDashboard = (params = {}) => {
     "cardQuery",
   );
 
-  cy.get("@dashboardId").then(dashboardId => {
-    visitDashboard(dashboardId, { params });
-  });
+  visitDashboard("@dashboardId", { params });
 };
 
 const openSlowDashboard = (params = {}) => {

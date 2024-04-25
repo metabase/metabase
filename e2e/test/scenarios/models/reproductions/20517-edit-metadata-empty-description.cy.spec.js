@@ -1,5 +1,5 @@
-import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -9,7 +9,7 @@ const modelDetails = {
     "source-table": ORDERS_ID,
     limit: 5,
   },
-  dataset: true,
+  type: "model",
 };
 
 describe("issue 20517", () => {

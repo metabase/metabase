@@ -1,13 +1,13 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visitQuestionAdhoc,
   visitQuestion,
   popover,
+  undoToast,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -119,7 +119,7 @@ describe("scenarios > admin > localization", () => {
 
     cy.get("@resultTable").within(() => {
       // The third cell in the first row (CREATED_AT_DAY)
-      cy.get(".cellData").eq(2).should("not.contain", "Sunday");
+      cy.get("[data-testid=cell-data]").eq(2).should("not.contain", "Sunday");
     });
   });
 
@@ -146,8 +146,7 @@ describe("scenarios > admin > localization", () => {
     cy.findByText("US Dollar").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Euro").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved");
+    undoToast().findByText("Changes saved").should("be.visible");
 
     visitQuestionAdhoc({
       display: "scalar",

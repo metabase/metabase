@@ -1,6 +1,7 @@
 import { screen } from "__support__/ui";
-import { setup as baseSetup } from "./setup";
+
 import type { SetupOpts } from "./setup";
+import { setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts = {}) {
   return baseSetup({

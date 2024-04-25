@@ -1,15 +1,16 @@
 import type { LocalFieldReference } from "metabase-types/api";
+
 import type { Card } from "./card";
 import type { DatabaseId } from "./database";
 import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
+import type { ParameterOptions } from "./parameters";
+import type { DownloadPermission } from "./permissions";
 import type {
   DatasetQuery,
   DatetimeUnit,
   DimensionReference,
   RelativeDatetimeUnit,
 } from "./query";
-import type { DownloadPermission } from "./permissions";
-import type { ParameterOptions } from "./parameters";
 import type { TableId } from "./table";
 
 export type RowValue = string | number | null | boolean;
@@ -114,7 +115,12 @@ export interface ErrorEmbedDataset {
   status: string;
 }
 
+/**
+ * This is the type of the `POST /api/dataset/native` response.
+ * We're mostly ignoring the `params` on the FE. It's added to the type only for completeness.
+ */
 export interface NativeQueryForm {
+  params: unknown;
   query: string;
 }
 
@@ -155,4 +161,4 @@ export interface TemplateTag {
   "snippet-name"?: string;
 }
 
-export type TemplateTags = { [key: TemplateTagName]: TemplateTag };
+export type TemplateTags = Record<TemplateTagName, TemplateTag>;

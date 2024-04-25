@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visitAlias,
@@ -6,8 +7,6 @@ import {
   queryBuilderHeader,
   queryBuilderMain,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -69,8 +68,8 @@ describe("issue 18061", () => {
           },
         );
 
-        cy.wrap(`/question/${card_id}`).as(`questionUrl`);
-        cy.wrap(`/dashboard/${dashboard_id}`).as(`dashboardUrl`);
+        cy.wrap(`/question/${card_id}`).as("questionUrl");
+        cy.wrap(`/dashboard/${dashboard_id}`).as("dashboardUrl");
 
         cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
         cy.intercept(
@@ -117,7 +116,7 @@ describe("issue 18061", () => {
       cy.findByTestId("qb-filters-panel")
         .findByText("ID is less than 2")
         .should("be.visible");
-      cy.get(".PinMap").should("be.visible");
+      cy.get("[data-element-id=pin-map]").should("be.visible");
 
       cy.window().should("have.prop", "beforeReload", true);
     });
@@ -147,12 +146,12 @@ describe("issue 18061", () => {
       cy.findByText("18061D");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18061");
-      cy.get(".PinMap");
+      cy.get("[data-element-id=pin-map]");
 
       addFilter("Twitter");
       cy.location("search").should("eq", "?category=Twitter");
       cy.findAllByTestId("no-results-image");
-      cy.get(".PinMap").should("not.exist");
+      cy.get("[data-element-id=pin-map]").should("not.exist");
     });
   });
 });

@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
@@ -6,7 +7,6 @@ import {
   rightSidebar,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { TIME_OPTIONS } from "./shared/constants";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -78,8 +78,8 @@ function getTitle(title) {
 }
 
 function assertOnHeaderCells(bucketSize) {
-  cy.get(".cellData").eq(0).contains(`Created At: ${bucketSize}`);
-  cy.get(".cellData").eq(1).contains("Count");
+  cy.get("[data-testid=cell-data]").eq(0).contains(`Created At: ${bucketSize}`);
+  cy.get("[data-testid=cell-data]").eq(1).contains("Count");
 }
 
 function assertOnTableValues(values) {

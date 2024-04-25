@@ -1,8 +1,10 @@
 import { screen } from "@testing-library/react";
-import { createMockRecentItem, createMockUser } from "metabase-types/api/mocks";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+
 import { setupRecentViewsEndpoints } from "__support__/server-mocks";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import type { User } from "metabase-types/api";
+import { createMockRecentItem, createMockUser } from "metabase-types/api/mocks";
+
 import { HomeRecentSection } from "./HomeRecentSection";
 
 interface SetupOpts {

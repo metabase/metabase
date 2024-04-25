@@ -3,6 +3,7 @@
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
   (:require
    [medley.core :as m]
+   [metabase.db.query :as mdb.query]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.interface :as mi]
@@ -49,8 +50,8 @@
      (let [fields       (-> (t2/select :model/Field :id [:in (set field-ids)])
                             (field/readable-fields-only)
                             (t2/hydrate :values))
-           field-values (->> (map #(select-keys (field-values/get-or-create-full-field-values! %)
-                                                [:field_id :human_readable_values :values])
+           field-values (->> (map #(select-keys (field-values/get-latest-full-field-values (:id %))
+                                    [:field_id :human_readable_values :values])
                                   fields)
                              (keep not-empty))]
        (m/index-by :field_id field-values)))))
@@ -100,28 +101,24 @@
     :impersonation
     (field-values/hash-key-for-impersonation field-id)))
 
-(defn create-advanced-field-values!
-  "Fetch and create a FieldValues for `field` with type `fv-type`.
-  The human_readable_values of Advanced FieldValues will be automatically fixed up based on the
-  list of values and human_readable_values of the full FieldValues of the same field."
+(defn prepare-advanced-field-values
+  "Fetch and construct the FieldValues for `field` with type `fv-type`. This does not do any insertion.
+   The human_readable_values of Advanced FieldValues will be automatically fixed up based on the
+   list of values and human_readable_values of the full FieldValues of the same field."
   [fv-type field hash-key constraints]
-  (when-let [{wrapped-values :values
-              :keys [has_more_values]} (fetch-advanced-field-values fv-type field constraints)]
+  (when-let [{wrapped-values :values :keys [has_more_values]}
+             (fetch-advanced-field-values fv-type field constraints)]
     (let [;; each value in `wrapped-values` is a 1-tuple, so unwrap the raw values for storage
           values                (map first wrapped-values)
-          ;; If the full FieldValues of this field has a human-readable-values, fix it with the new values
-          human-readable-values (field-values/fixup-human-readable-values
-                                  (t2/select-one FieldValues
-                                                 :field_id (:id field)
-                                                 :type :full)
-                                  values)]
-      (first (t2/insert-returning-instances! FieldValues
-                                             :field_id (:id field)
-                                             :type fv-type
-                                             :hash_key hash-key
-                                             :has_more_values has_more_values
-                                             :human_readable_values human-readable-values
-                                             :values values)))))
+          ;; If the full FieldValues of this field have human-readable-values, ensure that we reuse them
+          full-field-values     (field-values/get-latest-full-field-values (:id field))
+          human-readable-values (field-values/fixup-human-readable-values full-field-values values)]
+      {:field_id              (:id field)
+       :type                  fv-type
+       :hash_key              hash-key
+       :has_more_values       has_more_values
+       :human_readable_values human-readable-values
+       :values                values})))
 
 (defn get-or-create-advanced-field-values!
   "Fetch an Advanced FieldValues with type `fv-type` for a `field`, creating them if needed.
@@ -130,18 +127,20 @@
    (get-or-create-advanced-field-values! fv-type field nil))
 
   ([fv-type field constraints]
-   (let [hash-key (hash-key-for-advanced-field-values fv-type (:id field) constraints)
-         fv       (or (t2/select-one FieldValues :field_id (:id field)
-                                     :type fv-type
-                                     :hash_key hash-key)
-                      (create-advanced-field-values! fv-type field hash-key constraints))]
+   (let [hash-key   (hash-key-for-advanced-field-values fv-type (:id field) constraints)
+         select-kvs {:field_id (:id field) :type fv-type :hash_key hash-key}
+         fv         (mdb.query/select-or-insert! :model/FieldValues select-kvs
+                      #(prepare-advanced-field-values fv-type field hash-key constraints))]
      (cond
        (nil? fv) nil
 
        ;; If it's expired, delete then try to re-create it
-       (field-values/advanced-field-values-expired? fv) (do
-                                                          (t2/delete! FieldValues :id (:id fv))
-                                                          (recur fv-type field constraints))
+       (field-values/advanced-field-values-expired? fv)
+       (do
+         ;; It's possible another process has already recalculated this, but spurious recalculations are OK.
+         (t2/delete! FieldValues :id (:id fv))
+         (recur fv-type field constraints))
+
        :else fv))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

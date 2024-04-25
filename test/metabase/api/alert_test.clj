@@ -12,7 +12,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
    [metabase.models.pulse-test :as pulse-test]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
@@ -34,7 +34,7 @@
       (select-keys [:name :description :display])
       (update :display name)
       (update :collection_id boolean)
-      (assoc :id true, :include_csv false, :include_xls false, :dashboard_card_id false,
+      (assoc :id true, :include_csv false, :include_xls false, :format_rows true, :dashboard_card_id false,
              :dashboard_id false, :parameter_mappings nil)))
 
 (defn- recipient-details [user-kwd]
@@ -134,10 +134,10 @@
 ;; authentication test on every single individual endpoint
 
 (deftest auth-tests
-  (is (= (get mw.util/response-unauthentic :body)
+  (is (= (get req.util/response-unauthentic :body)
          (client/client :get 401 "alert")))
 
-  (is (= (get mw.util/response-unauthentic :body)
+  (is (= (get req.util/response-unauthentic :body)
          (client/client :put 401 "alert/13"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -209,7 +209,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest post-alert-test
-  (is (= {:errors {:alert_condition "enum of rows, goal"}
+  (is (= {:errors          {:alert_condition "enum of rows, goal"}
           :specific-errors {:alert_condition ["should be either rows or goal, received: \"not rows\""]}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition "not rows"
@@ -224,7 +224,7 @@
            {:card "value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`."}
            :specific-errors
            {:card
-            ["value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., received: nil"]}}
+            ["value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`., received: nil"]}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition  "rows"
                                     :alert_first_only false})))
@@ -432,7 +432,7 @@
            {:card "nullable value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`."}
            :specific-errors
            {:card
-            ["value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., received: \"foobar\""]}}
+            ["value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`., received: \"foobar\""]}}
          (mt/user-http-request
           :rasta :put 400 "alert/1" {:alert_condition  "rows"
                                      :alert_first_only false

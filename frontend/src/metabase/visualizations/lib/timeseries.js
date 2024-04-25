@@ -1,9 +1,8 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";
 
 import { parseTimestamp } from "metabase/lib/time";
-import { isDate } from "metabase-lib/types/utils/isa";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
 
 import { unexpectedTimezoneWarning, multipleTimezoneWarning } from "./warnings";
 

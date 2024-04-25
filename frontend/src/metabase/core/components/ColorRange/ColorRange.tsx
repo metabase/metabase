@@ -1,7 +1,9 @@
 import type { MouseEvent, HTMLAttributes, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import _ from "underscore";
+
 import { getColorScale } from "metabase/lib/colors/scales";
+
 import { ColorRangeItem, ColorRangeRoot } from "./ColorRange.styled";
 
 export type ColorRangeAttributes = Omit<

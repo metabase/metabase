@@ -22,6 +22,7 @@ Paid plans include more ways to authenticate people and manage groups.
   - [Setting up SAML with Keycloak](../people-and-groups/saml-keycloak.md)
   - [Setting up SAML with Okta](../people-and-groups/saml-okta.md)
 - [Authenticating with JWT](../people-and-groups/authenticating-with-jwt.md)
+- [Multiple domains with Google Sign-in](../people-and-groups/google-and-ldap.md#multiple-domains-for-google-sign-in)
 
 ## Permissions
 

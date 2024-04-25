@@ -1,5 +1,6 @@
-import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
 import { screen } from "__support__/ui";
+import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
+
 import { setup } from "./setup";
 
 describe("VisualizationError (OSS)", () => {

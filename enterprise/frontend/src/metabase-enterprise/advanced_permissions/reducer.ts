@@ -1,17 +1,21 @@
-import { createAction, createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
+import { createAction, createSlice } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
-import type { GroupId, Impersonation } from "metabase-types/api";
-import type { EntityId } from "metabase/admin/permissions/types";
-import {
-  DATABASES_BASE_PATH,
-  GROUPS_BASE_PATH,
-} from "metabase/admin/permissions/utils/urls";
+
 import {
   LOAD_DATA_PERMISSIONS,
   SAVE_DATA_PERMISSIONS,
   UPDATE_DATA_PERMISSION,
 } from "metabase/admin/permissions/permissions";
+import {
+  DataPermissionValue,
+  type EntityId,
+} from "metabase/admin/permissions/types";
+import {
+  DATABASES_BASE_PATH,
+  GROUPS_BASE_PATH,
+} from "metabase/admin/permissions/utils/urls";
+import type { GroupId, Impersonation } from "metabase-types/api";
 
 export const getImpersonatedPostAction = (
   entityId: EntityId,
@@ -61,7 +65,7 @@ export const advancedPermissionsSlice = createSlice({
       .addCase(LOAD_DATA_PERMISSIONS, () => initialState)
       .addCase(SAVE_DATA_PERMISSIONS, () => initialState)
       .addCase(UPDATE_DATA_PERMISSION, (state, { payload }: any) => {
-        if (payload.value === "impersonated") {
+        if (payload?.value === DataPermissionValue.IMPERSONATED) {
           return state;
         }
 

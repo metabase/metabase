@@ -1,11 +1,11 @@
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openReviewsTable,
   popover,
   summarize,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE_ID, PEOPLE, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -39,7 +39,7 @@ describe("issue 17768", () => {
 
     popover().within(() => {
       cy.findByText("ID")
-        .closest(".List-section")
+        .closest("[data-element-id=list-section]")
         .realHover()
         .contains("Auto bin")
         .should("not.exist");

@@ -1,7 +1,7 @@
-import type { Location } from "history";
 import type { Selector } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
-import { getUser } from "metabase/selectors/user";
+import type { Location } from "history";
+
 import {
   getIsEditing as getIsEditingDashboard,
   getDashboard,
@@ -12,6 +12,7 @@ import {
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import { getUser } from "metabase/selectors/user";
 import type { State } from "metabase-types/store";
 
 export interface RouterProps {
@@ -19,6 +20,7 @@ export interface RouterProps {
 }
 
 const PATHS_WITHOUT_NAVBAR = [
+  /^\/setup/,
   /^\/auth/,
   /\/model\/.*\/query/,
   /\/model\/.*\/metadata/,

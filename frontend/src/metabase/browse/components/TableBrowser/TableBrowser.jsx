@@ -1,19 +1,22 @@
-import { Fragment } from "react";
 import PropTypes from "prop-types";
+import { Fragment } from "react";
 import { t } from "ttag";
-import { color } from "metabase/lib/colors";
-import * as Urls from "metabase/lib/urls";
-import { isSyncInProgress } from "metabase/lib/syncing";
-import Database from "metabase/entities/databases";
+
+import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
 import EntityItem from "metabase/components/EntityItem";
+import Database from "metabase/entities/databases";
+import { color } from "metabase/lib/colors";
+import { isSyncInProgress } from "metabase/lib/syncing";
+import * as Urls from "metabase/lib/urls";
 import { Icon } from "metabase/ui";
-import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 import {
   isVirtualCardId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/metadata/utils/saved-questions";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 
+import { trackTableClick } from "../../analytics";
 import { BrowseHeaderContent } from "../BrowseHeader.styled";
+
 import {
   TableActionLink,
   TableCard,
@@ -62,6 +65,7 @@ const TableBrowser = ({
                 to={
                   !isSyncInProgress(table) ? getTableUrl(table, metadata) : ""
                 }
+                onClick={() => trackTableClick(table.id)}
               >
                 <TableBrowserItem
                   database={database}

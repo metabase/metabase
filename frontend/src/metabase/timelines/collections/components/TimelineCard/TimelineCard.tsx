@@ -1,10 +1,12 @@
 import { memo } from "react";
 import { msgid, ngettext, t } from "ttag";
-import * as Urls from "metabase/lib/urls";
-import { getEventCount, getTimelineName } from "metabase/lib/timelines";
+
 import EntityMenu from "metabase/components/EntityMenu";
-import type { Timeline } from "metabase-types/api";
+import { getEventCount, getTimelineName } from "metabase/lib/timelines";
+import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
+import type { Timeline } from "metabase-types/api";
+
 import {
   CardBody,
   CardCount,

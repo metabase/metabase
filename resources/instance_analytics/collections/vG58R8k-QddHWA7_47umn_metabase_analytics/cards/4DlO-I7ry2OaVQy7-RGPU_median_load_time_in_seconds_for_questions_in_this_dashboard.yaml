@@ -56,4 +56,6 @@ serdes/meta:
 - id: 4DlO-I7ry2OaVQy7-RGPU
   label: median_load_time_in_seconds_for_questions_in_this_dashboard
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (13e6090)
+type: question

@@ -1,182 +1,152 @@
-import { useMemo } from "react";
+import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
-import Tooltip from "metabase/core/components/Tooltip";
-import { FieldPicker } from "metabase/common/components/FieldPicker";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
-import { DATA_BUCKET } from "metabase/containers/DataPicker";
-
+import { DATA_BUCKET } from "metabase/containers/DataPicker/constants";
 import Tables from "metabase/entities/tables";
-import { getMetadata } from "metabase/selectors/metadata";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-
-import type { TableId } from "metabase-types/api";
+import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Table from "metabase-lib/metadata/Table";
+import type Table from "metabase-lib/v1/metadata/Table";
+import type { TableId } from "metabase-types/api";
 
 import { NotebookCellItem } from "../../../NotebookCell";
-import { FIELDS_PICKER_STYLES } from "../../../FieldsPickerIcon";
-import { PickerButton, ColumnPickerButton } from "./JoinTablePicker.styled";
+
+import {
+  ColumnPickerButton,
+  TablePickerButton,
+} from "./JoinTablePicker.styled";
 
 interface JoinTablePickerProps {
   query: Lib.Query;
-  stageIndex: number;
-  columns?: Lib.ColumnMetadata[];
-  table?: Lib.CardMetadata | Lib.TableMetadata;
-  isStartedFromModel?: boolean;
-  readOnly?: boolean;
+  table: Lib.Joinable | undefined;
+  tableName: string | undefined;
   color: string;
-  isColumnSelected: (column: Lib.ColumnMetadata) => boolean;
-  onChangeTable: (joinable: Lib.Joinable) => void;
-  onChangeFields: (columns: Lib.JoinFields) => void;
+  isReadOnly: boolean;
+  isModelDataSource: boolean;
+  columnPicker: ReactNode;
+  onChange?: (table: Lib.Joinable) => void;
 }
 
 export function JoinTablePicker({
   query,
-  stageIndex,
-  columns = [],
   table,
-  isStartedFromModel,
-  readOnly = false,
+  tableName,
   color,
-  isColumnSelected,
-  onChangeTable,
-  onChangeFields,
+  isReadOnly,
+  isModelDataSource,
+  columnPicker,
+  onChange,
 }: JoinTablePickerProps) {
-  const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
+  const dispatch = useDispatch();
 
-  const tableInfo = table ? Lib.displayInfo(query, stageIndex, table) : null;
-  const pickerInfo = table ? Lib.pickerInfo(query, table) : null;
-
-  const databaseId = pickerInfo?.databaseId || Lib.databaseID(query);
-  const tableId = pickerInfo?.tableId || pickerInfo?.cardId;
-
-  const canChangeTable = !readOnly && !table;
+  const databaseId = useMemo(() => {
+    return Lib.databaseID(query);
+  }, [query]);
 
   const databases = useMemo(() => {
     const database = metadata.database(databaseId);
     return [database, metadata.savedQuestionsDatabase()].filter(Boolean);
   }, [databaseId, metadata]);
 
-  const selectedDataBucketId = useMemo(() => {
-    if (tableId) {
-      return undefined;
-    }
-    if (isStartedFromModel) {
-      return DATA_BUCKET.DATASETS;
-    }
-    return undefined;
-  }, [tableId, isStartedFromModel]);
+  const pickerInfo = useMemo(() => {
+    return table ? Lib.pickerInfo(query, table) : null;
+  }, [query, table]);
+
+  const tableId = pickerInfo?.tableId ?? pickerInfo?.cardId;
+  const tableFilter = (table: Table) => !tableId || table.db_id === databaseId;
+  const isDisabled = isReadOnly;
 
   const handleTableChange = async (tableId: TableId) => {
     await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
-    onChangeTable(Lib.tableOrCardMetadata(query, tableId));
+    onChange?.(Lib.tableOrCardMetadata(query, tableId));
   };
-
-  const tableFilter = (table: Table) => !tableId || table.db_id === databaseId;
 
   return (
     <NotebookCellItem
       inactive={!table}
-      readOnly={readOnly}
-      disabled={!canChangeTable}
+      readOnly={isReadOnly}
+      disabled={isDisabled}
       color={color}
-      aria-label={t`Right table`}
       right={
-        table && !readOnly ? (
-          <JoinTableColumnsPicker
-            query={query}
-            stageIndex={stageIndex}
-            columns={columns}
-            isColumnSelected={isColumnSelected}
-            onChange={onChangeFields}
-          />
+        table != null && !isReadOnly ? (
+          <JoinTableColumnPicker columnPicker={columnPicker} />
         ) : null
       }
-      rightContainerStyle={FIELDS_PICKER_STYLES.notebookRightItemContainer}
+      containerStyle={CONTAINER_STYLE}
+      rightContainerStyle={RIGHT_CONTAINER_STYLE}
+      aria-label={t`Right table`}
     >
       <DataSourceSelector
         hasTableSearch
         canChangeDatabase={false}
         isInitiallyOpen={!table}
         databases={databases}
-        tableFilter={tableFilter}
-        selectedDataBucketId={selectedDataBucketId}
         selectedDatabaseId={databaseId}
         selectedTableId={tableId}
+        selectedDataBucketId={getSelectedDataBucketId(
+          pickerInfo,
+          isModelDataSource,
+        )}
+        tableFilter={tableFilter}
         setSourceTableFn={handleTableChange}
         triggerElement={
-          <PickerButton disabled={!canChangeTable}>
-            {tableInfo?.displayName || t`Pick data…`}
-          </PickerButton>
+          <TablePickerButton disabled={isDisabled}>
+            {tableName || t`Pick data…`}
+          </TablePickerButton>
         }
       />
     </NotebookCellItem>
   );
 }
 
-interface JoinTableColumnsPickerProps {
-  query: Lib.Query;
-  stageIndex: number;
-  columns: Lib.ColumnMetadata[];
-  isColumnSelected: (column: Lib.ColumnMetadata) => boolean;
-  onChange: (columns: Lib.JoinFields) => void;
+interface JoinTableColumnPickerProps {
+  columnPicker: ReactNode;
 }
 
-function JoinTableColumnsPicker({
-  query,
-  stageIndex,
-  columns,
-  isColumnSelected,
-  onChange,
-}: JoinTableColumnsPickerProps) {
-  const handleToggle = (changedIndex: number, isSelected: boolean) => {
-    const nextColumns = columns.filter((_, currentIndex) =>
-      currentIndex === changedIndex
-        ? isSelected
-        : isColumnSelected(columns[currentIndex]),
-    );
-    onChange(nextColumns);
-  };
-
-  const handleSelectAll = () => {
-    onChange("all");
-  };
-
-  const handleSelectNone = () => {
-    onChange("none");
-  };
+function JoinTableColumnPicker({ columnPicker }: JoinTableColumnPickerProps) {
+  const [isOpened, setIsOpened] = useState(false);
 
   return (
-    <TippyPopoverWithTrigger
-      popoverContent={
-        <FieldPicker
-          query={query}
-          stageIndex={stageIndex}
-          columns={columns}
-          isColumnSelected={isColumnSelected}
-          onToggle={handleToggle}
-          onSelectAll={handleSelectAll}
-          onSelectNone={handleSelectNone}
-          data-testid="join-columns-picker"
-        />
-      }
-      renderTrigger={({ onClick }) => (
-        <div>
-          <Tooltip tooltip={t`Pick columns`}>
-            <ColumnPickerButton
-              onClick={onClick}
-              aria-label={t`Pick columns`}
-              data-testid="fields-picker"
-            >
-              <Icon name="chevrondown" />
-            </ColumnPickerButton>
-          </Tooltip>
-        </div>
-      )}
-    />
+    <Popover opened={isOpened} onChange={setIsOpened}>
+      <Popover.Target>
+        <Tooltip label={t`Pick columns`}>
+          <ColumnPickerButton
+            onClick={() => setIsOpened(!isOpened)}
+            aria-label={t`Pick columns`}
+            data-testid="fields-picker"
+          >
+            <Icon name="chevrondown" />
+          </ColumnPickerButton>
+        </Tooltip>
+      </Popover.Target>
+      <Popover.Dropdown>{columnPicker}</Popover.Dropdown>
+    </Popover>
   );
+}
+
+const CONTAINER_STYLE = {
+  padding: 0,
+};
+
+const RIGHT_CONTAINER_STYLE = {
+  width: 37,
+  height: 37,
+  padding: 0,
+};
+
+function getSelectedDataBucketId(
+  pickerInfo: Lib.PickerInfo | null,
+  isModelDataSource: boolean,
+) {
+  if (pickerInfo?.tableId != null) {
+    return undefined;
+  }
+  if (isModelDataSource) {
+    return DATA_BUCKET.MODELS;
+  }
+  return undefined;
 }

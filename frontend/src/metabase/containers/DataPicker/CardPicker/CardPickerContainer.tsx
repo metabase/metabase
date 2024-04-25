@@ -1,25 +1,21 @@
 import { useCallback, useMemo } from "react";
-import _ from "underscore";
 import { connect } from "react-redux";
+import _ from "underscore";
 
 import Collections from "metabase/entities/collections";
 import Schemas from "metabase/entities/schemas";
-
 import { getUser } from "metabase/selectors/user";
-
+import type Schema from "metabase-lib/v1/metadata/Schema";
+import type Table from "metabase-lib/v1/metadata/Table";
+import { getCollectionVirtualSchemaId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type Table from "metabase-lib/metadata/Table";
-import type Schema from "metabase-lib/metadata/Schema";
-
-import { getCollectionVirtualSchemaId } from "metabase-lib/metadata/utils/saved-questions";
 
 import type { DataPickerProps, DataPickerSelectedItem } from "../types";
 import useSelectedTables from "../useSelectedTables";
 
-import { buildCollectionTree } from "./utils";
-
 import CardPickerView from "./CardPickerView";
+import { buildCollectionTree } from "./utils";
 
 interface CardPickerOwnProps extends DataPickerProps {
   targetModel: "model" | "question";

@@ -1,3 +1,4 @@
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   getDashboardCard,
@@ -12,9 +13,8 @@ import {
   resetSnowplow,
   expectNoBadSnowplowEvents,
   expectGoodSnowplowEvent,
+  setFilter,
 } from "e2e/support/helpers";
-
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > dashboard > text and headings", () => {
   beforeEach(() => {
@@ -142,11 +142,9 @@ describe("scenarios > dashboard > text and headings", () => {
 
     it("should let you add a parameter to a dashboard with a text box (metabase#11927)", () => {
       addTextBox("text text text");
-      cy.findByLabelText("Add a filter").click();
-      popover().within(() => {
-        cy.findByText("Text or Category").click();
-        cy.findByText("Is").click();
-      });
+
+      setFilter("Text or Category", "Is");
+
       selectDashboardFilter(cy.findAllByTestId("dashcard").first(), "Name");
       cy.findByTestId("edit-bar").findByText("Save").click();
 

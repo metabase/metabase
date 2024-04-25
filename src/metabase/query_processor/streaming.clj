@@ -1,20 +1,23 @@
 (ns metabase.query-processor.streaming
   (:require
-   [clojure.core.async :as a]
    [metabase.async.streaming-response :as streaming-response]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.query-processor.context :as qp.context]
-   [metabase.query-processor.context.default :as context.default]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming.csv :as qp.csv]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.json :as qp.json]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io OutputStream)
-   (metabase.async.streaming_response StreamingResponse)))
+   (metabase.async.streaming_response StreamingResponse)
+   (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
 
@@ -106,91 +109,96 @@
                         deduped-cols)]
     [ordered-cols output-order]))
 
-(defn- streaming-rff [results-writer]
+(mu/defn ^:private streaming-rff :- ::qp.schema/rff
+  [results-writer :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
     (let [[ordered-cols output-order] (order-cols cols viz-settings)
           viz-settings'               (assoc viz-settings :output-order output-order)
           row-count                   (volatile! 0)]
       (fn
         ([]
+         (log/trace "Writing initial metadata to results writer.")
          (qp.si/begin! results-writer
                        {:data (assoc initial-metadata :ordered-cols ordered-cols)}
                        viz-settings')
          {:data initial-metadata})
 
-        ([metadata]
-         (assoc metadata
+        ([result]
+         (assoc result
                 :row_count @row-count
                 :status :completed))
 
         ([metadata row]
+         (log/trace "Writing one row to results writer.")
          (qp.si/write-row! results-writer row (dec (vswap! row-count inc)) ordered-cols viz-settings')
          metadata)))))
 
-(defn- streaming-reducedf [results-writer ^OutputStream os]
-  (fn [final-metadata context]
-    (qp.si/finish! results-writer final-metadata)
-    (u/ignore-exceptions
-      (.flush os)
-      (.close os))
-    (qp.context/resultf final-metadata context)))
+(mu/defn ^:private streaming-result-fn :- fn?
+  [results-writer   :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)
+   ^OutputStream os :- (lib.schema.common/instance-of-class OutputStream)]
+  (let [orig qp.pipeline/*result*]
+    (fn result [result]
+      (when (= (:status result) :completed)
+        (log/debug "Finished writing results; closing results writer.")
+        (try
+          (qp.si/finish! results-writer result)
+          (catch EofException e
+            (log/error e "Client closed connection prematurely")))
+        (u/ignore-exceptions
+          (.flush os)
+          (.close os)))
+      (orig result))))
 
-(defn streaming-context-and-rff
+(defn do-with-streaming-rff
   "Context to pass to the QP to streaming results as `export-format` to an output stream. Can be used independently of
   the normal `streaming-response` macro, which is geared toward Ring responses.
 
     (with-open [os ...]
-      (let [{:keys [rff context]} (qp.streaming/streaming-context-and-rff :csv os canceled-chan)]
-        (qp/process-query query rff context)))"
-  ([export-format os]
-   (let [results-writer (qp.si/streaming-results-writer export-format os)]
-     {:context (merge (context.default/default-context)
-                      {:reducedf (streaming-reducedf results-writer os)})
-      :rff     (streaming-rff results-writer)}))
+      (qp.streaming/do-with-streaming-rff
+       :csv os
+       (fn [rff]
+         (qp/process-query query rff))))"
+  [export-format os f]
+  (let [results-writer (qp.si/streaming-results-writer export-format os)
+        rff            (streaming-rff results-writer)]
+    (binding [qp.pipeline/*result* (streaming-result-fn results-writer os)]
+      (f rff))))
 
-  ([export-format os canceled-chan]
-   (assoc-in (streaming-context-and-rff export-format os) [:context :canceled-chan] canceled-chan)))
-
-(defn- await-async-result [out-chan canceled-chan]
-  ;; if we get a cancel message, close `out-chan` so the query will be canceled
-  (a/go
-    (when (a/<! canceled-chan)
-      (a/close! out-chan)))
-  ;; block until `out-chan` closes or gets a result
-  (a/<!! out-chan))
-
-(defn streaming-response*
-  "Impl for `streaming-response`."
+(defn -streaming-response
+  "Impl for [[streaming-response]]."
   ^StreamingResponse [export-format filename-prefix f]
   (streaming-response/streaming-response (qp.si/stream-options export-format filename-prefix) [os canceled-chan]
-    (let [{:keys [rff context]} (streaming-context-and-rff export-format os canceled-chan)
-          result                (try
-                                  (f {:rff rff, :context context})
-                                  (catch Throwable e
-                                    e))
-          result                (if (instance? ManyToManyChannel result)
-                                  (await-async-result result canceled-chan)
-                                  result)]
-      (when (or (instance? Throwable result)
-                (= (:status result) :failed))
-        (streaming-response/write-error! os result)))))
+    (do-with-streaming-rff
+     export-format os
+     (^:once fn* [rff]
+      (let [result (try
+                     (f rff)
+                     (catch Throwable e
+                       e))]
+        (assert (some? result) "QP unexpectedly returned nil.")
+        ;; if you see this, it's because it's old code written before the changes in #35465... rework the code in
+        ;; question to return a response directly instead of a core.async channel
+        (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
+        (when (or (instance? Throwable result)
+                  (= (:status result) :failed))
+          (streaming-response/write-error! os result)))))))
 
 (defmacro streaming-response
   "Return results of processing a query as a streaming response. This response implements the appropriate Ring/Compojure
-  protocols, so return or `respond` with it directly. Pass the provided `context` to your query processor function of
-  choice. `export-format` is one of `:api` (for normal JSON API responses), `:json`, `:csv`, or `:xlsx` (for downloads).
+  protocols, so return or `respond` with it directly. `export-format` is one of `:api` (for normal JSON API
+  responses), `:json`, `:csv`, or `:xlsx` (for downloads).
 
   Typical example:
 
     (api/defendpoint-schema GET \"/whatever\" []
-      (qp.streaming/streaming-response [{:keys [rff context]} :json]
-        (qp/process-query-and-save-with-max-results-constraints! (assoc query :async true) rff context)))
+      (qp.streaming/streaming-response [rff :json]
+        (qp/process-query (qp/userland-query-with-default-constraints query) rff)))
 
   Handles either async or sync QP results, but you should prefer returning sync results so we can handle query
   cancelations properly."
   {:style/indent 1}
   [[map-binding export-format filename-prefix] & body]
-  `(streaming-response* ~export-format ~filename-prefix (bound-fn [~map-binding] ~@body)))
+  `(-streaming-response ~export-format ~filename-prefix (^:once fn* [~map-binding] ~@body)))
 
 (defn export-formats
   "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, and `:api` (normal JSON API results

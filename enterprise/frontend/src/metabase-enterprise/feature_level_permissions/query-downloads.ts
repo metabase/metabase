@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import type { Dataset } from "metabase-types/api/dataset";
 
 export const canDownloadResults = (result: Dataset) =>

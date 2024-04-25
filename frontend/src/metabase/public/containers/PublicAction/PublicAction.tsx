@@ -1,11 +1,9 @@
 import { useCallback, useState } from "react";
 
-import title from "metabase/hoc/Title";
-import { PublicApi } from "metabase/services";
-
 import ActionForm from "metabase/actions/components/ActionForm";
 import { getSuccessMessage } from "metabase/actions/utils";
-
+import title from "metabase/hoc/Title";
+import { PublicApi } from "metabase/services";
 import type {
   ParametersForActionExecution,
   WritebackAction,

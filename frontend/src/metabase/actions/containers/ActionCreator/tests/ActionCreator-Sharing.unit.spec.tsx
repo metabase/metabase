@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor } from "__support__/ui";
-
 import {
   createMockImplicitQueryAction,
   createMockQueryAction,
@@ -112,7 +111,7 @@ describe("ActionCreator > Sharing", () => {
           isPublicSharingEnabled: false,
         });
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByRole("button", { name: "Action settings" }),
         );
         expect(
@@ -128,7 +127,7 @@ describe("ActionCreator > Sharing", () => {
           isPublicSharingEnabled: true,
         });
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByRole("button", { name: "Action settings" }),
         );
         expect(

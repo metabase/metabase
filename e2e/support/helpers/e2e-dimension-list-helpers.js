@@ -15,19 +15,19 @@ export function getDimensionByName({ name, index = 0, isSelected }) {
 export function getBinningButtonForDimension({ name, index, isSelected }) {
   return getDimensionByName({ name, index, isSelected })
     .realHover()
-    .find(`[data-testid="dimension-list-item-binning"]`);
+    .find('[data-testid="dimension-list-item-binning"]');
 }
 
 export function getAddDimensionButton({ name, index, isSelected }) {
   return getDimensionByName({ name, index, isSelected })
     .realHover()
-    .find(`[aria-label="Add dimension"]`);
+    .find('[aria-label="Add dimension"]');
 }
 
 export function getRemoveDimensionButton({ name, index, isSelected }) {
   return getDimensionByName({ name, index, isSelected })
     .realHover()
-    .find(`[aria-label="Remove dimension"]`);
+    .find('[aria-label="Remove dimension"]');
 }
 
 export function changeBinningForDimension({

@@ -23,12 +23,12 @@ jobs:
           echo "View the failed run attempt (#${{ github.event.workflow_run.run_attempt }}) using the following link:" >> $GITHUB_STEP_SUMMARY
           echo "${{ github.event.workflow_run.html_url }}" >> $GITHUB_STEP_SUMMARY
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: lts/Hydrogen # 18.x.x
       - run: npm install @slack/web-api
       - name: Trigger a re-run
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: | # js
             const MAX_ATTEMPTS = 1;
@@ -45,7 +45,7 @@ jobs:
                 repo: context.repo.repo,
                 run_id: ${{ github.event.workflow_run.id }},
               });
-            } else {
+            } else if (!BRANCH.includes('backport-')) {
               // notify slack of repeated failure
               const { WebClient } = require('@slack/web-api');
               const slack = new WebClient('${{ secrets.SLACK_BOT_TOKEN }}');

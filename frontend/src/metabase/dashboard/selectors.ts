@@ -1,30 +1,33 @@
-import _ from "underscore";
 import { createSelector } from "@reduxjs/toolkit";
-
-import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
-import { getMetadata } from "metabase/selectors/metadata";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { createCachedSelector } from "re-reselect";
+import { createSelectorCreator, lruMemoize } from "reselect";
+import _ from "underscore";
 
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
-
+import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
-
+import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import { getMetadata } from "metabase/selectors/metadata";
+import Question from "metabase-lib/v1/Question";
 import type {
-  Bookmark,
   Card,
-  DashboardCard,
+  CardId,
   DashboardId,
   DashCardId,
+  DashboardCard,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,
   State,
 } from "metabase-types/store";
+
+import { isQuestionCard, isQuestionDashCard } from "./utils";
 
 type SidebarState = State["dashboard"]["sidebar"];
 
@@ -40,8 +43,10 @@ function isEditParameterSidebar(
   return sidebar.name === SIDEBAR_NAME.editParameter;
 }
 
+const createDeepEqualSelector = createSelectorCreator(lruMemoize, _.isEqual);
+
 export const getDashboardBeforeEditing = (state: State) =>
-  state.dashboard.isEditing;
+  state.dashboard.editingDashboard;
 
 export const getIsEditing = (state: State) =>
   Boolean(getDashboardBeforeEditing(state));
@@ -87,6 +92,10 @@ export const getIsAddParameterPopoverOpen = (state: State) =>
   state.dashboard.isAddParameterPopoverOpen;
 
 export const getSidebar = (state: State) => state.dashboard.sidebar;
+export const getIsSidebarOpen = createSelector(
+  [getSidebar],
+  sidebar => !!sidebar.name,
+);
 export const getIsSharing = createSelector(
   [getSidebar],
   sidebar => sidebar.name === SIDEBAR_NAME.sharing,
@@ -128,15 +137,6 @@ export const getLoadingDashCards = (state: State) =>
 export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   const dashboards = getDashboards(state);
   return dashboards[dashboardId];
-};
-
-export const getSingleDashCardData = (state: State, dashcardId: DashCardId) => {
-  const dashcard = getDashCardById(state, dashcardId);
-  const cardDataMap = getCardData(state);
-  if (!dashcard?.card_id || !cardDataMap) {
-    return;
-  }
-  return cardDataMap?.[dashcard.id]?.[dashcard.card_id]?.data;
 };
 
 export const getDashboardComplete = createSelector(
@@ -230,20 +230,6 @@ export const getDocumentTitle = (state: State) =>
 export const getIsNavigatingBackToDashboard = (state: State) =>
   state.dashboard.isNavigatingBackToDashboard;
 
-type IsBookmarkedSelectorProps = {
-  bookmarks: Bookmark[];
-  dashboardId: DashboardId;
-};
-
-export const getIsBookmarked = (
-  state: State,
-  { bookmarks, dashboardId }: IsBookmarkedSelectorProps,
-) =>
-  bookmarks.some(
-    bookmark =>
-      bookmark.type === "dashboard" && bookmark.item_id === dashboardId,
-  );
-
 export const getIsDirty = createSelector(
   [getDashboard, getDashcards],
   (dashboard, dashcards) => {
@@ -310,22 +296,109 @@ export const getParameterTarget = createSelector(
   },
 );
 
-export const getParameters = createSelector(
-  [getDashboardComplete, getMetadata],
-  (dashboard, metadata) => {
-    if (!dashboard || !metadata) {
-      return [];
-    }
-    return getDashboardUiParameters(dashboard, metadata);
+export const getQuestions = (state: State) => {
+  const dashboard = getDashboard(state);
+
+  if (!dashboard) {
+    return [];
+  }
+
+  const dashcardIds = dashboard.dashcards;
+
+  const questionsById = dashcardIds.reduce<Record<CardId, Question>>(
+    (acc, dashcardId) => {
+      const dashcard = getDashCardById(state, dashcardId);
+
+      if (isQuestionDashCard(dashcard)) {
+        const cards = [dashcard.card, ...(dashcard.series ?? [])];
+
+        for (const card of cards) {
+          const question = getQuestionByCard(state, { card });
+          if (question) {
+            acc[card.id] = question;
+          }
+        }
+      }
+
+      return acc;
+    },
+    {},
+  );
+
+  return questionsById;
+};
+
+// getQuestions selector returns an array with stable references to the questions
+// but array itself is always new, so it may cause troubles in re-renderings
+const getQuestionsMemoized = createDeepEqualSelector(
+  [getQuestions],
+  questions => {
+    return questions;
   },
 );
 
-export const getParameterMappingOptions = createSelector(
-  [getMetadata, getEditingParameter, getCard, getDashCard],
-  (metadata, parameter, card, dashcard) => {
-    return _getParameterMappingOptions(metadata, parameter, card, dashcard);
+export const getParameters = createSelector(
+  [getDashboardComplete, getMetadata, getQuestionsMemoized],
+  (dashboard, metadata, questions) => {
+    if (!dashboard || !metadata) {
+      return [];
+    }
+
+    return getDashboardUiParameters(
+      dashboard.dashcards,
+      dashboard.parameters,
+      metadata,
+      questions,
+    );
   },
 );
+
+export const getMissingRequiredParameters = createSelector(
+  [getParameters],
+  parameters =>
+    parameters.filter(
+      p =>
+        p.required &&
+        (!p.default || (Array.isArray(p.default) && p.default.length === 0)),
+    ),
+);
+
+/**
+ * It's a memoized version, it uses LRU cache per card identified by id
+ */
+export const getQuestionByCard = createCachedSelector(
+  [(_state: State, props: { card: Card }) => props.card, getMetadata],
+  (card, metadata) => {
+    return isQuestionCard(card) ? new Question(card, metadata) : undefined;
+  },
+)((_state, props) => {
+  return props.card.id;
+});
+
+export const getDashcardParameterMappingOptions = createCachedSelector(
+  [getQuestionByCard, getEditingParameter, getCard, getDashCard],
+  (question, parameter, card, dashcard) => {
+    return _getParameterMappingOptions(question, parameter, card, dashcard);
+  },
+)((state, props) => {
+  return props.card.id ?? props.dashcard.id;
+});
+
+// Embeddings might be published without passing embedding_params to the server,
+// in which case it's an empty object. We should treat such situations with
+// caution, assuming that an absent parameter is "disabled".
+export function getEmbeddedParameterVisibility(
+  state: State,
+  slug: string,
+): EmbeddingParameterVisibility | null {
+  const dashboard = getDashboard(state);
+  if (!dashboard?.enable_embedding) {
+    return null;
+  }
+
+  const embeddingParams = dashboard.embedding_params ?? {};
+  return embeddingParams[slug] ?? "disabled";
+}
 
 export const getIsHeaderVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
@@ -344,6 +417,13 @@ export const getTabs = createSelector([getDashboard], dashboard => {
   return dashboard.tabs?.filter(tab => !tab.isRemoved) ?? [];
 });
 
-export function getSelectedTabId(state: State) {
-  return state.dashboard.selectedTabId;
-}
+export const getSelectedTabId = createSelector(
+  [getDashboard, state => state.dashboard.selectedTabId],
+  (dashboard, selectedTabId) => {
+    if (dashboard && selectedTabId === null) {
+      return dashboard.tabs?.[0]?.id || null;
+    }
+
+    return selectedTabId;
+  },
+);

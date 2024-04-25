@@ -3,7 +3,6 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -12,9 +11,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.shared.formatting.date :as fmt.date]
    [metabase.shared.util.i18n :as i18n]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
@@ -27,6 +26,46 @@
    [:options ::lib.schema.common/options]
    [:args [:sequential :any]]])
 
+(def ^:private expandable-time-units #{:hour})
+
+(def ^:private expandable-date-units #{:week :month :quarter :year})
+
+(def ^:private expandable-temporal-units
+  (into expandable-time-units expandable-date-units))
+
+(defn- expandable-temporal-expression?
+  [[operator _options & [maybe-clause-arg other-arg :as args]]]
+  (boolean (and (= := operator)
+                (= 2 (count args))
+                (lib.util/clause? maybe-clause-arg)
+                (contains? expandable-temporal-units
+                           (:temporal-unit (lib.options/options maybe-clause-arg)))
+                (shared.ut/timestamp-coercible? other-arg))))
+
+(defn- expand-temporal-expression
+  "Modify expression in a way, that its resulting [[expression-parts]] are digestable by filter picker.
+
+   Current filter picker implementation is unable to handle expression parts of expressions of a form
+   `[:= {...} [:field {:temporal-unit :week} 11] \"2024-05-12\"]` -- expresions that check for equality of a column
+   with `:temporal-unit` set to value other than `:day` or `:minute` to some date time value.
+
+   To mitigate that expressions are converted to `:between` form which is handled correctly by filter picker. For more
+   info on the issue see the comment [https://github.com/metabase/metabase/issues/12496#issuecomment-1629317661].
+   This functionality is backend approach to \"smaller solution\"."
+  [[_operator options column-arg dt-arg :as _expression-clause]]
+  (let [temporal-unit (:temporal-unit (lib.options/options column-arg))
+        interval (shared.ut/to-range (shared.ut/coerce-to-timestamp dt-arg) {:unit temporal-unit :n 1})
+        formatter (if (contains? expandable-time-units temporal-unit)
+                    fmt.date/datetime->iso-string
+                    fmt.date/date->iso-string)]
+    (into [:between options column-arg] (map formatter) interval)))
+
+(defn- maybe-expand-temporal-expression
+  [expression-clause]
+  (if (expandable-temporal-expression? expression-clause)
+    (expand-temporal-expression expression-clause)
+    expression-clause))
+
 (mu/defn expression-parts :- ExpressionParts
   "Return the parts of the filter clause `expression-clause` in query `query` at stage `stage-number`."
   ([query expression-clause]
@@ -35,7 +74,7 @@
   ([query :- ::lib.schema/query
     stage-number :- :int
     expression-clause :- ::lib.schema.expression/expression]
-   (let [[op options & args] expression-clause
+   (let [[op options & args] (maybe-expand-temporal-expression expression-clause)
          ->maybe-col #(when (lib.util/ref-clause? %)
                         (lib.filter/add-column-operators
                           (lib.field/extend-column-metadata-from-ref
@@ -81,7 +120,7 @@
                         (temporal? maybe-clause)
                         (lib.util/clause? maybe-clause)
                         (clojure.core/contains? units (:temporal-unit (second maybe-clause)))))))]
-    (mbql.u/match-one filter-clause
+    (lib.util.match/match-one filter-clause
       [:= _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
       (shared.ut/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
 
@@ -129,16 +168,7 @@
          {:type :field, :id id}))
      ;; cf. frontend/src/metabase-lib/Question.ts and frontend/src/metabase-lib/queries/StructuredQuery.ts
      (when-let [card-id (:source-card base-stage)]
-       (let [card-metadata (lib.metadata/card metadata-providerable card-id)]
-         (cond-> (for [column (:result-metadata card-metadata)
-                       :let [column (u/normalize-map column)
-                             fk-target (:fk-target-field-id column)]
-                       :when (and (integer? fk-target)
-                                  (lib.types.isa/foreign-key? column))]
-                   {:type :field, :id fk-target})
-           ;; the FE code mentions this, but #36974 doesn't
-           #_#_:always (conj {:type :question, :id card-id})
-           (:dataset card-metadata) (conj {:type :table, :id (str "card__" card-id)}))))
+       [{:type :table, :id (str "card__" card-id)}])
      (when-let [table-id (:source-table base-stage)]
        [{:type :table, :id table-id}])
      (for [stage (:stages query-or-join)

@@ -1,11 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
+import Dimension from "metabase-lib/v1/Dimension";
 import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
-import Dimension from "metabase-lib/Dimension";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -16,18 +16,6 @@ const ordersTable = metadata.table(ORDERS_ID);
 const FILTER = ["=", ["field", ORDERS.TOTAL, null], 42];
 
 describe("StructuredQuery", () => {
-  describe("hasFilters", () => {
-    it("should return false for queries without filters", () => {
-      const q = ordersTable.legacyQuery({ useStructuredQuery: true });
-      expect(q.hasFilters()).toBe(false);
-    });
-    it("should return true for queries with filters", () => {
-      const q = ordersTable
-        .legacyQuery({ useStructuredQuery: true })
-        .filter(FILTER);
-      expect(q.hasFilters()).toBe(true);
-    });
-  });
   describe("filters", () => {
     it("should work as raw MBQL", () => {
       const q = ordersTable

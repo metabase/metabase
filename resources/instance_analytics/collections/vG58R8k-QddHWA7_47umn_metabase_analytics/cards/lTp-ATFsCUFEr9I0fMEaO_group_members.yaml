@@ -102,4 +102,6 @@ serdes/meta:
 - id: lTp-ATFsCUFEr9I0fMEaO
   label: group_members
   model: Card
+initially_published_at: null
 metabase_version: null
+type: model

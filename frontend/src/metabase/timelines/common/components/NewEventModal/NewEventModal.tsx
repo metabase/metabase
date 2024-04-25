@@ -1,7 +1,8 @@
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+
+import ModalContent from "metabase/components/ModalContent";
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
 import type {
   Collection,
@@ -9,7 +10,7 @@ import type {
   TimelineEventData,
   TimelineEventSource,
 } from "metabase-types/api";
-import ModalContent from "metabase/components/ModalContent";
+
 import EventForm from "../../containers/EventForm";
 
 export interface NewEventModalProps {

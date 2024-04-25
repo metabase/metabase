@@ -31,11 +31,11 @@
   REDUCIBLE FORMAT:
 
   *  `:metadata` is the same as the legacy format.
-  *  `:results` is a function that takes `context` and returns something that can be reduced.
+  *  `:results` is a thunk that returns something that can be reduced.
   *  `:xform` is an optional xform to apply to each result row while reducing the query
 
     {:metadata ...
-     :results  (fn [context] ...)
+     :results  (fn [] ...)
      :xform    ...}"
   (:require
    [clojure.data :as data]
@@ -44,8 +44,10 @@
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
-   [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
@@ -99,28 +101,29 @@
   to implement paging for all audit app queries automatically."
   nil)
 
-(defn- reduce-reducible-results [rff context {:keys [metadata results xform], :or {xform identity}}]
+(defn- reduce-reducible-results [rff {:keys [metadata results xform], :or {xform identity}}]
   (let [cols           (metadata->cols metadata)
-        reducible-rows (results context)
+        reducible-rows (results)
         rff*           (fn [metadata]
                          (xform (rff metadata)))]
     (assert (some? cols))
     (assert (instance? clojure.lang.IReduceInit reducible-rows))
-    (qp.context/reducef rff* context {:cols cols} reducible-rows)))
+    (qp.pipeline/*reduce* rff* {:cols cols} reducible-rows)))
 
-(defn- reduce-legacy-results [rff context results]
+(defn- reduce-legacy-results [rff results]
   (let [{:keys [cols rows]} (format-results results)]
     (assert (some? cols))
     (assert (some? rows))
-    (qp.context/reducef rff context {:cols cols} rows)))
+    (qp.pipeline/*reduce* rff {:cols cols} rows)))
 
-(defn- reduce-results [rff context {rows :results, :as results}]
+(defn- reduce-results [rff {rows :results, :as results}]
   ((if (fn? rows)
      reduce-reducible-results
-     reduce-legacy-results) rff context results))
+     reduce-legacy-results) rff results))
 
 (mu/defn ^:private process-internal-query
-  [{qualified-fn-str :fn, args :args, :as query} :- InternalQuery rff context]
+  [{qualified-fn-str :fn, args :args, :as query} :- InternalQuery
+   rff                                           :- ::qp.schema/rff]
   ;; Make sure current user is a superuser or has monitoring permissions
   (validation/check-has-application-permission :monitoring)
   ;; Make sure audit app is enabled (currently the only use case for internal queries). We can figure out a way to
@@ -130,13 +133,13 @@
                     {:type qp.error-type/invalid-query})))
   (binding [*additional-query-params* (dissoc query :fn :args)]
     (let [resolved (apply audit.i/resolve-internal-query qualified-fn-str args)]
-      (reduce-results rff context resolved))))
+      (reduce-results rff resolved))))
 
 (defenterprise handle-audit-app-internal-queries
   "Middleware that handles `:internal` (Audit App) type queries."
   :feature :audit-app
   [qp]
-  (fn [{query-type :type, :as query} rff context]
-    (if (= :internal (keyword query-type))
-      (process-internal-query query rff context)
-      (qp query rff context))))
+  (fn [query rff]
+    (if (qp.util/internal-query? query)
+      (process-internal-query query rff)
+      (qp query rff))))

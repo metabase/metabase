@@ -1,7 +1,8 @@
-import styled from "@emotion/styled";
-import { css } from "@emotion/react";
 import isPropValid from "@emotion/is-prop-valid";
+import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
+import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
 
 type DashCardActionsPanelContainerProps = {
@@ -47,13 +48,13 @@ export const DashCardActionsPanelContainer = styled("div", {
       }
     `}
 
-  .Card:hover &,
-  .Card:focus-within & {
+  .${DashboardS.Card}:hover &,
+  .${DashboardS.Card}:focus-within & {
     opacity: 1;
     pointer-events: all;
   }
 
-  .Dash--dragging & {
+  .${DashboardS.DashDragging} & {
     display: none;
   }
 `;

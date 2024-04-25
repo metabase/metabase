@@ -1,11 +1,12 @@
-import type { TokenFeatures } from "metabase-types/api";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase-types/store/mocks";
-import { mockSettings } from "__support__/settings";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { ExpressionEditorHelpText } from "../ExpressionEditorHelpText";
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders, screen } from "__support__/ui";
+import type { TokenFeatures } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
+
 import type { ExpressionEditorHelpTextProps } from "../ExpressionEditorHelpText";
+import { ExpressionEditorHelpText } from "../ExpressionEditorHelpText";
 
 export interface SetupOpts {
   helpText?: ExpressionEditorHelpTextProps["helpText"];

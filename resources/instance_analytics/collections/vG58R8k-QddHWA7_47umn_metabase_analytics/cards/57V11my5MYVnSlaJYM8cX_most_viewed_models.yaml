@@ -98,12 +98,8 @@ dataset_query:
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - creator_id
+        - user_id
         - base-type: type/Integer
-          join-alias: Content - Entity Qualified
       - - field
         - - Internal Metabase Database
           - public
@@ -236,4 +232,6 @@ serdes/meta:
 - id: 57V11my5MYVnSlaJYM8cX
   label: most_viewed_models
   model: Card
+initially_published_at: null
 metabase_version: vUNKNOWN (1308cef)
+type: question

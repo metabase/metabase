@@ -24,22 +24,28 @@ Metabase can run anywhere Java is available.
 
 If you prefer to use a Docker container, we've got you covered.
 
-### [Running on Podman](running-metabase-on-podman.md)
+## Professional services from the Metabase team
 
-Our Docker image is also compatible with Podman.
+If you want help with:
 
-### [Building Metabase from source](../developers-guide/start.md)
+- Set up
+- Training
+- Data stack
+- Embedding
+- Data modeling
 
-To run a development branch of Metabase, check out our [developer's guide](../developers-guide/start.md).
-
-### Other installation options
-
-- [Running on Azure Web Apps](running-metabase-on-azure.md)
-- [Running on Debian as a service](running-metabase-on-debian.md)
+Check out our [professional services](https://www.metabase.com/product/professional-services).
 
 ## Upgrading Metabase
 
-See [Upgrading Metabase](upgrading-metabase.md).
+See [Upgrading Metabase](upgrading-metabase.md)
+
+## Other installation options
+
+- [Running on Podman](running-metabase-on-podman.md)
+- [Building Metabase from source](../developers-guide/start.md)
+- [Running on Azure Web Apps](running-metabase-on-azure.md)
+- [Running on Debian as a service](running-metabase-on-debian.md)
 
 ## Connect with a Metabase Expert
 

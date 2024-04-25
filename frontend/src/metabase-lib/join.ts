@@ -1,5 +1,8 @@
 import * as ML from "cljs/metabase.lib.js";
 
+import { expressionParts } from "./expression";
+import { isColumnMetadata } from "./internal";
+import { displayInfo } from "./metadata";
 import type {
   Bucket,
   CardMetadata,
@@ -13,9 +16,6 @@ import type {
   Query,
   TableMetadata,
 } from "./types";
-import { expressionParts } from "./expression";
-import { isColumnMetadata } from "./internal";
-import { displayInfo } from "./metadata";
 
 /**
  * Something you can join against -- either a raw Table, or a Card, which can be either a plain Saved Question or a
@@ -23,7 +23,7 @@ import { displayInfo } from "./metadata";
  */
 export type Joinable = TableMetadata | CardMetadata;
 
-type JoinOrJoinable = Join | Joinable;
+export type JoinOrJoinable = Join | Joinable;
 
 type ColumnMetadataOrFieldRef = ColumnMetadata | Clause;
 
@@ -201,8 +201,9 @@ export function suggestedJoinConditions(
   query: Query,
   stageIndex: number,
   joinable: Joinable,
+  joinPositon?: number,
 ): JoinCondition[] {
-  return ML.suggested_join_conditions(query, stageIndex, joinable);
+  return ML.suggested_join_conditions(query, stageIndex, joinable, joinPositon);
 }
 
 export type JoinFields = ColumnMetadata[] | "all" | "none";
@@ -238,7 +239,7 @@ export function joinedThing(query: Query, join: Join): Joinable {
 
 export type PickerInfo = {
   databaseId: number;
-  tableId: number;
+  tableId: string;
   cardId?: number;
   isModel?: boolean;
 };

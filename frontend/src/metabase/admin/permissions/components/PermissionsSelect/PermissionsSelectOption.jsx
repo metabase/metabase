@@ -1,8 +1,8 @@
-import { useState } from "react";
 import PropTypes from "prop-types";
+import { useState } from "react";
 
-import { Icon } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
+import { Icon } from "metabase/ui";
 
 import {
   IconContainer,
@@ -11,7 +11,7 @@ import {
 } from "./PermissionsSelectOption.styled";
 
 export const optionShape = {
-  label: PropTypes.string.isRequired,
+  label: PropTypes.oneOfType([PropTypes.string, PropTypes.element]).isRequired,
   icon: PropTypes.string.isRequired,
   iconColor: PropTypes.string.isRequired,
 };

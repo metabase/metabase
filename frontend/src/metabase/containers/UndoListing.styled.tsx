@@ -1,11 +1,11 @@
 import styled from "@emotion/styled";
+
+import Card from "metabase/components/Card";
+import Link from "metabase/core/components/Link";
+import { alpha, color } from "metabase/lib/colors";
+import { space } from "metabase/styled-components/theme";
 import type { BoxProps } from "metabase/ui";
 import { Box, Icon } from "metabase/ui";
-import Card from "metabase/components/Card";
-
-import Link from "metabase/core/components/Link";
-import { alpha, color, lighten } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
 
 const LIST_H_MARGINS = space(2);
 
@@ -69,12 +69,12 @@ export const UndoButton = styled(Link)`
   }
 `;
 
-export const DismissIcon = styled(Icon)`
+export const DismissIcon = styled(Icon)<{ color?: string }>`
   margin-left: ${space(2)};
-  color: ${color("bg-dark")};
+  color: ${({ color: iconColor = "bg-dark" }) => color(iconColor)};
   cursor: pointer;
 
   :hover {
-    color: ${lighten(color("bg-dark"), 0.3)};
+    opacity: 0.7;
   }
 `;

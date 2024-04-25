@@ -1,8 +1,10 @@
-import { forwardRef, useCallback } from "react";
-import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { useField } from "formik";
-import { TextInput } from "metabase/ui";
+import type { ChangeEvent, FocusEvent, Ref } from "react";
+import { forwardRef, useCallback } from "react";
+
 import type { TextInputProps } from "metabase/ui";
+import { TextInput } from "metabase/ui";
+
 import { CopyWidgetButton } from "./FormTextInput.styled";
 
 export interface FormTextInputProps
@@ -58,6 +60,11 @@ export const FormTextInput = forwardRef(function FormTextInput(
       onBlur={handleBlur}
       rightSection={hasCopyButton ? <CopyWidgetButton value={value} /> : null}
       rightSectionWidth={hasCopyButton ? 40 : undefined}
+      styles={{
+        input: {
+          fontWeight: "bold",
+        },
+      }}
     />
   );
 });

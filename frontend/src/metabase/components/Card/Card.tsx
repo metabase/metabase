@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { color, alpha } from "metabase/lib/colors";
 
 type CardProps = {

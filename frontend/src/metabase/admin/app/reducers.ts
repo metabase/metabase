@@ -1,7 +1,9 @@
-import { t } from "ttag";
 import { createReducer } from "@reduxjs/toolkit";
+import { t } from "ttag";
+
 import { combineReducers } from "metabase/lib/redux";
 import Settings from "metabase/lib/settings";
+import { isNotNull } from "metabase/lib/types";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_ADMIN_NAV_ITEMS,
@@ -9,10 +11,10 @@ import {
 } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
 import type { AdminPath, AdminPathKey } from "metabase-types/store";
-import { isNotNull } from "metabase/lib/types";
+
 import { disableNotice } from "./actions";
 
-const getAdminPaths: () => AdminPath[] = () => {
+export const getAdminPaths: () => AdminPath[] = () => {
   const items: AdminPath[] = [
     {
       name: t`Settings`,
@@ -38,6 +40,11 @@ const getAdminPaths: () => AdminPath[] = () => {
       name: t`Permissions`,
       path: "/admin/permissions",
       key: "permissions",
+    },
+    {
+      name: t`Performance`,
+      path: "/admin/performance",
+      key: "performance",
     },
   ];
 

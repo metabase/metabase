@@ -1,11 +1,12 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import type { Moment } from "moment-timezone";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import cx from "classnames";
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
+import CS from "metabase/css/core/index.css";
 import { parseTimestamp } from "metabase/lib/time";
+import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 import type { DatetimeUnit } from "metabase-types/api/query";
-import { isDateWithoutTime } from "metabase-lib/types/utils/isa";
+
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
@@ -13,7 +14,6 @@ import {
   hasDay,
   hasHour,
 } from "./datetime-utils";
-
 import type { OptionsType } from "./types";
 
 const EN_DASH = `–`;
@@ -997,7 +997,7 @@ function formatMajorMinor(
       <span>
         <span
           style={{ minWidth: options.majorWidth + "em" }}
-          className="inline-block text-right text-bold"
+          className={cx(CS.inlineBlock, CS.textRight, CS.textBold)}
         >
           {major}
         </span>

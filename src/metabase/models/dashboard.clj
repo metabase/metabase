@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.automagic-dashboards.populate :as populate]
+   [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
@@ -28,6 +29,8 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.async :as qp.async]
    [metabase.util :as u]
+   [metabase.util.embed :refer [maybe-populate-initially-published-at]]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru deferred-trun tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -94,10 +97,11 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
-  (u/prog1 dashboard
+  (u/prog1 (maybe-populate-initially-published-at dashboard)
     (params/assert-valid-parameters dashboard)
     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
-    (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
+    (collection/check-collection-namespace Dashboard (:collection_id dashboard)))
+  (maybe-populate-initially-published-at dashboard))
 
 (defn- update-dashboard-subscription-pulses!
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"
@@ -180,27 +184,34 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(mi/define-simple-hydration-method tabs
-  :tabs
-  "Return the ordered DashboardTabs associated with `dashboard-or-id`, sorted by tab position."
-  [dashboard-or-id]
-  (t2/select :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id) {:order-by [[:position :asc]]}))
+(methodical/defmethod t2/batched-hydrate [:default :tabs]
+  [_model k dashboards]
+  (mi/instances-with-hydrated-data
+   dashboards k
+   #(group-by :dashboard_id (t2/select :model/DashboardTab
+                                       :dashboard_id [:in (map :id dashboards)]
+                                       {:order-by [[:dashboard_id :asc] [:position :asc]]}))
+   :id
+   {:default []}))
 
-(mi/define-simple-hydration-method dashcards
-  :dashcards
-  "Return the DashboardCards associated with `dashboard`, in the order they were created."
-  [dashboard-or-id]
-  (t2/select DashboardCard
-             {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
-              :from      [[:report_dashboardcard :dashcard]]
-              :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
-                          [:collection :collection] [:= :collection.id :card.collection_id]]
-              :where     [:and
-                          [:= :dashcard.dashboard_id (u/the-id dashboard-or-id)]
-                          [:or
-                           [:= :card.archived false]
-                           [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
-              :order-by  [[:dashcard.created_at :asc]]}))
+(methodical/defmethod t2/batched-hydrate [:default :dashcards]
+  [_model k dashboards]
+  (mi/instances-with-hydrated-data
+   dashboards k
+   #(group-by :dashboard_id
+              (t2/select :model/DashboardCard
+                         {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
+                          :from      [[:report_dashboardcard :dashcard]]
+                          :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
+                                      [:collection :collection] [:= :collection.id :card.collection_id]]
+                          :where     [:and
+                                      [:in :dashcard.dashboard_id (map :id dashboards)]
+                                      [:or
+                                       [:= :card.archived false]
+                                       [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
+                          :order-by  [[:dashcard.dashboard_id] [:dashcard.created_at :asc]]}))
+   :id
+   {:default []}))
 
 (mi/define-batched-hydration-method collections-authority-level
   :collection_authority_level
@@ -227,7 +238,7 @@
    ;;   lower-numbered positions appearing before higher numbered ones.
    ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
    :public_uuid :made_public_by_id
-   :position])
+   :position :initially_published_at])
 
 (def ^:private excluded-columns-for-dashcard-revision
   [:entity_id :created_at :updated_at :collection_authority_level])
@@ -238,13 +249,13 @@
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
   (let [dashcards (or (:dashcards dashboard)
-                      (dashcards dashboard))
+                      (:dashcards (t2/hydrate dashboard :dashcards)))
         dashcards (when (seq dashcards)
                     (if (contains? (first dashcards) :series)
                       dashcards
                       (t2/hydrate dashcards :series)))
         tabs  (or (:tabs dashboard)
-                  (tabs dashboard))]
+                  (:tabs (t2/hydrate dashboard :tabs)))]
     (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
         (assoc :cards (vec (for [dashboard-card dashcards]
                              (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
@@ -446,7 +457,9 @@
     (let [new-param-field-ids (params/dashcards->param-field-ids (t2/hydrate new-dashcards :card))]
       (update-field-values-for-on-demand-dbs! (params/dashcards->param-field-ids old-dashcards) new-param-field-ids))))
 
+
 ;; TODO - we need to actually make this async, but then we'd need to make `save-card!` async, and so forth
+;; Issue: https://github.com/metabase/metabase/issues/39413
 (defn- result-metadata-for-query
   "Fetch the results metadata for a `query` by running the query and seeing what the `qp` gives us in return."
   [query]
@@ -524,10 +537,9 @@
    [:name ms/NonBlankString]
    [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
 
-(mu/defn ^:private dashboard->resolved-params* :- [:map-of ms/NonBlankString ParamWithMapping]
+(mu/defn ^:private dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
   [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
-  (let [dashboard           (t2/hydrate dashboard [:dashcards :card])
-        param-key->mappings (apply
+  (let [param-key->mappings (apply
                              merge-with set/union
                              (for [dashcard (:dashcards dashboard)
                                    param    (:parameter_mappings dashcard)]
@@ -535,29 +547,33 @@
     (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
                [(u/qualified-name param-key) (assoc param :mappings (get param-key->mappings param-key))]))))
 
-(mi/define-simple-hydration-method dashboard->resolved-params
-  :resolved-params
-  "Return map of Dashboard parameter key -> param with resolved `:mappings`.
-    (dashboard->resolved-params (t2/select-one Dashboard :id 62))
-    ;; ->
-    {\"ee876336\" {:name     \"Category Name\"
-                   :slug     \"category_name\"
-                   :id       \"ee876336\"
-                   :type     \"category\"
-                   :mappings #{{:parameter_id \"ee876336\"
-                                :card_id      66
-                                :dashcard     ...
-                                :target       [:dimension [:fk-> [:field-id 263] [:field-id 276]]]}}},
-     \"6f10a41f\" {:name     \"Price\"
-                   :slug     \"price\"
-                   :id       \"6f10a41f\"
-                   :type     \"category\"
-                   :mappings #{{:parameter_id \"6f10a41f\"
-                                :card_id      66
-                                :dashcard     ...
-                                :target       [:dimension [:field-id 264]]}}}}"
-  [dashboard]
-  (dashboard->resolved-params* dashboard))
+(methodical/defmethod t2/batched-hydrate [:model/Dashboard :resolved-params]
+ "Return map of Dashboard parameter key -> param with resolved `:mappings`.
+   (dashboard->resolved-params (t2/select-one Dashboard :id 62))
+   ;; ->
+   {\"ee876336\" {:name     \"Category Name\"
+                  :slug     \"category_name\"
+                  :id       \"ee876336\"
+                  :type     \"category\"
+                  :mappings #{{:parameter_id \"ee876336\"
+                               :card_id      66
+                               :dashcard     ...
+                               :target       [:dimension [:fk-> [:field-id 263] [:field-id 276]]]}}},
+    \"6f10a41f\" {:name     \"Price\"
+                  :slug     \"price\"
+                  :id       \"6f10a41f\"
+                  :type     \"category\"
+                  :mappings #{{:parameter_id \"6f10a41f\"
+                               :card_id      66
+                               :dashcard     ...
+                               :target       [:dimension [:field-id 264]]}}}}"
+  [_model k dashboards]
+  (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card])]
+    (map #(assoc %1 k %2) dashboards (map dashboard->resolved-params dashboards-with-cards))))
+
+(defmethod mi/exclude-internal-content-hsql :model/Dashboard
+  [_model & {:keys [table-alias]}]
+  [:not= (h2x/identifier :field table-alias :creator_id) config/internal-mb-user-id])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SERIALIZATION                                                    |

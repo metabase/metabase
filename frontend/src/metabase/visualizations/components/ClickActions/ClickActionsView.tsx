@@ -1,21 +1,23 @@
 import type { RegularClickAction } from "metabase/visualizations/types";
+
+import { ClickActionControl } from "./ClickActionControl";
 import { Container, Divider } from "./ClickActionsPopover.styled";
+import { ClickActionsViewSection } from "./ClickActionsViewSection";
 import {
   getGroupedAndSortedActions,
   getSectionContentDirection,
   getSectionTitle,
 } from "./utils";
-import { ClickActionsViewSection } from "./ClickActionsViewSection";
-import { ClickActionControl } from "./ClickActionControl";
 
 interface Props {
   clickActions: RegularClickAction[];
-
+  close: () => void;
   onClick: (action: RegularClickAction) => void;
 }
 
 export const ClickActionsView = ({
   clickActions,
+  close,
   onClick,
 }: Props): JSX.Element => {
   const sections = getGroupedAndSortedActions(clickActions);
@@ -24,16 +26,20 @@ export const ClickActionsView = ({
 
   return (
     <Container>
-      {sections.map(([key, actions]) => {
-        const sectionTitle = getSectionTitle(key, actions);
-        const contentDirection = getSectionContentDirection(key, actions);
-        const withBottomDivider = key === "records" && !hasOnlyOneSection;
-        const withTopDivider = key === "details" && !hasOnlyOneSection;
+      {sections.map(([sectionKey, actions]) => {
+        const sectionTitle = getSectionTitle(sectionKey, actions);
+        const contentDirection = getSectionContentDirection(
+          sectionKey,
+          actions,
+        );
+        const withBottomDivider =
+          sectionKey === "records" && !hasOnlyOneSection;
+        const withTopDivider = sectionKey === "details" && !hasOnlyOneSection;
 
         return (
           <ClickActionsViewSection
-            key={key}
-            type={key}
+            key={sectionKey}
+            type={sectionKey}
             title={sectionTitle}
             contentDirection={contentDirection}
           >
@@ -42,6 +48,7 @@ export const ClickActionsView = ({
               <ClickActionControl
                 key={action.name}
                 action={action}
+                close={close}
                 onClick={() => onClick(action)}
               />
             ))}

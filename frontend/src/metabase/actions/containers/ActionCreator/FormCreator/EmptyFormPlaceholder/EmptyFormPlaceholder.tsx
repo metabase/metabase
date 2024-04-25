@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
+import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { useSelector } from "metabase/lib/redux";
+import { Icon } from "metabase/ui";
 
 import {
   EmptyFormPlaceholderWrapper,

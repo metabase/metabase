@@ -1,8 +1,9 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+
+import Markdown from "metabase/core/components/Markdown";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
-import Markdown from "metabase/core/components/Markdown";
 
 export const CardRoot = styled.div`
   display: flex;

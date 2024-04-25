@@ -1,9 +1,11 @@
-import { useRef } from "react";
 import type { ComponentStory } from "@storybook/react";
-import { checkNotNull } from "metabase/lib/types";
-import { createMockDatabase } from "metabase-types/api/mocks";
+import { useRef } from "react";
+
 import { createMockMetadata } from "__support__/metadata";
-import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
+import { checkNotNull } from "metabase/lib/types";
+import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
+import { createMockDatabase } from "metabase-types/api/mocks";
+
 import type { ExpressionEditorHelpTextProps } from "./ExpressionEditorHelpText";
 import { ExpressionEditorHelpText } from "./ExpressionEditorHelpText";
 

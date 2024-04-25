@@ -1,17 +1,19 @@
-import { Component } from "react";
+import cx from "classnames";
+import { getIn } from "icepick";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { getIn } from "icepick";
-
-import S from "metabase/components/List/List.css";
-
-import * as metadataActions from "metabase/redux/metadata";
-import { assignUserColors } from "metabase/lib/formatting";
 
 import Revision from "metabase/admin/datamodel/components/revisions/Revision";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EmptyState from "metabase/components/EmptyState";
+import S from "metabase/components/List/List.module.css";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
+import { assignUserColors } from "metabase/lib/formatting";
+import * as metadataActions from "metabase/redux/metadata";
+
+import ReferenceHeader from "../components/ReferenceHeader";
 import {
   getSegmentRevisions,
   getMetric,
@@ -21,7 +23,6 @@ import {
   getLoading,
   getError,
 } from "../selectors";
-import ReferenceHeader from "../components/ReferenceHeader";
 
 const emptyStateData = {
   message: t`There are no revisions for this segment`,
@@ -80,7 +81,7 @@ class SegmentRevisions extends Component {
         : {};
 
     return (
-      <div style={style} className="full">
+      <div style={style} className={CS.full}>
         <ReferenceHeader
           name={t`Revision history for ${this.props.segment.name}`}
           headerIcon="segment"
@@ -91,8 +92,16 @@ class SegmentRevisions extends Component {
         >
           {() =>
             Object.keys(revisions).length > 0 && tables[entity.table_id] ? (
-              <div className="wrapper">
-                <div className="px3 py3 mb4 bg-white bordered">
+              <div className={CS.wrapper}>
+                <div
+                  className={cx(
+                    CS.px3,
+                    CS.py3,
+                    CS.mb4,
+                    CS.bgWhite,
+                    CS.bordered,
+                  )}
+                >
                   <div>
                     {Object.values(revisions)
                       .map(revision =>

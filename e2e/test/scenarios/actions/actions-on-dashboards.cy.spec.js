@@ -1,4 +1,6 @@
 import { assocIn } from "icepick";
+
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   restore,
   queryWritableDB,
@@ -22,12 +24,15 @@ import {
   resetSnowplow,
   expectNoBadSnowplowEvents,
   expectGoodSnowplowEvent,
+  updateDashboardCards,
+  getActionCardDetails,
+  createPublicDashboardLink,
+  openStaticEmbeddingModal,
+  visitIframe,
 } from "e2e/support/helpers";
-
 import { many_data_types_rows } from "e2e/support/test_tables_data";
-
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { createMockActionParameter } from "metabase-types/api/mocks";
+
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 const TEST_TABLE = "scoreboard_actions";
@@ -277,6 +282,113 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
+        it("hide actions in public dashboards (metabase#34395)", () => {
+          const dashboardDetails = {
+            name: "Public Dashboard",
+          };
+          cy.get("@modelId")
+            .then(id => {
+              createImplicitAction({
+                kind: "create",
+                model_id: id,
+              });
+            })
+            .then(({ body: action }) => {
+              cy.createDashboard(dashboardDetails).then(
+                ({ body: dashboard }) => {
+                  updateDashboardCards({
+                    dashboard_id: dashboard.id,
+                    cards: [
+                      getActionCardDetails({
+                        action_id: action.id,
+                        label: "Create",
+                      }),
+                    ],
+                  });
+                  cy.visit(`/dashboard/${dashboard.id}`);
+                  cy.wrap(dashboard.id).as("dashboardId");
+                },
+              );
+            });
+
+          cy.log("The action should be visible in the dashboard");
+          cy.findByRole("button", { name: "Create" }).should("be.visible");
+
+          cy.log("Visit public dashboard");
+          cy.get("@dashboardId")
+            .then(dashboardId => {
+              createPublicDashboardLink(dashboardId);
+            })
+            .then(({ body: { uuid } }) => {
+              cy.visit(`/public/dashboard/${uuid}`);
+            });
+
+          cy.log("Assert public dashboard");
+          cy.findByRole("heading", { name: dashboardDetails.name }).should(
+            "be.visible",
+          );
+          /**
+           * cy.button("Create") doesn't work because the label is
+           * `Actions are not enabled for this database` for disabled actions
+           */
+          cy.findByRole("main").findByText("Create").should("not.exist");
+          cy.findByRole("link", { name: "Powered by Metabase" }).should(
+            "be.visible",
+          );
+        });
+
+        it("hide actions in static embed dashboards (metabase#34395)", () => {
+          const dashboardDetails = {
+            name: "Public Dashboard",
+            enable_embedding: true,
+          };
+          cy.get("@modelId")
+            .then(id => {
+              createImplicitAction({
+                kind: "create",
+                model_id: id,
+              });
+            })
+            .then(({ body: action }) => {
+              cy.createDashboard(dashboardDetails).then(
+                ({ body: dashboard }) => {
+                  updateDashboardCards({
+                    dashboard_id: dashboard.id,
+                    cards: [
+                      getActionCardDetails({
+                        action_id: action.id,
+                        label: "Create",
+                      }),
+                    ],
+                  });
+                  cy.visit(`/dashboard/${dashboard.id}`);
+                  cy.wrap(dashboard.id).as("dashboardId");
+                },
+              );
+            });
+
+          cy.log("The action should be visible in the dashboard");
+          cy.findByRole("button", { name: "Create" }).should("be.visible");
+
+          cy.log("Visit static embed dashboard");
+
+          openStaticEmbeddingModal({ activeTab: "parameters" });
+          visitIframe();
+
+          cy.log("Assert static embed dashboard");
+          cy.findByRole("heading", {
+            name: dashboardDetails.name,
+          }).should("be.visible");
+          /**
+           * cy.button("Create") doesn't work because the label is
+           * `Actions are not enabled for this database` for disabled actions
+           */
+          cy.findByRole("main").findByText("Create").should("not.exist");
+          cy.findByRole("link", { name: "Powered by Metabase" }).should(
+            "be.visible",
+          );
+        });
+
         describe("hidden fields", () => {
           it("adds an implicit action and runs it", () => {
             cy.get("@modelId").then(id => {
@@ -434,9 +546,7 @@ const MODEL_NAME = "Test Action Model";
               cy.findByText("Update").click();
             });
 
-            cy.get("@dashboardId").then(dashboardId => {
-              visitDashboard(dashboardId);
-            });
+            visitDashboard("@dashboardId");
 
             cy.findByRole("button", { name: "Update Score" }).click();
 
@@ -461,7 +571,7 @@ const MODEL_NAME = "Test Action Model";
         });
       });
 
-      describe(`Actions Data Types`, () => {
+      describe("Actions Data Types", () => {
         beforeEach(() => {
           resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
           restore(`${dialect}-writable`);
@@ -936,8 +1046,8 @@ const MODEL_NAME = "Test Action Model";
           });
 
           getActionParametersInputModal().within(() => {
-            cy.findByLabelText("Timestamp").type(`2020-01-01`);
-            cy.findByLabelText("ID").type(`1`);
+            cy.findByLabelText("Timestamp").type("2020-01-01");
+            cy.findByLabelText("ID").type("1");
 
             cy.button(SAMPLE_QUERY_ACTION.name).click();
           });

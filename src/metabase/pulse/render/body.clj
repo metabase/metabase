@@ -17,8 +17,8 @@
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
-   [metabase.util.ui-logic :as ui-logic]
-   [schema.core :as s])
+   [metabase.util.malli :as mu]
+   [metabase.util.ui-logic :as ui-logic])
   (:import
    (java.text DecimalFormat DecimalFormatSymbols)))
 
@@ -66,8 +66,8 @@
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
-(s/defn ^:private format-cell
-  [timezone-id :- (s/maybe s/Str) value col visualization-settings]
+(mu/defn ^:private format-cell
+  [timezone-id :- [:maybe :string] value col visualization-settings]
   (cond
     (types/temporal-field? col)
     (datetime/format-temporal-str timezone-id value col)
@@ -129,9 +129,9 @@
        100)
     (- max-value min-value))))
 
-(s/defn ^:private query-results->row-seq
+(mu/defn ^:private query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
-  [timezone-id :- (s/maybe s/Str)
+  [timezone-id :- [:maybe :string]
    remapping-lookup
    cols
    rows
@@ -153,12 +153,17 @@
                                                 [fmt-fn maybe-remapped-row-cell])]]
               (fmt-fn row-cell))})))
 
-(s/defn ^:private prep-for-html-rendering
+(mu/defn ^:private prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
-  ([timezone-id :- (s/maybe s/Str) card data]
+  ([timezone-id :- [:maybe :string]
+    card
+    data]
    (prep-for-html-rendering timezone-id card data {}))
-  ([timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings]}
+
+  ([timezone-id :- [:maybe :string]
+    card
+    {:keys [cols rows viz-settings], :as _data}
     {:keys [bar-column] :as data-attributes}]
    (let [remapping-lookup (create-remapping-lookup cols)]
      (cons
@@ -201,7 +206,8 @@
 (defmulti render
   "Render a Pulse as `chart-type` (e.g. `:bar`, `:scalar`, etc.) and `render-type` (either `:inline` or `:attachment`)."
   {:arglists '([chart-type render-type timezone-id card dashcard data])}
-  (fn [chart-type _ _ _ _ _] chart-type))
+  (fn [chart-type _render-type _timezone-id _card _dashcard _data]
+    chart-type))
 
 (defn- order-data [data viz-settings]
   (if (some? (::mb.viz/table-columns viz-settings))
@@ -214,8 +220,13 @@
       [ordered-cols ordered-rows])
     [(:cols data) (:rows data)]))
 
-(s/defmethod render :table :- formatter/RenderedPulseCard
-  [_ _ timezone-id :- (s/maybe s/Str) card _dashcard {:keys [rows viz-settings] :as data}]
+(mu/defmethod render :table :- formatter/RenderedPulseCard
+  [_chart-type
+   _render-type
+   timezone-id :- [:maybe :string]
+   card
+   _dashcard
+   {:keys [rows viz-settings] :as data}]
   (let [[ordered-cols ordered-rows] (order-data data viz-settings)
         data                        (-> data
                                         (assoc :rows ordered-rows)
@@ -461,8 +472,13 @@
             row))
         rows))
 
-(s/defmethod render :categorical/donut :- formatter/RenderedPulseCard
-  [_ render-type timezone-id :- (s/maybe s/Str) card _dashcard {:keys [rows cols viz-settings] :as data}]
+(mu/defmethod render :categorical/donut :- formatter/RenderedPulseCard
+  [_chart-type
+   render-type
+   timezone-id :- [:maybe :string]
+   card
+   _dashcard
+   {:keys [rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (formatter/graphing-column-row-fns card data)
         rows                        (map (juxt (comp str x-axis-rowfn) y-axis-rowfn)
                                          (formatter/row-preprocess x-axis-rowfn y-axis-rowfn (replace-nils rows)))
@@ -499,8 +515,13 @@
                                 label)}))
              rows))]}))
 
-(s/defmethod render :progress :- formatter/RenderedPulseCard
-  [_ render-type _timezone-id _card _dashcard {:keys [cols rows viz-settings] :as _data}]
+(mu/defmethod render :progress :- formatter/RenderedPulseCard
+  [_chart-type
+   render-type
+   _timezone-id
+   _card
+   _dashcard
+   {:keys [cols rows viz-settings] :as _data}]
   (let [value        (ffirst rows)
         goal         (:progress.goal viz-settings)
         color        (:progress.color viz-settings)
@@ -710,7 +731,11 @@
 
       ;; all series already have positions assigned
       ;; This comes from the user explicitly setting left or right on the series in the UI.
-      :else positions)))
+      :else (into {} (mapcat
+                      (fn [[k vs]]
+                        (for [v vs]
+                          [v k])))
+                  positions))))
 
 (defn- single-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
@@ -818,31 +843,36 @@
      render-type
      (js-svg/combo-chart series-seqs settings))))
 
-(s/defmethod render :multiple
-  [_ render-type _timezone-id card dashcard data]
+(mu/defmethod render :multiple
+  [_chart-type
+   render-type
+   _timezone-id
+   card
+   dashcard
+   data]
   ((if (= :scalar (:display card))
      render-multiple-scalars
      render-multiple-lab-chart)
    render-type card dashcard data))
 
-(s/defmethod render :line :- formatter/RenderedPulseCard
-  [_ render-type timezone-id card _dashcard data]
+(mu/defmethod render :line :- formatter/RenderedPulseCard
+  [_chart-type render-type timezone-id card _dashcard data]
   (attach-image-bundle (lab-image-bundle :line render-type timezone-id card data)))
 
-(s/defmethod render :area :- formatter/RenderedPulseCard
-  [_ render-type timezone-id card _dashcard data]
+(mu/defmethod render :area :- formatter/RenderedPulseCard
+  [_chart-type render-type timezone-id card _dashcard data]
   (attach-image-bundle (lab-image-bundle :area render-type timezone-id card data)))
 
-(s/defmethod render :bar :- formatter/RenderedPulseCard
-  [_chart-type render-type timezone-id :- (s/maybe s/Str) card _dashcard data]
+(mu/defmethod render :bar :- formatter/RenderedPulseCard
+  [_chart-type render-type timezone-id :- [:maybe :string] card _dashcard data]
   (attach-image-bundle (lab-image-bundle :bar render-type timezone-id card data)))
 
-(s/defmethod render :combo :- formatter/RenderedPulseCard
-  [_chart-type render-type timezone-id :- (s/maybe s/Str) card _dashcard data]
+(mu/defmethod render :combo :- formatter/RenderedPulseCard
+  [_chart-type render-type timezone-id :- [:maybe :string] card _dashcard data]
   (attach-image-bundle (lab-image-bundle :combo render-type timezone-id card data)))
 
-(s/defmethod render :gauge :- formatter/RenderedPulseCard
-  [_chart-type render-type _timezone-id :- (s/maybe s/Str) card _dashcard data]
+(mu/defmethod render :gauge :- formatter/RenderedPulseCard
+  [_chart-type render-type _timezone-id :- [:maybe :string] card _dashcard data]
   (let [image-bundle (image-bundle/make-image-bundle
                       render-type
                       (js-svg/gauge card data))]
@@ -855,8 +885,8 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(s/defmethod render :row :- formatter/RenderedPulseCard
-  [_ render-type _timezone-id card _dashcard {:keys [rows cols] :as _data}]
+(mu/defmethod render :row :- formatter/RenderedPulseCard
+  [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols] :as _data}]
   (let [viz-settings (get card :visualization_settings)
         data {:rows rows
               :cols cols}
@@ -879,7 +909,7 @@
                  (when (= col-name (:name col))
                    [idx col])))))
 
-(s/defmethod render :scalar :- formatter/RenderedPulseCard
+(mu/defmethod render :scalar :- formatter/RenderedPulseCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
   (let [field-name    (:scalar.field viz-settings)
         [row-idx col] (or (when field-name
@@ -896,9 +926,21 @@
       (h value)]
      :render/text (str value)}))
 
-(s/defmethod render :javascript_visualization :- formatter/RenderedPulseCard
-  [_ render-type _timezone-id card dashcard data]
-  (let [combined-cards-results (pu/execute-multi-card card dashcard)
+;; the `:javascript_visualization` render method
+;; is and will continue to handle more and more 'isomorphic' chart types.
+;; Isomorphic in this context just means the frontend Code is mostly shared between the app and the static-viz
+;; As of 2024-03-21, isomorphic chart types include: line, area, bar (LAB), and trend charts
+;; Because this effort began with LAB charts, this method is written to handle multi-series dashcards.
+;; Trend charts were added more recently and will not have multi-series.
+;; Despite this, the function `pu/execute-multi-card` will still correctly execute dashcards.
+;; This conditional is here to cover the case of trend charts in Alerts (not subscriptions). Alerts
+;; exist on Questions and thus have no associated dashcard, which causes `pu/execute-multi-card` to fail.
+
+(mu/defmethod render :javascript_visualization :- formatter/RenderedPulseCard
+  [_chart-type render-type _timezone-id card dashcard data]
+  (let [combined-cards-results (if dashcard
+                                 (pu/execute-multi-card card dashcard)
+                                 (pu/execute-card {:creator_id (:creator_id card)} (:id card)))
         cards-with-data        (map (fn [c d] {:card c :data d})
                                     (cons card (map :card combined-cards-results))
                                     (cons data (map #(get-in % [:result :data]) combined-cards-results)))
@@ -920,7 +962,7 @@
       :html
       {:content [:div content] :attachments nil})))
 
-(s/defmethod render :smartscalar :- formatter/RenderedPulseCard
+(mu/defmethod render :smartscalar :- formatter/RenderedPulseCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols insights viz-settings]}]
   (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
                                  ;; computed and agg columns don't have an effective type
@@ -968,8 +1010,8 @@
          :render/text (str (format-cell timezone-id last-value metric-col viz-settings)
                            "\n" (trs "Nothing to compare to."))}))))
 
-(s/defmethod render :waterfall :- formatter/RenderedPulseCard
-  [_ render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
+(mu/defmethod render :waterfall :- formatter/RenderedPulseCard
+  [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (formatter/graphing-column-row-fns card data)
         [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
@@ -1004,23 +1046,62 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(s/defmethod render :funnel :- formatter/RenderedPulseCard
-  [_ render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
+(defn- all-unique?
+  [funnel-rows]
+  (let [ks (into #{} (map :key) funnel-rows)]
+    (= (count ks) (count funnel-rows))))
+
+(defn- funnel-rows
+  "Creates the expected row form for the javascript side of our funnel rendering.
+  If funnel-viz exists, we want to use the value in :key as the first elem in the row.
+
+  Eg. funnel-viz -> [{:key \"asdf\" :name \"Asdf\" :enabled true}
+                     {:key \"wasd\" :name \"Wasd\" :enabled true}]
+        raw-rows -> [[1 234] [2 5678]]
+
+  Should become: [[\"asdf\" 234]
+                  [\"wasd\" 5678]]
+
+  Additionally, raw-rows can come in with strings already. In this case we want simply to re-order
+  The raw-rows based on the order of the funnel-rows.
+
+  Eg. funnel-viz -> [{:key \"wasd\" :name \"Wasd\" :enabled true}
+                     {:key \"asdf\" :name \"Asdf\" :enabled true}]
+        raw-rows ->  [[\"asdf\" 234] [\"wasd\" 5678]]
+
+  Should become: [[\"wasd\" 5678]
+                  [\"asdf\" 234]]"
+  [funnel-viz raw-rows]
+  (if (string? (ffirst raw-rows))
+    ;; re-create the rows with the order/visibility specified in the funnel-viz
+    (let [rows (into {} (vec raw-rows))]
+      (for [{k        :key
+             enabled? :enabled} funnel-viz
+            :when               enabled?]
+        [k (get rows k)]))
+    ;; re-create the rows with the label/visibilty specified in the funnel-viz
+    (let [rows-data (map (fn [{k :key enabled? :enabled} [_ value]]
+                           (when enabled?
+                             [k value])) funnel-viz raw-rows)]
+      (remove nil? rows-data))))
+
+(mu/defmethod render :funnel :- formatter/RenderedPulseCard
+  [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (formatter/graphing-column-row-fns card data)
-        funnel-rows    (:funnel.rows viz-settings)
+        funnel-viz    (:funnel.rows viz-settings)
         raw-rows       (map (juxt x-axis-rowfn y-axis-rowfn)
                             (formatter/row-preprocess x-axis-rowfn y-axis-rowfn rows))
-        rows           (cond->> raw-rows
-                         funnel-rows (mapv (fn [[idx val]]
-                                             [(get-in funnel-rows [(dec idx) :key]) val])))
-        [x-col y-col]  cols
-        settings       (as-> (->js-viz x-col y-col viz-settings) jsviz-settings
-                         (assoc jsviz-settings :step    {:name   (:display_name x-col)
-                                                         :format (:x jsviz-settings)}
-                                :measure {:format (:y jsviz-settings)}))
-        svg            (js-svg/funnel rows settings)
-        image-bundle   (image-bundle/make-image-bundle render-type svg)]
+        rows          (if (and funnel-viz (all-unique? funnel-viz))
+                         (funnel-rows funnel-viz raw-rows)
+                         raw-rows)
+        [x-col y-col] cols
+        settings      (as-> (->js-viz x-col y-col viz-settings) jsviz-settings
+                        (assoc jsviz-settings :step    {:name   (:display_name x-col)
+                                                        :format (:x jsviz-settings)}
+                               :measure {:format (:y jsviz-settings)}))
+        svg           (js-svg/funnel rows settings)
+        image-bundle  (image-bundle/make-image-bundle render-type svg)]
     {:attachments
      (image-bundle/image-bundle->attachment image-bundle)
 
@@ -1029,8 +1110,8 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(s/defmethod render :empty :- formatter/RenderedPulseCard
-  [_ render-type _ _ _ _]
+(mu/defmethod render :empty :- formatter/RenderedPulseCard
+  [_chart-type render-type _timezone-id _card _dashcard _data]
   (let [image-bundle (image-bundle/no-results-image-bundle render-type)]
     {:attachments
      (image-bundle/image-bundle->attachment image-bundle)
@@ -1046,8 +1127,8 @@
        (trs "No results")]]
      :render/text (trs "No results")}))
 
-(s/defmethod render :attached :- formatter/RenderedPulseCard
-  [_ render-type _ _ _ _]
+(mu/defmethod render :attached :- formatter/RenderedPulseCard
+  [_chart-type render-type _timezone-id _card _dashcard _data]
   (let [image-bundle (image-bundle/attached-image-bundle render-type)]
     {:attachments
      (image-bundle/image-bundle->attachment image-bundle)
@@ -1062,8 +1143,8 @@
                       :color      style/color-gray-4})}
        (trs "This question has been included as a file attachment")]]}))
 
-(s/defmethod render :unknown :- formatter/RenderedPulseCard
-  [_ _ _ _ _ _]
+(mu/defmethod render :unknown :- formatter/RenderedPulseCard
+  [_chart-type _render-type _timezone-id _card _dashcard _data]
   {:attachments
    nil
 
@@ -1076,10 +1157,10 @@
     [:br]
     (trs "Please view this card in Metabase.")]})
 
-(s/defmethod render :card-error :- formatter/RenderedPulseCard
-  [_ _ _ _ _ _]
+(mu/defmethod render :card-error :- formatter/RenderedPulseCard
+  [_chart-type _render-type _timezone-id _card _dashcard _data]
   @card-error-rendered-info)
 
-(s/defmethod render :render-error :- formatter/RenderedPulseCard
-  [_ _ _ _ _ _]
+(mu/defmethod render :render-error :- formatter/RenderedPulseCard
+  [_chart-type _render-type _timezone-id _card _dashcard _data]
   @error-rendered-info)

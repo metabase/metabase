@@ -1,38 +1,37 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import type { Moment } from "moment-timezone";
 import type { NumberLike, StringLike } from "@visx/scale";
-import type {
-  DatasetColumn,
-  RowValue,
-  VisualizationSettings,
-} from "metabase-types/api";
-import { formatTime } from "metabase/lib/formatting/time";
+import moment from "moment"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+
 import {
   formatDateTimeWithUnit,
   formatRange,
 } from "metabase/lib/formatting/date";
-import { formatNumber } from "metabase/lib/formatting/numbers";
 import { formatCoordinate } from "metabase/lib/formatting/geography";
+import { formatNumber } from "metabase/lib/formatting/numbers";
+import { formatTime } from "metabase/lib/formatting/time";
+import type { OptionsType } from "metabase/lib/formatting/types";
+import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
+import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import type {
   ChartTicksFormatters,
   ValueFormatter,
 } from "metabase/visualizations/shared/types/format";
-import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
-import type { OptionsType } from "metabase/lib/formatting/types";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
 import {
   isCoordinate,
   isDate,
   isNumber,
   isTime,
   isBoolean,
-} from "metabase-lib/types/utils/isa";
-import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+} from "metabase-lib/v1/types/utils/isa";
+import type {
+  DatasetColumn,
+  RowValue,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 const getRemappedValue = (
   value: unknown,

@@ -1,5 +1,5 @@
-import Settings from "metabase/lib/settings";
 import { formatSQL } from "metabase/lib/formatting";
+import Settings from "metabase/lib/settings";
 
 export function getDefaultEngine() {
   const engines = Object.keys(Settings.get("engines"));

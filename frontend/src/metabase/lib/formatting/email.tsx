@@ -1,7 +1,7 @@
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { getDataFromClicked } from "metabase-lib/parameters/utils/click-behavior";
-import { renderLinkTextForClick } from "./link";
+import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behavior";
 
+import { renderLinkTextForClick } from "./link";
 import type { OptionsType } from "./types";
 
 // https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27

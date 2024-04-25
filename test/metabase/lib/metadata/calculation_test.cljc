@@ -204,7 +204,7 @@
 
 (deftest ^:parallel implicitly-joinable-requires-numeric-id-test
   (testing "implicit join requires real field IDs, so SQL models need to provide that metadata (#37067)"
-    (let [model (assoc (lib.tu/mock-cards :orders/native) :dataset true)
+    (let [model (assoc (lib.tu/mock-cards :orders/native) :type :model)
           mp    (lib.tu/metadata-provider-with-mock-card model)
           query (lib/query mp model)]
       (testing "without FK metadata, only the own columns are returned"
@@ -220,7 +220,7 @@
                         (assoc col :fk-target-field-id (meta/id :people :id))
                         col))
             model   (assoc base
-                           :dataset         true
+                           :type            :model
                            :result-metadata with-fk)
             mp      (lib.tu/metadata-provider-with-mock-card model)
             query   (lib/query mp model)]
@@ -237,7 +237,7 @@
                                {:id            (meta/id :orders :user-id)
                                 :semantic-type nil})))
             model   (assoc base
-                           :dataset         true
+                           :type            :model
                            :result-metadata with-id)
             mp      (lib.tu/metadata-provider-with-mock-card model)
             query   (lib/query mp model)]
@@ -253,7 +253,7 @@
                                      {:id            (meta/id :orders :user-id)
                                       :semantic-type :type/FK})))
             model         (assoc base
-                                 :dataset         true
+                                 :type            :model
                                  :result-metadata with-fk)
             mp            (lib.tu/metadata-provider-with-mock-card model)
             query         (lib/query mp model)

@@ -1,23 +1,26 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { getIn } from "icepick";
+import cx from "classnames";
 import type { LocationDescriptor } from "history";
-
+import { getIn } from "icepick";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
-import type { IconProps } from "metabase/ui";
 
-import { isJWT } from "metabase/lib/utils";
-
-import { mergeSettings } from "metabase/visualizations/lib/settings";
-
+import ErrorBoundary from "metabase/ErrorBoundary";
+import { isActionCard } from "metabase/actions/utils";
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
+import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
   getDashcardResultsError,
   isDashcardLoading,
+  isQuestionDashCard,
 } from "metabase/dashboard/utils";
-
-import { isActionCard } from "metabase/actions/utils";
-
-import ErrorBoundary from "metabase/ErrorBoundary";
-
+import { isJWT } from "metabase/lib/utils";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import type { IconProps } from "metabase/ui";
+import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import { mergeSettings } from "metabase/visualizations/lib/settings";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
   CardId,
@@ -28,22 +31,18 @@ import type {
   ParameterValueOrArray,
   VisualizationSettings,
   DashCardDataMap,
+  VirtualCard,
 } from "metabase-types/api";
+import type { StoreDashcard } from "metabase-types/store";
 
-import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
-
-import type Metadata from "metabase-lib/metadata/Metadata";
-
+import { DashCardRoot } from "./DashCard.styled";
+import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
+import { DashCardVisualization } from "./DashCardVisualization";
 import type {
   CardSlownessStatus,
   NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
-import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
-import { DashCardVisualization } from "./DashCardVisualization";
-import { DashCardRoot } from "./DashCard.styled";
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
@@ -51,7 +50,7 @@ function preventDragging(event: React.SyntheticEvent) {
 
 export interface DashCardProps {
   dashboard: Dashboard;
-  dashcard: DashboardCard & { justAdded?: boolean };
+  dashcard: StoreDashcard;
   gridItemWidth: number;
   totalNumGridCols: number;
   dashcardData: DashCardDataMap;
@@ -130,11 +129,11 @@ function DashCardInner({
     }
   });
 
-  const mainCard: Card = useMemo(
+  const mainCard: Card | VirtualCard = useMemo(
     () => ({
       ...dashcard.card,
       visualization_settings: mergeSettings(
-        dashcard.card.visualization_settings,
+        dashcard?.card?.visualization_settings,
         dashcard.visualization_settings,
       ),
     }),
@@ -142,21 +141,30 @@ function DashCardInner({
   );
 
   const cards = useMemo(() => {
-    if (Array.isArray(dashcard.series)) {
+    if (isQuestionDashCard(dashcard) && Array.isArray(dashcard.series)) {
       return [mainCard, ...dashcard.series];
     }
     return [mainCard];
   }, [mainCard, dashcard]);
 
   const series = useMemo(() => {
-    return cards.map(card => ({
-      ...getIn(dashcardData, [dashcard.id, card.id]),
-      card: card,
-      isSlow: slowCards[card.id],
-      isUsuallyFast:
+    return cards.map(card => {
+      const isSlow = card.id ? slowCards[card.id] : false;
+      const isUsuallyFast =
         card.query_average_duration &&
-        card.query_average_duration < DASHBOARD_SLOW_TIMEOUT,
-    }));
+        card.query_average_duration < DASHBOARD_SLOW_TIMEOUT;
+
+      if (!card.id) {
+        return { card, isSlow, isUsuallyFast };
+      }
+
+      return {
+        ...getIn(dashcardData, [dashcard.id, card.id]),
+        card,
+        isSlow,
+        isUsuallyFast,
+      };
+    });
   }, [cards, dashcard.id, dashcardData, slowCards]);
 
   const isLoading = useMemo(
@@ -253,7 +261,16 @@ function DashCardInner({
     <ErrorBoundary>
       <DashCardRoot
         data-testid="dashcard"
-        className="Card rounded flex flex-column hover-parent hover--visibility"
+        className={cx(
+          DashboardS.Card,
+          EmbedFrameS.Card,
+          CS.relative,
+          CS.rounded,
+          CS.flex,
+          CS.flexColumn,
+          CS.hoverParent,
+          CS.hoverVisibility,
+        )}
         hasHiddenBackground={hasHiddenBackground}
         shouldForceHiddenBackground={shouldForceHiddenBackground}
         isNightMode={isNightMode}
@@ -295,6 +312,7 @@ function DashCardInner({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
+          isAction={isAction}
           isEmbed={isEmbed}
           isXray={isXray}
           isEditing={isEditing}

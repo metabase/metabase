@@ -1,40 +1,39 @@
 import { useState } from "react";
 import { useInterval } from "react-use";
 import { t } from "ttag";
-import { Box, Stack } from "metabase/ui";
-import Link from "metabase/core/components/Link";
-import Button from "metabase/core/components/Button";
-import type { Collection } from "metabase-types/api";
-import type { FileUpload } from "metabase-types/store/upload";
 
+import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
 import {
   isUploadInProgress,
   isUploadCompleted,
   isUploadAborted,
 } from "metabase/lib/uploads";
+import { Box, Stack } from "metabase/ui";
+import type Table from "metabase-lib/v1/metadata/Table";
+import type { Collection } from "metabase-types/api";
+import { UploadMode, type FileUpload } from "metabase-types/store/upload";
 
 import StatusLarge from "../StatusLarge";
+
 import { FileUploadErrorModal } from "./FileUploadErrorModal";
 
 const UPLOAD_MESSAGE_UPDATE_INTERVAL = 30 * 1000;
 
 export interface FileUploadLargeProps {
-  collection: Collection;
+  uploadDestination: Collection | Table;
   uploads: FileUpload[];
   resetUploads: () => void;
   isActive?: boolean;
 }
 
 const FileUploadLarge = ({
-  collection,
+  uploadDestination,
   uploads,
   resetUploads,
   isActive,
 }: FileUploadLargeProps) => {
   const [loadingTime, setLoadingTime] = useState(0);
-  const [errorMessage, setErrorMessage] = useState<string | undefined>(
-    undefined,
-  );
 
   const hasError = uploads.some(isUploadAborted);
   const isLoading = uploads.some(isUploadInProgress);
@@ -49,7 +48,7 @@ const FileUploadLarge = ({
   const title =
     isLoading && loadingTime > 0
       ? getLoadingMessage(loadingTime)
-      : getTitle(uploads, collection);
+      : getTitle(uploads, uploadDestination);
 
   const status = {
     title,
@@ -57,7 +56,7 @@ const FileUploadLarge = ({
       id: upload.id,
       title: getName(upload),
       icon: "model",
-      description: Description({ upload, setErrorMessage }),
+      description: Description({ upload }),
       isInProgress: isUploadInProgress(upload),
       isCompleted: isUploadCompleted(upload),
       isAborted: isUploadAborted(upload),
@@ -75,11 +74,6 @@ const FileUploadLarge = ({
         isActive={isActive || hasError}
         onDismiss={hasError ? resetUploads : undefined}
       />
-      {errorMessage && (
-        <FileUploadErrorModal onClose={() => setErrorMessage(undefined)}>
-          {String(errorMessage)}
-        </FileUploadErrorModal>
-      )}
     </>
   );
 };
@@ -91,16 +85,25 @@ const getName = (upload: FileUpload) => {
   return upload.name;
 };
 
-const getTitle = (uploads: FileUpload[], collection: Collection) => {
+const getTitle = (
+  uploads: FileUpload[],
+  uploadDestination: Collection | Table,
+) => {
   const isDone = uploads.every(isUploadCompleted);
+  const isOnlyReplace = uploads.every(
+    upload => upload.uploadMode === UploadMode.replace,
+  );
   const isError = uploads.some(isUploadAborted);
 
   if (isDone) {
-    return t`Data added to ${collection.name}`;
+    if (isOnlyReplace) {
+      return t`Data replaced in ${uploadDestination.name}`;
+    }
+    return t`Data added to ${uploadDestination.name}`;
   } else if (isError) {
-    return t`Error uploading your File`;
+    return t`Error uploading your file`;
   } else {
-    return t`Uploading data to ${collection.name} …`;
+    return t`Uploading data to ${uploadDestination.name} …`;
   }
 };
 
@@ -117,14 +120,8 @@ const getLoadingMessage = (time: number) => {
   return `${loadingMessages[index]} …`;
 };
 
-const Description = ({
-  upload,
-  setErrorMessage,
-}: {
-  upload: FileUpload;
-  setErrorMessage: (msg?: string) => void;
-}) => {
-  if (upload.status === "complete") {
+const Description = ({ upload }: { upload: FileUpload }) => {
+  if (upload.status === "complete" && upload.modelId) {
     return <Link to={`/model/${upload.modelId}`}>Start exploring</Link>;
   }
 
@@ -132,16 +129,33 @@ const Description = ({
     return (
       <Stack align="start" spacing="xs">
         <Box>{upload.message}</Box>
-        {upload.error && (
-          <Button onClick={() => setErrorMessage(upload.error)} onlyText>
-            {t`Show error details`}
-          </Button>
-        )}
+        <UploadErrorDisplay upload={upload} />
       </Stack>
     );
   }
-
   return "";
+};
+
+const UploadErrorDisplay = ({ upload }: { upload: FileUpload }) => {
+  const [showErrorModal, setShowErrorModal] = useState(true);
+  if (!upload.error) {
+    return null;
+  }
+  return (
+    <>
+      <Button onClick={() => setShowErrorModal(true)} onlyText>
+        {t`Show error details`}
+      </Button>
+      {showErrorModal && (
+        <FileUploadErrorModal
+          fileName={upload.name}
+          onClose={() => setShowErrorModal(false)}
+        >
+          {String(upload.error)}
+        </FileUploadErrorModal>
+      )}
+    </>
+  );
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

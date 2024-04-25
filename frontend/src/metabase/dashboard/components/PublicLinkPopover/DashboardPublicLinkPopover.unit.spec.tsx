@@ -1,13 +1,14 @@
-import { useState } from "react";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase-types/store/mocks";
-import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
+import fetchMock from "fetch-mock";
+import { useState } from "react";
+
 import { setupDashboardPublicLinkEndpoints } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders, screen } from "__support__/ui";
 import { DashboardPublicLinkPopover } from "metabase/dashboard/components/PublicLinkPopover/DashboardPublicLinkPopover";
 import type { Dashboard } from "metabase-types/api";
-import { mockSettings } from "__support__/settings";
+import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 const SITE_URL = "http://metabase.test";
 const TEST_DASHBOARD_ID = 1;
@@ -91,7 +92,7 @@ describe("DashboardPublicLinkPopover", () => {
 
   it("should call the Dashboard public link API when deleting link", async () => {
     setup({ hasPublicLink: true });
-    userEvent.click(screen.getByText("Remove public link"));
+    await userEvent.click(screen.getByText("Remove public link"));
     expect(
       fetchMock.calls(`path:/api/dashboard/${TEST_DASHBOARD_ID}/public_link`, {
         method: "DELETE",

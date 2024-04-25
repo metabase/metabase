@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import {
   cardHasBecomeDirty,
   computeMaxDecimalsForValues,

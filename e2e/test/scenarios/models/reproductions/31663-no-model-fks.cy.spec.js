@@ -1,6 +1,6 @@
-import { appBar, main, popover, restore } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { appBar, main, popover, restore } from "e2e/support/helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -18,7 +18,7 @@ describe("issue 31663", () => {
     cy.createQuestion(
       {
         name: "Products Model",
-        dataset: true,
+        type: "model",
         query: { "source-table": PRODUCTS_ID },
       },
       { visitQuestion: true },

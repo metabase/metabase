@@ -1,10 +1,12 @@
 import { useCallback } from "react";
 import { t } from "ttag";
-import * as Lib from "metabase-lib";
+
 import Tooltip from "metabase/core/components/Tooltip";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import type Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+
 import { PreviewButton, PreviewButtonIcon } from "./PreviewQueryButton.styled";
 
 interface PreviewQueryButtonProps {

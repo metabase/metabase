@@ -1,19 +1,19 @@
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { useCallback, useState } from "react";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import type { Moment } from "moment-timezone";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+
 import Calendar from "metabase/components/Calendar";
-import type Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   clearDateRangeFilterTime,
   getDateRangeFilterValue,
   setDateRangeFilterValue,
-} from "metabase-lib/queries/utils/date-filters";
+} from "metabase-lib/v1/queries/utils/date-filters";
+
+import { DateContainer, DateDivider } from "./RangeDatePicker.styled";
 import type { SingleDatePickerProps } from "./SingleDatePicker";
 import SingleDatePicker from "./SingleDatePicker";
 import SpecificDatePicker from "./SpecificDatePicker";
-import { DateContainer, DateDivider } from "./RangeDatePicker.styled";
 
 export interface BetweenPickerProps {
   className?: string;
@@ -98,7 +98,7 @@ export const BetweenPicker = ({
           onClear={handleEndDateClear}
         />
       </DateContainer>
-      <div className="Calendar--noContext">
+      <div>
         <Calendar
           isRangePicker
           primaryColor={primaryColor}
@@ -106,6 +106,7 @@ export const BetweenPicker = ({
           selected={startValue && moment(startValue)}
           selectedEnd={endValue && moment(endValue)}
           onChangeDate={handleDateClick}
+          noContext
         />
       </div>
     </div>

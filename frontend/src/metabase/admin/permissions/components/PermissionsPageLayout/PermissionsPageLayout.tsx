@@ -1,24 +1,10 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback } from "react";
-import { t } from "ttag";
-import { push } from "react-router-redux";
 import type { Route } from "react-router";
+import { push } from "react-router-redux";
+import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import fitViewport from "metabase/hoc/FitViewPort";
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
-
-import {
-  Modal as NewModal,
-  Text,
-  Button as NewButton,
-  Group,
-} from "metabase/ui";
-
-import type { PermissionsGraph } from "metabase-types/api";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   FullHeightContainer,
   TabsContainer,
@@ -28,17 +14,32 @@ import {
   CloseSidebarButton,
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
-import type { IconName } from "metabase/ui";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import Modal from "metabase/components/Modal";
+import ModalContent from "metabase/components/ModalContent";
+import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
+import fitViewport from "metabase/hoc/FitViewPort";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import type { IconName } from "metabase/ui";
+import {
+  Modal as NewModal,
+  Text,
+  Button as NewButton,
+  Group,
+} from "metabase/ui";
+import type { PermissionsGraph } from "metabase-types/api";
+
 import {
   clearSaveError as clearPermissionsSaveError,
   toggleHelpReference,
 } from "../../permissions";
-import { ToolbarButton } from "../ToolbarButton";
 import { showRevisionChangedModal } from "../../selectors/data-permissions/revision";
-import { PermissionsTabs } from "./PermissionsTabs";
+import { ToolbarButton } from "../ToolbarButton";
 
 import { PermissionsEditBar } from "./PermissionsEditBar";
+import { PermissionsTabs } from "./PermissionsTabs";
 
 type PermissionsPageTab = "data" | "collections";
 type PermissionsPageLayoutProps = {
@@ -108,8 +109,8 @@ function PermissionsPageLayout({
             formModal
             onClose={clearSaveError}
           >
-            <p className="mb4">{saveError}</p>
-            <div className="ml-auto">
+            <p className={CS.mb4}>{saveError}</p>
+            <div className={cx(CS.mlAuto)}>
               <Button onClick={clearSaveError}>{t`OK`}</Button>
             </div>
           </ModalContent>
@@ -117,13 +118,13 @@ function PermissionsPageLayout({
 
         <LeaveConfirmationModal isEnabled={isDirty} route={route} />
 
-        <TabsContainer className="border-bottom">
+        <TabsContainer className={CS.borderBottom}>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
           <ToolbarButtonsContainer>
             {toolbarRightContent}
             {helpContent && !isHelpReferenceOpen && (
               <ToolbarButton
-                text={t`Permission help`}
+                text={t`Permissions help`}
                 icon="info"
                 onClick={handleToggleHelpReference}
               />

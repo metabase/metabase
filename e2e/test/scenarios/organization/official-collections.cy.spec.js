@@ -1,6 +1,6 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
-  modal,
   describeEE,
   openNewCollectionItemFlowFor,
   appBar,
@@ -10,8 +10,6 @@ import {
   openCollectionMenu,
   setTokenFeatures,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -52,9 +50,9 @@ describeEE("official collections", () => {
       cy.visit("/collection/root");
 
       openNewCollectionItemFlowFor("collection");
-      modal().within(() => {
+      cy.findByTestId("new-collection-modal").then(modal => {
         assertNoCollectionTypeInput();
-        cy.icon("close").click();
+        cy.findByLabelText("Close").click();
       });
 
       openCollection("First collection");
@@ -97,9 +95,9 @@ describeEE("official collections", () => {
       openCollection("First collection");
 
       openNewCollectionItemFlowFor("collection");
-      modal().within(() => {
+      cy.findByTestId("new-collection-modal").then(modal => {
         assertNoCollectionTypeInput();
-        cy.icon("close").click();
+        cy.findByLabelText("Close").click();
       });
 
       openCollectionMenu();
@@ -108,27 +106,38 @@ describeEE("official collections", () => {
       });
     });
 
-    it("should not be able to manage collection authority level for personal collections and their children", () => {
+    it("should be able to manage collection authority level for personal collections and their children (metabase#30236)", () => {
       cy.visit("/collection/root");
 
       openCollection("Your personal collection");
       getCollectionActions().within(() => {
-        cy.icon("ellipsis").should("not.exist");
+        cy.icon("ellipsis").should("exist");
+        cy.icon("ellipsis").click();
       });
 
+      popover().findByText("Make collection official").should("exist");
+
       openNewCollectionItemFlowFor("collection");
-      modal().within(() => {
-        assertNoCollectionTypeInput();
-        cy.findByLabelText("Name").type("Personal collection child");
-        cy.button("Create").click();
+      cy.findByTestId("new-collection-modal").then(modal => {
+        assertHasCollectionTypeInput();
+        cy.findByPlaceholderText("My new fantastic collection").type(
+          "Personal collection child",
+        );
+        cy.findByText("Create").click();
       });
 
       openCollection("Personal collection child");
 
+      getCollectionActions().within(() => {
+        cy.icon("ellipsis").should("exist");
+        cy.icon("ellipsis").click();
+      });
+      popover().findByText("Make collection official").should("exist");
+
       openNewCollectionItemFlowFor("collection");
-      modal().within(() => {
-        assertNoCollectionTypeInput();
-        cy.icon("close").click();
+      cy.findByTestId("new-collection-modal").then(modal => {
+        assertHasCollectionTypeInput();
+        cy.findByLabelText("Close").click();
       });
     });
   });
@@ -226,9 +235,9 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
   cy.visit("/collection/root");
   cy.findByText("Regular Dashboard").click();
 
-  cy.get(".DashboardGrid").within(() => {
-    cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
-  });
+  cy.findByTestId("dashboard-grid")
+    .icon("badge")
+    .should(expectBadge ? "exist" : "not.exist");
 }
 
 function openCollection(collectionName) {
@@ -237,10 +246,10 @@ function openCollection(collectionName) {
 
 function createAndOpenOfficialCollection({ name }) {
   openNewCollectionItemFlowFor("collection");
-  modal().within(() => {
-    cy.findByLabelText("Name").type(name);
+  cy.findByTestId("new-collection-modal").then(modal => {
+    cy.findByPlaceholderText("My new fantastic collection").type(name);
     cy.findByText("Official").click();
-    cy.button("Create").click();
+    cy.findByText("Create").click();
   });
   navigationSidebar().within(() => {
     cy.findByText(name).click();
@@ -262,6 +271,12 @@ function assertNoCollectionTypeInput() {
   cy.findByText(/Collection type/i).should("not.exist");
   cy.findByText("Regular").should("not.exist");
   cy.findByText("Official").should("not.exist");
+}
+
+function assertHasCollectionTypeInput() {
+  cy.findByText(/Collection type/i).should("exist");
+  cy.findByText("Regular").should("exist");
+  cy.findByText("Official").should("exist");
 }
 
 function assertNoCollectionTypeOption() {

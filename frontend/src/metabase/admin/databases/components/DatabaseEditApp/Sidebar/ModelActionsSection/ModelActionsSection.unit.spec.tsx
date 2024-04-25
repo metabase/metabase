@@ -1,6 +1,8 @@
-import { useState } from "react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+
 import { render, screen, waitFor } from "__support__/ui";
+
 import type { ModelActionsSectionProps } from "./ModelActionsSection";
 import ModelActionsSection from "./ModelActionsSection";
 
@@ -47,12 +49,12 @@ describe("ModelActionsSection", () => {
 
     expect(toggle).not.toBeChecked();
 
-    userEvent.click(toggle);
+    await userEvent.click(toggle);
 
     await waitFor(() => expect(toggle).toBeChecked());
     expect(onToggleModelActionsEnabled).toHaveBeenLastCalledWith(true);
 
-    userEvent.click(toggle);
+    await userEvent.click(toggle);
 
     await waitFor(() => expect(toggle).not.toBeChecked());
     expect(onToggleModelActionsEnabled).toHaveBeenLastCalledWith(false);
@@ -69,11 +71,11 @@ describe("ModelActionsSection", () => {
       onToggleModelActionsEnabled,
     });
 
-    userEvent.click(toggle);
+    await userEvent.click(toggle);
     await waitFor(() => expect(toggle).not.toBeChecked());
     expect(screen.getByText(errorMessage)).toBeInTheDocument();
 
-    userEvent.click(toggle);
+    await userEvent.click(toggle);
     await waitFor(() => expect(toggle).toBeChecked());
     expect(screen.queryByText(errorMessage)).not.toBeInTheDocument();
     expect(onToggleModelActionsEnabled).toHaveBeenLastCalledWith(true);

@@ -4,6 +4,7 @@ import type {
   CollectionAuthorityLevelConfig,
   CollectionInstanceAnaltyicsConfig,
 } from "metabase-types/api";
+
 import {
   REGULAR_COLLECTION,
   COLLECTION_TYPES,

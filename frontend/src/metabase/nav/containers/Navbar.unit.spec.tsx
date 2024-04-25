@@ -1,28 +1,26 @@
 /* eslint-disable jest/expect-expect */
-import { Route } from "react-router";
-import fetchMock from "fetch-mock";
 import type { Store } from "@reduxjs/toolkit";
+import fetchMock from "fetch-mock";
+import { Route } from "react-router";
+
 import {
-  CLOSE_NAVBAR,
-  OPEN_NAVBAR,
-  isNavbarOpenForPathname,
-} from "metabase/redux/app";
-import * as dom from "metabase/lib/dom";
-
-import type { State } from "metabase-types/store";
-
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import * as dom from "metabase/lib/dom";
 import {
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
-
+  CLOSE_NAVBAR,
+  OPEN_NAVBAR,
+  isNavbarOpenForPathname,
+} from "metabase/redux/app";
 import type { User } from "metabase-types/api";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
+import type { State } from "metabase-types/store";
 import {
   createMockAppState,
   createMockEmbedState,

@@ -1,7 +1,9 @@
 import cx from "classnames";
-import { getAccentColors } from "metabase/lib/colors/groups";
+
 import type { PillSize } from "metabase/core/components/ColorPill";
 import ColorSelector from "metabase/core/components/ColorSelector";
+import CS from "metabase/css/core/index.css";
+import { getAccentColors } from "metabase/lib/colors/groups";
 
 interface ChartSettingColorPickerProps {
   className?: string;
@@ -19,14 +21,14 @@ export const ChartSettingColorPicker = ({
   onChange,
 }: ChartSettingColorPickerProps) => {
   return (
-    <div className={cx("flex align-center mb1", className)}>
+    <div className={cx(CS.flex, CS.alignCenter, CS.mb1, className)}>
       <ColorSelector
         value={value}
         colors={getAccentColors()}
         onChange={onChange}
         pillSize={pillSize}
       />
-      {title && <h4 className="ml1">{title}</h4>}
+      {title && <h4 className={CS.ml1}>{title}</h4>}
     </div>
   );
 };

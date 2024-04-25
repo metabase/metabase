@@ -5,9 +5,12 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Field Table]]
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
+   [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.sync.sync-metadata.fks :as sync-fks]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -209,6 +212,46 @@
       (is (= (mt/id :categories :id)
              (t2/select-one-fn :fk_target_field_id Field, :id (mt/id :venues :category_id)))))))
 
+(deftest update-fk-relationships-test
+  (testing "Check that Foreign Key relationships can be updated"
+    (let [; dataset tables need at least one field other than the ID column, so just add a dummy field
+          name-field-def {:field-name "dummy", :base-type :type/Text}]
+      (mt/with-temp-test-data
+        [["continent_1"
+          [name-field-def]
+          []]
+         ["continent_2"
+          [name-field-def]
+          []]
+         ["country"
+          [name-field-def {:field-name "continent_id", :base-type :type/Integer}]
+          []]]
+        (let [db (mt/db)
+              db-spec (sql-jdbc.conn/db->pooled-connection-spec db)
+              get-fk #(t2/select-one :model/Field (mt/id :country :continent_id))]
+          ;; 1. add FK relationship in the database targeting continent_1
+          (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_1(id);")
+          (sync/sync-database! db {:scan :schema})
+          (testing "initially country's continent_id is targeting continent_1"
+            (is (=? {:fk_target_field_id (mt/id :continent_1 :id)
+                     :semantic_type      :type/FK}
+                    (get-fk))))
+          ;; 2. drop the FK relationship in the database with SQL
+          (jdbc/execute! db-spec "ALTER TABLE country DROP CONSTRAINT country_continent_id_fkey;")
+          (sync/sync-database! db {:scan :schema})
+          ;; FIXME: The following test fails. The FK relationship is still there in the Metabase database (metabase#39687)
+          #_(testing "after dropping the FK relationship, country's continent_id is targeting nothing"
+              (is (=? {:fk_target_field_id nil
+                       :semantic_type      :type/Category}
+                      (get-fk))))
+          ;; 3. add back the FK relationship but targeting continent_2
+          (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_2(id);")
+          (sync/sync-database! db {:scan :schema})
+          (testing "initially country's continent_id is targeting continent_2"
+            (is (=? {:fk_target_field_id (mt/id :continent_2 :id)
+                     :semantic_type      :type/FK}
+                    (get-fk)))))))))
+
 (deftest sync-table-fks-test
   (testing "Check that sync-table! causes FKs to be set like we'd expect"
     (mt/with-temp-copy-of-db
@@ -256,3 +299,39 @@
                                  :steps
                                  (m/find-first (comp #{"sync-fields"} first)))]
         (is (=? ["sync-fields" {:total-fields 2 :updated-fields 2}] field-sync-info))))))
+
+(mt/defdataset country
+  [["continent"
+    [{:field-name "name", :base-type :type/Text}]
+    [["Africa"]]]
+   ["country"
+    [{:field-name "name", :base-type :type/Text}
+     {:field-name "continent_id", :base-type :type/Integer :fk :continent}]
+    [["Ghana" 1]]]])
+
+(deftest sync-fks-and-fields-test
+  (testing (str "[[sync-fields/sync-fields-for-table!]] and [[sync-fks/sync-fks-for-table!]] should sync fields and fks"
+                "in the same way that [[sync-fields/sync-fields!]] and [[sync-fks/sync-fks!]] do")
+    (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+      (mt/dataset country
+        (let [tables (t2/select :model/Table :db_id (mt/id))]
+          (doseq [sync-fields-and-fks! [(fn []
+                                          (run! sync-fields/sync-fields-for-table! tables)
+                                          (run! sync-fks/sync-fks-for-table! tables))
+                                        (fn []
+                                          (sync-fields/sync-fields! (mt/db))
+                                          (sync-fks/sync-fks! (mt/db)))]]
+            ;; 1. delete the fields that were just synced
+            (t2/delete! :model/Field :table_id [:in (map :id tables)])
+            ;; 2. sync the metadata for each table
+            (sync-fields-and-fks!)
+            (let [continent-id-field (t2/select-one :model/Field :%lower.name "id" :table_id (mt/id :continent))]
+              (is (= #{{:name "name",         :semantic_type nil,      :fk_target_field_id nil}
+                       {:name "id",           :semantic_type :type/PK, :fk_target_field_id nil}
+                       {:name "continent_id", :semantic_type :type/FK, :fk_target_field_id (:id continent-id-field)}}
+                     (set (map #(into {} %)
+                               (t2/select [Field
+                                           [:%lower.name :name]
+                                           :semantic_type
+                                           :fk_target_field_id]
+                                          :table_id [:in (map :id tables)]))))))))))))

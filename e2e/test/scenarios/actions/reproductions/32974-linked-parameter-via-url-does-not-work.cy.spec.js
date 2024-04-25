@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   getActionCardDetails,
   getNextUnsavedDashboardCardId,
@@ -8,9 +10,8 @@ import {
   setActionsEnabledForDB,
   undoToast,
   getDashboardCard,
+  visitDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   createMockActionParameter,
   createMockParameter,
@@ -45,7 +46,7 @@ const MODEL_DETAILS = {
   name: "Products model",
   query: { "source-table": PRODUCTS_ID },
   database: SAMPLE_DB_ID,
-  dataset: true,
+  type: "model",
 };
 
 const EXPECTED_UPDATED_VALUE = 999;
@@ -104,9 +105,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
 
     setupDashboard();
 
-    cy.get("@dashboardId").then(dashboardId => {
-      cy.visit({ url: `/dashboard/${dashboardId}`, qs: { id: 1 } });
-    });
+    visitDashboard("@dashboardId", { params: { id: 1 } });
 
     cy.log("Execute action");
     cy.button(QUERY_ACTION.name).click();

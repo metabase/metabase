@@ -11,6 +11,7 @@
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [toucan2.core :as t2]))
 
 (use-fixtures :each
@@ -46,7 +47,9 @@
 (def ^:private example-test-data
   [[1 34.0996 "2014-04-01T08:30:00.0000" "Stout Burgers & Beers"]
    [2 34.0406 "2014-12-05T15:15:00.0000" "The Apple Pan"]
-   [3 34.0474 "2014-08-01T12:45:00.0000" "The Gorbals"]])
+   [3 34.0474 "2014-08-01T12:45:00.0000" "The Gorbals"]
+   [4 0       "2018-09-01T19:32:00.0000" "The Tipsy Tardigrade"]
+   [5 nil     "2022-10-12T05:55:00.0000" "The Bungalow"]])
 
 (defn- col-counts [results]
   (set (map (comp count :row) results)))
@@ -164,16 +167,20 @@
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (deftest format-result-rows
-  (is (= [{:bar-width nil, :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
-          {:bar-width nil, :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014, 3:15 PM" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014, 12:45 PM" "The Gorbals"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
+          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan"]}
+          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}
+          {:bar-width nil, :row [(number "4" 4)  "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data})))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
-  (is (= [{:bar-width (float 85.249), :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
-          {:bar-width (float 85.1015), :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014, 3:15 PM" "The Apple Pan"]}
-          {:bar-width (float 85.1185), :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014, 12:45 PM" "The Gorbals"]}]
+  (is (= [{:bar-width (float 85.249), :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
+          {:bar-width (float 85.1015), :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan"]}
+          {:bar-width (float 85.1185), :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}
+          {:bar-width (float 0.0), :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data}
                  {:bar-column second, :min-value 0, :max-value 40})))))
 
@@ -214,9 +221,9 @@
 
 ;; Result rows should include only the remapped column value, not the original
 (deftest include-only-remapped-column-name
-  (is (= [[(number "1" 1) (number "34.1" 34.0996) "Bad" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]
-          [(number "2" 2) (number "34.04" 34.0406) "Ok" "December 5, 2014, 3:15 PM" "The Apple Pan"]
-          [(number "3" 3) (number "34.05" 34.0474) "Good" "August 1, 2014, 12:45 PM" "The Gorbals"]]
+  (is (= [[(number "1" 1) "34.09960000° N" "Bad" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]
+          [(number "2" 2) "34.04060000° N" "Ok" "December 5, 2014, 3:15 PM" "The Apple Pan"]
+          [(number "3" 3) "34.04740000° N" "Good" "August 1, 2014, 12:45 PM" "The Gorbals"]]
          (map :row (rest (#'body/prep-for-html-rendering pacific-tz
                            {}
                            {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
@@ -238,9 +245,11 @@
                                 :coercion_strategy :Coercion/ISO8601->DateTime}))
 
 (deftest cols-with-semantic-types
-  (is (= [{:bar-width nil, :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
-          {:bar-width nil, :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014, 3:15 PM" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014, 12:45 PM" "The Gorbals"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
+          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan"]}
+          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}
+          {:bar-width nil, :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                  {}
                  {:cols test-columns-with-date-semantic-type :rows example-test-data})))))
@@ -496,22 +505,30 @@
     (is (has-inline-image?
          (render-waterfall {:cols default-columns
                             :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
-                            :viz-settings {}}))))
+                            :viz-settings {}})))))
+
+(deftest render-waterfall-test-2
   (testing "Render a waterfall graph with bigdec, bigint values for the x and y axis"
     (is (has-inline-image?
          (render-waterfall {:cols         default-columns
                             :rows         [[10.0M 1M] [5.0 10N] [2.50 20N] [1.25M 30]]
-                            :viz-settings {}}))))
+                            :viz-settings {}})))))
+
+(deftest render-waterfall-test-3
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
          (render-waterfall {:cols         default-columns
                             :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]
-                            :viz-settings {}}))))
+                            :viz-settings {}})))))
+
+(deftest render-waterfall-test-4
   (testing "Check to make sure we allow nil values for the x-axis"
     (is (has-inline-image?
          (render-waterfall {:cols         default-columns
                             :rows         [[10.0 1] [5.0 10] [2.50 20] [nil 30]]
-                            :viz-settings {}}))))
+                            :viz-settings {}})))))
+
+(deftest render-waterfall-test-5
   (testing "Check to make sure we allow nil values for both x and y on different rows"
     (is (has-inline-image?
          (render-waterfall {:cols         default-columns
@@ -529,11 +546,18 @@
     (is (has-inline-image?
          (render-combo {:cols         default-multi-columns
                         :rows         [[10.0 1 123 111] [5.0 10 12 111] [2.50 20 1337 12312] [1.25 30 -22 123124]]
-                        :viz-settings {:graph.metrics ["NumPurchased" "NumKazoos" "ExtraneousColumn"]}}))))
+                        :viz-settings {:graph.metrics ["NumPurchased" "NumKazoos" "ExtraneousColumn"]}})))))
+
+(deftest render-combo-test-2
   (testing "Render a combo graph with multiple x axes"
     (is (has-inline-image?
-         (render-combo-multi-x {:cols         default-multi-columns
-                                :rows         [[10.0 "Bob" 123 123124] [5.0 "Dobbs" 12 23423] [2.50 "Robbs" 1337 234234] [1.25 "Mobbs" -22 1234123]]}))))
+         (render-combo-multi-x {:cols default-multi-columns
+                                :rows [[10.0 "Bob" 123 123124]
+                                       [5.0 "Dobbs" 12 23423]
+                                       [2.50 "Robbs" 1337 234234]
+                                       [1.25 "Mobbs" -22 1234123]]})))))
+
+(deftest render-combo-test-3
   (testing "Check to make sure we allow nil values for any axis"
     (is (has-inline-image?
          (render-combo {:cols         default-multi-columns
@@ -549,13 +573,17 @@
          (render-funnel
           {:cols         default-columns
            :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
-           :viz-settings {}}))))
+           :viz-settings {}})))))
+
+(deftest render-funnel-test-2
   (testing "Test that we can render a funnel with extraneous columns and also weird strings stuck in places"
     (is (has-inline-image?
          (render-funnel
           {:cols         default-multi-columns
            :rows         [[10.0 1 2 2] [5.0 10 "11.1" 1] ["2.50" 20 1337 0] [1.25 30 -2 "-2"]]
-           :viz-settings {}}))))
+           :viz-settings {}})))))
+
+(deftest render-funnel-test-3
   (testing "Test that we can have some nil values stuck everywhere"
     (is (has-inline-image?
          (render-funnel
@@ -601,6 +629,50 @@
                             (hik.s/class "pulse-body")
                             doc)]
             (is (not (render-error? pulse-body)))))))))
+
+(def ^:private funnel-rows
+  [["cart" 1500]
+   ["checkout" 450]
+   ["homepage" 10000]
+   ["product_page" 5000]
+   ["purchase" 225]])
+
+(tx/defdataset funnel-data
+  [["stages"
+    [{:field-name "stage", :base-type :type/Text}
+     {:field-name "count", :base-type :type/Quantity}]
+    funnel-rows]])
+
+(deftest render-funnel-with-row-keys-test
+  (testing "Static-viz Funnel Chart with text keys in viz-settings and text in returned
+            rows renders without error and in the order specified by the viz-settings (#39743)."
+    (mt/dataset funnel-data
+      (let [funnel-query {:database (mt/id)
+                          :type     :query
+                          :query
+                          {:source-table (mt/id :stages)
+                           ;; we explicitly select the 2 columns because if we don't the query returns the ID as well.
+                           ;; this is done here to construct the failing case resulting from the reproduction steps in issue #39743
+                           :fields       [[:field (mt/id :stages :stage)]
+                                          [:field (mt/id :stages :count)]]}}
+            funnel-card  {:display       :funnel
+                          :dataset_query funnel-query
+                          :visualization_settings
+                          {:funnel.rows
+                           [{:key "homepage" :name "homepage" :enabled true}
+                            {:key "product_page" :name "product_page" :enabled true}
+                            {:key "cart" :name "cart" :enabled true}
+                            {:key "checkout" :name "checkout" :enabled true}
+                            {:key "purchase" :name "purchase" :enabled true}]}}]
+        (mt/with-temp [:model/Card {card-id :id} funnel-card]
+          (let [row-names      (into #{} (map first funnel-rows))
+                doc            (render.tu/render-card-as-hickory card-id)
+                section-labels (->> doc
+                                    (hik.s/select (hik.s/tag :tspan))
+                                    (mapv (comp first :content))
+                                    (filter row-names))]
+            (is (= (map :key (get-in funnel-card [:visualization_settings :funnel.rows]))
+                   section-labels))))))))
 
 (deftest render-categorical-donut-test
   (let [columns [{:name          "category",
@@ -791,11 +863,11 @@
                                                ;; This dimension does not exist and used to break the render
                                                ;; This test verifies that it now works.
                                                :graph.dimensions ["_sdc_extracted_at"]}}]
-        (let [{:keys [dataset_query result_metadata dataset] :as card} (t2/select-one :model/Card :id card-id)
+        (let [{:keys [dataset_query result_metadata], card-type :type, :as card} (t2/select-one :model/Card :id card-id)
               query-results (qp/process-query
                               (cond-> dataset_query
-                                dataset
-                                (assoc-in [:info :metadata/dataset-metadata] result_metadata)))
+                                (= card-type :model)
+                                (assoc-in [:info :metadata/model-metadata] result_metadata)))
               {:keys [content]} (body/render :line :inline "UTC" card nil (:data query-results))]
           (testing "Content is generated (rather than an exception being thrown)"
             (is (= :div (first content)))))))))
@@ -824,3 +896,70 @@
                                                              :visualization_settings viz}]
             (testing "the render succeeds with unknown column settings keys"
               (is (seq (render.tu/render-card-as-hickory card-id))))))))))
+
+(deftest trend-chart-renders-in-alerts-test
+  (testing "Trend charts render successfully in Alerts. (#39854)"
+    (mt/dataset test-data
+      (let [q {:database (mt/id)
+               :type     :query
+               :query
+               {:source-table (mt/id :orders)
+                :aggregation  [[:count]]
+                :breakout     [[:field (mt/id :orders :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}]
+        ;; Alerts are set on Questions. They run through the 'pulse' code the same as subscriptions,
+        ;; But will not have any Dashcard data associated, which caused an error in the static-viz render code
+        ;; which implicitly expected a DashCard to exist
+        ;; Here, we simulate an Alert (NOT a subscription) by only providing a card and not mocking a DashCard.
+        (mt/with-temp [:model/Card {card-id :id} {:display       :smartscalar
+                                                  :dataset_query q}]
+          (let [doc       (render.tu/render-card-as-hickory card-id)
+                span-text (->> doc
+                               (hik.s/select (hik.s/tag :span))
+                               (mapv (comp first :content))
+                               (filter string?)
+                               (filter #(str/includes? % "previous month")))]
+            ;; we look for content that we are certain comes from a
+            ;; successfully rendered trend chart.
+            (is (= ["vs. previous month: "] span-text))))))))
+
+(deftest axis-selection-for-series-test
+  (testing "When the user specifies all series to be on left or right, it will render. (#38839)"
+    (mt/dataset test-data
+      (let [q   {:database (mt/id)
+                 :type     :query
+                 :query
+                 {:source-table (mt/id :products)
+                  :aggregation  [[:count]]
+                  :breakout
+                  [[:field (mt/id :products :category) {:base-type :type/Text}]
+                   [:field (mt/id :products :price) {:base-type :type/Float, :binning {:strategy :default}}]]}}
+            viz (fn [dir]
+                  {:series_settings
+                   {:Doohickey {:axis dir}
+                    :Gadget    {:axis dir}
+                    :Gizmo     {:axis dir}
+                    :Widget    {:axis dir}},
+                   :graph.dimensions ["PRICE" "CATEGORY"],
+                   :graph.metrics    ["count"]}) ]
+        (mt/with-temp [:model/Card {left-card-id :id} {:display                :bar
+                                                       :visualization_settings (viz "left")
+                                                       :dataset_query          q}
+                       :model/Card {right-card-id :id} {:display                :bar
+                                                        :visualization_settings (viz "right")
+                                                        :dataset_query          q}]
+          (testing "Every series on the left correctly only renders left axis."
+            (let [doc        (render.tu/render-card-as-hickory left-card-id)
+                  left-axis  (hik.s/select (hik.s/class "visx-axis-left") doc)
+                  right-axis (hik.s/select (hik.s/class "visx-axis-right") doc)]
+              (is (= {:left  1
+                      :right 0}
+                     {:left  (count left-axis)
+                      :right (count right-axis)}))))
+          (testing "Every series on the left correctly only renders right axis."
+            (let [doc        (render.tu/render-card-as-hickory right-card-id)
+                  left-axis  (hik.s/select (hik.s/class "visx-axis-left") doc)
+                  right-axis (hik.s/select (hik.s/class "visx-axis-right") doc)]
+              (is (= {:left  0
+                      :right 1}
+                     {:left  (count left-axis)
+                      :right (count right-axis)})))))))))

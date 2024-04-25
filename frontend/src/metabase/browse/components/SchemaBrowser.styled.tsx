@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import Link from "metabase/core/components/Link";
+
 import { GridItem } from "metabase/components/Grid";
+import Link from "metabase/core/components/Link";
+import { color } from "metabase/lib/colors";
 import {
   breakpointMinMedium,
   breakpointMinSmall,

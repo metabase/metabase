@@ -3,19 +3,21 @@ import { useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
-import Link from "metabase/core/components/Link";
-import ModalContent from "metabase/components/ModalContent";
-import DashboardPicker from "metabase/containers/DashboardPicker";
-import * as Urls from "metabase/lib/urls";
-import { CreateDashboardModalConnected } from "metabase/dashboard/containers/CreateDashboardModal";
 import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import type { State } from "metabase-types/store";
-import type { Card, CollectionId, Dashboard } from "metabase-types/api";
+import ModalContent from "metabase/components/ModalContent";
+import DashboardPicker from "metabase/containers/DashboardPicker";
+import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
-import { useSelector } from "metabase/lib/redux";
+import { CreateDashboardModalConnected } from "metabase/dashboard/containers/CreateDashboardModal";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
+import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { Icon } from "metabase/ui";
+import type { Card, CollectionId, Dashboard } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
 import { useMostRecentlyViewedDashboard } from "./hooks";
 import { getInitialOpenCollectionId } from "./utils";
@@ -25,6 +27,18 @@ function mapStateToProps(state: State) {
     dashboards: state.entities.dashboards,
   };
 }
+
+const getTitle = ({ type }: Card) => {
+  if (type === "model") {
+    return t`Add this model to a dashboard`;
+  }
+
+  if (type === "question") {
+    return t`Add this question to a dashboard`;
+  }
+
+  throw new Error(`Unknown card.type: ${type}`);
+};
 
 interface AddToDashSelectDashModalProps {
   card: Card;
@@ -113,11 +127,7 @@ const AddToDashSelectDashModal = ({
   return (
     <ModalContent
       id="AddToDashSelectDashModal"
-      title={
-        card.dataset
-          ? t`Add this model to a dashboard`
-          : t`Add this question to a dashboard`
-      }
+      title={getTitle(card)}
       onClose={onClose}
     >
       <DashboardPicker
@@ -132,7 +142,7 @@ const AddToDashSelectDashModal = ({
       {showCreateNewDashboardOption && (
         <Link onClick={() => setShouldCreateDashboard(true)} to="">
           <LinkContent>
-            <Icon name="add" className="mx1" />
+            <Icon name="add" className={CS.mx1} />
             <h4>{t`Create a new dashboard`}</h4>
           </LinkContent>
         </Link>

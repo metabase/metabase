@@ -25,16 +25,16 @@ describe("issue 11480", () => {
     // Run the query and see an error.
     SQLFilter.runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(`Data conversion error converting "some text"`);
+    cy.contains('Data conversion error converting "some text"');
 
     // Oh wait! That doesn't match the total column, so we'll change the parameter to a number.
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Number");
     cy.location("search").should("eq", "?x=");
 
-    // We cannot run the query unless the default value for a required parameter is set.
+    // Although there's no default, we should be still able to run the query.
     cy.findByTestId("native-query-editor-sidebar")
       .button("Get Answer")
-      .should("be.disabled");
+      .should("not.be.disabled");
   });
 });

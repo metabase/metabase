@@ -1,5 +1,5 @@
-import { editDashboard, restore, visitDashboard } from "e2e/support/helpers";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { editDashboard, restore, visitDashboard } from "e2e/support/helpers";
 
 const TEST_DASHBOARD_NAME = "Orders in a dashboard";
 const TEST_QUESTION_NAME = "Question#35037";

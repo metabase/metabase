@@ -1,21 +1,19 @@
-import * as Urls from "metabase/lib/urls";
-import { color } from "metabase/lib/colors";
-
+import { useUserListQuery } from "metabase/common/hooks";
+import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
 import Card from "metabase/components/Card";
-import { Icon, Box, Flex, Loader } from "metabase/ui";
 import { Grid } from "metabase/components/Grid";
-import Link from "metabase/core/components/Link";
-import BrowserCrumbs from "metabase/components/BrowserCrumbs";
-
-import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import PaginationControls from "metabase/components/PaginationControls";
-
+import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import {
   ROOT_COLLECTION,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
-
 import { usePagination } from "metabase/hooks/use-pagination";
+import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
+import { Icon, Box, Flex, Loader } from "metabase/ui";
+
 import {
   CardContent,
   ListGridItem,
@@ -66,11 +64,11 @@ export const UserCollectionList = () => {
                     role="list-item"
                   >
                     <Link to={`/collection/${user.personal_collection_id}`}>
-                      <Card className="p2" hoverable>
+                      <Card className={CS.p2} hoverable>
                         <CardContent>
                           <Icon
                             name="person"
-                            className="mr1"
+                            className={CS.mr1}
                             color={color("text-medium")}
                             size={18}
                           />

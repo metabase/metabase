@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { connect } from "react-redux";
 import { push, replace } from "react-router-redux";
+
 import { getAdminPaths } from "metabase/admin/app/selectors";
 
 const mapStateToProps = (state, props) => ({

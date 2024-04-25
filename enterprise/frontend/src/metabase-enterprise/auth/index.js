@@ -1,25 +1,33 @@
+/* eslint-disable react/prop-types */
+
+import { updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
-import { updateIn } from "icepick";
+import * as Yup from "yup";
+
+import SettingHeader from "metabase/admin/settings/components/SettingHeader";
+import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
-import {
-  hasAnySsoPremiumFeature,
-  hasPremiumFeature,
-} from "metabase-enterprise/settings";
+import { FormSwitch } from "metabase/forms";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_LDAP_FORM_FIELDS,
   PLUGIN_IS_PASSWORD_USER,
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
-
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+import { Stack } from "metabase/ui";
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
+import {
+  hasAnySsoPremiumFeature,
+  hasPremiumFeature,
+} from "metabase-enterprise/settings";
 
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
-import SettingsSAMLForm from "./components/SettingsSAMLForm";
+
 import SettingsJWTForm from "./components/SettingsJWTForm";
+import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import { SsoButton } from "./components/SsoButton";
 import JwtAuthCard from "./containers/JwtAuthCard";
 import SamlAuthCard from "./containers/SamlAuthCard";
@@ -93,6 +101,13 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
       {
         key: "saml-enabled",
         getHidden: () => true,
+      },
+      {
+        key: "saml-user-provisioning-enabled?",
+        display_name: t`User Provisioning`,
+        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+        description: t`When a user logs in via SAML, create a Metabase account for them automatically if they don't have one.`,
+        type: "boolean",
       },
       {
         key: "saml-identity-provider-uri",
@@ -179,7 +194,13 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         key: "jwt-enabled",
         display_name: t`JWT Authentication`,
         type: "boolean",
-        getHidden: () => true,
+      },
+      {
+        key: "jwt-user-provisioning-enabled?",
+        display_name: t`User Provisioning`,
+        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+        description: t`When a user logs in via JWT, create a Metabase account for them automatically if they don't have one.`,
+        type: "boolean",
       },
       {
         key: "jwt-identity-provider-uri",
@@ -256,8 +277,36 @@ if (hasPremiumFeature("disable_password_login")) {
 }
 
 if (hasPremiumFeature("sso_ldap")) {
+  Object.assign(PLUGIN_LDAP_FORM_FIELDS, {
+    formFieldAttributes: ["ldap-user-provisioning-enabled?"],
+    defaultableFormFieldAttributes: ["ldap-user-provisioning-enabled?"],
+    formFieldsSchemas: {
+      "ldap-user-provisioning-enabled?": Yup.boolean().default(null),
+    },
+    UserProvisioning: ({ fields, settings }) => (
+      <Stack spacing="0.75rem" m="2.5rem 0">
+        <SettingHeader
+          id="ldap-user-provisioning-enabled?"
+          setting={settings["ldap-user-provisioning-enabled?"]}
+        />
+        <FormSwitch
+          id="ldap-user-provisioning-enabled?"
+          name={fields["ldap-user-provisioning-enabled?"].name}
+          defaultChecked={fields["ldap-user-provisioning-enabled?"].default}
+        />
+      </Stack>
+    ),
+  });
+
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
     updateIn(sections, ["authentication/ldap", "settings"], settings => [
+      {
+        key: "ldap-user-provisioning-enabled?",
+        display_name: t`User Provisioning`,
+        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+        description: t`When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one.`,
+        type: "boolean",
+      },
       ...settings,
       {
         key: "ldap-group-membership-filter",

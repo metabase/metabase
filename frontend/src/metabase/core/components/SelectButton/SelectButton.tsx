@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import * as React from "react";
+
 import {
   SelectButtonRoot,
   SelectButtonIcon,
@@ -40,7 +41,7 @@ const SelectButton = forwardRef(function SelectButton(
   ref: Ref<HTMLButtonElement>,
 ) {
   const handleClear = useCallback(
-    event => {
+    (event: React.MouseEvent) => {
       if (onClear) {
         // Required not to trigger the usual SelectButton's onClick handler
         event.stopPropagation();

@@ -1,12 +1,14 @@
 import { push } from "react-router-redux";
-import { createThunkAction } from "metabase/lib/redux";
+
+import { getAdminPaths } from "metabase/admin/app/selectors";
 import {
   deleteMembership,
   updateMembership,
 } from "metabase/admin/people/people";
-import { getAdminPaths } from "metabase/admin/app/selectors";
-import { refreshCurrentUser } from "metabase/redux/user";
 import Groups from "metabase/entities/groups";
+import { createThunkAction } from "metabase/lib/redux";
+import { refreshCurrentUser } from "metabase/redux/user";
+
 import {
   getRevokeManagerGroupsRedirect,
   getRevokeManagerPeopleRedirect,

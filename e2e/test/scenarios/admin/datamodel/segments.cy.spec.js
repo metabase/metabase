@@ -1,4 +1,5 @@
 // Ported from `segments.e2e.spec.js`
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
@@ -6,8 +7,6 @@ import {
   filter,
   filterField,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -30,10 +29,10 @@ describe("scenarios > admin > datamodel > segments", () => {
 
       cy.button("New segment").click();
 
-      cy.get(".GuiBuilder").findByText("Select a table").click();
+      cy.findByTestId("gui-builder").findByText("Select a table").click();
       popover().findByText("Orders").click();
 
-      cy.get(".GuiBuilder")
+      cy.findByTestId("gui-builder")
         .findByText("Add filters to narrow your answer")
         .click();
 
@@ -119,7 +118,8 @@ describe("scenarios > admin > datamodel > segments", () => {
     it("should see a newly asked question in its questions list", () => {
       // Ask question
       cy.visit("/reference/segments/1/questions");
-      cy.get(".full .Button").click();
+
+      cy.button("Ask a question").click();
       cy.findAllByText("37.65");
 
       filter();

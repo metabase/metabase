@@ -1,17 +1,19 @@
 import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
+
 import { isNumber } from "metabase/lib/types";
-import { Box, Flex, NumberInput, Text } from "metabase/ui";
 import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
+import { Box, Flex, NumberInput, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
+import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterPickerFooter } from "../FilterPickerFooter";
+import { FilterPickerHeader } from "../FilterPickerHeader";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
-import { FilterPickerHeader } from "../FilterPickerHeader";
-import { FilterPickerFooter } from "../FilterPickerFooter";
-import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
 export function NumberFilterPicker({
   query,
@@ -114,7 +116,7 @@ function NumberValueInput({
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
+      <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
         <NumberFilterValuePicker
           query={query}
           stageIndex={stageIndex}

@@ -1,4 +1,6 @@
 import { t } from "ttag";
+
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   getInitialExcludeShortcut,
   getInitialSpecificDatesShortcut,
@@ -11,9 +13,7 @@ import {
   getTodayDateFilter,
   getYesterdayDateFilter,
   getLastWeekDateFilter,
-} from "metabase-lib/queries/utils/date-filters";
-
-import type Filter from "metabase-lib/queries/structured/Filter";
+} from "metabase-lib/v1/queries/utils/date-filters";
 
 type Option = {
   displayName: string;

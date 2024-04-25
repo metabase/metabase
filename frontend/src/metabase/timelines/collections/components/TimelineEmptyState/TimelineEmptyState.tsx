@@ -1,11 +1,14 @@
+import cx from "classnames";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
-import * as Urls from "metabase/lib/urls";
-import type { Collection, Timeline } from "metabase-types/api";
-import { useSelector } from "metabase/lib/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
+
 import Link from "metabase/core/components/Link";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import type { Collection, Timeline } from "metabase-types/api";
+
 import {
   EmptyStateBody,
   EmptyStateChart,
@@ -73,7 +76,10 @@ const TimelineEmptyState = ({
             : t`Events in ${applicationName} let you see important milestones, launches, or anything else, right alongside your data.`}
         </EmptyStateMessage>
         {canWrite && (
-          <Link className="Button Button--primary" to={link}>
+          <Link
+            className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
+            to={link}
+          >
             {t`Add an event`}
           </Link>
         )}

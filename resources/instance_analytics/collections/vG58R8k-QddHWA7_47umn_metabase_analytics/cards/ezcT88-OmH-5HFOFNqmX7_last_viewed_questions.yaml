@@ -96,9 +96,8 @@ dataset_query:
       condition:
       - =
       - - field
-        - creator_id
+        - user_id
         - base-type: type/Integer
-          join-alias: Content - Entity Qualified
       - - field
         - - Internal Metabase Database
           - public
@@ -187,4 +186,6 @@ serdes/meta:
 - id: ezcT88-OmH-5HFOFNqmX7
   label: last_viewed_questions
   model: Card
+initially_published_at: null
 metabase_version: null
+type: question

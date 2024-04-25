@@ -4,6 +4,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+
 import { Text } from "./Text";
 
 const TextWrapper = Object.assign(Text, {

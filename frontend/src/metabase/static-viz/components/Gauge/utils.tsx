@@ -1,7 +1,8 @@
 import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
-import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 
+import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+
 import {
   GAUGE_ARC_ANGLE,
   BASE_FONT_SIZE,
@@ -13,7 +14,6 @@ import {
   SEGMENT_LABEL_FONT_SIZE,
   START_ANGLE,
 } from "./constants";
-
 import type {
   GaugeLabelData,
   GaugeSegment,

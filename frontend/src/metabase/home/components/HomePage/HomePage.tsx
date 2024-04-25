@@ -1,28 +1,30 @@
 import { useEffect } from "react";
-import { t } from "ttag";
 import { replace } from "react-router-redux";
-import { updateSetting } from "metabase/admin/settings/settings";
-import { addUndo } from "metabase/redux/undo";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { t } from "ttag";
+
 import {
   useDashboardQuery,
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
-import type { CollectionItem, DashboardId } from "metabase-types/api";
+import { updateUserSetting } from "metabase/redux/settings";
+import { addUndo } from "metabase/redux/undo";
 import { getSettingsLoading } from "metabase/selectors/settings";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { CollectionItem, DashboardId } from "metabase-types/api";
+
 import {
   getCustomHomePageDashboardId,
   getHasDismissedCustomHomePageToast,
   getIsMetabotEnabled,
 } from "../../selectors";
-import { HomeLayout } from "../HomeLayout";
 import { HomeContent } from "../HomeContent";
+import { HomeLayout } from "../HomeLayout";
 
-const SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
+const SEARCH_QUERY = { models: ["dataset" as const], limit: 1 };
 
 export const HomePage = (): JSX.Element => {
   const {
@@ -110,7 +112,7 @@ const useDashboardPage = () => {
             icon: "info",
             timeout: 10000,
             actions: [
-              updateSetting({
+              updateUserSetting({
                 key: "dismissed-custom-dashboard-toast",
                 value: true,
               }),

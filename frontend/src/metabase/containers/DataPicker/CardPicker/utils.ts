@@ -1,13 +1,12 @@
 import {
-  PERSONAL_COLLECTIONS,
-  buildCollectionTree as _buildCollectionTree,
-} from "metabase/entities/collections";
-import {
   isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
 } from "metabase/collections/utils";
-
+import {
+  PERSONAL_COLLECTIONS,
+  buildCollectionTree as _buildCollectionTree,
+} from "metabase/entities/collections";
 import type {
   Collection,
   CollectionContentModel,

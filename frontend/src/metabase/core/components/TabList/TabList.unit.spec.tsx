@@ -1,7 +1,9 @@
-import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+
 import Tab from "../Tab";
+
 import TabList from "./TabList";
 
 const TestTabList = () => {
@@ -16,7 +18,7 @@ const TestTabList = () => {
 };
 
 describe("TabList", () => {
-  it("should navigate between tabs", () => {
+  it("should navigate between tabs", async () => {
     render(<TestTabList />);
 
     const option1 = screen.getByRole("tab", { name: "Tab 1" });
@@ -24,7 +26,7 @@ describe("TabList", () => {
     expect(option1).toHaveAttribute("aria-selected", "true");
     expect(option2).toHaveAttribute("aria-selected", "false");
 
-    userEvent.click(option2);
+    await userEvent.click(option2);
     expect(option1).toHaveAttribute("aria-selected", "false");
     expect(option2).toHaveAttribute("aria-selected", "true");
   });

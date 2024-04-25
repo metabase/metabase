@@ -1,8 +1,15 @@
 /* istanbul ignore file */
 import dayjs from "dayjs";
+
 import { createMockEntitiesState } from "__support__/store";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Lib from "metabase-lib";
+import {
+  createQuery as _createQuery,
+  columnFinder,
+} from "metabase-lib/test-helpers";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockField, createMockSegment } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
@@ -15,12 +22,6 @@ import {
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import * as Lib from "metabase-lib";
-import { TYPE } from "metabase-lib/types/constants";
-import {
-  createQuery as _createQuery,
-  columnFinder,
-} from "metabase-lib/test-helpers";
 
 const SEGMENT_1 = createMockSegment({
   id: 1,

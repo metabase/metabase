@@ -5,6 +5,8 @@ import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import registerVisualizations from "metabase/visualizations/register";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
+
 import { COMPARISON_TYPES } from "./constants";
 
 registerVisualizations();
@@ -47,6 +49,7 @@ const series = ({
           "scalar.field": field,
           "scalar.comparisons": [comparisonType],
         },
+        dataset_query: createMockStructuredDatasetQuery(),
       },
       data: { cols, rows, insights },
     },
@@ -205,7 +208,7 @@ describe("SmartScalar", () => {
       expect(screen.getByText("810.8k")).toBeInTheDocument();
     });
 
-    it("should display tooltip with comparison info if card is not wide enough", () => {
+    it("should display tooltip with comparison info if card is not wide enough", async () => {
       const rows = [
         ["2019-10-01T00:00:00", 50],
         ["2019-11-01T00:00:00", 100],
@@ -228,7 +231,7 @@ describe("SmartScalar", () => {
       expect(screen.queryByText("50")).not.toBeInTheDocument();
 
       // show tool-tip
-      userEvent.hover(lastChange);
+      await userEvent.hover(lastChange);
       expect(screen.queryAllByLabelText("arrow_up icon")).toHaveLength(2);
       expect(screen.queryAllByText("100%")).toHaveLength(2);
       expect(screen.getByText("vs. previous month:")).toBeInTheDocument();

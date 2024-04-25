@@ -65,6 +65,7 @@
      jwt-user-provisioning-enabled?
      jwt-shared-secret
      last-acknowledged-version
+     last-used-native-database-id
      ldap-attribute-email
      ldap-attribute-firstname
      ldap-attribute-lastname
@@ -91,6 +92,8 @@
      metabot-get-prompt-templates-url
      metabot-prompt-generator-token-limit
      multi-setting-read-only
+     notebook-native-preview-shown
+     notebook-native-preview-sidebar-width
      notification-link-base-url
      num-metabot-choices
      openai-api-key

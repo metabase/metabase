@@ -1,13 +1,15 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
-import { monospaceFontFamily, space } from "metabase/styled-components/theme";
+import styled from "@emotion/styled";
+
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import {
   focusOutlineStyle,
   inputPadding,
   inputTypography,
 } from "metabase/core/style/input";
+import { color } from "metabase/lib/colors";
+import { monospaceFontFamily, space } from "metabase/styled-components/theme";
+
 import type { InputSize } from "../../style/types";
 
 export interface InputProps {

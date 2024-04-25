@@ -1,3 +1,9 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   downloadAndAssert,
@@ -15,13 +21,11 @@ import {
   resetSnowplow,
   enableTracking,
   addOrUpdateDashboardCard,
+  createQuestion,
+  queryBuilderMain,
+  editDashboard,
+  setFilter,
 } from "e2e/support/helpers";
-import {
-  ORDERS_DASHBOARD_DASHCARD_ID,
-  ORDERS_DASHBOARD_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -75,6 +79,60 @@ describe("scenarios > question > download", () => {
     });
   });
 
+  it("should allow downloading unformatted CSV data", () => {
+    const fieldRef = ["field", ORDERS.TOTAL, null];
+    const columnKey = `["ref",${JSON.stringify(fieldRef)}]`;
+
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          fields: [fieldRef],
+        },
+        visualization_settings: {
+          column_settings: {
+            [columnKey]: {
+              currency: "USD",
+              currency_in_header: false,
+              currency_style: "code",
+              number_style: "currency",
+            },
+          },
+        },
+      },
+      { visitQuestion: true, wrapId: true },
+    );
+
+    queryBuilderMain().findByText("USD 39.72").should("exist");
+
+    cy.get("@questionId").then(questionId => {
+      const opts = { questionId, fileType: "csv" };
+
+      downloadAndAssert(
+        {
+          ...opts,
+          enableFormatting: true,
+        },
+        sheet => {
+          expect(sheet["A1"].v).to.eq("Total");
+          expect(sheet["A2"].v).to.eq("USD 39.72");
+        },
+      );
+
+      downloadAndAssert(
+        {
+          ...opts,
+          enableFormatting: false,
+        },
+        sheet => {
+          expect(sheet["A1"].v).to.eq("Total");
+          expect(sheet["A2"].v).to.eq(39.718145389078366);
+          expect(sheet["A2"].w).to.eq("39.718145389078366");
+        },
+      );
+    });
+  });
+
   describe("from dashboards", () => {
     it("should allow downloading card data", () => {
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
@@ -85,15 +143,11 @@ describe("scenarios > question > download", () => {
 
       assertOrdersExport(18760);
 
-      cy.icon("pencil").click();
+      editDashboard();
 
-      cy.icon("filter").click();
+      setFilter("ID");
 
-      popover().within(() => {
-        cy.contains("ID").click();
-      });
-
-      cy.get(".DashCard").contains("Select…").click();
+      cy.findByTestId("dashcard-container").contains("Select…").click();
       popover().contains("ID").eq(0).click();
 
       saveDashboard();
@@ -281,7 +335,7 @@ describeWithSnowplow("scenarios > dashboard > download pdf", () => {
 
   it("should allow you to download a PDF of a dashboard", () => {
     cy.createDashboardWithQuestions({
-      dashboardName: `test dashboard`,
+      dashboardName: "test dashboard",
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
       visitDashboard(dashboard.id);

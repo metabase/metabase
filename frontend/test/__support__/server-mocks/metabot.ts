@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import type { Card, DatabaseId } from "metabase-types/api";
 
 export function setupMetabotModelEndpoint(

@@ -83,13 +83,14 @@
    enabled. A model could still have state=off if the instance previously had the feature flag, then downgraded to not
    have it. In that case models with state=off were previously prunable when the feature flag enabled, but they should be
    refreshable with the feature flag disabled."
-  metabase-enterprise.advanced-config.caching
+  metabase-enterprise.cache.config
   []
-  #{"creating" "persisted" "error" "off"})
+  ;; meant to be the same as the enterprise version except that "off" is not honored and is refreshed
+  #{"refreshing" "creating" "persisted" "error" "off"})
 
 (defenterprise prunable-states
   "States of `persisted_info` records which can be pruned."
-  metabase-enterprise.advanced-config.caching
+  metabase-enterprise.cache.config
   []
   #{"deletable"})
 
@@ -116,6 +117,15 @@
   ([conditions-map state]
    (t2/update! PersistedInfo conditions-map {:active false, :state state, :state_change_at :%now})))
 
+(defn invalidate!
+  "Invalidates any caches corresponding to the `conditions-map`. Equivalent to toggling the caching off and on again."
+  [conditions-map]
+  ;; We do not immediately delete the cached table, it will get clobbered during the next refresh cycle.
+  (t2/update! PersistedInfo
+              (merge {:active true} conditions-map)
+              ;; TODO perhaps we should immediately kick off a recalculation of these caches
+              {:active false, :state "creating", :state_change_at :%now}))
+
 (defn- create-row
   "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."
   [user-id card]
@@ -139,7 +149,7 @@
   (let [cards (t2/select :model/Card
                          {:where [:and
                                   [:= :database_id database-id]
-                                  [:= :dataset true]
+                                  [:= :type "model"]
                                   [:not [:exists {:select [1]
                                                   :from [:persisted_info]
                                                   :where [:= :persisted_info.card_id :report_card.id]}]]]})]

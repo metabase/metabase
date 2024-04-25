@@ -1,19 +1,21 @@
 import fetchMock from "fetch-mock";
+
+import {
+  setupCardEndpoints,
+  setupCardQueryEndpoints,
+} from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import registerVisualizations from "metabase/visualizations/register";
 import {
   createMockCard,
   createMockCollection,
   createMockCollectionItem,
   createMockDataset,
 } from "metabase-types/api/mocks";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import {
-  setupCardEndpoints,
-  setupCardQueryEndpoints,
-} from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import registerVisualizations from "metabase/visualizations/register";
 import { createMockState } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
+
 import PinnedQuestionCard from "./PinnedQuestionCard";
 
 registerVisualizations();
