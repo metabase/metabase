@@ -171,9 +171,7 @@
         (t2/update! :model/Pulse pulse-id {:archived true}))))
   ;; better be done in after-delete, but toucan2 doesn't support that yet See toucan2#70S
   ;; this should delete this PC's trigger
-  (let [pulse-id (:pulse_id pulse-channel)]
-    (update-trigger-if-needed! pulse-id pulse-channel
-                               (disj (pulse-channels-same-slot pulse-id pulse-channel) (:id pulse-channel)))))
+  (update-trigger-if-needed! pulse-id pulse-channel :remove-pc-ids #{(:id pulse-channel)}))
 
 ;; we want to load this at the top level so the Setting the namespace defines gets loaded
 (def ^:private ^{:arglists '([email-addresses])} validate-email-domains*
@@ -224,9 +222,11 @@
   ;; should make-schedule map a closed map
   (assert (every? #(contains? schedule-map %) [:schedule_type :schedule_hour :schedule_day :schedule_frame])
           (format "Schedule map should have all the right keys, got: %s" (keys schedule-map)))
-  (apply t2/select-pks-set :model/PulseChannel :pulse_id pulse-id :enabled true (->> (select-keys schedule-map [:schedule_type :schedule_hour :schedule_day :schedule_frame])
-                                                                                     (into [])
-                                                                                     flatten)))
+  (apply t2/select-pks-set :model/PulseChannel
+         :pulse_id pulse-id
+         :enabled true (->> (select-keys schedule-map [:schedule_type :schedule_hour :schedule_day :schedule_frame])
+                            (into [])
+                            flatten)))
 
 (defn- update-trigger-if-needed!
   [& args]
@@ -241,25 +241,27 @@
   [pulse-channel]
   (let [pulse-channel (t2.realize/realize pulse-channel)]
     (u/prog1 pulse-channel
-      (update-trigger-if-needed! (:pulse_id pulse-channel)
-                                 pulse-channel))))
-
+      (update-trigger-if-needed! (:pulse_id pulse-channel) pulse-channel :add-pc-ids #{(:id pulse-channel)}))))
 
 (t2/define-before-update :model/PulseChannel
-  [{:keys [pulse_id] :as pulse-channel}]
+  [{:keys [pulse_id id] :as pulse-channel}]
   ;; IT's really best if this is done in after-update
   (let [changes (t2/changes pulse-channel)]
     ;; if there are changes in schedule
     ;; better be done in after-update, but t2/changes isn't available in after-update yet See toucan2#129
-    (when (some #(contains? #{:schedule_type :schedule_hour :schedule_day :schedule_frame :enabled} %) (keys changes))
-      ;; delete this PC from its existintg trigger, a new trigger will be created in an after update
+    (when (some #(contains? #{:schedule_type :schedule_hour :schedule_day :schedule_frame} %) (keys changes))
+      ;; delete this PC from its existing trigger, a new trigger will be created in an after update
       (update-trigger-if-needed! pulse_id (t2/original pulse-channel)
-                                 (disj (pulse-channels-same-slot pulse_id (t2/original pulse-channel)) (:id pulse-channel)))))
+                                 :remove-pc-ids #{(:id pulse-channel)})
+      (update-trigger-if-needed! pulse_id pulse-channel
+                                 :add-pc-ids #{id}))
+    (when (contains? changes :enabled)
+      (if (:enabled changes)
+        (update-trigger-if-needed! pulse_id pulse-channel
+                                   :add-pc-ids #{(:id pulse-channel)})
+        (update-trigger-if-needed! pulse_id (t2/original pulse-channel)
+                                   :remove-pc-ids #{(:id pulse-channel)}))))
   (validate-email-domains (mi/changes-with-pk pulse-channel)))
-
-(t2/define-after-update :model/PulseChannel
-  [{:keys [pulse_id] :as pulse-channel}]
-  (update-trigger-if-needed! pulse_id pulse-channel))
 
 (defmethod serdes/hash-fields PulseChannel
   [_pulse-channel]

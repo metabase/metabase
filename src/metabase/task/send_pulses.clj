@@ -1,15 +1,12 @@
 (ns metabase.task.send-pulses
   "Tasks related to running `Pulses`."
   (:require
-   [clj-time.core :as time]
-   [clj-time.predicates :as timepr]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.driver :as driver]
    [metabase.models.pulse :as pulse]
-   [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.task-history :as task-history]
    [metabase.pulse]
    [metabase.task :as task]
@@ -19,10 +16,7 @@
    [toucan2.core :as t2])
   (:import
    (org.quartz
-    CronTrigger
-    JobDetail
-    JobKey
-    TriggerKey)))
+    CronTrigger)))
 
 (set! *warn-on-reflection* true)
 
@@ -54,10 +48,12 @@
                                      u.cron/schedule-map->cron-string
                                      (str/replace " " "_")))))
 
-(defn ^:private send-pulse-trigger
+(mu/defn ^:private send-pulse-trigger
   "Build a Quartz trigger to send a pulse."
   ^CronTrigger
-  [pulse-id schedule-map pc-ids]
+  [pulse-id     :- pos-int?
+   schedule-map :- map?
+   pc-ids       :- [:maybe [:set pos-int?]]]
   (when (seq pc-ids)
     (triggers/build
      (triggers/with-identity (send-pulse-trigger-key pulse-id schedule-map))
@@ -74,42 +70,32 @@
         (cron/with-misfire-handling-instruction-ignore-misfires))))))
 
 (defn update-trigger-if-needed!
-  "Replace or remove the existing trigger if the schedule changes.
-  - Delete exsisting trigger if there are no channels to send to.
-  - Replace existing trigger if the schedule or channels to send to change."
-  ;; TODO maybe this should takes a pc-id then find alls other pcs that have the same schedule modify the trigger
-  ([pulse-id schedule-map]
-   (update-trigger-if-needed! pulse-id schedule-map
-                              (pulse-channel/pulse-channels-same-slot pulse-id schedule-map)))
-  ([pulse-id schedule-map pc-ids]
-   (let [schedule-map (update-vals schedule-map
-                                   #(if (keyword? %)
-                                      (name %)
-                                      %))
-         job          (task/job-info send-pulse-job-key)
-         trigger-key  (send-pulse-trigger-key pulse-id schedule-map)
-         new-trigger  (send-pulse-trigger pulse-id schedule-map pc-ids)]
-     (if-not (some? new-trigger)
-       ;; if there are no channels to send to, remove the trigger
-       (do
-        (log/info "Delete trigger" trigger-key)
-        (task/delete-trigger! trigger-key))
-       (let [trigger-key-name          (.. new-trigger getKey getName)
-             task-schedule             (u.cron/schedule-map->cron-string schedule-map)
-             new-trigger-data          (.getJobDataMap new-trigger)
-             ;; if there are no existing triggers with the same key, schedule and pc-ids
-             ;; then we need to recreate the trigger
-             need-to-recreate-trigger? (->> (:triggers job)
-                                            (some #(when (and (= (:key %) trigger-key-name)
-                                                              (= (:schedule %) task-schedule)
-                                                              (= (:data %) new-trigger-data))
-                                                     %)))]
-         (if (nil? need-to-recreate-trigger?)
-           (do
-            (log/info "need to replace trigger")
-            (task/delete-trigger! trigger-key)
-            (task/add-trigger! new-trigger))
-           (log/info "no op")))))))
+  "Replace or remove the existing trigger if the schedule changes."
+  [pulse-id schedule-map & {:keys [add-pc-ids remove-pc-ids]}]
+  (let [schedule-map     (update-vals schedule-map
+                                      #(if (keyword? %)
+                                         (name %)
+                                         %))
+        job              (task/job-info send-pulse-job-key)
+        trigger-key      (send-pulse-trigger-key pulse-id schedule-map)
+        task-schedule    (u.cron/schedule-map->cron-string schedule-map)
+        ;; there should be one existing trigger
+        existing-trigger (some #(when (and (= (:key %) (.getName trigger-key))
+                                           (= (:schedule %) task-schedule))
+                                  %)
+                               (:triggers job))]
+    (if (some? existing-trigger)
+      (let [existing-pc-ids (-> existing-trigger :data (get "channel-ids") set)
+            new-pc-ids      (cond
+                             (some? add-pc-ids)    (set/union existing-pc-ids add-pc-ids)
+                             (some? remove-pc-ids) (apply disj existing-pc-ids remove-pc-ids))]
+        (log/infof "Existing pc-ids: %s, new pc-ids: %s, removed: %s, added: %s" existing-pc-ids new-pc-ids remove-pc-ids add-pc-ids)
+        (task/delete-trigger! trigger-key)
+        (when-let [new-trigger (send-pulse-trigger pulse-id schedule-map new-pc-ids)]
+          (task/add-trigger! new-trigger)))
+      (when-let [new-trigger (send-pulse-trigger pulse-id schedule-map (set add-pc-ids))]
+        (log/infof "Creating a new trigger for pulse %d with pc-ids: %s" pulse-id add-pc-ids)
+        (task/add-trigger! new-trigger)))))
 
 (defn- send-pulse!
   [pulse-id channel-ids]
@@ -135,7 +121,7 @@
                               (group-by #(select-keys % [:pulse_id :schedule_type :schedule_day :schedule_hour :schedule_frame]) results)
                               (update-vals results #(map :id %)))]
     (for [[{:keys [pulse_id] :as schedule-map} pc-ids] pulse-channel-slots]
-      (update-trigger-if-needed! pulse_id schedule-map pc-ids))
+      (update-trigger-if-needed! pulse_id schedule-map :add-pc-ids (set pc-ids)))
     (clear-pulse-channels!)))
 
 (jobs/defjob ^{:doc "Triggers the sending of all pulses which are scheduled to run in the current hour"}
@@ -166,3 +152,7 @@
     (task/add-job! re-proritize-job)
     (task/schedule-task! re-proritize-job re-proritize-trigger)
     (task/add-trigger! re-proritize-trigger)))
+
+#_(doseq [trigger (:triggers (task/job-info "metabase.task.send-pulses.send-pulse.job"))]
+    (task/delete-trigger! (triggers/key (:key trigger))))
+#_(task/job-info "metabase.task.send-pulses.send-pulse.job")
