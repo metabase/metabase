@@ -37,6 +37,9 @@ const Collections = createEntity({
       params?.tree
         ? listCollectionsTree(params, ...args)
         : listCollections(params, ...args),
+    delete: () => {
+      throw new TypeError("Collections.api.delete is not supported");
+    },
   },
 
   objectActions: {
@@ -61,8 +64,6 @@ const Collections = createEntity({
         { parent_id: canonicalCollectionId(collection?.id) },
         undo(opts, "collection", "moved"),
       ),
-
-    delete: null,
   },
 
   objectSelectors: {
