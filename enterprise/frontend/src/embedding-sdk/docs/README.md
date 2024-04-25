@@ -181,7 +181,7 @@ app.listen(PORT, () => {
 ```
 
 ## Known limitations
-- Metabase embedding SDK only support React
+- Metabase embedding SDK only supports React
 - It doesn't support SSR
 - It doesn't support Vite
 
