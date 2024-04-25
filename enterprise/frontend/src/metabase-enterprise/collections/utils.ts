@@ -1,3 +1,5 @@
+import type { IconData, ObjectWithModel } from "metabase/lib/icon";
+import { getIconBase } from "metabase/lib/icon";
 import type {
   Bookmark,
   Collection,
@@ -9,6 +11,8 @@ import {
   REGULAR_COLLECTION,
   COLLECTION_TYPES,
   CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID,
+  INSTANCE_ANALYTICS_COLLECTION,
+  OFFICIAL_COLLECTION,
 } from "./constants";
 
 export function isRegularCollection({
@@ -40,3 +44,27 @@ export const getInstanceAnalyticsCustomCollection = (
     collection =>
       collection.entity_id === CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID,
   ) ?? null;
+
+export const getIcon = (item: ObjectWithModel): IconData => {
+  if (getCollectionType({ type: item.type }).type === "instance-analytics") {
+    return {
+      name: INSTANCE_ANALYTICS_COLLECTION.icon,
+    };
+  }
+
+  if (item.model === "collection" && item.authority_level === "official") {
+    return {
+      name: OFFICIAL_COLLECTION.icon,
+      color: OFFICIAL_COLLECTION.color,
+    };
+  }
+
+  if (item.model === "dataset" && item.authority_level === "official") {
+    return {
+      name: "model_with_badge",
+      color: OFFICIAL_COLLECTION.color,
+    };
+  }
+
+  return getIconBase(item);
+};
