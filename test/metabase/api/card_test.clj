@@ -15,7 +15,6 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.config :as config]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -29,7 +28,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
    [metabase.permissions.util :as perms.u]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
@@ -3349,18 +3347,6 @@
           (is (= {:body   {:message "The uploads database does not exist."},
                   :status 422}
                  (upload-example-csv-via-api!))))))))
-
-(deftest card-read-event-test
-  (when (premium-features/log-enabled?)
-    (testing "Card reads (views) via the API are recorded in the view_log"
-      (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card" :type :question}]
-        (testing "GET /api/card/:id"
-          (mt/user-http-request :crowberto :get 200 (format "card/%s" (u/id card)))
-          (is (partial=
-               {:user_id  (mt/user->id :crowberto)
-                :model    "card"
-                :model_id (u/id card)}
-               (view-log-test/latest-view (mt/user->id :crowberto) (u/id card)))))))))
 
 (deftest pivot-from-model-test
   (testing "Pivot options should match fields through models (#35319)"

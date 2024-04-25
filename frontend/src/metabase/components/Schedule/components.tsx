@@ -174,7 +174,9 @@ export const AutoWidthSelect = (props: SelectProps) => {
         wrapper: {
           paddingRight: 0,
           marginTop: 0,
-          "&:not(:only-child)": { marginTop: "0" },
+        },
+        label: {
+          marginBottom: 0,
         },
         input: { paddingRight: 0 },
       }}

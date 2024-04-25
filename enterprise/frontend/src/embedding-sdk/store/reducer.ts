@@ -2,7 +2,9 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
 import { createAction } from "redux-actions";
 
+import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type {
+  LoginStatus,
   EmbeddingSessionTokenState,
   SdkState,
   SdkStoreState,
@@ -11,11 +13,9 @@ import { createAsyncThunk } from "metabase/lib/redux";
 
 import { getSessionTokenState } from "./selectors";
 
-const SET_IS_LOGGED_IN = "sdk/SET_IS_LOGGED_IN";
-const SET_IS_INITIALIZED = "sdk/SET_IS_INITIALIZED";
+const SET_LOGIN_STATUS = "sdk/SET_LOGIN_STATUS";
 
-export const setIsLoggedIn = createAction<boolean>(SET_IS_LOGGED_IN);
-export const setIsInitialized = createAction<boolean>(SET_IS_INITIALIZED);
+export const setLoginStatus = createAction<LoginStatus>(SET_LOGIN_STATUS);
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 const REFRESH_TOKEN = "sdk/token/REFRESH_TOKEN";
@@ -47,14 +47,17 @@ export const refreshTokenAsync = createAsyncThunk(
   },
 );
 
+const SET_PLUGINS = "sdk/SET_PLUGINS";
+export const setPlugins = createAction<SdkPluginsConfig | null>(SET_PLUGINS);
+
 const initialState: SdkState = {
   token: {
     token: null,
     loading: false,
     error: null,
   },
-  isLoggedIn: false,
-  isInitialized: false,
+  loginStatus: { status: "uninitialized" },
+  plugins: null,
 };
 
 export const sdk = createReducer(initialState, {
@@ -90,16 +93,16 @@ export const sdk = createReducer(initialState, {
       },
     };
   },
-  [SET_IS_LOGGED_IN]: (state, action: PayloadAction<boolean>) => {
+  [SET_LOGIN_STATUS]: (state, action: PayloadAction<LoginStatus>) => {
     return {
       ...state,
-      isLoggedIn: action.payload,
+      loginStatus: action.payload,
     };
   },
-  [SET_IS_INITIALIZED]: (state, action: PayloadAction<boolean>) => {
+  [SET_PLUGINS]: (state, action: PayloadAction<SdkPluginsConfig | null>) => {
     return {
       ...state,
-      isInitialized: action.payload,
+      plugins: action.payload,
     };
   },
 });

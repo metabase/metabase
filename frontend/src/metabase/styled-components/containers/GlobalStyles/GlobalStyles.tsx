@@ -1,7 +1,9 @@
 import { css, Global, useTheme } from "@emotion/react";
 
 import { baseStyle, getRootStyle } from "metabase/css/core/base.styled";
+import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { alpha, color } from "metabase/lib/colors";
+import { getSitePath } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
@@ -13,6 +15,8 @@ export const GlobalStyles = (): JSX.Element => {
   const fontFiles = useSelector(getFontFiles);
   const theme = useTheme();
 
+  const sitePath = getSitePath();
+
   const styles = css`
     :root {
       --mb-default-font-family: "${font}";
@@ -22,6 +26,7 @@ export const GlobalStyles = (): JSX.Element => {
       --mb-color-focus: ${color("focus")};
     }
 
+    ${defaultFontFiles({ baseUrl: sitePath })}
     ${fontFiles?.map(
       file => css`
         @font-face {
@@ -33,12 +38,12 @@ export const GlobalStyles = (): JSX.Element => {
         }
       `,
     )}
-
     ${aceEditorStyles}
     ${saveDomImageStyles}
     body {
       ${getRootStyle(theme)}
     }
+
     ${baseStyle}
   `;
 
