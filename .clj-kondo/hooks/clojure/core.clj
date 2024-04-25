@@ -250,7 +250,7 @@
   "Return the metadata corresponding to each namespace / class within a given section of an ns form."
   [node]
   (if-let [ns-sym (:value node)]
-    ;; It could be a named symbol
+    ;; It could be a naked symbol
     [{:node node, :ns-sym ns-sym}]
     (let [[{base :value :as first-node} & sub-nodes] (:children node)]
       (if-not (symbol? (:value (first sub-nodes)))
@@ -259,9 +259,8 @@
         [{:node first-node, :ns-sym base}]
         ;; If there is a list of symbols, the first node gives the namespace.
         (for [sub-node sub-nodes]
-          {:node sub-node, :ns-sym (symbol (format "%s.%s"
-                                                   (name base)
-                                                   (name (:value sub-node))))})))))
+          {:node sub-node, :ns-sym (symbol (str (name base) "."
+                                                (name (:value sub-node))))})))))
 
 (def ^:private dependency-section? #{:require :import :use :load})
 
@@ -272,18 +271,25 @@
     (when (dependency-section? section-key)
       (mapcat dependency-info references))))
 
+(defn- remove-suffix
+  "If the given string has the given suffix, return it with the suffix removed."
+  [s suffix]
+  (when (str/ends-with? s suffix)
+    (subs s 0 (- (count s)
+                 (count suffix)))))
+
 (defn- allowed-parents [{ns-sym :value ns-s :string-value}]
   (into #{} (remove nil?)
         [;; Modules can depend on their own internals.
          (modules ns-sym)
          ;; We can to depend on our siblings.
          (parent-module ns-sym)
+         ;; Support the module.core convention used by metabase.lib
+         (some-> (remove-suffix ns-s ".core") symbol modules)
          ;; We treat modules and their test namespaces synonymously
+         (some-> (remove-suffix ns-s "-test") symbol modules)
          (when (modules ns-sym)
-           (symbol (str ns-s "-test")))
-         (when (str/ends-with? ns-s "-test")
-           ;; Using substring requires interop
-           (symbol (str/replace ns-s #"-test$" "")))]))
+           (symbol (str ns-s "-test")))]))
 
 (defn module-internals-should-be-encapsulated
   "Test whether a namespace violates the encapsulation of any modules. Does not lint dynamic references, yet."
