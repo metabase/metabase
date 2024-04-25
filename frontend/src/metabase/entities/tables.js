@@ -175,11 +175,6 @@ const Tables = createEntity({
       },
   },
 
-  // FORMS
-  form: {
-    fields: [{ name: "name" }, { name: "description", type: "text" }],
-  },
-
   reducer: (state = {}, { type, payload, error }) => {
     if (type === Questions.actionTypes.CREATE && !error) {
       const card = payload.question;
