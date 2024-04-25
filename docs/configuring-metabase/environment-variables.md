@@ -168,7 +168,7 @@ Tell us where to find the file for each font weight. You don’t need to include
 Example value:
 
 ```
-[]
+[
   {
     "src": "https://example.com/resources/font-400",
     "fontFormat": "ttf",

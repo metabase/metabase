@@ -410,7 +410,7 @@ To change the chart colors:
   :doc "Example value:
 
 ```
-[]
+[
   {
     \"src\": \"https://example.com/resources/font-400\",
     \"fontFormat\": \"ttf\",
