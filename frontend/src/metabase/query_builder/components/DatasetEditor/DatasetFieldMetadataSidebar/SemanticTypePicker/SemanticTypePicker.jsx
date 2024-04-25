@@ -16,9 +16,17 @@ const propTypes = {
   tabIndex: PropTypes.string,
   onKeyDown: PropTypes.func,
   options: PropTypes.array,
+  onChange: PropTypes.func,
 };
 
-function SemanticTypePicker({ name, tabIndex, onKeyDown, options, label }) {
+function SemanticTypePicker({
+  name,
+  tabIndex,
+  onKeyDown,
+  options,
+  label,
+  onChange,
+}) {
   const [field, _, { setValue }] = useField(name);
 
   const selectButtonRef = useRef();
@@ -33,6 +41,7 @@ function SemanticTypePicker({ name, tabIndex, onKeyDown, options, label }) {
         return;
       }
       setValue(e.target.value);
+      onChange?.(e.target.value);
       selectButtonRef.current?.focus();
     },
     [field, setValue],

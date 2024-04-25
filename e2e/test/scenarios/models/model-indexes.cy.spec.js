@@ -96,7 +96,7 @@ describe("scenarios > model indexes", () => {
     });
   });
 
-  it.only("should not allow indexing when a primary key has been unassigned", () => {
+  it("should not allow indexing when a primary key has been unassigned", () => {
     cy.visit(`/model/${modelId}`);
     cy.wait("@dataset");
 
@@ -193,7 +193,7 @@ describe("scenarios > model indexes", () => {
     });
   });
 
-  it("should not reload the model for record in the same model", () => {
+  it.only("should not reload the model for record in the same model", () => {
     createModelIndex({ modelId, pkName: "ID", valueName: "TITLE" });
 
     cy.visit("/");

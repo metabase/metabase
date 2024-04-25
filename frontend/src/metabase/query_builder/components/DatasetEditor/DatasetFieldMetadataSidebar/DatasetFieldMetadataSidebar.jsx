@@ -115,7 +115,9 @@ function DatasetFieldMetadataSidebar({
       semantic_type: field.semantic_type,
       fk_target_field_id: field.fk_target_field_id || null,
       visibility_type: field.visibility_type || "normal",
-      should_index: ModelIndexes.utils.fieldHasIndex(modelIndexes, field),
+      should_index:
+        field.should_index ??
+        ModelIndexes.utils.fieldHasIndex(modelIndexes, field),
     };
     const { isNative } = Lib.queryDisplayInfo(dataset.query());
 
@@ -176,6 +178,54 @@ function DatasetFieldMetadataSidebar({
     [onFieldMetadataChange],
   );
 
+  const handleDisplayNameChange = useCallback(
+    e =>
+      onFieldMetadataChangeDebounced({
+        display_name: e.target.value,
+      }),
+    [onFieldMetadataChangeDebounced],
+  );
+
+  const handleDescriptionChange = useCallback(
+    e =>
+      onFieldMetadataChangeDebounced({
+        description: e.target.value,
+      }),
+    [onFieldMetadataChangeDebounced],
+  );
+
+  const handleSemanticTypeChange = useCallback(
+    value =>
+      onFieldMetadataChange({
+        semantic_type: value,
+      }),
+    [onFieldMetadataChange],
+  );
+
+  const handleFKTargetChange = useCallback(
+    value =>
+      onFieldMetadataChange({
+        fk_target_field_id: value,
+      }),
+    [onFieldMetadataChange],
+  );
+
+  const handleVisibilityTypeChange = useCallback(
+    value =>
+      onFieldMetadataChange({
+        visibility_type: value,
+      }),
+    [onFieldMetadataChange],
+  );
+
+  const handleShouldIndexChange = useCallback(
+    e =>
+      onFieldMetadataChange({
+        should_index: e.target.checked,
+      }),
+    [onFieldMetadataChange],
+  );
+
   const { isNative } = Lib.queryDisplayInfo(dataset.query());
 
   return (
@@ -184,10 +234,10 @@ function DatasetFieldMetadataSidebar({
         {({ values: formFieldValues }) => {
           return (
             <Form>
-              <FormObserver onChange={onFieldMetadataChangeDebounced} />
               <MainFormContainer>
                 <FormTextInput
                   name="display_name"
+                  onChange={handleDisplayNameChange}
                   label={t`Display name`}
                   tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                   ref={displayNameInputRef}
@@ -217,6 +267,7 @@ function DatasetFieldMetadataSidebar({
                   label={t`Description`}
                   tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                   mb="1.5rem"
+                  onChange={handleDescriptionChange}
                 />
                 {isNative && (
                   <Box mb="1.5rem">
@@ -236,6 +287,7 @@ function DatasetFieldMetadataSidebar({
                     tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                     onKeyDown={onLastEssentialFieldKeyDown}
                     options={getSemanticTypeOptions()}
+                    onChange={handleSemanticTypeChange}
                   />
                 </Box>
                 {isFK(formFieldValues) && (
@@ -243,6 +295,7 @@ function DatasetFieldMetadataSidebar({
                     <FKTargetPicker
                       name="fk_target_field_id"
                       databaseId={dataset.databaseId()}
+                      onChange={handleFKTargetChange}
                     />
                   </Box>
                 )}
@@ -271,6 +324,7 @@ function DatasetFieldMetadataSidebar({
                       labelProps={{
                         mb: "0.5rem",
                       }}
+                      onChange={handleVisibilityTypeChange}
                     >
                       {visibilityTypeOptions.map(option => (
                         <Radio
@@ -308,6 +362,7 @@ function DatasetFieldMetadataSidebar({
                   name="should_index"
                   label={t`Surface individual records in search by matching against this column`}
                   px="1.5rem"
+                  onChange={handleShouldIndexChange}
                 />
               )}
             </Form>

@@ -26,6 +26,7 @@ type StateProps = {
 type OwnProps = {
   name: "string";
   databaseId: DatabaseId;
+  onChange?: (value: string) => void;
 };
 
 type Props = OwnProps & StateProps;
@@ -66,6 +67,7 @@ function FKTargetPicker({
   databaseId,
   IDFields,
   fetchDatabaseIDFields,
+  onChange,
 }: Props) {
   const [{ value }, __, { setValue }] = useField(name);
 
@@ -80,6 +82,7 @@ function FKTargetPicker({
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setValue(e.target.value);
+    onChange?.(e.target.value);
   };
 
   return (
