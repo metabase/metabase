@@ -170,7 +170,7 @@
 
 (defn non-thread-safe-form-should-end-with-exclamation
   "Used to ensure defn and defmacro in test namespace to have name ending with `!` if it's non-thread-safe.
-  A function or a macro can be defined as 'not thread safe' when their funciton name ends with a `!`.
+  A function or a macro can be defined as 'not thread safe' when their function name ends with a `!`.
 
   Only used in tests to identify thread-safe/non-thread-safe test helpers. See #37126"
   [{:keys [node cljc lang]}]
@@ -178,6 +178,130 @@
             (= lang :clj))
     (non-thread-safe-form-should-end-with-exclamation* node))
   {:node node})
+
+;; ----------------- Modules -----------------
+
+;; TODO -- this hard coding is not ideal, it would be better to support metadata on the namespaces themselves.
+(def ^:private global-modules
+  "Global module namespaces can be imported anywhere, but their (non-module) internal namespaces are private.
+  We can nest global modules, in which case each module hides its internal even from its parent module, but is itself
+  importable even outside its parent module(s)."
+  ;; We keep this map sorted so parents precede their children. For legibility please keep them listed that way too..
+  (sorted-set
+   'metabase.db
+   ;; We may aspire to encapsulating more of these - either through refactoring or ^:clj-kondo/ignore.
+   'metabase.db.connection
+   'metabase.db.data-source
+   ;; This case may justify a "friends" style relationship with the metabase.driver module.
+   'metabase.db.jdbc-protocols
+   'metabase.db.metadata-queries
+   'metabase.db.query
+   'metabase.db.setup
+   ;; The namespaces only have their modularity broken within our tests, perhaps we should special case them.
+   'metabase.db.liquibase
+   'metabase.db.schema-migrations-test.impl
+   'metabase.db.test-util
+
+   'metabase.upload
+   ;; We anticipate using this CLJC ns for type inference on the frontend, so it's exposed outside the CLJ module.
+   'metabase.upload.types))
+
+;; TODO -- this hard coding is not ideal, it would be better to support metadata on the namespaces themselves.
+(def ^:private internal-modules
+  "Internal modules are similar to nested modules, except their top-level namespace is not globally exposed."
+  (sorted-set
+   'metabase.db.liquibase))
+
+(def ^:private modules
+  "A sorted list, from outside in of all modules and submodules, both global and private."
+  (into global-modules internal-modules))
+
+(defn- module->child-detector
+  "Construct a function that return the given namespace when called with a namespace which is nested inside it."
+  [module-ns-sym]
+  (let [prefix (str (name module-ns-sym) ".")]
+    (fn child-detector [ns-sym]
+      (when (str/starts-with? (name ns-sym) prefix)
+        module-ns-sym))))
+
+(def ^:private module-detectors
+  "A pre-built list of detectors corresponding to our modules, going from most to least specific."
+  (->> (reverse modules)
+       (mapv module->child-detector)))
+
+(defn- parent-module
+  "Find the most tightly enclosing module for the given namespace, returning nil if it is not within any."
+  [ns-sym]
+  (some #(% ns-sym) module-detectors))
+
+(defn- base-module
+  "Traverse up through the module hierarchy to find the top-level module for the given namespace, if it is within one."
+  [ns-sym]
+  (when-let [parent (parent-module ns-sym)]
+    (loop [module parent]
+      (if-let [parent (parent-module module)]
+        (recur parent)
+        module))))
+
+(when-not (every? (comp global-modules base-module) internal-modules)
+  (throw (Exception. "Sanity check: every internal module is inside a global module")))
+
+(defn- dependency-info
+  "Return the metadata corresponding to each namespace / class within a given section of an ns form."
+  [node]
+  (if-let [ns-sym (:value node)]
+    ;; It could be a named symbol
+    [{:node node, :ns-sym ns-sym}]
+    (let [[{base :value :as first-node} & sub-nodes] (:children node)]
+      (if-not (symbol? (:value (first sub-nodes)))
+        ;; Base is either the only form, or followed by a keyword like :as or :refer
+        ;; In either case, it should already be fully qualified.
+        [{:node first-node, :ns-sym base}]
+        ;; If there is a list of symbols, the first node gives the namespace.
+        (for [sub-node sub-nodes]
+          {:node sub-node, :ns-sym (symbol (format "%s.%s"
+                                                   (name base)
+                                                   (name (:value sub-node))))})))))
+
+(def ^:private dependency-section? #{:require :import :use :load})
+
+(defn- dependencies->ns-symbols
+  "Given a subsection of an ns-form, e.g. (:require ...), return a list of info for the namespaces it references."
+  [dependency-node]
+  (let [[{section-key :k} & references] (:children dependency-node)]
+    (when (dependency-section? section-key)
+      (mapcat dependency-info references))))
+
+(defn- allowed-parents [{ns-sym :value ns-s :string-value}]
+  (into #{} (remove nil?)
+        [;; Modules can depend on their own internals.
+         (modules ns-sym)
+         ;; We can to depend on our siblings.
+         (parent-module ns-sym)
+         ;; We treat modules and their test namespaces synonymously
+         (when (modules ns-sym)
+           (symbol (str ns-s "-test")))
+         (when (str/ends-with? ns-s "-test")
+           ;; Using substring requires interop
+           (symbol (str/replace ns-s #"-test$" "")))]))
+
+(defn module-internals-should-be-encapsulated
+  "Test whether a namespace violates the encapsulation of any modules. Does not lint dynamic references, yet."
+  [{{[_ ns-token & dependencies] :children} :node :as input}]
+  (let [illegal-dependencies (->> (mapcat dependencies->ns-symbols dependencies)
+                                  ;; modules can be referenced from anywhere (even if they are inside another module)
+                                  (remove (comp global-modules :ns-sym))
+                                  (map #(assoc % :parent-module (parent-module (:ns-sym %))))
+                                  ;; we don't care about namespaces which aren't in a module
+                                  (remove (comp nil? :parent-module))
+                                  ;; we don't care about internal references within a module
+                                  (remove (comp (allowed-parents ns-token) :parent-module)))]
+    (doseq [{:keys [node ns-sym parent-module]} illegal-dependencies]
+      (hooks/reg-finding! (assoc (meta node)
+                                 :message (format "namespace %s referenced outside of module %s." ns-sym parent-module)
+                                 :type :metabase/module-encapsulation-broken)))
+    input))
+
 
 (comment
  (require '[clj-kondo.core :as clj-kondo])

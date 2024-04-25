@@ -22,6 +22,7 @@
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests {:level :warning}
   :metabase/mbql-query-first-arg                                       {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs                         {:level :warning}
+  :metabase/module-encapsulation-broken                                {:level :warning}
   :metabase/test-helpers-use-non-thread-safe-functions                 {:level :warning}
   :metabase/validate-deftest                                           {:level :warning}
   :metabase/validate-logging                                           {:level :warning}
@@ -494,6 +495,7 @@
   {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
+   clojure.core/ns                                                                                                           hooks.clojure.core/module-internals-should-be-encapsulated
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
    clojure.test/use-fixtures                                                                                                 hooks.clojure.test/use-fixtures
