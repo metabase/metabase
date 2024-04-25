@@ -273,11 +273,30 @@
   (merge (make-mock-cards meta/metadata-provider (map (juxt identity (comp :id meta/table-metadata)) (meta/tables)))
          (make-mock-cards-special-cases meta/metadata-provider)))
 
-(defn metadata-provider-with-mock-card [card]
-  (lib/composed-metadata-provider
-    meta/metadata-provider
-    (mock-metadata-provider
-      {:cards [card]})))
+(defn metadata-provider-with-mock-card
+  ([card]
+   (metadata-provider-with-mock-card meta/metadata-provider card))
+  ([metadata-provider card]
+   (lib/composed-metadata-provider
+     metadata-provider
+     (mock-metadata-provider
+       {:cards [card]}))))
+
+(defn metadata-provider-with-card-from-query
+  "A metadata provider with a card created from query and given id."
+  ([id query]
+   (metadata-provider-with-card-from-query meta/metadata-provider id query))
+  ([metadata-provider id query & [card-details]]
+   (metadata-provider-with-mock-card
+     metadata-provider
+     (merge {:lib/type        :metadata/card
+             :id              id
+             :database-id     (:id (lib.metadata/database metadata-provider))
+             :dataset-query   (lib.convert/->legacy-MBQL query)
+             :name            (str (gensym))
+             :result-metadata (->> (lib/returned-columns query)
+                                   (sort-by :id))}
+            card-details))))
 
 (def metadata-provider-with-mock-cards
   "A metadata provider with all of the [[mock-cards]]. Composed with the normal [[meta/metadata-provider]]."

@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.metrics-test
   (:require
    [clojure.test :refer [deftest is]]
-   #_[medley.core :as m]
+   [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -163,6 +163,31 @@
                                     [:field {} (meta/id :products :rating)]]]}]}
           (adjust query)))))
 
+(deftest ^:parallel adjust-multi-metric-join-aliases-in-aggregations
+  (let [mp meta/metadata-provider
+        source-query (-> (lib/query mp (meta/table-metadata :orders))
+                         (lib/filter (lib/< (meta/field-metadata :orders :tax) 3000)))
+        mp (-> mp
+               (lib.tu/metadata-provider-with-card-from-query 1 (lib/aggregate source-query (lib/count)) {:type :metric})
+               (lib.tu/metadata-provider-with-card-from-query 2 (lib/aggregate source-query (lib/avg (meta/field-metadata :orders :tax))) {:type :metric})
+               (lib.tu/metadata-provider-with-card-from-query 3 (lib/aggregate source-query (lib/sum (meta/field-metadata :orders :tax))) {:type :metric}))]
+    (mt/with-metadata-provider mp
+      (let [products-table (meta/table-metadata :products)
+            m1 (lib.metadata/card mp 1)
+            m2 (lib.metadata/card mp 2)
+            m3 (lib.metadata/card mp 3)
+            q (as-> (lib/query mp products-table) $q
+                (lib/join $q (lib/join-clause m1))
+                (lib/join $q (lib/join-clause m2))
+                (lib/join $q (lib/join-clause m3))
+                (lib/aggregate $q (first (lib/available-metrics $q)))
+                (lib/aggregate $q (second (lib/available-metrics $q)))
+                (lib/aggregate $q (last (lib/available-metrics $q))))]
+        (is (=? {:stages [{:aggregation [[:count {}]
+                                         [:avg {} [:field {:join-alias (:name m2)} (meta/id :orders :tax)]]
+                                         [:sum {} [:field {:join-alias (:name m3)} (meta/id :orders :tax)]]]}]}
+               (adjust q)))))))
+
 (deftest ^:parallel e2e-results-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
@@ -177,7 +202,7 @@
              (mt/rows (qp/process-query source-query))
              (mt/rows (qp/process-query query))))))))
 
-#_
+
 (deftest ^:parallel e2e-join-to-table-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))

@@ -162,5 +162,5 @@
                         (assoc metric-query :lib/metadata (:lib/metadata query))
                         -1
                         (lib.util/query-stage metric-query -1)
-                        options)))
+                        (dissoc options :unique-name-fn))))
           (card-metadata-columns query card))))
