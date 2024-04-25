@@ -24,7 +24,7 @@ interface InitDataLoaderParameters {
   config: SDKConfigType;
 }
 
-const isJwtAuth = (config: SDKConfigType): config is SdkConfigWithJWT =>
+const isValidJwtAuth = (config: SDKConfigType): config is SdkConfigWithJWT =>
   !!config.jwtProviderUri;
 
 const setupJwtAuth = (config: SdkConfigWithJWT, dispatch: SdkDispatch) => {
@@ -52,7 +52,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
     if (loginStatus.status === "uninitialized") {
       api.basename = config.metabaseInstanceUrl;
 
-      if (isJwtAuth(config)) {
+      if (isValidJwtAuth(config)) {
         setupJwtAuth(config, dispatch);
         dispatch(setLoginStatus({ status: "validated" }));
       } else {
