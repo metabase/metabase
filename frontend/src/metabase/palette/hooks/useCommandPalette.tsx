@@ -5,13 +5,12 @@ import { t } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
-import {
-  useRecentItemListQuery,
-  useSearchListQuery,
-} from "metabase/common/hooks";
+import { useListRecentItemsQuery, skipToken } from "metabase/api";
+import { useSearchListQuery } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { getIcon, getName } from "metabase/entities/recent-items";
 import Search from "metabase/entities/search";
+import { getIcon } from "metabase/lib/icon";
+import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { closeModal } from "metabase/redux/ui";
@@ -50,10 +49,12 @@ export const useCommandPalette = ({
     reload: true,
   });
 
-  const { data: recentItems } = useRecentItemListQuery({
-    enabled: !debouncedSearchText,
-    reload: true,
-  });
+  const { data: recentItems } = useListRecentItemsQuery(
+    debouncedSearchText ? skipToken : undefined,
+    {
+      refetchOnMountOrArgChange: true,
+    },
+  );
 
   const adminPaths = useSelector(getAdminPaths);
   const settingValues = useSelector(getSettings);
@@ -155,8 +156,8 @@ export const useCommandPalette = ({
   const recentItemsActions = useMemo<PaletteAction[]>(() => {
     return (
       recentItems?.map(item => ({
-        id: `recent-item-${getName(item)}`,
-        name: getName(item),
+        id: `recent-item-${getName(item.model_object)}`,
+        name: getName(item.model_object),
         icon: getIcon(item).name,
         section: "recent",
         perform: () => {
