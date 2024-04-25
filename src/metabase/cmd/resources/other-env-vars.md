@@ -15,13 +15,6 @@ Use [MB_SESSION_COOKIES](#mb_session_cookies) to also expire sessions, when brow
 
 Also see the [Changing session expiration](../people-and-groups/changing-session-expiration.md) documentation page.
 
-### `MB_API_KEY`
-
-Type: string<br>
-Default: `null`
-
-Middleware that enforces validation of the client via the request header `X-Metabase-Apikey`. If the header is available, then it’s validated against `MB_API_KEY`. When it matches, the request continues; otherwise it’s blocked with a 403 Forbidden response.
-
 ### `MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE`
 
 Type: integer<br>
